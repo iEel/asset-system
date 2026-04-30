@@ -1,0 +1,542 @@
+// Asset Management System - Database Schema
+// SQL Server 2025 Standard
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+}
+
+// ============================================================
+// Organization Structure
+// ============================================================
+
+model Company {
+  id            String   @id @default(uuid())
+  code          String   @unique @db.NVarChar(20)
+  nameTh        String   @db.NVarChar(200)
+  nameEn        String?  @db.NVarChar(200)
+  taxId         String?  @db.NVarChar(20)
+  address       String?  @db.NVarChar(500)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?  @db.NVarChar(100)
+  updatedBy     String?  @db.NVarChar(100)
+
+  branches      Branch[]
+  departments   Department[]
+  employees     Employee[]
+  assets        Asset[]
+
+  @@map("companies")
+}
+
+model Branch {
+  id            String   @id @default(uuid())
+  code          String   @unique @db.NVarChar(20)
+  name          String   @db.NVarChar(200)
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  address       String?  @db.NVarChar(500)
+  contactPerson String?  @db.NVarChar(200)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?  @db.NVarChar(100)
+  updatedBy     String?  @db.NVarChar(100)
+
+  locations     Location[]
+  employees     Employee[]
+  assets        Asset[]
+
+  @@map("branches")
+}
+
+model Department {
+  id            String   @id @default(uuid())
+  code          String   @unique @db.NVarChar(20)
+  name          String   @db.NVarChar(200)
+  companyId     String?
+  company       Company? @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?  @db.NVarChar(100)
+  updatedBy     String?  @db.NVarChar(100)
+
+  employees     Employee[]
+  assets        Asset[]
+
+  @@map("departments")
+}
+
+model Employee {
+  id               String   @id @default(uuid())
+  code             String   @unique @db.NVarChar(20)
+  fullNameTh       String   @db.NVarChar(200)
+  fullNameEn       String?  @db.NVarChar(200)
+  email            String?  @db.NVarChar(200)
+  companyId        String
+  company          Company  @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  branchId         String
+  branch           Branch   @relation(fields: [branchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  departmentId     String
+  department       Department @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position         String?  @db.NVarChar(200)
+  employmentStatus String   @default("active") @db.NVarChar(20) // active, resigned, suspended
+  managerId        String?
+  manager          Employee?  @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subordinates     Employee[] @relation("EmployeeManager")
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  createdBy        String?  @db.NVarChar(100)
+  updatedBy        String?  @db.NVarChar(100)
+
+  custodianAssets  Asset[]  @relation("AssetCustodian")
+  checkouts        AssetCheckout[] @relation("CheckoutCustodian")
+  user             User?
+
+  @@map("employees")
+}
+
+// ============================================================
+// Physical Location
+// ============================================================
+
+model Location {
+  id              String   @id @default(uuid())
+  code            String   @unique @db.NVarChar(50)
+  name            String   @db.NVarChar(200)
+  branchId        String
+  branch          Branch   @relation(fields: [branchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parentId        String?
+  parent          Location?  @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children        Location[] @relation("LocationHierarchy")
+  locationType    String   @db.NVarChar(50) // Site, Building, Floor, Room, Area, Zone, Rack, etc.
+  description     String?  @db.NVarChar(500)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdBy       String?  @db.NVarChar(100)
+  updatedBy       String?  @db.NVarChar(100)
+
+  homeAssets      Asset[]  @relation("AssetHomeLocation")
+  currentAssets   Asset[]  @relation("AssetCurrentLocation")
+
+  @@map("locations")
+}
+
+// ============================================================
+// Asset Classification
+// ============================================================
+
+model AssetCategory {
+  id            String   @id @default(uuid())
+  code          String   @unique @db.NVarChar(20)
+  name          String   @db.NVarChar(200)
+  description   String?  @db.NVarChar(500)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?  @db.NVarChar(100)
+  updatedBy     String?  @db.NVarChar(100)
+
+  models        AssetModel[]
+  assets        Asset[]
+  customFieldDefs CustomFieldDefinition[]
+
+  @@map("asset_categories")
+}
+
+model AssetBrand {
+  id            String   @id @default(uuid())
+  name          String   @unique @db.NVarChar(200)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  models        AssetModel[]
+  assets        Asset[]
+
+  @@map("asset_brands")
+}
+
+model AssetModel {
+  id            String   @id @default(uuid())
+  name          String   @db.NVarChar(200)
+  categoryId    String
+  category      AssetCategory @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  brandId       String
+  brand         AssetBrand @relation(fields: [brandId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  specs         String?  @db.NVarChar(Max)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  assets        Asset[]
+
+  @@unique([brandId, name])
+  @@map("asset_models")
+}
+
+// ============================================================
+// Asset Status & Condition (Reference Data)
+// ============================================================
+
+model AssetStatus {
+  id            String   @id @default(uuid())
+  name          String   @unique @db.NVarChar(50)
+  nameTh        String   @db.NVarChar(100)
+  description   String?  @db.NVarChar(200)
+  colorCode     String?  @db.NVarChar(20)
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+
+  assets        Asset[]
+
+  @@map("asset_statuses")
+}
+
+model AssetCondition {
+  id            String   @id @default(uuid())
+  name          String   @unique @db.NVarChar(50)
+  nameTh        String   @db.NVarChar(100)
+  description   String?  @db.NVarChar(200)
+  colorCode     String?  @db.NVarChar(20)
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+
+  assets        Asset[]
+
+  @@map("asset_conditions")
+}
+
+// ============================================================
+// Asset Register
+// ============================================================
+
+model Asset {
+  id                String   @id @default(uuid())
+  assetTag          String   @unique @db.NVarChar(50)
+  name              String   @db.NVarChar(200)
+  categoryId        String
+  category          AssetCategory @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  brandId           String?
+  brand             AssetBrand? @relation(fields: [brandId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  modelId           String?
+  model             AssetModel? @relation(fields: [modelId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  serialNumber      String?  @db.NVarChar(100)
+  companyId         String
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  branchId          String
+  branch            Branch   @relation(fields: [branchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  departmentId      String?
+  department        Department? @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  custodianId       String?
+  custodian         Employee? @relation("AssetCustodian", fields: [custodianId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  homeLocationId    String?
+  homeLocation      Location? @relation("AssetHomeLocation", fields: [homeLocationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  currentLocationId String
+  currentLocation   Location @relation("AssetCurrentLocation", fields: [currentLocationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  statusId          String
+  status            AssetStatus @relation(fields: [statusId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  conditionId       String
+  condition         AssetCondition @relation(fields: [conditionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  purchaseDate      DateTime?
+  purchasePrice     Decimal? @db.Decimal(18, 2)
+  supplierId        String?
+  supplier          Supplier? @relation(fields: [supplierId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  warrantyStartDate DateTime?
+  warrantyEndDate   DateTime?
+  fixedAssetCode    String?  @db.NVarChar(50)
+  poNumber          String?  @db.NVarChar(50)
+  invoiceNumber     String?  @db.NVarChar(50)
+  remark            String?  @db.NVarChar(Max)
+  customFieldsJson  String?  @db.NVarChar(Max) // JSON snapshot of custom fields
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?  @db.NVarChar(100)
+  updatedBy         String?  @db.NVarChar(100)
+
+  customFieldValues CustomFieldValue[]
+  movements         AssetMovement[]
+  checkouts         AssetCheckout[]
+  checkins          AssetCheckin[]
+  attachments       Attachment[]
+  // Phase 2: audit items, findings
+  // Phase 3: maintenance tickets, disposal requests
+
+  @@map("assets")
+}
+
+// ============================================================
+// Custom Fields (EAV Pattern)
+// ============================================================
+
+model CustomFieldDefinition {
+  id            String   @id @default(uuid())
+  categoryId    String
+  category      AssetCategory @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  fieldName     String   @db.NVarChar(100)
+  fieldLabel    String   @db.NVarChar(200)
+  fieldLabelTh  String?  @db.NVarChar(200)
+  fieldType     String   @db.NVarChar(20) // text, number, date, select, boolean
+  options       String?  @db.NVarChar(Max) // JSON array for select type
+  isRequired    Boolean  @default(false)
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+
+  values        CustomFieldValue[]
+
+  @@unique([categoryId, fieldName])
+  @@map("custom_field_definitions")
+}
+
+model CustomFieldValue {
+  id              String   @id @default(uuid())
+  assetId         String
+  asset           Asset    @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  definitionId    String
+  definition      CustomFieldDefinition @relation(fields: [definitionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  value           String?  @db.NVarChar(Max)
+
+  @@unique([assetId, definitionId])
+  @@map("custom_field_values")
+}
+
+// ============================================================
+// Asset Transactions
+// ============================================================
+
+model AssetCheckout {
+  id                String   @id @default(uuid())
+  assetId           String
+  asset             Asset    @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  checkoutType      String   @db.NVarChar(20) // user, department, location, asset
+  custodianId       String?
+  custodian         Employee? @relation("CheckoutCustodian", fields: [custodianId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  departmentId      String?  @db.NVarChar(100)
+  locationId        String?  @db.NVarChar(100)
+  parentAssetId     String?  @db.NVarChar(100)
+  checkoutDate      DateTime
+  expectedReturnDate DateTime?
+  conditionBefore   String   @db.NVarChar(50)
+  photoBefore       String?  @db.NVarChar(500)
+  remark            String?  @db.NVarChar(Max)
+  checkedOutBy      String   @db.NVarChar(100)
+  receiverSignature String?  @db.NVarChar(500)
+  isReturned        Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  checkin           AssetCheckin?
+
+  @@map("asset_checkouts")
+}
+
+model AssetCheckin {
+  id                String   @id @default(uuid())
+  assetId           String
+  asset             Asset    @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  checkoutId        String   @unique
+  checkout          AssetCheckout @relation(fields: [checkoutId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  returnDate        DateTime
+  returnBy          String   @db.NVarChar(100)
+  receiveBy         String   @db.NVarChar(100)
+  conditionAfter    String   @db.NVarChar(50)
+  missingAccessories String? @db.NVarChar(Max)
+  damageNote        String?  @db.NVarChar(Max)
+  photoAfter        String?  @db.NVarChar(500)
+  nextStatus        String   @db.NVarChar(50) // Ready, Repair, Disposal
+  nextLocationId    String   @db.NVarChar(100)
+  remark            String?  @db.NVarChar(Max)
+  createdAt         DateTime @default(now())
+
+  @@map("asset_checkins")
+}
+
+model AssetMovement {
+  id            String   @id @default(uuid())
+  assetId       String
+  asset         Asset    @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  movementType  String   @db.NVarChar(50) // checkout, checkin, transfer, location_change, custodian_change, status_change, condition_change, department_change, audit_correction
+  fromValue     String?  @db.NVarChar(500)
+  toValue       String?  @db.NVarChar(500)
+  reason        String?  @db.NVarChar(500)
+  referenceType String?  @db.NVarChar(50) // checkout, checkin, transfer, audit_finding
+  referenceId   String?  @db.NVarChar(100)
+  performedBy   String   @db.NVarChar(100)
+  performedAt   DateTime @default(now())
+  remark        String?  @db.NVarChar(Max)
+
+  @@map("asset_movements")
+}
+
+// ============================================================
+// Supplier
+// ============================================================
+
+model Supplier {
+  id            String   @id @default(uuid())
+  code          String   @unique @db.NVarChar(20)
+  name          String   @db.NVarChar(200)
+  contactPerson String?  @db.NVarChar(200)
+  phone         String?  @db.NVarChar(50)
+  email         String?  @db.NVarChar(200)
+  address       String?  @db.NVarChar(500)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?  @db.NVarChar(100)
+  updatedBy     String?  @db.NVarChar(100)
+
+  assets        Asset[]
+
+  @@map("suppliers")
+}
+
+// ============================================================
+// File Attachments
+// ============================================================
+
+model Attachment {
+  id            String   @id @default(uuid())
+  assetId       String?
+  asset         Asset?   @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  module        String   @db.NVarChar(50) // asset, checkout, checkin, transfer, repair, audit
+  referenceId   String   @db.NVarChar(100) // ID of the parent record
+  fileName      String   @db.NVarChar(500)
+  originalName  String   @db.NVarChar(500)
+  fileType      String   @db.NVarChar(50)
+  fileSize      Int
+  filePath      String   @db.NVarChar(1000)
+  uploadedBy    String   @db.NVarChar(100)
+  uploadedAt    DateTime @default(now())
+  isActive      Boolean  @default(true)
+
+  @@map("attachments")
+}
+
+// ============================================================
+// Authentication & Authorization
+// ============================================================
+
+model User {
+  id            String   @id @default(uuid())
+  username      String   @unique @db.NVarChar(100)
+  passwordHash  String   @db.NVarChar(500)
+  employeeId    String?  @unique
+  employee      Employee? @relation(fields: [employeeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  displayName   String   @db.NVarChar(200)
+  email         String?  @db.NVarChar(200)
+  isActive      Boolean  @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userRoles     UserRole[]
+  systemLogs    SystemLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id            String   @id @default(uuid())
+  name          String   @unique @db.NVarChar(50)
+  displayName   String   @db.NVarChar(200)
+  displayNameTh String?  @db.NVarChar(200)
+  description   String?  @db.NVarChar(500)
+  isSystem      Boolean  @default(false) // System roles cannot be deleted
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  userRoles     UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id            String   @id @default(uuid())
+  module        String   @db.NVarChar(50) // asset, company, branch, audit, report, etc.
+  action        String   @db.NVarChar(50) // view, create, edit, delete, export, approve
+  description   String?  @db.NVarChar(200)
+
+  rolePermissions RolePermission[]
+
+  @@unique([module, action])
+  @@map("permissions")
+}
+
+model UserRole {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  roleId        String
+  role          Role     @relation(fields: [roleId], references: [id])
+  assignedAt    DateTime @default(now())
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id            String   @id @default(uuid())
+  roleId        String
+  role          Role     @relation(fields: [roleId], references: [id])
+  permissionId  String
+  permission    Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ============================================================
+// System
+// ============================================================
+
+model SystemLog {
+  id            String   @id @default(uuid())
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  action        String   @db.NVarChar(50) // create, update, delete, login, logout, checkout, checkin, etc.
+  module        String   @db.NVarChar(50) // asset, company, branch, etc.
+  recordId      String?  @db.NVarChar(100)
+  oldValue      String?  @db.NVarChar(Max)
+  newValue      String?  @db.NVarChar(Max)
+  ipAddress     String?  @db.NVarChar(50)
+  userAgent     String?  @db.NVarChar(500)
+  remark        String?  @db.NVarChar(500)
+  createdAt     DateTime @default(now())
+
+  @@map("system_logs")
+}
+
+model SystemSetting {
+  id            String   @id @default(uuid())
+  key           String   @unique @db.NVarChar(100)
+  value         String   @db.NVarChar(Max)
+  description   String?  @db.NVarChar(500)
+  updatedAt     DateTime @updatedAt
+  updatedBy     String?  @db.NVarChar(100)
+
+  @@map("system_settings")
+}
+
+model Notification {
+  id            String   @id @default(uuid())
+  userId        String   @db.NVarChar(100)
+  title         String   @db.NVarChar(200)
+  message       String   @db.NVarChar(Max)
+  type          String   @db.NVarChar(50) // info, warning, danger, success
+  module        String?  @db.NVarChar(50)
+  referenceId   String?  @db.NVarChar(100)
+  isRead        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@map("notifications")
+}
