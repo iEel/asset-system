@@ -7,6 +7,7 @@ import {
   parseAssetListParams,
   type AssetListParams,
 } from "@/lib/asset-list-query"
+import { AssetImportPreviewPanel } from "@/components/assets/asset-import-preview-panel"
 import { AssetRegisterTable, type AssetRegisterRow } from "@/components/assets/asset-register-table"
 import { MasterDataHeader } from "@/components/master-data/master-data-layout"
 
@@ -111,6 +112,22 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           status: t("status"),
           condition: t("condition"),
           rowsPerPage: tCommon("rowsPerPage"),
+        }}
+      />
+
+      <AssetImportPreviewPanel
+        labels={{
+          importPreview: t("importPreview"),
+          chooseFile: t("chooseImportFile"),
+          previewReady: t("previewReady"),
+          previewErrors: t("previewErrors"),
+          previewRows: t("previewRows"),
+          row: t("row"),
+          status: t("status"),
+          errors: t("errors"),
+          assetName: t("assetName"),
+          assetTag: t("assetTag"),
+          fileRequired: t("fileRequired"),
         }}
       />
 

@@ -117,6 +117,7 @@ d:\Antigravity\asset-system\
 │   │       └── supplier-form.tsx
 │   │   └── assets/
 │   │       ├── asset-form.tsx
+│   │       ├── asset-import-preview-panel.tsx
 │   │       ├── asset-register-table.tsx
 │   │       └── asset-label-print.tsx
 │   ├── i18n/
@@ -311,6 +312,8 @@ Tailwind v4 ไม่มี `tailwind.config.ts` — ทุก config อยู�
 | `src/lib/asset-tag.ts` | Auto-generate asset tag from Company/Branch/Category/running |
 | `src/lib/asset-form-options.ts` | Server helper for Asset form dropdown data |
 | `src/lib/asset-excel.ts` | Shared Excel workbook helpers for asset export/import template |
+| `src/lib/asset-import-preview.ts` | Excel import parser and row-level validation helpers |
+| `src/components/assets/asset-import-preview-panel.tsx` | Upload Excel and display import validation preview |
 | `src/components/assets/asset-register-table.tsx` | Asset Register table with column visibility, row selection, and CSV export |
 | `src/components/assets/asset-label-print.tsx` | Printable QR asset label layout + print action |
 | `src/lib/utils.ts` | `cn()`, `formatDate()`, `formatCurrency()` |
@@ -523,7 +526,7 @@ await logAudit({
 
 ### Recommended Next Order
 
-1. **Asset Register import validation flow** — upload Excel, preview row-level validation errors, then confirm write
+1. **Asset Register import confirmation** — persist validated preview rows with audit log and movement creation
 2. **Asset Register duplicate UX** — surface duplicate serial conflicts inline before submit where practical
 3. Upgrade master data tables to server-side pagination/sort once data volume grows
 
@@ -540,6 +543,7 @@ await logAudit({
 9. Dedicated printable QR label page linked from asset detail
 10. Asset Register table column visibility, row selection, and CSV export for selected current-page assets
 11. Asset Excel export for filtered results and import template download with reference-data sheets
+12. Asset import validation preview: upload `.xlsx`, validate references/required/duplicates/date/price, and show row-level errors without writing DB
 
 ---
 
