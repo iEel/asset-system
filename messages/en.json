@@ -331,6 +331,30 @@
     "nextLocation": "Store at",
     "success": "Asset checked in successfully"
   },
+  "transfer": {
+    "title": "Transfer Asset",
+    "asset": "Asset",
+    "selectAsset": "Select asset",
+    "toLocation": "Destination Location",
+    "toCustodian": "Destination Custodian",
+    "toDepartment": "Destination Department",
+    "reason": "Transfer Reason",
+    "remark": "Remark",
+    "noChange": "No change",
+    "destinationRequired": "Choose at least one transfer destination",
+    "success": "Asset transferred successfully"
+  },
+  "bulkMove": {
+    "title": "Bulk Move Locations",
+    "assets": "Assets",
+    "selectAssets": "Choose at least one asset",
+    "toLocation": "Destination Location",
+    "selectLocation": "Select location",
+    "reason": "Move Reason",
+    "remark": "Remark",
+    "selectedCount": "{count} selected",
+    "success": "Assets moved successfully"
+  },
   "reportsPage": {
     "title": "Reports",
     "subtitle": "Asset summaries and basic operational reports",

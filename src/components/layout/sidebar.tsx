@@ -64,6 +64,8 @@ export function Sidebar({
         { labelKey: "addAsset", href: `/${locale}/assets/new`, icon: <PackagePlus size={18} /> },
         { labelKey: "checkout", href: `/${locale}/asset-management/checkout`, icon: <LogOut size={18} /> },
         { labelKey: "checkin", href: `/${locale}/asset-management/checkin`, icon: <LogIn size={18} /> },
+        { labelKey: "transfer", href: `/${locale}/asset-management/transfer`, icon: <ArrowRightLeft size={18} /> },
+        { labelKey: "bulkMove", href: `/${locale}/asset-management/bulk-move`, icon: <MapPin size={18} /> },
         { labelKey: "assetHistory", href: `/${locale}/asset-management/history`, icon: <History size={18} /> },
       ],
     },

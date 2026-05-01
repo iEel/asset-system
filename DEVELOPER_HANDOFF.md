@@ -1,8 +1,8 @@
 # Developer Handoff — Asset Management System
 
 > **Last Updated:** 2026-05-01
-> **Phase:** 1C Asset Register (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, 🟨 Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started
+> **Phase:** Phase 2 Operations (Started)
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 transfer/bulk move started
 
 ---
 
@@ -23,7 +23,7 @@
 | **1B: Master Data** | Company, Branch, Dept, Employee, Location, Category, Brand, Supplier | ✅ Complete — Company, Branch, Department, Location, Employee, Category, Brand/Model, Supplier |
 | **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 Mostly Complete — CRUD, tag gen, QR labels, detail, movements, attachments, import/export, duplicate UX |
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | 🟨 Started — Check-out/in, basic reports, system logs, and live KPI dashboard added |
-| **Phase 2** | Transfer, Audit workflow | ⬜ Planned |
+| **Phase 2** | Transfer, Audit workflow | 🟨 Started — asset transfer and bulk location move added using `asset_movements` + `system_logs` |
 | **Phase 3** | Maintenance, Disposal | ⬜ Planned |
 | **Phase 4** | AD/LDAP, HR sync, Advanced dashboard | ⬜ Planned |
 
@@ -390,6 +390,8 @@ WEB_PORT=3000
 | Asset Label Print | `http://localhost:3000/th/assets/{assetId}/label` |
 | Check-out Asset | `http://localhost:3000/th/asset-management/checkout` |
 | Check-in Asset | `http://localhost:3000/th/asset-management/checkin` |
+| Transfer Asset | `http://localhost:3000/th/asset-management/transfer` |
+| Bulk Move Location | `http://localhost:3000/th/asset-management/bulk-move` |
 | Reports | `http://localhost:3000/th/reports` |
 | System Log | `http://localhost:3000/th/admin/logs` |
 
@@ -511,6 +513,7 @@ await logAudit({
 | **Lint warnings** | `npm run lint` ผ่านแต่ยังมี warning unused imports เดิม 8 จุดใน layout/sidebar/topbar |
 | **Next.js 16 docs** | โปรเจกต์นี้มี AGENTS.md ระบุให้อ่าน docs ใน `node_modules/next/dist/docs/` ก่อนแก้โค้ด Next.js |
 | **SQL Server TLS warning** | แก้แล้วด้วย `DB_TLS_SERVER_NAME=WIN-I284TKLAMMD` เพื่อไม่ให้ tedious ใช้ IP เป็น TLS ServerName |
+| **Phase 2 schema note** | Transfer/Bulk Move รอบแรกใช้ `asset_movements` และ `system_logs` โดยยังไม่เพิ่ม table ใหม่; audit workflow ควรเพิ่ม schema เฉพาะในรอบถัดไป |
 
 ---
 
@@ -532,9 +535,10 @@ await logAudit({
 
 ### Recommended Next Order
 
-1. **Operations hardening** — handover/return printable forms, photo/signature upload, stricter status mapping
-2. **Master data table scaling** — server-side pagination/sort for high-volume master data modules
-3. **Admin foundation** — user/role/settings pages beyond the current system log viewer
+1. **Audit workflow foundation** — audit round schema, pending asset generation, and QR scan capture
+2. **Operations hardening** — handover/return printable forms, photo/signature upload, stricter status mapping
+3. **Master data table scaling** — server-side pagination/sort for high-volume master data modules
+4. **Admin foundation** — user/role/settings pages beyond the current system log viewer
 
 ### Phase 1C Started
 
@@ -554,6 +558,8 @@ await logAudit({
 14. Duplicate UX in asset form with pre-submit asset tag and serial checks
 15. Check-out/check-in API and pages with movement and audit logging
 16. Basic reports page, system log viewer, and live KPI dashboard
+17. Asset transfer API/page with destination location, custodian, department, movement logging, and audit trail
+18. Bulk location move API/page for moving multiple active, non-checked-out assets with movement and system log entries
 
 ---
 

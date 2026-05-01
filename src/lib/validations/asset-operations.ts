@@ -49,5 +49,32 @@ export const assetCheckinSchema = z.object({
   remark: optionalText,
 })
 
+export const assetTransferSchema = z
+  .object({
+    toLocationId: optionalText,
+    toCustodianId: optionalText,
+    toDepartmentId: optionalText,
+    reason: z.string().trim().min(1).max(500),
+    remark: optionalText,
+  })
+  .superRefine((input, context) => {
+    if (!input.toLocationId && !input.toCustodianId && !input.toDepartmentId) {
+      context.addIssue({
+        code: "custom",
+        path: ["toLocationId"],
+        message: "At least one transfer destination is required",
+      })
+    }
+  })
+
+export const assetBulkMoveSchema = z.object({
+  assetIds: z.array(z.string().trim().min(1)).min(1),
+  toLocationId: z.string().trim().min(1),
+  reason: z.string().trim().min(1).max(500),
+  remark: optionalText,
+})
+
 export type AssetCheckoutInput = z.infer<typeof assetCheckoutSchema>
 export type AssetCheckinInput = z.infer<typeof assetCheckinSchema>
+export type AssetTransferInput = z.infer<typeof assetTransferSchema>
+export type AssetBulkMoveInput = z.infer<typeof assetBulkMoveSchema>
