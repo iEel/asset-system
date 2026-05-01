@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { getTranslations } from "next-intl/server"
-import { Edit } from "lucide-react"
+import { Edit, Eye } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency } from "@/lib/utils"
@@ -129,6 +129,13 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right">
                       <div className="inline-flex items-center gap-1">
+                        <Link
+                          href={`/${locale}/assets/${asset.id}`}
+                          title={t("detailTitle")}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Link>
                         <Link
                           href={`/${locale}/assets/${asset.id}/edit`}
                           title={tCommon("edit")}

@@ -101,6 +101,7 @@
     "subtitle": "Manage asset records, tags, status, custodians, and current locations",
     "createTitle": "Create Asset",
     "editTitle": "Edit Asset",
+    "detailTitle": "Asset Detail",
     "assetTag": "Asset Tag",
     "autoTagHint": "Leave blank to auto-generate",
     "assetName": "Asset Name",
@@ -143,6 +144,9 @@
     "customFields": "Technical Details",
     "customFieldsJson": "Additional Data (JSON)",
     "attachments": "Attachments",
+    "qrCode": "QR Code",
+    "fromValue": "From",
+    "toValue": "To",
     "movementHistory": "Movement History",
     "auditHistory": "Audit History"
   },

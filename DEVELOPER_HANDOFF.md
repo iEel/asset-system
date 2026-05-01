@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-04-30
 > **Phase:** 1C Asset Register (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, 🟨 Asset Register CRUD started
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, 🟨 Asset Register CRUD + detail/QR/timeline started
 
 ---
 
@@ -21,7 +21,7 @@
 |---|---|---|
 | **1A: Foundation** | Project setup, Schema, Auth, i18n, Layout | ✅ Complete |
 | **1B: Master Data** | Company, Branch, Dept, Employee, Location, Category, Brand, Supplier | ✅ Complete — Company, Branch, Department, Location, Employee, Category, Brand/Model, Supplier |
-| **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 In Progress — Asset list/create/edit, tag gen, and movement logging started |
+| **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 In Progress — Asset list/create/edit/detail, tag gen, QR, and movement timeline started |
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | ⬜ Not started |
 | **Phase 2** | Transfer, Audit workflow | ⬜ Planned |
 | **Phase 3** | Maintenance, Disposal | ⬜ Planned |
@@ -87,7 +87,7 @@ d:\Antigravity\asset-system\
 │   │       └── (dashboard)/
 │   │           ├── layout.tsx              # Sidebar + Topbar
 │   │           ├── dashboard/page.tsx      # KPI cards
-│   │           ├── assets/                 # Asset Register list / new / edit
+│   │           ├── assets/                 # Asset Register list / detail / new / edit
 │   │           └── master-data/
 │   │               ├── companies/          # List / new / edit
 │   │               ├── branches/           # List / new / edit
@@ -497,7 +497,7 @@ await logAudit({
 
 ---
 
-## 13. Next Steps (Phase 1B: Master Data)
+## 13. Next Steps (Phase 1C: Asset Register)
 
 ### Completed
 
@@ -515,9 +515,9 @@ await logAudit({
 
 ### Recommended Next Order
 
-1. **Asset Detail Page** — summary, QR Code, attachments section, and movement timeline
+1. **Attachments** — upload/download/delete with validation
 2. **Asset Register refinements** — advanced filters, server-side pagination/sort, duplicate serial checks
-3. **Attachments** — upload/download/delete with validation
+3. **QR label print layout** — printable asset label with QR, tag, name, serial
 4. Upgrade master data tables to server-side pagination/sort once data volume grows
 
 ### Phase 1C Started
@@ -527,6 +527,7 @@ await logAudit({
 3. Auto asset tag generation using `[Company]-[Branch]-[Category]-[Running No.]`
 4. Asset create/update/delete APIs with RBAC and audit log
 5. Initial `asset_movements` logging for create and key field changes
+6. Asset detail page with summary, QR Code, attachments section, and movement timeline
 
 ---
 
