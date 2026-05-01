@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-05-01
 > **Phase:** Phase 2 Operations (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 transfer/bulk move started
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 transfer/audit foundation started
 
 ---
 
@@ -23,7 +23,7 @@
 | **1B: Master Data** | Company, Branch, Dept, Employee, Location, Category, Brand, Supplier | ✅ Complete — Company, Branch, Department, Location, Employee, Category, Brand/Model, Supplier |
 | **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 Mostly Complete — CRUD, tag gen, QR labels, detail, movements, attachments, import/export, duplicate UX |
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | 🟨 Started — Check-out/in, basic reports, system logs, and live KPI dashboard added |
-| **Phase 2** | Transfer, Audit workflow | 🟨 Started — asset transfer and bulk location move added using `asset_movements` + `system_logs` |
+| **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move plus audit round schema, generated expected asset list, and audit round pages |
 | **Phase 3** | Maintenance, Disposal | ⬜ Planned |
 | **Phase 4** | AD/LDAP, HR sync, Advanced dashboard | ⬜ Planned |
 
@@ -392,6 +392,8 @@ WEB_PORT=3000
 | Check-in Asset | `http://localhost:3000/th/asset-management/checkin` |
 | Transfer Asset | `http://localhost:3000/th/asset-management/transfer` |
 | Bulk Move Location | `http://localhost:3000/th/asset-management/bulk-move` |
+| Audit Rounds | `http://localhost:3000/th/audit/rounds` |
+| Create Audit Round | `http://localhost:3000/th/audit/rounds/new` |
 | Reports | `http://localhost:3000/th/reports` |
 | System Log | `http://localhost:3000/th/admin/logs` |
 
@@ -513,7 +515,7 @@ await logAudit({
 | **Lint warnings** | `npm run lint` ผ่านแต่ยังมี warning unused imports เดิม 8 จุดใน layout/sidebar/topbar |
 | **Next.js 16 docs** | โปรเจกต์นี้มี AGENTS.md ระบุให้อ่าน docs ใน `node_modules/next/dist/docs/` ก่อนแก้โค้ด Next.js |
 | **SQL Server TLS warning** | แก้แล้วด้วย `DB_TLS_SERVER_NAME=WIN-I284TKLAMMD` เพื่อไม่ให้ tedious ใช้ IP เป็น TLS ServerName |
-| **Phase 2 schema note** | Transfer/Bulk Move รอบแรกใช้ `asset_movements` และ `system_logs` โดยยังไม่เพิ่ม table ใหม่; audit workflow ควรเพิ่ม schema เฉพาะในรอบถัดไป |
+| **Phase 2 audit schema** | เพิ่ม `audit_rounds`, `audit_items`, `audit_findings`, `audit_scan_history` และ push schema ไป SQL Server `alpha` แล้ว |
 
 ---
 
@@ -535,10 +537,11 @@ await logAudit({
 
 ### Recommended Next Order
 
-1. **Audit workflow foundation** — audit round schema, pending asset generation, and QR scan capture
-2. **Operations hardening** — handover/return printable forms, photo/signature upload, stricter status mapping
-3. **Master data table scaling** — server-side pagination/sort for high-volume master data modules
-4. **Admin foundation** — user/role/settings pages beyond the current system log viewer
+1. **Audit scan capture** — QR/manual asset scan API, update Audit Item to Scanned, create Scan History, and detect mismatches
+2. **Audit finding review** — pending finding list, approve/reject/reconcile workflow, and asset movement from approved corrections
+3. **Operations hardening** — handover/return printable forms, photo/signature upload, stricter status mapping
+4. **Master data table scaling** — server-side pagination/sort for high-volume master data modules
+5. **Admin foundation** — user/role/settings pages beyond the current system log viewer
 
 ### Phase 1C Started
 
@@ -560,6 +563,9 @@ await logAudit({
 16. Basic reports page, system log viewer, and live KPI dashboard
 17. Asset transfer API/page with destination location, custodian, department, movement logging, and audit trail
 18. Bulk location move API/page for moving multiple active, non-checked-out assets with movement and system log entries
+19. Audit schema foundation: `audit_rounds`, `audit_items`, `audit_findings`, `audit_scan_history`
+20. Audit Round API/page with scope filters and automatic expected asset list generation
+21. Audit Round detail page with progress metrics and first 100 expected asset items
 
 ---
 

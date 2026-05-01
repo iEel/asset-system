@@ -89,6 +89,13 @@ export function Sidebar({
       icon: <BarChart3 size={20} />,
     },
     {
+      labelKey: "audit",
+      icon: <ClipboardCheck size={20} />,
+      children: [
+        { labelKey: "auditRound", href: `/${locale}/audit/rounds`, icon: <ClipboardCheck size={18} /> },
+      ],
+    },
+    {
       labelKey: "administration",
       icon: <Settings size={20} />,
       children: [
