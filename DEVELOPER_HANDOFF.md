@@ -1,8 +1,8 @@
 # Developer Handoff — Asset Management System
 
 > **Last Updated:** 2026-04-30
-> **Phase:** 1B Master Data (In Progress)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Company/Branch/Department/Location/Employee/Category/Brand/Model/Supplier CRUD complete
+> **Phase:** 1C Asset Register (Started)
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, 🟨 Asset Register CRUD started
 
 ---
 
@@ -21,7 +21,7 @@
 |---|---|---|
 | **1A: Foundation** | Project setup, Schema, Auth, i18n, Layout | ✅ Complete |
 | **1B: Master Data** | Company, Branch, Dept, Employee, Location, Category, Brand, Supplier | ✅ Complete — Company, Branch, Department, Location, Employee, Category, Brand/Model, Supplier |
-| **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | ⬜ Not started |
+| **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 In Progress — Asset list/create/edit, tag gen, and movement logging started |
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | ⬜ Not started |
 | **Phase 2** | Transfer, Audit workflow | ⬜ Planned |
 | **Phase 3** | Maintenance, Disposal | ⬜ Planned |
@@ -78,7 +78,8 @@ d:\Antigravity\asset-system\
 │   │   │   ├── categories/                 # Category CRUD API
 │   │   │   ├── brands/                     # Brand CRUD API
 │   │   │   ├── models/                     # Asset Model CRUD API
-│   │   │   └── suppliers/                  # Supplier CRUD API
+│   │   │   ├── suppliers/                  # Supplier CRUD API
+│   │   │   └── assets/                     # Asset Register CRUD API
 │   │   └── [locale]/
 │   │       ├── layout.tsx                  # i18n provider + Sonner
 │   │       ├── page.tsx                    # Redirect → /dashboard
@@ -86,6 +87,7 @@ d:\Antigravity\asset-system\
 │   │       └── (dashboard)/
 │   │           ├── layout.tsx              # Sidebar + Topbar
 │   │           ├── dashboard/page.tsx      # KPI cards
+│   │           ├── assets/                 # Asset Register list / new / edit
 │   │           └── master-data/
 │   │               ├── companies/          # List / new / edit
 │   │               ├── branches/           # List / new / edit
@@ -111,6 +113,8 @@ d:\Antigravity\asset-system\
 │   │       ├── brand-form.tsx
 │   │       ├── asset-model-form.tsx
 │   │       └── supplier-form.tsx
+│   │   └── assets/
+│   │       └── asset-form.tsx
 │   ├── i18n/
 │   │   ├── routing.ts                      # Locales: th (default), en
 │   │   └── request.ts                      # Message loader
@@ -299,6 +303,9 @@ Tailwind v4 ไม่มี `tailwind.config.ts` — ทุก config อยู�
 | `src/lib/validations/category.ts` | Asset Category Zod schema |
 | `src/lib/validations/brand-model.ts` | Brand and Asset Model Zod schemas |
 | `src/lib/validations/supplier.ts` | Supplier Zod schema |
+| `src/lib/validations/asset.ts` | Asset Register Zod schema |
+| `src/lib/asset-tag.ts` | Auto-generate asset tag from Company/Branch/Category/running |
+| `src/lib/asset-form-options.ts` | Server helper for Asset form dropdown data |
 | `src/lib/utils.ts` | `cn()`, `formatDate()`, `formatCurrency()` |
 | `src/middleware.ts` | i18n locale detection |
 | `messages/th.json` | Thai translations |
@@ -367,6 +374,7 @@ WEB_PORT=3000
 | Category | `http://localhost:3000/th/master-data/categories` |
 | Brand / Model | `http://localhost:3000/th/master-data/brands` |
 | Supplier | `http://localhost:3000/th/master-data/suppliers` |
+| Asset Register | `http://localhost:3000/th/assets` |
 
 ---
 
@@ -507,8 +515,18 @@ await logAudit({
 
 ### Recommended Next Order
 
-1. **Start Phase 1C Asset Register** — Asset CRUD, tag generation, QR, attachments, and movement history
-2. Upgrade master data tables to server-side pagination/sort once data volume grows
+1. **Asset Detail Page** — summary, QR Code, attachments section, and movement timeline
+2. **Asset Register refinements** — advanced filters, server-side pagination/sort, duplicate serial checks
+3. **Attachments** — upload/download/delete with validation
+4. Upgrade master data tables to server-side pagination/sort once data volume grows
+
+### Phase 1C Started
+
+1. Asset Register list page with search and 200-row cap
+2. Asset create/edit form with master data dropdowns
+3. Auto asset tag generation using `[Company]-[Branch]-[Category]-[Running No.]`
+4. Asset create/update/delete APIs with RBAC and audit log
+5. Initial `asset_movements` logging for create and key field changes
 
 ---
 
