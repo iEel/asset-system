@@ -214,6 +214,27 @@
     "models": "จำนวนรุ่น",
     "assets": "จำนวนทรัพย์สิน"
   },
+  "brandModel": {
+    "title": "ยี่ห้อ/รุ่น",
+    "subtitle": "จัดการยี่ห้อและรุ่นทรัพย์สิน โดยรุ่นต้องผูกกับหมวดหมู่และยี่ห้อ",
+    "createBrand": "เพิ่มยี่ห้อ",
+    "createModel": "เพิ่มรุ่น",
+    "createBrandTitle": "เพิ่มยี่ห้อ",
+    "editBrandTitle": "แก้ไขยี่ห้อ",
+    "createModelTitle": "เพิ่มรุ่น",
+    "editModelTitle": "แก้ไขรุ่น",
+    "modelsTitle": "รุ่นทรัพย์สิน",
+    "modelsSubtitle": "รุ่นใช้สำหรับระบุสเปกและผูกกับหมวดหมู่ก่อนสร้างทะเบียนทรัพย์สิน",
+    "brand": "ยี่ห้อ",
+    "brandName": "ชื่อยี่ห้อ",
+    "modelName": "ชื่อรุ่น",
+    "category": "หมวดหมู่",
+    "selectBrand": "เลือกยี่ห้อ",
+    "selectCategory": "เลือกหมวดหมู่",
+    "specs": "สเปก",
+    "models": "จำนวนรุ่น",
+    "assets": "จำนวนทรัพย์สิน"
+  },
   "checkout": {
     "title": "ส่งมอบทรัพย์สิน",
     "checkoutTo": "ส่งมอบให้",

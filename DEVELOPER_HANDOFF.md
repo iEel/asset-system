@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-04-30
 > **Phase:** 1B Master Data (In Progress)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Company/Branch/Department/Location/Employee/Category CRUD complete
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Company/Branch/Department/Location/Employee/Category/Brand/Model CRUD complete
 
 ---
 
@@ -20,7 +20,7 @@
 | Phase | ขอบเขต | สถานะ |
 |---|---|---|
 | **1A: Foundation** | Project setup, Schema, Auth, i18n, Layout | ✅ Complete |
-| **1B: Master Data** | Company, Branch, Dept, Employee, Location, Category, Brand, Supplier | 🟨 In Progress — Company, Branch, Department, Location, Employee, Category complete |
+| **1B: Master Data** | Company, Branch, Dept, Employee, Location, Category, Brand, Supplier | 🟨 In Progress — Company, Branch, Department, Location, Employee, Category, Brand/Model complete |
 | **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | ⬜ Not started |
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | ⬜ Not started |
 | **Phase 2** | Transfer, Audit workflow | ⬜ Planned |
@@ -75,7 +75,9 @@ d:\Antigravity\asset-system\
 │   │   │   ├── departments/                # Department CRUD API
 │   │   │   ├── locations/                  # Location CRUD API
 │   │   │   ├── employees/                  # Employee CRUD API
-│   │   │   └── categories/                 # Category CRUD API
+│   │   │   ├── categories/                 # Category CRUD API
+│   │   │   ├── brands/                     # Brand CRUD API
+│   │   │   └── models/                     # Asset Model CRUD API
 │   │   └── [locale]/
 │   │       ├── layout.tsx                  # i18n provider + Sonner
 │   │       ├── page.tsx                    # Redirect → /dashboard
@@ -89,7 +91,8 @@ d:\Antigravity\asset-system\
 │   │               ├── departments/        # List / new / edit
 │   │               ├── locations/          # List / new / edit
 │   │               ├── employees/          # List / new / edit
-│   │               └── categories/         # List / new / edit
+│   │               ├── categories/         # List / new / edit
+│   │               └── brands/             # Brand + Model list / new / edit
 │   ├── components/
 │   │   ├── layout/
 │   │   │   ├── sidebar.tsx                 # Collapsible sidebar + menus
@@ -102,7 +105,9 @@ d:\Antigravity\asset-system\
 │   │       ├── department-form.tsx
 │   │       ├── location-form.tsx
 │   │       ├── employee-form.tsx
-│   │       └── category-form.tsx
+│   │       ├── category-form.tsx
+│   │       ├── brand-form.tsx
+│   │       └── asset-model-form.tsx
 │   ├── i18n/
 │   │   ├── routing.ts                      # Locales: th (default), en
 │   │   └── request.ts                      # Message loader
@@ -289,6 +294,7 @@ Tailwind v4 ไม่มี `tailwind.config.ts` — ทุก config อยู�
 | `src/lib/validations/location.ts` | Location Zod schema + location type list |
 | `src/lib/validations/employee.ts` | Employee Zod schema + employment statuses |
 | `src/lib/validations/category.ts` | Asset Category Zod schema |
+| `src/lib/validations/brand-model.ts` | Brand and Asset Model Zod schemas |
 | `src/lib/utils.ts` | `cn()`, `formatDate()`, `formatCurrency()` |
 | `src/middleware.ts` | i18n locale detection |
 | `messages/th.json` | Thai translations |
@@ -355,6 +361,7 @@ WEB_PORT=3000
 | Location | `http://localhost:3000/th/master-data/locations` |
 | Employee | `http://localhost:3000/th/master-data/employees` |
 | Category | `http://localhost:3000/th/master-data/categories` |
+| Brand / Model | `http://localhost:3000/th/master-data/brands` |
 
 ---
 
@@ -390,7 +397,7 @@ src/app/api/{module}/
 src/lib/validations/{module}.ts  # Zod schema
 ```
 
-Current implemented modules: `companies`, `branches`, `departments`, `locations`, `employees`, `categories`.
+Current implemented modules: `companies`, `branches`, `departments`, `locations`, `employees`, `categories`, `brands`, `models`.
 
 Current reusable helpers:
 - `src/components/master-data/master-data-layout.tsx` — page header, search bar, column header, active badge
@@ -487,16 +494,16 @@ await logAudit({
 4. Location CRUD with Branch FK, parent location hierarchy, and location type
 5. Employee CRUD with Company, Branch, Department, Manager, and employment status
 6. Category CRUD with model, asset, and custom field counts
-7. Reusable master data header/search/delete helpers
-8. Page-level and API-level RBAC for implemented master data modules
-9. Audit trail logging for create/update/delete
+7. Brand / Model CRUD with category and brand relationships
+8. Reusable master data header/search/delete helpers
+9. Page-level and API-level RBAC for implemented master data modules
+10. Audit trail logging for create/update/delete
 
 ### Recommended Next Order
 
-1. **Brand / Model CRUD** — model depends on Category + Brand
-2. **Supplier CRUD**
-3. Upgrade master data tables to server-side pagination/sort once data volume grows
-4. Start Phase 1C Asset Register after Organization + Location + Classification master data are ready
+1. **Supplier CRUD**
+2. Upgrade master data tables to server-side pagination/sort once data volume grows
+3. Start Phase 1C Asset Register after Organization + Location + Classification master data are ready
 
 ---
 

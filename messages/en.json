@@ -214,6 +214,27 @@
     "models": "Models",
     "assets": "Assets"
   },
+  "brandModel": {
+    "title": "Brands / Models",
+    "subtitle": "Manage asset brands and models, with each model tied to a category and brand",
+    "createBrand": "Create Brand",
+    "createModel": "Create Model",
+    "createBrandTitle": "Create Brand",
+    "editBrandTitle": "Edit Brand",
+    "createModelTitle": "Create Model",
+    "editModelTitle": "Edit Model",
+    "modelsTitle": "Asset Models",
+    "modelsSubtitle": "Models capture specifications and connect categories to brands before asset registration",
+    "brand": "Brand",
+    "brandName": "Brand Name",
+    "modelName": "Model Name",
+    "category": "Category",
+    "selectBrand": "Select brand",
+    "selectCategory": "Select category",
+    "specs": "Specifications",
+    "models": "Models",
+    "assets": "Assets"
+  },
   "checkout": {
     "title": "Check-out Asset",
     "checkoutTo": "Check-out To",
