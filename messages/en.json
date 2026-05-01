@@ -203,6 +203,17 @@
     "locationType": "Location Type",
     "description": "Description"
   },
+  "category": {
+    "title": "Asset Categories",
+    "subtitle": "Group asset types for tags, models, and additional fields",
+    "createTitle": "Create Category",
+    "editTitle": "Edit Category",
+    "code": "Category Code",
+    "name": "Category Name",
+    "description": "Description",
+    "models": "Models",
+    "assets": "Assets"
+  },
   "checkout": {
     "title": "Check-out Asset",
     "checkoutTo": "Check-out To",
