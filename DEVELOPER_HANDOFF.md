@@ -117,6 +117,7 @@ d:\Antigravity\asset-system\
 │   │       └── supplier-form.tsx
 │   │   └── assets/
 │   │       ├── asset-form.tsx
+│   │       ├── asset-register-table.tsx
 │   │       └── asset-label-print.tsx
 │   ├── i18n/
 │   │   ├── routing.ts                      # Locales: th (default), en
@@ -309,6 +310,7 @@ Tailwind v4 ไม่มี `tailwind.config.ts` — ทุก config อยู�
 | `src/lib/validations/asset.ts` | Asset Register Zod schema |
 | `src/lib/asset-tag.ts` | Auto-generate asset tag from Company/Branch/Category/running |
 | `src/lib/asset-form-options.ts` | Server helper for Asset form dropdown data |
+| `src/components/assets/asset-register-table.tsx` | Asset Register table with column visibility, row selection, and CSV export |
 | `src/components/assets/asset-label-print.tsx` | Printable QR asset label layout + print action |
 | `src/lib/utils.ts` | `cn()`, `formatDate()`, `formatCurrency()` |
 | `src/middleware.ts` | i18n locale detection |
@@ -520,8 +522,8 @@ await logAudit({
 
 ### Recommended Next Order
 
-1. **Asset Register refinements continued** — column visibility, export selected, stronger duplicate handling UX
-2. **Asset Register import/export foundation** — Excel template/export and validated import path
+1. **Asset Register import/export foundation** — Excel template/export and validated import path
+2. **Asset Register duplicate UX** — surface duplicate serial conflicts inline before submit where practical
 3. Upgrade master data tables to server-side pagination/sort once data volume grows
 
 ### Phase 1C Started
@@ -535,6 +537,7 @@ await logAudit({
 7. Attachment upload/download/delete with file validation and `UPLOAD_DIR` storage
 8. Asset Register advanced filters, server-side pagination/sort, and duplicate serial validation
 9. Dedicated printable QR label page linked from asset detail
+10. Asset Register table column visibility, row selection, and CSV export for selected current-page assets
 
 ---
 

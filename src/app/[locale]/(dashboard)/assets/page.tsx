@@ -1,22 +1,14 @@
-import Link from "next/link"
 import { getTranslations } from "next-intl/server"
-import { Edit, Eye } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
-import { formatCurrency } from "@/lib/utils"
 import {
   buildAssetOrderBy,
-  buildAssetQueryString,
   buildAssetWhere,
   parseAssetListParams,
   type AssetListParams,
 } from "@/lib/asset-list-query"
-import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
-import {
-  ActiveBadge,
-  ColumnHeader,
-  MasterDataHeader,
-} from "@/components/master-data/master-data-layout"
+import { AssetRegisterTable, type AssetRegisterRow } from "@/components/assets/asset-register-table"
+import { MasterDataHeader } from "@/components/master-data/master-data-layout"
 
 type AssetsPageProps = {
   params: Promise<{ locale: string }>
@@ -78,6 +70,19 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize))
   const fromRow = total === 0 ? 0 : (filters.page - 1) * filters.pageSize + 1
   const toRow = Math.min(total, filters.page * filters.pageSize)
+  const tableAssets: AssetRegisterRow[] = assets.map((asset) => ({
+    id: asset.id,
+    assetTag: asset.assetTag,
+    name: asset.name,
+    serialNumber: asset.serialNumber,
+    category: `${asset.category.code} - ${asset.category.name}`,
+    companyBranch: `${asset.company.code} / ${asset.branch.code}`,
+    currentLocation: `${asset.currentLocation.code} - ${asset.currentLocation.name}`,
+    custodian: asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : null,
+    status: { label: asset.status.nameTh, color: asset.status.colorCode },
+    condition: { label: asset.condition.nameTh, color: asset.condition.colorCode },
+    purchasePrice: asset.purchasePrice ? Number(asset.purchasePrice) : null,
+  }))
 
   return (
     <div>
@@ -109,107 +114,38 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
         }}
       />
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <SortableHeader locale={locale} filters={filters} field="assetTag" label={t("assetTag")} />
-                <SortableHeader locale={locale} filters={filters} field="name" label={t("assetName")} />
-                <ColumnHeader>{t("category")}</ColumnHeader>
-                <ColumnHeader>{t("company")}</ColumnHeader>
-                <ColumnHeader>{t("currentLocation")}</ColumnHeader>
-                <ColumnHeader>{t("custodian")}</ColumnHeader>
-                <ColumnHeader>{t("status")}</ColumnHeader>
-                <ColumnHeader>{t("condition")}</ColumnHeader>
-                <SortableHeader locale={locale} filters={filters} field="purchasePrice" label={t("purchasePrice")} />
-                <ColumnHeader align="right">{tCommon("actions")}</ColumnHeader>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {assets.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="h-32 px-4 text-center text-muted-foreground">
-                    {tCommon("noData")}
-                  </td>
-                </tr>
-              ) : (
-                assets.map((asset) => (
-                  <tr key={asset.id} className="hover:bg-accent/50">
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{asset.assetTag}</td>
-                    <td className="min-w-56 px-4 py-3 text-foreground">
-                      <div className="font-medium">{asset.name}</div>
-                      {asset.serialNumber && <div className="text-xs text-muted-foreground">{asset.serialNumber}</div>}
-                    </td>
-                    <td className="min-w-40 px-4 py-3 text-muted-foreground">
-                      {asset.category.code} - {asset.category.name}
-                    </td>
-                    <td className="min-w-44 px-4 py-3 text-muted-foreground">
-                      {asset.company.code} / {asset.branch.code}
-                    </td>
-                    <td className="min-w-44 px-4 py-3 text-muted-foreground">
-                      {asset.currentLocation.code} - {asset.currentLocation.name}
-                    </td>
-                    <td className="min-w-44 px-4 py-3 text-muted-foreground">
-                      {asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <StatusPill label={asset.status.nameTh} color={asset.status.colorCode} />
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <StatusPill label={asset.condition.nameTh} color={asset.condition.colorCode} />
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                      {formatCurrency(asset.purchasePrice ? Number(asset.purchasePrice) : null)}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        <Link
-                          href={`/${locale}/assets/${asset.id}`}
-                          title={t("detailTitle")}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                        <Link
-                          href={`/${locale}/assets/${asset.id}/edit`}
-                          title={tCommon("edit")}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Link>
-                        <AssetDeleteButton id={asset.id} />
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex flex-col gap-3 border-t border-border px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-          <div>
-            {fromRow}-{toRow} {tCommon("of")} {total}
-          </div>
-          <div className="flex items-center gap-2">
-            <PaginationLink
-              href={`/${locale}/assets?${buildAssetQueryString(filters, { page: Math.max(1, filters.page - 1) })}`}
-              disabled={filters.page <= 1}
-            >
-              {tCommon("previous")}
-            </PaginationLink>
-            <span className="px-2">
-              {tCommon("page")} {filters.page} / {totalPages}
-            </span>
-            <PaginationLink
-              href={`/${locale}/assets?${buildAssetQueryString(filters, { page: Math.min(totalPages, filters.page + 1) })}`}
-              disabled={filters.page >= totalPages}
-            >
-              {tCommon("next")}
-            </PaginationLink>
-          </div>
-        </div>
-      </div>
+      <AssetRegisterTable
+        locale={locale}
+        assets={tableAssets}
+        filters={filters}
+        total={total}
+        totalPages={totalPages}
+        fromRow={fromRow}
+        toRow={toRow}
+        labels={{
+          actions: tCommon("actions"),
+          all: tCommon("all"),
+          assetName: t("assetName"),
+          assetTag: t("assetTag"),
+          category: t("category"),
+          columns: t("columns"),
+          company: t("company"),
+          condition: t("condition"),
+          currentLocation: t("currentLocation"),
+          custodian: t("custodian"),
+          detail: t("detailTitle"),
+          edit: tCommon("edit"),
+          exportSelected: t("exportSelected"),
+          next: tCommon("next"),
+          noData: tCommon("noData"),
+          of: tCommon("of"),
+          page: tCommon("page"),
+          previous: tCommon("previous"),
+          purchasePrice: t("purchasePrice"),
+          selectedCount: t("selectedCount"),
+          status: t("status"),
+        }}
+      />
     </div>
   )
 }
@@ -331,68 +267,5 @@ function FilterSelect({
         {children}
       </select>
     </label>
-  )
-}
-
-function SortableHeader({
-  locale,
-  filters,
-  field,
-  label,
-}: {
-  locale: string
-  filters: ReturnType<typeof parseAssetListParams>
-  field: string
-  label: string
-}) {
-  const direction = filters.sort === field && filters.direction === "asc" ? "desc" : "asc"
-  const suffix = filters.sort === field ? (filters.direction === "asc" ? " ↑" : " ↓") : ""
-  return (
-    <ColumnHeader>
-      <Link
-        href={`/${locale}/assets?${buildAssetQueryString(filters, { sort: field, direction, page: 1 })}`}
-        className="hover:text-primary"
-      >
-        {label}
-        {suffix}
-      </Link>
-    </ColumnHeader>
-  )
-}
-
-function PaginationLink({
-  href,
-  disabled,
-  children,
-}: {
-  href: string
-  disabled: boolean
-  children: React.ReactNode
-}) {
-  if (disabled) {
-    return (
-      <span className="inline-flex h-9 items-center rounded-md border border-border px-3 text-muted-foreground opacity-50">
-        {children}
-      </span>
-    )
-  }
-
-  return (
-    <Link href={href} className="inline-flex h-9 items-center rounded-md border border-border px-3 hover:bg-accent">
-      {children}
-    </Link>
-  )
-}
-
-function StatusPill({ label, color }: { label: string; color?: string | null }) {
-  if (!color) return <ActiveBadge label={label} />
-
-  return (
-    <span
-      className="inline-flex rounded-full px-2 py-1 text-xs font-medium"
-      style={{ backgroundColor: `${color}1A`, color }}
-    >
-      {label}
-    </span>
   )
 }
