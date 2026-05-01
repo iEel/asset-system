@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { assetSchema } from "@/lib/validations/asset"
 import { generateAssetTag } from "@/lib/asset-tag"
+import { buildAssetOrderBy, buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
 
 const assetInclude = {
   category: { select: { code: true, name: true } },
@@ -24,32 +25,20 @@ export async function GET(request: NextRequest) {
     const user = await requireAuth()
     requirePermission(user, "asset", "view")
 
-    const search = request.nextUrl.searchParams.get("search")?.trim()
-    const assets = await prisma.asset.findMany({
-      where: {
-        isActive: true,
-        ...(search
-          ? {
-              OR: [
-                { assetTag: { contains: search } },
-                { name: { contains: search } },
-                { serialNumber: { contains: search } },
-                { fixedAssetCode: { contains: search } },
-                { category: { code: { contains: search } } },
-                { company: { code: { contains: search } } },
-                { branch: { code: { contains: search } } },
-                { custodian: { fullNameTh: { contains: search } } },
-                { currentLocation: { code: { contains: search } } },
-              ],
-            }
-          : {}),
-      },
-      include: assetInclude,
-      orderBy: { createdAt: "desc" },
-      take: 200,
-    })
+    const filters = parseAssetListParams(request.nextUrl.searchParams)
+    const where = buildAssetWhere(filters)
+    const [assets, total] = await Promise.all([
+      prisma.asset.findMany({
+        where,
+        include: assetInclude,
+        orderBy: buildAssetOrderBy(filters),
+        skip: (filters.page - 1) * filters.pageSize,
+        take: filters.pageSize,
+      }),
+      prisma.asset.count({ where }),
+    ])
 
-    return NextResponse.json(assets)
+    return NextResponse.json({ data: assets, total, page: filters.page, pageSize: filters.pageSize })
   } catch (error) {
     return errorResponse(error)
   }
@@ -61,6 +50,7 @@ export async function POST(request: NextRequest) {
     requirePermission(user, "asset", "create")
 
     const input = assetSchema.parse(await request.json())
+    await assertUniqueSerial(input.serialNumber)
     const assetTag =
       input.assetTag ??
       (await generateAssetTag({
@@ -103,5 +93,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(asset, { status: 201 })
   } catch (error) {
     return errorResponse(error, 400)
+  }
+}
+
+async function assertUniqueSerial(serialNumber?: string | null, excludeId?: string) {
+  if (!serialNumber) return
+
+  const existing = await prisma.asset.findFirst({
+    where: {
+      isActive: true,
+      serialNumber,
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+    select: { id: true },
+  })
+
+  if (existing) {
+    throw new Error("Serial Number already exists")
   }
 }

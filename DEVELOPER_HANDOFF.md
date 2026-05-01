@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-04-30
 > **Phase:** 1C Asset Register (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, 🟨 Asset Register CRUD + detail/QR/timeline + attachments started
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, 🟨 Asset Register CRUD + detail/QR/timeline + attachments + list refinements started
 
 ---
 
@@ -21,7 +21,7 @@
 |---|---|---|
 | **1A: Foundation** | Project setup, Schema, Auth, i18n, Layout | ✅ Complete |
 | **1B: Master Data** | Company, Branch, Dept, Employee, Location, Category, Brand, Supplier | ✅ Complete — Company, Branch, Department, Location, Employee, Category, Brand/Model, Supplier |
-| **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 In Progress — Asset list/create/edit/detail, tag gen, QR, movement timeline, and attachments started |
+| **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 In Progress — Asset list/create/edit/detail, tag gen, QR, movement timeline, attachments, and list refinements started |
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | ⬜ Not started |
 | **Phase 2** | Transfer, Audit workflow | ⬜ Planned |
 | **Phase 3** | Maintenance, Disposal | ⬜ Planned |
@@ -515,8 +515,8 @@ await logAudit({
 
 ### Recommended Next Order
 
-1. **Asset Register refinements** — advanced filters, server-side pagination/sort, duplicate serial checks
-2. **QR label print layout** — printable asset label with QR, tag, name, serial
+1. **QR label print layout** — printable asset label with QR, tag, name, serial
+2. **Asset Register refinements continued** — column visibility, export selected, stronger duplicate handling UX
 3. Upgrade master data tables to server-side pagination/sort once data volume grows
 
 ### Phase 1C Started
@@ -528,6 +528,7 @@ await logAudit({
 5. Initial `asset_movements` logging for create and key field changes
 6. Asset detail page with summary, QR Code, attachments section, and movement timeline
 7. Attachment upload/download/delete with file validation and `UPLOAD_DIR` storage
+8. Asset Register advanced filters, server-side pagination/sort, and duplicate serial validation
 
 ---
 

@@ -60,6 +60,8 @@ export async function PUT(request: NextRequest, context: AssetRouteContext) {
       return NextResponse.json({ error: "Asset not found" }, { status: 404 })
     }
 
+    await assertUniqueSerial(input.serialNumber, id)
+
     const asset = await prisma.asset.update({
       where: { id },
       data: {
@@ -89,6 +91,23 @@ export async function PUT(request: NextRequest, context: AssetRouteContext) {
     return NextResponse.json(asset)
   } catch (error) {
     return errorResponse(error, 400)
+  }
+}
+
+async function assertUniqueSerial(serialNumber?: string | null, excludeId?: string) {
+  if (!serialNumber) return
+
+  const existing = await prisma.asset.findFirst({
+    where: {
+      isActive: true,
+      serialNumber,
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+    select: { id: true },
+  })
+
+  if (existing) {
+    throw new Error("Serial Number already exists")
   }
 }
 
