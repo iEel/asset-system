@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { AlertCircle, CheckCircle2, Upload } from "lucide-react"
 
 type PreviewRow = {
@@ -31,14 +32,21 @@ type AssetImportPreviewPanelProps = {
     errors: string
     assetName: string
     assetTag: string
+    confirmImport: string
     fileRequired: string
+    importSuccess: string
+    importing: string
   }
 }
 
 export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps) {
+  const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<PreviewResult | null>(null)
 
   async function handleFile(file?: File) {
@@ -49,6 +57,8 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
 
     setIsLoading(true)
     setError(null)
+    setSuccess(null)
+    setSelectedFile(null)
     setPreview(null)
 
     try {
@@ -62,12 +72,42 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
       if (!response.ok) {
         throw new Error(payload.error ?? "Import preview failed")
       }
+      setSelectedFile(file)
       setPreview(payload)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Import preview failed")
     } finally {
       setIsLoading(false)
       if (inputRef.current) inputRef.current.value = ""
+    }
+  }
+
+  async function confirmImport() {
+    if (!selectedFile || !preview || preview.summary.readyRows === 0) return
+
+    setIsImporting(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const formData = new FormData()
+      formData.append("file", selectedFile)
+      const response = await fetch("/api/assets/import-confirm", {
+        method: "POST",
+        body: formData,
+      })
+      const payload = await response.json()
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Import failed")
+      }
+      setSuccess(`${labels.importSuccess}: ${payload.imported}`)
+      setPreview(null)
+      setSelectedFile(null)
+      router.refresh()
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Import failed")
+    } finally {
+      setIsImporting(false)
     }
   }
 
@@ -94,7 +134,7 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            disabled={isLoading}
+            disabled={isLoading || isImporting}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Upload className="h-4 w-4" />
@@ -107,6 +147,13 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
         <div className="mt-4 flex items-start gap-2 rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
           <AlertCircle className="mt-0.5 h-4 w-4 flex-none" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {success && (
+        <div className="mt-4 flex items-start gap-2 rounded-md border border-success/30 bg-success/5 px-3 py-2 text-sm text-success">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none" />
+          <span>{success}</span>
         </div>
       )}
 
@@ -163,6 +210,19 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="flex flex-col gap-3 border-t border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
+            <p className="text-sm text-muted-foreground">
+              {preview.summary.readyRows} {labels.previewReady} · {preview.summary.errorRows} {labels.previewErrors}
+            </p>
+            <button
+              type="button"
+              onClick={() => void confirmImport()}
+              disabled={isImporting || preview.summary.readyRows === 0}
+              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isImporting ? labels.importing : labels.confirmImport}
+            </button>
           </div>
         </div>
       )}

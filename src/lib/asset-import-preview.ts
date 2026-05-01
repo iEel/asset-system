@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs"
+import { prisma } from "@/lib/db"
 import { assetImportColumns } from "@/lib/asset-excel"
 
 export type AssetImportPreviewRow = {
@@ -34,6 +35,110 @@ export type AssetImportReferences = {
   models: Map<string, { id: string; brandId: string | null; categoryId: string | null }>
   employees: Map<string, string>
   suppliers: Map<string, string>
+}
+
+export async function getAssetImportReferences(): Promise<AssetImportReferences> {
+  const [
+    assets,
+    categories,
+    companies,
+    branches,
+    departments,
+    locations,
+    statuses,
+    conditions,
+    brands,
+    models,
+    employees,
+    suppliers,
+  ] = await Promise.all([
+    prisma.asset.findMany({
+      where: { isActive: true },
+      select: { assetTag: true, serialNumber: true },
+    }),
+    prisma.assetCategory.findMany({
+      where: { isActive: true },
+      select: { id: true, code: true },
+    }),
+    prisma.company.findMany({
+      where: { isActive: true },
+      select: { id: true, code: true },
+    }),
+    prisma.branch.findMany({
+      where: { isActive: true },
+      select: { id: true, code: true, companyId: true },
+    }),
+    prisma.department.findMany({
+      where: { isActive: true },
+      select: { id: true, code: true, companyId: true },
+    }),
+    prisma.location.findMany({
+      where: { isActive: true },
+      select: { id: true, code: true, branchId: true },
+    }),
+    prisma.assetStatus.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, nameTh: true },
+    }),
+    prisma.assetCondition.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, nameTh: true },
+    }),
+    prisma.assetBrand.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+    }),
+    prisma.assetModel.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, brandId: true, categoryId: true },
+    }),
+    prisma.employee.findMany({
+      where: { isActive: true },
+      select: { id: true, code: true },
+    }),
+    prisma.supplier.findMany({
+      where: { isActive: true },
+      select: { id: true, code: true },
+    }),
+  ])
+
+  return {
+    assetTags: new Set(assets.map((asset) => asset.assetTag.trim().toLowerCase())),
+    serialNumbers: new Set(
+      assets.flatMap((asset) => (asset.serialNumber ? [asset.serialNumber.trim().toLowerCase()] : []))
+    ),
+    categories: new Map(categories.map((category) => [category.code.trim().toLowerCase(), category.id])),
+    companies: new Map(companies.map((company) => [company.code.trim().toLowerCase(), company.id])),
+    branches: new Map(branches.map((branch) => [branch.code.trim().toLowerCase(), { id: branch.id, companyId: branch.companyId }])),
+    departments: new Map(
+      departments.map((department) => [
+        department.code.trim().toLowerCase(),
+        { id: department.id, companyId: department.companyId },
+      ])
+    ),
+    locations: new Map(locations.map((location) => [location.code.trim().toLowerCase(), { id: location.id, branchId: location.branchId }])),
+    statuses: new Map(
+      statuses.flatMap((status) => [
+        [status.name.trim().toLowerCase(), status.id] as const,
+        [status.nameTh.trim().toLowerCase(), status.id] as const,
+      ])
+    ),
+    conditions: new Map(
+      conditions.flatMap((condition) => [
+        [condition.name.trim().toLowerCase(), condition.id] as const,
+        [condition.nameTh.trim().toLowerCase(), condition.id] as const,
+      ])
+    ),
+    brands: new Map(brands.map((brand) => [brand.name.trim().toLowerCase(), brand.id])),
+    models: new Map(
+      models.map((model) => [
+        model.name.trim().toLowerCase(),
+        { id: model.id, brandId: model.brandId, categoryId: model.categoryId },
+      ])
+    ),
+    employees: new Map(employees.map((employee) => [employee.code.trim().toLowerCase(), employee.id])),
+    suppliers: new Map(suppliers.map((supplier) => [supplier.code.trim().toLowerCase(), supplier.id])),
+  }
 }
 
 export async function parseAssetImportWorkbook(buffer: ArrayBuffer, references: AssetImportReferences) {
@@ -254,4 +359,23 @@ function validateMoney(value: string | number | null, label: string, errors: str
   if (!lookup) return
   const parsed = Number(value)
   if (Number.isNaN(parsed) || parsed < 0) errors.push(`${label} ต้องเป็นตัวเลข 0 ขึ้นไป`)
+}
+
+export function nullableText(value: string | number | null | undefined) {
+  const normalized = value == null ? "" : String(value).trim()
+  return normalized.length === 0 ? null : normalized
+}
+
+export function parseImportDate(value: string | number | null | undefined) {
+  const normalized = nullableText(value)
+  if (!normalized) return null
+  if (typeof value === "number") {
+    return new Date(Math.round((value - 25569) * 86400 * 1000))
+  }
+  return new Date(normalized)
+}
+
+export function parseImportMoney(value: string | number | null | undefined) {
+  const normalized = nullableText(value)
+  return normalized == null ? null : Number(normalized)
 }

@@ -127,7 +127,10 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           errors: t("errors"),
           assetName: t("assetName"),
           assetTag: t("assetTag"),
+          confirmImport: t("confirmImport"),
           fileRequired: t("fileRequired"),
+          importSuccess: t("importSuccess"),
+          importing: t("importing"),
         }}
       />
 
