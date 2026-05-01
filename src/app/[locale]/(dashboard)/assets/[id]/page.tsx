@@ -1,11 +1,12 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ArrowLeft, Edit, FileText, History, QrCode } from "lucide-react"
+import { ArrowLeft, Edit, History, QrCode } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 import { AssetQrCode } from "@/components/assets/asset-qr-code"
+import { AssetAttachments } from "@/components/assets/asset-attachments"
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -152,28 +153,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             <AssetQrCode value={qrValue} label={asset.assetTag} />
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
-              <FileText className="h-5 w-5 text-primary" />
-              {t("attachments")}
-            </h2>
-            {asset.attachments.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                {tCommon("noData")}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {asset.attachments.map((attachment) => (
-                  <div key={attachment.id} className="rounded-md border border-border bg-background p-3">
-                    <div className="text-sm font-medium text-foreground">{attachment.originalName}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {attachment.fileType} · {formatFileSize(attachment.fileSize)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+          <AssetAttachments assetId={asset.id} attachments={asset.attachments} />
 
           <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold text-foreground">{t("remark")}</h2>
@@ -213,10 +193,4 @@ function StatusPill({ label, color }: { label: string; color?: string | null }) 
       {label}
     </span>
   )
-}
-
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
