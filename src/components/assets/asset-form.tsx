@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Loader2, Save } from "lucide-react"
@@ -106,6 +106,11 @@ export function AssetForm({
   const tCommon = useTranslations("common")
   const [values, setValues] = useState<AssetFormValues>(asset ?? emptyAsset)
   const [saving, setSaving] = useState(false)
+  const [duplicateState, setDuplicateState] = useState<{
+    checking: boolean
+    assetTagExists: boolean
+    serialNumberExists: boolean
+  }>({ checking: false, assetTagExists: false, serialNumberExists: false })
 
   const isEdit = Boolean(asset?.id)
   const backHref = `/${locale}/assets`
@@ -126,6 +131,61 @@ export function AssetForm({
       (!values.categoryId || model.categoryId === values.categoryId) &&
       (!values.brandId || model.brandId === values.brandId)
   )
+
+  useEffect(() => {
+    const assetTag = values.assetTag?.trim() ?? ""
+    const serialNumber = values.serialNumber?.trim() ?? ""
+    if (!assetTag && !serialNumber) {
+      const resetTimeout = window.setTimeout(() => {
+        setDuplicateState({ checking: false, assetTagExists: false, serialNumberExists: false })
+      }, 0)
+      return () => window.clearTimeout(resetTimeout)
+    }
+
+    if (!assetTag && duplicateState.assetTagExists) {
+      const resetTimeout = window.setTimeout(() => {
+        setDuplicateState((current) => ({ ...current, assetTagExists: false }))
+      }, 0)
+      return () => window.clearTimeout(resetTimeout)
+    }
+    if (!serialNumber && duplicateState.serialNumberExists) {
+      const resetTimeout = window.setTimeout(() => {
+        setDuplicateState((current) => ({ ...current, serialNumberExists: false }))
+      }, 0)
+      return () => window.clearTimeout(resetTimeout)
+    }
+
+    const controller = new AbortController()
+    const timeout = window.setTimeout(async () => {
+      setDuplicateState((current) => ({ ...current, checking: true }))
+      const params = new URLSearchParams()
+      if (assetTag) params.set("assetTag", assetTag)
+      if (serialNumber) params.set("serialNumber", serialNumber)
+      if (asset?.id) params.set("excludeId", asset.id)
+
+      try {
+        const response = await fetch(`/api/assets/duplicates?${params.toString()}`, {
+          signal: controller.signal,
+        })
+        if (!response.ok) throw new Error("Duplicate check failed")
+        const result = await response.json()
+        setDuplicateState({
+          checking: false,
+          assetTagExists: Boolean(result.assetTagExists),
+          serialNumberExists: Boolean(result.serialNumberExists),
+        })
+      } catch {
+        if (!controller.signal.aborted) {
+          setDuplicateState((current) => ({ ...current, checking: false }))
+        }
+      }
+    }, 450)
+
+    return () => {
+      controller.abort()
+      window.clearTimeout(timeout)
+    }
+  }, [asset?.id, duplicateState.assetTagExists, duplicateState.serialNumberExists, values.assetTag, values.serialNumber])
 
   function setField<K extends keyof AssetFormValues>(field: K, value: AssetFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -155,6 +215,10 @@ export function AssetForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (duplicateState.assetTagExists || duplicateState.serialNumberExists) {
+      toast.error(t("duplicateWarning"))
+      return
+    }
     setSaving(true)
 
     const url = isEdit ? `/api/assets/${asset?.id}` : "/api/assets"
@@ -208,6 +272,9 @@ export function AssetForm({
               placeholder={t("autoTagHint")}
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
+            {duplicateState.assetTagExists && (
+              <p className="mt-1.5 text-xs font-medium text-danger">{t("duplicateAssetTag")}</p>
+            )}
           </Field>
           <Field label={t("assetName")} required>
             <input
@@ -237,6 +304,9 @@ export function AssetForm({
               maxLength={100}
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
+            {duplicateState.serialNumberExists && (
+              <p className="mt-1.5 text-xs font-medium text-danger">{t("duplicateSerialNumber")}</p>
+            )}
           </Field>
         </Section>
 
@@ -327,7 +397,11 @@ export function AssetForm({
           <Link href={backHref} className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent">
             {tCommon("cancel")}
           </Link>
-          <button type="submit" disabled={saving} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50">
+          <button
+            type="submit"
+            disabled={saving || duplicateState.checking || duplicateState.assetTagExists || duplicateState.serialNumberExists}
+            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+          >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {tCommon("save")}
           </button>

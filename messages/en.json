@@ -109,6 +109,9 @@
     "brand": "Brand",
     "model": "Model",
     "serialNumber": "Serial Number",
+    "duplicateAssetTag": "This asset tag is already in use",
+    "duplicateSerialNumber": "This serial number is already in use",
+    "duplicateWarning": "Duplicate data found. Please review before saving.",
     "company": "Company",
     "branch": "Branch",
     "department": "Department",
@@ -293,6 +296,11 @@
   },
   "checkout": {
     "title": "Check-out Asset",
+    "asset": "Asset",
+    "selectAsset": "Select asset",
+    "selectDestination": "Select destination",
+    "selectCondition": "Select condition",
+    "remark": "Remark",
     "checkoutTo": "Check-out To",
     "checkoutType": "Check-out Type",
     "toUser": "User",
@@ -307,6 +315,12 @@
   },
   "checkin": {
     "title": "Check-in Asset",
+    "asset": "Asset",
+    "selectCheckout": "Select active checkout",
+    "selectCondition": "Select condition",
+    "selectStatus": "Select status",
+    "selectLocation": "Select location",
+    "remark": "Remark",
     "returnDate": "Return Date",
     "returnBy": "Returned By",
     "receiveBy": "Received By",
@@ -316,5 +330,30 @@
     "nextStatus": "Next Status",
     "nextLocation": "Store at",
     "success": "Asset checked in successfully"
+  },
+  "reportsPage": {
+    "title": "Reports",
+    "subtitle": "Asset summaries and basic operational reports",
+    "totalAssets": "Total Assets",
+    "totalValue": "Total Value",
+    "reportsReady": "Reports Ready",
+    "byStatus": "Assets by Status",
+    "byCategory": "Assets by Category",
+    "byCompany": "Assets by Company",
+    "quickReports": "Quick Reports",
+    "assetRegister": "Asset Register",
+    "assetRegisterExcel": "Export Asset Register Excel",
+    "exportAssetRegister": "Export Asset Register"
+  },
+  "systemLogPage": {
+    "title": "System Log",
+    "subtitle": "Review latest 100 audit trail entries",
+    "date": "Date",
+    "user": "User",
+    "module": "Module",
+    "action": "Action",
+    "record": "Record",
+    "remark": "Remark",
+    "filter": "Filter"
   }
 }

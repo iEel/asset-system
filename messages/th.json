@@ -109,6 +109,9 @@
     "brand": "ยี่ห้อ",
     "model": "รุ่น",
     "serialNumber": "Serial Number",
+    "duplicateAssetTag": "รหัสทรัพย์สินนี้ถูกใช้งานแล้ว",
+    "duplicateSerialNumber": "Serial Number นี้ถูกใช้งานแล้ว",
+    "duplicateWarning": "พบข้อมูลซ้ำ กรุณาตรวจสอบก่อนบันทึก",
     "company": "บริษัท",
     "branch": "สาขา",
     "department": "แผนก",
@@ -293,6 +296,11 @@
   },
   "checkout": {
     "title": "ส่งมอบทรัพย์สิน",
+    "asset": "ทรัพย์สิน",
+    "selectAsset": "เลือกทรัพย์สิน",
+    "selectDestination": "เลือกปลายทาง",
+    "selectCondition": "เลือกสภาพ",
+    "remark": "หมายเหตุ",
     "checkoutTo": "ส่งมอบให้",
     "checkoutType": "ประเภทการส่งมอบ",
     "toUser": "พนักงาน",
@@ -307,6 +315,12 @@
   },
   "checkin": {
     "title": "รับคืนทรัพย์สิน",
+    "asset": "ทรัพย์สิน",
+    "selectCheckout": "เลือกรายการส่งมอบที่ยังไม่คืน",
+    "selectCondition": "เลือกสภาพ",
+    "selectStatus": "เลือกสถานะ",
+    "selectLocation": "เลือกพื้นที่",
+    "remark": "หมายเหตุ",
     "returnDate": "วันที่คืน",
     "returnBy": "ผู้คืน",
     "receiveBy": "ผู้รับคืน",
@@ -316,5 +330,30 @@
     "nextStatus": "สถานะถัดไป",
     "nextLocation": "เก็บไว้ที่",
     "success": "รับคืนทรัพย์สินสำเร็จ"
+  },
+  "reportsPage": {
+    "title": "รายงาน",
+    "subtitle": "สรุปข้อมูลทรัพย์สินและรายงานพื้นฐาน",
+    "totalAssets": "ทรัพย์สินทั้งหมด",
+    "totalValue": "มูลค่ารวม",
+    "reportsReady": "รายงานพร้อมใช้",
+    "byStatus": "ทรัพย์สินตามสถานะ",
+    "byCategory": "ทรัพย์สินตามหมวดหมู่",
+    "byCompany": "ทรัพย์สินตามบริษัท",
+    "quickReports": "รายงานด่วน",
+    "assetRegister": "ทะเบียนทรัพย์สิน",
+    "assetRegisterExcel": "ส่งออกทะเบียนทรัพย์สิน Excel",
+    "exportAssetRegister": "ส่งออกทะเบียนทรัพย์สิน"
+  },
+  "systemLogPage": {
+    "title": "ประวัติระบบ",
+    "subtitle": "ตรวจสอบ Audit Trail ล่าสุด 100 รายการ",
+    "date": "วันที่",
+    "user": "ผู้ใช้",
+    "module": "โมดูล",
+    "action": "การกระทำ",
+    "record": "รายการ",
+    "remark": "หมายเหตุ",
+    "filter": "กรอง"
   }
 }
