@@ -235,6 +235,19 @@
     "models": "Models",
     "assets": "Assets"
   },
+  "supplier": {
+    "title": "Suppliers",
+    "subtitle": "Manage vendor records used for purchasing history and asset registration",
+    "createTitle": "Create Supplier",
+    "editTitle": "Edit Supplier",
+    "code": "Supplier Code",
+    "name": "Supplier Name",
+    "contactPerson": "Contact Person",
+    "phone": "Phone",
+    "email": "Email",
+    "address": "Address",
+    "assets": "Assets"
+  },
   "checkout": {
     "title": "Check-out Asset",
     "checkoutTo": "Check-out To",
