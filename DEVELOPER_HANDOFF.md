@@ -1,8 +1,8 @@
 # Developer Handoff — Asset Management System
 
-> **Last Updated:** 2026-04-30
+> **Last Updated:** 2026-05-01
 > **Phase:** 1C Asset Register (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, 🟨 Asset Register CRUD + detail/QR/timeline + attachments + list refinements started
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, 🟨 Asset Register CRUD + detail/QR/timeline + attachments + list refinements + QR label printing started
 
 ---
 
@@ -21,7 +21,7 @@
 |---|---|---|
 | **1A: Foundation** | Project setup, Schema, Auth, i18n, Layout | ✅ Complete |
 | **1B: Master Data** | Company, Branch, Dept, Employee, Location, Category, Brand, Supplier | ✅ Complete — Company, Branch, Department, Location, Employee, Category, Brand/Model, Supplier |
-| **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 In Progress — Asset list/create/edit/detail, tag gen, QR, movement timeline, attachments, and list refinements started |
+| **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 In Progress — Asset list/create/edit/detail, tag gen, QR, printable labels, movement timeline, attachments, and list refinements started |
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | ⬜ Not started |
 | **Phase 2** | Transfer, Audit workflow | ⬜ Planned |
 | **Phase 3** | Maintenance, Disposal | ⬜ Planned |
@@ -84,7 +84,7 @@ d:\Antigravity\asset-system\
 │   │       ├── layout.tsx                  # i18n provider + Sonner
 │   │       ├── page.tsx                    # Redirect → /dashboard
 │   │       ├── (auth)/login/page.tsx       # Login page
-│   │       └── (dashboard)/
+│   │       ├── (dashboard)/
 │   │           ├── layout.tsx              # Sidebar + Topbar
 │   │           ├── dashboard/page.tsx      # KPI cards
 │   │           ├── assets/                 # Asset Register list / detail / new / edit
@@ -97,6 +97,8 @@ d:\Antigravity\asset-system\
 │   │               ├── categories/         # List / new / edit
 │   │               ├── brands/             # Brand + Model list / new / edit
 │   │               └── suppliers/          # List / new / edit
+│   │       └── (print)/
+│   │           └── assets/[id]/label/page.tsx # Printable asset QR label
 │   ├── components/
 │   │   ├── layout/
 │   │   │   ├── sidebar.tsx                 # Collapsible sidebar + menus
@@ -114,7 +116,8 @@ d:\Antigravity\asset-system\
 │   │       ├── asset-model-form.tsx
 │   │       └── supplier-form.tsx
 │   │   └── assets/
-│   │       └── asset-form.tsx
+│   │       ├── asset-form.tsx
+│   │       └── asset-label-print.tsx
 │   ├── i18n/
 │   │   ├── routing.ts                      # Locales: th (default), en
 │   │   └── request.ts                      # Message loader
@@ -306,6 +309,7 @@ Tailwind v4 ไม่มี `tailwind.config.ts` — ทุก config อยู�
 | `src/lib/validations/asset.ts` | Asset Register Zod schema |
 | `src/lib/asset-tag.ts` | Auto-generate asset tag from Company/Branch/Category/running |
 | `src/lib/asset-form-options.ts` | Server helper for Asset form dropdown data |
+| `src/components/assets/asset-label-print.tsx` | Printable QR asset label layout + print action |
 | `src/lib/utils.ts` | `cn()`, `formatDate()`, `formatCurrency()` |
 | `src/middleware.ts` | i18n locale detection |
 | `messages/th.json` | Thai translations |
@@ -375,6 +379,7 @@ WEB_PORT=3000
 | Brand / Model | `http://localhost:3000/th/master-data/brands` |
 | Supplier | `http://localhost:3000/th/master-data/suppliers` |
 | Asset Register | `http://localhost:3000/th/assets` |
+| Asset Label Print | `http://localhost:3000/th/assets/{assetId}/label` |
 
 ---
 
@@ -515,8 +520,8 @@ await logAudit({
 
 ### Recommended Next Order
 
-1. **QR label print layout** — printable asset label with QR, tag, name, serial
-2. **Asset Register refinements continued** — column visibility, export selected, stronger duplicate handling UX
+1. **Asset Register refinements continued** — column visibility, export selected, stronger duplicate handling UX
+2. **Asset Register import/export foundation** — Excel template/export and validated import path
 3. Upgrade master data tables to server-side pagination/sort once data volume grows
 
 ### Phase 1C Started
@@ -529,6 +534,7 @@ await logAudit({
 6. Asset detail page with summary, QR Code, attachments section, and movement timeline
 7. Attachment upload/download/delete with file validation and `UPLOAD_DIR` storage
 8. Asset Register advanced filters, server-side pagination/sort, and duplicate serial validation
+9. Dedicated printable QR label page linked from asset detail
 
 ---
 

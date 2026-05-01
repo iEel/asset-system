@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ArrowLeft, Edit, History, QrCode } from "lucide-react"
+import { ArrowLeft, Edit, History, Printer, QrCode } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
@@ -62,13 +62,22 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           <h1 className="text-2xl font-bold text-foreground">{asset.assetTag}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{asset.name}</p>
         </div>
-        <Link
-          href={`/${locale}/assets/${asset.id}/edit`}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
-        >
-          <Edit className="h-4 w-4" />
-          {tCommon("edit")}
-        </Link>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link
+            href={`/${locale}/assets/${asset.id}/label`}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            <Printer className="h-4 w-4" />
+            {t("printLabel")}
+          </Link>
+          <Link
+            href={`/${locale}/assets/${asset.id}/edit`}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+          >
+            <Edit className="h-4 w-4" />
+            {tCommon("edit")}
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_280px]">
