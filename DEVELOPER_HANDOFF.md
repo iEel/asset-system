@@ -79,7 +79,7 @@ d:\Antigravity\asset-system\
 │   │   │   ├── brands/                     # Brand CRUD API
 │   │   │   ├── models/                     # Asset Model CRUD API
 │   │   │   ├── suppliers/                  # Supplier CRUD API
-│   │   │   └── assets/                     # Asset Register CRUD API
+│   │   │   └── assets/                     # Asset Register CRUD + export/template API
 │   │   └── [locale]/
 │   │       ├── layout.tsx                  # i18n provider + Sonner
 │   │       ├── page.tsx                    # Redirect → /dashboard
@@ -310,6 +310,7 @@ Tailwind v4 ไม่มี `tailwind.config.ts` — ทุก config อยู�
 | `src/lib/validations/asset.ts` | Asset Register Zod schema |
 | `src/lib/asset-tag.ts` | Auto-generate asset tag from Company/Branch/Category/running |
 | `src/lib/asset-form-options.ts` | Server helper for Asset form dropdown data |
+| `src/lib/asset-excel.ts` | Shared Excel workbook helpers for asset export/import template |
 | `src/components/assets/asset-register-table.tsx` | Asset Register table with column visibility, row selection, and CSV export |
 | `src/components/assets/asset-label-print.tsx` | Printable QR asset label layout + print action |
 | `src/lib/utils.ts` | `cn()`, `formatDate()`, `formatCurrency()` |
@@ -522,7 +523,7 @@ await logAudit({
 
 ### Recommended Next Order
 
-1. **Asset Register import/export foundation** — Excel template/export and validated import path
+1. **Asset Register import validation flow** — upload Excel, preview row-level validation errors, then confirm write
 2. **Asset Register duplicate UX** — surface duplicate serial conflicts inline before submit where practical
 3. Upgrade master data tables to server-side pagination/sort once data volume grows
 
@@ -538,6 +539,7 @@ await logAudit({
 8. Asset Register advanced filters, server-side pagination/sort, and duplicate serial validation
 9. Dedicated printable QR label page linked from asset detail
 10. Asset Register table column visibility, row selection, and CSV export for selected current-page assets
+11. Asset Excel export for filtered results and import template download with reference-data sheets
 
 ---
 

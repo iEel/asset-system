@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { Columns3, Download, Edit, Eye } from "lucide-react"
+import { Columns3, Download, Edit, Eye, FileDown, FileSpreadsheet } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
 import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
@@ -62,7 +62,9 @@ type AssetRegisterTableProps = {
     currentLocation: string
     custodian: string
     detail: string
+    downloadTemplate: string
     edit: string
+    exportFiltered: string
     exportSelected: string
     noData: string
     of: string
@@ -179,6 +181,10 @@ export function AssetRegisterTable({
     return `/${locale}/assets?${buildAssetQueryString(filters, overrides)}`
   }
 
+  function downloadFile(href: string) {
+    window.location.href = href
+  }
+
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
       <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
@@ -213,6 +219,22 @@ export function AssetRegisterTable({
           >
             <Download className="h-4 w-4" />
             {labels.exportSelected}
+          </button>
+          <button
+            type="button"
+            onClick={() => downloadFile(`/api/assets/export?${buildAssetQueryString(filters)}`)}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            <FileDown className="h-4 w-4" />
+            {labels.exportFiltered}
+          </button>
+          <button
+            type="button"
+            onClick={() => downloadFile("/api/assets/import-template")}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            {labels.downloadTemplate}
           </button>
         </div>
       </div>

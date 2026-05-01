@@ -149,6 +149,8 @@
     "fileRequired": "กรุณาเลือกไฟล์",
     "download": "ดาวน์โหลด",
     "columns": "คอลัมน์",
+    "downloadTemplate": "ดาวน์โหลด Template",
+    "exportFiltered": "ส่งออกตามตัวกรอง",
     "exportSelected": "ส่งออกรายการที่เลือก",
     "selectedCount": "รายการที่เลือก",
     "qrCode": "QR Code",
