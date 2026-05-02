@@ -312,7 +312,21 @@
     "expectedReturn": "กำหนดคืน",
     "conditionBefore": "สภาพก่อนส่งมอบ",
     "checkedOutBy": "ผู้ทำรายการ",
-    "success": "ส่งมอบทรัพย์สินสำเร็จ"
+    "success": "ส่งมอบทรัพย์สินสำเร็จ",
+    "handoverDocumentTitle": "ใบส่งมอบทรัพย์สิน",
+    "printHandover": "พิมพ์ใบส่งมอบ",
+    "documentInfo": "ข้อมูลเอกสาร",
+    "documentNo": "เลขที่เอกสาร",
+    "createdAt": "วันที่บันทึก",
+    "assetInfo": "ข้อมูลทรัพย์สิน",
+    "handoverInfo": "ข้อมูลการส่งมอบ",
+    "receiver": "ผู้รับทรัพย์สิน",
+    "approver": "ผู้อนุมัติ",
+    "signatureDate": "ลงชื่อ / วันที่",
+    "type_user": "พนักงาน",
+    "type_department": "แผนก",
+    "type_location": "พื้นที่",
+    "type_asset": "ทรัพย์สินอื่น"
   },
   "checkin": {
     "title": "รับคืนทรัพย์สิน",
@@ -330,7 +344,16 @@
     "damageNote": "รายละเอียดความเสียหาย",
     "nextStatus": "สถานะถัดไป",
     "nextLocation": "เก็บไว้ที่",
-    "success": "รับคืนทรัพย์สินสำเร็จ"
+    "success": "รับคืนทรัพย์สินสำเร็จ",
+    "returnDocumentTitle": "ใบรับคืนทรัพย์สิน",
+    "printReturn": "พิมพ์ใบรับคืน",
+    "documentInfo": "ข้อมูลเอกสาร",
+    "documentNo": "เลขที่เอกสาร",
+    "createdAt": "วันที่บันทึก",
+    "assetInfo": "ข้อมูลทรัพย์สิน",
+    "returnInfo": "ข้อมูลการรับคืน",
+    "approver": "ผู้อนุมัติ",
+    "signatureDate": "ลงชื่อ / วันที่"
   },
   "transfer": {
     "title": "โอนย้ายทรัพย์สิน",

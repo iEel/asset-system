@@ -60,7 +60,7 @@ export function CheckinForm({
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
       toast.success(t("success"))
-      router.push(`/${locale}/assets/${selectedCheckout.assetId}`)
+      router.push(`/${locale}/asset-management/checkins/${payload.id}`)
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))

@@ -312,7 +312,21 @@
     "expectedReturn": "Expected Return Date",
     "conditionBefore": "Condition Before",
     "checkedOutBy": "Checked Out By",
-    "success": "Asset checked out successfully"
+    "success": "Asset checked out successfully",
+    "handoverDocumentTitle": "Asset Handover Form",
+    "printHandover": "Print Handover",
+    "documentInfo": "Document Information",
+    "documentNo": "Document No.",
+    "createdAt": "Created At",
+    "assetInfo": "Asset Information",
+    "handoverInfo": "Handover Information",
+    "receiver": "Asset Receiver",
+    "approver": "Approver",
+    "signatureDate": "Signature / Date",
+    "type_user": "User",
+    "type_department": "Department",
+    "type_location": "Location",
+    "type_asset": "Another Asset"
   },
   "checkin": {
     "title": "Check-in Asset",
@@ -330,7 +344,16 @@
     "damageNote": "Damage Note",
     "nextStatus": "Next Status",
     "nextLocation": "Store at",
-    "success": "Asset checked in successfully"
+    "success": "Asset checked in successfully",
+    "returnDocumentTitle": "Asset Return Form",
+    "printReturn": "Print Return",
+    "documentInfo": "Document Information",
+    "documentNo": "Document No.",
+    "createdAt": "Created At",
+    "assetInfo": "Asset Information",
+    "returnInfo": "Return Information",
+    "approver": "Approver",
+    "signatureDate": "Signature / Date"
   },
   "transfer": {
     "title": "Transfer Asset",
