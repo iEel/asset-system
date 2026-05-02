@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { auditFindingColumns, createAuditWorkbook, finalizeAuditWorksheet, workbookResponse } from "@/lib/audit-excel"
+import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
       orderBy: { reportedAt: "desc" },
       take: 5000,
     })
+    const valueLabels = await buildFindingValueLabels(findings)
 
     const workbook = createAuditWorkbook()
     const worksheet = workbook.addWorksheet("Audit Findings")
@@ -45,8 +47,8 @@ export async function GET(request: NextRequest) {
         assetTag: finding.asset?.assetTag ?? "",
         assetName: finding.asset?.name ?? "",
         findingType: finding.findingType,
-        expectedValue: finding.expectedValue ?? "",
-        actualValue: finding.actualValue ?? "",
+        expectedValue: formatFindingValue(finding.findingType, finding.expectedValue, valueLabels),
+        actualValue: formatFindingValue(finding.findingType, finding.actualValue, valueLabels),
         reviewStatus: finding.reviewStatus,
         reviewedAt: finding.reviewedAt ?? "",
         actionTaken: finding.actionTaken ?? "",

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { ColumnHeader, MasterDataHeader, MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { AuditFindingReviewActions } from "@/components/audit/audit-finding-review-actions"
+import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
 import { formatDateTime } from "@/lib/utils"
 
 type AuditFindingsPageProps = {
@@ -46,6 +47,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
     orderBy: { reportedAt: "desc" },
     take: 200,
   })
+  const valueLabels = await buildFindingValueLabels(findings)
 
   return (
     <div>
@@ -122,8 +124,8 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                       {finding.asset ? `${finding.asset.assetTag} - ${finding.asset.name}` : "-"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{t(`type_${finding.findingType}`)}</td>
-                    <td className="max-w-56 truncate px-4 py-3 text-muted-foreground">{finding.expectedValue ?? "-"}</td>
-                    <td className="max-w-56 truncate px-4 py-3 text-muted-foreground">{finding.actualValue ?? "-"}</td>
+                    <td className="max-w-56 truncate px-4 py-3 text-muted-foreground">{formatFindingValue(finding.findingType, finding.expectedValue, valueLabels)}</td>
+                    <td className="max-w-56 truncate px-4 py-3 text-muted-foreground">{formatFindingValue(finding.findingType, finding.actualValue, valueLabels)}</td>
                     <td className="whitespace-nowrap px-4 py-3">
                       <ReviewStatusBadge status={finding.reviewStatus} />
                     </td>
