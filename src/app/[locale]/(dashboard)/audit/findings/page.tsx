@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { getTranslations } from "next-intl/server"
-import { Download } from "lucide-react"
+import { Download, FileText } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { ColumnHeader, MasterDataHeader, MasterDataSearch } from "@/components/master-data/master-data-layout"
@@ -79,13 +79,22 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
             </Link>
           ))}
         </div>
-        <a
-          href={`/api/audit-findings/export?${exportParams.toString()}`}
-          className="inline-flex h-9 w-fit items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
-        >
-          <Download className="h-4 w-4" />
-          {t("exportFindings")}
-        </a>
+        <div className="flex flex-wrap gap-2">
+          <a
+            href={`/api/audit-findings/export?${exportParams.toString()}`}
+            className="inline-flex h-9 w-fit items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            <Download className="h-4 w-4" />
+            {t("exportFindings")}
+          </a>
+          <a
+            href={`/api/audit-findings/export-pdf?${exportParams.toString()}`}
+            className="inline-flex h-9 w-fit items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            <FileText className="h-4 w-4" />
+            {t("exportFindingsPdf")}
+          </a>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">

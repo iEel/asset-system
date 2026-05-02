@@ -394,7 +394,8 @@
     "result": "ผลตรวจ",
     "scan": "สแกนตรวจนับ",
     "pendingAssets": "รายการรอตรวจ",
-    "exportResult": "ส่งออกผลตรวจ"
+    "exportResult": "ส่งออกผลตรวจ",
+    "exportResultPdf": "ส่งออก PDF"
   },
   "auditScan": {
     "title": "สแกนตรวจนับ",
@@ -439,6 +440,7 @@
     "itemStatus": "สถานะรายการตรวจ",
     "reconcileStatus": "สถานะปรับปรุง",
     "exportFindings": "ส่งออกรายการไม่ตรง",
+    "exportFindingsPdf": "ส่งออก PDF",
     "approve": "อนุมัติ",
     "reject": "ปฏิเสธ",
     "approveRemark": "หมายเหตุการอนุมัติ",

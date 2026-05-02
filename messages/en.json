@@ -394,7 +394,8 @@
     "result": "Result",
     "scan": "Scan Audit",
     "pendingAssets": "Pending Assets",
-    "exportResult": "Export Result"
+    "exportResult": "Export Result",
+    "exportResultPdf": "Export PDF"
   },
   "auditScan": {
     "title": "Audit Scan",
@@ -439,6 +440,7 @@
     "itemStatus": "Item Status",
     "reconcileStatus": "Reconcile Status",
     "exportFindings": "Export Findings",
+    "exportFindingsPdf": "Export PDF",
     "approve": "Approve",
     "reject": "Reject",
     "approveRemark": "Approval remark",

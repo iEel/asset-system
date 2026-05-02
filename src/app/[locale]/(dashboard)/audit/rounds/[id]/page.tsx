@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, Download, ScanLine } from "lucide-react"
+import { AlertTriangle, Download, FileText, ScanLine } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { ColumnHeader } from "@/components/master-data/master-data-layout"
@@ -74,6 +74,13 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
             >
               <Download className="h-4 w-4" />
               {t("exportResult")}
+            </a>
+            <a
+              href={`/api/audit-rounds/${round.id}/export-pdf`}
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+            >
+              <FileText className="h-4 w-4" />
+              {t("exportResultPdf")}
             </a>
             <Link
               href={`/${locale}/audit/rounds/${round.id}/pending`}

@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-05-02
 > **Phase:** Phase 2 Operations (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports
 
 ---
 
@@ -23,7 +23,7 @@
 | **1B: Master Data** | Company, Branch, Dept, Employee, Location, Category, Brand, Supplier | ✅ Complete — Company, Branch, Department, Location, Employee, Category, Brand/Model, Supplier |
 | **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 Mostly Complete — CRUD, tag gen, QR labels, detail, movements, attachments, import/export, duplicate UX |
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | 🟨 Started — Check-out/in, basic reports, system logs, and live KPI dashboard added |
-| **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move, audit round generation, QR/manual scan capture, finding review, pending/not-found workflow, approved reconciliation, granular multi-finding review status, and Excel exports |
+| **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move, audit round generation, QR/manual scan capture, finding review, pending/not-found workflow, approved reconciliation, granular multi-finding review status, and Excel/PDF exports |
 | **Phase 3** | Maintenance, Disposal | ⬜ Planned |
 | **Phase 4** | AD/LDAP, HR sync, Advanced dashboard | ⬜ Planned |
 
@@ -398,7 +398,9 @@ WEB_PORT=3000
 | Audit Pending Assets | `http://localhost:3000/th/audit/rounds/{auditRoundId}/pending` |
 | Audit Findings | `http://localhost:3000/th/audit/findings` |
 | Audit Result Export | `GET /api/audit-rounds/{auditRoundId}/export` |
+| Audit Result PDF Export | `GET /api/audit-rounds/{auditRoundId}/export-pdf` |
 | Audit Finding Export | `GET /api/audit-findings/export?status=pending` |
+| Audit Finding PDF Export | `GET /api/audit-findings/export-pdf?status=pending` |
 | Reports | `http://localhost:3000/th/reports` |
 | System Log | `http://localhost:3000/th/admin/logs` |
 
@@ -524,6 +526,7 @@ await logAudit({
 | **Audit scan behavior** | Scan API อัปเดต `audit_items` เป็น `scanned`, เพิ่ม `scanCount`, บันทึก `audit_scan_history`, ตรวจ mismatch location/custodian/department/condition และสร้าง `audit_findings` pending โดยไม่แก้ master asset |
 | **QR scanner integration** | หน้า `/audit/rounds/{id}/scan` รองรับกล้องผ่าน `html5-qrcode` และ fallback paste URL/Asset ID/Asset Tag; QR label URL `/assets/{id}` จะ map กลับ audit item ได้ |
 | **Audit exports** | เพิ่ม Excel export สำหรับ Audit Result รายรอบ และ Audit Findings ตาม filter/search ปัจจุบัน |
+| **Audit PDF exports** | เพิ่ม PDF export สำหรับ Audit Result รายรอบ และ Audit Findings ตาม filter/search ปัจจุบัน โดยใช้ `@react-pdf/renderer` และ font Tahoma runtime เมื่อรันบน Windows |
 | **Audit finding review** | หน้า `/audit/findings` รองรับ approve/reject; approve จะอัปเดต master asset เฉพาะ field ที่ finding ระบุและสร้าง `asset_movements` แบบ `audit_*_correction` |
 | **Audit multi-finding review** | Review finding ทีละรายการแล้วคำนวณสถานะ `audit_items` ใหม่จาก findings ทั้งหมดของ item นั้น เพื่อไม่ปิด item เป็น reconciled/rejected ถ้ายังมี finding pending อื่น |
 | **Audit finding labels** | หน้า Finding และ Excel export resolve expected/actual value จาก raw IDs เป็น label ของ Location/Employee/Department/Condition เพื่อให้ reviewer อ่านง่ายขึ้น |
@@ -550,10 +553,9 @@ await logAudit({
 ### Recommended Next Order
 
 1. **Camera scan QA** — browser/device test for camera permission, mobile viewport, and QR label scan reliability
-2. **PDF reports** — optional PDF audit result/finding report after Excel export stabilizes
-3. **Operations hardening** — handover/return printable forms, photo/signature upload, stricter status mapping
-4. **Master data table scaling** — server-side pagination/sort for high-volume master data modules
-5. **Admin foundation** — user/role/settings pages beyond the current system log viewer
+2. **Operations hardening** — handover/return printable forms, photo/signature upload, stricter status mapping
+3. **Master data table scaling** — server-side pagination/sort for high-volume master data modules
+4. **Admin foundation** — user/role/settings pages beyond the current system log viewer
 
 ### Phase 1C Started
 
@@ -585,6 +587,7 @@ await logAudit({
 26. Excel exports for Audit Result and Audit Finding reports
 27. Audit Finding label resolver for UI/export expected/actual values
 28. Granular Audit Finding review state: item reconciliation remains pending while other findings for the same audit item are still pending, and the finding list now shows item/reconcile status columns
+29. PDF exports for Audit Result and Audit Findings, with UI download actions beside existing Excel exports
 
 ---
 
