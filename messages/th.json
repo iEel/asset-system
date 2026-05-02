@@ -393,7 +393,8 @@
     "expectedCustodian": "ผู้ถือครองตามระบบ",
     "result": "ผลตรวจ",
     "scan": "สแกนตรวจนับ",
-    "pendingAssets": "รายการรอตรวจ"
+    "pendingAssets": "รายการรอตรวจ",
+    "exportResult": "ส่งออกผลตรวจ"
   },
   "auditScan": {
     "title": "สแกนตรวจนับ",
@@ -435,6 +436,7 @@
     "expectedValue": "ค่าเดิม",
     "actualValue": "ค่าที่พบ",
     "reviewStatus": "สถานะ Review",
+    "exportFindings": "ส่งออกรายการไม่ตรง",
     "approve": "อนุมัติ",
     "reject": "ปฏิเสธ",
     "approveRemark": "หมายเหตุการอนุมัติ",

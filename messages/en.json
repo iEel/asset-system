@@ -393,7 +393,8 @@
     "expectedCustodian": "Expected Custodian",
     "result": "Result",
     "scan": "Scan Audit",
-    "pendingAssets": "Pending Assets"
+    "pendingAssets": "Pending Assets",
+    "exportResult": "Export Result"
   },
   "auditScan": {
     "title": "Audit Scan",
@@ -435,6 +436,7 @@
     "expectedValue": "Expected",
     "actualValue": "Actual",
     "reviewStatus": "Review Status",
+    "exportFindings": "Export Findings",
     "approve": "Approve",
     "reject": "Reject",
     "approveRemark": "Approval remark",

@@ -23,7 +23,7 @@
 | **1B: Master Data** | Company, Branch, Dept, Employee, Location, Category, Brand, Supplier | ✅ Complete — Company, Branch, Department, Location, Employee, Category, Brand/Model, Supplier |
 | **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 Mostly Complete — CRUD, tag gen, QR labels, detail, movements, attachments, import/export, duplicate UX |
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | 🟨 Started — Check-out/in, basic reports, system logs, and live KPI dashboard added |
-| **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move, audit round generation, QR/manual scan capture, finding review, pending/not-found workflow, and approved reconciliation to master asset |
+| **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move, audit round generation, QR/manual scan capture, finding review, pending/not-found workflow, approved reconciliation, and Excel exports |
 | **Phase 3** | Maintenance, Disposal | ⬜ Planned |
 | **Phase 4** | AD/LDAP, HR sync, Advanced dashboard | ⬜ Planned |
 
@@ -397,6 +397,8 @@ WEB_PORT=3000
 | Audit Scan Capture | `http://localhost:3000/th/audit/rounds/{auditRoundId}/scan` |
 | Audit Pending Assets | `http://localhost:3000/th/audit/rounds/{auditRoundId}/pending` |
 | Audit Findings | `http://localhost:3000/th/audit/findings` |
+| Audit Result Export | `GET /api/audit-rounds/{auditRoundId}/export` |
+| Audit Finding Export | `GET /api/audit-findings/export?status=pending` |
 | Reports | `http://localhost:3000/th/reports` |
 | System Log | `http://localhost:3000/th/admin/logs` |
 
@@ -521,6 +523,7 @@ await logAudit({
 | **Phase 2 audit schema** | เพิ่ม `audit_rounds`, `audit_items`, `audit_findings`, `audit_scan_history` และ push schema ไป SQL Server `alpha` แล้ว |
 | **Audit scan behavior** | Scan API อัปเดต `audit_items` เป็น `scanned`, เพิ่ม `scanCount`, บันทึก `audit_scan_history`, ตรวจ mismatch location/custodian/department/condition และสร้าง `audit_findings` pending โดยไม่แก้ master asset |
 | **QR scanner integration** | หน้า `/audit/rounds/{id}/scan` รองรับกล้องผ่าน `html5-qrcode` และ fallback paste URL/Asset ID/Asset Tag; QR label URL `/assets/{id}` จะ map กลับ audit item ได้ |
+| **Audit exports** | เพิ่ม Excel export สำหรับ Audit Result รายรอบ และ Audit Findings ตาม filter/search ปัจจุบัน |
 | **Audit finding review** | หน้า `/audit/findings` รองรับ approve/reject; approve จะอัปเดต master asset เฉพาะ field ที่ finding ระบุและสร้าง `asset_movements` แบบ `audit_*_correction` |
 | **Audit pending/not found** | หน้า `/audit/rounds/{id}/pending` แสดง audit items ที่ยัง `pending`; Mark Not Found จะตั้ง item เป็น `reviewed/not_found`, สร้าง finding `not_found` pending investigation และไม่แก้ master asset เป็น Lost |
 
@@ -544,9 +547,9 @@ await logAudit({
 
 ### Recommended Next Order
 
-1. **Audit report/export** — export audit result and finding reports
-2. **Audit finding polish** — show reference labels instead of raw IDs in expected/actual values and handle multiple pending findings per item more granularly
-3. **Camera scan QA** — browser/device test for camera permission, mobile viewport, and QR label scan reliability
+1. **Audit finding polish** — show reference labels instead of raw IDs in expected/actual values and handle multiple pending findings per item more granularly
+2. **Camera scan QA** — browser/device test for camera permission, mobile viewport, and QR label scan reliability
+3. **PDF reports** — optional PDF audit result/finding report after Excel export stabilizes
 4. **Operations hardening** — handover/return printable forms, photo/signature upload, stricter status mapping
 5. **Master data table scaling** — server-side pagination/sort for high-volume master data modules
 6. **Admin foundation** — user/role/settings pages beyond the current system log viewer
@@ -578,6 +581,7 @@ await logAudit({
 23. Audit Finding list and review API with approve/reject; approved findings update master asset and write movement/audit trail
 24. Pending Audit Items page and Mark Not Found API; creates `not_found` finding without changing asset status to Lost
 25. QR scanner integration on Audit Scan page using `html5-qrcode` plus manual URL/Asset ID/Asset Tag fallback
+26. Excel exports for Audit Result and Audit Finding reports
 
 ---
 

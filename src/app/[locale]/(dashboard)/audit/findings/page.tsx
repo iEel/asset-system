@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { getTranslations } from "next-intl/server"
+import { Download } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { ColumnHeader, MasterDataHeader, MasterDataSearch } from "@/components/master-data/master-data-layout"
@@ -19,6 +20,9 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   const t = await getTranslations("auditFinding")
   const tCommon = await getTranslations("common")
   const searchText = search.trim()
+  const exportParams = new URLSearchParams()
+  if (searchText) exportParams.set("search", searchText)
+  exportParams.set("status", status)
   const findings = await prisma.auditFinding.findMany({
     where: {
       ...(status === "all" ? {} : { reviewStatus: status }),
@@ -59,18 +63,27 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
         submitLabel={tCommon("search")}
       />
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        {["pending", "approved", "rejected", "exception", "all"].map((item) => (
-          <Link
-            key={item}
-            href={`/${locale}/audit/findings?status=${item}`}
-            className={`inline-flex h-9 items-center rounded-md border px-3 text-sm transition-colors ${
-              status === item ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-muted-foreground hover:bg-accent"
-            }`}
-          >
-            {t(`status_${item}`)}
-          </Link>
-        ))}
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-wrap gap-2">
+          {["pending", "approved", "rejected", "exception", "all"].map((item) => (
+            <Link
+              key={item}
+              href={`/${locale}/audit/findings?status=${item}`}
+              className={`inline-flex h-9 items-center rounded-md border px-3 text-sm transition-colors ${
+                status === item ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              {t(`status_${item}`)}
+            </Link>
+          ))}
+        </div>
+        <a
+          href={`/api/audit-findings/export?${exportParams.toString()}`}
+          className="inline-flex h-9 w-fit items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+        >
+          <Download className="h-4 w-4" />
+          {t("exportFindings")}
+        </a>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
