@@ -39,5 +39,11 @@ export const auditScanSchema = z.object({
   remark: optionalText,
 })
 
+export const auditFindingReviewSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  reviewRemark: optionalText,
+})
+
 export type AuditRoundInput = z.infer<typeof auditRoundSchema>
 export type AuditScanInput = z.infer<typeof auditScanSchema>
+export type AuditFindingReviewInput = z.infer<typeof auditFindingReviewSchema>

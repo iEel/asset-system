@@ -93,6 +93,7 @@ export function Sidebar({
       icon: <ClipboardCheck size={20} />,
       children: [
         { labelKey: "auditRound", href: `/${locale}/audit/rounds`, icon: <ClipboardCheck size={18} /> },
+        { labelKey: "auditFinding", href: `/${locale}/audit/findings`, icon: <History size={18} /> },
       ],
     },
     {
