@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ScanLine } from "lucide-react"
+import { AlertTriangle, ScanLine } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { ColumnHeader } from "@/components/master-data/master-data-layout"
@@ -67,13 +67,22 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
           <span className="inline-flex w-fit rounded-full bg-warning/10 px-3 py-1 text-sm font-medium text-warning">
             {round.status}
           </span>
-          <Link
-            href={`/${locale}/audit/rounds/${round.id}/scan`}
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
-          >
-            <ScanLine className="h-4 w-4" />
-            {t("scan")}
-          </Link>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Link
+              href={`/${locale}/audit/rounds/${round.id}/pending`}
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              {t("pendingAssets")}
+            </Link>
+            <Link
+              href={`/${locale}/audit/rounds/${round.id}/scan`}
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+            >
+              <ScanLine className="h-4 w-4" />
+              {t("scan")}
+            </Link>
+          </div>
         </div>
       </div>
 

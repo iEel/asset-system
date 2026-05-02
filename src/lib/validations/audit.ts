@@ -44,6 +44,11 @@ export const auditFindingReviewSchema = z.object({
   reviewRemark: optionalText,
 })
 
+export const auditMarkNotFoundSchema = z.object({
+  remark: optionalText,
+})
+
 export type AuditRoundInput = z.infer<typeof auditRoundSchema>
 export type AuditScanInput = z.infer<typeof auditScanSchema>
 export type AuditFindingReviewInput = z.infer<typeof auditFindingReviewSchema>
+export type AuditMarkNotFoundInput = z.infer<typeof auditMarkNotFoundSchema>

@@ -392,7 +392,8 @@
     "expectedLocation": "Expected Location",
     "expectedCustodian": "Expected Custodian",
     "result": "Result",
-    "scan": "Scan Audit"
+    "scan": "Scan Audit",
+    "pendingAssets": "Pending Assets"
   },
   "auditScan": {
     "title": "Audit Scan",
@@ -440,7 +441,19 @@
     "type_wrong_location": "Wrong Location",
     "type_wrong_custodian": "Wrong Custodian",
     "type_wrong_department": "Wrong Department",
-    "type_wrong_condition": "Wrong Condition"
+    "type_wrong_condition": "Wrong Condition",
+    "type_not_found": "Not Found"
+  },
+  "auditPending": {
+    "title": "Pending Assets",
+    "assetTag": "Asset Tag",
+    "assetName": "Asset Name",
+    "expectedLocation": "Expected Location",
+    "expectedCustodian": "Expected Custodian",
+    "lastAuditDate": "Last Audit Date",
+    "markNotFound": "Mark Not Found",
+    "notFoundRemark": "Remark for not found item",
+    "notFoundSuccess": "Not Found saved and a pending finding was created"
   },
   "reportsPage": {
     "title": "Reports",

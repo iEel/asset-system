@@ -44,6 +44,27 @@ export async function POST(request: NextRequest, context: ReviewContext) {
 
     const reviewedFinding = await prisma.$transaction(async (tx) => {
       if (input.action === "approve") {
+        if (finding.findingType === "not_found") {
+          await tx.auditItem.update({
+            where: { id: finding.auditItemId },
+            data: {
+              auditStatus: "reviewed",
+              reconcileStatus: "pending_investigation",
+            },
+          })
+
+          return tx.auditFinding.update({
+            where: { id },
+            data: {
+              reviewStatus: "approved",
+              reviewedBy: user.id,
+              reviewedAt: new Date(),
+              reviewRemark: input.reviewRemark,
+              actionTaken: "not_found_confirmed_no_master_update",
+            },
+          })
+        }
+
         const fieldName = fieldByFindingType[finding.findingType]
         const canApplyNullableValue = fieldName === "custodianId" || fieldName === "departmentId"
         if (!fieldName || !finding.assetId || (finding.actualValue === null && !canApplyNullableValue)) {

@@ -392,7 +392,8 @@
     "expectedLocation": "พื้นที่ตามระบบ",
     "expectedCustodian": "ผู้ถือครองตามระบบ",
     "result": "ผลตรวจ",
-    "scan": "สแกนตรวจนับ"
+    "scan": "สแกนตรวจนับ",
+    "pendingAssets": "รายการรอตรวจ"
   },
   "auditScan": {
     "title": "สแกนตรวจนับ",
@@ -440,7 +441,19 @@
     "type_wrong_location": "พื้นที่ไม่ตรง",
     "type_wrong_custodian": "ผู้ถือครองไม่ตรง",
     "type_wrong_department": "แผนกไม่ตรง",
-    "type_wrong_condition": "สภาพไม่ตรง"
+    "type_wrong_condition": "สภาพไม่ตรง",
+    "type_not_found": "ไม่พบทรัพย์สิน"
+  },
+  "auditPending": {
+    "title": "รายการรอตรวจ",
+    "assetTag": "รหัสทรัพย์สิน",
+    "assetName": "ชื่อทรัพย์สิน",
+    "expectedLocation": "พื้นที่ตามระบบ",
+    "expectedCustodian": "ผู้ถือครองตามระบบ",
+    "lastAuditDate": "ตรวจล่าสุด",
+    "markNotFound": "Mark Not Found",
+    "notFoundRemark": "หมายเหตุสำหรับรายการที่ไม่พบ",
+    "notFoundSuccess": "บันทึก Not Found และสร้าง Finding รอ Review สำเร็จ"
   },
   "reportsPage": {
     "title": "รายงาน",
