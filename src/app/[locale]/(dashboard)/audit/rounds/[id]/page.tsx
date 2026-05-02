@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
+import { ScanLine } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { ColumnHeader } from "@/components/master-data/master-data-layout"
@@ -16,37 +17,39 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
   const t = await getTranslations("auditRound")
   const tCommon = await getTranslations("common")
 
-  const round = await prisma.auditRound.findFirst({
-    where: { id, isActive: true },
-    include: {
-      scopeCompany: { select: { code: true, nameTh: true } },
-      scopeBranch: { select: { code: true, name: true } },
-      scopeDepartment: { select: { code: true, name: true } },
-      scopeLocation: { select: { code: true, name: true } },
-      scopeCategory: { select: { code: true, name: true } },
-      items: {
-        take: 100,
-        orderBy: [{ auditStatus: "asc" }, { createdAt: "desc" }],
-        include: {
-          asset: {
-            select: {
-              assetTag: true,
-              name: true,
-              currentLocation: { select: { code: true, name: true } },
-              custodian: { select: { code: true, fullNameTh: true } },
-              condition: { select: { nameTh: true } },
+  const [round, pendingCount, scannedCount] = await Promise.all([
+    prisma.auditRound.findFirst({
+      where: { id, isActive: true },
+      include: {
+        scopeCompany: { select: { code: true, nameTh: true } },
+        scopeBranch: { select: { code: true, name: true } },
+        scopeDepartment: { select: { code: true, name: true } },
+        scopeLocation: { select: { code: true, name: true } },
+        scopeCategory: { select: { code: true, name: true } },
+        items: {
+          take: 100,
+          orderBy: [{ auditStatus: "asc" }, { createdAt: "desc" }],
+          include: {
+            asset: {
+              select: {
+                assetTag: true,
+                name: true,
+                currentLocation: { select: { code: true, name: true } },
+                custodian: { select: { code: true, fullNameTh: true } },
+                condition: { select: { nameTh: true } },
+              },
             },
           },
         },
+        _count: { select: { items: true, findings: true } },
       },
-      _count: { select: { items: true, findings: true } },
-    },
-  })
+    }),
+    prisma.auditItem.count({ where: { auditRoundId: id, auditStatus: "pending" } }),
+    prisma.auditItem.count({ where: { auditRoundId: id, auditStatus: "scanned" } }),
+  ])
   if (!round) notFound()
 
-  const pending = round.items.filter((item) => item.auditStatus === "pending").length
-  const scanned = round.items.filter((item) => item.auditStatus === "scanned").length
-  const progress = round._count.items > 0 ? Math.round(((round._count.items - pending) / round._count.items) * 100) : 0
+  const progress = round._count.items > 0 ? Math.round(((round._count.items - pendingCount) / round._count.items) * 100) : 0
 
   return (
     <div>
@@ -60,15 +63,24 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
             {round.auditNo} • {formatDate(round.startDate)} - {formatDate(round.endDate)}
           </p>
         </div>
-        <span className="inline-flex w-fit rounded-full bg-warning/10 px-3 py-1 text-sm font-medium text-warning">
-          {round.status}
-        </span>
+        <div className="flex flex-col gap-2 sm:items-end">
+          <span className="inline-flex w-fit rounded-full bg-warning/10 px-3 py-1 text-sm font-medium text-warning">
+            {round.status}
+          </span>
+          <Link
+            href={`/${locale}/audit/rounds/${round.id}/scan`}
+            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+          >
+            <ScanLine className="h-4 w-4" />
+            {t("scan")}
+          </Link>
+        </div>
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
         <Metric label={t("totalExpected")} value={round._count.items} />
-        <Metric label={t("pending")} value={pending} />
-        <Metric label={t("scanned")} value={scanned} />
+        <Metric label={t("pending")} value={pendingCount} />
+        <Metric label={t("scanned")} value={scannedCount} />
         <Metric label={t("progress")} value={`${progress}%`} />
       </div>
 

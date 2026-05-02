@@ -391,7 +391,29 @@
     "assetName": "ชื่อทรัพย์สิน",
     "expectedLocation": "พื้นที่ตามระบบ",
     "expectedCustodian": "ผู้ถือครองตามระบบ",
-    "result": "ผลตรวจ"
+    "result": "ผลตรวจ",
+    "scan": "สแกนตรวจนับ"
+  },
+  "auditScan": {
+    "title": "สแกนตรวจนับ",
+    "asset": "ทรัพย์สิน",
+    "selectAsset": "เลือกทรัพย์สินที่สแกนหรือค้นพบ",
+    "actualLocation": "พื้นที่ที่พบจริง",
+    "actualCustodian": "ผู้ถือครองที่พบจริง",
+    "actualDepartment": "แผนกที่พบจริง",
+    "actualCondition": "สภาพที่พบจริง",
+    "none": "ไม่มี / ไม่ระบุ",
+    "remark": "หมายเหตุผู้ตรวจ",
+    "submitScan": "บันทึกผลสแกน",
+    "matchedPreview": "ข้อมูลตรงกับรายการที่คาดไว้",
+    "mismatchPreview": "พบข้อมูลไม่ตรง: {fields}",
+    "wrongLocation": "พื้นที่",
+    "wrongCustodian": "ผู้ถือครอง",
+    "wrongDepartment": "แผนก",
+    "wrongCondition": "สภาพ",
+    "foundSuccess": "บันทึกผลตรวจนับสำเร็จ: พบและข้อมูลตรง",
+    "mismatchSuccess": "บันทึกผลตรวจนับสำเร็จ และสร้างรายการไม่ตรงเพื่อรอ Review",
+    "lastResult": "ผลล่าสุด"
   },
   "reportsPage": {
     "title": "รายงาน",

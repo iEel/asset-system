@@ -391,7 +391,29 @@
     "assetName": "Asset Name",
     "expectedLocation": "Expected Location",
     "expectedCustodian": "Expected Custodian",
-    "result": "Result"
+    "result": "Result",
+    "scan": "Scan Audit"
+  },
+  "auditScan": {
+    "title": "Audit Scan",
+    "asset": "Asset",
+    "selectAsset": "Select scanned or found asset",
+    "actualLocation": "Actual Location",
+    "actualCustodian": "Actual Custodian",
+    "actualDepartment": "Actual Department",
+    "actualCondition": "Actual Condition",
+    "none": "None / unspecified",
+    "remark": "Auditor Remark",
+    "submitScan": "Submit Scan",
+    "matchedPreview": "Actual data matches the expected record",
+    "mismatchPreview": "Mismatch detected: {fields}",
+    "wrongLocation": "Location",
+    "wrongCustodian": "Custodian",
+    "wrongDepartment": "Department",
+    "wrongCondition": "Condition",
+    "foundSuccess": "Audit scan saved: found and matched",
+    "mismatchSuccess": "Audit scan saved and findings were created for review",
+    "lastResult": "Last result"
   },
   "reportsPage": {
     "title": "Reports",

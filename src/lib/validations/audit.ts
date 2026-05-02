@@ -29,4 +29,15 @@ export const auditRoundSchema = z
     }
   })
 
+export const auditScanSchema = z.object({
+  assetId: z.string().trim().min(1),
+  actualDepartmentId: optionalText,
+  actualLocationId: optionalText,
+  actualCustodianId: optionalText,
+  actualConditionId: optionalText,
+  scanSource: z.enum(["manual", "qr"]).default("manual"),
+  remark: optionalText,
+})
+
 export type AuditRoundInput = z.infer<typeof auditRoundSchema>
+export type AuditScanInput = z.infer<typeof auditScanSchema>

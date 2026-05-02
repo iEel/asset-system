@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-05-01
 > **Phase:** Phase 2 Operations (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 transfer/audit foundation started
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 transfer/audit scan started
 
 ---
 
@@ -23,7 +23,7 @@
 | **1B: Master Data** | Company, Branch, Dept, Employee, Location, Category, Brand, Supplier | ✅ Complete — Company, Branch, Department, Location, Employee, Category, Brand/Model, Supplier |
 | **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 Mostly Complete — CRUD, tag gen, QR labels, detail, movements, attachments, import/export, duplicate UX |
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | 🟨 Started — Check-out/in, basic reports, system logs, and live KPI dashboard added |
-| **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move plus audit round schema, generated expected asset list, and audit round pages |
+| **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move, audit round generation, scan capture, scan history, and mismatch finding creation |
 | **Phase 3** | Maintenance, Disposal | ⬜ Planned |
 | **Phase 4** | AD/LDAP, HR sync, Advanced dashboard | ⬜ Planned |
 
@@ -394,6 +394,7 @@ WEB_PORT=3000
 | Bulk Move Location | `http://localhost:3000/th/asset-management/bulk-move` |
 | Audit Rounds | `http://localhost:3000/th/audit/rounds` |
 | Create Audit Round | `http://localhost:3000/th/audit/rounds/new` |
+| Audit Scan Capture | `http://localhost:3000/th/audit/rounds/{auditRoundId}/scan` |
 | Reports | `http://localhost:3000/th/reports` |
 | System Log | `http://localhost:3000/th/admin/logs` |
 
@@ -516,6 +517,7 @@ await logAudit({
 | **Next.js 16 docs** | โปรเจกต์นี้มี AGENTS.md ระบุให้อ่าน docs ใน `node_modules/next/dist/docs/` ก่อนแก้โค้ด Next.js |
 | **SQL Server TLS warning** | แก้แล้วด้วย `DB_TLS_SERVER_NAME=WIN-I284TKLAMMD` เพื่อไม่ให้ tedious ใช้ IP เป็น TLS ServerName |
 | **Phase 2 audit schema** | เพิ่ม `audit_rounds`, `audit_items`, `audit_findings`, `audit_scan_history` และ push schema ไป SQL Server `alpha` แล้ว |
+| **Audit scan behavior** | Scan API อัปเดต `audit_items` เป็น `scanned`, เพิ่ม `scanCount`, บันทึก `audit_scan_history`, ตรวจ mismatch location/custodian/department/condition และสร้าง `audit_findings` pending โดยไม่แก้ master asset |
 
 ---
 
@@ -537,11 +539,12 @@ await logAudit({
 
 ### Recommended Next Order
 
-1. **Audit scan capture** — QR/manual asset scan API, update Audit Item to Scanned, create Scan History, and detect mismatches
-2. **Audit finding review** — pending finding list, approve/reject/reconcile workflow, and asset movement from approved corrections
-3. **Operations hardening** — handover/return printable forms, photo/signature upload, stricter status mapping
-4. **Master data table scaling** — server-side pagination/sort for high-volume master data modules
-5. **Admin foundation** — user/role/settings pages beyond the current system log viewer
+1. **Audit finding review** — pending finding list, approve/reject/reconcile workflow, and asset movement from approved corrections
+2. **Audit pending/not found workflow** — pending item page and Mark Not Found action that creates a pending investigation finding
+3. **QR scanner integration** — attach camera/QR reader to the existing scan capture page
+4. **Operations hardening** — handover/return printable forms, photo/signature upload, stricter status mapping
+5. **Master data table scaling** — server-side pagination/sort for high-volume master data modules
+6. **Admin foundation** — user/role/settings pages beyond the current system log viewer
 
 ### Phase 1C Started
 
@@ -566,6 +569,7 @@ await logAudit({
 19. Audit schema foundation: `audit_rounds`, `audit_items`, `audit_findings`, `audit_scan_history`
 20. Audit Round API/page with scope filters and automatic expected asset list generation
 21. Audit Round detail page with progress metrics and first 100 expected asset items
+22. Audit Scan Capture API/page with manual scan entry, scan history logging, mismatch detection, and pending finding creation
 
 ---
 
