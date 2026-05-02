@@ -24,6 +24,7 @@ export default async function AuditScanPage({ params }: AuditScanPageProps) {
           include: {
             asset: {
               select: {
+                id: true,
                 assetTag: true,
                 name: true,
               },
@@ -43,6 +44,7 @@ export default async function AuditScanPage({ params }: AuditScanPageProps) {
       items={round.items.map((item) => ({
         id: item.id,
         assetId: item.assetId,
+        assetTag: item.asset.assetTag,
         label: `${item.asset.assetTag} - ${item.asset.name}`,
         auditStatus: item.auditStatus,
         auditResult: item.auditResult,
