@@ -436,6 +436,8 @@
     "expectedValue": "ค่าเดิม",
     "actualValue": "ค่าที่พบ",
     "reviewStatus": "สถานะ Review",
+    "itemStatus": "สถานะรายการตรวจ",
+    "reconcileStatus": "สถานะปรับปรุง",
     "exportFindings": "ส่งออกรายการไม่ตรง",
     "approve": "อนุมัติ",
     "reject": "ปฏิเสธ",

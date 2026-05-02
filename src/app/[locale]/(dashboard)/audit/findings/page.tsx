@@ -100,13 +100,15 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                 <ColumnHeader>{t("expectedValue")}</ColumnHeader>
                 <ColumnHeader>{t("actualValue")}</ColumnHeader>
                 <ColumnHeader>{t("reviewStatus")}</ColumnHeader>
+                <ColumnHeader>{t("itemStatus")}</ColumnHeader>
+                <ColumnHeader>{t("reconcileStatus")}</ColumnHeader>
                 <ColumnHeader align="right">{tCommon("actions")}</ColumnHeader>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {findings.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="h-32 px-4 text-center text-muted-foreground">
+                  <td colSpan={10} className="h-32 px-4 text-center text-muted-foreground">
                     {tCommon("noData")}
                   </td>
                 </tr>
@@ -129,6 +131,8 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     <td className="whitespace-nowrap px-4 py-3">
                       <ReviewStatusBadge status={finding.reviewStatus} />
                     </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{finding.auditItem.auditStatus}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{finding.auditItem.reconcileStatus ?? "-"}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-right">
                       {finding.reviewStatus === "pending" ? <AuditFindingReviewActions findingId={finding.id} /> : "-"}
                     </td>

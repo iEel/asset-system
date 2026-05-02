@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
@@ -45,15 +46,7 @@ export async function POST(request: NextRequest, context: ReviewContext) {
     const reviewedFinding = await prisma.$transaction(async (tx) => {
       if (input.action === "approve") {
         if (finding.findingType === "not_found") {
-          await tx.auditItem.update({
-            where: { id: finding.auditItemId },
-            data: {
-              auditStatus: "reviewed",
-              reconcileStatus: "pending_investigation",
-            },
-          })
-
-          return tx.auditFinding.update({
+          const reviewed = await tx.auditFinding.update({
             where: { id },
             data: {
               reviewStatus: "approved",
@@ -63,12 +56,14 @@ export async function POST(request: NextRequest, context: ReviewContext) {
               actionTaken: "not_found_confirmed_no_master_update",
             },
           })
+          await updateAuditItemReviewState(tx, finding.auditItemId)
+          return reviewed
         }
 
         const fieldName = fieldByFindingType[finding.findingType]
         const canApplyNullableValue = fieldName === "custodianId" || fieldName === "departmentId"
         if (!fieldName || !finding.assetId || (finding.actualValue === null && !canApplyNullableValue)) {
-          return tx.auditFinding.update({
+          const reviewed = await tx.auditFinding.update({
             where: { id },
             data: {
               reviewStatus: "exception",
@@ -78,6 +73,8 @@ export async function POST(request: NextRequest, context: ReviewContext) {
               actionTaken: "manual_review_required",
             },
           })
+          await updateAuditItemReviewState(tx, finding.auditItemId)
+          return reviewed
         }
 
         const assetUpdateData =
@@ -108,23 +105,9 @@ export async function POST(request: NextRequest, context: ReviewContext) {
           },
         })
 
-        await tx.auditItem.update({
-          where: { id: finding.auditItemId },
-          data: {
-            auditStatus: "reconciled",
-            reconcileStatus: "approved",
-          },
-        })
       }
 
-      if (input.action === "reject") {
-        await tx.auditItem.update({
-          where: { id: finding.auditItemId },
-          data: { reconcileStatus: "rejected" },
-        })
-      }
-
-      return tx.auditFinding.update({
+      const reviewed = await tx.auditFinding.update({
         where: { id },
         data: {
           reviewStatus: input.action === "approve" ? "approved" : "rejected",
@@ -134,6 +117,8 @@ export async function POST(request: NextRequest, context: ReviewContext) {
           actionTaken: input.action === "approve" ? "master_asset_updated" : "finding_rejected",
         },
       })
+      await updateAuditItemReviewState(tx, finding.auditItemId)
+      return reviewed
     })
 
     await logAudit({
@@ -158,4 +143,56 @@ export async function POST(request: NextRequest, context: ReviewContext) {
   } catch (error) {
     return errorResponse(error, 400)
   }
+}
+
+type ReviewTransaction = Prisma.TransactionClient
+
+async function updateAuditItemReviewState(tx: ReviewTransaction, auditItemId: string) {
+  const findings = await tx.auditFinding.findMany({
+    where: { auditItemId },
+    select: { findingType: true, reviewStatus: true },
+  })
+  const pendingCount = findings.filter((finding) => finding.reviewStatus === "pending").length
+  const approvedCount = findings.filter((finding) => finding.reviewStatus === "approved").length
+  const exceptionCount = findings.filter((finding) => finding.reviewStatus === "exception").length
+  const approvedNotFound = findings.some(
+    (finding) => finding.findingType === "not_found" && finding.reviewStatus === "approved"
+  )
+
+  if (pendingCount > 0) {
+    await tx.auditItem.update({
+      where: { id: auditItemId },
+      data: { reconcileStatus: "pending" },
+    })
+    return
+  }
+
+  if (exceptionCount > 0) {
+    await tx.auditItem.update({
+      where: { id: auditItemId },
+      data: { auditStatus: "reviewed", reconcileStatus: "exception" },
+    })
+    return
+  }
+
+  if (approvedNotFound) {
+    await tx.auditItem.update({
+      where: { id: auditItemId },
+      data: { auditStatus: "reviewed", reconcileStatus: "pending_investigation" },
+    })
+    return
+  }
+
+  if (approvedCount > 0) {
+    await tx.auditItem.update({
+      where: { id: auditItemId },
+      data: { auditStatus: "reconciled", reconcileStatus: "approved" },
+    })
+    return
+  }
+
+  await tx.auditItem.update({
+    where: { id: auditItemId },
+    data: { auditStatus: "reviewed", reconcileStatus: "rejected" },
+  })
 }

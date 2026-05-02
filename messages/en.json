@@ -436,6 +436,8 @@
     "expectedValue": "Expected",
     "actualValue": "Actual",
     "reviewStatus": "Review Status",
+    "itemStatus": "Item Status",
+    "reconcileStatus": "Reconcile Status",
     "exportFindings": "Export Findings",
     "approve": "Approve",
     "reject": "Reject",

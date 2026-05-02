@@ -1,6 +1,6 @@
 # Developer Handoff — Asset Management System
 
-> **Last Updated:** 2026-05-01
+> **Last Updated:** 2026-05-02
 > **Phase:** Phase 2 Operations (Started)
 > **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built
 
@@ -23,7 +23,7 @@
 | **1B: Master Data** | Company, Branch, Dept, Employee, Location, Category, Brand, Supplier | ✅ Complete — Company, Branch, Department, Location, Employee, Category, Brand/Model, Supplier |
 | **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 Mostly Complete — CRUD, tag gen, QR labels, detail, movements, attachments, import/export, duplicate UX |
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | 🟨 Started — Check-out/in, basic reports, system logs, and live KPI dashboard added |
-| **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move, audit round generation, QR/manual scan capture, finding review, pending/not-found workflow, approved reconciliation, and Excel exports |
+| **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move, audit round generation, QR/manual scan capture, finding review, pending/not-found workflow, approved reconciliation, granular multi-finding review status, and Excel exports |
 | **Phase 3** | Maintenance, Disposal | ⬜ Planned |
 | **Phase 4** | AD/LDAP, HR sync, Advanced dashboard | ⬜ Planned |
 
@@ -525,6 +525,7 @@ await logAudit({
 | **QR scanner integration** | หน้า `/audit/rounds/{id}/scan` รองรับกล้องผ่าน `html5-qrcode` และ fallback paste URL/Asset ID/Asset Tag; QR label URL `/assets/{id}` จะ map กลับ audit item ได้ |
 | **Audit exports** | เพิ่ม Excel export สำหรับ Audit Result รายรอบ และ Audit Findings ตาม filter/search ปัจจุบัน |
 | **Audit finding review** | หน้า `/audit/findings` รองรับ approve/reject; approve จะอัปเดต master asset เฉพาะ field ที่ finding ระบุและสร้าง `asset_movements` แบบ `audit_*_correction` |
+| **Audit multi-finding review** | Review finding ทีละรายการแล้วคำนวณสถานะ `audit_items` ใหม่จาก findings ทั้งหมดของ item นั้น เพื่อไม่ปิด item เป็น reconciled/rejected ถ้ายังมี finding pending อื่น |
 | **Audit finding labels** | หน้า Finding และ Excel export resolve expected/actual value จาก raw IDs เป็น label ของ Location/Employee/Department/Condition เพื่อให้ reviewer อ่านง่ายขึ้น |
 | **Audit pending/not found** | หน้า `/audit/rounds/{id}/pending` แสดง audit items ที่ยัง `pending`; Mark Not Found จะตั้ง item เป็น `reviewed/not_found`, สร้าง finding `not_found` pending investigation และไม่แก้ master asset เป็น Lost |
 
@@ -549,11 +550,10 @@ await logAudit({
 ### Recommended Next Order
 
 1. **Camera scan QA** — browser/device test for camera permission, mobile viewport, and QR label scan reliability
-2. **Audit finding multi-review polish** — handle multiple pending findings per item more granularly instead of broad item-level reconciled status
-3. **PDF reports** — optional PDF audit result/finding report after Excel export stabilizes
-4. **Operations hardening** — handover/return printable forms, photo/signature upload, stricter status mapping
-5. **Master data table scaling** — server-side pagination/sort for high-volume master data modules
-6. **Admin foundation** — user/role/settings pages beyond the current system log viewer
+2. **PDF reports** — optional PDF audit result/finding report after Excel export stabilizes
+3. **Operations hardening** — handover/return printable forms, photo/signature upload, stricter status mapping
+4. **Master data table scaling** — server-side pagination/sort for high-volume master data modules
+5. **Admin foundation** — user/role/settings pages beyond the current system log viewer
 
 ### Phase 1C Started
 
@@ -584,6 +584,7 @@ await logAudit({
 25. QR scanner integration on Audit Scan page using `html5-qrcode` plus manual URL/Asset ID/Asset Tag fallback
 26. Excel exports for Audit Result and Audit Finding reports
 27. Audit Finding label resolver for UI/export expected/actual values
+28. Granular Audit Finding review state: item reconciliation remains pending while other findings for the same audit item are still pending, and the finding list now shows item/reconcile status columns
 
 ---
 
