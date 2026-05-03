@@ -419,6 +419,7 @@ WEB_PORT=3000
 | Create User | `http://localhost:3000/th/admin/users/new` |
 | Edit User | `http://localhost:3000/th/admin/users/{userId}/edit` |
 | Roles & Permissions | `http://localhost:3000/th/admin/roles` |
+| Edit Role Permissions | `http://localhost:3000/th/admin/roles/{roleId}/edit` |
 | System Settings | `http://localhost:3000/th/admin/settings` |
 
 ---
@@ -555,6 +556,7 @@ await logAudit({
 | **Admin users foundation** | เพิ่มหน้า `/admin/users` สำหรับดูบัญชีผู้ใช้ บทบาท พนักงานที่ผูก สถานะ และ last login พร้อม search/pagination/sort และ RBAC `user:view` |
 | **Admin user edit flow** | เพิ่ม API `GET/POST /api/admin/users`, `PUT /api/admin/users/{id}` และหน้า `/admin/users/new`, `/admin/users/{id}/edit` สำหรับสร้าง/แก้ไข user, password, employee link, active flag, และ role assignments |
 | **Admin roles foundation** | เพิ่มหน้า `/admin/roles` สำหรับดู role summary และ permission matrix แยก module/action พร้อม RBAC `role:view` |
+| **Role permission edit flow** | เพิ่ม `PUT /api/admin/roles/{id}` และหน้า `/admin/roles/{id}/edit` สำหรับแก้ role permission matrix พร้อม transaction และ audit log |
 | **Admin settings foundation** | เพิ่มหน้า `/admin/settings` และ API `/api/admin/settings` สำหรับแก้ `system_settings` พร้อม RBAC `setting:view/edit` และ audit log |
 | **Maintenance foundation** | เพิ่ม schema/table `maintenance_tickets`, API `GET/POST /api/maintenance-tickets`, หน้า `/maintenance`, create ticket form, audit log, movement log, และอัปเดต asset เป็น `Pending Repair` เมื่อเปิดใบซ่อม |
 | **Maintenance close flow** | เพิ่ม `PATCH /api/maintenance-tickets/{id}` และปุ่มปิดงานในหน้า `/maintenance` สำหรับบันทึก root cause, resolution, return date, repair cost, warranty claim, อัปเดต ticket เป็น closed และเลือกสถานะ asset หลังซ่อม |
@@ -582,9 +584,9 @@ await logAudit({
 ### Recommended Next Order
 
 1. **Camera scan QA** — browser/device test for camera permission, mobile viewport, and QR label scan reliability
-2. **Role permission edit flow** — role permission assignment screens and audit log
-3. **Disposal foundation** — disposal request schema and approval workflow
-4. **Maintenance attachment previews** — inline preview for image/PDF repair evidence
+2. **Disposal foundation** — disposal request schema and approval workflow
+3. **Maintenance attachment previews** — inline preview for image/PDF repair evidence
+4. **Role management polish** — create/edit role metadata and guard rails for system roles
 
 ### Phase 1C Started
 
@@ -629,6 +631,7 @@ await logAudit({
 39. Maintenance detail and attachments: ticket detail page, ticket attachment upload/download/delete, and asset-level maintenance history section
 40. Maintenance polish with server-side search/status/type filters and printable A4 repair document page
 41. Admin user create/edit flow with password hashing, employee linking, active flag, role assignment, and audit logging
+42. Role permission edit flow with editable module/action permission matrix and audit logging
 
 ---
 

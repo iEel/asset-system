@@ -595,9 +595,13 @@
   "adminRolesPage": {
     "title": "Roles & Permissions",
     "subtitle": "Review user roles and access permissions for each module",
+    "editTitle": "Edit Role Permissions",
+    "formSubtitle": "Select the module/action permissions available to this role",
     "roleSummary": "Role Summary",
     "permissionMatrix": "Module Permission Matrix",
     "permissionMatrixSubtitle": "Each cell shows roles assigned to that module/action permission",
+    "permissionSelection": "Permission Selection",
+    "savePermissions": "Save Permissions",
     "role": "Role",
     "description": "Description",
     "users": "Users",

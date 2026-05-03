@@ -595,9 +595,13 @@
   "adminRolesPage": {
     "title": "สิทธิ์การใช้งาน",
     "subtitle": "ตรวจสอบบทบาทผู้ใช้และสิทธิ์การเข้าถึงแต่ละโมดูล",
+    "editTitle": "แก้ไขสิทธิ์บทบาท",
+    "formSubtitle": "เลือกสิทธิ์ module/action ที่บทบาทนี้สามารถใช้งานได้",
     "roleSummary": "สรุปบทบาท",
     "permissionMatrix": "ตารางสิทธิ์ตามโมดูล",
     "permissionMatrixSubtitle": "แต่ละช่องแสดงบทบาทที่ได้รับสิทธิ์สำหรับ module/action นั้น",
+    "permissionSelection": "เลือกสิทธิ์",
+    "savePermissions": "บันทึกสิทธิ์",
     "role": "บทบาท",
     "description": "รายละเอียด",
     "users": "ผู้ใช้",

@@ -1,4 +1,5 @@
-import { Check } from "lucide-react"
+import Link from "next/link"
+import { Check, Edit } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -90,6 +91,7 @@ export default async function RolesPage({ params }: RolesPageProps) {
                 <ColumnHeader align="right">{t("permissions")}</ColumnHeader>
                 <ColumnHeader>{t("type")}</ColumnHeader>
                 <ColumnHeader>{tCommon("status")}</ColumnHeader>
+                <ColumnHeader>{tCommon("actions")}</ColumnHeader>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -115,6 +117,15 @@ export default async function RolesPage({ params }: RolesPageProps) {
                         {tCommon("inactive")}
                       </span>
                     )}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3">
+                    <Link
+                      href={`/${locale}/admin/roles/${role.id}/edit`}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                      {tCommon("edit")}
+                    </Link>
                   </td>
                 </tr>
               ))}
