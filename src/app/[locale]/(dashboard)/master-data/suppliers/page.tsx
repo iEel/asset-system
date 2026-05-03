@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { getTranslations } from "next-intl/server"
 import { Edit } from "lucide-react"
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { SupplierDeleteButton } from "@/components/master-data/supplier-delete-button"
@@ -8,47 +9,65 @@ import {
   ActiveBadge,
   ColumnHeader,
   MasterDataHeader,
+  MasterDataPagination,
   MasterDataSearch,
+  SortableColumnHeader,
 } from "@/components/master-data/master-data-layout"
+import { parseMasterDataListParams } from "@/lib/master-data-query"
 
 type SuppliersPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string }>
+  searchParams: Promise<{ search?: string; page?: string; pageSize?: string; sort?: string; direction?: string }>
 }
+
+const supplierSorts = ["createdAt", "code", "name", "contactPerson", "phone", "email"] as const
+type SupplierSort = (typeof supplierSorts)[number]
 
 export default async function SuppliersPage({ params, searchParams }: SuppliersPageProps) {
   const { locale } = await params
-  const { search = "" } = await searchParams
+  const rawSearchParams = await searchParams
   await requirePagePermission(locale, "supplier", "view")
 
   const t = await getTranslations("supplier")
   const tCommon = await getTranslations("common")
-  const searchText = search.trim()
+  const listState = parseMasterDataListParams<SupplierSort>({
+    input: rawSearchParams,
+    allowedSorts: supplierSorts,
+    defaultSort: "createdAt",
+  })
+  const searchText = listState.search
+  const where: Prisma.SupplierWhereInput = {
+    isActive: true,
+    ...(searchText
+      ? {
+          OR: [
+            { code: { contains: searchText } },
+            { name: { contains: searchText } },
+            { contactPerson: { contains: searchText } },
+            { phone: { contains: searchText } },
+            { email: { contains: searchText } },
+          ],
+        }
+      : {}),
+  }
 
-  const suppliers = await prisma.supplier.findMany({
-    where: {
-      isActive: true,
-      ...(searchText
-        ? {
-            OR: [
-              { code: { contains: searchText } },
-              { name: { contains: searchText } },
-              { contactPerson: { contains: searchText } },
-              { phone: { contains: searchText } },
-              { email: { contains: searchText } },
-            ],
-          }
-        : {}),
-    },
-    include: {
-      _count: {
-        select: {
-          assets: true,
+  const [suppliers, total] = await Promise.all([
+    prisma.supplier.findMany({
+      where,
+      include: {
+        _count: {
+          select: {
+            assets: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  })
+      orderBy: { [listState.sort]: listState.direction },
+      skip: (listState.page - 1) * listState.pageSize,
+      take: listState.pageSize,
+    }),
+    prisma.supplier.count({ where }),
+  ])
+  const basePath = `/${locale}/master-data/suppliers`
 
   return (
     <div>
@@ -64,6 +83,7 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
         defaultValue={searchText}
         placeholder={tCommon("search")}
         submitLabel={tCommon("search")}
+        hiddenInputs={{ pageSize: listState.pageSize, sort: listState.sort, direction: listState.direction }}
       />
 
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
@@ -71,11 +91,11 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">
               <tr>
-                <ColumnHeader>{t("code")}</ColumnHeader>
-                <ColumnHeader>{t("name")}</ColumnHeader>
-                <ColumnHeader>{t("contactPerson")}</ColumnHeader>
-                <ColumnHeader>{t("phone")}</ColumnHeader>
-                <ColumnHeader>{t("email")}</ColumnHeader>
+                <SortableColumnHeader field="code" current={listState} basePath={basePath}>{t("code")}</SortableColumnHeader>
+                <SortableColumnHeader field="name" current={listState} basePath={basePath}>{t("name")}</SortableColumnHeader>
+                <SortableColumnHeader field="contactPerson" current={listState} basePath={basePath}>{t("contactPerson")}</SortableColumnHeader>
+                <SortableColumnHeader field="phone" current={listState} basePath={basePath}>{t("phone")}</SortableColumnHeader>
+                <SortableColumnHeader field="email" current={listState} basePath={basePath}>{t("email")}</SortableColumnHeader>
                 <ColumnHeader>{t("assets")}</ColumnHeader>
                 <ColumnHeader>{tCommon("status")}</ColumnHeader>
                 <ColumnHeader align="right">{tCommon("actions")}</ColumnHeader>
@@ -120,6 +140,18 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
             </tbody>
           </table>
         </div>
+        <MasterDataPagination
+          current={listState}
+          total={total}
+          basePath={basePath}
+          labels={{
+            rowsPerPage: tCommon("rowsPerPage"),
+            page: tCommon("page"),
+            of: tCommon("of"),
+            previous: tCommon("previous"),
+            next: tCommon("next"),
+          }}
+        />
       </div>
     </div>
   )

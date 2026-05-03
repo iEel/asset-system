@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { getTranslations } from "next-intl/server"
 import { Edit } from "lucide-react"
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { LocationDeleteButton } from "@/components/master-data/location-delete-button"
@@ -8,62 +9,80 @@ import {
   ActiveBadge,
   ColumnHeader,
   MasterDataHeader,
+  MasterDataPagination,
   MasterDataSearch,
+  SortableColumnHeader,
 } from "@/components/master-data/master-data-layout"
+import { parseMasterDataListParams } from "@/lib/master-data-query"
 
 type LocationsPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string }>
+  searchParams: Promise<{ search?: string; page?: string; pageSize?: string; sort?: string; direction?: string }>
 }
+
+const locationSorts = ["createdAt", "code", "name", "branch", "locationType", "parent"] as const
+type LocationSort = (typeof locationSorts)[number]
 
 export default async function LocationsPage({ params, searchParams }: LocationsPageProps) {
   const { locale } = await params
-  const { search = "" } = await searchParams
+  const rawSearchParams = await searchParams
   await requirePagePermission(locale, "location", "view")
 
   const t = await getTranslations("location")
   const tCommon = await getTranslations("common")
-  const searchText = search.trim()
+  const listState = parseMasterDataListParams<LocationSort>({
+    input: rawSearchParams,
+    allowedSorts: locationSorts,
+    defaultSort: "createdAt",
+  })
+  const searchText = listState.search
+  const where: Prisma.LocationWhereInput = {
+    isActive: true,
+    ...(searchText
+      ? {
+          OR: [
+            { code: { contains: searchText } },
+            { name: { contains: searchText } },
+            { locationType: { contains: searchText } },
+            { branch: { code: { contains: searchText } } },
+            { branch: { name: { contains: searchText } } },
+            { branch: { company: { code: { contains: searchText } } } },
+            { branch: { company: { nameTh: { contains: searchText } } } },
+          ],
+        }
+      : {}),
+  }
 
-  const locations = await prisma.location.findMany({
-    where: {
-      isActive: true,
-      ...(searchText
-        ? {
-            OR: [
-              { code: { contains: searchText } },
-              { name: { contains: searchText } },
-              { locationType: { contains: searchText } },
-              { branch: { code: { contains: searchText } } },
-              { branch: { name: { contains: searchText } } },
-              { branch: { company: { code: { contains: searchText } } } },
-              { branch: { company: { nameTh: { contains: searchText } } } },
-            ],
-          }
-        : {}),
-    },
-    include: {
-      branch: {
-        select: {
-          code: true,
-          name: true,
-          company: {
-            select: {
-              code: true,
-              nameTh: true,
+  const [locations, total] = await Promise.all([
+    prisma.location.findMany({
+      where,
+      include: {
+        branch: {
+          select: {
+            code: true,
+            name: true,
+            company: {
+              select: {
+                code: true,
+                nameTh: true,
+              },
             },
           },
         },
-      },
-      parent: {
-        select: {
-          code: true,
-          name: true,
+        parent: {
+          select: {
+            code: true,
+            name: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  })
+      orderBy: buildLocationOrderBy(listState.sort, listState.direction),
+      skip: (listState.page - 1) * listState.pageSize,
+      take: listState.pageSize,
+    }),
+    prisma.location.count({ where }),
+  ])
+  const basePath = `/${locale}/master-data/locations`
 
   return (
     <div>
@@ -79,6 +98,7 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
         defaultValue={searchText}
         placeholder={tCommon("search")}
         submitLabel={tCommon("search")}
+        hiddenInputs={{ pageSize: listState.pageSize, sort: listState.sort, direction: listState.direction }}
       />
 
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
@@ -86,11 +106,11 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">
               <tr>
-                <ColumnHeader>{t("code")}</ColumnHeader>
-                <ColumnHeader>{t("name")}</ColumnHeader>
-                <ColumnHeader>{t("branch")}</ColumnHeader>
-                <ColumnHeader>{t("locationType")}</ColumnHeader>
-                <ColumnHeader>{t("parentLocation")}</ColumnHeader>
+                <SortableColumnHeader field="code" current={listState} basePath={basePath}>{t("code")}</SortableColumnHeader>
+                <SortableColumnHeader field="name" current={listState} basePath={basePath}>{t("name")}</SortableColumnHeader>
+                <SortableColumnHeader field="branch" current={listState} basePath={basePath}>{t("branch")}</SortableColumnHeader>
+                <SortableColumnHeader field="locationType" current={listState} basePath={basePath}>{t("locationType")}</SortableColumnHeader>
+                <SortableColumnHeader field="parent" current={listState} basePath={basePath}>{t("parentLocation")}</SortableColumnHeader>
                 <ColumnHeader>{tCommon("status")}</ColumnHeader>
                 <ColumnHeader align="right">{tCommon("actions")}</ColumnHeader>
               </tr>
@@ -135,7 +155,25 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
             </tbody>
           </table>
         </div>
+        <MasterDataPagination
+          current={listState}
+          total={total}
+          basePath={basePath}
+          labels={{
+            rowsPerPage: tCommon("rowsPerPage"),
+            page: tCommon("page"),
+            of: tCommon("of"),
+            previous: tCommon("previous"),
+            next: tCommon("next"),
+          }}
+        />
       </div>
     </div>
   )
+}
+
+function buildLocationOrderBy(sort: LocationSort, direction: "asc" | "desc"): Prisma.LocationOrderByWithRelationInput {
+  if (sort === "branch") return { branch: { code: direction } }
+  if (sort === "parent") return { parent: { code: direction } }
+  return { [sort]: direction }
 }

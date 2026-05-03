@@ -1,6 +1,6 @@
 # Developer Handoff — Asset Management System
 
-> **Last Updated:** 2026-05-02
+> **Last Updated:** 2026-05-03
 > **Phase:** Phase 2 Operations (Started)
 > **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports
 
@@ -536,6 +536,7 @@ await logAudit({
 | **Operation print forms** | หลัง checkout/checkin สำเร็จจะ redirect ไปหน้าเอกสารพิมพ์ A4 สำหรับใบส่งมอบ/ใบรับคืน พร้อมข้อมูลทรัพย์สิน เงื่อนไข รายละเอียดธุรกรรม และช่องลายเซ็น |
 | **Operation status mapping** | Checkout ตั้ง asset status เป็น `Checked Out` แบบ exact จาก master status; Check-in อนุญาต next status เฉพาะ `Ready`, `Pending Repair`, `Pending Disposal` ทั้งใน dropdown และ API validation |
 | **Operation evidence upload** | Checkout รองรับรูปก่อนส่งมอบและไฟล์ลายเซ็นผู้รับ; Check-in รองรับรูปหลังรับคืน โดยบันทึกลง `UPLOAD_DIR/operations/...`, สร้าง `attachments`, และเก็บ path ใน transaction record |
+| **Master data scaling** | Employees, Locations, และ Suppliers ใช้ server-side pagination, page size, search count, และ sortable columns ผ่าน helper กลาง `src/lib/master-data-query.ts` |
 
 ---
 
@@ -558,9 +559,9 @@ await logAudit({
 ### Recommended Next Order
 
 1. **Camera scan QA** — browser/device test for camera permission, mobile viewport, and QR label scan reliability
-2. **Master data table scaling** — server-side pagination/sort for high-volume master data modules
-3. **Admin foundation** — user/role/settings pages beyond the current system log viewer
-4. **Maintenance foundation** — repair request/work order flow from Phase 3
+2. **Admin foundation** — user/role/settings pages beyond the current system log viewer
+3. **Maintenance foundation** — repair request/work order flow from Phase 3
+4. **Remaining master data scaling** — optionally apply the same pagination/sort helper to smaller modules (Company/Branch/Department/Category/Brand)
 
 ### Phase 1C Started
 
@@ -596,6 +597,7 @@ await logAudit({
 30. Printable handover and return forms for checkout/checkin transactions, with automatic redirect after successful operation
 31. Stricter checkout/checkin status mapping using canonical master statuses and API-side return status validation
 32. Checkout/checkin evidence upload for before/after photos and receiver signature files, persisted as operation attachments
+33. Server-side pagination and sortable columns for high-volume master data pages: Employees, Locations, Suppliers
 
 ---
 
