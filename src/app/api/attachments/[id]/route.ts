@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
-import { requireAuth, requirePermission } from "@/lib/auth-utils"
+import { hasPermission, requireAuth } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { assertSafeUploadPath } from "@/lib/uploads"
@@ -15,7 +15,6 @@ type AttachmentRouteContext = {
 export async function GET(_request: NextRequest, context: AttachmentRouteContext) {
   try {
     const user = await requireAuth()
-    requirePermission(user, "asset", "view")
 
     const { id } = await context.params
     const attachment = await prisma.attachment.findFirst({
@@ -25,6 +24,7 @@ export async function GET(_request: NextRequest, context: AttachmentRouteContext
     if (!attachment) {
       return NextResponse.json({ error: "Attachment not found" }, { status: 404 })
     }
+    requireAttachmentPermission(user, attachment.module, "view")
 
     const safePath = assertSafeUploadPath(attachment.filePath)
     const file = await readFile(safePath)
@@ -45,7 +45,6 @@ export async function GET(_request: NextRequest, context: AttachmentRouteContext
 export async function DELETE(_request: NextRequest, context: AttachmentRouteContext) {
   try {
     const user = await requireAuth()
-    requirePermission(user, "asset", "edit")
 
     const { id } = await context.params
     const existing = await prisma.attachment.findFirst({
@@ -55,6 +54,7 @@ export async function DELETE(_request: NextRequest, context: AttachmentRouteCont
     if (!existing) {
       return NextResponse.json({ error: "Attachment not found" }, { status: 404 })
     }
+    requireAttachmentPermission(user, existing.module, "edit")
 
     const attachment = await prisma.attachment.update({
       where: { id },
@@ -64,7 +64,7 @@ export async function DELETE(_request: NextRequest, context: AttachmentRouteCont
     await logAudit({
       userId: user.id,
       action: "delete_attachment",
-      module: "asset",
+      module: existing.module,
       recordId: existing.referenceId,
       oldValue: existing,
       newValue: attachment,
@@ -73,5 +73,16 @@ export async function DELETE(_request: NextRequest, context: AttachmentRouteCont
     return NextResponse.json({ success: true })
   } catch (error) {
     return errorResponse(error)
+  }
+}
+
+function requireAttachmentPermission(
+  user: Awaited<ReturnType<typeof requireAuth>>,
+  module: string,
+  action: "view" | "edit"
+) {
+  const permissionModule = module === "maintenance" ? "maintenance" : "asset"
+  if (!hasPermission(user, permissionModule, action)) {
+    throw new Error("Forbidden: insufficient permissions")
   }
 }

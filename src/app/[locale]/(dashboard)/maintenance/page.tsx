@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
@@ -64,13 +65,13 @@ export default async function MaintenancePage({ params }: MaintenancePageProps) 
                 <ColumnHeader>{t("repairCost")}</ColumnHeader>
                 <ColumnHeader>{tCommon("status")}</ColumnHeader>
                 <ColumnHeader>{t("reportedDate")}</ColumnHeader>
-                {canEdit ? <ColumnHeader>{tCommon("actions")}</ColumnHeader> : null}
+                <ColumnHeader>{tCommon("actions")}</ColumnHeader>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {tickets.length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 10 : 9} className="h-32 px-4 text-center text-muted-foreground">
+                  <td colSpan={10} className="h-32 px-4 text-center text-muted-foreground">
                     {tCommon("noData")}
                   </td>
                 </tr>
@@ -111,21 +112,29 @@ export default async function MaintenancePage({ params }: MaintenancePageProps) 
                       )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(ticket.reportedDate)}</td>
-                    {canEdit ? (
-                      <td className="whitespace-nowrap px-4 py-3">
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/${locale}/maintenance/${ticket.id}`}
+                          className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent"
+                        >
+                          {tCommon("view")}
+                        </Link>
                         {ticket.repairStatus === "open" ? (
-                          <MaintenanceTicketCloseButton
-                            ticketId={ticket.id}
-                            repairNo={ticket.repairNo}
-                            statuses={statuses}
-                            defaultRepairCost={ticket.repairCost?.toString()}
-                            defaultWarrantyClaim={ticket.warrantyClaim}
-                          />
+                          canEdit ? (
+                            <MaintenanceTicketCloseButton
+                              ticketId={ticket.id}
+                              repairNo={ticket.repairNo}
+                              statuses={statuses}
+                              defaultRepairCost={ticket.repairCost?.toString()}
+                              defaultWarrantyClaim={ticket.warrantyClaim}
+                            />
+                          ) : null
                         ) : (
-                          <span className="text-muted-foreground">-</span>
+                          canEdit ? <span className="text-muted-foreground">-</span> : null
                         )}
-                      </td>
-                    ) : null}
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}

@@ -17,6 +17,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   await requirePagePermission(locale, "asset", "view")
 
   const t = await getTranslations("asset")
+  const tMaintenance = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
   const asset = await prisma.asset.findFirst({
     where: { id, isActive: true },
@@ -40,6 +41,14 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
       attachments: {
         where: { isActive: true },
         orderBy: { uploadedAt: "desc" },
+      },
+      maintenanceTickets: {
+        where: { isActive: true },
+        orderBy: { reportedDate: "desc" },
+        take: 10,
+        include: {
+          reportedBy: { select: { code: true, fullNameTh: true } },
+        },
       },
     },
   })
@@ -149,6 +158,51 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
                   </li>
                 ))}
               </ol>
+            )}
+          </section>
+
+          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
+              <History className="h-5 w-5 text-primary" />
+              {tMaintenance("maintenanceHistory")}
+            </h2>
+            {asset.maintenanceTickets.length === 0 ? (
+              <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                {tCommon("noData")}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-border text-sm">
+                  <thead className="bg-muted/40">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{tMaintenance("repairNo")}</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{tMaintenance("problem")}</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{tMaintenance("reportedBy")}</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{tCommon("status")}</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{tMaintenance("reportedDate")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {asset.maintenanceTickets.map((ticket) => (
+                      <tr key={ticket.id} className="hover:bg-accent/50">
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <Link href={`/${locale}/maintenance/${ticket.id}`} className="font-medium text-primary hover:underline">
+                            {ticket.repairNo}
+                          </Link>
+                        </td>
+                        <td className="min-w-72 px-4 py-3 text-muted-foreground">{ticket.problem}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                          {ticket.reportedBy.code} - {ticket.reportedBy.fullNameTh}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                          {ticket.repairStatus === "open" ? tMaintenance("statuses.open") : ticket.repairStatus === "closed" ? tMaintenance("statuses.closed") : ticket.repairStatus}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(ticket.reportedDate)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </section>
         </div>
