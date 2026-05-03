@@ -102,6 +102,7 @@ export default async function CheckinPrintPage({ params }: CheckinPrintPageProps
             { label: t("returnBy"), value: checkin.returnBy },
             { label: t("receiveBy"), value: checkin.receiveBy },
             { label: t("conditionAfter"), value: labelOrDash(labels, checkin.conditionAfter) },
+            { label: t("photoAfter"), value: checkin.photoAfter ? t("evidenceAttached") : "-" },
             { label: t("nextStatus"), value: labelOrDash(labels, checkin.nextStatus) },
             { label: t("nextLocation"), value: labelOrDash(labels, checkin.nextLocationId) },
             { label: t("missingAccessories"), value: checkin.missingAccessories },

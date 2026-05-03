@@ -89,6 +89,8 @@ export default async function CheckoutPrintPage({ params }: CheckoutPrintPagePro
             { label: t("checkoutType"), value: t(`type_${checkout.checkoutType}`) },
             { label: t("checkoutTo"), value: destination },
             { label: t("conditionBefore"), value: labelOrDash(labels, checkout.conditionBefore) },
+            { label: t("photoBefore"), value: checkout.photoBefore ? t("evidenceAttached") : "-" },
+            { label: t("receiverSignatureFile"), value: checkout.receiverSignature ? t("evidenceAttached") : "-" },
             { label: tAsset("custodian"), value: checkout.asset.custodian ? `${checkout.asset.custodian.code} - ${checkout.asset.custodian.fullNameTh}` : "-" },
             { label: t("remark"), value: checkout.remark },
           ],

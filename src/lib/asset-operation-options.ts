@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { getCheckinReturnStatuses } from "@/lib/asset-status-flow"
 
 export async function getAssetOperationOptions() {
   const [assets, activeCheckouts, employees, departments, locations, statuses, conditions] = await Promise.all([
@@ -40,11 +41,7 @@ export async function getAssetOperationOptions() {
       select: { id: true, code: true, name: true },
       orderBy: { code: "asc" },
     }),
-    prisma.assetStatus.findMany({
-      where: { isActive: true },
-      select: { id: true, name: true, nameTh: true },
-      orderBy: { sortOrder: "asc" },
-    }),
+    getCheckinReturnStatuses(),
     prisma.assetCondition.findMany({
       where: { isActive: true },
       select: { id: true, name: true, nameTh: true },

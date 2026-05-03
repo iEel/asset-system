@@ -22,7 +22,7 @@
 | **1A: Foundation** | Project setup, Schema, Auth, i18n, Layout | ✅ Complete |
 | **1B: Master Data** | Company, Branch, Dept, Employee, Location, Category, Brand, Supplier | ✅ Complete — Company, Branch, Department, Location, Employee, Category, Brand/Model, Supplier |
 | **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 Mostly Complete — CRUD, tag gen, QR labels, detail, movements, attachments, import/export, duplicate UX |
-| **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | 🟨 Started — Check-out/in, printable handover/return forms, basic reports, system logs, and live KPI dashboard added |
+| **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | 🟨 Started — Check-out/in, photo/signature evidence, printable handover/return forms, stricter checkout/checkin status mapping, basic reports, system logs, and live KPI dashboard added |
 | **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move, audit round generation, QR/manual scan capture, finding review, pending/not-found workflow, approved reconciliation, granular multi-finding review status, and Excel/PDF exports |
 | **Phase 3** | Maintenance, Disposal | ⬜ Planned |
 | **Phase 4** | AD/LDAP, HR sync, Advanced dashboard | ⬜ Planned |
@@ -534,6 +534,8 @@ await logAudit({
 | **Audit finding labels** | หน้า Finding และ Excel export resolve expected/actual value จาก raw IDs เป็น label ของ Location/Employee/Department/Condition เพื่อให้ reviewer อ่านง่ายขึ้น |
 | **Audit pending/not found** | หน้า `/audit/rounds/{id}/pending` แสดง audit items ที่ยัง `pending`; Mark Not Found จะตั้ง item เป็น `reviewed/not_found`, สร้าง finding `not_found` pending investigation และไม่แก้ master asset เป็น Lost |
 | **Operation print forms** | หลัง checkout/checkin สำเร็จจะ redirect ไปหน้าเอกสารพิมพ์ A4 สำหรับใบส่งมอบ/ใบรับคืน พร้อมข้อมูลทรัพย์สิน เงื่อนไข รายละเอียดธุรกรรม และช่องลายเซ็น |
+| **Operation status mapping** | Checkout ตั้ง asset status เป็น `Checked Out` แบบ exact จาก master status; Check-in อนุญาต next status เฉพาะ `Ready`, `Pending Repair`, `Pending Disposal` ทั้งใน dropdown และ API validation |
+| **Operation evidence upload** | Checkout รองรับรูปก่อนส่งมอบและไฟล์ลายเซ็นผู้รับ; Check-in รองรับรูปหลังรับคืน โดยบันทึกลง `UPLOAD_DIR/operations/...`, สร้าง `attachments`, และเก็บ path ใน transaction record |
 
 ---
 
@@ -556,9 +558,9 @@ await logAudit({
 ### Recommended Next Order
 
 1. **Camera scan QA** — browser/device test for camera permission, mobile viewport, and QR label scan reliability
-2. **Operations hardening** — photo/signature upload and stricter status mapping for checkout/checkin
-3. **Master data table scaling** — server-side pagination/sort for high-volume master data modules
-4. **Admin foundation** — user/role/settings pages beyond the current system log viewer
+2. **Master data table scaling** — server-side pagination/sort for high-volume master data modules
+3. **Admin foundation** — user/role/settings pages beyond the current system log viewer
+4. **Maintenance foundation** — repair request/work order flow from Phase 3
 
 ### Phase 1C Started
 
@@ -592,6 +594,8 @@ await logAudit({
 28. Granular Audit Finding review state: item reconciliation remains pending while other findings for the same audit item are still pending, and the finding list now shows item/reconcile status columns
 29. PDF exports for Audit Result and Audit Findings, with UI download actions beside existing Excel exports
 30. Printable handover and return forms for checkout/checkin transactions, with automatic redirect after successful operation
+31. Stricter checkout/checkin status mapping using canonical master statuses and API-side return status validation
+32. Checkout/checkin evidence upload for before/after photos and receiver signature files, persisted as operation attachments
 
 ---
 

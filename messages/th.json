@@ -320,6 +320,9 @@
     "createdAt": "วันที่บันทึก",
     "assetInfo": "ข้อมูลทรัพย์สิน",
     "handoverInfo": "ข้อมูลการส่งมอบ",
+    "photoBefore": "รูปก่อนส่งมอบ",
+    "receiverSignatureFile": "ไฟล์ลายเซ็นผู้รับ",
+    "evidenceAttached": "แนบไฟล์แล้ว",
     "receiver": "ผู้รับทรัพย์สิน",
     "approver": "ผู้อนุมัติ",
     "signatureDate": "ลงชื่อ / วันที่",
@@ -352,6 +355,8 @@
     "createdAt": "วันที่บันทึก",
     "assetInfo": "ข้อมูลทรัพย์สิน",
     "returnInfo": "ข้อมูลการรับคืน",
+    "photoAfter": "รูปหลังรับคืน",
+    "evidenceAttached": "แนบไฟล์แล้ว",
     "approver": "ผู้อนุมัติ",
     "signatureDate": "ลงชื่อ / วันที่"
   },

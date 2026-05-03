@@ -27,6 +27,8 @@ export function CheckoutForm({
   const t = useTranslations("checkout")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
+  const [photoBefore, setPhotoBefore] = useState<File | null>(null)
+  const [receiverSignatureFile, setReceiverSignatureFile] = useState<File | null>(null)
   const [values, setValues] = useState({
     assetId: "",
     checkoutType: "user" as CheckoutType,
@@ -54,23 +56,23 @@ export function CheckoutForm({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSaving(true)
-    const body = {
-      checkoutType: values.checkoutType,
-      custodianId: values.checkoutType === "user" ? values.custodianId : null,
-      departmentId: values.checkoutType === "department" ? values.departmentId : null,
-      locationId: values.checkoutType === "location" ? values.locationId : null,
-      parentAssetId: values.checkoutType === "asset" ? values.parentAssetId : null,
-      checkoutDate: values.checkoutDate,
-      expectedReturnDate: values.expectedReturnDate,
-      conditionBefore: values.conditionBefore,
-      remark: values.remark,
-    }
+    const body = new FormData()
+    body.set("checkoutType", values.checkoutType)
+    body.set("custodianId", values.checkoutType === "user" ? values.custodianId : "")
+    body.set("departmentId", values.checkoutType === "department" ? values.departmentId : "")
+    body.set("locationId", values.checkoutType === "location" ? values.locationId : "")
+    body.set("parentAssetId", values.checkoutType === "asset" ? values.parentAssetId : "")
+    body.set("checkoutDate", values.checkoutDate)
+    body.set("expectedReturnDate", values.expectedReturnDate)
+    body.set("conditionBefore", values.conditionBefore)
+    body.set("remark", values.remark)
+    if (photoBefore) body.set("photoBefore", photoBefore)
+    if (receiverSignatureFile) body.set("receiverSignatureFile", receiverSignatureFile)
 
     try {
       const response = await fetch(`/api/assets/${values.assetId}/checkout`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body,
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
@@ -147,6 +149,12 @@ export function CheckoutForm({
             <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </Field>
         </div>
+        <Field label={t("photoBefore")}>
+          <input type="file" accept="image/*" onChange={(event) => setPhotoBefore(event.target.files?.[0] ?? null)} className="block w-full text-sm text-muted-foreground file:mr-3 file:h-9 file:rounded-md file:border-0 file:bg-primary file:px-3 file:text-sm file:font-medium file:text-white" />
+        </Field>
+        <Field label={t("receiverSignatureFile")}>
+          <input type="file" accept="image/*" onChange={(event) => setReceiverSignatureFile(event.target.files?.[0] ?? null)} className="block w-full text-sm text-muted-foreground file:mr-3 file:h-9 file:rounded-md file:border-0 file:bg-primary file:px-3 file:text-sm file:font-medium file:text-white" />
+        </Field>
         <div className="md:col-span-2 flex justify-end">
           <button type="submit" disabled={saving} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

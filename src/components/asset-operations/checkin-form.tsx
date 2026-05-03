@@ -24,6 +24,7 @@ export function CheckinForm({
   const t = useTranslations("checkin")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
+  const [photoAfter, setPhotoAfter] = useState<File | null>(null)
   const [values, setValues] = useState({
     checkoutId: "",
     returnDate: new Date().toISOString().slice(0, 10),
@@ -50,12 +51,16 @@ export function CheckinForm({
     event.preventDefault()
     if (!selectedCheckout?.assetId) return
     setSaving(true)
+    const body = new FormData()
+    for (const [key, value] of Object.entries(values)) {
+      body.set(key, value)
+    }
+    if (photoAfter) body.set("photoAfter", photoAfter)
 
     try {
       const response = await fetch(`/api/assets/${selectedCheckout.assetId}/checkin`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body,
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
@@ -122,6 +127,11 @@ export function CheckinForm({
           <div className="md:col-span-2">
             <Field label={t("remark")}>
               <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            </Field>
+          </div>
+          <div className="md:col-span-2">
+            <Field label={t("photoAfter")}>
+              <input type="file" accept="image/*" onChange={(event) => setPhotoAfter(event.target.files?.[0] ?? null)} className="block w-full text-sm text-muted-foreground file:mr-3 file:h-9 file:rounded-md file:border-0 file:bg-primary file:px-3 file:text-sm file:font-medium file:text-white" />
             </Field>
           </div>
           <div className="md:col-span-2 flex justify-end">

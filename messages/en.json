@@ -320,6 +320,9 @@
     "createdAt": "Created At",
     "assetInfo": "Asset Information",
     "handoverInfo": "Handover Information",
+    "photoBefore": "Photo Before Handover",
+    "receiverSignatureFile": "Receiver Signature File",
+    "evidenceAttached": "File attached",
     "receiver": "Asset Receiver",
     "approver": "Approver",
     "signatureDate": "Signature / Date",
@@ -352,6 +355,8 @@
     "createdAt": "Created At",
     "assetInfo": "Asset Information",
     "returnInfo": "Return Information",
+    "photoAfter": "Photo After Return",
+    "evidenceAttached": "File attached",
     "approver": "Approver",
     "signatureDate": "Signature / Date"
   },
