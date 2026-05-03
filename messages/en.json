@@ -511,6 +511,33 @@
     "assetRegisterExcel": "Export Asset Register Excel",
     "exportAssetRegister": "Export Asset Register"
   },
+  "maintenancePage": {
+    "title": "Maintenance",
+    "subtitle": "Open repair tickets, track repair work, and keep asset maintenance history",
+    "createTitle": "Open Repair Ticket",
+    "createSubtitle": "Select an asset, describe the problem, reporter, and initial owner",
+    "ticketList": "Latest Repair Tickets",
+    "createSuccess": "Repair ticket created",
+    "repairNo": "Repair No.",
+    "asset": "Asset",
+    "selectAsset": "Select asset",
+    "problem": "Problem",
+    "reportedBy": "Reported By",
+    "reportedDate": "Reported Date",
+    "assignedTo": "Assigned To",
+    "selectEmployee": "Select employee",
+    "unassigned": "Unassigned",
+    "repairType": "Repair Type",
+    "internalRepair": "Internal Repair",
+    "vendorRepair": "Vendor Repair",
+    "vendor": "Vendor",
+    "selectVendor": "Select vendor",
+    "repairCost": "Repair Cost",
+    "warrantyClaim": "Warranty Claim",
+    "statuses": {
+      "open": "Open"
+    }
+  },
   "systemLogPage": {
     "title": "System Log",
     "subtitle": "Review latest 100 audit trail entries",

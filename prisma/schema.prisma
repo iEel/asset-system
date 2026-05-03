@@ -99,10 +99,12 @@ model Employee {
   createdBy        String?    @db.NVarChar(100)
   updatedBy        String?    @db.NVarChar(100)
 
-  custodianAssets Asset[]         @relation("AssetCustodian")
-  checkouts       AssetCheckout[] @relation("CheckoutCustodian")
-  user            User?
-  auditRounds     AuditRound[]
+  custodianAssets            Asset[]             @relation("AssetCustodian")
+  checkouts                  AssetCheckout[]     @relation("CheckoutCustodian")
+  reportedMaintenanceTickets MaintenanceTicket[] @relation("MaintenanceReportedBy")
+  assignedMaintenanceTickets MaintenanceTicket[] @relation("MaintenanceAssignedTo")
+  user                       User?
+  auditRounds                AuditRound[]
 
   @@map("employees")
 }
@@ -271,15 +273,16 @@ model Asset {
   createdBy         String?        @db.NVarChar(100)
   updatedBy         String?        @db.NVarChar(100)
 
-  customFieldValues CustomFieldValue[]
-  movements         AssetMovement[]
-  checkouts         AssetCheckout[]
-  checkins          AssetCheckin[]
-  attachments       Attachment[]
-  auditItems        AuditItem[]
-  auditFindings     AuditFinding[]
-  auditScanHistory  AuditScanHistory[]
-  // Phase 3: maintenance tickets, disposal requests
+  customFieldValues  CustomFieldValue[]
+  movements          AssetMovement[]
+  checkouts          AssetCheckout[]
+  checkins           AssetCheckin[]
+  maintenanceTickets MaintenanceTicket[]
+  attachments        Attachment[]
+  auditItems         AuditItem[]
+  auditFindings      AuditFinding[]
+  auditScanHistory   AuditScanHistory[]
+  // Phase 3: disposal requests
 
   @@map("assets")
 }
@@ -510,6 +513,39 @@ model AuditScanHistory {
 }
 
 // ============================================================
+// Maintenance / Repair
+// ============================================================
+
+model MaintenanceTicket {
+  id            String    @id @default(uuid())
+  repairNo      String    @unique @db.NVarChar(50)
+  assetId       String
+  asset         Asset     @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  problem       String    @db.NVarChar(Max)
+  reportedById  String
+  reportedBy    Employee  @relation("MaintenanceReportedBy", fields: [reportedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reportedDate  DateTime  @default(now())
+  assignedToId  String?
+  assignedTo    Employee? @relation("MaintenanceAssignedTo", fields: [assignedToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  repairType    String    @db.NVarChar(30)
+  vendorId      String?
+  vendor        Supplier? @relation(fields: [vendorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  repairStatus  String    @default("open") @db.NVarChar(30)
+  repairCost    Decimal?  @db.Decimal(18, 2)
+  warrantyClaim Boolean   @default(false)
+  rootCause     String?   @db.NVarChar(Max)
+  resolution    String?   @db.NVarChar(Max)
+  returnDate    DateTime?
+  createdBy     String    @db.NVarChar(100)
+  updatedBy     String?   @db.NVarChar(100)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  isActive      Boolean   @default(true)
+
+  @@map("maintenance_tickets")
+}
+
+// ============================================================
 // Supplier
 // ============================================================
 
@@ -527,7 +563,8 @@ model Supplier {
   createdBy     String?  @db.NVarChar(100)
   updatedBy     String?  @db.NVarChar(100)
 
-  assets Asset[]
+  assets             Asset[]
+  maintenanceTickets MaintenanceTicket[]
 
   @@map("suppliers")
 }

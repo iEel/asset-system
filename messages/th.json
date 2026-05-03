@@ -511,6 +511,33 @@
     "assetRegisterExcel": "ส่งออกทะเบียนทรัพย์สิน Excel",
     "exportAssetRegister": "ส่งออกทะเบียนทรัพย์สิน"
   },
+  "maintenancePage": {
+    "title": "ซ่อมบำรุง",
+    "subtitle": "เปิดใบแจ้งซ่อม ติดตามงานซ่อม และบันทึกประวัติการซ่อมของทรัพย์สิน",
+    "createTitle": "เปิดใบแจ้งซ่อม",
+    "createSubtitle": "เลือกทรัพย์สิน ระบุอาการเสีย ผู้แจ้ง และผู้รับผิดชอบเบื้องต้น",
+    "ticketList": "รายการแจ้งซ่อมล่าสุด",
+    "createSuccess": "สร้างใบแจ้งซ่อมสำเร็จ",
+    "repairNo": "เลขที่ใบซ่อม",
+    "asset": "ทรัพย์สิน",
+    "selectAsset": "เลือกทรัพย์สิน",
+    "problem": "อาการเสีย",
+    "reportedBy": "ผู้แจ้ง",
+    "reportedDate": "วันที่แจ้ง",
+    "assignedTo": "ผู้รับผิดชอบ",
+    "selectEmployee": "เลือกพนักงาน",
+    "unassigned": "ยังไม่มอบหมาย",
+    "repairType": "ประเภทงานซ่อม",
+    "internalRepair": "ซ่อมภายใน",
+    "vendorRepair": "ซ่อมโดยผู้ขาย",
+    "vendor": "ผู้ขาย",
+    "selectVendor": "เลือกผู้ขาย",
+    "repairCost": "ค่าใช้จ่าย",
+    "warrantyClaim": "เคลมประกัน",
+    "statuses": {
+      "open": "เปิดงาน"
+    }
+  },
   "systemLogPage": {
     "title": "ประวัติระบบ",
     "subtitle": "ตรวจสอบ Audit Trail ล่าสุด 100 รายการ",

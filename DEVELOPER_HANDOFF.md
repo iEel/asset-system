@@ -1,8 +1,8 @@
 # Developer Handoff — Asset Management System
 
 > **Last Updated:** 2026-05-03
-> **Phase:** Phase 2 Operations (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports
+> **Phase:** Phase 3 Maintenance (Started)
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports, 🟨 Phase 3 maintenance foundation started
 
 ---
 
@@ -24,7 +24,7 @@
 | **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 Mostly Complete — CRUD, tag gen, QR labels, detail, movements, attachments, import/export, duplicate UX |
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | 🟨 Started — Check-out/in, photo/signature evidence, printable handover/return forms, stricter checkout/checkin status mapping, basic reports, system logs, and live KPI dashboard added |
 | **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move, audit round generation, QR/manual scan capture, finding review, pending/not-found workflow, approved reconciliation, granular multi-finding review status, and Excel/PDF exports |
-| **Phase 3** | Maintenance, Disposal | ⬜ Planned |
+| **Phase 3** | Maintenance, Disposal | 🟨 Started — maintenance ticket schema, API, list, and create form added |
 | **Phase 4** | AD/LDAP, HR sync, Advanced dashboard | ⬜ Planned |
 
 ---
@@ -79,7 +79,8 @@ d:\Antigravity\asset-system\
 │   │   │   ├── brands/                     # Brand CRUD API
 │   │   │   ├── models/                     # Asset Model CRUD API
 │   │   │   ├── suppliers/                  # Supplier CRUD API
-│   │   │   └── assets/                     # Asset Register CRUD + export/template API
+│   │   │   ├── assets/                     # Asset Register CRUD + export/template API
+│   │   │   └── maintenance-tickets/        # Maintenance ticket list/create API
 │   │   └── [locale]/
 │   │       ├── layout.tsx                  # i18n provider + Sonner
 │   │       ├── page.tsx                    # Redirect → /dashboard
@@ -87,6 +88,7 @@ d:\Antigravity\asset-system\
 │   │       ├── (dashboard)/
 │   │           ├── layout.tsx              # Sidebar + Topbar
 │   │           ├── dashboard/page.tsx      # KPI cards
+│   │           ├── maintenance/page.tsx    # Maintenance ticket list/create
 │   │           ├── assets/                 # Asset Register list / detail / new / edit
 │   │           └── master-data/
 │   │               ├── companies/          # List / new / edit
@@ -176,6 +178,7 @@ Connection settings อยู่ใน `.env`:
 - Prisma schema pushed แล้ว
 - Seed data รันแล้ว
 - Runtime verified against `WIN-I284TKLAMMD\ALPHA / asset_management`
+- Maintenance schema pushed; `maintenance_tickets` table exists on SQL Server `alpha`
 
 ### Schema (25+ tables)
 
@@ -187,6 +190,7 @@ Connection settings อยู่ใน `.env`:
 | **Reference Data** | `asset_statuses`, `asset_conditions` |
 | **Asset Register** | `assets`, `custom_field_definitions`, `custom_field_values` |
 | **Transactions** | `asset_checkouts`, `asset_checkins`, `asset_movements` |
+| **Maintenance** | `maintenance_tickets` |
 | **Supplier** | `suppliers` |
 | **Files** | `attachments` |
 | **Auth** | `users`, `roles`, `permissions`, `user_roles`, `role_permissions` |
@@ -394,6 +398,8 @@ WEB_PORT=3000
 | Check-in Return Print | `http://localhost:3000/th/asset-management/checkins/{checkinId}` |
 | Transfer Asset | `http://localhost:3000/th/asset-management/transfer` |
 | Bulk Move Location | `http://localhost:3000/th/asset-management/bulk-move` |
+| Maintenance Tickets | `http://localhost:3000/th/maintenance` |
+| Maintenance Ticket API | `GET/POST /api/maintenance-tickets` |
 | Audit Rounds | `http://localhost:3000/th/audit/rounds` |
 | Create Audit Round | `http://localhost:3000/th/audit/rounds/new` |
 | Audit Scan Capture | `http://localhost:3000/th/audit/rounds/{auditRoundId}/scan` |
@@ -543,6 +549,7 @@ await logAudit({
 | **Admin users foundation** | เพิ่มหน้า `/admin/users` สำหรับดูบัญชีผู้ใช้ บทบาท พนักงานที่ผูก สถานะ และ last login พร้อม search/pagination/sort และ RBAC `user:view` |
 | **Admin roles foundation** | เพิ่มหน้า `/admin/roles` สำหรับดู role summary และ permission matrix แยก module/action พร้อม RBAC `role:view` |
 | **Admin settings foundation** | เพิ่มหน้า `/admin/settings` และ API `/api/admin/settings` สำหรับแก้ `system_settings` พร้อม RBAC `setting:view/edit` และ audit log |
+| **Maintenance foundation** | เพิ่ม schema/table `maintenance_tickets`, API `GET/POST /api/maintenance-tickets`, หน้า `/maintenance`, create ticket form, audit log, movement log, และอัปเดต asset เป็น `Pending Repair` เมื่อเปิดใบซ่อม |
 
 ---
 
@@ -565,9 +572,9 @@ await logAudit({
 ### Recommended Next Order
 
 1. **Camera scan QA** — browser/device test for camera permission, mobile viewport, and QR label scan reliability
-2. **Maintenance foundation** — repair request/work order flow from Phase 3
+2. **Maintenance close flow** — update/close repair ticket, root cause, resolution, return date, status restore, and attachments
 3. **Admin edit flows** — user create/edit and role permission assignment screens
-4. **Remaining master data scaling** — optionally apply the same pagination/sort helper to smaller modules (Company/Branch/Department/Category/Brand)
+4. **Disposal foundation** — disposal request schema and approval workflow
 
 ### Phase 1C Started
 
@@ -607,6 +614,7 @@ await logAudit({
 34. System Settings admin page/API for editing seeded `system_settings` with audit logging
 35. User Management admin list page with search, pagination, sortable columns, role chips, status, employee link, and last login visibility
 36. Roles & Permissions admin matrix page with role summary counts and module/action permission visibility
+37. Maintenance ticket foundation with Prisma schema/table, list/create page, GET/POST API, audit log, movement log, and automatic Pending Repair asset status update
 
 ---
 
