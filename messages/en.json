@@ -534,8 +534,16 @@
     "selectVendor": "Select vendor",
     "repairCost": "Repair Cost",
     "warrantyClaim": "Warranty Claim",
+    "closeTicket": "Close Ticket",
+    "closeTitle": "Close Repair Ticket",
+    "closeSuccess": "Repair ticket closed",
+    "rootCause": "Root Cause",
+    "resolution": "Resolution",
+    "returnDate": "Return Date",
+    "nextStatus": "Asset Status After Repair",
     "statuses": {
-      "open": "Open"
+      "open": "Open",
+      "closed": "Closed"
     }
   },
   "systemLogPage": {

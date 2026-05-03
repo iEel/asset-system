@@ -35,3 +35,14 @@ export const maintenanceTicketSchema = z
   })
 
 export type MaintenanceTicketInput = z.infer<typeof maintenanceTicketSchema>
+
+export const maintenanceTicketCloseSchema = z.object({
+  repairCost: optionalDecimal,
+  warrantyClaim: z.coerce.boolean().optional().default(false),
+  rootCause: z.string().trim().min(1).max(4000),
+  resolution: z.string().trim().min(1).max(4000),
+  returnDate: z.coerce.date(),
+  nextStatusId: z.string().trim().min(1),
+})
+
+export type MaintenanceTicketCloseInput = z.infer<typeof maintenanceTicketCloseSchema>

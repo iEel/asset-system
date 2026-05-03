@@ -6,6 +6,7 @@ import { getMaintenanceOptions } from "@/lib/maintenance-options"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
 import { MaintenanceTicketForm } from "@/components/maintenance/maintenance-ticket-form"
+import { MaintenanceTicketCloseButton } from "@/components/maintenance/maintenance-ticket-close-button"
 
 type MaintenancePageProps = {
   params: Promise<{ locale: string }>
@@ -15,6 +16,7 @@ export default async function MaintenancePage({ params }: MaintenancePageProps) 
   const { locale } = await params
   const user = await requirePagePermission(locale, "maintenance", "view")
   const canCreate = hasPermission(user, "maintenance", "create")
+  const canEdit = hasPermission(user, "maintenance", "edit")
   const t = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
 
@@ -30,8 +32,9 @@ export default async function MaintenancePage({ params }: MaintenancePageProps) 
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
-    canCreate ? getMaintenanceOptions() : Promise.resolve(null),
+    canCreate || canEdit ? getMaintenanceOptions() : Promise.resolve(null),
   ])
+  const statuses = options?.statuses ?? []
 
   return (
     <div className="space-y-6">
@@ -61,12 +64,13 @@ export default async function MaintenancePage({ params }: MaintenancePageProps) 
                 <ColumnHeader>{t("repairCost")}</ColumnHeader>
                 <ColumnHeader>{tCommon("status")}</ColumnHeader>
                 <ColumnHeader>{t("reportedDate")}</ColumnHeader>
+                {canEdit ? <ColumnHeader>{tCommon("actions")}</ColumnHeader> : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {tickets.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="h-32 px-4 text-center text-muted-foreground">
+                  <td colSpan={canEdit ? 10 : 9} className="h-32 px-4 text-center text-muted-foreground">
                     {tCommon("noData")}
                   </td>
                 </tr>
@@ -96,6 +100,10 @@ export default async function MaintenancePage({ params }: MaintenancePageProps) 
                     <td className="whitespace-nowrap px-4 py-3">
                       {ticket.repairStatus === "open" ? (
                         <ActiveBadge label={t("statuses.open")} />
+                      ) : ticket.repairStatus === "closed" ? (
+                        <span className="inline-flex rounded-full bg-info/10 px-2 py-1 text-xs font-medium text-info">
+                          {t("statuses.closed")}
+                        </span>
                       ) : (
                         <span className="inline-flex rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
                           {ticket.repairStatus}
@@ -103,6 +111,21 @@ export default async function MaintenancePage({ params }: MaintenancePageProps) 
                       )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(ticket.reportedDate)}</td>
+                    {canEdit ? (
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {ticket.repairStatus === "open" ? (
+                          <MaintenanceTicketCloseButton
+                            ticketId={ticket.id}
+                            repairNo={ticket.repairNo}
+                            statuses={statuses}
+                            defaultRepairCost={ticket.repairCost?.toString()}
+                            defaultWarrantyClaim={ticket.warrantyClaim}
+                          />
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                    ) : null}
                   </tr>
                 ))
               )}

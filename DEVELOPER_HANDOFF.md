@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-05-03
 > **Phase:** Phase 3 Maintenance (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports, 🟨 Phase 3 maintenance foundation started
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports, 🟨 Phase 3 maintenance ticket create/close flow started
 
 ---
 
@@ -24,7 +24,7 @@
 | **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 Mostly Complete — CRUD, tag gen, QR labels, detail, movements, attachments, import/export, duplicate UX |
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | 🟨 Started — Check-out/in, photo/signature evidence, printable handover/return forms, stricter checkout/checkin status mapping, basic reports, system logs, and live KPI dashboard added |
 | **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move, audit round generation, QR/manual scan capture, finding review, pending/not-found workflow, approved reconciliation, granular multi-finding review status, and Excel/PDF exports |
-| **Phase 3** | Maintenance, Disposal | 🟨 Started — maintenance ticket schema, API, list, and create form added |
+| **Phase 3** | Maintenance, Disposal | 🟨 Started — maintenance ticket schema, API, list, create form, and close flow added |
 | **Phase 4** | AD/LDAP, HR sync, Advanced dashboard | ⬜ Planned |
 
 ---
@@ -400,6 +400,7 @@ WEB_PORT=3000
 | Bulk Move Location | `http://localhost:3000/th/asset-management/bulk-move` |
 | Maintenance Tickets | `http://localhost:3000/th/maintenance` |
 | Maintenance Ticket API | `GET/POST /api/maintenance-tickets` |
+| Maintenance Ticket Close API | `PATCH /api/maintenance-tickets/{ticketId}` |
 | Audit Rounds | `http://localhost:3000/th/audit/rounds` |
 | Create Audit Round | `http://localhost:3000/th/audit/rounds/new` |
 | Audit Scan Capture | `http://localhost:3000/th/audit/rounds/{auditRoundId}/scan` |
@@ -550,6 +551,7 @@ await logAudit({
 | **Admin roles foundation** | เพิ่มหน้า `/admin/roles` สำหรับดู role summary และ permission matrix แยก module/action พร้อม RBAC `role:view` |
 | **Admin settings foundation** | เพิ่มหน้า `/admin/settings` และ API `/api/admin/settings` สำหรับแก้ `system_settings` พร้อม RBAC `setting:view/edit` และ audit log |
 | **Maintenance foundation** | เพิ่ม schema/table `maintenance_tickets`, API `GET/POST /api/maintenance-tickets`, หน้า `/maintenance`, create ticket form, audit log, movement log, และอัปเดต asset เป็น `Pending Repair` เมื่อเปิดใบซ่อม |
+| **Maintenance close flow** | เพิ่ม `PATCH /api/maintenance-tickets/{id}` และปุ่มปิดงานในหน้า `/maintenance` สำหรับบันทึก root cause, resolution, return date, repair cost, warranty claim, อัปเดต ticket เป็น closed และเลือกสถานะ asset หลังซ่อม |
 
 ---
 
@@ -572,7 +574,7 @@ await logAudit({
 ### Recommended Next Order
 
 1. **Camera scan QA** — browser/device test for camera permission, mobile viewport, and QR label scan reliability
-2. **Maintenance close flow** — update/close repair ticket, root cause, resolution, return date, status restore, and attachments
+2. **Maintenance attachments/detail** — repair attachments, ticket detail page, and asset-level maintenance history
 3. **Admin edit flows** — user create/edit and role permission assignment screens
 4. **Disposal foundation** — disposal request schema and approval workflow
 
@@ -615,6 +617,7 @@ await logAudit({
 35. User Management admin list page with search, pagination, sortable columns, role chips, status, employee link, and last login visibility
 36. Roles & Permissions admin matrix page with role summary counts and module/action permission visibility
 37. Maintenance ticket foundation with Prisma schema/table, list/create page, GET/POST API, audit log, movement log, and automatic Pending Repair asset status update
+38. Maintenance ticket close flow with PATCH API, close modal, root cause/resolution/return date capture, movement/audit logging, and selectable post-repair asset status
 
 ---
 

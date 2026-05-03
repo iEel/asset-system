@@ -534,8 +534,16 @@
     "selectVendor": "เลือกผู้ขาย",
     "repairCost": "ค่าใช้จ่าย",
     "warrantyClaim": "เคลมประกัน",
+    "closeTicket": "ปิดงานซ่อม",
+    "closeTitle": "ปิดใบแจ้งซ่อม",
+    "closeSuccess": "ปิดงานซ่อมสำเร็จ",
+    "rootCause": "สาเหตุ",
+    "resolution": "วิธีแก้ไข",
+    "returnDate": "วันที่ส่งคืน",
+    "nextStatus": "สถานะทรัพย์สินหลังซ่อม",
     "statuses": {
-      "open": "เปิดงาน"
+      "open": "เปิดงาน",
+      "closed": "ปิดงาน"
     }
   },
   "systemLogPage": {
