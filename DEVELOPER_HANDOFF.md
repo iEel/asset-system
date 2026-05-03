@@ -405,6 +405,7 @@ WEB_PORT=3000
 | Audit Finding PDF Export | `GET /api/audit-findings/export-pdf?status=pending` |
 | Reports | `http://localhost:3000/th/reports` |
 | System Log | `http://localhost:3000/th/admin/logs` |
+| System Settings | `http://localhost:3000/th/admin/settings` |
 
 ---
 
@@ -537,6 +538,7 @@ await logAudit({
 | **Operation status mapping** | Checkout ตั้ง asset status เป็น `Checked Out` แบบ exact จาก master status; Check-in อนุญาต next status เฉพาะ `Ready`, `Pending Repair`, `Pending Disposal` ทั้งใน dropdown และ API validation |
 | **Operation evidence upload** | Checkout รองรับรูปก่อนส่งมอบและไฟล์ลายเซ็นผู้รับ; Check-in รองรับรูปหลังรับคืน โดยบันทึกลง `UPLOAD_DIR/operations/...`, สร้าง `attachments`, และเก็บ path ใน transaction record |
 | **Master data scaling** | Employees, Locations, และ Suppliers ใช้ server-side pagination, page size, search count, และ sortable columns ผ่าน helper กลาง `src/lib/master-data-query.ts` |
+| **Admin settings foundation** | เพิ่มหน้า `/admin/settings` และ API `/api/admin/settings` สำหรับแก้ `system_settings` พร้อม RBAC `setting:view/edit` และ audit log |
 
 ---
 
@@ -559,7 +561,7 @@ await logAudit({
 ### Recommended Next Order
 
 1. **Camera scan QA** — browser/device test for camera permission, mobile viewport, and QR label scan reliability
-2. **Admin foundation** — user/role/settings pages beyond the current system log viewer
+2. **Admin foundation** — user/role pages beyond settings and system log
 3. **Maintenance foundation** — repair request/work order flow from Phase 3
 4. **Remaining master data scaling** — optionally apply the same pagination/sort helper to smaller modules (Company/Branch/Department/Category/Brand)
 
@@ -598,6 +600,7 @@ await logAudit({
 31. Stricter checkout/checkin status mapping using canonical master statuses and API-side return status validation
 32. Checkout/checkin evidence upload for before/after photos and receiver signature files, persisted as operation attachments
 33. Server-side pagination and sortable columns for high-volume master data pages: Employees, Locations, Suppliers
+34. System Settings admin page/API for editing seeded `system_settings` with audit logging
 
 ---
 

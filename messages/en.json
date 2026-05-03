@@ -521,5 +521,13 @@
     "record": "Record",
     "remark": "Remark",
     "filter": "Filter"
+  },
+  "systemSettingsPage": {
+    "title": "System Settings",
+    "subtitle": "Manage baseline system values such as asset numbering, company name, and currency",
+    "key": "Key",
+    "value": "Value",
+    "description": "Description",
+    "savedSuccess": "System settings saved"
   }
 }
