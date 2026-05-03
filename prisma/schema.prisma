@@ -103,6 +103,8 @@ model Employee {
   checkouts                  AssetCheckout[]     @relation("CheckoutCustodian")
   reportedMaintenanceTickets MaintenanceTicket[] @relation("MaintenanceReportedBy")
   assignedMaintenanceTickets MaintenanceTicket[] @relation("MaintenanceAssignedTo")
+  requestedDisposals         DisposalRequest[]   @relation("DisposalRequestedBy")
+  approvedDisposals          DisposalRequest[]   @relation("DisposalApprover")
   user                       User?
   auditRounds                AuditRound[]
 
@@ -278,11 +280,11 @@ model Asset {
   checkouts          AssetCheckout[]
   checkins           AssetCheckin[]
   maintenanceTickets MaintenanceTicket[]
+  disposalRequests   DisposalRequest[]
   attachments        Attachment[]
   auditItems         AuditItem[]
   auditFindings      AuditFinding[]
   auditScanHistory   AuditScanHistory[]
-  // Phase 3: disposal requests
 
   @@map("assets")
 }
@@ -543,6 +545,32 @@ model MaintenanceTicket {
   isActive      Boolean   @default(true)
 
   @@map("maintenance_tickets")
+}
+
+model DisposalRequest {
+  id             String    @id @default(uuid())
+  disposalNo     String    @unique @db.NVarChar(50)
+  assetId        String
+  asset          Asset     @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  disposalType   String    @db.NVarChar(30)
+  reason         String    @db.NVarChar(Max)
+  requestedById  String
+  requestedBy    Employee  @relation("DisposalRequestedBy", fields: [requestedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  requestDate    DateTime  @default(now())
+  approverId     String?
+  approver       Employee? @relation("DisposalApprover", fields: [approverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  requestStatus  String    @default("pending") @db.NVarChar(30)
+  saleValue      Decimal?  @db.Decimal(18, 2)
+  salvageValue   Decimal?  @db.Decimal(18, 2)
+  approvalRemark String?   @db.NVarChar(Max)
+  approvedAt     DateTime?
+  createdBy      String    @db.NVarChar(100)
+  updatedBy      String?   @db.NVarChar(100)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  isActive       Boolean   @default(true)
+
+  @@map("disposal_requests")
 }
 
 // ============================================================

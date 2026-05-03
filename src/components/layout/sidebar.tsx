@@ -17,6 +17,7 @@ import {
   LogOut,
   LogIn,
   Wrench,
+  Trash2,
   Building2,
   GitBranch,
   Users,
@@ -91,6 +92,11 @@ export function Sidebar({
       labelKey: "maintenance",
       href: `/${locale}/maintenance`,
       icon: <Wrench size={20} />,
+    },
+    {
+      labelKey: "disposal",
+      href: `/${locale}/disposal`,
+      icon: <Trash2 size={20} />,
     },
     {
       labelKey: "audit",

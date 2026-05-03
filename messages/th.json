@@ -565,6 +565,37 @@
       "closed": "ปิดงาน"
     }
   },
+  "disposalPage": {
+    "title": "ตัดจำหน่าย",
+    "subtitle": "สร้างคำขอตัดจำหน่าย ขาย บริจาค ทำลาย หรือบันทึกสูญหาย",
+    "createTitle": "สร้างคำขอตัดจำหน่าย",
+    "createSubtitle": "เลือกทรัพย์สิน ระบุเหตุผล ผู้ขอ ผู้อนุมัติ และมูลค่าที่เกี่ยวข้อง",
+    "requestList": "รายการคำขอตัดจำหน่ายล่าสุด",
+    "createSuccess": "สร้างคำขอตัดจำหน่ายสำเร็จ",
+    "disposalNo": "เลขที่คำขอ",
+    "asset": "ทรัพย์สิน",
+    "selectAsset": "เลือกทรัพย์สิน",
+    "disposalType": "ประเภทการตัดจำหน่าย",
+    "reason": "เหตุผล",
+    "requestedBy": "ผู้ขอ",
+    "requestDate": "วันที่ขอ",
+    "approver": "ผู้อนุมัติ",
+    "selectEmployee": "เลือกพนักงาน",
+    "noApprover": "ยังไม่ระบุผู้อนุมัติ",
+    "saleValue": "มูลค่าขาย",
+    "salvageValue": "มูลค่าซาก",
+    "value": "มูลค่า",
+    "types": {
+      "sell": "ขาย",
+      "donate": "บริจาค",
+      "destroy": "ทำลาย",
+      "lost": "สูญหาย",
+      "dispose": "ตัดจำหน่าย"
+    },
+    "statuses": {
+      "pending": "รออนุมัติ"
+    }
+  },
   "systemLogPage": {
     "title": "ประวัติระบบ",
     "subtitle": "ตรวจสอบ Audit Trail ล่าสุด 100 รายการ",

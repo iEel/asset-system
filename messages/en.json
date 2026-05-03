@@ -565,6 +565,37 @@
       "closed": "Closed"
     }
   },
+  "disposalPage": {
+    "title": "Disposal",
+    "subtitle": "Create disposal, sale, donation, destruction, or lost asset requests",
+    "createTitle": "Create Disposal Request",
+    "createSubtitle": "Select an asset, reason, requester, approver, and related values",
+    "requestList": "Latest Disposal Requests",
+    "createSuccess": "Disposal request created",
+    "disposalNo": "Request No.",
+    "asset": "Asset",
+    "selectAsset": "Select asset",
+    "disposalType": "Disposal Type",
+    "reason": "Reason",
+    "requestedBy": "Requested By",
+    "requestDate": "Request Date",
+    "approver": "Approver",
+    "selectEmployee": "Select employee",
+    "noApprover": "No approver",
+    "saleValue": "Sale Value",
+    "salvageValue": "Salvage Value",
+    "value": "Value",
+    "types": {
+      "sell": "Sell",
+      "donate": "Donate",
+      "destroy": "Destroy",
+      "lost": "Lost",
+      "dispose": "Dispose"
+    },
+    "statuses": {
+      "pending": "Pending Approval"
+    }
+  },
   "systemLogPage": {
     "title": "System Log",
     "subtitle": "Review latest 100 audit trail entries",
