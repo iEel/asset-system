@@ -579,10 +579,16 @@
   "adminUsersPage": {
     "title": "User Management",
     "subtitle": "Review user accounts, roles, status, and recent sign-in activity",
+    "createTitle": "Create User",
+    "editTitle": "Edit User",
+    "formSubtitle": "Configure sign-in account, linked employee, status, and assigned roles",
     "username": "Username",
+    "password": "Password",
+    "newPassword": "New Password",
     "displayName": "Display Name",
     "email": "Email",
     "employee": "Employee",
+    "noEmployee": "No linked employee",
     "roles": "Roles",
     "lastLoginAt": "Last Login"
   },

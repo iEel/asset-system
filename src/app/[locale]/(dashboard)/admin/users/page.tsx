@@ -1,3 +1,5 @@
+import Link from "next/link"
+import { Edit, Plus } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
@@ -94,12 +96,13 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
                 <ColumnHeader>{t("roles")}</ColumnHeader>
                 <ColumnHeader>{tCommon("status")}</ColumnHeader>
                 <SortableColumnHeader field="lastLoginAt" current={listState} basePath={basePath}>{t("lastLoginAt")}</SortableColumnHeader>
+                <ColumnHeader>{tCommon("actions")}</ColumnHeader>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="h-32 px-4 text-center text-muted-foreground">
+                  <td colSpan={8} className="h-32 px-4 text-center text-muted-foreground">
                     {tCommon("noData")}
                   </td>
                 </tr>
@@ -135,6 +138,15 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
                       )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(user.lastLoginAt)}</td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <Link
+                        href={`${basePath}/${user.id}/edit`}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent"
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                        {tCommon("edit")}
+                      </Link>
+                    </td>
                   </tr>
                 ))
               )}
@@ -154,6 +166,14 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
           }}
         />
       </section>
+
+      <Link
+        href={`${basePath}/new`}
+        className="fixed bottom-6 right-6 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-white shadow-lg transition-colors hover:bg-primary/90"
+      >
+        <Plus className="h-4 w-4" />
+        {t("createTitle")}
+      </Link>
     </div>
   )
 }
