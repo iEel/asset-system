@@ -522,6 +522,16 @@
     "remark": "Remark",
     "filter": "Filter"
   },
+  "adminUsersPage": {
+    "title": "User Management",
+    "subtitle": "Review user accounts, roles, status, and recent sign-in activity",
+    "username": "Username",
+    "displayName": "Display Name",
+    "email": "Email",
+    "employee": "Employee",
+    "roles": "Roles",
+    "lastLoginAt": "Last Login"
+  },
   "systemSettingsPage": {
     "title": "System Settings",
     "subtitle": "Manage baseline system values such as asset numbering, company name, and currency",

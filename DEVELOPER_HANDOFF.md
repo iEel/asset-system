@@ -405,6 +405,7 @@ WEB_PORT=3000
 | Audit Finding PDF Export | `GET /api/audit-findings/export-pdf?status=pending` |
 | Reports | `http://localhost:3000/th/reports` |
 | System Log | `http://localhost:3000/th/admin/logs` |
+| User Management | `http://localhost:3000/th/admin/users` |
 | System Settings | `http://localhost:3000/th/admin/settings` |
 
 ---
@@ -538,6 +539,7 @@ await logAudit({
 | **Operation status mapping** | Checkout ตั้ง asset status เป็น `Checked Out` แบบ exact จาก master status; Check-in อนุญาต next status เฉพาะ `Ready`, `Pending Repair`, `Pending Disposal` ทั้งใน dropdown และ API validation |
 | **Operation evidence upload** | Checkout รองรับรูปก่อนส่งมอบและไฟล์ลายเซ็นผู้รับ; Check-in รองรับรูปหลังรับคืน โดยบันทึกลง `UPLOAD_DIR/operations/...`, สร้าง `attachments`, และเก็บ path ใน transaction record |
 | **Master data scaling** | Employees, Locations, และ Suppliers ใช้ server-side pagination, page size, search count, และ sortable columns ผ่าน helper กลาง `src/lib/master-data-query.ts` |
+| **Admin users foundation** | เพิ่มหน้า `/admin/users` สำหรับดูบัญชีผู้ใช้ บทบาท พนักงานที่ผูก สถานะ และ last login พร้อม search/pagination/sort และ RBAC `user:view` |
 | **Admin settings foundation** | เพิ่มหน้า `/admin/settings` และ API `/api/admin/settings` สำหรับแก้ `system_settings` พร้อม RBAC `setting:view/edit` และ audit log |
 
 ---
@@ -561,7 +563,7 @@ await logAudit({
 ### Recommended Next Order
 
 1. **Camera scan QA** — browser/device test for camera permission, mobile viewport, and QR label scan reliability
-2. **Admin foundation** — user/role pages beyond settings and system log
+2. **Admin roles foundation** — role/permission matrix page beyond settings, logs, and user list
 3. **Maintenance foundation** — repair request/work order flow from Phase 3
 4. **Remaining master data scaling** — optionally apply the same pagination/sort helper to smaller modules (Company/Branch/Department/Category/Brand)
 
@@ -601,6 +603,7 @@ await logAudit({
 32. Checkout/checkin evidence upload for before/after photos and receiver signature files, persisted as operation attachments
 33. Server-side pagination and sortable columns for high-volume master data pages: Employees, Locations, Suppliers
 34. System Settings admin page/API for editing seeded `system_settings` with audit logging
+35. User Management admin list page with search, pagination, sortable columns, role chips, status, employee link, and last login visibility
 
 ---
 
