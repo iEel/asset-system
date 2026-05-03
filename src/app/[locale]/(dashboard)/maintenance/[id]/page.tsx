@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ArrowLeft, CheckCircle2, FileText, History } from "lucide-react"
+import { ArrowLeft, CheckCircle2, FileText, History, Printer } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
@@ -62,7 +62,16 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
           <h1 className="text-2xl font-bold text-foreground">{ticket.repairNo}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{ticket.asset.assetTag} - {ticket.asset.name}</p>
         </div>
-        <StatusBadge status={ticket.repairStatus} openLabel={t("statuses.open")} closedLabel={t("statuses.closed")} />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Link
+            href={`/${locale}/maintenance/${ticket.id}/print`}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            <Printer className="h-4 w-4" />
+            {t("printRepair")}
+          </Link>
+          <StatusBadge status={ticket.repairStatus} openLabel={t("statuses.open")} closedLabel={t("statuses.closed")} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">

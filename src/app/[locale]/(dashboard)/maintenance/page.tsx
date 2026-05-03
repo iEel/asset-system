@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { getTranslations } from "next-intl/server"
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -11,19 +12,43 @@ import { MaintenanceTicketCloseButton } from "@/components/maintenance/maintenan
 
 type MaintenancePageProps = {
   params: Promise<{ locale: string }>
+  searchParams: Promise<{ search?: string; status?: string; repairType?: string }>
 }
 
-export default async function MaintenancePage({ params }: MaintenancePageProps) {
+export default async function MaintenancePage({ params, searchParams }: MaintenancePageProps) {
   const { locale } = await params
+  const filters = await searchParams
   const user = await requirePagePermission(locale, "maintenance", "view")
   const canCreate = hasPermission(user, "maintenance", "create")
   const canEdit = hasPermission(user, "maintenance", "edit")
   const t = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
 
+  const searchText = filters.search?.trim() ?? ""
+  const statusFilter = filters.status === "open" || filters.status === "closed" ? filters.status : ""
+  const repairTypeFilter = filters.repairType === "internal" || filters.repairType === "vendor" ? filters.repairType : ""
+  const where: Prisma.MaintenanceTicketWhereInput = {
+    isActive: true,
+    ...(statusFilter ? { repairStatus: statusFilter } : {}),
+    ...(repairTypeFilter ? { repairType: repairTypeFilter } : {}),
+    ...(searchText
+      ? {
+          OR: [
+            { repairNo: { contains: searchText } },
+            { problem: { contains: searchText } },
+            { asset: { assetTag: { contains: searchText } } },
+            { asset: { name: { contains: searchText } } },
+            { reportedBy: { fullNameTh: { contains: searchText } } },
+            { assignedTo: { fullNameTh: { contains: searchText } } },
+            { vendor: { name: { contains: searchText } } },
+          ],
+        }
+      : {}),
+  }
+
   const [tickets, options] = await Promise.all([
     prisma.maintenanceTicket.findMany({
-      where: { isActive: true },
+      where,
       include: {
         asset: { select: { assetTag: true, name: true } },
         reportedBy: { select: { code: true, fullNameTh: true } },
@@ -47,6 +72,51 @@ export default async function MaintenancePage({ params }: MaintenancePageProps) 
       {canCreate && options ? (
         <MaintenanceTicketForm assets={options.assets} employees={options.employees} suppliers={options.suppliers} />
       ) : null}
+
+      <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <form className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px_180px_auto]" action={`/${locale}/maintenance`}>
+          <label>
+            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("search")}</span>
+            <input
+              type="search"
+              name="search"
+              defaultValue={searchText}
+              placeholder={t("searchPlaceholder")}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </label>
+          <label>
+            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("status")}</span>
+            <select
+              name="status"
+              defaultValue={statusFilter}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            >
+              <option value="">{tCommon("all")}</option>
+              <option value="open">{t("statuses.open")}</option>
+              <option value="closed">{t("statuses.closed")}</option>
+            </select>
+          </label>
+          <label>
+            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("repairType")}</span>
+            <select
+              name="repairType"
+              defaultValue={repairTypeFilter}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            >
+              <option value="">{tCommon("all")}</option>
+              <option value="internal">{t("internalRepair")}</option>
+              <option value="vendor">{t("vendorRepair")}</option>
+            </select>
+          </label>
+          <button
+            type="submit"
+            className="h-10 self-end rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+          >
+            {t("filter")}
+          </button>
+        </form>
+      </section>
 
       <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-4 py-3">
@@ -119,6 +189,12 @@ export default async function MaintenancePage({ params }: MaintenancePageProps) 
                           className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent"
                         >
                           {tCommon("view")}
+                        </Link>
+                        <Link
+                          href={`/${locale}/maintenance/${ticket.id}/print`}
+                          className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent"
+                        >
+                          {t("printRepair")}
                         </Link>
                         {ticket.repairStatus === "open" ? (
                           canEdit ? (
