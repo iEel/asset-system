@@ -92,8 +92,8 @@ export function OperationDocumentPrint({
               <section key={section.title} className="break-inside-avoid">
                 <h2 className="mb-2 text-sm font-bold text-slate-950">{section.title}</h2>
                 <div className="grid grid-cols-1 border border-slate-300 sm:grid-cols-2">
-                  {section.fields.map((field) => (
-                    <div key={`${section.title}-${field.label}`} className="grid grid-cols-[38%_1fr] border-b border-r border-slate-200 last:border-b-0">
+                  {section.fields.map((field, index) => (
+                    <div key={`${section.title}-${field.label}-${index}`} className="grid grid-cols-[38%_1fr] border-b border-r border-slate-200 last:border-b-0">
                       <dt className="bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">{field.label}</dt>
                       <dd className="min-h-9 break-words px-3 py-2 text-sm text-slate-950">{field.value || "-"}</dd>
                     </div>

@@ -2,8 +2,8 @@ import { z } from "zod"
 import { optionalText } from "@/lib/validations/shared"
 
 const optionalDate = z.preprocess(
-  (value) => (typeof value === "string" && value.trim().length === 0 ? null : value),
-  z.coerce.date().nullable().optional()
+  (value) => (value == null || (typeof value === "string" && value.trim().length === 0) ? undefined : value),
+  z.union([z.coerce.date(), z.null(), z.undefined()])
 )
 
 const optionalDecimal = z.preprocess(

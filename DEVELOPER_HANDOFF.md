@@ -582,6 +582,7 @@ await logAudit({
 | **Asset tag category prefixes** | หน้า `/admin/settings` เพิ่ม section สำหรับจับคู่ประเภทสินค้ากับ prefix เช่น IT = COM, Furniture = FUR; asset tag generation จะใช้ prefix ตาม category ก่อน fallback เป็น category code |
 | **Flexible asset tag format** | หน้า `/admin/settings` เพิ่ม `asset_tag_format_template` พร้อม token เช่น `{companyCode}`, `{assetPrefix}`, `{month}`, `{running}` เพื่อกำหนดรูปแบบรหัสทรัพย์สินเอง |
 | **System settings UX polish** | ปรับหน้า `/admin/settings` จากตาราง key/value เป็น section เฉพาะงาน ได้แก่รูปแบบ Asset Tag พร้อม preset, ตัวเลือกเลขรันนิ่ง, prefix ตามประเภท, ค่าองค์กร และ advanced settings เฉพาะค่าที่ไม่มี editor |
+| **Operational mutation QA pass** | สร้าง QA fixture จริง, ตรวจ asset tag format `QA-COM-05-0001`, checkout/checkin เอกสารพิมพ์, แก้ duplicate React key ในเอกสารรับคืน และปรับ maintenance create validation ให้ `returnDate` optional |
 
 ---
 
@@ -663,6 +664,7 @@ await logAudit({
 52. Flexible asset tag format template in System Settings, including company/category/prefix/date/running tokens
 53. System Settings UX polish with task-oriented sections and format presets instead of raw key/value editing
 54. Operational QA smoke pass across 24 core pages, clean lint warnings, and migrated Next.js `middleware.ts` to `proxy.ts`
+55. Operational mutation QA with real QA master data/asset, checkout/checkin verification, print document key fix, and maintenance create validation hardening
 
 ---
 
