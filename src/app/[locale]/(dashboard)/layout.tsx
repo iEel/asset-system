@@ -13,7 +13,7 @@ export default function DashboardLayout({
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-dvh overflow-hidden bg-background">
       {/* Sidebar */}
       <Sidebar
         collapsed={sidebarCollapsed}
@@ -30,7 +30,7 @@ export default function DashboardLayout({
         />
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
           {children}
         </main>
       </div>

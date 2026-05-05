@@ -1,8 +1,8 @@
 # Developer Handoff — Asset Management System
 
 > **Last Updated:** 2026-05-03
-> **Phase:** Phase 3 Maintenance/Disposal (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built with export polish, 🟨 Admin RBAC polish started
+> **Phase:** Phase 4 AD/LDAP + Mobile Optimization (Started)
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built with export polish, 🟨 Admin RBAC polish started, 🟨 Phase 4 narrowed to AD/LDAP login and mobile optimization
 
 ---
 
@@ -25,7 +25,7 @@
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | 🟨 Started — Check-out/in, photo/signature evidence, printable handover/return forms, stricter checkout/checkin status mapping, basic reports, system logs, and live KPI dashboard added |
 | **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move, audit round generation, QR/manual scan capture, finding review, pending/not-found workflow, approved reconciliation, granular multi-finding review status, and Excel/PDF exports |
 | **Phase 3** | Maintenance, Disposal | 🟨 Started — maintenance ticket flow mostly built with attachment previews; disposal request create/list, approval/reject, detail, and print document added |
-| **Phase 4** | AD/LDAP, HR sync, Advanced dashboard | ⬜ Planned |
+| **Phase 4** | AD/LDAP, HR sync, Advanced dashboard | 🟨 Started — scope narrowed to AD/LDAP login and mobile optimization |
 
 ---
 
@@ -380,6 +380,31 @@ WEB_PORT=3000
 | Username | `admin` |
 | Password | `admin123` |
 
+### AD / LDAP Login
+
+LDAP login is optional and uses the same `/th/login` screen as local credentials. Local user login remains available as fallback.
+
+```env
+LDAP_ENABLED=true
+LDAP_URL="ldap://dc.company.local:389"
+LDAP_BASE_DN="DC=company,DC=local"
+LDAP_BIND_DN="CN=ldap-reader,OU=Service Accounts,DC=company,DC=local"
+LDAP_BIND_PASSWORD="change-me"
+LDAP_USER_FILTER="(&(objectClass=user)(sAMAccountName={username}))"
+LDAP_AUTO_PROVISION=false
+LDAP_DEFAULT_ROLE="asset_user"
+```
+
+Alternative direct bind options when no service bind account is used:
+
+```env
+LDAP_UPN_DOMAIN="company.local"
+LDAP_DOMAIN="COMPANY"
+LDAP_USER_DN_TEMPLATE="CN={username},OU=Users,DC=company,DC=local"
+```
+
+If `LDAP_AUTO_PROVISION=true`, the default role in `LDAP_DEFAULT_ROLE` must exist in `/admin/roles`; otherwise LDAP-authenticated users without an existing app account will be rejected.
+
 ### Implemented Master Data URLs
 
 | Module | URL |
@@ -583,6 +608,9 @@ await logAudit({
 | **Flexible asset tag format** | หน้า `/admin/settings` เพิ่ม `asset_tag_format_template` พร้อม token เช่น `{companyCode}`, `{assetPrefix}`, `{month}`, `{running}` เพื่อกำหนดรูปแบบรหัสทรัพย์สินเอง |
 | **System settings UX polish** | ปรับหน้า `/admin/settings` จากตาราง key/value เป็น section เฉพาะงาน ได้แก่รูปแบบ Asset Tag พร้อม preset, ตัวเลือกเลขรันนิ่ง, prefix ตามประเภท, ค่าองค์กร และ advanced settings เฉพาะค่าที่ไม่มี editor |
 | **Operational mutation QA pass** | สร้าง QA fixture จริง, ตรวจ asset tag format `QA-COM-05-0001`, checkout/checkin เอกสารพิมพ์, แก้ duplicate React key ในเอกสารรับคืน และปรับ maintenance create validation ให้ `returnDate` optional |
+| **Phase 4 narrowed scope** | ตามคำขอล่าสุด Phase 4 จะทำเฉพาะ AD/LDAP Login และ Mobile Optimization; HR Sync, Accounting Asset Code, Power BI/Dashboard API, n8n/Workflow API, และ Advanced Approval Workflow ถูกตัดออกจากลำดับนี้ |
+| **AD/LDAP login foundation** | เพิ่ม `ldapts`, helper `src/lib/ldap-auth.ts`, optional LDAP bind/search ผ่าน `.env`, local-login fallback, และ auto-provision user แบบกำหนด role เริ่มต้นได้ |
+| **Mobile shell polish** | ปรับ viewport, dashboard shell, sidebar, topbar, login form, touch target, safe viewport height, และ sidebar width ให้เหมาะกับ mobile มากขึ้น |
 
 ---
 
@@ -665,6 +693,9 @@ await logAudit({
 53. System Settings UX polish with task-oriented sections and format presets instead of raw key/value editing
 54. Operational QA smoke pass across 24 core pages, clean lint warnings, and migrated Next.js `middleware.ts` to `proxy.ts`
 55. Operational mutation QA with real QA master data/asset, checkout/checkin verification, print document key fix, and maintenance create validation hardening
+56. Phase 4 scope narrowed to AD/LDAP Login and Mobile Optimization only
+57. AD/LDAP login foundation with optional env-driven directory authentication, local fallback, and default-role auto-provision support
+58. Mobile optimization pass for viewport, dashboard shell spacing, sidebar behavior, topbar density, logout action, and login form touch targets
 
 ---
 

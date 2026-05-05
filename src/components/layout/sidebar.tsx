@@ -26,6 +26,7 @@ import {
   Layers,
   Truck,
   History,
+  X,
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -122,18 +123,24 @@ export function Sidebar({
     <aside
       className={cn(
         "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-border bg-sidebar transition-all duration-300 lg:relative",
-        collapsed ? "w-16" : "w-64",
+        collapsed ? "w-[min(18rem,85vw)] lg:w-16" : "w-[min(18rem,85vw)] lg:w-64",
         mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}
     >
       {/* Logo */}
       <div className="flex h-16 items-center border-b border-border px-4">
         <Package className="h-8 w-8 shrink-0 text-primary" />
-        {!collapsed && (
-          <span className="ml-3 text-lg font-semibold text-primary truncate">
-            AMS
-          </span>
-        )}
+        <span className={cn("ml-3 truncate text-lg font-semibold text-primary", collapsed && "lg:hidden")}>
+          AMS
+        </span>
+        <button
+          type="button"
+          onClick={onMobileClose}
+          className="ml-auto rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-accent lg:hidden"
+          aria-label="Close menu"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       {/* Menu */}
@@ -182,18 +189,16 @@ function SidebarItem({
           className={cn(
             "flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-accent",
             hasActiveChild && "text-primary",
-            collapsed && "justify-center px-2"
+            collapsed && "lg:justify-center lg:px-2"
           )}
         >
           <span className="shrink-0">{item.icon}</span>
-          {!collapsed && (
-            <>
-              <span className="flex-1 text-left truncate">{t(item.labelKey)}</span>
-              {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-            </>
-          )}
+          <span className={cn("flex-1 text-left truncate", collapsed && "lg:hidden")}>{t(item.labelKey)}</span>
+          <span className={cn(collapsed && "lg:hidden")}>
+            {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </span>
         </button>
-        {open && !collapsed && (
+        {open && (
           <div className="ml-4 border-l border-border">
             {item.children.map((child) => (
               <SidebarItem
@@ -221,11 +226,11 @@ function SidebarItem({
         isActive
           ? "bg-primary/10 font-medium text-primary border-r-2 border-primary"
           : "text-muted-foreground",
-        collapsed && "justify-center px-2"
+        collapsed && "lg:justify-center lg:px-2"
       )}
     >
       <span className="shrink-0">{item.icon}</span>
-      {!collapsed && <span className="truncate">{t(item.labelKey)}</span>}
+      <span className={cn("truncate", collapsed && "lg:hidden")}>{t(item.labelKey)}</span>
     </Link>
   )
 }

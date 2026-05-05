@@ -4,7 +4,7 @@ import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useTranslations, useLocale } from "next-intl"
-import { Package, Loader2 } from "lucide-react"
+import { Package, Loader2, ShieldCheck } from "lucide-react"
 
 export default function LoginPage() {
   const t = useTranslations("auth")
@@ -42,12 +42,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4 py-8 sm:px-6">
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-primary">
-            <Package className="h-8 w-8 text-white" />
+        <div className="mb-6 text-center sm:mb-8">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary sm:h-16 sm:w-16">
+            <Package className="h-7 w-7 text-white sm:h-8 sm:w-8" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">
             {tCommon("appName")}
@@ -58,7 +58,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Form */}
-        <div className="rounded-lg border border-border bg-surface p-8 shadow-sm">
+        <div className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-8">
           <h2 className="mb-6 text-center text-xl font-semibold">
             {t("login")}
           </h2>
@@ -72,7 +72,7 @@ export default function LoginPage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-11 w-full rounded-md border border-border bg-background px-3 text-base outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:text-sm"
                 required
                 autoFocus
               />
@@ -86,9 +86,14 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-11 w-full rounded-md border border-border bg-background px-3 text-base outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:text-sm"
                 required
               />
+            </div>
+
+            <div className="flex items-start gap-2 rounded-md border border-border bg-background p-3 text-xs text-muted-foreground">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <span>{t("directoryLoginHint")}</span>
             </div>
 
             {error && (
@@ -100,7 +105,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:h-10"
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               {t("login")}

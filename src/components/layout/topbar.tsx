@@ -2,6 +2,7 @@
 
 import { useTranslations, useLocale } from "next-intl"
 import { useRouter, usePathname } from "next/navigation"
+import { signOut } from "next-auth/react"
 import {
   Menu,
   Bell,
@@ -36,13 +37,14 @@ export function Topbar({
   }
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-surface px-4 shadow-sm">
+    <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-surface px-3 shadow-sm sm:px-4">
       {/* Left side */}
       <div className="flex items-center gap-3">
         {/* Mobile menu button */}
         <button
           onClick={onMobileMenuToggle}
           className="rounded-md p-2 hover:bg-accent lg:hidden"
+          aria-label="Open menu"
         >
           <Menu size={20} />
         </button>
@@ -57,7 +59,7 @@ export function Topbar({
         </button>
 
         {/* Global Search */}
-        <div className="relative hidden md:block">
+        <div className="relative hidden xl:block">
           <Search
             size={18}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -65,24 +67,25 @@ export function Topbar({
           <input
             type="text"
             placeholder={`${t("search")} Asset Tag, Serial, Employee...`}
-            className="h-9 w-80 rounded-md border border-border bg-background pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-9 w-[min(24rem,32vw)] rounded-md border border-border bg-background pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </div>
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-1 sm:gap-2">
         {/* Notifications */}
-        <button className="relative rounded-md p-2 hover:bg-accent">
+        <button className="relative rounded-md p-2 hover:bg-accent" aria-label="Notifications">
           <Bell size={20} />
           <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-danger" />
         </button>
 
         {/* Language Switcher */}
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
             onClick={() => setLangMenuOpen(!langMenuOpen)}
             className="flex items-center gap-1 rounded-md px-2 py-2 text-sm hover:bg-accent"
+            aria-label="Change language"
           >
             <Globe size={18} />
             <span className="hidden sm:inline">{locale === "th" ? "TH" : "EN"}</span>
@@ -112,10 +115,11 @@ export function Topbar({
         </div>
 
         {/* User Menu */}
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
             onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className="flex items-center gap-2 rounded-md px-3 py-2 hover:bg-accent"
+            className="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-accent sm:px-3"
+            aria-label="User menu"
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-white">
               A
@@ -129,7 +133,10 @@ export function Topbar({
                 <p className="text-sm font-medium">System Admin</p>
                 <p className="text-xs text-muted-foreground">admin@company.com</p>
               </div>
-              <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-danger hover:bg-accent">
+              <button
+                onClick={() => signOut({ callbackUrl: `/${locale}/login` })}
+                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-danger hover:bg-accent"
+              >
                 <LogOut size={16} />
                 {tAuth("logout")}
               </button>
