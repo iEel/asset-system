@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-05-03
 > **Phase:** Phase 3 Maintenance/Disposal (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built with disposal export polish, 🟨 Admin RBAC polish started
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built with export polish, 🟨 Admin RBAC polish started
 
 ---
 
@@ -406,6 +406,7 @@ WEB_PORT=3000
 | Maintenance Ticket API | `GET/POST /api/maintenance-tickets` |
 | Maintenance Ticket Close API | `PATCH /api/maintenance-tickets/{ticketId}` |
 | Maintenance Attachment API | `POST /api/maintenance-tickets/{ticketId}/attachments` |
+| Maintenance Ticket Export | `GET /api/maintenance-tickets/export` |
 | Disposal Requests | `http://localhost:3000/th/disposal` |
 | Disposal Request Detail | `http://localhost:3000/th/disposal/{requestId}` |
 | Disposal Approval Print | `http://localhost:3000/th/disposal/{requestId}/print` |
@@ -573,7 +574,7 @@ await logAudit({
 | **Maintenance close flow** | เพิ่ม `PATCH /api/maintenance-tickets/{id}` และปุ่มปิดงานในหน้า `/maintenance` สำหรับบันทึก root cause, resolution, return date, repair cost, warranty claim, อัปเดต ticket เป็น closed และเลือกสถานะ asset หลังซ่อม |
 | **Maintenance detail/attachments** | เพิ่มหน้า `/maintenance/{id}`, upload attachment สำหรับ ticket, ใช้ endpoint download/delete attachment เดิมแบบเช็ค permission ตาม module, และเพิ่ม maintenance history ในหน้า Asset Detail |
 | **Maintenance attachment previews** | เพิ่ม inline preview สำหรับไฟล์แนบงานซ่อม รองรับรูปภาพและ PDF, preview modal, thumbnail/card preview, และ `?inline=1` ใน attachment API โดยยังใช้ permission เดิม |
-| **Maintenance polish** | เพิ่ม search/filter ในหน้า `/maintenance` และหน้า print A4 `/maintenance/{id}/print` สำหรับใบซ่อม |
+| **Maintenance polish** | เพิ่ม search/status/type/evidence/date filters ในหน้า `/maintenance`, clear filter, result count, Excel export `GET /api/maintenance-tickets/export`, และหน้า print A4 `/maintenance/{id}/print` สำหรับใบซ่อม |
 | **Disposal foundation** | เพิ่ม schema/table `disposal_requests`, API `GET/POST /api/disposal-requests`, หน้า `/disposal`, create request form, audit log, movement log, และอัปเดต asset เป็น `Pending Disposal` เมื่อเปิดคำขอ |
 | **Disposal approval flow** | เพิ่ม `PATCH /api/disposal-requests/{id}` และปุ่มพิจารณาในหน้า `/disposal` สำหรับ approve/reject, บันทึก sale/salvage value และ remark, อัปเดตสถานะ asset หลังพิจารณา, พร้อม movement/audit log |
 | **Disposal detail/print** | เพิ่มหน้า `/disposal/{id}` สำหรับดูคำขอ, ทรัพย์สิน, ผลพิจารณา, movement history และหน้า `/disposal/{id}/print` สำหรับใบอนุมัติตัดจำหน่าย A4 พร้อมช่องลงชื่อ |
@@ -599,9 +600,9 @@ await logAudit({
 
 ### Recommended Next Order
 
-1. **Maintenance polish** — optional filters/exports for repair evidence and ticket history
-2. **Phase 4 planning** — AD/LDAP, HR sync, and advanced dashboard scoping
-3. **Advanced dashboard** — richer drill-down KPIs once reporting scope is confirmed
+1. **Phase 4 planning** — AD/LDAP, HR sync, and advanced dashboard scoping
+2. **Advanced dashboard** — richer drill-down KPIs once reporting scope is confirmed
+3. **Operational QA pass** — browser workflow checks across asset, audit, maintenance, disposal, and admin modules
 
 ### Phase 1C Started
 
@@ -654,6 +655,7 @@ await logAudit({
 47. Maintenance attachment previews with image/PDF inline rendering, preview modal, thumbnail cards, download/delete actions, and inline attachment API mode
 48. Role management polish with role create API/page, metadata editing, whole-module permission selection, system role metadata guards, and protected system administrator permissions
 49. Disposal polish with shared filter query, search/status/type/date filtering, clear filters, result count, and Excel export matching current filters
+50. Maintenance polish with shared filter query, search/status/type/evidence/date filtering, clear filters, result count, and Excel export with attachment counts
 
 ---
 

@@ -1,10 +1,11 @@
 import Link from "next/link"
 import { getTranslations } from "next-intl/server"
-import type { Prisma } from "@prisma/client"
+import { Download } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { getMaintenanceOptions } from "@/lib/maintenance-options"
+import { buildMaintenanceQueryString, buildMaintenanceWhere, parseMaintenanceListParams } from "@/lib/maintenance-query"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
 import { MaintenanceTicketForm } from "@/components/maintenance/maintenance-ticket-form"
@@ -12,7 +13,7 @@ import { MaintenanceTicketCloseButton } from "@/components/maintenance/maintenan
 
 type MaintenancePageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string; status?: string; repairType?: string }>
+  searchParams: Promise<{ search?: string; status?: string; repairType?: string; evidence?: string; dateFrom?: string; dateTo?: string }>
 }
 
 export default async function MaintenancePage({ params, searchParams }: MaintenancePageProps) {
@@ -21,34 +22,16 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
   const user = await requirePagePermission(locale, "maintenance", "view")
   const canCreate = hasPermission(user, "maintenance", "create")
   const canEdit = hasPermission(user, "maintenance", "edit")
+  const canExport = hasPermission(user, "maintenance", "export")
   const t = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
-
-  const searchText = filters.search?.trim() ?? ""
-  const statusFilter = filters.status === "open" || filters.status === "closed" ? filters.status : ""
-  const repairTypeFilter = filters.repairType === "internal" || filters.repairType === "vendor" ? filters.repairType : ""
-  const where: Prisma.MaintenanceTicketWhereInput = {
-    isActive: true,
-    ...(statusFilter ? { repairStatus: statusFilter } : {}),
-    ...(repairTypeFilter ? { repairType: repairTypeFilter } : {}),
-    ...(searchText
-      ? {
-          OR: [
-            { repairNo: { contains: searchText } },
-            { problem: { contains: searchText } },
-            { asset: { assetTag: { contains: searchText } } },
-            { asset: { name: { contains: searchText } } },
-            { reportedBy: { fullNameTh: { contains: searchText } } },
-            { assignedTo: { fullNameTh: { contains: searchText } } },
-            { vendor: { name: { contains: searchText } } },
-          ],
-        }
-      : {}),
-  }
+  const listFilters = parseMaintenanceListParams(filters)
+  const exportQuery = buildMaintenanceQueryString(listFilters)
+  const evidenceTicketIds = await getMaintenanceAttachmentTicketIds()
 
   const [tickets, options] = await Promise.all([
     prisma.maintenanceTicket.findMany({
-      where,
+      where: buildMaintenanceWhere(listFilters, evidenceTicketIds),
       include: {
         asset: { select: { assetTag: true, name: true } },
         reportedBy: { select: { code: true, fullNameTh: true } },
@@ -74,13 +57,13 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
       ) : null}
 
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-        <form className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px_180px_auto]" action={`/${locale}/maintenance`}>
+        <form className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(220px,1fr)_150px_150px_150px_150px_150px_auto]" action={`/${locale}/maintenance`}>
           <label>
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("search")}</span>
             <input
               type="search"
               name="search"
-              defaultValue={searchText}
+              defaultValue={listFilters.search}
               placeholder={t("searchPlaceholder")}
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
@@ -89,7 +72,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("status")}</span>
             <select
               name="status"
-              defaultValue={statusFilter}
+              defaultValue={listFilters.status}
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             >
               <option value="">{tCommon("all")}</option>
@@ -101,7 +84,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("repairType")}</span>
             <select
               name="repairType"
-              defaultValue={repairTypeFilter}
+              defaultValue={listFilters.repairType}
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             >
               <option value="">{tCommon("all")}</option>
@@ -109,18 +92,68 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
               <option value="vendor">{t("vendorRepair")}</option>
             </select>
           </label>
-          <button
-            type="submit"
-            className="h-10 self-end rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
-          >
-            {t("filter")}
-          </button>
+          <label>
+            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("evidence")}</span>
+            <select
+              name="evidence"
+              defaultValue={listFilters.evidence}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            >
+              <option value="">{tCommon("all")}</option>
+              <option value="with">{t("withEvidence")}</option>
+              <option value="without">{t("withoutEvidence")}</option>
+            </select>
+          </label>
+          <label>
+            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("dateFrom")}</span>
+            <input
+              type="date"
+              name="dateFrom"
+              defaultValue={listFilters.dateFrom}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </label>
+          <label>
+            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("dateTo")}</span>
+            <input
+              type="date"
+              name="dateTo"
+              defaultValue={listFilters.dateTo}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </label>
+          <div className="flex gap-2 self-end">
+            <button
+              type="submit"
+              className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+            >
+              {t("filter")}
+            </button>
+            <Link
+              href={`/${locale}/maintenance`}
+              className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+            >
+              {t("clearFilters")}
+            </Link>
+          </div>
         </form>
       </section>
 
       <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-        <div className="border-b border-border px-4 py-3">
-          <h2 className="text-base font-semibold text-foreground">{t("ticketList")}</h2>
+        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">{t("ticketList")}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{t("resultCount", { count: tickets.length })}</p>
+          </div>
+          {canExport ? (
+            <a
+              href={`/api/maintenance-tickets/export${exportQuery ? `?${exportQuery}` : ""}`}
+              className="inline-flex h-9 w-fit items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+            >
+              <Download className="h-4 w-4" />
+              {t("exportTickets")}
+            </a>
+          ) : null}
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border text-sm">
@@ -220,4 +253,13 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
       </section>
     </div>
   )
+}
+
+async function getMaintenanceAttachmentTicketIds() {
+  const rows = await prisma.attachment.findMany({
+    where: { module: "maintenance", isActive: true },
+    select: { referenceId: true },
+    distinct: ["referenceId"],
+  })
+  return rows.map((row) => row.referenceId)
 }
