@@ -86,6 +86,24 @@ type SystemSettingsFormProps = {
     ldapSyncEvery6Hours: string
     ldapSyncWeekday2am: string
     ldapSyncMonday2am: string
+    ldapSyncDefaultMapping: string
+    ldapSyncDefaultMappingDescription: string
+    ldapSyncDefaultCompanyCode: string
+    ldapSyncDefaultBranchCode: string
+    ldapSyncDefaultDepartmentCode: string
+    ldapSyncDeactivateMissing: string
+    ldapSyncPreview: string
+    ldapSyncApply: string
+    ldapSyncPreviewTitle: string
+    ldapSyncTotal: string
+    ldapSyncCreates: string
+    ldapSyncUpdates: string
+    ldapSyncDeactivates: string
+    ldapSyncBlockers: string
+    ldapSyncNoPreview: string
+    ldapSyncPreviewSuccess: string
+    ldapSyncApplySuccess: string
+    ldapSyncFailed: string
     ldapSyncRecommendation: string
     testLdapConnection: string
     ldapTestSuccess: string
@@ -99,6 +117,26 @@ type SystemSettingsFormProps = {
 type PrefixRow = {
   categoryId: string
   prefix: string
+}
+
+type LdapSyncChange = {
+  code: string
+  name: string
+  email: string | null
+  reason: string
+}
+
+type LdapSyncPreview = {
+  total: number
+  creates: LdapSyncChange[]
+  updates: LdapSyncChange[]
+  deactivates: LdapSyncChange[]
+  blockers: string[]
+  applied?: {
+    created: number
+    updated: number
+    deactivated: number
+  }
 }
 
 const assetTagFormatTokens = [
@@ -178,6 +216,8 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [testingLdap, setTestingLdap] = useState(false)
+  const [syncingLdap, setSyncingLdap] = useState<"preview" | "apply" | null>(null)
+  const [syncPreview, setSyncPreview] = useState<LdapSyncPreview | null>(null)
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(settings.map((setting) => [setting.key, setting.value]))
   )
@@ -269,6 +309,26 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
       toast.error(error instanceof Error ? error.message : labels.ldapTestFailed)
     } finally {
       setTestingLdap(false)
+    }
+  }
+
+  async function handleLdapSync(action: "preview" | "apply") {
+    setSyncingLdap(action)
+    try {
+      const response = await fetch("/api/admin/settings/ldap-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(payload?.error ?? labels.ldapSyncFailed)
+      setSyncPreview(payload)
+      toast.success(action === "apply" ? labels.ldapSyncApplySuccess : labels.ldapSyncPreviewSuccess)
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : labels.ldapSyncFailed)
+    } finally {
+      setSyncingLdap(null)
     }
   }
 
@@ -594,6 +654,11 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               checked={getValue("ldap_sync_enabled") === "true"}
               onChange={(checked) => setBooleanValue("ldap_sync_enabled", checked)}
             />
+            <ToggleField
+              label={labels.ldapSyncDeactivateMissing}
+              checked={getValue("ldap_sync_deactivate_missing") === "true"}
+              onChange={(checked) => setBooleanValue("ldap_sync_deactivate_missing", checked)}
+            />
             <Field label={labels.ldapSyncMode} htmlFor="ldap-sync-mode">
               <select
                 id="ldap-sync-mode"
@@ -615,6 +680,38 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
                 className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
               />
             </Field>
+            <div className="lg:col-span-2">
+              <div className="rounded-md border border-border bg-muted/30 px-3 py-3">
+                <div className="text-sm font-medium text-foreground">{labels.ldapSyncDefaultMapping}</div>
+                <p className="mt-1 text-sm text-muted-foreground">{labels.ldapSyncDefaultMappingDescription}</p>
+                <div className="mt-3 grid gap-3 md:grid-cols-3">
+                  <Field label={labels.ldapSyncDefaultCompanyCode} htmlFor="ldap-sync-default-company">
+                    <input
+                      id="ldap-sync-default-company"
+                      value={getValue("ldap_sync_default_company_code")}
+                      onChange={(event) => setValue("ldap_sync_default_company_code", event.target.value.toUpperCase())}
+                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    />
+                  </Field>
+                  <Field label={labels.ldapSyncDefaultBranchCode} htmlFor="ldap-sync-default-branch">
+                    <input
+                      id="ldap-sync-default-branch"
+                      value={getValue("ldap_sync_default_branch_code")}
+                      onChange={(event) => setValue("ldap_sync_default_branch_code", event.target.value.toUpperCase())}
+                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    />
+                  </Field>
+                  <Field label={labels.ldapSyncDefaultDepartmentCode} htmlFor="ldap-sync-default-department">
+                    <input
+                      id="ldap-sync-default-department"
+                      value={getValue("ldap_sync_default_department_code")}
+                      onChange={(event) => setValue("ldap_sync_default_department_code", event.target.value.toUpperCase())}
+                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    />
+                  </Field>
+                </div>
+              </div>
+            </div>
             <Field label={labels.ldapSyncSchedule} htmlFor="ldap-sync-schedule-preset">
               <select
                 id="ldap-sync-schedule-preset"
@@ -659,6 +756,27 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               </div>
             ) : null}
           </div>
+          <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => handleLdapSync("preview")}
+              disabled={syncingLdap !== null}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+            >
+              {syncingLdap === "preview" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {labels.ldapSyncPreview}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleLdapSync("apply")}
+              disabled={syncingLdap !== null || !syncPreview}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+            >
+              {syncingLdap === "apply" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {labels.ldapSyncApply}
+            </button>
+          </div>
+          <SyncPreviewPanel labels={labels} preview={syncPreview} />
         </div>
       </div>
 
@@ -738,6 +856,49 @@ function ToggleField({
         className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
       />
     </label>
+  )
+}
+
+function SyncPreviewPanel({
+  labels,
+  preview,
+}: {
+  labels: SystemSettingsFormProps["labels"]
+  preview: LdapSyncPreview | null
+}) {
+  if (!preview) {
+    return <p className="text-sm text-muted-foreground">{labels.ldapSyncNoPreview}</p>
+  }
+
+  return (
+    <div className="rounded-md border border-border bg-background p-4">
+      <h3 className="text-sm font-semibold text-foreground">{labels.ldapSyncPreviewTitle}</h3>
+      <div className="mt-3 grid gap-3 md:grid-cols-4">
+        <Metric label={labels.ldapSyncTotal} value={preview.total} />
+        <Metric label={labels.ldapSyncCreates} value={preview.creates.length} />
+        <Metric label={labels.ldapSyncUpdates} value={preview.updates.length} />
+        <Metric label={labels.ldapSyncDeactivates} value={preview.deactivates.length} />
+      </div>
+      {preview.blockers.length > 0 ? (
+        <div className="mt-3 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+          <div className="font-medium">{labels.ldapSyncBlockers}</div>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            {preview.blockers.map((blocker) => (
+              <li key={blocker}>{blocker}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function Metric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border border-border px-3 py-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 text-xl font-semibold text-foreground">{value}</div>
+    </div>
   )
 }
 

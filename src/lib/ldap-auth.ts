@@ -41,7 +41,11 @@ export type LdapConfigInput = Partial<Record<
   | "ldap_sync_base_dn"
   | "ldap_sync_filter"
   | "ldap_sync_mode"
-  | "ldap_sync_schedule",
+  | "ldap_sync_schedule"
+  | "ldap_sync_default_company_code"
+  | "ldap_sync_default_branch_code"
+  | "ldap_sync_default_department_code"
+  | "ldap_sync_deactivate_missing",
   string
 >>
 
@@ -180,6 +184,62 @@ export async function testLdapConnection(settings?: LdapConfigInput) {
   }
 }
 
+export async function searchLdapSyncUsers(settings?: LdapConfigInput) {
+  const config = getLdapConfig(settings)
+
+  if (!config.enabled) {
+    throw new Error("LDAP is disabled")
+  }
+  if (!config.syncEnabled) {
+    throw new Error("LDAP sync is disabled")
+  }
+  if (!config.url || !config.bindDn || !config.bindPassword) {
+    throw new Error("LDAP URL, Bind DN, and Bind Password are required")
+  }
+
+  const baseDn = config.syncBaseDn || config.baseDn
+  if (!baseDn) {
+    throw new Error("LDAP sync base DN is required")
+  }
+
+  const client = new Client({
+    url: config.url,
+    timeout: Number(process.env.LDAP_TIMEOUT_MS ?? 8000),
+    connectTimeout: Number(process.env.LDAP_CONNECT_TIMEOUT_MS ?? 8000),
+    tlsOptions: {
+      rejectUnauthorized: process.env.LDAP_TLS_REJECT_UNAUTHORIZED !== "false",
+    },
+  })
+
+  try {
+    await client.bind(config.bindDn, config.bindPassword)
+    const { searchEntries } = await client.search(baseDn, {
+      scope: "sub",
+      paged: { pageSize: 500 },
+      filter: config.syncFilter,
+      attributes: [
+        "dn",
+        "employeeID",
+        "sAMAccountName",
+        "userPrincipalName",
+        "displayName",
+        "cn",
+        "givenName",
+        "sn",
+        "mail",
+        "title",
+        "department",
+        "company",
+        "distinguishedName",
+      ],
+    })
+
+    return searchEntries.map(profileFromSyncEntry).filter((profile) => profile.code)
+  } finally {
+    await client.unbind().catch(() => undefined)
+  }
+}
+
 function getDirectBindIdentity(username: string, config: LdapConfig) {
   if (config.userDnTemplate) {
     return config.userDnTemplate.replaceAll("{username}", username)
@@ -197,11 +257,88 @@ function getDirectBindIdentity(username: string, config: LdapConfig) {
 }
 
 function profileFromEntry(username: string, entry: Entry): LdapProfile {
+  const ldapUsername = normalizeLoginName(getEntryString(entry, "sAMAccountName") ?? username)
+
   return {
-    username: getEntryString(entry, "sAMAccountName") ?? username,
+    username: ldapUsername,
     displayName: getEntryString(entry, "displayName") ?? getEntryString(entry, "cn") ?? username,
     email: getEntryString(entry, "mail") ?? getEntryString(entry, "userPrincipalName"),
   }
+}
+
+function profileFromSyncEntry(entry: Entry) {
+  const dn = getEntryString(entry, "distinguishedName") ?? entry.dn
+  const ous = getOrganizationalUnits(dn ?? "")
+  const username = normalizeLoginName(getEntryString(entry, "sAMAccountName") ?? getEntryString(entry, "userPrincipalName") ?? "")
+  const code = getEntryString(entry, "employeeID") ?? username
+  const displayName = getEntryString(entry, "displayName") ?? getEntryString(entry, "cn") ?? username
+
+  return {
+    dn,
+    code: code.trim(),
+    username: username.trim(),
+    displayName: displayName.trim(),
+    email: getEntryString(entry, "mail") ?? getEntryString(entry, "userPrincipalName"),
+    position: getEntryString(entry, "title"),
+    companyName: getEntryString(entry, "company"),
+    departmentName: ous[0] ?? getEntryString(entry, "department"),
+    branchName: ous[1] ?? null,
+  }
+}
+
+function normalizeLoginName(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed.includes("@")) {
+    return trimmed
+  }
+
+  return trimmed.split("@")[0]
+}
+
+function getOrganizationalUnits(dn: string) {
+  return splitLdapDn(dn)
+    .map((part) => part.trim())
+    .filter((part) => part.toLowerCase().startsWith("ou="))
+    .map((part) => unescapeLdapDnValue(part.slice(3)))
+    .filter(Boolean)
+}
+
+function splitLdapDn(dn: string) {
+  const parts: string[] = []
+  let current = ""
+  let escaped = false
+
+  for (const char of dn) {
+    if (escaped) {
+      current += char
+      escaped = false
+      continue
+    }
+
+    if (char === "\\") {
+      current += char
+      escaped = true
+      continue
+    }
+
+    if (char === ",") {
+      parts.push(current)
+      current = ""
+      continue
+    }
+
+    current += char
+  }
+
+  if (current) {
+    parts.push(current)
+  }
+
+  return parts
+}
+
+function unescapeLdapDnValue(value: string) {
+  return value.replace(/\\([,+"\\<>;=# ])/g, "$1").trim()
 }
 
 function getEntryString(entry: Entry, key: string) {

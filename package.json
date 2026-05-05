@@ -6,7 +6,8 @@
     "dev": "node scripts/next-with-env-port.mjs dev",
     "build": "next build",
     "start": "node scripts/next-with-env-port.mjs start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "ldap:sync": "node scripts/ldap-sync.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -18,6 +18,10 @@ export const ldapSettingKeys = [
   "ldap_sync_filter",
   "ldap_sync_mode",
   "ldap_sync_schedule",
+  "ldap_sync_default_company_code",
+  "ldap_sync_default_branch_code",
+  "ldap_sync_default_department_code",
+  "ldap_sync_deactivate_missing",
 ] as const
 
 export const systemSettingDefaults = [
@@ -53,6 +57,10 @@ export const systemSettingDefaults = [
   { key: "ldap_sync_filter", value: "(&(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))", description: "Filter สำหรับดึง user ที่ต้อง sync" },
   { key: "ldap_sync_mode", value: "preview", description: "โหมด sync: preview, manual, scheduled" },
   { key: "ldap_sync_schedule", value: "0 2 * * *", description: "Cron schedule สำหรับ sync ในอนาคต" },
+  { key: "ldap_sync_default_company_code", value: "", description: "Company code เริ่มต้นสำหรับ employee ที่ sync จาก LDAP" },
+  { key: "ldap_sync_default_branch_code", value: "", description: "Branch code เริ่มต้นสำหรับ employee ที่ sync จาก LDAP" },
+  { key: "ldap_sync_default_department_code", value: "", description: "Department code เริ่มต้นสำหรับ employee ที่ sync จาก LDAP" },
+  { key: "ldap_sync_deactivate_missing", value: "false", description: "ปิดใช้งาน employee ที่ไม่พบใน LDAP sync result" },
 ]
 
 export const knownSystemSettingKeys = new Set(systemSettingDefaults.map((setting) => setting.key))

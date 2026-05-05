@@ -382,7 +382,9 @@ WEB_PORT=3000
 
 ### AD / LDAP Login
 
-LDAP login is optional and uses the same `/th/login` screen as local credentials. Local user login remains available as fallback. Configure it from `/th/admin/settings`; environment variables below are fallback values when no DB setting is saved yet.
+LDAP login is optional and uses the same `/th/login` screen as local credentials. Local user login remains available as fallback. Configure it from `/th/admin/settings`.
+
+**Config precedence:** values saved in `system_settings` from `/th/admin/settings` are used first. Environment variables below are fallback/bootstrap values only when the DB setting is missing or blank.
 
 ```env
 LDAP_ENABLED=true
@@ -393,6 +395,12 @@ LDAP_BIND_PASSWORD="change-me"
 LDAP_USER_FILTER="(&(objectClass=user)(sAMAccountName={username}))"
 LDAP_AUTO_PROVISION=false
 LDAP_DEFAULT_ROLE="asset_user"
+LDAP_SYNC_ENABLED=false
+LDAP_SYNC_BASE_DN=""
+LDAP_SYNC_FILTER="(&(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))"
+LDAP_SYNC_MODE="preview"
+LDAP_SYNC_SCHEDULE="0 2 * * *"
+LDAP_SYNC_TOKEN="long-random-token-for-scheduler"
 ```
 
 Alternative direct bind options when no service bind account is used:
@@ -409,7 +417,15 @@ LDAP sync should be implemented as a separate controlled workflow, not hidden in
 
 1. **Preview**: query LDAP with `ldap_sync_base_dn` / `ldap_sync_filter` and show create/update/deactivate counts without writing DB.
 2. **Manual Sync**: admin reviews preview, confirms, then writes Employee/User changes and audit logs.
-3. **Scheduled Sync**: enable only after branch/department/company mapping rules are stable. Never hard-delete users; mark inactive/resigned instead.
+3. **Scheduled Sync**: enable only after branch/department/company mapping rules are stable. Use `npm run ldap:sync` from Windows Task Scheduler/Cron with `LDAP_SYNC_TOKEN`. Never hard-delete users; mark inactive/resigned instead.
+
+Current AD mapping rules:
+
+- Login username uses `sAMAccountName`, so users can sign in with the User logon name only and do not need to append `@domain`.
+- Employee code uses LDAP `employeeID`, which is the key for asset custodian mapping and audit ownership.
+- LDAP `company` maps to Company by code/name.
+- `distinguishedName` OU order maps as `OU[0]` = Department and `OU[1]` = Branch, e.g. `CN=Sonsawan Kongmani,OU=Account,OU=LeamChabang,DC=soniclocal,DC=com` maps Department `Account` and Branch `LeamChabang`.
+- The default Company/Branch/Department settings are fallback values only when LDAP organization mapping cannot be matched to master data.
 
 ### Implemented Master Data URLs
 
@@ -619,6 +635,7 @@ await logAudit({
 | **Mobile shell polish** | ปรับ viewport, dashboard shell, sidebar, topbar, login form, touch target, safe viewport height, และ sidebar width ให้เหมาะกับ mobile มากขึ้น |
 | **LDAP settings UI** | หน้า `/admin/settings` เพิ่ม section ตั้งค่า AD/LDAP, test connection API, และค่าควบคุม sync strategy โดย auth อ่านค่าจาก `system_settings` ก่อน fallback ไป `.env` |
 | **LDAP sync recommendation** | แนวทาง sync ที่แนะนำคือ Preview → Manual → Scheduled: เริ่มจากดู diff create/update/deactivate, map Company/Branch/Department ให้พร้อม, แล้วค่อยเปิดรอบเวลาอัตโนมัติ |
+| **LDAP sync workflow** | เพิ่ม `POST /api/admin/settings/ldap-sync` สำหรับ preview/apply, UI Preview Sync/Manual Sync, AD mapping จาก `employeeID`/`company`/`distinguishedName`, fallback Company/Branch/Department mapping, deactivate-missing guard, audit log เมื่อ apply, และ script `npm run ldap:sync` สำหรับ scheduler ภายนอก |
 
 ---
 
@@ -705,6 +722,7 @@ await logAudit({
 57. AD/LDAP login foundation with optional env-driven directory authentication, local fallback, and default-role auto-provision support
 58. Mobile optimization pass for viewport, dashboard shell spacing, sidebar behavior, topbar density, logout action, and login form touch targets
 59. LDAP settings UI in System Settings with DB-backed config, bind connection test endpoint, and sync strategy controls
+60. LDAP sync preview/manual workflow with employee create/update/deactivate preview, guarded apply, audit logging, external scheduler script, and AD mapping from `employeeID`, `company`, and `distinguishedName` OU order
 
 ---
 
