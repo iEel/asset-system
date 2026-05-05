@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { SystemSettingsForm } from "@/components/admin/system-settings-form"
+import { systemSettingDefaults } from "@/lib/system-setting-defaults"
 
 type SettingsPageProps = {
   params: Promise<{ locale: string }>
@@ -13,9 +14,23 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
   const t = await getTranslations("systemSettingsPage")
   const tCommon = await getTranslations("common")
 
-  const settings = await prisma.systemSetting.findMany({
-    orderBy: { key: "asc" },
-  })
+  const [savedSettings, categories] = await Promise.all([
+    prisma.systemSetting.findMany({
+      orderBy: { key: "asc" },
+    }),
+    prisma.assetCategory.findMany({
+      where: { isActive: true },
+      select: { id: true, code: true, name: true },
+      orderBy: { code: "asc" },
+    }),
+  ])
+  const savedByKey = new Map(savedSettings.map((setting) => [setting.key, setting]))
+  const defaultKeys = new Set(systemSettingDefaults.map((setting) => setting.key))
+  const settings = [
+    ...systemSettingDefaults.map((defaultSetting) => savedByKey.get(defaultSetting.key) ?? defaultSetting),
+    ...savedSettings.filter((setting) => !defaultKeys.has(setting.key)),
+  ]
+    .sort((a, b) => a.key.localeCompare(b.key))
 
   return (
     <div className="space-y-6">
@@ -30,10 +45,21 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           value: setting.value,
           description: setting.description,
         }))}
+        categories={categories}
         labels={{
           key: t("key"),
           value: t("value"),
           description: t("description"),
+          generalSettings: t("generalSettings"),
+          categoryPrefixes: t("categoryPrefixes"),
+          categoryPrefixesDescription: t("categoryPrefixesDescription"),
+          category: t("category"),
+          prefix: t("prefix"),
+          addPrefix: t("addPrefix"),
+          removePrefix: t("removePrefix"),
+          selectCategory: t("selectCategory"),
+          duplicateCategory: t("duplicateCategory"),
+          invalidPrefix: t("invalidPrefix"),
           save: tCommon("save"),
           success: t("savedSuccess"),
           error: tCommon("error"),

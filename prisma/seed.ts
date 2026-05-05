@@ -2,6 +2,7 @@ import "dotenv/config"
 import { PrismaClient } from "@prisma/client"
 import bcrypt from "bcryptjs"
 import { createMssqlAdapter } from "../src/lib/db-config"
+import { systemSettingDefaults } from "../src/lib/system-setting-defaults"
 
 const adapter = createMssqlAdapter()
 const prisma = new PrismaClient({ adapter })
@@ -64,13 +65,7 @@ async function main() {
   // ============================================================
   // System Settings (Asset Tag Prefix)
   // ============================================================
-  const settings = [
-    { key: "asset_tag_prefix", value: "AST", description: "Prefix สำหรับรหัสทรัพย์สิน" },
-    { key: "asset_tag_separator", value: "-", description: "ตัวคั่นในรหัสทรัพย์สิน" },
-    { key: "asset_tag_running_digits", value: "5", description: "จำนวนหลัก Running Number" },
-    { key: "company_name", value: "บริษัท ตัวอย่าง จำกัด", description: "ชื่อบริษัทหลัก" },
-    { key: "default_currency", value: "THB", description: "สกุลเงินเริ่มต้น" },
-  ]
+  const settings = systemSettingDefaults
 
   for (const s of settings) {
     await prisma.systemSetting.upsert({

@@ -746,6 +746,16 @@
     "key": "Key",
     "value": "Value",
     "description": "Description",
+    "generalSettings": "General Settings",
+    "categoryPrefixes": "Asset Tag Prefixes by Category",
+    "categoryPrefixesDescription": "Assign category-specific prefixes such as IT = COM or Furniture = FUR. New asset tags use this prefix instead of the category code.",
+    "category": "Category",
+    "prefix": "Prefix",
+    "addPrefix": "Add Prefix",
+    "removePrefix": "Remove Prefix",
+    "selectCategory": "Select category",
+    "duplicateCategory": "Each category can only be mapped once",
+    "invalidPrefix": "Prefix must be 2-10 A-Z letters or numbers",
     "savedSuccess": "System settings saved"
   }
 }

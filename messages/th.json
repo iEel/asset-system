@@ -746,6 +746,16 @@
     "key": "รหัสค่า",
     "value": "ค่า",
     "description": "รายละเอียด",
+    "generalSettings": "ค่าทั่วไป",
+    "categoryPrefixes": "Asset Tag Prefix ตามประเภทสินค้า",
+    "categoryPrefixesDescription": "กำหนด prefix เฉพาะประเภท เช่น IT = COM หรือ เฟอร์นิเจอร์ = FUR ระบบจะใช้ prefix นี้แทนรหัสประเภทตอนสร้างรหัสทรัพย์สินใหม่",
+    "category": "ประเภทสินค้า",
+    "prefix": "Prefix",
+    "addPrefix": "เพิ่ม Prefix",
+    "removePrefix": "ลบ Prefix",
+    "selectCategory": "เลือกประเภทสินค้า",
+    "duplicateCategory": "ประเภทสินค้าซ้ำกัน กรุณาเลือกแต่ละประเภทเพียงครั้งเดียว",
+    "invalidPrefix": "Prefix ต้องเป็นตัวอักษร A-Z หรือตัวเลข 2-10 ตัว",
     "savedSuccess": "บันทึกตั้งค่าระบบสำเร็จ"
   }
 }
