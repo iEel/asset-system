@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-05-03
 > **Phase:** Phase 3 Maintenance/Disposal (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance mostly built with attachment previews and disposal detail/print
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built, 🟨 Admin RBAC polish started
 
 ---
 
@@ -426,6 +426,7 @@ WEB_PORT=3000
 | Create User | `http://localhost:3000/th/admin/users/new` |
 | Edit User | `http://localhost:3000/th/admin/users/{userId}/edit` |
 | Roles & Permissions | `http://localhost:3000/th/admin/roles` |
+| Create Role | `http://localhost:3000/th/admin/roles/new` |
 | Edit Role Permissions | `http://localhost:3000/th/admin/roles/{roleId}/edit` |
 | System Settings | `http://localhost:3000/th/admin/settings` |
 
@@ -565,6 +566,7 @@ await logAudit({
 | **Admin user edit flow** | เพิ่ม API `GET/POST /api/admin/users`, `PUT /api/admin/users/{id}` และหน้า `/admin/users/new`, `/admin/users/{id}/edit` สำหรับสร้าง/แก้ไข user, password, employee link, active flag, และ role assignments |
 | **Admin roles foundation** | เพิ่มหน้า `/admin/roles` สำหรับดู role summary และ permission matrix แยก module/action พร้อม RBAC `role:view` |
 | **Role permission edit flow** | เพิ่ม `PUT /api/admin/roles/{id}` และหน้า `/admin/roles/{id}/edit` สำหรับแก้ role permission matrix พร้อม transaction และ audit log |
+| **Role management polish** | เพิ่มหน้า `/admin/roles/new`, API `POST /api/admin/roles`, metadata form สำหรับ role key/display name/description/status, select whole module, และ guard rails สำหรับ system roles โดยล็อก `system_admin` permission |
 | **Admin settings foundation** | เพิ่มหน้า `/admin/settings` และ API `/api/admin/settings` สำหรับแก้ `system_settings` พร้อม RBAC `setting:view/edit` และ audit log |
 | **Maintenance foundation** | เพิ่ม schema/table `maintenance_tickets`, API `GET/POST /api/maintenance-tickets`, หน้า `/maintenance`, create ticket form, audit log, movement log, และอัปเดต asset เป็น `Pending Repair` เมื่อเปิดใบซ่อม |
 | **Maintenance close flow** | เพิ่ม `PATCH /api/maintenance-tickets/{id}` และปุ่มปิดงานในหน้า `/maintenance` สำหรับบันทึก root cause, resolution, return date, repair cost, warranty claim, อัปเดต ticket เป็น closed และเลือกสถานะ asset หลังซ่อม |
@@ -595,9 +597,9 @@ await logAudit({
 
 ### Recommended Next Order
 
-1. **Role management polish** — create/edit role metadata and guard rails for system roles
-2. **Disposal polish** — optional filtering/search and exports for disposal requests
-3. **Maintenance polish** — optional filters/exports for repair evidence and ticket history
+1. **Disposal polish** — optional filtering/search and exports for disposal requests
+2. **Maintenance polish** — optional filters/exports for repair evidence and ticket history
+3. **Phase 4 planning** — AD/LDAP, HR sync, and advanced dashboard scoping
 
 ### Phase 1C Started
 
@@ -648,6 +650,7 @@ await logAudit({
 45. Audit scan QA hardening with camera support detection, device picker, responsive QR scan box, decoded-value visibility, camera status/errors, and manual fallback guidance
 46. Disposal detail and print flow with request detail page, asset/decision/movement sections, list deep link, and printable A4 approval document
 47. Maintenance attachment previews with image/PDF inline rendering, preview modal, thumbnail cards, download/delete actions, and inline attachment API mode
+48. Role management polish with role create API/page, metadata editing, whole-module permission selection, system role metadata guards, and protected system administrator permissions
 
 ---
 

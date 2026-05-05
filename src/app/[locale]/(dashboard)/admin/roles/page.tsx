@@ -1,7 +1,8 @@
 import Link from "next/link"
-import { Check, Edit } from "lucide-react"
+import { Check, Edit, Plus, ShieldCheck } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
+import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
 
@@ -40,7 +41,8 @@ const permissionModules = [
 
 export default async function RolesPage({ params }: RolesPageProps) {
   const { locale } = await params
-  await requirePagePermission(locale, "role", "view")
+  const user = await requirePagePermission(locale, "role", "view")
+  const canCreate = hasPermission(user, "role", "create")
 
   const t = await getTranslations("adminRolesPage")
   const tCommon = await getTranslations("common")
@@ -105,9 +107,15 @@ export default async function RolesPage({ params }: RolesPageProps) {
                   <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-foreground">{role._count.userRoles}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-foreground">{role._count.rolePermissions}</td>
                   <td className="whitespace-nowrap px-4 py-3">
-                    <span className="inline-flex rounded-full bg-info/10 px-2 py-1 text-xs font-medium text-info">
+                    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${role.isSystem ? "bg-info/10 text-info" : "bg-muted text-muted-foreground"}`}>
                       {role.isSystem ? t("systemRole") : t("customRole")}
                     </span>
+                    {role.name === "system_admin" ? (
+                      <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
+                        <ShieldCheck className="h-3 w-3" />
+                        {t("protectedRole")}
+                      </span>
+                    ) : null}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
                     {role.isActive ? (
@@ -187,6 +195,16 @@ export default async function RolesPage({ params }: RolesPageProps) {
           </table>
         </div>
       </section>
+
+      {canCreate ? (
+        <Link
+          href={`/${locale}/admin/roles/new`}
+          className="fixed bottom-6 right-6 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-white shadow-lg transition-colors hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4" />
+          {t("createTitle")}
+        </Link>
+      ) : null}
     </div>
   )
 }

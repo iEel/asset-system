@@ -31,6 +31,9 @@ export default async function EditRolePage({ params }: EditRolePageProps) {
         name: role.name,
         displayName: role.displayName,
         displayNameTh: role.displayNameTh,
+        description: role.description,
+        isSystem: role.isSystem,
+        isActive: role.isActive,
       }}
       permissions={permissions}
       selectedPermissionIds={role.rolePermissions.map((permission) => permission.permissionId)}
