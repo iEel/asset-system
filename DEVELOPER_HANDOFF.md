@@ -605,7 +605,7 @@ await logAudit({
 
 1. **Phase 4 planning** — AD/LDAP, HR sync, and advanced dashboard scoping
 2. **Advanced dashboard** — richer drill-down KPIs once reporting scope is confirmed
-3. **Operational QA pass** — browser workflow checks across asset, audit, maintenance, disposal, and admin modules
+3. **Operational QA follow-up** — deeper workflow checks with realistic data mutations across asset, audit, maintenance, disposal, and admin modules
 
 ### Phase 1C Started
 
@@ -662,6 +662,7 @@ await logAudit({
 51. Asset tag category prefix mapping in System Settings, with category-specific prefixes used during new asset tag generation
 52. Flexible asset tag format template in System Settings, including company/category/prefix/date/running tokens
 53. System Settings UX polish with task-oriented sections and format presets instead of raw key/value editing
+54. Operational QA smoke pass across 24 core pages, clean lint warnings, and migrated Next.js `middleware.ts` to `proxy.ts`
 
 ---
 

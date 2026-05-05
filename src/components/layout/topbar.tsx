@@ -7,11 +7,9 @@ import {
   Bell,
   Search,
   Globe,
-  User,
   LogOut,
   ChevronDown,
   PanelLeftClose,
-  PanelLeft,
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
