@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/db"
-import { assetTagCategoryPrefixesKey } from "@/lib/system-setting-defaults"
+import {
+  assetTagCategoryPrefixesKey,
+  assetTagFormatTemplateKey,
+  defaultAssetTagFormatTemplate,
+} from "@/lib/system-setting-defaults"
 
 function parseCategoryPrefixes(value?: string | null) {
   if (!value) return {}
@@ -21,6 +25,28 @@ function normalizeSeparator(value?: string | null) {
   return separator || "-"
 }
 
+function normalizeRunningDigits(value?: string | null) {
+  const digits = Number(value ?? 5)
+  return Number.isFinite(digits) && digits > 0 ? Math.min(Math.floor(digits), 12) : 5
+}
+
+function renderAssetTagTemplate(template: string | null | undefined, tokens: Record<string, string>) {
+  const safeTemplate = template?.trim() || defaultAssetTagFormatTemplate
+  const templateWithRunning = safeTemplate.includes("{running}")
+    ? safeTemplate
+    : defaultAssetTagFormatTemplate
+
+  return templateWithRunning.replace(/\{([A-Za-z0-9]+)\}/g, (_match, token: string) => tokens[token] ?? "")
+}
+
+function renderSequencePrefix(template: string | null | undefined, tokens: Record<string, string>) {
+  const safeTemplate = template?.trim() || defaultAssetTagFormatTemplate
+  const templateWithRunning = safeTemplate.includes("{running}")
+    ? safeTemplate
+    : defaultAssetTagFormatTemplate
+  return renderAssetTagTemplate(templateWithRunning.slice(0, templateWithRunning.indexOf("{running}")), tokens)
+}
+
 export async function generateAssetTag({
   companyId,
   branchId,
@@ -30,12 +56,23 @@ export async function generateAssetTag({
   branchId: string
   categoryId: string
 }) {
-  const [company, branch, category, digitsSetting, separatorSetting, categoryPrefixesSetting] = await Promise.all([
+  const [
+    company,
+    branch,
+    category,
+    digitsSetting,
+    separatorSetting,
+    prefixSetting,
+    formatSetting,
+    categoryPrefixesSetting,
+  ] = await Promise.all([
     prisma.company.findUnique({ where: { id: companyId }, select: { code: true } }),
     prisma.branch.findUnique({ where: { id: branchId }, select: { code: true } }),
     prisma.assetCategory.findUnique({ where: { id: categoryId }, select: { code: true } }),
     prisma.systemSetting.findUnique({ where: { key: "asset_tag_running_digits" }, select: { value: true } }),
     prisma.systemSetting.findUnique({ where: { key: "asset_tag_separator" }, select: { value: true } }),
+    prisma.systemSetting.findUnique({ where: { key: "asset_tag_prefix" }, select: { value: true } }),
+    prisma.systemSetting.findUnique({ where: { key: assetTagFormatTemplateKey }, select: { value: true } }),
     prisma.systemSetting.findUnique({ where: { key: assetTagCategoryPrefixesKey }, select: { value: true } }),
   ])
 
@@ -43,23 +80,36 @@ export async function generateAssetTag({
     throw new Error("Invalid asset tag master data")
   }
 
-  const digits = Number(digitsSetting?.value ?? 5)
+  const digits = normalizeRunningDigits(digitsSetting?.value)
   const separator = normalizeSeparator(separatorSetting?.value)
   const categoryPrefixes = parseCategoryPrefixes(categoryPrefixesSetting?.value)
   const categorySegment = categoryPrefixes[categoryId] ?? category.code
-  const prefix = [company.code, branch.code, categorySegment].join(separator)
+  const now = new Date()
+  const baseTokens = {
+    companyCode: company.code,
+    branchCode: branch.code,
+    categoryCode: category.code,
+    assetPrefix: categorySegment,
+    globalPrefix: prefixSetting?.value?.trim() || "AST",
+    separator,
+    year: String(now.getFullYear()),
+    year2: String(now.getFullYear()).slice(-2),
+    month: String(now.getMonth() + 1).padStart(2, "0"),
+    day: String(now.getDate()).padStart(2, "0"),
+  }
+  const sequencePrefix = renderSequencePrefix(formatSetting?.value, baseTokens)
   const count = await prisma.asset.count({
     where: {
       companyId,
       branchId,
       categoryId,
-      assetTag: { startsWith: `${prefix}${separator}` },
+      assetTag: { startsWith: sequencePrefix },
     },
   })
 
   for (let offset = 1; offset <= 100; offset += 1) {
-    const running = String(count + offset).padStart(Number.isFinite(digits) ? digits : 5, "0")
-    const assetTag = [prefix, running].join(separator)
+    const running = String(count + offset).padStart(digits, "0")
+    const assetTag = renderAssetTagTemplate(formatSetting?.value, { ...baseTokens, running })
     const existing = await prisma.asset.findUnique({ where: { assetTag }, select: { id: true } })
     if (!existing) return assetTag
   }

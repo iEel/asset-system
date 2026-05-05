@@ -4,7 +4,11 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import { assetTagCategoryPrefixesKey } from "@/lib/system-setting-defaults"
+import {
+  assetTagCategoryPrefixesKey,
+  assetTagFormatTemplateKey,
+  defaultAssetTagFormatTemplate,
+} from "@/lib/system-setting-defaults"
 
 type SystemSettingItem = {
   key: string
@@ -24,8 +28,24 @@ type SystemSettingsFormProps = {
     value: string
     description: string
     generalSettings: string
+    assetTagFormat: string
+    assetTagFormatDescription: string
+    assetTagTemplate: string
+    assetTagTemplateHelp: string
+    availableTokens: string
+    exampleFormat: string
+    formatPresets: string
+    presetCompanyPrefixMonthRunning: string
+    presetCompanyBranchPrefixRunning: string
+    presetGlobalPrefixYearRunning: string
+    numberingOptions: string
+    runningDigits: string
+    separator: string
+    globalPrefix: string
+    invalidFormatTemplate: string
     categoryPrefixes: string
     categoryPrefixesDescription: string
+    noCategoryPrefixes: string
     category: string
     prefix: string
     addPrefix: string
@@ -33,6 +53,12 @@ type SystemSettingsFormProps = {
     selectCategory: string
     duplicateCategory: string
     invalidPrefix: string
+    organizationDefaults: string
+    organizationDefaultsDescription: string
+    companyName: string
+    defaultCurrency: string
+    advancedSettings: string
+    advancedSettingsDescription: string
     save: string
     success: string
     error: string
@@ -43,6 +69,45 @@ type PrefixRow = {
   categoryId: string
   prefix: string
 }
+
+const assetTagFormatTokens = [
+  "companyCode",
+  "branchCode",
+  "categoryCode",
+  "assetPrefix",
+  "globalPrefix",
+  "year",
+  "year2",
+  "month",
+  "day",
+  "running",
+  "separator",
+]
+
+const formatPresets = [
+  {
+    labelKey: "presetCompanyPrefixMonthRunning",
+    value: "{companyCode}{separator}{assetPrefix}{separator}{month}{separator}{running}",
+  },
+  {
+    labelKey: "presetCompanyBranchPrefixRunning",
+    value: defaultAssetTagFormatTemplate,
+  },
+  {
+    labelKey: "presetGlobalPrefixYearRunning",
+    value: "{globalPrefix}{separator}{assetPrefix}{separator}{year2}{separator}{running}",
+  },
+] as const
+
+const friendlySettingKeys = new Set([
+  "asset_tag_prefix",
+  "asset_tag_separator",
+  "asset_tag_running_digits",
+  "company_name",
+  "default_currency",
+  assetTagCategoryPrefixesKey,
+  assetTagFormatTemplateKey,
+])
 
 function parsePrefixRows(value?: string) {
   try {
@@ -78,13 +143,21 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
   const [prefixRows, setPrefixRows] = useState<PrefixRow[]>(() =>
     parsePrefixRows(settings.find((setting) => setting.key === assetTagCategoryPrefixesKey)?.value)
   )
-  const generalSettings = settings.filter((setting) => setting.key !== assetTagCategoryPrefixesKey)
+  const generalSettings = settings.filter(
+    (setting) => !friendlySettingKeys.has(setting.key)
+  )
+  const formatTemplate = values[assetTagFormatTemplateKey] ?? defaultAssetTagFormatTemplate
+  const getValue = (key: string) => values[key] ?? ""
+  const setValue = (key: string, value: string) => setValues((current) => ({ ...current, [key]: value }))
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const selectedCategories = prefixRows.map((row) => row.categoryId).filter(Boolean)
     const hasDuplicateCategory = new Set(selectedCategories).size !== selectedCategories.length
     const hasInvalidPrefix = prefixRows.some((row) => row.categoryId && !/^[A-Z0-9]{2,10}$/.test(row.prefix.trim().toUpperCase()))
+    const templateTokens = Array.from(formatTemplate.matchAll(/\{([A-Za-z0-9]+)\}/g)).map((match) => match[1])
+    const hasInvalidTemplate =
+      !formatTemplate.includes("{running}") || templateTokens.some((token) => !assetTagFormatTokens.includes(token))
 
     if (hasDuplicateCategory) {
       toast.error(labels.duplicateCategory)
@@ -92,6 +165,10 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     }
     if (hasInvalidPrefix) {
       toast.error(labels.invalidPrefix)
+      return
+    }
+    if (hasInvalidTemplate) {
+      toast.error(labels.invalidFormatTemplate)
       return
     }
 
@@ -125,6 +202,97 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <SectionHeader title={labels.assetTagFormat} description={labels.assetTagFormatDescription} />
+        <div className="space-y-4 px-4 py-4">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-foreground" htmlFor="asset-tag-template">
+                {labels.assetTagTemplate}
+              </label>
+              <input
+                id="asset-tag-template"
+                value={formatTemplate}
+                onChange={(event) => setValue(assetTagFormatTemplateKey, event.target.value)}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+              <p className="text-sm text-muted-foreground">{labels.assetTagTemplateHelp}</p>
+            </div>
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-foreground">{labels.formatPresets}</div>
+              <div className="grid gap-2">
+                {formatPresets.map((preset) => (
+                  <button
+                    type="button"
+                    key={preset.value}
+                    onClick={() => setValue(assetTagFormatTemplateKey, preset.value)}
+                    className="min-h-10 rounded-md border border-border px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent"
+                  >
+                    {labels[preset.labelKey]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{labels.availableTokens}</div>
+            <div className="flex flex-wrap gap-2">
+              {assetTagFormatTokens.map((token) => (
+                <button
+                  type="button"
+                  key={token}
+                  onClick={() =>
+                    setValues((current) => ({
+                      ...current,
+                      [assetTagFormatTemplateKey]: `${current[assetTagFormatTemplateKey] ?? defaultAssetTagFormatTemplate}{${token}}`,
+                    }))
+                  }
+                  className="inline-flex h-8 items-center rounded-md border border-border px-2 font-mono text-xs text-foreground transition-colors hover:bg-accent"
+                >
+                  {`{${token}}`}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-md border border-border bg-muted/30 px-3 py-2 font-mono text-xs text-muted-foreground">
+            {labels.exampleFormat}: {"{companyCode}{separator}{assetPrefix}{separator}{month}{separator}{running}"}
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <SectionHeader title={labels.numberingOptions} />
+        <div className="grid gap-4 px-4 py-4 md:grid-cols-3">
+          <Field label={labels.runningDigits} htmlFor="asset-tag-running-digits">
+            <input
+              id="asset-tag-running-digits"
+              type="number"
+              min={1}
+              max={12}
+              value={getValue("asset_tag_running_digits")}
+              onChange={(event) => setValue("asset_tag_running_digits", event.target.value)}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </Field>
+          <Field label={labels.separator} htmlFor="asset-tag-separator">
+            <input
+              id="asset-tag-separator"
+              value={getValue("asset_tag_separator")}
+              onChange={(event) => setValue("asset_tag_separator", event.target.value)}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </Field>
+          <Field label={labels.globalPrefix} htmlFor="asset-tag-global-prefix">
+            <input
+              id="asset-tag-global-prefix"
+              value={getValue("asset_tag_prefix")}
+              onChange={(event) => setValue("asset_tag_prefix", event.target.value.toUpperCase())}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </Field>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.categoryPrefixes} description={labels.categoryPrefixesDescription} />
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border text-sm">
@@ -138,6 +306,13 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
+              {prefixRows.length === 0 ? (
+                <tr>
+                  <td className="px-4 py-6 text-sm text-muted-foreground" colSpan={3}>
+                    {labels.noCategoryPrefixes}
+                  </td>
+                </tr>
+              ) : null}
               {prefixRows.map((row, index) => (
                 <tr key={`${row.categoryId}-${index}`} className="hover:bg-accent/50">
                   <td className="min-w-80 px-4 py-3">
@@ -203,8 +378,31 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
       </div>
 
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-        <SectionHeader title={labels.generalSettings} />
-        <div className="overflow-x-auto">
+        <SectionHeader title={labels.organizationDefaults} description={labels.organizationDefaultsDescription} />
+        <div className="grid gap-4 px-4 py-4 md:grid-cols-2">
+          <Field label={labels.companyName} htmlFor="company-name">
+            <input
+              id="company-name"
+              value={getValue("company_name")}
+              onChange={(event) => setValue("company_name", event.target.value)}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </Field>
+          <Field label={labels.defaultCurrency} htmlFor="default-currency">
+            <input
+              id="default-currency"
+              value={getValue("default_currency")}
+              onChange={(event) => setValue("default_currency", event.target.value.toUpperCase())}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </Field>
+        </div>
+      </div>
+
+      {generalSettings.length > 0 ? (
+        <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+          <SectionHeader title={labels.advancedSettings} description={labels.advancedSettingsDescription} />
+          <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">
               <tr>
@@ -229,8 +427,9 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               ))}
             </tbody>
           </table>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div className="flex justify-end">
         <button
@@ -243,6 +442,17 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
         </button>
       </div>
     </form>
+  )
+}
+
+function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-foreground" htmlFor={htmlFor}>
+        {label}
+      </label>
+      {children}
+    </div>
   )
 }
 

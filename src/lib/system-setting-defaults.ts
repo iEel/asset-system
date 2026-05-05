@@ -1,9 +1,17 @@
 export const assetTagCategoryPrefixesKey = "asset_tag_category_prefixes"
+export const assetTagFormatTemplateKey = "asset_tag_format_template"
+export const defaultAssetTagFormatTemplate = "{companyCode}{separator}{branchCode}{separator}{assetPrefix}{separator}{running}"
 
 export const systemSettingDefaults = [
   { key: "asset_tag_prefix", value: "AST", description: "Prefix สำหรับรหัสทรัพย์สิน" },
   { key: "asset_tag_separator", value: "-", description: "ตัวคั่นในรหัสทรัพย์สิน" },
   { key: "asset_tag_running_digits", value: "5", description: "จำนวนหลัก Running Number" },
+  {
+    key: assetTagFormatTemplateKey,
+    value: defaultAssetTagFormatTemplate,
+    description:
+      "รูปแบบ Asset Tag เช่น {companyCode}{separator}{assetPrefix}{separator}{month}{separator}{running}",
+  },
   {
     key: assetTagCategoryPrefixesKey,
     value: "{}",

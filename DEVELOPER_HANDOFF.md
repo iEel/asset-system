@@ -440,7 +440,7 @@ WEB_PORT=3000
 |---|---|---|
 | Asset Statuses | 14 | Draft, Ready, In Use, Reserved, Checked Out, In Transit, Under Maintenance, Pending Repair, Under Inspection, Lost, Missing, Pending Disposal, Disposed, Retired |
 | Asset Conditions | 8 | New, Excellent, Good, Fair, Poor, Damaged, Non-functional, Salvage |
-| System Settings | 6 | Asset tag prefix (AST), category prefix mapping, separator (-), running digits (5), etc. |
+| System Settings | 7 | Asset tag format template, prefix (AST), category prefix mapping, separator (-), running digits (5), etc. |
 | Roles | 11 | system_admin → viewer |
 | Permissions | 150 | 25 modules × 6 actions |
 | Admin User | 1 | admin / admin123 (system_admin role) |
@@ -580,6 +580,8 @@ await logAudit({
 | **Disposal detail/print** | เพิ่มหน้า `/disposal/{id}` สำหรับดูคำขอ, ทรัพย์สิน, ผลพิจารณา, movement history และหน้า `/disposal/{id}/print` สำหรับใบอนุมัติตัดจำหน่าย A4 พร้อมช่องลงชื่อ |
 | **Disposal polish** | หน้า `/disposal` เพิ่ม search, status/type/date filters, clear filter, result count, และ Excel export `GET /api/disposal-requests/export` ตามตัวกรองเดียวกับหน้าจอ |
 | **Asset tag category prefixes** | หน้า `/admin/settings` เพิ่ม section สำหรับจับคู่ประเภทสินค้ากับ prefix เช่น IT = COM, Furniture = FUR; asset tag generation จะใช้ prefix ตาม category ก่อน fallback เป็น category code |
+| **Flexible asset tag format** | หน้า `/admin/settings` เพิ่ม `asset_tag_format_template` พร้อม token เช่น `{companyCode}`, `{assetPrefix}`, `{month}`, `{running}` เพื่อกำหนดรูปแบบรหัสทรัพย์สินเอง |
+| **System settings UX polish** | ปรับหน้า `/admin/settings` จากตาราง key/value เป็น section เฉพาะงาน ได้แก่รูปแบบ Asset Tag พร้อม preset, ตัวเลือกเลขรันนิ่ง, prefix ตามประเภท, ค่าองค์กร และ advanced settings เฉพาะค่าที่ไม่มี editor |
 
 ---
 
@@ -658,6 +660,8 @@ await logAudit({
 49. Disposal polish with shared filter query, search/status/type/date filtering, clear filters, result count, and Excel export matching current filters
 50. Maintenance polish with shared filter query, search/status/type/evidence/date filtering, clear filters, result count, and Excel export with attachment counts
 51. Asset tag category prefix mapping in System Settings, with category-specific prefixes used during new asset tag generation
+52. Flexible asset tag format template in System Settings, including company/category/prefix/date/running tokens
+53. System Settings UX polish with task-oriented sections and format presets instead of raw key/value editing
 
 ---
 
