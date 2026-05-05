@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-05-03
 > **Phase:** Phase 3 Maintenance/Disposal (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance mostly built and disposal approval flow started
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance mostly built and disposal detail/print started
 
 ---
 
@@ -24,7 +24,7 @@
 | **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 Mostly Complete — CRUD, tag gen, QR labels, detail, movements, attachments, import/export, duplicate UX |
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | 🟨 Started — Check-out/in, photo/signature evidence, printable handover/return forms, stricter checkout/checkin status mapping, basic reports, system logs, and live KPI dashboard added |
 | **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move, audit round generation, QR/manual scan capture, finding review, pending/not-found workflow, approved reconciliation, granular multi-finding review status, and Excel/PDF exports |
-| **Phase 3** | Maintenance, Disposal | 🟨 Started — maintenance ticket flow mostly built; disposal request create/list and approval/reject flow added |
+| **Phase 3** | Maintenance, Disposal | 🟨 Started — maintenance ticket flow mostly built; disposal request create/list, approval/reject, detail, and print document added |
 | **Phase 4** | AD/LDAP, HR sync, Advanced dashboard | ⬜ Planned |
 
 ---
@@ -407,6 +407,8 @@ WEB_PORT=3000
 | Maintenance Ticket Close API | `PATCH /api/maintenance-tickets/{ticketId}` |
 | Maintenance Attachment API | `POST /api/maintenance-tickets/{ticketId}/attachments` |
 | Disposal Requests | `http://localhost:3000/th/disposal` |
+| Disposal Request Detail | `http://localhost:3000/th/disposal/{requestId}` |
+| Disposal Approval Print | `http://localhost:3000/th/disposal/{requestId}/print` |
 | Disposal Request API | `GET/POST /api/disposal-requests` |
 | Disposal Decision API | `PATCH /api/disposal-requests/{requestId}` |
 | Audit Rounds | `http://localhost:3000/th/audit/rounds` |
@@ -570,6 +572,7 @@ await logAudit({
 | **Maintenance polish** | เพิ่ม search/filter ในหน้า `/maintenance` และหน้า print A4 `/maintenance/{id}/print` สำหรับใบซ่อม |
 | **Disposal foundation** | เพิ่ม schema/table `disposal_requests`, API `GET/POST /api/disposal-requests`, หน้า `/disposal`, create request form, audit log, movement log, และอัปเดต asset เป็น `Pending Disposal` เมื่อเปิดคำขอ |
 | **Disposal approval flow** | เพิ่ม `PATCH /api/disposal-requests/{id}` และปุ่มพิจารณาในหน้า `/disposal` สำหรับ approve/reject, บันทึก sale/salvage value และ remark, อัปเดตสถานะ asset หลังพิจารณา, พร้อม movement/audit log |
+| **Disposal detail/print** | เพิ่มหน้า `/disposal/{id}` สำหรับดูคำขอ, ทรัพย์สิน, ผลพิจารณา, movement history และหน้า `/disposal/{id}/print` สำหรับใบอนุมัติตัดจำหน่าย A4 พร้อมช่องลงชื่อ |
 
 ---
 
@@ -591,9 +594,9 @@ await logAudit({
 
 ### Recommended Next Order
 
-1. **Disposal detail/print** — request detail page and printable disposal approval document
-2. **Maintenance attachment previews** — inline preview for image/PDF repair evidence
-3. **Role management polish** — create/edit role metadata and guard rails for system roles
+1. **Maintenance attachment previews** — inline preview for image/PDF repair evidence
+2. **Role management polish** — create/edit role metadata and guard rails for system roles
+3. **Disposal polish** — optional filtering/search and exports for disposal requests
 
 ### Phase 1C Started
 
@@ -642,6 +645,7 @@ await logAudit({
 43. Disposal request foundation with Prisma schema/table, list/create page, GET/POST API, audit log, movement log, and automatic Pending Disposal asset status update
 44. Disposal approval/reject flow with PATCH API, review modal, selectable post-review asset status, value/remark capture, movement logging, and audit trail
 45. Audit scan QA hardening with camera support detection, device picker, responsive QR scan box, decoded-value visibility, camera status/errors, and manual fallback guidance
+46. Disposal detail and print flow with request detail page, asset/decision/movement sections, list deep link, and printable A4 approval document
 
 ---
 

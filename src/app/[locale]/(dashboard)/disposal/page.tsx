@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
@@ -74,7 +75,11 @@ export default async function DisposalPage({ params }: DisposalPageProps) {
               ) : (
                 requests.map((request) => (
                   <tr key={request.id} className="hover:bg-accent/50">
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{request.disposalNo}</td>
+                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">
+                      <Link href={`/${locale}/disposal/${request.id}`} className="hover:text-primary">
+                        {request.disposalNo}
+                      </Link>
+                    </td>
                     <td className="min-w-56 px-4 py-3">
                       <div className="font-medium text-foreground">{request.asset.assetTag}</div>
                       <div className="mt-1 text-xs text-muted-foreground">{request.asset.name}</div>
