@@ -12,7 +12,7 @@ type AttachmentRouteContext = {
   params: Promise<{ id: string }>
 }
 
-export async function GET(_request: NextRequest, context: AttachmentRouteContext) {
+export async function GET(request: NextRequest, context: AttachmentRouteContext) {
   try {
     const user = await requireAuth()
 
@@ -29,12 +29,13 @@ export async function GET(_request: NextRequest, context: AttachmentRouteContext
     const safePath = assertSafeUploadPath(attachment.filePath)
     const file = await readFile(safePath)
     const encodedName = encodeURIComponent(attachment.originalName)
+    const disposition = request.nextUrl.searchParams.get("inline") === "1" ? "inline" : "attachment"
 
     return new NextResponse(new Uint8Array(file), {
       headers: {
         "Content-Type": attachment.fileType,
         "Content-Length": String(attachment.fileSize),
-        "Content-Disposition": `attachment; filename*=UTF-8''${encodedName}`,
+        "Content-Disposition": `${disposition}; filename*=UTF-8''${encodedName}`,
       },
     })
   } catch (error) {

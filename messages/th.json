@@ -550,6 +550,8 @@
     "uploadAttachment": "อัปโหลดเอกสาร",
     "uploadSuccess": "อัปโหลดเอกสารงานซ่อมสำเร็จ",
     "fileRequired": "กรุณาเลือกไฟล์",
+    "preview": "ดูตัวอย่าง",
+    "pdfPreview": "PDF Preview",
     "download": "ดาวน์โหลด",
     "ticketDetail": "รายละเอียดใบแจ้งซ่อม",
     "closeDetail": "รายละเอียดการปิดงาน",

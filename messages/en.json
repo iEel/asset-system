@@ -550,6 +550,8 @@
     "uploadAttachment": "Upload Attachment",
     "uploadSuccess": "Repair attachment uploaded",
     "fileRequired": "Please choose a file",
+    "preview": "Preview",
+    "pdfPreview": "PDF Preview",
     "download": "Download",
     "ticketDetail": "Repair Ticket Detail",
     "closeDetail": "Closure Detail",

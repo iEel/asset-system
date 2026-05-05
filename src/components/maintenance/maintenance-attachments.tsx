@@ -3,7 +3,7 @@
 import { useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Download, FileText, Loader2, Trash2, Upload } from "lucide-react"
+import { Download, Eye, FileText, Image as ImageIcon, Loader2, Trash2, Upload, X } from "lucide-react"
 import { toast } from "sonner"
 import { formatFileSize } from "@/lib/uploads"
 
@@ -27,6 +27,7 @@ export function MaintenanceAttachments({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [preview, setPreview] = useState<Attachment | null>(null)
 
   async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -106,11 +107,55 @@ export function MaintenanceAttachments({
         <div className="space-y-3">
           {attachments.map((attachment) => (
             <div key={attachment.id} className="rounded-md border border-border bg-background p-3">
-              <div className="text-sm font-medium text-foreground">{attachment.originalName}</div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {attachment.fileType} · {formatFileSize(attachment.fileSize)}
+              {isPreviewable(attachment) ? (
+                <button
+                  type="button"
+                  onClick={() => setPreview(attachment)}
+                  className="mb-3 flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-md border border-border bg-surface text-muted-foreground transition-colors hover:bg-accent"
+                >
+                  {isImage(attachment) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/api/attachments/${attachment.id}?inline=1`}
+                      alt={attachment.originalName}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-sm">
+                      <FileText className="h-10 w-10 text-danger" />
+                      {t("pdfPreview")}
+                    </div>
+                  )}
+                </button>
+              ) : (
+                <div className="mb-3 flex aspect-[4/3] w-full items-center justify-center rounded-md border border-dashed border-border bg-surface text-muted-foreground">
+                  <FileText className="h-10 w-10" />
+                </div>
+              )}
+              <div className="flex items-start gap-2">
+                {isImage(attachment) ? (
+                  <ImageIcon className="mt-0.5 h-4 w-4 shrink-0 text-info" />
+                ) : (
+                  <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                )}
+                <div className="min-w-0">
+                  <div className="break-words text-sm font-medium text-foreground">{attachment.originalName}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {attachment.fileType} · {formatFileSize(attachment.fileSize)}
+                  </div>
+                </div>
               </div>
               <div className="mt-3 flex gap-2">
+                {isPreviewable(attachment) ? (
+                  <button
+                    type="button"
+                    onClick={() => setPreview(attachment)}
+                    className="inline-flex h-8 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    {t("preview")}
+                  </button>
+                ) : null}
                 <a
                   href={`/api/attachments/${attachment.id}`}
                   className="inline-flex h-8 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent"
@@ -136,6 +181,66 @@ export function MaintenanceAttachments({
           ))}
         </div>
       )}
+
+      {preview ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <section className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <div className="min-w-0">
+                <h3 className="truncate text-sm font-semibold text-foreground">{preview.originalName}</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {preview.fileType} · {formatFileSize(preview.fileSize)}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/api/attachments/${preview.id}`}
+                  className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-3 text-xs font-medium transition-colors hover:bg-accent"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  {t("download")}
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreview(null)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border transition-colors hover:bg-accent"
+                  aria-label={tCommon("close")}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 bg-background p-3">
+              {isImage(preview) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/api/attachments/${preview.id}?inline=1`}
+                  alt={preview.originalName}
+                  className="mx-auto max-h-[76vh] max-w-full rounded-md object-contain"
+                />
+              ) : (
+                <iframe
+                  src={`/api/attachments/${preview.id}?inline=1`}
+                  title={preview.originalName}
+                  className="h-[76vh] w-full rounded-md border border-border bg-white"
+                />
+              )}
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   )
+}
+
+function isImage(attachment: Attachment) {
+  return attachment.fileType.startsWith("image/")
+}
+
+function isPdf(attachment: Attachment) {
+  return attachment.fileType === "application/pdf"
+}
+
+function isPreviewable(attachment: Attachment) {
+  return isImage(attachment) || isPdf(attachment)
 }
