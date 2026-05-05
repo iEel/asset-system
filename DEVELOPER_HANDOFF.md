@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-05-03
 > **Phase:** Phase 3 Maintenance/Disposal (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built, 🟨 Admin RBAC polish started
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built with disposal export polish, 🟨 Admin RBAC polish started
 
 ---
 
@@ -411,6 +411,7 @@ WEB_PORT=3000
 | Disposal Approval Print | `http://localhost:3000/th/disposal/{requestId}/print` |
 | Disposal Request API | `GET/POST /api/disposal-requests` |
 | Disposal Decision API | `PATCH /api/disposal-requests/{requestId}` |
+| Disposal Request Export | `GET /api/disposal-requests/export` |
 | Audit Rounds | `http://localhost:3000/th/audit/rounds` |
 | Create Audit Round | `http://localhost:3000/th/audit/rounds/new` |
 | Audit Scan Capture | `http://localhost:3000/th/audit/rounds/{auditRoundId}/scan` |
@@ -576,6 +577,7 @@ await logAudit({
 | **Disposal foundation** | เพิ่ม schema/table `disposal_requests`, API `GET/POST /api/disposal-requests`, หน้า `/disposal`, create request form, audit log, movement log, และอัปเดต asset เป็น `Pending Disposal` เมื่อเปิดคำขอ |
 | **Disposal approval flow** | เพิ่ม `PATCH /api/disposal-requests/{id}` และปุ่มพิจารณาในหน้า `/disposal` สำหรับ approve/reject, บันทึก sale/salvage value และ remark, อัปเดตสถานะ asset หลังพิจารณา, พร้อม movement/audit log |
 | **Disposal detail/print** | เพิ่มหน้า `/disposal/{id}` สำหรับดูคำขอ, ทรัพย์สิน, ผลพิจารณา, movement history และหน้า `/disposal/{id}/print` สำหรับใบอนุมัติตัดจำหน่าย A4 พร้อมช่องลงชื่อ |
+| **Disposal polish** | หน้า `/disposal` เพิ่ม search, status/type/date filters, clear filter, result count, และ Excel export `GET /api/disposal-requests/export` ตามตัวกรองเดียวกับหน้าจอ |
 
 ---
 
@@ -597,9 +599,9 @@ await logAudit({
 
 ### Recommended Next Order
 
-1. **Disposal polish** — optional filtering/search and exports for disposal requests
-2. **Maintenance polish** — optional filters/exports for repair evidence and ticket history
-3. **Phase 4 planning** — AD/LDAP, HR sync, and advanced dashboard scoping
+1. **Maintenance polish** — optional filters/exports for repair evidence and ticket history
+2. **Phase 4 planning** — AD/LDAP, HR sync, and advanced dashboard scoping
+3. **Advanced dashboard** — richer drill-down KPIs once reporting scope is confirmed
 
 ### Phase 1C Started
 
@@ -651,6 +653,7 @@ await logAudit({
 46. Disposal detail and print flow with request detail page, asset/decision/movement sections, list deep link, and printable A4 approval document
 47. Maintenance attachment previews with image/PDF inline rendering, preview modal, thumbnail cards, download/delete actions, and inline attachment API mode
 48. Role management polish with role create API/page, metadata editing, whole-module permission selection, system role metadata guards, and protected system administrator permissions
+49. Disposal polish with shared filter query, search/status/type/date filtering, clear filters, result count, and Excel export matching current filters
 
 ---
 
