@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Camera, CheckCircle2, Keyboard, Loader2, ScanLine, Save, X } from "lucide-react"
+import { Camera, CheckCircle2, Info, Keyboard, Loader2, ScanLine, Save, X } from "lucide-react"
 import { toast } from "sonner"
 
 type Option = { id: string; label: string }
@@ -29,14 +29,20 @@ type AuditScanOptions = {
 
 type Html5QrcodeInstance = {
   start: (
-    cameraConfig: { facingMode: string },
-    config: { fps: number; qrbox: { width: number; height: number } },
+    cameraConfig: string | { facingMode: string },
+    config: {
+      fps: number
+      qrbox: (viewfinderWidth: number, viewfinderHeight: number) => { width: number; height: number }
+    },
     successCallback: (decodedText: string) => void,
     errorCallback?: () => void
   ) => Promise<unknown>
   stop: () => Promise<unknown>
   clear: () => void
 }
+
+type CameraDevice = { id: string; label: string }
+type CameraReadiness = "checking" | "ready" | "unavailable"
 
 export function AuditScanForm({
   roundId,
@@ -55,9 +61,16 @@ export function AuditScanForm({
   const [saving, setSaving] = useState(false)
   const [scannerRunning, setScannerRunning] = useState(false)
   const [scannerLoading, setScannerLoading] = useState(false)
+  const [cameraReadiness, setCameraReadiness] = useState<CameraReadiness>(() =>
+    isCameraAccessSupported() ? "ready" : "unavailable"
+  )
+  const [cameraErrorText, setCameraErrorText] = useState("")
+  const [cameras, setCameras] = useState<CameraDevice[]>([])
+  const [selectedCameraId, setSelectedCameraId] = useState("")
   const [scanText, setScanText] = useState("")
   const [scanSource, setScanSource] = useState<"manual" | "qr">("manual")
   const [lastResult, setLastResult] = useState<string | null>(null)
+  const [lastDecodedText, setLastDecodedText] = useState("")
   const qrReaderRef = useRef<Html5QrcodeInstance | null>(null)
   const [values, setValues] = useState({
     assetId: "",
@@ -94,15 +107,39 @@ export function AuditScanForm({
   }, [])
 
   async function startScanner() {
+    if (!isCameraAccessSupported()) {
+      setCameraReadiness("unavailable")
+      setCameraErrorText(t("cameraUnsupported"))
+      toast.error(t("cameraUnsupported"))
+      return
+    }
+
     setScannerLoading(true)
+    setCameraErrorText("")
     try {
       const { Html5Qrcode } = await import("html5-qrcode")
+      const availableCameras = (await Html5Qrcode.getCameras()) as CameraDevice[]
+      setCameras(availableCameras)
+      if (availableCameras.length === 0) {
+        setCameraReadiness("unavailable")
+        setCameraErrorText(t("cameraNotFound"))
+        toast.error(t("cameraNotFound"))
+        return
+      }
+
+      const preferredCamera =
+        availableCameras.find((camera) => camera.id === selectedCameraId) ??
+        availableCameras.find((camera) => /back|rear|environment/i.test(camera.label)) ??
+        availableCameras[0]
+      setSelectedCameraId(preferredCamera.id)
+
       const scanner = new Html5Qrcode("audit-qr-reader") as unknown as Html5QrcodeInstance
       qrReaderRef.current = scanner
       await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 240, height: 240 } },
+        preferredCamera.id,
+        { fps: 10, qrbox: getResponsiveQrBox },
         (decodedText) => {
+          setLastDecodedText(decodedText)
           if (selectScannedAsset(decodedText, "qr")) {
             void stopScanner()
           }
@@ -111,7 +148,9 @@ export function AuditScanForm({
       )
       setScannerRunning(true)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("cameraError"))
+      const message = error instanceof Error ? error.message : t("cameraError")
+      setCameraErrorText(message)
+      toast.error(message)
       qrReaderRef.current = null
     } finally {
       setScannerLoading(false)
@@ -231,7 +270,57 @@ export function AuditScanForm({
                 </button>
               </div>
             </div>
-            <div id="audit-qr-reader" className={`mt-4 overflow-hidden rounded-md border border-border ${scannerRunning ? "block" : "hidden"}`} />
+            <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
+              <div
+                id="audit-qr-reader"
+                className={`min-h-72 overflow-hidden rounded-md border border-border bg-surface ${scannerRunning ? "block" : "hidden"}`}
+              />
+              <div className="rounded-md border border-border bg-surface p-3 text-sm text-muted-foreground">
+                <div className="flex items-start gap-2">
+                  <Info className="mt-0.5 h-4 w-4 text-info" />
+                  <div>
+                    <div className="font-medium text-foreground">{t("cameraStatus")}</div>
+                    <div className="mt-1">
+                      {scannerRunning
+                        ? t("cameraRunning")
+                        : cameraReadiness === "ready"
+                          ? t("cameraReady")
+                          : t("cameraUnavailable")}
+                    </div>
+                  </div>
+                </div>
+                {cameras.length > 1 ? (
+                  <label className="mt-3 block">
+                    <span className="mb-1.5 block text-xs font-medium text-foreground">{t("cameraDevice")}</span>
+                    <select
+                      value={selectedCameraId}
+                      disabled={scannerRunning || scannerLoading}
+                      onChange={(event) => setSelectedCameraId(event.target.value)}
+                      className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+                    >
+                      {cameras.map((camera, index) => (
+                        <option key={camera.id} value={camera.id}>
+                          {camera.label || t("cameraDeviceFallback", { index: index + 1 })}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                {lastDecodedText ? (
+                  <div className="mt-3 rounded-md bg-background p-2 text-xs">
+                    <div className="font-medium text-foreground">{t("lastDecoded")}</div>
+                    <div className="mt-1 break-all">{lastDecodedText}</div>
+                  </div>
+                ) : null}
+                {cameraErrorText || cameraReadiness === "unavailable" ? (
+                  <div className="mt-3 rounded-md border border-warning/30 bg-warning/10 p-2 text-xs text-warning">
+                    {cameraErrorText || t("cameraUnsupported")}
+                  </div>
+                ) : (
+                  <div className="mt-3 text-xs">{t("cameraHelp")}</div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="md:col-span-2">
@@ -283,6 +372,16 @@ export function AuditScanForm({
       </section>
     </div>
   )
+}
+
+function getResponsiveQrBox(viewfinderWidth: number, viewfinderHeight: number) {
+  const shortestSide = Math.min(viewfinderWidth, viewfinderHeight)
+  const size = Math.max(180, Math.min(320, Math.floor(shortestSide * 0.72)))
+  return { width: size, height: size }
+}
+
+function isCameraAccessSupported() {
+  return typeof navigator !== "undefined" && "mediaDevices" in navigator && "getUserMedia" in navigator.mediaDevices
 }
 
 function getActualValues(

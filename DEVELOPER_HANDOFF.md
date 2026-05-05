@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-05-03
 > **Phase:** Phase 3 Maintenance/Disposal (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports, 🟨 Phase 3 maintenance mostly built and disposal approval flow started
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance mostly built and disposal approval flow started
 
 ---
 
@@ -554,6 +554,7 @@ await logAudit({
 | **Audit multi-finding review** | Review finding ทีละรายการแล้วคำนวณสถานะ `audit_items` ใหม่จาก findings ทั้งหมดของ item นั้น เพื่อไม่ปิด item เป็น reconciled/rejected ถ้ายังมี finding pending อื่น |
 | **Audit finding labels** | หน้า Finding และ Excel export resolve expected/actual value จาก raw IDs เป็น label ของ Location/Employee/Department/Condition เพื่อให้ reviewer อ่านง่ายขึ้น |
 | **Audit pending/not found** | หน้า `/audit/rounds/{id}/pending` แสดง audit items ที่ยัง `pending`; Mark Not Found จะตั้ง item เป็น `reviewed/not_found`, สร้าง finding `not_found` pending investigation และไม่แก้ master asset เป็น Lost |
+| **Audit scan QA hardening** | หน้า `/audit/rounds/{id}/scan` เพิ่ม camera support detection, camera device picker, responsive QR scan box, last decoded value, camera status/error panel, และ manual fallback guidance สำหรับ browser/mobile QA |
 | **Operation print forms** | หลัง checkout/checkin สำเร็จจะ redirect ไปหน้าเอกสารพิมพ์ A4 สำหรับใบส่งมอบ/ใบรับคืน พร้อมข้อมูลทรัพย์สิน เงื่อนไข รายละเอียดธุรกรรม และช่องลายเซ็น |
 | **Operation status mapping** | Checkout ตั้ง asset status เป็น `Checked Out` แบบ exact จาก master status; Check-in อนุญาต next status เฉพาะ `Ready`, `Pending Repair`, `Pending Disposal` ทั้งใน dropdown และ API validation |
 | **Operation evidence upload** | Checkout รองรับรูปก่อนส่งมอบและไฟล์ลายเซ็นผู้รับ; Check-in รองรับรูปหลังรับคืน โดยบันทึกลง `UPLOAD_DIR/operations/...`, สร้าง `attachments`, และเก็บ path ใน transaction record |
@@ -590,10 +591,9 @@ await logAudit({
 
 ### Recommended Next Order
 
-1. **Camera scan QA** — browser/device test for camera permission, mobile viewport, and QR label scan reliability
-2. **Disposal detail/print** — request detail page and printable disposal approval document
-3. **Maintenance attachment previews** — inline preview for image/PDF repair evidence
-4. **Role management polish** — create/edit role metadata and guard rails for system roles
+1. **Disposal detail/print** — request detail page and printable disposal approval document
+2. **Maintenance attachment previews** — inline preview for image/PDF repair evidence
+3. **Role management polish** — create/edit role metadata and guard rails for system roles
 
 ### Phase 1C Started
 
@@ -641,6 +641,7 @@ await logAudit({
 42. Role permission edit flow with editable module/action permission matrix and audit logging
 43. Disposal request foundation with Prisma schema/table, list/create page, GET/POST API, audit log, movement log, and automatic Pending Disposal asset status update
 44. Disposal approval/reject flow with PATCH API, review modal, selectable post-review asset status, value/remark capture, movement logging, and audit trail
+45. Audit scan QA hardening with camera support detection, device picker, responsive QR scan box, decoded-value visibility, camera status/errors, and manual fallback guidance
 
 ---
 
