@@ -572,6 +572,15 @@
     "createSubtitle": "เลือกทรัพย์สิน ระบุเหตุผล ผู้ขอ ผู้อนุมัติ และมูลค่าที่เกี่ยวข้อง",
     "requestList": "รายการคำขอตัดจำหน่ายล่าสุด",
     "createSuccess": "สร้างคำขอตัดจำหน่ายสำเร็จ",
+    "reviewRequest": "พิจารณาคำขอ",
+    "decisionTitle": "พิจารณาคำขอตัดจำหน่าย",
+    "decision": "ผลการพิจารณา",
+    "approve": "อนุมัติ",
+    "reject": "ปฏิเสธ",
+    "nextStatus": "สถานะทรัพย์สินหลังพิจารณา",
+    "approvalRemark": "หมายเหตุการพิจารณา",
+    "saveDecision": "บันทึกผล",
+    "decisionSuccess": "บันทึกผลการพิจารณาสำเร็จ",
     "disposalNo": "เลขที่คำขอ",
     "asset": "ทรัพย์สิน",
     "selectAsset": "เลือกทรัพย์สิน",
@@ -593,7 +602,9 @@
       "dispose": "ตัดจำหน่าย"
     },
     "statuses": {
-      "pending": "รออนุมัติ"
+      "pending": "รออนุมัติ",
+      "approved": "อนุมัติแล้ว",
+      "rejected": "ปฏิเสธ"
     }
   },
   "systemLogPage": {

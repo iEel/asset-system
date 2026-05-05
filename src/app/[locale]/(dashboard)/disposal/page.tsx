@@ -5,6 +5,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { getDisposalOptions } from "@/lib/disposal-options"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
+import { DisposalDecisionButton } from "@/components/disposal/disposal-decision-button"
 import { DisposalRequestForm } from "@/components/disposal/disposal-request-form"
 
 type DisposalPageProps = {
@@ -15,6 +16,7 @@ export default async function DisposalPage({ params }: DisposalPageProps) {
   const { locale } = await params
   const user = await requirePagePermission(locale, "disposal", "view")
   const canCreate = hasPermission(user, "disposal", "create")
+  const canApprove = hasPermission(user, "disposal", "approve")
   const t = await getTranslations("disposalPage")
   const tCommon = await getTranslations("common")
 
@@ -29,8 +31,9 @@ export default async function DisposalPage({ params }: DisposalPageProps) {
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
-    canCreate ? getDisposalOptions() : Promise.resolve(null),
+    canCreate || canApprove ? getDisposalOptions() : Promise.resolve(null),
   ])
+  const statuses = options?.statuses ?? []
 
   return (
     <div className="space-y-6">
@@ -58,12 +61,13 @@ export default async function DisposalPage({ params }: DisposalPageProps) {
                 <ColumnHeader>{t("value")}</ColumnHeader>
                 <ColumnHeader>{tCommon("status")}</ColumnHeader>
                 <ColumnHeader>{t("requestDate")}</ColumnHeader>
+                {canApprove ? <ColumnHeader>{tCommon("actions")}</ColumnHeader> : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {requests.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="h-32 px-4 text-center text-muted-foreground">
+                  <td colSpan={canApprove ? 10 : 9} className="h-32 px-4 text-center text-muted-foreground">
                     {tCommon("noData")}
                   </td>
                 </tr>
@@ -91,15 +95,29 @@ export default async function DisposalPage({ params }: DisposalPageProps) {
                           : "-"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">
-                      {request.requestStatus === "pending" ? (
-                        <ActiveBadge label={t("statuses.pending")} />
-                      ) : (
-                        <span className="inline-flex rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-                          {request.requestStatus}
-                        </span>
-                      )}
+                      <DisposalStatusBadge status={request.requestStatus} labels={{
+                        pending: t("statuses.pending"),
+                        approved: t("statuses.approved"),
+                        rejected: t("statuses.rejected"),
+                      }} />
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(request.requestDate)}</td>
+                    {canApprove ? (
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {request.requestStatus === "pending" && statuses.length > 0 ? (
+                          <DisposalDecisionButton
+                            requestId={request.id}
+                            disposalNo={request.disposalNo}
+                            disposalType={request.disposalType}
+                            statuses={statuses}
+                            defaultSaleValue={request.saleValue != null ? String(request.saleValue) : undefined}
+                            defaultSalvageValue={request.salvageValue != null ? String(request.salvageValue) : undefined}
+                          />
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                    ) : null}
                   </tr>
                 ))
               )}
@@ -108,5 +126,34 @@ export default async function DisposalPage({ params }: DisposalPageProps) {
         </div>
       </section>
     </div>
+  )
+}
+
+function DisposalStatusBadge({
+  status,
+  labels,
+}: {
+  status: string
+  labels: { pending: string; approved: string; rejected: string }
+}) {
+  if (status === "pending") return <ActiveBadge label={labels.pending} />
+  if (status === "approved") {
+    return (
+      <span className="inline-flex rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+        {labels.approved}
+      </span>
+    )
+  }
+  if (status === "rejected") {
+    return (
+      <span className="inline-flex rounded-full bg-danger/10 px-2 py-1 text-xs font-medium text-danger">
+        {labels.rejected}
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+      {status}
+    </span>
   )
 }

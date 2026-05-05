@@ -18,4 +18,13 @@ export const disposalRequestSchema = z.object({
   salvageValue: optionalDecimal,
 })
 
+export const disposalDecisionSchema = z.object({
+  decision: z.enum(["approve", "reject"]),
+  nextStatusId: z.string().trim().min(1),
+  saleValue: optionalDecimal,
+  salvageValue: optionalDecimal,
+  approvalRemark: optionalText,
+})
+
 export type DisposalRequestInput = z.infer<typeof disposalRequestSchema>
+export type DisposalDecisionInput = z.infer<typeof disposalDecisionSchema>

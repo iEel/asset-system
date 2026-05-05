@@ -572,6 +572,15 @@
     "createSubtitle": "Select an asset, reason, requester, approver, and related values",
     "requestList": "Latest Disposal Requests",
     "createSuccess": "Disposal request created",
+    "reviewRequest": "Review Request",
+    "decisionTitle": "Review Disposal Request",
+    "decision": "Decision",
+    "approve": "Approve",
+    "reject": "Reject",
+    "nextStatus": "Asset Status After Review",
+    "approvalRemark": "Review Remark",
+    "saveDecision": "Save Decision",
+    "decisionSuccess": "Disposal decision saved",
     "disposalNo": "Request No.",
     "asset": "Asset",
     "selectAsset": "Select asset",
@@ -593,7 +602,9 @@
       "dispose": "Dispose"
     },
     "statuses": {
-      "pending": "Pending Approval"
+      "pending": "Pending Approval",
+      "approved": "Approved",
+      "rejected": "Rejected"
     }
   },
   "systemLogPage": {
