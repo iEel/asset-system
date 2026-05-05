@@ -382,7 +382,7 @@ WEB_PORT=3000
 
 ### AD / LDAP Login
 
-LDAP login is optional and uses the same `/th/login` screen as local credentials. Local user login remains available as fallback.
+LDAP login is optional and uses the same `/th/login` screen as local credentials. Local user login remains available as fallback. Configure it from `/th/admin/settings`; environment variables below are fallback values when no DB setting is saved yet.
 
 ```env
 LDAP_ENABLED=true
@@ -404,6 +404,12 @@ LDAP_USER_DN_TEMPLATE="CN={username},OU=Users,DC=company,DC=local"
 ```
 
 If `LDAP_AUTO_PROVISION=true`, the default role in `LDAP_DEFAULT_ROLE` must exist in `/admin/roles`; otherwise LDAP-authenticated users without an existing app account will be rejected.
+
+LDAP sync should be implemented as a separate controlled workflow, not hidden inside login:
+
+1. **Preview**: query LDAP with `ldap_sync_base_dn` / `ldap_sync_filter` and show create/update/deactivate counts without writing DB.
+2. **Manual Sync**: admin reviews preview, confirms, then writes Employee/User changes and audit logs.
+3. **Scheduled Sync**: enable only after branch/department/company mapping rules are stable. Never hard-delete users; mark inactive/resigned instead.
 
 ### Implemented Master Data URLs
 
@@ -611,6 +617,8 @@ await logAudit({
 | **Phase 4 narrowed scope** | ตามคำขอล่าสุด Phase 4 จะทำเฉพาะ AD/LDAP Login และ Mobile Optimization; HR Sync, Accounting Asset Code, Power BI/Dashboard API, n8n/Workflow API, และ Advanced Approval Workflow ถูกตัดออกจากลำดับนี้ |
 | **AD/LDAP login foundation** | เพิ่ม `ldapts`, helper `src/lib/ldap-auth.ts`, optional LDAP bind/search ผ่าน `.env`, local-login fallback, และ auto-provision user แบบกำหนด role เริ่มต้นได้ |
 | **Mobile shell polish** | ปรับ viewport, dashboard shell, sidebar, topbar, login form, touch target, safe viewport height, และ sidebar width ให้เหมาะกับ mobile มากขึ้น |
+| **LDAP settings UI** | หน้า `/admin/settings` เพิ่ม section ตั้งค่า AD/LDAP, test connection API, และค่าควบคุม sync strategy โดย auth อ่านค่าจาก `system_settings` ก่อน fallback ไป `.env` |
+| **LDAP sync recommendation** | แนวทาง sync ที่แนะนำคือ Preview → Manual → Scheduled: เริ่มจากดู diff create/update/deactivate, map Company/Branch/Department ให้พร้อม, แล้วค่อยเปิดรอบเวลาอัตโนมัติ |
 
 ---
 
@@ -696,6 +704,7 @@ await logAudit({
 56. Phase 4 scope narrowed to AD/LDAP Login and Mobile Optimization only
 57. AD/LDAP login foundation with optional env-driven directory authentication, local fallback, and default-role auto-provision support
 58. Mobile optimization pass for viewport, dashboard shell spacing, sidebar behavior, topbar density, logout action, and login form touch targets
+59. LDAP settings UI in System Settings with DB-backed config, bind connection test endpoint, and sync strategy controls
 
 ---
 

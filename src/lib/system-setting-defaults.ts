@@ -1,6 +1,24 @@
 export const assetTagCategoryPrefixesKey = "asset_tag_category_prefixes"
 export const assetTagFormatTemplateKey = "asset_tag_format_template"
 export const defaultAssetTagFormatTemplate = "{companyCode}{separator}{branchCode}{separator}{assetPrefix}{separator}{running}"
+export const ldapSettingKeys = [
+  "ldap_enabled",
+  "ldap_url",
+  "ldap_base_dn",
+  "ldap_bind_dn",
+  "ldap_bind_password",
+  "ldap_user_filter",
+  "ldap_upn_domain",
+  "ldap_domain",
+  "ldap_user_dn_template",
+  "ldap_auto_provision",
+  "ldap_default_role",
+  "ldap_sync_enabled",
+  "ldap_sync_base_dn",
+  "ldap_sync_filter",
+  "ldap_sync_mode",
+  "ldap_sync_schedule",
+] as const
 
 export const systemSettingDefaults = [
   { key: "asset_tag_prefix", value: "AST", description: "Prefix สำหรับรหัสทรัพย์สิน" },
@@ -19,6 +37,22 @@ export const systemSettingDefaults = [
   },
   { key: "company_name", value: "บริษัท ตัวอย่าง จำกัด", description: "ชื่อบริษัทหลัก" },
   { key: "default_currency", value: "THB", description: "สกุลเงินเริ่มต้น" },
+  { key: "ldap_enabled", value: "false", description: "เปิดใช้งาน AD/LDAP login" },
+  { key: "ldap_url", value: "", description: "LDAP URL เช่น ldap://dc.company.local:389 หรือ ldaps://dc.company.local:636" },
+  { key: "ldap_base_dn", value: "", description: "Base DN สำหรับค้นหา user เช่น DC=company,DC=local" },
+  { key: "ldap_bind_dn", value: "", description: "Service account DN สำหรับ bind/search" },
+  { key: "ldap_bind_password", value: "", description: "รหัสผ่าน service account สำหรับ LDAP bind" },
+  { key: "ldap_user_filter", value: "(&(objectClass=user)(sAMAccountName={username}))", description: "LDAP user search filter" },
+  { key: "ldap_upn_domain", value: "", description: "UPN domain สำหรับ direct bind เช่น company.local" },
+  { key: "ldap_domain", value: "", description: "NetBIOS domain สำหรับ direct bind เช่น COMPANY" },
+  { key: "ldap_user_dn_template", value: "", description: "DN template สำหรับ direct bind เช่น CN={username},OU=Users,DC=company,DC=local" },
+  { key: "ldap_auto_provision", value: "false", description: "สร้าง user ในระบบอัตโนมัติเมื่อ LDAP auth สำเร็จ" },
+  { key: "ldap_default_role", value: "asset_user", description: "Role เริ่มต้นสำหรับ LDAP auto-provision" },
+  { key: "ldap_sync_enabled", value: "false", description: "เปิดใช้งาน LDAP employee/user sync" },
+  { key: "ldap_sync_base_dn", value: "", description: "Base DN สำหรับ sync ถ้าไม่ระบุจะใช้ ldap_base_dn" },
+  { key: "ldap_sync_filter", value: "(&(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))", description: "Filter สำหรับดึง user ที่ต้อง sync" },
+  { key: "ldap_sync_mode", value: "preview", description: "โหมด sync: preview, manual, scheduled" },
+  { key: "ldap_sync_schedule", value: "0 2 * * *", description: "Cron schedule สำหรับ sync ในอนาคต" },
 ]
 
 export const knownSystemSettingKeys = new Set(systemSettingDefaults.map((setting) => setting.key))

@@ -1,7 +1,8 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { prisma } from "@/lib/db"
-import { authenticateLdapUser, getLdapConfig } from "@/lib/ldap-auth"
+import { authenticateLdapUser, getLdapConfig, type LdapConfigInput } from "@/lib/ldap-auth"
+import { ldapSettingKeys } from "@/lib/system-setting-defaults"
 import bcrypt from "bcryptjs"
 import { randomUUID } from "node:crypto"
 
@@ -48,10 +49,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
         }
 
-        const ldapProfile = await authenticateLdapUser(username, password)
+        const ldapSettings = await getLdapSettings()
+        const ldapProfile = await authenticateLdapUser(username, password, ldapSettings)
         if (!ldapProfile) return null
 
-        const ldapUser = await resolveLdapAppUser(ldapProfile)
+        const ldapUser = await resolveLdapAppUser(ldapProfile, ldapSettings)
         if (!ldapUser?.isActive) return null
 
         return toSessionUser(ldapUser)
@@ -87,7 +89,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 })
 
-async function resolveLdapAppUser(profile: { username: string; displayName: string; email: string | null }) {
+async function getLdapSettings(): Promise<LdapConfigInput> {
+  const settings = await prisma.systemSetting.findMany({
+    where: { key: { in: [...ldapSettingKeys] } },
+    select: { key: true, value: true },
+  })
+
+  return Object.fromEntries(settings.map((setting) => [setting.key, setting.value])) as LdapConfigInput
+}
+
+async function resolveLdapAppUser(profile: { username: string; displayName: string; email: string | null }, settings: LdapConfigInput) {
   const existing = await prisma.user.findFirst({
     where: {
       OR: [
@@ -113,7 +124,7 @@ async function resolveLdapAppUser(profile: { username: string; displayName: stri
     })
   }
 
-  const ldapConfig = getLdapConfig()
+  const ldapConfig = getLdapConfig(settings)
   if (!ldapConfig.autoProvision) {
     return null
   }
