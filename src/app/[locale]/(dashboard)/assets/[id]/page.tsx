@@ -9,6 +9,7 @@ import { AssetQrCode } from "@/components/assets/asset-qr-code"
 import { AssetAttachments } from "@/components/assets/asset-attachments"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { AssetComponentsPanel } from "@/components/assets/asset-components-panel"
+import { AssetPurchaseDocuments } from "@/components/assets/asset-purchase-documents"
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -94,6 +95,8 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   ])
   const currentComponents = asset.parentComponents.filter((component) => component.status === "installed" && !component.removedAt)
   const componentHistory = asset.parentComponents.filter((component) => component.status !== "installed" || component.removedAt)
+  const purchaseDocuments = asset.attachments.filter((attachment) => attachment.module === "asset_purchase")
+  const assetAttachments = asset.attachments.filter((attachment) => attachment.module !== "asset_purchase")
 
   const detailPath = `/${locale}/assets/${asset.id}`
   const qrValue = `${process.env.AUTH_URL ?? ""}${detailPath}`
@@ -175,6 +178,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
               <Info label={t("poNumber")} value={asset.poNumber} />
               <Info label={t("invoiceNumber")} value={asset.invoiceNumber} />
             </div>
+            <AssetPurchaseDocuments documents={purchaseDocuments} />
           </section>
 
           <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
@@ -265,7 +269,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
 
           <AssetAttachments
             assetId={asset.id}
-            attachments={asset.attachments}
+            attachments={assetAttachments}
             modelPhotos={modelPhotos}
             photoChecklist={photoChecklist}
           />

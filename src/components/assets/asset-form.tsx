@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Code2, Loader2, Plus, Save, Trash2 } from "lucide-react"
+import { ArrowLeft, Code2, FileText, Loader2, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
+import { FileDropzone } from "@/components/ui/file-dropzone"
+import { formatFileSize } from "@/lib/uploads"
 
 type Option = {
   id: string
@@ -63,6 +65,14 @@ type CustomFieldRow = {
   key: string
   value: string
 }
+
+type PurchaseDocumentDraft = {
+  id: string
+  documentType: string
+  file: File
+}
+
+const purchaseDocumentTypes = ["purchase_order", "invoice", "delivery_note", "warranty", "quotation", "contract", "other"] as const
 
 const emptyAsset: AssetFormValues = {
   assetTag: "",
@@ -135,6 +145,9 @@ export function AssetForm({
     slotNo: "",
     reason: "",
   })
+  const [purchaseDocumentType, setPurchaseDocumentType] = useState<(typeof purchaseDocumentTypes)[number]>("purchase_order")
+  const [selectedPurchaseFile, setSelectedPurchaseFile] = useState<File | null>(null)
+  const [purchaseDocuments, setPurchaseDocuments] = useState<PurchaseDocumentDraft[]>([])
   const [showRawJson, setShowRawJson] = useState(false)
   const [saving, setSaving] = useState(false)
   const [duplicateState, setDuplicateState] = useState<{
@@ -312,6 +325,21 @@ export function AssetForm({
         }
       }
 
+      const documentsToUpload = selectedPurchaseFile
+        ? [
+            ...purchaseDocuments,
+            {
+              id: createClientId(),
+              documentType: purchaseDocumentType,
+              file: selectedPurchaseFile,
+            },
+          ]
+        : purchaseDocuments
+
+      if (result?.id && documentsToUpload.length > 0) {
+        await uploadPurchaseDocuments(result.id, documentsToUpload)
+      }
+
       toast.success(tCommon("savedSuccess"))
       router.push(backHref)
       router.refresh()
@@ -324,6 +352,53 @@ export function AssetForm({
 
   function setInstallField(field: keyof typeof installAfterCreate, value: string) {
     setInstallAfterCreate((current) => ({ ...current, [field]: value }))
+  }
+
+  function addPurchaseDocument() {
+    if (!selectedPurchaseFile) {
+      toast.error(t("fileRequired"))
+      return
+    }
+
+    setPurchaseDocuments((current) => [
+      ...current,
+      {
+        id: createClientId(),
+        documentType: purchaseDocumentType,
+        file: selectedPurchaseFile,
+      },
+    ])
+    setSelectedPurchaseFile(null)
+  }
+
+  function removePurchaseDocument(id: string) {
+    setPurchaseDocuments((current) => current.filter((document) => document.id !== id))
+  }
+
+  async function uploadPurchaseDocuments(assetId: string, documents: PurchaseDocumentDraft[]) {
+    for (const document of documents) {
+      const formData = new FormData()
+      formData.append("file", document.file)
+      formData.append("documentType", t(`purchaseDocumentTypes.${document.documentType}`))
+      const documentNumber = getPurchaseDocumentNumber(document.documentType)
+      if (documentNumber) formData.append("documentNumber", documentNumber)
+
+      const response = await fetch(`/api/assets/${assetId}/attachments`, {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => null)
+        throw new Error(result?.error ?? t("purchaseDocumentUploadFailed"))
+      }
+    }
+  }
+
+  function getPurchaseDocumentNumber(documentType: string) {
+    if (documentType === "purchase_order") return values.poNumber?.trim() ?? ""
+    if (documentType === "invoice") return values.invoiceNumber?.trim() ?? ""
+    return ""
   }
 
   function handleCustomFieldRowsChange(nextRows: CustomFieldRow[]) {
@@ -533,6 +608,74 @@ export function AssetForm({
           <Field label={t("invoiceNumber")}>
             <input value={values.invoiceNumber ?? ""} onChange={(event) => setField("invoiceNumber", event.target.value)} maxLength={50} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </Field>
+          <div className="md:col-span-2">
+            <div className="rounded-md border border-border bg-background p-4">
+              <div className="mb-3 flex items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <FileText className="h-4 w-4" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">{t("purchaseDocuments")}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{t("purchaseDocumentsHelp")}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
+                <select
+                  value={purchaseDocumentType}
+                  onChange={(event) => setPurchaseDocumentType(event.target.value as (typeof purchaseDocumentTypes)[number])}
+                  className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                >
+                  {purchaseDocumentTypes.map((type) => (
+                    <option key={type} value={type}>{t(`purchaseDocumentTypes.${type}`)}</option>
+                  ))}
+                </select>
+                <FileDropzone
+                  file={selectedPurchaseFile}
+                  onFileChange={setSelectedPurchaseFile}
+                  disabled={saving}
+                  accept=".pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls,.doc,.docx"
+                  title={t("dropPurchaseDocumentTitle")}
+                  hint={t("dropFileSelected")}
+                  browseLabel={t("dropFileHint")}
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={addPurchaseDocument}
+                disabled={saving}
+                className="mt-3 inline-flex h-9 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
+              >
+                <Plus className="h-4 w-4" />
+                {t("addPurchaseDocument")}
+              </button>
+
+              {purchaseDocuments.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {purchaseDocuments.map((document) => (
+                    <div key={document.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-foreground">
+                          {t(`purchaseDocumentTypes.${document.documentType}`)} · {document.file.name}
+                        </div>
+                        <div className="mt-0.5 text-xs text-muted-foreground">{formatFileSize(document.file.size)}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removePurchaseDocument(document.id)}
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10"
+                        aria-label={t("removePurchaseDocument")}
+                        title={t("removePurchaseDocument")}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </Section>
 
         <Section title={t("customFields")}>
@@ -835,10 +978,14 @@ function TemplateField({
 
 function createCustomFieldRow(key = "", value = ""): CustomFieldRow {
   return {
-    id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+    id: createClientId(),
     key,
     value,
   }
+}
+
+function createClientId() {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`
 }
 
 function parseCustomFieldRows(json?: string | null): CustomFieldRow[] {

@@ -32,6 +32,8 @@ export async function POST(request: NextRequest, context: AssetAttachmentRouteCo
     const formData = await request.formData()
     const file = formData.get("file")
     const photoLabel = typeof formData.get("photoLabel") === "string" ? String(formData.get("photoLabel")).trim() : ""
+    const documentType = typeof formData.get("documentType") === "string" ? String(formData.get("documentType")).trim() : ""
+    const documentNumber = typeof formData.get("documentNumber") === "string" ? String(formData.get("documentNumber")).trim() : ""
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "File is required" }, { status: 400 })
     }
@@ -42,12 +44,18 @@ export async function POST(request: NextRequest, context: AssetAttachmentRouteCo
     const year = String(now.getFullYear())
     const month = String(now.getMonth() + 1).padStart(2, "0")
     const safeOriginalName = sanitizeFileName(file.name)
-    const labeledOriginalName = photoLabel && file.type.startsWith("image/")
-      ? `${sanitizeFileName(photoLabel)} - ${safeOriginalName}`
-      : safeOriginalName
+    const documentLabel = [documentType && sanitizeFileName(documentType), documentNumber && sanitizeFileName(documentNumber)]
+      .filter(Boolean)
+      .join(" ")
+    const labeledOriginalName = documentLabel
+      ? `${documentLabel} - ${safeOriginalName}`
+      : photoLabel && file.type.startsWith("image/")
+        ? `${sanitizeFileName(photoLabel)} - ${safeOriginalName}`
+        : safeOriginalName
     const extension = path.extname(safeOriginalName)
     const fileName = `${randomUUID()}${extension}`
-    const uploadDir = path.join(getUploadRoot(), "asset", year, month)
+    const attachmentModule = documentType ? "asset_purchase" : "asset"
+    const uploadDir = path.join(getUploadRoot(), documentType ? "asset-purchase" : "asset", year, month)
     const filePath = path.join(uploadDir, fileName)
     const bytes = Buffer.from(await file.arrayBuffer())
 
@@ -57,7 +65,7 @@ export async function POST(request: NextRequest, context: AssetAttachmentRouteCo
     const attachment = await prisma.attachment.create({
       data: {
         assetId: asset.id,
-        module: "asset",
+        module: attachmentModule,
         referenceId: asset.id,
         fileName,
         originalName: labeledOriginalName,
@@ -71,12 +79,14 @@ export async function POST(request: NextRequest, context: AssetAttachmentRouteCo
     await logAudit({
       userId: user.id,
       action: "upload",
-      module: "asset",
+      module: attachmentModule,
       recordId: asset.id,
       newValue: {
         attachmentId: attachment.id,
         originalName: attachment.originalName,
         fileSize: attachment.fileSize,
+        documentType: documentType || null,
+        documentNumber: documentNumber || null,
       },
     })
 
