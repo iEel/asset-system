@@ -57,6 +57,7 @@ type AssetFormValues = {
   invoiceNumber?: string | null
   remark?: string | null
   customFieldsJson?: string | null
+  purchaseDocumentIds?: string[]
   isActive: boolean
 }
 
@@ -66,9 +67,22 @@ type CustomFieldRow = {
   value: string
 }
 
+type PurchaseDocumentOption = {
+  id: string
+  documentType: string
+  documentNo: string
+  poNumber?: string | null
+  invoiceNumber?: string | null
+  supplierName?: string | null
+  assetCount: number
+}
+
 type PurchaseDocumentDraft = {
   id: string
   documentType: string
+  documentNo: string
+  documentDate: string
+  totalAmount: string
   file: File
 }
 
@@ -116,6 +130,7 @@ export function AssetForm({
   conditions,
   suppliers,
   parentAssets,
+  purchaseDocuments: purchaseDocumentOptions,
   customFieldDefinitions,
 }: {
   asset?: AssetFormValues
@@ -131,6 +146,7 @@ export function AssetForm({
   conditions: Option[]
   suppliers: Option[]
   parentAssets: Option[]
+  purchaseDocuments: PurchaseDocumentOption[]
   customFieldDefinitions: CustomFieldDefinition[]
 }) {
   const locale = useLocale()
@@ -146,8 +162,12 @@ export function AssetForm({
     reason: "",
   })
   const [purchaseDocumentType, setPurchaseDocumentType] = useState<(typeof purchaseDocumentTypes)[number]>("purchase_order")
+  const [purchaseDocumentNo, setPurchaseDocumentNo] = useState("")
+  const [purchaseDocumentDate, setPurchaseDocumentDate] = useState("")
+  const [purchaseDocumentTotalAmount, setPurchaseDocumentTotalAmount] = useState("")
   const [selectedPurchaseFile, setSelectedPurchaseFile] = useState<File | null>(null)
-  const [purchaseDocuments, setPurchaseDocuments] = useState<PurchaseDocumentDraft[]>([])
+  const [newPurchaseDocuments, setNewPurchaseDocuments] = useState<PurchaseDocumentDraft[]>([])
+  const [selectedPurchaseDocumentIds, setSelectedPurchaseDocumentIds] = useState<string[]>(asset?.purchaseDocumentIds ?? [])
   const [showRawJson, setShowRawJson] = useState(false)
   const [saving, setSaving] = useState(false)
   const [duplicateState, setDuplicateState] = useState<{
@@ -291,6 +311,10 @@ export function AssetForm({
       toast.error(t("componentRoleRequired"))
       return
     }
+    if (selectedPurchaseFile && !purchaseDocumentNo.trim()) {
+      toast.error(t("purchaseDocumentNoRequired"))
+      return
+    }
     setSaving(true)
 
     const url = isEdit ? `/api/assets/${asset?.id}` : "/api/assets"
@@ -325,19 +349,26 @@ export function AssetForm({
         }
       }
 
-      const documentsToUpload = selectedPurchaseFile
+      const documentsToCreate = selectedPurchaseFile && purchaseDocumentNo.trim()
         ? [
-            ...purchaseDocuments,
+            ...newPurchaseDocuments,
             {
               id: createClientId(),
               documentType: purchaseDocumentType,
+              documentNo: purchaseDocumentNo,
+              documentDate: purchaseDocumentDate,
+              totalAmount: purchaseDocumentTotalAmount,
               file: selectedPurchaseFile,
             },
           ]
-        : purchaseDocuments
+        : newPurchaseDocuments
 
-      if (result?.id && documentsToUpload.length > 0) {
-        await uploadPurchaseDocuments(result.id, documentsToUpload)
+      if (result?.id) {
+        const createdDocumentIds = documentsToCreate.length > 0 ? await createPurchaseDocuments(documentsToCreate) : []
+        const purchaseDocumentIds = [...selectedPurchaseDocumentIds, ...createdDocumentIds]
+        if (purchaseDocumentIds.length > 0) {
+          await linkPurchaseDocuments(result.id, purchaseDocumentIds)
+        }
       }
 
       toast.success(tCommon("savedSuccess"))
@@ -359,31 +390,47 @@ export function AssetForm({
       toast.error(t("fileRequired"))
       return
     }
+    if (!purchaseDocumentNo.trim()) {
+      toast.error(t("purchaseDocumentNoRequired"))
+      return
+    }
 
-    setPurchaseDocuments((current) => [
+    setNewPurchaseDocuments((current) => [
       ...current,
       {
         id: createClientId(),
         documentType: purchaseDocumentType,
+        documentNo: purchaseDocumentNo.trim(),
+        documentDate: purchaseDocumentDate,
+        totalAmount: purchaseDocumentTotalAmount,
         file: selectedPurchaseFile,
       },
     ])
     setSelectedPurchaseFile(null)
+    setPurchaseDocumentNo("")
+    setPurchaseDocumentDate("")
+    setPurchaseDocumentTotalAmount("")
   }
 
   function removePurchaseDocument(id: string) {
-    setPurchaseDocuments((current) => current.filter((document) => document.id !== id))
+    setNewPurchaseDocuments((current) => current.filter((document) => document.id !== id))
   }
 
-  async function uploadPurchaseDocuments(assetId: string, documents: PurchaseDocumentDraft[]) {
+  async function createPurchaseDocuments(documents: PurchaseDocumentDraft[]) {
+    const createdIds: string[] = []
     for (const document of documents) {
       const formData = new FormData()
       formData.append("file", document.file)
-      formData.append("documentType", t(`purchaseDocumentTypes.${document.documentType}`))
-      const documentNumber = getPurchaseDocumentNumber(document.documentType)
-      if (documentNumber) formData.append("documentNumber", documentNumber)
+      formData.append("documentType", document.documentType)
+      formData.append("documentNo", document.documentNo)
+      if (document.documentType === "purchase_order") formData.append("poNumber", document.documentNo)
+      if (document.documentType === "invoice") formData.append("invoiceNumber", document.documentNo)
+      if (document.documentDate) formData.append("documentDate", document.documentDate)
+      if (document.totalAmount) formData.append("totalAmount", document.totalAmount)
+      if (values.supplierId) formData.append("supplierId", values.supplierId)
+      formData.append("currency", "THB")
 
-      const response = await fetch(`/api/assets/${assetId}/attachments`, {
+      const response = await fetch("/api/purchase-documents", {
         method: "POST",
         body: formData,
       })
@@ -392,13 +439,28 @@ export function AssetForm({
         const result = await response.json().catch(() => null)
         throw new Error(result?.error ?? t("purchaseDocumentUploadFailed"))
       }
+      const createdDocument = await response.json()
+      if (createdDocument?.id) createdIds.push(createdDocument.id)
+    }
+    return createdIds
+  }
+
+  async function linkPurchaseDocuments(assetId: string, purchaseDocumentIds: string[]) {
+    const response = await fetch(`/api/assets/${assetId}/purchase-documents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ purchaseDocumentIds }),
+    })
+    if (!response.ok) {
+      const result = await response.json().catch(() => null)
+      throw new Error(result?.error ?? t("purchaseDocumentLinkFailed"))
     }
   }
 
-  function getPurchaseDocumentNumber(documentType: string) {
-    if (documentType === "purchase_order") return values.poNumber?.trim() ?? ""
-    if (documentType === "invoice") return values.invoiceNumber?.trim() ?? ""
-    return ""
+  function togglePurchaseDocument(id: string) {
+    setSelectedPurchaseDocumentIds((current) =>
+      current.includes(id) ? current.filter((documentId) => documentId !== id) : [...current, id]
+    )
   }
 
   function handleCustomFieldRowsChange(nextRows: CustomFieldRow[]) {
@@ -620,16 +682,71 @@ export function AssetForm({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
-                <select
-                  value={purchaseDocumentType}
-                  onChange={(event) => setPurchaseDocumentType(event.target.value as (typeof purchaseDocumentTypes)[number])}
-                  className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                >
-                  {purchaseDocumentTypes.map((type) => (
-                    <option key={type} value={type}>{t(`purchaseDocumentTypes.${type}`)}</option>
-                  ))}
-                </select>
+              <div className="mb-4 space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("existingPurchaseDocuments")}</div>
+                {purchaseDocumentOptions.length === 0 ? (
+                  <div className="rounded-md border border-dashed border-border px-4 py-5 text-center text-sm text-muted-foreground">
+                    {t("noPurchaseDocuments")}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                    {purchaseDocumentOptions.map((document) => (
+                      <label key={document.id} className="flex cursor-pointer gap-3 rounded-md border border-border bg-surface p-3 text-sm transition-colors hover:bg-accent">
+                        <input
+                          type="checkbox"
+                          checked={selectedPurchaseDocumentIds.includes(document.id)}
+                          onChange={() => togglePurchaseDocument(document.id)}
+                          className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                        />
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium text-foreground">
+                            {t(`purchaseDocumentTypes.${document.documentType}`)} · {document.documentNo}
+                          </span>
+                          <span className="mt-1 block text-xs text-muted-foreground">
+                            {document.supplierName || "-"} · {t("linkedAssets", { count: document.assetCount })}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <div className="mb-3 text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("createPurchaseDocument")}</div>
+                <div className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-4">
+                  <select
+                    value={purchaseDocumentType}
+                    onChange={(event) => setPurchaseDocumentType(event.target.value as (typeof purchaseDocumentTypes)[number])}
+                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  >
+                    {purchaseDocumentTypes.map((type) => (
+                      <option key={type} value={type}>{t(`purchaseDocumentTypes.${type}`)}</option>
+                    ))}
+                  </select>
+                  <input
+                    value={purchaseDocumentNo}
+                    onChange={(event) => setPurchaseDocumentNo(event.target.value)}
+                    maxLength={100}
+                    placeholder={t("purchaseDocumentNo")}
+                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                  <input
+                    type="date"
+                    value={purchaseDocumentDate}
+                    onChange={(event) => setPurchaseDocumentDate(event.target.value)}
+                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={purchaseDocumentTotalAmount}
+                    onChange={(event) => setPurchaseDocumentTotalAmount(event.target.value)}
+                    placeholder={t("purchaseDocumentAmount")}
+                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                </div>
                 <FileDropzone
                   file={selectedPurchaseFile}
                   onFileChange={setSelectedPurchaseFile}
@@ -651,13 +768,13 @@ export function AssetForm({
                 {t("addPurchaseDocument")}
               </button>
 
-              {purchaseDocuments.length > 0 && (
+              {newPurchaseDocuments.length > 0 && (
                 <div className="mt-4 space-y-2">
-                  {purchaseDocuments.map((document) => (
+                  {newPurchaseDocuments.map((document) => (
                     <div key={document.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-medium text-foreground">
-                          {t(`purchaseDocumentTypes.${document.documentType}`)} · {document.file.name}
+                          {t(`purchaseDocumentTypes.${document.documentType}`)} · {document.documentNo} · {document.file.name}
                         </div>
                         <div className="mt-0.5 text-xs text-muted-foreground">{formatFileSize(document.file.size)}</div>
                       </div>

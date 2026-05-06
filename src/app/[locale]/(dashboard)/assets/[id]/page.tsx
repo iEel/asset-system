@@ -45,6 +45,16 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
         where: { isActive: true },
         orderBy: { uploadedAt: "desc" },
       },
+      purchaseDocumentLinks: {
+        orderBy: { linkedAt: "desc" },
+        include: {
+          purchaseDocument: {
+            include: {
+              supplier: { select: { code: true, name: true } },
+            },
+          },
+        },
+      },
       parentComponents: {
         orderBy: { installedAt: "desc" },
         include: {
@@ -95,7 +105,33 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   ])
   const currentComponents = asset.parentComponents.filter((component) => component.status === "installed" && !component.removedAt)
   const componentHistory = asset.parentComponents.filter((component) => component.status !== "installed" || component.removedAt)
-  const purchaseDocuments = asset.attachments.filter((attachment) => attachment.module === "asset_purchase")
+  const purchaseDocumentIds = asset.purchaseDocumentLinks.map((link) => link.purchaseDocumentId)
+  const purchaseDocumentAttachments = purchaseDocumentIds.length > 0
+    ? await prisma.attachment.findMany({
+        where: { module: "purchase_document", referenceId: { in: purchaseDocumentIds }, isActive: true },
+        orderBy: { uploadedAt: "desc" },
+      })
+    : []
+  const purchaseDocumentAttachmentsByReferenceId = new Map<string, typeof purchaseDocumentAttachments>()
+  for (const attachment of purchaseDocumentAttachments) {
+    purchaseDocumentAttachmentsByReferenceId.set(attachment.referenceId, [
+      ...(purchaseDocumentAttachmentsByReferenceId.get(attachment.referenceId) ?? []),
+      attachment,
+    ])
+  }
+  const purchaseDocuments = asset.purchaseDocumentLinks.map((link) => ({
+    id: link.purchaseDocument.id,
+    documentType: link.purchaseDocument.documentType,
+    documentNo: link.purchaseDocument.documentNo,
+    poNumber: link.purchaseDocument.poNumber,
+    invoiceNumber: link.purchaseDocument.invoiceNumber,
+    documentDate: link.purchaseDocument.documentDate,
+    supplierName: link.purchaseDocument.supplier ? `${link.purchaseDocument.supplier.code} - ${link.purchaseDocument.supplier.name}` : null,
+    totalAmount: link.purchaseDocument.totalAmount ? Number(link.purchaseDocument.totalAmount) : null,
+    currency: link.purchaseDocument.currency,
+    attachments: purchaseDocumentAttachmentsByReferenceId.get(link.purchaseDocument.id) ?? [],
+  }))
+  const legacyPurchaseDocuments = asset.attachments.filter((attachment) => attachment.module === "asset_purchase")
   const assetAttachments = asset.attachments.filter((attachment) => attachment.module !== "asset_purchase")
 
   const detailPath = `/${locale}/assets/${asset.id}`
@@ -178,7 +214,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
               <Info label={t("poNumber")} value={asset.poNumber} />
               <Info label={t("invoiceNumber")} value={asset.invoiceNumber} />
             </div>
-            <AssetPurchaseDocuments documents={purchaseDocuments} />
+            <AssetPurchaseDocuments documents={purchaseDocuments} legacyAttachments={legacyPurchaseDocuments} />
           </section>
 
           <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">

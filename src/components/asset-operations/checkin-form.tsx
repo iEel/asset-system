@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
+import { FileDropzone } from "@/components/ui/file-dropzone"
 
 type Option = { id: string; label: string; assetId?: string }
 
@@ -131,7 +132,16 @@ export function CheckinForm({
           </div>
           <div className="md:col-span-2">
             <Field label={t("photoAfter")}>
-              <input type="file" accept="image/*" onChange={(event) => setPhotoAfter(event.target.files?.[0] ?? null)} className="block w-full text-sm text-muted-foreground file:mr-3 file:h-9 file:rounded-md file:border-0 file:bg-primary file:px-3 file:text-sm file:font-medium file:text-white" />
+              <FileDropzone
+                file={photoAfter}
+                onFileChange={setPhotoAfter}
+                disabled={saving}
+                accept="image/*"
+                capture="environment"
+                title={t("photoAfterDropTitle")}
+                hint={t("photoAfterSelected")}
+                browseLabel={t("photoAfterDropHint")}
+              />
             </Field>
           </div>
           <div className="md:col-span-2 flex justify-end">

@@ -15,6 +15,7 @@ export async function getAssetFormOptions() {
     conditions,
     suppliers,
     parentAssets,
+    purchaseDocuments,
   ] = await Promise.all([
     prisma.company.findMany({
       where: { isActive: true },
@@ -96,6 +97,15 @@ export async function getAssetFormOptions() {
       orderBy: { assetTag: "asc" },
       take: 500,
     }),
+    prisma.purchaseDocument.findMany({
+      where: { isActive: true },
+      include: {
+        supplier: { select: { code: true, name: true } },
+        assetLinks: { select: { assetId: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 300,
+    }),
   ])
   const photoChecklistSettings = await prisma.systemSetting.findMany({
     where: { key: { in: categories.map((category) => categoryPhotoChecklistKey(category.id)) } },
@@ -162,6 +172,15 @@ export async function getAssetFormOptions() {
     parentAssets: parentAssets.map((asset) => ({
       id: asset.id,
       label: `${asset.assetTag} - ${asset.name}${asset.serialNumber ? ` (${asset.serialNumber})` : ""}`,
+    })),
+    purchaseDocuments: purchaseDocuments.map((document) => ({
+      id: document.id,
+      documentType: document.documentType,
+      documentNo: document.documentNo,
+      poNumber: document.poNumber,
+      invoiceNumber: document.invoiceNumber,
+      supplierName: document.supplier ? `${document.supplier.code} - ${document.supplier.name}` : null,
+      assetCount: document.assetLinks.length,
     })),
   }
 }

@@ -275,18 +275,19 @@ model Asset {
   createdBy         String?        @db.NVarChar(100)
   updatedBy         String?        @db.NVarChar(100)
 
-  customFieldValues  CustomFieldValue[]
-  movements          AssetMovement[]
-  checkouts          AssetCheckout[]
-  checkins           AssetCheckin[]
-  maintenanceTickets MaintenanceTicket[]
-  disposalRequests   DisposalRequest[]
-  attachments        Attachment[]
-  parentComponents   AssetComponent[] @relation("ParentAssetComponents")
-  installedInLinks   AssetComponent[] @relation("ComponentAssetLinks")
-  auditItems         AuditItem[]
-  auditFindings      AuditFinding[]
-  auditScanHistory   AuditScanHistory[]
+  customFieldValues     CustomFieldValue[]
+  movements             AssetMovement[]
+  checkouts             AssetCheckout[]
+  checkins              AssetCheckin[]
+  maintenanceTickets    MaintenanceTicket[]
+  disposalRequests      DisposalRequest[]
+  attachments           Attachment[]
+  parentComponents      AssetComponent[]        @relation("ParentAssetComponents")
+  installedInLinks      AssetComponent[]        @relation("ComponentAssetLinks")
+  purchaseDocumentLinks PurchaseDocumentAsset[]
+  auditItems            AuditItem[]
+  auditFindings         AuditFinding[]
+  auditScanHistory      AuditScanHistory[]
 
   @@map("assets")
 }
@@ -313,6 +314,48 @@ model AssetComponent {
   @@index([parentAssetId, status])
   @@index([componentAssetId, status])
   @@map("asset_components")
+}
+
+model PurchaseDocument {
+  id            String    @id @default(uuid())
+  documentType  String    @db.NVarChar(50)
+  documentNo    String    @db.NVarChar(100)
+  poNumber      String?   @db.NVarChar(100)
+  invoiceNumber String?   @db.NVarChar(100)
+  documentDate  DateTime?
+  supplierId    String?
+  supplier      Supplier? @relation(fields: [supplierId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  totalAmount   Decimal?  @db.Decimal(18, 2)
+  currency      String?   @db.NVarChar(10)
+  remark        String?   @db.NVarChar(Max)
+  isActive      Boolean   @default(true)
+  createdBy     String?   @db.NVarChar(100)
+  updatedBy     String?   @db.NVarChar(100)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  assetLinks PurchaseDocumentAsset[]
+
+  @@unique([documentType, documentNo])
+  @@index([poNumber])
+  @@index([invoiceNumber])
+  @@index([supplierId])
+  @@map("purchase_documents")
+}
+
+model PurchaseDocumentAsset {
+  id                 String           @id @default(uuid())
+  purchaseDocumentId String
+  purchaseDocument   PurchaseDocument @relation(fields: [purchaseDocumentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assetId            String
+  asset              Asset            @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  linkedAt           DateTime         @default(now())
+  linkedBy           String?          @db.NVarChar(100)
+  remark             String?          @db.NVarChar(500)
+
+  @@unique([purchaseDocumentId, assetId])
+  @@index([assetId])
+  @@map("purchase_document_assets")
 }
 
 // ============================================================
@@ -619,6 +662,7 @@ model Supplier {
 
   assets             Asset[]
   maintenanceTickets MaintenanceTicket[]
+  purchaseDocuments  PurchaseDocument[]
 
   @@map("suppliers")
 }

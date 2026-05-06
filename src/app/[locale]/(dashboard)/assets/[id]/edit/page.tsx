@@ -17,6 +17,9 @@ export default async function EditAssetPage({ params }: EditAssetPageProps) {
     prisma.asset.findFirst({
       where: { id, isActive: true },
       include: {
+        purchaseDocumentLinks: {
+          select: { purchaseDocumentId: true },
+        },
         parentComponents: {
           orderBy: { installedAt: "desc" },
           include: {
@@ -82,6 +85,7 @@ export default async function EditAssetPage({ params }: EditAssetPageProps) {
           invoiceNumber: asset.invoiceNumber,
           remark: asset.remark,
           customFieldsJson: asset.customFieldsJson,
+          purchaseDocumentIds: asset.purchaseDocumentLinks.map((link) => link.purchaseDocumentId),
           isActive: asset.isActive,
         }}
       />
