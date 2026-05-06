@@ -105,6 +105,7 @@ export function AssetForm({
   statuses,
   conditions,
   suppliers,
+  parentAssets,
   customFieldDefinitions,
 }: {
   asset?: AssetFormValues
@@ -119,6 +120,7 @@ export function AssetForm({
   statuses: Option[]
   conditions: Option[]
   suppliers: Option[]
+  parentAssets: Option[]
   customFieldDefinitions: CustomFieldDefinition[]
 }) {
   const locale = useLocale()
@@ -127,6 +129,12 @@ export function AssetForm({
   const tCommon = useTranslations("common")
   const [values, setValues] = useState<AssetFormValues>(asset ?? emptyAsset)
   const [customFieldRows, setCustomFieldRows] = useState<CustomFieldRow[]>(() => parseCustomFieldRows(asset?.customFieldsJson))
+  const [installAfterCreate, setInstallAfterCreate] = useState({
+    parentAssetId: "",
+    componentRole: "",
+    slotNo: "",
+    reason: "",
+  })
   const [showRawJson, setShowRawJson] = useState(false)
   const [saving, setSaving] = useState(false)
   const [duplicateState, setDuplicateState] = useState<{
@@ -266,6 +274,10 @@ export function AssetForm({
       toast.error(t("customFieldRequired", { field: getTemplateFieldLabel(missingRequiredField, locale) }))
       return
     }
+    if (!isEdit && installAfterCreate.parentAssetId && !installAfterCreate.componentRole.trim()) {
+      toast.error(t("componentRoleRequired"))
+      return
+    }
     setSaving(true)
 
     const url = isEdit ? `/api/assets/${asset?.id}` : "/api/assets"
@@ -278,9 +290,26 @@ export function AssetForm({
         body: JSON.stringify(values),
       })
 
+      const result = await response.json().catch(() => null)
       if (!response.ok) {
-        const result = await response.json().catch(() => null)
         throw new Error(result?.error ?? tCommon("error"))
+      }
+
+      if (!isEdit && installAfterCreate.parentAssetId && result?.id) {
+        const installResponse = await fetch(`/api/assets/${installAfterCreate.parentAssetId}/components`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            componentAssetId: result.id,
+            componentRole: installAfterCreate.componentRole,
+            slotNo: installAfterCreate.slotNo,
+            reason: installAfterCreate.reason || t("installAfterCreateDefaultReason"),
+          }),
+        })
+        const installResult = await installResponse.json().catch(() => null)
+        if (!installResponse.ok) {
+          throw new Error(installResult?.error ?? t("installAfterCreateFailed"))
+        }
       }
 
       toast.success(tCommon("savedSuccess"))
@@ -291,6 +320,10 @@ export function AssetForm({
     } finally {
       setSaving(false)
     }
+  }
+
+  function setInstallField(field: keyof typeof installAfterCreate, value: string) {
+    setInstallAfterCreate((current) => ({ ...current, [field]: value }))
   }
 
   function handleCustomFieldRowsChange(nextRows: CustomFieldRow[]) {
@@ -426,6 +459,53 @@ export function AssetForm({
             {conditions.map((condition) => <option key={condition.id} value={condition.id}>{condition.label}</option>)}
           </SelectField>
         </Section>
+
+        {!isEdit && (
+          <Section title={t("installAfterCreate")}>
+            <div className="md:col-span-2">
+              <p className="text-sm text-muted-foreground">{t("installAfterCreateHelp")}</p>
+            </div>
+            <SelectField
+              label={t("parentAsset")}
+              value={installAfterCreate.parentAssetId}
+              onChange={(value) => setInstallField("parentAssetId", value)}
+            >
+              <option value="">{t("skipInstallAfterCreate")}</option>
+              {parentAssets.map((parentAsset) => (
+                <option key={parentAsset.id} value={parentAsset.id}>{parentAsset.label}</option>
+              ))}
+            </SelectField>
+            <Field label={t("componentRole")} required={Boolean(installAfterCreate.parentAssetId)}>
+              <input
+                value={installAfterCreate.componentRole}
+                onChange={(event) => setInstallField("componentRole", event.target.value)}
+                maxLength={100}
+                placeholder="Harddisk"
+                disabled={!installAfterCreate.parentAssetId}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+              />
+            </Field>
+            <Field label={t("slotNo")}>
+              <input
+                value={installAfterCreate.slotNo}
+                onChange={(event) => setInstallField("slotNo", event.target.value)}
+                maxLength={50}
+                placeholder="Slot 1"
+                disabled={!installAfterCreate.parentAssetId}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+              />
+            </Field>
+            <Field label={t("reason")}>
+              <input
+                value={installAfterCreate.reason}
+                onChange={(event) => setInstallField("reason", event.target.value)}
+                maxLength={500}
+                disabled={!installAfterCreate.parentAssetId}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+              />
+            </Field>
+          </Section>
+        )}
 
         <Section title={t("purchaseWarranty")}>
           <Field label={t("purchaseDate")}>

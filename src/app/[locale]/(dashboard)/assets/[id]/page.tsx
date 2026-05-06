@@ -8,6 +8,7 @@ import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 import { AssetQrCode } from "@/components/assets/asset-qr-code"
 import { AssetAttachments } from "@/components/assets/asset-attachments"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
+import { AssetComponentsPanel } from "@/components/assets/asset-components-panel"
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -43,6 +44,14 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
         where: { isActive: true },
         orderBy: { uploadedAt: "desc" },
       },
+      parentComponents: {
+        orderBy: { installedAt: "desc" },
+        include: {
+          componentAsset: {
+            select: { id: true, assetTag: true, name: true, serialNumber: true },
+          },
+        },
+      },
       maintenanceTickets: {
         where: { isActive: true },
         orderBy: { reportedDate: "desc" },
@@ -56,7 +65,16 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
 
   if (!asset) notFound()
 
-  const [photoChecklist, modelPhotos] = await Promise.all([
+  const installedComponentAssetIds = await prisma.assetComponent.findMany({
+    where: { status: "installed", removedAt: null },
+    select: { componentAssetId: true },
+  })
+  const unavailableComponentIds = new Set([
+    asset.id,
+    ...installedComponentAssetIds.map((component) => component.componentAssetId),
+  ])
+
+  const [photoChecklist, modelPhotos, availableComponentAssets] = await Promise.all([
     getCategoryPhotoChecklist(asset.categoryId),
     asset.model?.id
       ? prisma.attachment.findMany({
@@ -64,7 +82,18 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           orderBy: { uploadedAt: "desc" },
         })
       : [],
+    prisma.asset.findMany({
+      where: {
+        isActive: true,
+        id: { notIn: [...unavailableComponentIds] },
+      },
+      select: { id: true, assetTag: true, name: true, serialNumber: true },
+      orderBy: { assetTag: "asc" },
+      take: 300,
+    }),
   ])
+  const currentComponents = asset.parentComponents.filter((component) => component.status === "installed" && !component.removedAt)
+  const componentHistory = asset.parentComponents.filter((component) => component.status !== "installed" || component.removedAt)
 
   const detailPath = `/${locale}/assets/${asset.id}`
   const qrValue = `${process.env.AUTH_URL ?? ""}${detailPath}`
@@ -116,6 +145,13 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
               <Info label={t("purchasePrice")} value={formatCurrency(asset.purchasePrice ? Number(asset.purchasePrice) : null)} />
             </div>
           </section>
+
+          <AssetComponentsPanel
+            assetId={asset.id}
+            currentComponents={currentComponents}
+            componentHistory={componentHistory}
+            availableAssets={availableComponentAssets}
+          />
 
           <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
             <h2 className="mb-5 text-lg font-semibold text-foreground">{t("ownership")}</h2>

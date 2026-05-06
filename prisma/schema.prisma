@@ -282,11 +282,37 @@ model Asset {
   maintenanceTickets MaintenanceTicket[]
   disposalRequests   DisposalRequest[]
   attachments        Attachment[]
+  parentComponents   AssetComponent[] @relation("ParentAssetComponents")
+  installedInLinks   AssetComponent[] @relation("ComponentAssetLinks")
   auditItems         AuditItem[]
   auditFindings      AuditFinding[]
   auditScanHistory   AuditScanHistory[]
 
   @@map("assets")
+}
+
+model AssetComponent {
+  id               String    @id @default(uuid())
+  parentAssetId    String
+  parentAsset      Asset     @relation("ParentAssetComponents", fields: [parentAssetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  componentAssetId String
+  componentAsset   Asset     @relation("ComponentAssetLinks", fields: [componentAssetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  componentRole    String    @db.NVarChar(100)
+  slotNo           String?   @db.NVarChar(50)
+  installedAt      DateTime  @default(now())
+  removedAt        DateTime?
+  status           String    @default("installed") @db.NVarChar(20)
+  reason           String?   @db.NVarChar(500)
+  referenceType    String?   @db.NVarChar(50)
+  referenceId      String?   @db.NVarChar(100)
+  createdBy        String?   @db.NVarChar(100)
+  updatedBy        String?   @db.NVarChar(100)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([parentAssetId, status])
+  @@index([componentAssetId, status])
+  @@map("asset_components")
 }
 
 // ============================================================

@@ -74,7 +74,26 @@ export const assetBulkMoveSchema = z.object({
   remark: optionalText,
 })
 
+export const assetComponentInstallSchema = z.object({
+  componentAssetId: z.string().trim().min(1),
+  componentRole: z.string().trim().min(1).max(100),
+  slotNo: optionalText,
+  installedAt: optionalDate,
+  reason: optionalText,
+  referenceType: optionalText,
+  referenceId: optionalText,
+})
+
+export const assetComponentRemoveSchema = z.object({
+  removedAt: optionalDate,
+  reason: optionalText,
+  referenceType: optionalText,
+  referenceId: optionalText,
+})
+
 export type AssetCheckoutInput = z.infer<typeof assetCheckoutSchema>
 export type AssetCheckinInput = z.infer<typeof assetCheckinSchema>
 export type AssetTransferInput = z.infer<typeof assetTransferSchema>
 export type AssetBulkMoveInput = z.infer<typeof assetBulkMoveSchema>
+export type AssetComponentInstallInput = z.infer<typeof assetComponentInstallSchema>
+export type AssetComponentRemoveInput = z.infer<typeof assetComponentRemoveSchema>
