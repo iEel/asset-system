@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-05-06
 > **Phase:** Phase 4 AD/LDAP + Mobile Optimization (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built with export polish, 🟨 Admin RBAC polish started, 🟨 Phase 4 narrowed to AD/LDAP login and mobile optimization
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built with export polish, 🟨 Admin RBAC polish started, 🟨 Phase 4 AD/LDAP login + sync workflow validated, 🟨 Mobile optimization pass complete
 
 ---
 
@@ -406,7 +406,7 @@ LDAP_AUTO_PROVISION=false
 LDAP_DEFAULT_ROLE="asset_user"
 LDAP_SYNC_ENABLED=false
 LDAP_SYNC_BASE_DN=""
-LDAP_SYNC_FILTER="(&(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))"
+LDAP_SYNC_FILTER="(&(objectCategory=person)(objectClass=user)(employeeID=*)(company=*)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))"
 LDAP_SYNC_MODE="preview"
 LDAP_SYNC_SCHEDULE="0 2 * * *"
 LDAP_SYNC_TOKEN="long-random-token-for-scheduler"
@@ -434,7 +434,10 @@ Current AD mapping rules:
 - Employee code uses LDAP `employeeID`, which is the key for asset custodian mapping and audit ownership.
 - LDAP `company` maps to Company by code/name.
 - `distinguishedName` OU order maps as `OU[0]` = Department and `OU[1]` = Branch, e.g. `CN=Sonsawan Kongmani,OU=Account,OU=LeamChabang,DC=soniclocal,DC=com` maps Department `Account` and Branch `LeamChabang`.
+- If a DN has only one OU, the sync treats that OU as Branch and falls back Department from LDAP `department` or `ldap_sync_default_department_code`.
 - The default Company/Branch/Department settings are fallback values only when LDAP organization mapping cannot be matched to master data.
+- Current local validation: Preview Sync found 320 LDAP users. Manual Sync created 320 employee records initially. Re-running Manual Sync now completes without error and shows applied counts separately from preview counts.
+- Known internal exclusion: DNs under `OU=Allow TeamViwer` are filtered in application code after LDAP search because AD substring matching on `distinguishedName` was not reliable for this directory.
 
 ### Implemented Master Data URLs
 
@@ -611,6 +614,7 @@ await logAudit({
 | **Lint warnings** | `npm run lint` ผ่านแต่ยังมี warning unused imports เดิม 8 จุดใน layout/sidebar/topbar |
 | **Next.js 16 docs** | โปรเจกต์นี้มี AGENTS.md ระบุให้อ่าน docs ใน `node_modules/next/dist/docs/` ก่อนแก้โค้ด Next.js |
 | **SQL Server TLS warning** | แก้แล้วด้วย `DB_TLS_SERVER_NAME=WIN-I284TKLAMMD` เพื่อไม่ให้ tedious ใช้ IP เป็น TLS ServerName |
+| **LDAP Manual Sync MSSQL transaction** | แก้แล้ว: Manual Sync ไม่ใช้ Prisma interactive transaction กับ MSSQL แล้ว เพราะเคยเจอ `Transaction has not begun`; ปัจจุบันใช้ idempotent preview-driven writes + small batches และแสดง applied counts บน UI |
 | **Phase 2 audit schema** | เพิ่ม `audit_rounds`, `audit_items`, `audit_findings`, `audit_scan_history` และ push schema ไป SQL Server `alpha` แล้ว |
 | **Audit scan behavior** | Scan API อัปเดต `audit_items` เป็น `scanned`, เพิ่ม `scanCount`, บันทึก `audit_scan_history`, ตรวจ mismatch location/custodian/department/condition และสร้าง `audit_findings` pending โดยไม่แก้ master asset |
 | **QR scanner integration** | หน้า `/audit/rounds/{id}/scan` รองรับกล้องผ่าน `html5-qrcode` และ fallback paste URL/Asset ID/Asset Tag; QR label URL `/assets/{id}` จะ map กลับ audit item ได้ |
@@ -652,7 +656,7 @@ await logAudit({
 | **Mobile shell polish** | ปรับ viewport, dashboard shell, sidebar, topbar, login form, touch target, safe viewport height, และ sidebar width ให้เหมาะกับ mobile มากขึ้น |
 | **LDAP settings UI** | หน้า `/admin/settings` เพิ่ม section ตั้งค่า AD/LDAP, test connection API, และค่าควบคุม sync strategy โดย auth อ่านค่าจาก `system_settings` ก่อน fallback ไป `.env` |
 | **LDAP sync recommendation** | แนวทาง sync ที่แนะนำคือ Preview → Manual → Scheduled: เริ่มจากดู diff create/update/deactivate, map Company/Branch/Department ให้พร้อม, แล้วค่อยเปิดรอบเวลาอัตโนมัติ |
-| **LDAP sync workflow** | เพิ่ม `POST /api/admin/settings/ldap-sync` สำหรับ preview/apply, UI Preview Sync/Manual Sync, AD mapping จาก `employeeID`/`company`/`distinguishedName`, fallback Company/Branch/Department mapping, deactivate-missing guard, audit log เมื่อ apply, และ script `npm run ldap:sync` สำหรับ scheduler ภายนอก |
+| **LDAP sync workflow** | เพิ่ม `POST /api/admin/settings/ldap-sync` สำหรับ preview/apply, UI Preview Sync/Manual Sync, AD mapping จาก `employeeID`/`company`/`distinguishedName`, fallback Company/Branch/Department mapping, deactivate-missing guard, audit log เมื่อ apply, persistent error panel, applied-count result panel, และ script `npm run ldap:sync` สำหรับ scheduler ภายนอก |
 | **Asset custom detail templates** | หน้า Category ตั้ง custom field template ได้ (`text/number/date/select/boolean`, required, options); Asset Form render field ตาม category และยังเก็บ snapshot ใน `customFieldsJson` พร้อม key/value fallback |
 | **Asset/model photo workflow** | เพิ่มรูปกลางของ Asset Model ผ่าน `POST /api/models/{id}/attachments`, หน้า Asset Detail แสดงรูปรุ่น + รูปทรัพย์สินจริง และใช้ `attachments` เดิมพร้อม permission-aware `/api/attachments/{id}?inline=1` |
 | **Category photo checklist** | เพิ่ม checklist รูปตามประเภท เก็บใน `system_settings` ด้วย key `asset_category_photo_checklist:{categoryId}`; Asset Detail แสดงรายการที่ครบ/ยังขาดจากชื่อไฟล์ที่ prefix ด้วย label checklist |

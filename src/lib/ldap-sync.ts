@@ -115,93 +115,95 @@ export async function applyLdapSync(userId?: string, settings?: LdapConfigInput)
     }
   }
 
-  const profiles = await searchLdapSyncUsers(resolvedSettings, { requireSyncEnabled: true })
+  if (resolvedSettings.ldap_sync_enabled !== "true") {
+    throw new Error("LDAP sync is not enabled")
+  }
+
   const orgLookup = await loadOrgLookup()
   const orgDefaults = await resolveOrgDefaults(resolvedSettings, orgLookup)
-
+  const profiles = await searchLdapSyncUsers(resolvedSettings, { requireSyncEnabled: true })
   const profilesByCode = new Map(profiles.map((profile) => [profile.code, profile]))
+  const createCodes = new Set(preview.creates.map((change) => change.code))
+  const updateCodes = new Set(preview.updates.map((change) => change.code))
+  const deactivateCodes = new Set(preview.deactivates.map((change) => change.code))
+
   let created = 0
   let updated = 0
   let deactivated = 0
 
-  await prisma.$transaction(async (tx) => {
-    for (const profile of profiles) {
-      const existing = await tx.employee.findUnique({
+  await runInBatches(
+    profiles.filter((profile) => createCodes.has(profile.code)),
+    async (profile) => {
+      const orgMapping = resolveOrgMapping(profile, orgLookup, orgDefaults)
+      if (!orgMapping) {
+        throw new Error(buildOrgMappingBlocker(profile))
+      }
+
+      await prisma.employee.create({
+        data: {
+          code: profile.code,
+          fullNameTh: profile.displayName,
+          email: profile.email,
+          position: profile.position,
+          companyId: orgMapping.companyId,
+          branchId: orgMapping.branchId,
+          departmentId: orgMapping.departmentId,
+          employmentStatus: "active",
+          isActive: true,
+          createdBy: userId,
+          updatedBy: userId,
+        },
+      })
+      created += 1
+    }
+  )
+
+  await runInBatches(
+    profiles.filter((profile) => updateCodes.has(profile.code)),
+    async (profile) => {
+      await prisma.employee.update({
         where: { code: profile.code },
-        select: { id: true },
+        data: {
+          fullNameTh: profile.displayName,
+          email: profile.email,
+          position: profile.position,
+          employmentStatus: "active",
+          isActive: true,
+          updatedBy: userId,
+        },
       })
+      await prisma.user.updateMany({
+        where: {
+          OR: [
+            { username: profile.username },
+            ...(profile.email ? [{ email: profile.email }] : []),
+          ],
+        },
+        data: {
+          displayName: profile.displayName,
+          ...(profile.email ? { email: profile.email } : {}),
+        },
+      })
+      updated += 1
+    }
+  )
 
-      if (existing) {
-        await tx.employee.update({
-          where: { code: profile.code },
+  if (resolvedSettings.ldap_sync_deactivate_missing === "true") {
+    await runInBatches(
+      preview.deactivates.filter((employee) => deactivateCodes.has(employee.code) && !profilesByCode.has(employee.code)),
+      async (employee) => {
+        await prisma.employee.update({
+          where: { code: employee.code },
           data: {
-            fullNameTh: profile.displayName,
-            email: profile.email,
-            position: profile.position,
-            employmentStatus: "active",
-            isActive: true,
+            isActive: false,
+            employmentStatus: "resigned",
             updatedBy: userId,
           },
         })
-        await tx.user.updateMany({
-          where: {
-            OR: [
-              { username: profile.username },
-              ...(profile.email ? [{ email: profile.email }] : []),
-            ],
-          },
-          data: {
-            displayName: profile.displayName,
-            ...(profile.email ? { email: profile.email } : {}),
-          },
-        })
-        updated += 1
-      } else {
-        const orgMapping = resolveOrgMapping(profile, orgLookup, orgDefaults)
-        if (!orgMapping) {
-          throw new Error(buildOrgMappingBlocker(profile))
-        }
-
-        await tx.employee.create({
-          data: {
-            code: profile.code,
-            fullNameTh: profile.displayName,
-            email: profile.email,
-            position: profile.position,
-            companyId: orgMapping.companyId,
-            branchId: orgMapping.branchId,
-            departmentId: orgMapping.departmentId,
-            employmentStatus: "active",
-            isActive: true,
-            createdBy: userId,
-            updatedBy: userId,
-          },
-        })
-        created += 1
+        deactivated += 1
       }
-    }
-
-    if (resolvedSettings.ldap_sync_deactivate_missing === "true") {
-      const activeEmployees = await tx.employee.findMany({
-        where: { isActive: true },
-        select: { code: true },
-      })
-
-      for (const employee of activeEmployees) {
-        if (!profilesByCode.has(employee.code)) {
-          await tx.employee.update({
-            where: { code: employee.code },
-            data: {
-              isActive: false,
-              employmentStatus: "resigned",
-              updatedBy: userId,
-            },
-          })
-          deactivated += 1
-        }
-      }
-    }
-  })
+    )
+  }
 
   const result = {
     ...preview,
@@ -232,6 +234,8 @@ type OrgMapping = {
   departmentId: string
 }
 
+type OrgDefaults = Partial<OrgMapping>
+
 async function loadOrgLookup() {
   const [companies, branches, departments] = await Promise.all([
     prisma.company.findMany({
@@ -251,7 +255,7 @@ async function loadOrgLookup() {
   return { companies, branches, departments }
 }
 
-function resolveOrgMapping(profile: LdapSyncProfile, lookup: OrgLookup, defaults: OrgMapping | null): OrgMapping | null {
+function resolveOrgMapping(profile: LdapSyncProfile, lookup: OrgLookup, defaults: OrgDefaults | null): OrgMapping | null {
   const company = findCompany(lookup, profile.companyName)
   const companyId = company?.id ?? defaults?.companyId
   const branch = findBranch(lookup, profile.branchName, companyId) ?? findBranch(lookup, profile.branchName)
@@ -303,27 +307,23 @@ function normalizeOrgValue(value: string | null | undefined) {
   return value?.trim().toLowerCase() ?? ""
 }
 
-async function resolveOrgDefaults(settings: LdapConfigInput, lookup: OrgLookup): Promise<OrgMapping | null> {
+async function resolveOrgDefaults(settings: LdapConfigInput, lookup: OrgLookup): Promise<OrgDefaults | null> {
   const companyCode = settings.ldap_sync_default_company_code?.trim()
   const branchCode = settings.ldap_sync_default_branch_code?.trim()
   const departmentCode = settings.ldap_sync_default_department_code?.trim()
 
-  if (!companyCode || !branchCode || !departmentCode) {
+  if (!companyCode && !branchCode && !departmentCode) {
     return null
   }
 
-  const company = findCompany(lookup, companyCode)
-  const branch = findBranch(lookup, branchCode, company?.id)
-  const department = findDepartment(lookup, departmentCode, company?.id)
-
-  if (!company || !branch || !department) {
-    return null
-  }
+  const company = companyCode ? findCompany(lookup, companyCode) : null
+  const branch = branchCode ? findBranch(lookup, branchCode, company?.id) : null
+  const department = departmentCode ? findDepartment(lookup, departmentCode, company?.id) : null
 
   return {
-    companyId: company.id,
-    branchId: branch.id,
-    departmentId: department.id,
+    ...(company ? { companyId: company.id } : {}),
+    ...(branch ? { branchId: branch.id } : {}),
+    ...(department ? { departmentId: department.id } : {}),
   }
 }
 
@@ -340,5 +340,11 @@ function toChange(profile: LdapSyncProfile, reason: string): LdapSyncChange {
     name: profile.displayName,
     email: profile.email,
     reason,
+  }
+}
+
+async function runInBatches<T>(items: T[], action: (item: T) => Promise<void>, batchSize = 10) {
+  for (let index = 0; index < items.length; index += batchSize) {
+    await Promise.all(items.slice(index, index + batchSize).map((item) => action(item)))
   }
 }

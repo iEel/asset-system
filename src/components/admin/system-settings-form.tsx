@@ -101,6 +101,10 @@ type SystemSettingsFormProps = {
     ldapSyncCreates: string
     ldapSyncUpdates: string
     ldapSyncDeactivates: string
+    ldapSyncAppliedTitle: string
+    ldapSyncAppliedCreated: string
+    ldapSyncAppliedUpdated: string
+    ldapSyncAppliedDeactivated: string
     ldapSyncBlockers: string
     ldapSyncNoPreview: string
     ldapSyncPreviewSuccess: string
@@ -220,6 +224,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
   const [testingLdap, setTestingLdap] = useState(false)
   const [syncingLdap, setSyncingLdap] = useState<"preview" | "apply" | null>(null)
   const [syncPreview, setSyncPreview] = useState<LdapSyncPreview | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(settings.map((setting) => [setting.key, setting.value]))
   )
@@ -316,6 +321,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
 
   async function handleLdapSync(action: "preview" | "apply") {
     setSyncingLdap(action)
+    setSyncError(null)
     try {
       const response = await fetch("/api/admin/settings/ldap-sync", {
         method: "POST",
@@ -328,7 +334,9 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
       toast.success(action === "apply" ? labels.ldapSyncApplySuccess : labels.ldapSyncPreviewSuccess)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : labels.ldapSyncFailed)
+      const message = error instanceof Error ? error.message : labels.ldapSyncFailed
+      setSyncError(message)
+      toast.error(message)
     } finally {
       setSyncingLdap(null)
     }
@@ -788,6 +796,11 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               {labels.ldapSyncApply}
             </button>
           </div>
+          {syncError ? (
+            <div className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+              {syncError}
+            </div>
+          ) : null}
           <SyncPreviewPanel labels={labels} preview={syncPreview} />
         </div>
       </div>
@@ -891,6 +904,16 @@ function SyncPreviewPanel({
         <Metric label={labels.ldapSyncUpdates} value={preview.updates.length} />
         <Metric label={labels.ldapSyncDeactivates} value={preview.deactivates.length} />
       </div>
+      {preview.applied ? (
+        <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-3">
+          <div className="text-sm font-medium text-foreground">{labels.ldapSyncAppliedTitle}</div>
+          <div className="mt-2 grid gap-2 md:grid-cols-3">
+            <Metric label={labels.ldapSyncAppliedCreated} value={preview.applied.created} />
+            <Metric label={labels.ldapSyncAppliedUpdated} value={preview.applied.updated} />
+            <Metric label={labels.ldapSyncAppliedDeactivated} value={preview.applied.deactivated} />
+          </div>
+        </div>
+      ) : null}
       {preview.blockers.length > 0 ? (
         <div className="mt-3 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
           <div className="font-medium">{labels.ldapSyncBlockers}</div>

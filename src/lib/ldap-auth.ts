@@ -76,7 +76,7 @@ export function getLdapConfig(settings: LdapConfigInput = {}): LdapConfig {
       settingOrEnv(
         settings.ldap_sync_filter,
         "LDAP_SYNC_FILTER",
-        "(&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))"
+        "(&(objectCategory=person)(objectClass=user)(employeeID=*)(company=*)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))"
       )
     ),
     syncMode: settingOrEnv(settings.ldap_sync_mode, "LDAP_SYNC_MODE", "preview"),
@@ -231,7 +231,10 @@ export async function searchLdapSyncUsers(
       ],
     })
 
-    return searchEntries.map(profileFromSyncEntry).filter((profile) => profile.code)
+    return searchEntries
+      .filter((entry) => !isExcludedSyncEntry(entry))
+      .map(profileFromSyncEntry)
+      .filter((profile) => profile.code)
   } finally {
     await client.unbind().catch(() => undefined)
   }
@@ -291,6 +294,8 @@ function profileFromEntry(username: string, entry: Entry): LdapProfile {
 function profileFromSyncEntry(entry: Entry) {
   const dn = getEntryString(entry, "distinguishedName") ?? entry.dn
   const ous = getOrganizationalUnits(dn ?? "")
+  const departmentName = ous.length > 1 ? ous[0] : null
+  const branchName = ous.length > 1 ? ous[1] : ous[0] ?? null
   const username = normalizeLoginName(getEntryString(entry, "sAMAccountName") ?? getEntryString(entry, "userPrincipalName") ?? "")
   const code = getEntryString(entry, "employeeID") ?? username
   const displayName = getEntryString(entry, "displayName") ?? getEntryString(entry, "cn") ?? username
@@ -303,9 +308,16 @@ function profileFromSyncEntry(entry: Entry) {
     email: getEntryString(entry, "mail") ?? getEntryString(entry, "userPrincipalName"),
     position: getEntryString(entry, "title"),
     companyName: getEntryString(entry, "company"),
-    departmentName: ous[0] ?? getEntryString(entry, "department"),
-    branchName: ous[1] ?? null,
+    departmentName: departmentName ?? getEntryString(entry, "department"),
+    branchName,
   }
+}
+
+function isExcludedSyncEntry(entry: Entry) {
+  const dn = getEntryString(entry, "distinguishedName") ?? entry.dn ?? ""
+  const normalizedDn = dn.toLowerCase()
+
+  return normalizedDn.includes("ou=allow teamviwer,")
 }
 
 function normalizeLoginName(value: string) {
