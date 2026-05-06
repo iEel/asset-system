@@ -50,6 +50,20 @@ export async function POST(request: NextRequest) {
     requirePermission(user, "branch", "create")
 
     const input = branchSchema.parse(await request.json())
+    const existingCode = await prisma.branch.findUnique({
+      where: { code: input.code },
+      include: { company: { select: { code: true, nameTh: true } } },
+    })
+
+    if (existingCode) {
+      return NextResponse.json(
+        {
+          error: `รหัสสาขา ${input.code} มีอยู่แล้วในระบบ (${existingCode.company.code} - ${existingCode.company.nameTh}) สาขาใช้ร่วมกับการ Sync AD/LDAP ได้ ไม่ต้องสร้างซ้ำใต้บริษัทอื่น`,
+        },
+        { status: 400 }
+      )
+    }
+
     const branch = await prisma.branch.create({
       data: {
         ...input,

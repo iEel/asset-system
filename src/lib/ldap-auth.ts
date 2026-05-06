@@ -76,7 +76,7 @@ export function getLdapConfig(settings: LdapConfigInput = {}): LdapConfig {
       settingOrEnv(
         settings.ldap_sync_filter,
         "LDAP_SYNC_FILTER",
-        "(&(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))"
+        "(&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))"
       )
     ),
     syncMode: settingOrEnv(settings.ldap_sync_mode, "LDAP_SYNC_MODE", "preview"),
@@ -183,13 +183,17 @@ export async function testLdapConnection(settings?: LdapConfigInput) {
   }
 }
 
-export async function searchLdapSyncUsers(settings?: LdapConfigInput) {
+export async function searchLdapSyncUsers(
+  settings?: LdapConfigInput,
+  options: { requireSyncEnabled?: boolean } = {}
+) {
   const config = getLdapConfig(settings)
+  const requireSyncEnabled = options.requireSyncEnabled ?? true
 
   if (!config.enabled) {
     throw new Error("LDAP is disabled")
   }
-  if (!config.syncEnabled) {
+  if (requireSyncEnabled && !config.syncEnabled) {
     throw new Error("LDAP sync is disabled")
   }
   if (!config.url || !config.bindDn || !config.bindPassword) {

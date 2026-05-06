@@ -39,7 +39,7 @@ export async function loadLdapSettings(): Promise<LdapConfigInput> {
 
 export async function previewLdapSync(settings?: LdapConfigInput): Promise<LdapSyncPreview> {
   const resolvedSettings = settings ?? await loadLdapSettings()
-  const profiles = await searchLdapSyncUsers(resolvedSettings)
+  const profiles = await searchLdapSyncUsers(resolvedSettings, { requireSyncEnabled: false })
   const profilesByCode = new Map(profiles.map((profile) => [profile.code, profile]))
   const orgLookup = await loadOrgLookup()
   const orgDefaults = await resolveOrgDefaults(resolvedSettings, orgLookup)
@@ -115,7 +115,7 @@ export async function applyLdapSync(userId?: string, settings?: LdapConfigInput)
     }
   }
 
-  const profiles = await searchLdapSyncUsers(resolvedSettings)
+  const profiles = await searchLdapSyncUsers(resolvedSettings, { requireSyncEnabled: true })
   const orgLookup = await loadOrgLookup()
   const orgDefaults = await resolveOrgDefaults(resolvedSettings, orgLookup)
 
@@ -254,8 +254,8 @@ async function loadOrgLookup() {
 function resolveOrgMapping(profile: LdapSyncProfile, lookup: OrgLookup, defaults: OrgMapping | null): OrgMapping | null {
   const company = findCompany(lookup, profile.companyName)
   const companyId = company?.id ?? defaults?.companyId
-  const branch = findBranch(lookup, profile.branchName, companyId)
-  const department = findDepartment(lookup, profile.departmentName, companyId)
+  const branch = findBranch(lookup, profile.branchName, companyId) ?? findBranch(lookup, profile.branchName)
+  const department = findDepartment(lookup, profile.departmentName, companyId) ?? findDepartment(lookup, profile.departmentName)
   const branchId = branch?.id ?? defaults?.branchId
   const departmentId = department?.id ?? defaults?.departmentId
 
@@ -279,7 +279,7 @@ function findCompany(lookup: OrgLookup, value: string | null | undefined) {
   ) ?? null
 }
 
-function findBranch(lookup: OrgLookup, value: string | null | undefined, companyId: string | undefined) {
+function findBranch(lookup: OrgLookup, value: string | null | undefined, companyId?: string) {
   const normalized = normalizeOrgValue(value)
   if (!normalized) return null
 
@@ -289,7 +289,7 @@ function findBranch(lookup: OrgLookup, value: string | null | undefined, company
   ) ?? null
 }
 
-function findDepartment(lookup: OrgLookup, value: string | null | undefined, companyId: string | undefined) {
+function findDepartment(lookup: OrgLookup, value: string | null | undefined, companyId?: string) {
   const normalized = normalizeOrgValue(value)
   if (!normalized) return null
 
@@ -331,7 +331,7 @@ function buildOrgMappingBlocker(profile: LdapSyncProfile) {
   const company = profile.companyName || "-"
   const branch = profile.branchName || "-"
   const department = profile.departmentName || "-"
-  return `Cannot map LDAP employee ${profile.code} to Company/Branch/Department from company=${company}, branch=${branch}, department=${department}; set matching master data or fallback defaults.`
+  return `Cannot map LDAP employee ${profile.code} to Company/Branch/Department from company=${company}, branch=${branch}, department=${department}; set matching Company master data and reusable Branch/Department master data, or fallback defaults.`
 }
 
 function toChange(profile: LdapSyncProfile, reason: string): LdapSyncChange {

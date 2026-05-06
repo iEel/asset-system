@@ -53,6 +53,23 @@ export async function PUT(request: NextRequest, context: BranchRouteContext) {
       return NextResponse.json({ error: "Branch not found" }, { status: 404 })
     }
 
+    const existingCode = await prisma.branch.findFirst({
+      where: {
+        code: input.code,
+        id: { not: id },
+      },
+      include: { company: { select: { code: true, nameTh: true } } },
+    })
+
+    if (existingCode) {
+      return NextResponse.json(
+        {
+          error: `รหัสสาขา ${input.code} มีอยู่แล้วในระบบ (${existingCode.company.code} - ${existingCode.company.nameTh}) สาขาใช้ร่วมกับการ Sync AD/LDAP ได้ ไม่ต้องสร้างซ้ำใต้บริษัทอื่น`,
+        },
+        { status: 400 }
+      )
+    }
+
     const branch = await prisma.branch.update({
       where: { id },
       data: {

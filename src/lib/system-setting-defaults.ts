@@ -58,7 +58,7 @@ export const systemSettingDefaults = [
   { key: "ldap_default_role", value: "asset_user", description: "Role เริ่มต้นสำหรับ LDAP auto-provision" },
   { key: "ldap_sync_enabled", value: "false", description: "เปิดใช้งาน LDAP employee/user sync" },
   { key: "ldap_sync_base_dn", value: "", description: "Base DN สำหรับ sync ถ้าไม่ระบุจะใช้ ldap_base_dn" },
-  { key: "ldap_sync_filter", value: "(&(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))", description: "Filter สำหรับดึง user ที่ต้อง sync" },
+  { key: "ldap_sync_filter", value: "(&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))", description: "Filter สำหรับดึง user ที่ต้อง sync" },
   { key: "ldap_sync_mode", value: "preview", description: "โหมด sync: preview, manual, scheduled" },
   { key: "ldap_sync_schedule", value: "0 2 * * *", description: "Cron schedule สำหรับ sync ในอนาคต" },
   { key: "ldap_sync_default_company_code", value: "", description: "Company code เริ่มต้นสำหรับ employee ที่ sync จาก LDAP" },
