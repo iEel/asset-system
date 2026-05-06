@@ -13,6 +13,12 @@ export default async function EditCategoryPage({ params }: EditCategoryPageProps
 
   const category = await prisma.assetCategory.findFirst({
     where: { id, isActive: true },
+    include: {
+      customFieldDefs: {
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+      },
+    },
   })
 
   if (!category) notFound()
@@ -25,7 +31,37 @@ export default async function EditCategoryPage({ params }: EditCategoryPageProps
         name: category.name,
         description: category.description,
         isActive: category.isActive,
+        customFieldDefs: category.customFieldDefs.map((field) => ({
+          id: field.id,
+          fieldName: field.fieldName,
+          fieldLabel: field.fieldLabel,
+          fieldLabelTh: field.fieldLabelTh,
+          fieldType: toCustomFieldType(field.fieldType),
+          options: optionsToText(field.options),
+          isRequired: field.isRequired,
+          sortOrder: field.sortOrder,
+          isActive: field.isActive,
+        })),
       }}
     />
   )
+}
+
+function optionsToText(options: string | null) {
+  if (!options) return ""
+
+  try {
+    const parsed = JSON.parse(options) as unknown
+    return Array.isArray(parsed) ? parsed.join("\n") : options
+  } catch {
+    return options
+  }
+}
+
+function toCustomFieldType(value: string) {
+  if (["text", "number", "date", "select", "boolean"].includes(value)) {
+    return value as "text" | "number" | "date" | "select" | "boolean"
+  }
+
+  return "text"
 }

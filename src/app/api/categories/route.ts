@@ -50,9 +50,24 @@ export async function POST(request: NextRequest) {
     const input = categorySchema.parse(await request.json())
     const category = await prisma.assetCategory.create({
       data: {
-        ...input,
+        code: input.code,
+        name: input.name,
+        description: input.description,
+        isActive: input.isActive,
         createdBy: user.id,
         updatedBy: user.id,
+        customFieldDefs: {
+          create: input.customFieldDefs.map((field, index) => ({
+            fieldName: field.fieldName,
+            fieldLabel: field.fieldLabel,
+            fieldLabelTh: field.fieldLabelTh,
+            fieldType: field.fieldType,
+            options: normalizeFieldOptions(field.options),
+            isRequired: field.isRequired,
+            sortOrder: field.sortOrder || index,
+            isActive: field.isActive,
+          })),
+        },
       },
     })
 
@@ -68,4 +83,15 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return errorResponse(error, 400)
   }
+}
+
+function normalizeFieldOptions(options?: string | null) {
+  if (!options?.trim()) return null
+
+  const parts = options
+    .split(/\r?\n|,/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+  return parts.length > 0 ? JSON.stringify(parts) : null
 }

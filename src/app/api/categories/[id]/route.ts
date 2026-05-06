@@ -56,8 +56,24 @@ export async function PUT(request: NextRequest, context: CategoryRouteContext) {
     const category = await prisma.assetCategory.update({
       where: { id },
       data: {
-        ...input,
+        code: input.code,
+        name: input.name,
+        description: input.description,
+        isActive: input.isActive,
         updatedBy: user.id,
+        customFieldDefs: {
+          deleteMany: {},
+          create: input.customFieldDefs.map((field, index) => ({
+            fieldName: field.fieldName,
+            fieldLabel: field.fieldLabel,
+            fieldLabelTh: field.fieldLabelTh,
+            fieldType: field.fieldType,
+            options: normalizeFieldOptions(field.options),
+            isRequired: field.isRequired,
+            sortOrder: field.sortOrder || index,
+            isActive: field.isActive,
+          })),
+        },
       },
     })
 
@@ -74,6 +90,17 @@ export async function PUT(request: NextRequest, context: CategoryRouteContext) {
   } catch (error) {
     return errorResponse(error, 400)
   }
+}
+
+function normalizeFieldOptions(options?: string | null) {
+  if (!options?.trim()) return null
+
+  const parts = options
+    .split(/\r?\n|,/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+  return parts.length > 0 ? JSON.stringify(parts) : null
 }
 
 export async function DELETE(_request: NextRequest, context: CategoryRouteContext) {

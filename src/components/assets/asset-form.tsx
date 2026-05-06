@@ -16,6 +16,18 @@ type Option = {
   brandId?: string | null
 }
 
+type CustomFieldDefinition = {
+  id: string
+  categoryId: string
+  fieldName: string
+  fieldLabel: string
+  fieldLabelTh?: string | null
+  fieldType: string
+  options: string[]
+  isRequired: boolean
+  sortOrder: number
+}
+
 type AssetFormValues = {
   id?: string
   assetTag?: string | null
@@ -92,6 +104,7 @@ export function AssetForm({
   statuses,
   conditions,
   suppliers,
+  customFieldDefinitions,
 }: {
   asset?: AssetFormValues
   companies: Option[]
@@ -105,6 +118,7 @@ export function AssetForm({
   statuses: Option[]
   conditions: Option[]
   suppliers: Option[]
+  customFieldDefinitions: CustomFieldDefinition[]
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -139,6 +153,11 @@ export function AssetForm({
       (!values.categoryId || model.categoryId === values.categoryId) &&
       (!values.brandId || model.brandId === values.brandId)
   )
+  const selectedCustomFieldDefinitions = customFieldDefinitions
+    .filter((definition) => definition.categoryId === values.categoryId)
+    .sort((first, second) => first.sortOrder - second.sortOrder)
+  const selectedTemplateFieldNames = new Set(selectedCustomFieldDefinitions.map((definition) => definition.fieldName))
+  const additionalCustomFieldRows = customFieldRows.filter((row) => !selectedTemplateFieldNames.has(row.key))
 
   useEffect(() => {
     const assetTag = values.assetTag?.trim() ?? ""
@@ -221,6 +240,14 @@ export function AssetForm({
     }))
   }
 
+  function handleCategoryChange(categoryId: string) {
+    setValues((current) => ({
+      ...current,
+      categoryId,
+      modelId: "",
+    }))
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (duplicateState.assetTagExists || duplicateState.serialNumberExists) {
@@ -229,6 +256,13 @@ export function AssetForm({
     }
     if (!isValidCustomFieldsJson(values.customFieldsJson)) {
       toast.error(t("customFieldsJsonInvalid"))
+      return
+    }
+    const missingRequiredField = selectedCustomFieldDefinitions.find(
+      (definition) => definition.isRequired && !getCustomFieldValue(definition.fieldName).trim()
+    )
+    if (missingRequiredField) {
+      toast.error(t("customFieldRequired", { field: getTemplateFieldLabel(missingRequiredField, locale) }))
       return
     }
     setSaving(true)
@@ -261,6 +295,24 @@ export function AssetForm({
   function handleCustomFieldRowsChange(nextRows: CustomFieldRow[]) {
     setCustomFieldRows(nextRows)
     setField("customFieldsJson", serializeCustomFieldRows(nextRows))
+  }
+
+  function handleAdditionalCustomFieldRowsChange(nextAdditionalRows: CustomFieldRow[]) {
+    const templateRows = customFieldRows.filter((row) => selectedTemplateFieldNames.has(row.key))
+    handleCustomFieldRowsChange([...templateRows, ...nextAdditionalRows])
+  }
+
+  function handleTemplateCustomFieldChange(fieldName: string, value: string) {
+    const existingRow = customFieldRows.find((row) => row.key === fieldName)
+    const nextRows = existingRow
+      ? customFieldRows.map((row) => (row.id === existingRow.id ? { ...row, value } : row))
+      : [...customFieldRows, createCustomFieldRow(fieldName, value)]
+
+    handleCustomFieldRowsChange(nextRows)
+  }
+
+  function getCustomFieldValue(fieldName: string) {
+    return customFieldRows.find((row) => row.key === fieldName)?.value ?? ""
   }
 
   function handleRawJsonChange(value: string) {
@@ -311,7 +363,7 @@ export function AssetForm({
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
           </Field>
-          <SelectField label={t("category")} value={values.categoryId} required onChange={(value) => setField("categoryId", value)}>
+          <SelectField label={t("category")} value={values.categoryId} required onChange={handleCategoryChange}>
             <option value="">{t("selectCategory")}</option>
             {categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
           </SelectField>
@@ -425,17 +477,33 @@ export function AssetForm({
                 </button>
               </div>
 
-              <CustomFieldRowsEditor
-                rows={customFieldRows}
-                labels={{
-                  key: t("customFieldKey"),
-                  value: t("customFieldValue"),
-                  add: t("addCustomField"),
-                  remove: t("removeCustomField"),
-                  empty: t("customFieldsEmpty"),
-                }}
-                onChange={handleCustomFieldRowsChange}
-              />
+              {selectedCustomFieldDefinitions.length > 0 ? (
+                <TemplateCustomFields
+                  definitions={selectedCustomFieldDefinitions}
+                  locale={locale}
+                  getValue={getCustomFieldValue}
+                  onChange={handleTemplateCustomFieldChange}
+                />
+              ) : (
+                <div className="rounded-md border border-dashed border-border px-4 py-5 text-center text-sm text-muted-foreground">
+                  {values.categoryId ? t("customFieldsNoTemplate") : t("customFieldsSelectCategory")}
+                </div>
+              )}
+
+              <div className="space-y-3 border-t border-border pt-4">
+                <h4 className="text-sm font-semibold text-foreground">{t("customFieldsAdditional")}</h4>
+                <CustomFieldRowsEditor
+                  rows={additionalCustomFieldRows}
+                  labels={{
+                    key: t("customFieldKey"),
+                    value: t("customFieldValue"),
+                    add: t("addCustomField"),
+                    remove: t("removeCustomField"),
+                    empty: t("customFieldsEmpty"),
+                  }}
+                  onChange={handleAdditionalCustomFieldRowsChange}
+                />
+              </div>
 
               {showRawJson && (
                 <Field label={t("customFieldsJson")}>
@@ -593,6 +661,97 @@ function CustomFieldRowsEditor({
   )
 }
 
+function TemplateCustomFields({
+  definitions,
+  locale,
+  getValue,
+  onChange,
+}: {
+  definitions: CustomFieldDefinition[]
+  locale: string
+  getValue: (fieldName: string) => string
+  onChange: (fieldName: string, value: string) => void
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      {definitions.map((definition) => (
+        <TemplateField
+          key={definition.id}
+          definition={definition}
+          label={getTemplateFieldLabel(definition, locale)}
+          value={getValue(definition.fieldName)}
+          onChange={(value) => onChange(definition.fieldName, value)}
+        />
+      ))}
+    </div>
+  )
+}
+
+function TemplateField({
+  definition,
+  label,
+  value,
+  onChange,
+}: {
+  definition: CustomFieldDefinition
+  label: string
+  value: string
+  onChange: (value: string) => void
+}) {
+  const fieldLabel = (
+    <span className="mb-1.5 block text-sm font-medium text-foreground">
+      {label}
+      {definition.isRequired && <span className="ml-1 text-danger">*</span>}
+    </span>
+  )
+
+  if (definition.fieldType === "boolean") {
+    return (
+      <label className="flex min-h-10 items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+        <input
+          type="checkbox"
+          checked={value === "true"}
+          onChange={(event) => onChange(event.target.checked ? "true" : "false")}
+          className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+        />
+        {label}
+      </label>
+    )
+  }
+
+  if (definition.fieldType === "select") {
+    return (
+      <label className="block">
+        {fieldLabel}
+        <select
+          value={value}
+          required={definition.isRequired}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+        >
+          <option value=""></option>
+          {definition.options.map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </select>
+      </label>
+    )
+  }
+
+  return (
+    <label className="block">
+      {fieldLabel}
+      <input
+        type={definition.fieldType === "number" ? "number" : definition.fieldType === "date" ? "date" : "text"}
+        value={value}
+        required={definition.isRequired}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+      />
+    </label>
+  )
+}
+
 function createCustomFieldRow(key = "", value = ""): CustomFieldRow {
   return {
     id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
@@ -643,4 +802,12 @@ function isValidCustomFieldsJson(json?: string | null) {
   } catch {
     return false
   }
+}
+
+function getTemplateFieldLabel(definition: CustomFieldDefinition, locale: string) {
+  if (locale === "th" && definition.fieldLabelTh) {
+    return definition.fieldLabelTh
+  }
+
+  return definition.fieldLabel
 }

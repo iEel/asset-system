@@ -41,7 +41,26 @@ export async function getAssetFormOptions() {
     }),
     prisma.assetCategory.findMany({
       where: { isActive: true },
-      select: { id: true, code: true, name: true },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        customFieldDefs: {
+          where: { isActive: true },
+          orderBy: { sortOrder: "asc" },
+          select: {
+            id: true,
+            categoryId: true,
+            fieldName: true,
+            fieldLabel: true,
+            fieldLabelTh: true,
+            fieldType: true,
+            options: true,
+            isRequired: true,
+            sortOrder: true,
+          },
+        },
+      },
       orderBy: { code: "asc" },
     }),
     prisma.assetBrand.findMany({
@@ -98,6 +117,19 @@ export async function getAssetFormOptions() {
       id: category.id,
       label: `${category.code} - ${category.name}`,
     })),
+    customFieldDefinitions: categories.flatMap((category) =>
+      category.customFieldDefs.map((field) => ({
+        id: field.id,
+        categoryId: field.categoryId,
+        fieldName: field.fieldName,
+        fieldLabel: field.fieldLabel,
+        fieldLabelTh: field.fieldLabelTh,
+        fieldType: field.fieldType,
+        options: parseFieldOptions(field.options),
+        isRequired: field.isRequired,
+        sortOrder: field.sortOrder,
+      }))
+    ),
     brands: brands.map((brand) => ({ id: brand.id, label: brand.name })),
     models: models.map((model) => ({
       id: model.id,
@@ -111,5 +143,19 @@ export async function getAssetFormOptions() {
       id: supplier.id,
       label: `${supplier.code} - ${supplier.name}`,
     })),
+  }
+}
+
+function parseFieldOptions(options: string | null) {
+  if (!options) return []
+
+  try {
+    const parsed = JSON.parse(options) as unknown
+    return Array.isArray(parsed) ? parsed.map(String) : []
+  } catch {
+    return options
+      .split(/\r?\n|,/)
+      .map((option) => option.trim())
+      .filter(Boolean)
   }
 }

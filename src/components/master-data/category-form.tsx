@@ -3,9 +3,21 @@
 import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, Save } from "lucide-react"
+import { ArrowLeft, Loader2, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
+
+type CustomFieldDefinitionValue = {
+  id?: string
+  fieldName: string
+  fieldLabel: string
+  fieldLabelTh?: string | null
+  fieldType: "text" | "number" | "date" | "select" | "boolean"
+  options?: string | null
+  isRequired: boolean
+  sortOrder: number
+  isActive: boolean
+}
 
 type CategoryFormValues = {
   id?: string
@@ -13,6 +25,7 @@ type CategoryFormValues = {
   name: string
   description?: string | null
   isActive: boolean
+  customFieldDefs: CustomFieldDefinitionValue[]
 }
 
 const emptyCategory: CategoryFormValues = {
@@ -20,6 +33,7 @@ const emptyCategory: CategoryFormValues = {
   name: "",
   description: "",
   isActive: true,
+  customFieldDefs: [],
 }
 
 export function CategoryForm({ category }: { category?: CategoryFormValues }) {
@@ -36,6 +50,13 @@ export function CategoryForm({ category }: { category?: CategoryFormValues }) {
 
   function setField<K extends keyof CategoryFormValues>(field: K, value: CategoryFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
+  }
+
+  function setCustomFields(customFieldDefs: CustomFieldDefinitionValue[]) {
+    setField(
+      "customFieldDefs",
+      customFieldDefs.map((field, index) => ({ ...field, sortOrder: index }))
+    )
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -83,8 +104,9 @@ export function CategoryForm({ category }: { category?: CategoryFormValues }) {
         </Link>
       </div>
 
-      <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("code")} required>
             <input
               value={values.code}
@@ -124,9 +146,47 @@ export function CategoryForm({ category }: { category?: CategoryFormValues }) {
             />
             {tCommon("active")}
           </label>
-        </div>
+          </div>
+        </section>
 
-        <div className="mt-6 flex justify-end gap-3 border-t border-border pt-5">
+        <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">{t("customFieldTemplate")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("customFieldTemplateHelp")}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCustomFields([...values.customFieldDefs, createCustomFieldDefinition(values.customFieldDefs.length)])}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent"
+            >
+              <Plus className="h-4 w-4" />
+              {t("addCustomField")}
+            </button>
+          </div>
+
+          <CustomFieldTemplateEditor
+            fields={values.customFieldDefs}
+            labels={{
+              fieldName: t("fieldName"),
+              fieldLabel: t("fieldLabel"),
+              fieldLabelTh: t("fieldLabelTh"),
+              fieldType: t("fieldType"),
+              options: t("fieldOptions"),
+              required: t("fieldRequired"),
+              remove: t("removeCustomField"),
+              empty: t("customFieldTemplateEmpty"),
+              text: t("fieldTypeText"),
+              number: t("fieldTypeNumber"),
+              date: t("fieldTypeDate"),
+              select: t("fieldTypeSelect"),
+              boolean: t("fieldTypeBoolean"),
+            }}
+            onChange={setCustomFields}
+          />
+        </section>
+
+        <div className="flex justify-end gap-3 border-t border-border pt-5">
           <Link
             href={backHref}
             className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
@@ -165,4 +225,154 @@ function Field({
       {children}
     </label>
   )
+}
+
+function CustomFieldTemplateEditor({
+  fields,
+  labels,
+  onChange,
+}: {
+  fields: CustomFieldDefinitionValue[]
+  labels: {
+    fieldName: string
+    fieldLabel: string
+    fieldLabelTh: string
+    fieldType: string
+    options: string
+    required: string
+    remove: string
+    empty: string
+    text: string
+    number: string
+    date: string
+    select: string
+    boolean: string
+  }
+  onChange: (fields: CustomFieldDefinitionValue[]) => void
+}) {
+  function updateField(index: number, field: keyof CustomFieldDefinitionValue, value: string | boolean) {
+    onChange(fields.map((item, itemIndex) => (itemIndex === index ? { ...item, [field]: value } : item)))
+  }
+
+  function removeField(index: number) {
+    onChange(fields.filter((_, itemIndex) => itemIndex !== index))
+  }
+
+  if (fields.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+        {labels.empty}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {fields.map((field, index) => (
+        <div key={`${field.id ?? "new"}-${index}`} className="rounded-md border border-border bg-background p-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Field label={labels.fieldName} required>
+              <input
+                value={field.fieldName}
+                onChange={(event) => updateField(index, "fieldName", toFieldName(event.target.value))}
+                maxLength={100}
+                required
+                placeholder="cpu"
+                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </Field>
+
+            <Field label={labels.fieldLabel} required>
+              <input
+                value={field.fieldLabel}
+                onChange={(event) => updateField(index, "fieldLabel", event.target.value)}
+                maxLength={200}
+                required
+                placeholder="CPU"
+                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </Field>
+
+            <Field label={labels.fieldLabelTh}>
+              <input
+                value={field.fieldLabelTh ?? ""}
+                onChange={(event) => updateField(index, "fieldLabelTh", event.target.value)}
+                maxLength={200}
+                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </Field>
+
+            <Field label={labels.fieldType}>
+              <select
+                value={field.fieldType}
+                onChange={(event) => updateField(index, "fieldType", event.target.value)}
+                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              >
+                <option value="text">{labels.text}</option>
+                <option value="number">{labels.number}</option>
+                <option value="date">{labels.date}</option>
+                <option value="select">{labels.select}</option>
+                <option value="boolean">{labels.boolean}</option>
+              </select>
+            </Field>
+
+            {field.fieldType === "select" && (
+              <div className="md:col-span-2">
+                <Field label={labels.options}>
+                  <textarea
+                    value={field.options ?? ""}
+                    onChange={(event) => updateField(index, "options", event.target.value)}
+                    rows={3}
+                    placeholder="Windows 11&#10;Windows 10&#10;macOS"
+                    className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                </Field>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={field.isRequired}
+                onChange={(event) => updateField(index, "isRequired", event.target.checked)}
+                className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              />
+              {labels.required}
+            </label>
+
+            <button
+              type="button"
+              onClick={() => removeField(index)}
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
+            >
+              <Trash2 className="h-4 w-4" />
+              {labels.remove}
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function createCustomFieldDefinition(sortOrder: number): CustomFieldDefinitionValue {
+  return {
+    fieldName: "",
+    fieldLabel: "",
+    fieldLabelTh: "",
+    fieldType: "text",
+    options: "",
+    isRequired: false,
+    sortOrder,
+    isActive: true,
+  }
+}
+
+function toFieldName(value: string) {
+  return value
+    .trim()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-zA-Z0-9_]/g, "")
 }
