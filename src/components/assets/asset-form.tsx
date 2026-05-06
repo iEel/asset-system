@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, Save } from "lucide-react"
+import { ArrowLeft, Code2, Loader2, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 
@@ -43,6 +43,12 @@ type AssetFormValues = {
   remark?: string | null
   customFieldsJson?: string | null
   isActive: boolean
+}
+
+type CustomFieldRow = {
+  id: string
+  key: string
+  value: string
 }
 
 const emptyAsset: AssetFormValues = {
@@ -105,6 +111,8 @@ export function AssetForm({
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
   const [values, setValues] = useState<AssetFormValues>(asset ?? emptyAsset)
+  const [customFieldRows, setCustomFieldRows] = useState<CustomFieldRow[]>(() => parseCustomFieldRows(asset?.customFieldsJson))
+  const [showRawJson, setShowRawJson] = useState(false)
   const [saving, setSaving] = useState(false)
   const [duplicateState, setDuplicateState] = useState<{
     checking: boolean
@@ -219,6 +227,10 @@ export function AssetForm({
       toast.error(t("duplicateWarning"))
       return
     }
+    if (!isValidCustomFieldsJson(values.customFieldsJson)) {
+      toast.error(t("customFieldsJsonInvalid"))
+      return
+    }
     setSaving(true)
 
     const url = isEdit ? `/api/assets/${asset?.id}` : "/api/assets"
@@ -243,6 +255,20 @@ export function AssetForm({
       toast.error(error instanceof Error ? error.message : tCommon("error"))
     } finally {
       setSaving(false)
+    }
+  }
+
+  function handleCustomFieldRowsChange(nextRows: CustomFieldRow[]) {
+    setCustomFieldRows(nextRows)
+    setField("customFieldsJson", serializeCustomFieldRows(nextRows))
+  }
+
+  function handleRawJsonChange(value: string) {
+    setField("customFieldsJson", value)
+
+    const parsedRows = parseCustomFieldRows(value)
+    if (parsedRows.length > 0 || !value.trim()) {
+      setCustomFieldRows(parsedRows)
     }
   }
 
@@ -383,9 +409,46 @@ export function AssetForm({
             </Field>
           </div>
           <div className="md:col-span-2">
-            <Field label={t("customFieldsJson")}>
-              <textarea value={values.customFieldsJson ?? ""} onChange={(event) => setField("customFieldsJson", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
-            </Field>
+            <div className="space-y-4 border-t border-border pt-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">{t("customFieldsStructuredTitle")}</h3>
+                  <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{t("customFieldsStructuredHelp")}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowRawJson((current) => !current)}
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent"
+                >
+                  <Code2 className="h-4 w-4" />
+                  {showRawJson ? t("hideJson") : t("showJson")}
+                </button>
+              </div>
+
+              <CustomFieldRowsEditor
+                rows={customFieldRows}
+                labels={{
+                  key: t("customFieldKey"),
+                  value: t("customFieldValue"),
+                  add: t("addCustomField"),
+                  remove: t("removeCustomField"),
+                  empty: t("customFieldsEmpty"),
+                }}
+                onChange={handleCustomFieldRowsChange}
+              />
+
+              {showRawJson && (
+                <Field label={t("customFieldsJson")}>
+                  <textarea
+                    value={values.customFieldsJson ?? ""}
+                    onChange={(event) => handleRawJsonChange(event.target.value)}
+                    rows={5}
+                    className="min-h-32 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                  <p className="mt-1.5 text-xs text-muted-foreground">{t("customFieldsJsonHelp")}</p>
+                </Field>
+              )}
+            </div>
           </div>
           <label className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
             <input type="checkbox" checked={values.isActive} onChange={(event) => setField("isActive", event.target.checked)} className="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
@@ -457,4 +520,127 @@ function SelectField({
       </select>
     </Field>
   )
+}
+
+function CustomFieldRowsEditor({
+  rows,
+  labels,
+  onChange,
+}: {
+  rows: CustomFieldRow[]
+  labels: {
+    key: string
+    value: string
+    add: string
+    remove: string
+    empty: string
+  }
+  onChange: (rows: CustomFieldRow[]) => void
+}) {
+  function updateRow(id: string, field: "key" | "value", value: string) {
+    onChange(rows.map((row) => (row.id === id ? { ...row, [field]: value } : row)))
+  }
+
+  function removeRow(id: string) {
+    onChange(rows.filter((row) => row.id !== id))
+  }
+
+  return (
+    <div className="space-y-3">
+      {rows.length === 0 ? (
+        <div className="rounded-md border border-dashed border-border px-4 py-5 text-center text-sm text-muted-foreground">
+          {labels.empty}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((row) => (
+            <div key={row.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)_2.5rem]">
+              <input
+                value={row.key}
+                onChange={(event) => updateRow(row.id, "key", event.target.value)}
+                placeholder={labels.key}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+              <input
+                value={row.value}
+                onChange={(event) => updateRow(row.id, "value", event.target.value)}
+                placeholder={labels.value}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+              <button
+                type="button"
+                onClick={() => removeRow(row.id)}
+                aria-label={labels.remove}
+                title={labels.remove}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => onChange([...rows, createCustomFieldRow()])}
+        className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent"
+      >
+        <Plus className="h-4 w-4" />
+        {labels.add}
+      </button>
+    </div>
+  )
+}
+
+function createCustomFieldRow(key = "", value = ""): CustomFieldRow {
+  return {
+    id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+    key,
+    value,
+  }
+}
+
+function parseCustomFieldRows(json?: string | null): CustomFieldRow[] {
+  if (!json?.trim()) {
+    return []
+  }
+
+  try {
+    const parsed = JSON.parse(json) as unknown
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+      return []
+    }
+
+    return Object.entries(parsed).map(([key, value]) =>
+      createCustomFieldRow(key, typeof value === "string" ? value : JSON.stringify(value))
+    )
+  } catch {
+    return []
+  }
+}
+
+function serializeCustomFieldRows(rows: CustomFieldRow[]) {
+  const data = rows.reduce<Record<string, string>>((current, row) => {
+    const key = row.key.trim()
+    if (key) {
+      current[key] = row.value.trim()
+    }
+    return current
+  }, {})
+
+  return Object.keys(data).length > 0 ? JSON.stringify(data, null, 2) : ""
+}
+
+function isValidCustomFieldsJson(json?: string | null) {
+  if (!json?.trim()) {
+    return true
+  }
+
+  try {
+    const parsed = JSON.parse(json) as unknown
+    return Boolean(parsed) && typeof parsed === "object" && !Array.isArray(parsed)
+  } catch {
+    return false
+  }
 }
