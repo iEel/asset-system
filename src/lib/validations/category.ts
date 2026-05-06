@@ -19,6 +19,7 @@ export const categorySchema = z.object({
   description: optionalText,
   isActive: z.boolean().default(true),
   customFieldDefs: z.array(customFieldDefinitionSchema).default([]),
+  photoChecklist: z.array(z.string().trim().min(1).max(100)).default([]),
 })
 
 export type CategoryInput = z.infer<typeof categorySchema>

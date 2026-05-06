@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { categorySchema } from "@/lib/validations/category"
+import { saveCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 
 type CategoryRouteContext = {
   params: Promise<{ id: string }>
@@ -76,6 +77,7 @@ export async function PUT(request: NextRequest, context: CategoryRouteContext) {
         },
       },
     })
+    await saveCategoryPhotoChecklist(category.id, input.photoChecklist, user.id)
 
     await logAudit({
       userId: user.id,

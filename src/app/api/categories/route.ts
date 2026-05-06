@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { categorySchema } from "@/lib/validations/category"
+import { saveCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 
 export async function GET(request: NextRequest) {
   try {
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest) {
         },
       },
     })
+    await saveCategoryPhotoChecklist(category.id, input.photoChecklist, user.id)
 
     await logAudit({
       userId: user.id,

@@ -26,6 +26,7 @@ type CategoryFormValues = {
   description?: string | null
   isActive: boolean
   customFieldDefs: CustomFieldDefinitionValue[]
+  photoChecklist: string[]
 }
 
 const emptyCategory: CategoryFormValues = {
@@ -34,6 +35,7 @@ const emptyCategory: CategoryFormValues = {
   description: "",
   isActive: true,
   customFieldDefs: [],
+  photoChecklist: [],
 }
 
 export function CategoryForm({ category }: { category?: CategoryFormValues }) {
@@ -57,6 +59,10 @@ export function CategoryForm({ category }: { category?: CategoryFormValues }) {
       "customFieldDefs",
       customFieldDefs.map((field, index) => ({ ...field, sortOrder: index }))
     )
+  }
+
+  function setPhotoChecklist(photoChecklist: string[]) {
+    setField("photoChecklist", photoChecklist)
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -183,6 +189,33 @@ export function CategoryForm({ category }: { category?: CategoryFormValues }) {
               boolean: t("fieldTypeBoolean"),
             }}
             onChange={setCustomFields}
+          />
+        </section>
+
+        <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">{t("photoChecklistTemplate")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("photoChecklistTemplateHelp")}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPhotoChecklist([...values.photoChecklist, ""])}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent"
+            >
+              <Plus className="h-4 w-4" />
+              {t("addPhotoChecklist")}
+            </button>
+          </div>
+
+          <PhotoChecklistEditor
+            items={values.photoChecklist}
+            labels={{
+              item: t("photoChecklistItem"),
+              empty: t("photoChecklistEmpty"),
+              remove: t("removePhotoChecklist"),
+            }}
+            onChange={setPhotoChecklist}
           />
         </section>
 
@@ -375,4 +408,59 @@ function toFieldName(value: string) {
     .trim()
     .replace(/\s+/g, "_")
     .replace(/[^a-zA-Z0-9_]/g, "")
+}
+
+function PhotoChecklistEditor({
+  items,
+  labels,
+  onChange,
+}: {
+  items: string[]
+  labels: {
+    item: string
+    empty: string
+    remove: string
+  }
+  onChange: (items: string[]) => void
+}) {
+  function updateItem(index: number, value: string) {
+    onChange(items.map((item, itemIndex) => (itemIndex === index ? value : item)))
+  }
+
+  function removeItem(index: number) {
+    onChange(items.filter((_, itemIndex) => itemIndex !== index))
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+        {labels.empty}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      {items.map((item, index) => (
+        <div key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_2.5rem]">
+          <input
+            value={item}
+            onChange={(event) => updateItem(index, event.target.value)}
+            maxLength={100}
+            placeholder={labels.item}
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+          <button
+            type="button"
+            onClick={() => removeItem(index)}
+            aria-label={labels.remove}
+            title={labels.remove}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      ))}
+    </div>
+  )
 }

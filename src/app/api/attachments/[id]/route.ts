@@ -82,7 +82,7 @@ function requireAttachmentPermission(
   module: string,
   action: "view" | "edit"
 ) {
-  const permissionModule = module === "maintenance" ? "maintenance" : "asset"
+  const permissionModule = module === "maintenance" ? "maintenance" : module === "asset_model" ? "brand" : "asset"
   if (!hasPermission(user, permissionModule, action)) {
     throw new Error("Forbidden: insufficient permissions")
   }

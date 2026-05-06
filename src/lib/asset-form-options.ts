@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
 
 export async function getAssetFormOptions() {
   const [
@@ -89,6 +90,13 @@ export async function getAssetFormOptions() {
       orderBy: { code: "asc" },
     }),
   ])
+  const photoChecklistSettings = await prisma.systemSetting.findMany({
+    where: { key: { in: categories.map((category) => categoryPhotoChecklistKey(category.id)) } },
+    select: { key: true, value: true },
+  })
+  const photoChecklistByCategoryId = new Map(
+    photoChecklistSettings.map((setting) => [setting.key.replace("asset_category_photo_checklist:", ""), parsePhotoChecklist(setting.value)])
+  )
 
   return {
     companies: companies.map((company) => ({ id: company.id, label: `${company.code} - ${company.nameTh}` })),
@@ -116,6 +124,7 @@ export async function getAssetFormOptions() {
     categories: categories.map((category) => ({
       id: category.id,
       label: `${category.code} - ${category.name}`,
+      photoChecklist: photoChecklistByCategoryId.get(category.id) ?? [],
     })),
     customFieldDefinitions: categories.flatMap((category) =>
       category.customFieldDefs.map((field) => ({

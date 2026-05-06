@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { CategoryForm } from "@/components/master-data/category-form"
+import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 
 type EditCategoryPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -11,15 +12,18 @@ export default async function EditCategoryPage({ params }: EditCategoryPageProps
   const { id, locale } = await params
   await requirePagePermission(locale, "category", "edit")
 
-  const category = await prisma.assetCategory.findFirst({
-    where: { id, isActive: true },
-    include: {
-      customFieldDefs: {
-        where: { isActive: true },
-        orderBy: { sortOrder: "asc" },
+  const [category, photoChecklist] = await Promise.all([
+    prisma.assetCategory.findFirst({
+      where: { id, isActive: true },
+      include: {
+        customFieldDefs: {
+          where: { isActive: true },
+          orderBy: { sortOrder: "asc" },
+        },
       },
-    },
-  })
+    }),
+    getCategoryPhotoChecklist(id),
+  ])
 
   if (!category) notFound()
 
@@ -42,6 +46,7 @@ export default async function EditCategoryPage({ params }: EditCategoryPageProps
           sortOrder: field.sortOrder,
           isActive: field.isActive,
         })),
+        photoChecklist,
       }}
     />
   )

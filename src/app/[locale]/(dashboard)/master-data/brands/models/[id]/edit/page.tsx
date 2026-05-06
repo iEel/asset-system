@@ -27,6 +27,11 @@ export default async function EditAssetModelPage({ params }: EditAssetModelPageP
 
   if (!model) notFound()
 
+  const modelPhotos = await prisma.attachment.findMany({
+    where: { module: "asset_model", referenceId: model.id, isActive: true },
+    orderBy: { uploadedAt: "desc" },
+  })
+
   return (
     <AssetModelForm
       brands={brands}
@@ -39,6 +44,7 @@ export default async function EditAssetModelPage({ params }: EditAssetModelPageP
         specs: model.specs,
         isActive: model.isActive,
       }}
+      modelPhotos={modelPhotos}
     />
   )
 }

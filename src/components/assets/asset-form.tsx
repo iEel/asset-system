@@ -14,6 +14,7 @@ type Option = {
   branchId?: string | null
   categoryId?: string | null
   brandId?: string | null
+  photoChecklist?: string[]
 }
 
 type CustomFieldDefinition = {

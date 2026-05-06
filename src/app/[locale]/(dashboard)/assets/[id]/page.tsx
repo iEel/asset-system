@@ -7,6 +7,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 import { AssetQrCode } from "@/components/assets/asset-qr-code"
 import { AssetAttachments } from "@/components/assets/asset-attachments"
+import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -24,7 +25,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
     include: {
       category: { select: { code: true, name: true } },
       brand: { select: { name: true } },
-      model: { select: { name: true, specs: true } },
+      model: { select: { id: true, name: true, specs: true } },
       company: { select: { code: true, nameTh: true } },
       branch: { select: { code: true, name: true } },
       department: { select: { code: true, name: true } },
@@ -54,6 +55,16 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   })
 
   if (!asset) notFound()
+
+  const [photoChecklist, modelPhotos] = await Promise.all([
+    getCategoryPhotoChecklist(asset.categoryId),
+    asset.model?.id
+      ? prisma.attachment.findMany({
+          where: { module: "asset_model", referenceId: asset.model.id, isActive: true },
+          orderBy: { uploadedAt: "desc" },
+        })
+      : [],
+  ])
 
   const detailPath = `/${locale}/assets/${asset.id}`
   const qrValue = `${process.env.AUTH_URL ?? ""}${detailPath}`
@@ -216,7 +227,12 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             <AssetQrCode value={qrValue} label={asset.assetTag} />
           </section>
 
-          <AssetAttachments assetId={asset.id} attachments={asset.attachments} />
+          <AssetAttachments
+            assetId={asset.id}
+            attachments={asset.attachments}
+            modelPhotos={modelPhotos}
+            photoChecklist={photoChecklist}
+          />
 
           <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold text-foreground">{t("remark")}</h2>

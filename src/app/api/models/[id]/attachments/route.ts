@@ -10,44 +10,43 @@ import { getUploadRoot, sanitizeFileName, validateUploadFile } from "@/lib/uploa
 
 export const runtime = "nodejs"
 
-type AssetAttachmentRouteContext = {
+type ModelAttachmentRouteContext = {
   params: Promise<{ id: string }>
 }
 
-export async function POST(request: NextRequest, context: AssetAttachmentRouteContext) {
+export async function POST(request: NextRequest, context: ModelAttachmentRouteContext) {
   try {
     const user = await requireAuth()
-    requirePermission(user, "asset", "edit")
+    requirePermission(user, "brand", "edit")
 
     const { id } = await context.params
-    const asset = await prisma.asset.findFirst({
+    const model = await prisma.assetModel.findFirst({
       where: { id, isActive: true },
-      select: { id: true, assetTag: true },
+      select: { id: true, name: true },
     })
 
-    if (!asset) {
-      return NextResponse.json({ error: "Asset not found" }, { status: 404 })
+    if (!model) {
+      return NextResponse.json({ error: "Model not found" }, { status: 404 })
     }
 
     const formData = await request.formData()
     const file = formData.get("file")
-    const photoLabel = typeof formData.get("photoLabel") === "string" ? String(formData.get("photoLabel")).trim() : ""
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "File is required" }, { status: 400 })
     }
 
     validateUploadFile(file)
+    if (!file.type.startsWith("image/")) {
+      return NextResponse.json({ error: "Model photo must be an image" }, { status: 400 })
+    }
 
     const now = new Date()
     const year = String(now.getFullYear())
     const month = String(now.getMonth() + 1).padStart(2, "0")
     const safeOriginalName = sanitizeFileName(file.name)
-    const labeledOriginalName = photoLabel && file.type.startsWith("image/")
-      ? `${sanitizeFileName(photoLabel)} - ${safeOriginalName}`
-      : safeOriginalName
     const extension = path.extname(safeOriginalName)
     const fileName = `${randomUUID()}${extension}`
-    const uploadDir = path.join(getUploadRoot(), "asset", year, month)
+    const uploadDir = path.join(getUploadRoot(), "asset-model", year, month)
     const filePath = path.join(uploadDir, fileName)
     const bytes = Buffer.from(await file.arrayBuffer())
 
@@ -56,11 +55,10 @@ export async function POST(request: NextRequest, context: AssetAttachmentRouteCo
 
     const attachment = await prisma.attachment.create({
       data: {
-        assetId: asset.id,
-        module: "asset",
-        referenceId: asset.id,
+        module: "asset_model",
+        referenceId: model.id,
         fileName,
-        originalName: labeledOriginalName,
+        originalName: safeOriginalName,
         fileType: file.type,
         fileSize: file.size,
         filePath,
@@ -71,8 +69,8 @@ export async function POST(request: NextRequest, context: AssetAttachmentRouteCo
     await logAudit({
       userId: user.id,
       action: "upload",
-      module: "asset",
-      recordId: asset.id,
+      module: "brand",
+      recordId: model.id,
       newValue: {
         attachmentId: attachment.id,
         originalName: attachment.originalName,
