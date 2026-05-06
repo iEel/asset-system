@@ -1,12 +1,13 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { CheckCircle2, Download, FileText, ImageIcon, Loader2, Trash2, Upload } from "lucide-react"
 import { toast } from "sonner"
 import { formatFileSize } from "@/lib/uploads"
+import { FileDropzone } from "@/components/ui/file-dropzone"
 
 type Attachment = {
   id: string
@@ -30,24 +31,23 @@ export function AssetAttachments({
   const router = useRouter()
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [photoLabel, setPhotoLabel] = useState("")
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const imageAttachments = attachments.filter(isImage)
   const primaryAssetPhoto = imageAttachments[0]
   const primaryModelPhoto = modelPhotos.find(isImage)
 
   async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const file = fileInputRef.current?.files?.[0]
-    if (!file) {
+    if (!selectedFile) {
       toast.error(t("fileRequired"))
       return
     }
 
     const formData = new FormData()
-    formData.append("file", file)
+    formData.append("file", selectedFile)
     if (photoLabel) formData.append("photoLabel", photoLabel)
     setUploading(true)
 
@@ -62,7 +62,7 @@ export function AssetAttachments({
         throw new Error(result?.error ?? tCommon("error"))
       }
 
-      if (fileInputRef.current) fileInputRef.current.value = ""
+      setSelectedFile(null)
       setPhotoLabel("")
       toast.success(t("uploadSuccess"))
       router.refresh()
@@ -145,10 +145,13 @@ export function AssetAttachments({
             ))}
           </select>
         )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-primary/90"
+        <FileDropzone
+          file={selectedFile}
+          onFileChange={setSelectedFile}
+          disabled={uploading}
+          title={t("dropFileTitle")}
+          hint={t("dropFileSelected")}
+          browseLabel={t("dropFileHint")}
         />
         <button
           type="submit"

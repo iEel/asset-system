@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -8,6 +8,7 @@ import { ArrowLeft, ImageIcon, Loader2, Save, Trash2, Upload } from "lucide-reac
 import { toast } from "sonner"
 import Link from "next/link"
 import { formatFileSize } from "@/lib/uploads"
+import { FileDropzone } from "@/components/ui/file-dropzone"
 
 type AssetModelFormValues = {
   id?: string
@@ -64,7 +65,7 @@ export function AssetModelForm({
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null)
 
   const isEdit = Boolean(model?.id)
   const backHref = `/${locale}/master-data/brands`
@@ -107,14 +108,13 @@ export function AssetModelForm({
     event.preventDefault()
     if (!model?.id) return
 
-    const file = fileInputRef.current?.files?.[0]
-    if (!file) {
+    if (!selectedPhoto) {
       toast.error(t("fileRequired"))
       return
     }
 
     const formData = new FormData()
-    formData.append("file", file)
+    formData.append("file", selectedPhoto)
     setUploading(true)
 
     try {
@@ -128,7 +128,7 @@ export function AssetModelForm({
         throw new Error(result?.error ?? tCommon("error"))
       }
 
-      if (fileInputRef.current) fileInputRef.current.value = ""
+      setSelectedPhoto(null)
       toast.success(t("photoUploadSuccess"))
       router.refresh()
     } catch (error) {
@@ -269,11 +269,14 @@ export function AssetModelForm({
 
           {model?.id ? (
             <form onSubmit={handlePhotoUpload} className="mb-4 rounded-md border border-border bg-background p-3">
-              <input
-                ref={fileInputRef}
-                type="file"
+              <FileDropzone
+                file={selectedPhoto}
+                onFileChange={setSelectedPhoto}
+                disabled={uploading}
                 accept="image/*"
-                className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-primary/90"
+                title={t("dropModelPhotoTitle")}
+                hint={t("dropModelPhotoSelected")}
+                browseLabel={t("dropModelPhotoHint")}
               />
               <button
                 type="submit"
