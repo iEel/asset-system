@@ -67,6 +67,8 @@ type SystemSettingsFormProps = {
     ldapBaseDn: string
     ldapBindDn: string
     ldapBindPassword: string
+    ldapStartTls: string
+    ldapTlsRejectUnauthorized: string
     ldapUserFilter: string
     ldapUpnDomain: string
     ldapDomain: string
@@ -535,7 +537,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.ldapSettings} description={labels.ldapSettingsDescription} />
         <div className="space-y-5 px-4 py-4">
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
             <ToggleField
               label={labels.ldapEnabled}
               checked={getValue("ldap_enabled") === "true"}
@@ -545,6 +547,16 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               label={labels.ldapAutoProvision}
               checked={getValue("ldap_auto_provision") === "true"}
               onChange={(checked) => setBooleanValue("ldap_auto_provision", checked)}
+            />
+            <ToggleField
+              label={labels.ldapStartTls}
+              checked={getValue("ldap_start_tls") === "true"}
+              onChange={(checked) => setBooleanValue("ldap_start_tls", checked)}
+            />
+            <ToggleField
+              label={labels.ldapTlsRejectUnauthorized}
+              checked={getValue("ldap_tls_reject_unauthorized") !== "false"}
+              onChange={(checked) => setBooleanValue("ldap_tls_reject_unauthorized", checked)}
             />
           </div>
           <div className="grid gap-4 lg:grid-cols-2">

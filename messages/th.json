@@ -900,6 +900,8 @@
     "ldapBaseDn": "Base DN",
     "ldapBindDn": "Bind DN",
     "ldapBindPassword": "Bind Password",
+    "ldapStartTls": "ใช้ StartTLS บน port 389",
+    "ldapTlsRejectUnauthorized": "ตรวจสอบใบรับรอง LDAPS",
     "ldapUserFilter": "User Filter",
     "ldapUpnDomain": "UPN Domain",
     "ldapDomain": "Domain",

@@ -12,6 +12,8 @@ type LdapConfig = {
   baseDn: string
   bindDn: string | null
   bindPassword: string | null
+  startTls: boolean
+  tlsRejectUnauthorized: boolean
   userFilter: string
   userDnTemplate: string | null
   upnDomain: string | null
@@ -31,6 +33,8 @@ export type LdapConfigInput = Partial<Record<
   | "ldap_base_dn"
   | "ldap_bind_dn"
   | "ldap_bind_password"
+  | "ldap_start_tls"
+  | "ldap_tls_reject_unauthorized"
   | "ldap_user_filter"
   | "ldap_user_dn_template"
   | "ldap_upn_domain"
@@ -56,7 +60,11 @@ export function getLdapConfig(settings: LdapConfigInput = {}): LdapConfig {
     baseDn: settingOrEnv(settings.ldap_base_dn, "LDAP_BASE_DN"),
     bindDn: nullableSettingOrEnv(settings.ldap_bind_dn, "LDAP_BIND_DN"),
     bindPassword: nullableSettingOrEnv(settings.ldap_bind_password, "LDAP_BIND_PASSWORD"),
-    userFilter: settingOrEnv(settings.ldap_user_filter, "LDAP_USER_FILTER", "(&(objectClass=user)(sAMAccountName={username}))"),
+    startTls: settingOrEnv(settings.ldap_start_tls, "LDAP_START_TLS", "false") === "true",
+    tlsRejectUnauthorized: settingOrEnv(settings.ldap_tls_reject_unauthorized, "LDAP_TLS_REJECT_UNAUTHORIZED", "true") !== "false",
+    userFilter: normalizeLdapFilter(
+      settingOrEnv(settings.ldap_user_filter, "LDAP_USER_FILTER", "(&(objectClass=user)(sAMAccountName={username}))")
+    ),
     userDnTemplate: nullableSettingOrEnv(settings.ldap_user_dn_template, "LDAP_USER_DN_TEMPLATE"),
     upnDomain: nullableSettingOrEnv(settings.ldap_upn_domain, "LDAP_UPN_DOMAIN"),
     domain: nullableSettingOrEnv(settings.ldap_domain, "LDAP_DOMAIN"),
@@ -64,10 +72,12 @@ export function getLdapConfig(settings: LdapConfigInput = {}): LdapConfig {
     defaultRole: settingOrEnv(settings.ldap_default_role, "LDAP_DEFAULT_ROLE", "asset_user"),
     syncEnabled: settingOrEnv(settings.ldap_sync_enabled, "LDAP_SYNC_ENABLED") === "true",
     syncBaseDn: nullableSettingOrEnv(settings.ldap_sync_base_dn, "LDAP_SYNC_BASE_DN"),
-    syncFilter: settingOrEnv(
-      settings.ldap_sync_filter,
-      "LDAP_SYNC_FILTER",
-      "(&(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))"
+    syncFilter: normalizeLdapFilter(
+      settingOrEnv(
+        settings.ldap_sync_filter,
+        "LDAP_SYNC_FILTER",
+        "(&(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))"
+      )
     ),
     syncMode: settingOrEnv(settings.ldap_sync_mode, "LDAP_SYNC_MODE", "preview"),
     syncSchedule: settingOrEnv(settings.ldap_sync_schedule, "LDAP_SYNC_SCHEDULE", "0 2 * * *"),
@@ -81,16 +91,11 @@ export async function authenticateLdapUser(username: string, password: string, s
     return null
   }
 
-  const client = new Client({
-    url: config.url,
-    timeout: Number(process.env.LDAP_TIMEOUT_MS ?? 8000),
-    connectTimeout: Number(process.env.LDAP_CONNECT_TIMEOUT_MS ?? 8000),
-    tlsOptions: {
-      rejectUnauthorized: process.env.LDAP_TLS_REJECT_UNAUTHORIZED !== "false",
-    },
-  })
+  const client = createLdapClient(config)
 
   try {
+    await maybeStartTls(client, config)
+
     if (config.bindDn && config.bindPassword) {
       await client.bind(config.bindDn, config.bindPassword)
 
@@ -156,16 +161,10 @@ export async function testLdapConnection(settings?: LdapConfigInput) {
     return { ok: false, message: "Bind DN and bind password are required for connection test" }
   }
 
-  const client = new Client({
-    url: config.url,
-    timeout: Number(process.env.LDAP_TIMEOUT_MS ?? 8000),
-    connectTimeout: Number(process.env.LDAP_CONNECT_TIMEOUT_MS ?? 8000),
-    tlsOptions: {
-      rejectUnauthorized: process.env.LDAP_TLS_REJECT_UNAUTHORIZED !== "false",
-    },
-  })
+  const client = createLdapClient(config)
 
   try {
+    await maybeStartTls(client, config)
     await client.bind(config.bindDn, config.bindPassword)
 
     if (config.baseDn) {
@@ -178,7 +177,7 @@ export async function testLdapConnection(settings?: LdapConfigInput) {
 
     return { ok: true, message: "LDAP connection succeeded" }
   } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : "LDAP connection failed" }
+    return { ok: false, message: formatLdapError(error) }
   } finally {
     await client.unbind().catch(() => undefined)
   }
@@ -202,16 +201,10 @@ export async function searchLdapSyncUsers(settings?: LdapConfigInput) {
     throw new Error("LDAP sync base DN is required")
   }
 
-  const client = new Client({
-    url: config.url,
-    timeout: Number(process.env.LDAP_TIMEOUT_MS ?? 8000),
-    connectTimeout: Number(process.env.LDAP_CONNECT_TIMEOUT_MS ?? 8000),
-    tlsOptions: {
-      rejectUnauthorized: process.env.LDAP_TLS_REJECT_UNAUTHORIZED !== "false",
-    },
-  })
+  const client = createLdapClient(config)
 
   try {
+    await maybeStartTls(client, config)
     await client.bind(config.bindDn, config.bindPassword)
     const { searchEntries } = await client.search(baseDn, {
       scope: "sub",
@@ -254,6 +247,31 @@ function getDirectBindIdentity(username: string, config: LdapConfig) {
   }
 
   return username
+}
+
+function createLdapClient(config: LdapConfig) {
+  const useLdaps = config.url.toLowerCase().startsWith("ldaps://")
+
+  return new Client({
+    url: config.url,
+    timeout: Number(process.env.LDAP_TIMEOUT_MS ?? 8000),
+    connectTimeout: Number(process.env.LDAP_CONNECT_TIMEOUT_MS ?? 8000),
+    ...(useLdaps
+      ? {
+          tlsOptions: {
+            rejectUnauthorized: config.tlsRejectUnauthorized,
+          },
+        }
+      : {}),
+  })
+}
+
+async function maybeStartTls(client: Client, config: LdapConfig) {
+  if (!config.startTls || !config.url.toLowerCase().startsWith("ldap://")) {
+    return
+  }
+
+  await client.startTLS({ rejectUnauthorized: config.tlsRejectUnauthorized })
 }
 
 function profileFromEntry(username: string, entry: Entry): LdapProfile {
@@ -357,6 +375,41 @@ function escapeLdapFilterValue(value: string) {
     const hex = char.charCodeAt(0).toString(16).padStart(2, "0")
     return `\\${hex}`
   })
+}
+
+function normalizeLdapFilter(value: string) {
+  const trimmed = value.trim()
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim()
+  }
+
+  return trimmed
+}
+
+function formatLdapError(error: unknown) {
+  const message = error instanceof Error ? error.message : "LDAP connection failed"
+  const normalizedMessage = message.toLowerCase()
+
+  if (
+    normalizedMessage.includes("unable to verify the first certificate") ||
+    normalizedMessage.includes("self-signed certificate") ||
+    normalizedMessage.includes("certificate")
+  ) {
+    return `${message}. LDAPS certificate is not trusted by Node.js. Use a hostname that matches the DC certificate and install the AD root CA, run Node with --use-system-ca, or disable LDAPS certificate verification only for trusted internal testing.`
+  }
+
+  if (normalizedMessage.includes("econnreset")) {
+    return `${message}. The LDAP server reset the connection. If this AD requires encrypted bind, try LDAPS on port 636.`
+  }
+
+  if (normalizedMessage.includes("data 52e") || normalizedMessage.includes("invalid credentials")) {
+    return `${message}. AD rejected the Bind DN/password. Verify the bind account password and try using UPN format (user@domain) or DOMAIN\\user if DN bind is not accepted.`
+  }
+
+  return message
 }
 
 function settingOrEnv(value: string | undefined, envKey: string, fallback = "") {

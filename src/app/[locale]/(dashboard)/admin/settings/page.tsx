@@ -89,6 +89,8 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           ldapBaseDn: t("ldapBaseDn"),
           ldapBindDn: t("ldapBindDn"),
           ldapBindPassword: t("ldapBindPassword"),
+          ldapStartTls: t("ldapStartTls"),
+          ldapTlsRejectUnauthorized: t("ldapTlsRejectUnauthorized"),
           ldapUserFilter: t("ldapUserFilter"),
           ldapUpnDomain: t("ldapUpnDomain"),
           ldapDomain: t("ldapDomain"),

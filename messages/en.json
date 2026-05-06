@@ -900,6 +900,8 @@
     "ldapBaseDn": "Base DN",
     "ldapBindDn": "Bind DN",
     "ldapBindPassword": "Bind Password",
+    "ldapStartTls": "Use StartTLS on port 389",
+    "ldapTlsRejectUnauthorized": "Verify LDAPS certificate",
     "ldapUserFilter": "User Filter",
     "ldapUpnDomain": "UPN Domain",
     "ldapDomain": "Domain",
