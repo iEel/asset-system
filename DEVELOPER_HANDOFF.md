@@ -621,6 +621,8 @@ await logAudit({
 | **Operation print forms** | หลัง checkout/checkin สำเร็จจะ redirect ไปหน้าเอกสารพิมพ์ A4 สำหรับใบส่งมอบ/ใบรับคืน พร้อมข้อมูลทรัพย์สิน เงื่อนไข รายละเอียดธุรกรรม และช่องลายเซ็น |
 | **Operation status mapping** | Checkout ตั้ง asset status เป็น `Checked Out` แบบ exact จาก master status; Check-in อนุญาต next status เฉพาะ `Ready`, `Pending Repair`, `Pending Disposal` ทั้งใน dropdown และ API validation |
 | **Operation evidence upload** | Checkout รองรับรูปก่อนส่งมอบและไฟล์ลายเซ็นผู้รับ; Check-in รองรับรูปหลังรับคืน โดยบันทึกลง `UPLOAD_DIR/operations/...`, สร้าง `attachments`, และเก็บ path ใน transaction record |
+| **Checkout on-screen signature** | หน้า Checkout เปลี่ยนลายเซ็นผู้รับจาก file upload เป็น signature pad บนหน้าจอ; client แปลงเป็น PNG evidence อัตโนมัติ และใบส่งมอบจะแสดงลายเซ็นผู้รับในช่อง signature |
+| **Checkout before-photo UX** | หน้า Checkout ใช้ `FileDropzone` สำหรับรูปก่อนส่งมอบ รองรับ drag/drop บน desktop และ `capture="environment"` เพื่อถ่ายรูปจากกล้องหลังบนมือถือ |
 | **Master data scaling** | Employees, Locations, และ Suppliers ใช้ server-side pagination, page size, search count, และ sortable columns ผ่าน helper กลาง `src/lib/master-data-query.ts` |
 | **Admin users foundation** | เพิ่มหน้า `/admin/users` สำหรับดูบัญชีผู้ใช้ บทบาท พนักงานที่ผูก สถานะ และ last login พร้อม search/pagination/sort และ RBAC `user:view` |
 | **Admin user edit flow** | เพิ่ม API `GET/POST /api/admin/users`, `PUT /api/admin/users/{id}` และหน้า `/admin/users/new`, `/admin/users/{id}/edit` สำหรับสร้าง/แก้ไข user, password, employee link, active flag, และ role assignments |
@@ -747,6 +749,8 @@ await logAudit({
 64. Asset Components schema/API/UI for parent-child assembly, install/remove, current/history display, validation, movement logs, and audit trail
 65. Asset create optional install-after-save flow that creates the new asset first, then links it as a component of the selected parent asset
 66. Asset purchase document uploads for PO, invoice, delivery note, warranty, quotation, contract, and other files, separated as `asset_purchase` attachments
+67. Checkout receiver signature pad replacing signature file upload, with saved PNG evidence and printed handover signature rendering
+68. Checkout before-handover photo picker upgraded to drag/drop plus mobile camera capture through shared `FileDropzone`
 
 ---
 

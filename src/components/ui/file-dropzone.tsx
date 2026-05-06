@@ -8,6 +8,7 @@ export function FileDropzone({
   onFileChange,
   disabled,
   accept,
+  capture,
   title,
   hint,
   browseLabel,
@@ -16,6 +17,7 @@ export function FileDropzone({
   onFileChange: (file: File | null) => void
   disabled?: boolean
   accept?: string
+  capture?: "user" | "environment"
   title: string
   hint: string
   browseLabel: string
@@ -60,6 +62,7 @@ export function FileDropzone({
         id={inputId}
         type="file"
         accept={accept}
+        capture={capture}
         disabled={disabled}
         className="sr-only"
         onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}

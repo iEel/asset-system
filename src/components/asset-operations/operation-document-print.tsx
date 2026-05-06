@@ -11,6 +11,7 @@ type DocumentField = {
 type SignatureBox = {
   title: string
   helper: string
+  imageSrc?: string | null
 }
 
 type OperationDocumentPrintProps = {
@@ -106,7 +107,12 @@ export function OperationDocumentPrint({
           <section className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-3">
             {signatures.map((signature) => (
               <div key={signature.title} className="break-inside-avoid rounded-sm border border-slate-300 p-4">
-                <div className="h-20 border-b border-slate-300" />
+                <div className="flex h-20 items-center justify-center border-b border-slate-300">
+                  {signature.imageSrc && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={signature.imageSrc} alt={signature.title} className="max-h-16 max-w-full object-contain" />
+                  )}
+                </div>
                 <div className="mt-3 text-center text-sm font-semibold text-slate-950">{signature.title}</div>
                 <div className="mt-1 text-center text-xs text-slate-500">{signature.helper}</div>
               </div>

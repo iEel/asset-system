@@ -46,6 +46,15 @@ export default async function CheckoutPrintPage({ params }: CheckoutPrintPagePro
     checkout.parentAssetId,
     checkout.conditionBefore,
   ])
+  const receiverSignatureAttachment = await prisma.attachment.findFirst({
+    where: {
+      module: "checkout_receiver_signature",
+      referenceId: checkout.id,
+      isActive: true,
+    },
+    select: { id: true },
+    orderBy: { uploadedAt: "desc" },
+  })
   const destination = getCheckoutDestination(checkout.checkoutType, {
     custodian: checkout.custodian ? `${checkout.custodian.code} - ${checkout.custodian.fullNameTh}` : null,
     department: labelOrDash(labels, checkout.departmentId),
@@ -90,7 +99,7 @@ export default async function CheckoutPrintPage({ params }: CheckoutPrintPagePro
             { label: t("checkoutTo"), value: destination },
             { label: t("conditionBefore"), value: labelOrDash(labels, checkout.conditionBefore) },
             { label: t("photoBefore"), value: checkout.photoBefore ? t("evidenceAttached") : "-" },
-            { label: t("receiverSignatureFile"), value: checkout.receiverSignature ? t("evidenceAttached") : "-" },
+            { label: t("receiverSignature"), value: checkout.receiverSignature ? t("evidenceAttached") : "-" },
             { label: tAsset("custodian"), value: checkout.asset.custodian ? `${checkout.asset.custodian.code} - ${checkout.asset.custodian.fullNameTh}` : "-" },
             { label: t("remark"), value: checkout.remark },
           ],
@@ -98,7 +107,7 @@ export default async function CheckoutPrintPage({ params }: CheckoutPrintPagePro
       ]}
       signatures={[
         { title: t("checkedOutBy"), helper: t("signatureDate") },
-        { title: t("receiver"), helper: t("signatureDate") },
+        { title: t("receiver"), helper: t("signatureDate"), imageSrc: receiverSignatureAttachment ? `/api/attachments/${receiverSignatureAttachment.id}?inline=1` : null },
         { title: t("approver"), helper: t("signatureDate") },
       ]}
     />

@@ -5,6 +5,8 @@ import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
+import { SignaturePad } from "@/components/asset-operations/signature-pad"
+import { FileDropzone } from "@/components/ui/file-dropzone"
 
 type Option = { id: string; label: string; disabled?: boolean }
 type CheckoutType = "user" | "department" | "location" | "asset"
@@ -28,7 +30,7 @@ export function CheckoutForm({
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
   const [photoBefore, setPhotoBefore] = useState<File | null>(null)
-  const [receiverSignatureFile, setReceiverSignatureFile] = useState<File | null>(null)
+  const [receiverSignatureDataUrl, setReceiverSignatureDataUrl] = useState<string | null>(null)
   const [values, setValues] = useState({
     assetId: "",
     checkoutType: "user" as CheckoutType,
@@ -67,6 +69,9 @@ export function CheckoutForm({
     body.set("conditionBefore", values.conditionBefore)
     body.set("remark", values.remark)
     if (photoBefore) body.set("photoBefore", photoBefore)
+    const receiverSignatureFile = receiverSignatureDataUrl
+      ? dataUrlToFile(receiverSignatureDataUrl, `receiver-signature-${Date.now()}.png`)
+      : null
     if (receiverSignatureFile) body.set("receiverSignatureFile", receiverSignatureFile)
 
     try {
@@ -149,12 +154,29 @@ export function CheckoutForm({
             <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </Field>
         </div>
-        <Field label={t("photoBefore")}>
-          <input type="file" accept="image/*" onChange={(event) => setPhotoBefore(event.target.files?.[0] ?? null)} className="block w-full text-sm text-muted-foreground file:mr-3 file:h-9 file:rounded-md file:border-0 file:bg-primary file:px-3 file:text-sm file:font-medium file:text-white" />
-        </Field>
-        <Field label={t("receiverSignatureFile")}>
-          <input type="file" accept="image/*" onChange={(event) => setReceiverSignatureFile(event.target.files?.[0] ?? null)} className="block w-full text-sm text-muted-foreground file:mr-3 file:h-9 file:rounded-md file:border-0 file:bg-primary file:px-3 file:text-sm file:font-medium file:text-white" />
-        </Field>
+        <div className="md:col-span-2">
+          <Field label={t("photoBefore")}>
+            <FileDropzone
+              file={photoBefore}
+              onFileChange={setPhotoBefore}
+              disabled={saving}
+              accept="image/*"
+              capture="environment"
+              title={t("photoBeforeDropTitle")}
+              hint={t("photoBeforeSelected")}
+              browseLabel={t("photoBeforeDropHint")}
+            />
+          </Field>
+        </div>
+        <div className="md:col-span-2">
+          <SignaturePad
+            label={t("receiverSignature")}
+            helper={t("receiverSignatureHelp")}
+            clearLabel={t("clearSignature")}
+            disabled={saving}
+            onChange={setReceiverSignatureDataUrl}
+          />
+        </div>
         <div className="md:col-span-2 flex justify-end">
           <button type="submit" disabled={saving} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -171,6 +193,18 @@ export function CheckoutForm({
     if (type === "location") setField("locationId", value)
     if (type === "asset") setField("parentAssetId", value)
   }
+}
+
+function dataUrlToFile(dataUrl: string, fileName: string) {
+  const [header, base64] = dataUrl.split(",")
+  const mimeMatch = header.match(/data:(.*);base64/)
+  const mimeType = mimeMatch?.[1] ?? "image/png"
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index)
+  }
+  return new File([bytes], fileName, { type: mimeType })
 }
 
 function destinationValue(values: {
