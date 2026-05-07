@@ -13,7 +13,11 @@ export async function GET() {
         prisma.company.findMany({ where: { isActive: true }, select: { code: true, nameTh: true }, orderBy: { code: "asc" } }),
         prisma.branch.findMany({ where: { isActive: true }, select: { code: true, name: true, company: { select: { code: true } } }, orderBy: { code: "asc" } }),
         prisma.department.findMany({ where: { isActive: true }, select: { code: true, name: true, company: { select: { code: true } } }, orderBy: { code: "asc" } }),
-        prisma.location.findMany({ where: { isActive: true }, select: { code: true, name: true, branch: { select: { code: true } } }, orderBy: { code: "asc" } }),
+        prisma.location.findMany({
+          where: { isActive: true },
+          select: { code: true, name: true, branch: { select: { code: true, company: { select: { code: true } } } } },
+          orderBy: { code: "asc" },
+        }),
         prisma.assetCategory.findMany({ where: { isActive: true }, select: { code: true, name: true }, orderBy: { code: "asc" } }),
         prisma.assetBrand.findMany({ where: { isActive: true }, select: { name: true }, orderBy: { name: "asc" } }),
         prisma.assetModel.findMany({ where: { isActive: true }, select: { name: true, brand: { select: { name: true } }, category: { select: { code: true } } }, orderBy: { name: "asc" } }),
@@ -25,12 +29,13 @@ export async function GET() {
 
     const workbook = createWorkbook()
     const template = workbook.addWorksheet("Asset Import")
+    const exampleBranch = branches[0]
     template.columns = assetImportColumns
     template.addRow({
       name: "Notebook Dell Latitude 5450",
       categoryCode: categories[0]?.code ?? "IT",
-      companyCode: companies[0]?.code ?? "COMP",
-      branchCode: branches[0]?.code ?? "HQ",
+      companyCode: exampleBranch?.company.code ?? companies[0]?.code ?? "COMP",
+      branchCode: exampleBranch?.code ?? "HQ",
       currentLocationCode: locations[0]?.code ?? "STORE",
       status: statuses[0]?.nameTh ?? "พร้อมใช้งาน",
       condition: conditions[0]?.nameTh ?? "ดี",
@@ -47,7 +52,12 @@ export async function GET() {
     addReferenceSheet(workbook, "Companies", ["Code", "Name"], companies.map((item) => [item.code, item.nameTh]))
     addReferenceSheet(workbook, "Branches", ["Code", "Name", "Company Code"], branches.map((item) => [item.code, item.name, item.company.code]))
     addReferenceSheet(workbook, "Departments", ["Code", "Name", "Company Code"], departments.map((item) => [item.code, item.name, item.company?.code ?? ""]))
-    addReferenceSheet(workbook, "Locations", ["Code", "Name", "Branch Code"], locations.map((item) => [item.code, item.name, item.branch.code]))
+    addReferenceSheet(
+      workbook,
+      "Locations",
+      ["Code", "Name", "Branch Code", "Branch Company Code"],
+      locations.map((item) => [item.code, item.name, item.branch.code, item.branch.company.code])
+    )
     addReferenceSheet(workbook, "Categories", ["Code", "Name"], categories.map((item) => [item.code, item.name]))
     addReferenceSheet(workbook, "Brands", ["Name"], brands.map((item) => [item.name]))
     addReferenceSheet(workbook, "Models", ["Name", "Brand", "Category Code"], models.map((item) => [item.name, item.brand.name, item.category.code]))

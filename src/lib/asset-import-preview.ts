@@ -109,7 +109,12 @@ export async function getAssetImportReferences(): Promise<AssetImportReferences>
     ),
     categories: new Map(categories.map((category) => [category.code.trim().toLowerCase(), category.id])),
     companies: new Map(companies.map((company) => [company.code.trim().toLowerCase(), company.id])),
-    branches: new Map(branches.map((branch) => [branch.code.trim().toLowerCase(), { id: branch.id, companyId: branch.companyId }])),
+    branches: new Map(
+      branches.map((branch) => [
+        scopedKey(branch.companyId, branch.code),
+        { id: branch.id, companyId: branch.companyId },
+      ])
+    ),
     departments: new Map(
       departments.map((department) => [
         department.code.trim().toLowerCase(),
@@ -189,7 +194,9 @@ export async function parseAssetImportWorkbook(buffer: ArrayBuffer, references: 
     resolveMap(values.companyCode, references.companies, "Company Code", errors, (id) => {
       resolved.companyId = id
     })
-    const branch = resolveObjectMap(values.branchCode, references.branches, "Branch Code", errors)
+    const branch = resolved.companyId
+      ? resolveObjectMap(scopedKey(resolved.companyId, values.branchCode), references.branches, "Branch Code + Company Code", errors)
+      : null
     if (branch) resolved.branchId = branch.id
     const currentLocation = resolveObjectMap(values.currentLocationCode, references.locations, "Current Location Code", errors)
     if (currentLocation) resolved.currentLocationId = currentLocation.id
@@ -301,6 +308,10 @@ function isEmptyRow(values: Record<string, string | number | null>) {
 
 function key(value: string | number | null | undefined) {
   return value == null ? "" : String(value).trim().toLowerCase()
+}
+
+function scopedKey(scope: string | number | null | undefined, value: string | number | null | undefined) {
+  return `${key(scope)}:${key(value)}`
 }
 
 function requireValue(value: string | number | null, label: string, errors: string[]) {

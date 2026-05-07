@@ -258,7 +258,7 @@ async function loadOrgLookup() {
 function resolveOrgMapping(profile: LdapSyncProfile, lookup: OrgLookup, defaults: OrgDefaults | null): OrgMapping | null {
   const company = findCompany(lookup, profile.companyName)
   const companyId = company?.id ?? defaults?.companyId
-  const branch = findBranch(lookup, profile.branchName, companyId) ?? findBranch(lookup, profile.branchName)
+  const branch = companyId ? findBranch(lookup, profile.branchName, companyId) : null
   const department = findDepartment(lookup, profile.departmentName, companyId) ?? findDepartment(lookup, profile.departmentName)
   const branchId = branch?.id ?? defaults?.branchId
   const departmentId = department?.id ?? defaults?.departmentId

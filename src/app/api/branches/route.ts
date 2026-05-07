@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ company: { code: "asc" } }, { code: "asc" }],
     })
 
     return NextResponse.json(branches)
@@ -50,15 +50,19 @@ export async function POST(request: NextRequest) {
     requirePermission(user, "branch", "create")
 
     const input = branchSchema.parse(await request.json())
-    const existingCode = await prisma.branch.findUnique({
-      where: { code: input.code },
+    const existingCode = await prisma.branch.findFirst({
+      where: {
+        code: input.code,
+        companyId: input.companyId,
+        isActive: true,
+      },
       include: { company: { select: { code: true, nameTh: true } } },
     })
 
     if (existingCode) {
       return NextResponse.json(
         {
-          error: `รหัสสาขา ${input.code} มีอยู่แล้วในระบบ (${existingCode.company.code} - ${existingCode.company.nameTh}) สาขาใช้ร่วมกับการ Sync AD/LDAP ได้ ไม่ต้องสร้างซ้ำใต้บริษัทอื่น`,
+          error: `รหัสสาขา ${input.code} มีอยู่แล้วในบริษัท ${existingCode.company.code} - ${existingCode.company.nameTh}`,
         },
         { status: 400 }
       )

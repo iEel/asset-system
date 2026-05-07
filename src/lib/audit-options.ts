@@ -9,7 +9,7 @@ export async function getAuditRoundOptions() {
     }),
     prisma.branch.findMany({
       where: { isActive: true },
-      select: { id: true, code: true, name: true },
+      select: { id: true, code: true, name: true, company: { select: { code: true } } },
       orderBy: { code: "asc" },
     }),
     prisma.department.findMany({
@@ -46,7 +46,7 @@ export async function getAuditRoundOptions() {
 
   return {
     companies: companies.map((company) => ({ id: company.id, label: `${company.code} - ${company.nameTh}` })),
-    branches: branches.map((branch) => ({ id: branch.id, label: `${branch.code} - ${branch.name}` })),
+    branches: branches.map((branch) => ({ id: branch.id, label: `${branch.company.code} / ${branch.code} - ${branch.name}` })),
     departments: departments.map((department) => ({ id: department.id, label: `${department.code} - ${department.name}` })),
     locations: locations.map((location) => ({ id: location.id, label: `${location.code} - ${location.name}` })),
     categories: categories.map((category) => ({ id: category.id, label: `${category.code} - ${category.name}` })),

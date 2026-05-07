@@ -26,7 +26,7 @@ export const assetImportColumns = [
   { header: "Asset Name", key: "name", width: 32, note: "Required." },
   { header: "Category Code", key: "categoryCode", width: 18, note: "Required. Use code from Categories sheet." },
   { header: "Company Code", key: "companyCode", width: 18, note: "Required. Use code from Companies sheet." },
-  { header: "Branch Code", key: "branchCode", width: 18, note: "Required. Use code from Branches sheet." },
+  { header: "Branch Code", key: "branchCode", width: 18, note: "Required. Branch Code is resolved together with Company Code." },
   { header: "Current Location Code", key: "currentLocationCode", width: 24, note: "Required. Use code from Locations sheet." },
   { header: "Status", key: "status", width: 18, note: "Required. Use Thai status name from Statuses sheet." },
   { header: "Condition", key: "condition", width: 18, note: "Required. Use Thai condition name from Conditions sheet." },

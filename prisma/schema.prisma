@@ -37,7 +37,7 @@ model Company {
 
 model Branch {
   id            String   @id @default(uuid())
-  code          String   @unique @db.NVarChar(20)
+  code          String   @db.NVarChar(20)
   name          String   @db.NVarChar(200)
   companyId     String
   company       Company  @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -54,6 +54,7 @@ model Branch {
   assets      Asset[]
   auditRounds AuditRound[]
 
+  @@unique([companyId, code])
   @@map("branches")
 }
 

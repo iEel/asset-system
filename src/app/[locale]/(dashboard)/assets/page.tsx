@@ -49,7 +49,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
     }),
     prisma.branch.findMany({
       where: { isActive: true },
-      select: { id: true, code: true, name: true, companyId: true },
+      select: { id: true, code: true, name: true, companyId: true, company: { select: { code: true } } },
       orderBy: { code: "asc" },
     }),
     prisma.assetCategory.findMany({
@@ -185,7 +185,7 @@ function AssetFilters({
   locale: string
   filters: ReturnType<typeof parseAssetListParams>
   companies: { id: string; code: string; nameTh: string }[]
-  branches: { id: string; code: string; name: string; companyId: string }[]
+  branches: { id: string; code: string; name: string; companyId: string; company: { code: string } }[]
   categories: { id: string; code: string; name: string }[]
   statuses: { id: string; nameTh: string }[]
   conditions: { id: string; nameTh: string }[]
@@ -219,7 +219,7 @@ function AssetFilters({
           <option value="">{labels.all}</option>
           {filteredBranches.map((branch) => (
             <option key={branch.id} value={branch.id}>
-              {branch.code} - {branch.name}
+              {branch.company.code} / {branch.code} - {branch.name}
             </option>
           ))}
         </FilterSelect>

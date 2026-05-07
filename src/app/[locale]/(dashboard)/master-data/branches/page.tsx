@@ -48,7 +48,7 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
         },
       },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ company: { code: "asc" } }, { code: "asc" }],
   })
 
   return (

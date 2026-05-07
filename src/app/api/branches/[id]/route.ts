@@ -56,6 +56,8 @@ export async function PUT(request: NextRequest, context: BranchRouteContext) {
     const existingCode = await prisma.branch.findFirst({
       where: {
         code: input.code,
+        companyId: input.companyId,
+        isActive: true,
         id: { not: id },
       },
       include: { company: { select: { code: true, nameTh: true } } },
@@ -64,7 +66,7 @@ export async function PUT(request: NextRequest, context: BranchRouteContext) {
     if (existingCode) {
       return NextResponse.json(
         {
-          error: `รหัสสาขา ${input.code} มีอยู่แล้วในระบบ (${existingCode.company.code} - ${existingCode.company.nameTh}) สาขาใช้ร่วมกับการ Sync AD/LDAP ได้ ไม่ต้องสร้างซ้ำใต้บริษัทอื่น`,
+          error: `รหัสสาขา ${input.code} มีอยู่แล้วในบริษัท ${existingCode.company.code} - ${existingCode.company.nameTh}`,
         },
         { status: 400 }
       )

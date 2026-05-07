@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         serialNumber: asset.serialNumber ?? "",
         category: `${asset.category.code} - ${asset.category.name}`,
         company: `${asset.company.code} - ${asset.company.nameTh}`,
-        branch: `${asset.branch.code} - ${asset.branch.name}`,
+        branch: `${asset.company.code} / ${asset.branch.code} - ${asset.branch.name}`,
         department: asset.department ? `${asset.department.code} - ${asset.department.name}` : "",
         custodian: asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : "",
         currentLocation: `${asset.currentLocation.code} - ${asset.currentLocation.name}`,
