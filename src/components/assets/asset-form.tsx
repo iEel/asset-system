@@ -177,6 +177,7 @@ export function AssetForm({
   const [photoLabel, setPhotoLabel] = useState("")
   const [selectedAssetPhotoFile, setSelectedAssetPhotoFile] = useState<File | null>(null)
   const [newAssetPhotos, setNewAssetPhotos] = useState<AssetPhotoDraft[]>([])
+  const [nameManuallyEdited, setNameManuallyEdited] = useState(() => Boolean(asset?.id || asset?.name?.trim()))
   const [showRawJson, setShowRawJson] = useState(false)
   const [saving, setSaving] = useState(false)
   const [duplicateState, setDuplicateState] = useState<{
@@ -203,6 +204,13 @@ export function AssetForm({
     (model) =>
       (!values.categoryId || model.categoryId === values.categoryId) &&
       (!values.brandId || model.brandId === values.brandId)
+  )
+  const selectedCategory = categories.find((category) => category.id === values.categoryId)
+  const selectedBrand = brands.find((brand) => brand.id === values.brandId)
+  const selectedModel = models.find((model) => model.id === values.modelId)
+  const suggestedAssetName = useMemo(
+    () => buildSuggestedAssetName(selectedCategory, selectedBrand, selectedModel),
+    [selectedCategory, selectedBrand, selectedModel]
   )
   const selectedCustomFieldDefinitions = customFieldDefinitions
     .filter((definition) => definition.categoryId === values.categoryId)
@@ -273,6 +281,19 @@ export function AssetForm({
     setValues((current) => ({ ...current, [field]: value }))
   }
 
+  function withSuggestedName(nextValues: AssetFormValues) {
+    if (isEdit || nameManuallyEdited) return nextValues
+    return { ...nextValues, name: getSuggestedAssetName(nextValues.categoryId, nextValues.brandId, nextValues.modelId) }
+  }
+
+  function getSuggestedAssetName(categoryId?: string | null, brandId?: string | null, modelId?: string | null) {
+    return buildSuggestedAssetName(
+      categories.find((category) => category.id === categoryId),
+      brands.find((brand) => brand.id === brandId),
+      models.find((model) => model.id === modelId)
+    )
+  }
+
   function handleCompanyChange(companyId: string) {
     setValues((current) => ({
       ...current,
@@ -296,11 +317,38 @@ export function AssetForm({
   }
 
   function handleCategoryChange(categoryId: string) {
-    setValues((current) => ({
-      ...current,
-      categoryId,
-      modelId: "",
-    }))
+    setValues((current) =>
+      withSuggestedName({
+        ...current,
+        categoryId,
+        modelId: "",
+      })
+    )
+  }
+
+  function handleBrandChange(brandId: string) {
+    setValues((current) => {
+      const currentModel = models.find((model) => model.id === current.modelId)
+      const modelStillMatches =
+        Boolean(currentModel) &&
+        (!current.categoryId || currentModel?.categoryId === current.categoryId) &&
+        (!brandId || currentModel?.brandId === brandId)
+
+      return withSuggestedName({
+        ...current,
+        brandId,
+        modelId: modelStillMatches ? current.modelId : "",
+      })
+    })
+  }
+
+  function handleModelChange(modelId: string) {
+    setValues((current) =>
+      withSuggestedName({
+        ...current,
+        modelId,
+      })
+    )
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -593,21 +641,44 @@ export function AssetForm({
           <Field label={t("assetName")} required>
             <input
               value={values.name}
-              onChange={(event) => setField("name", event.target.value)}
+              onChange={(event) => {
+                setNameManuallyEdited(true)
+                setField("name", event.target.value)
+              }}
               maxLength={200}
               required
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
+            <p className="mt-1.5 text-xs text-muted-foreground">{t("assetNameHelp")}</p>
+            {suggestedAssetName && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="rounded-md bg-accent px-2.5 py-1 text-xs text-muted-foreground">
+                  {t("suggestedAssetName")}: <span className="font-medium text-foreground">{suggestedAssetName}</span>
+                </span>
+                {values.name !== suggestedAssetName && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNameManuallyEdited(false)
+                      setField("name", suggestedAssetName)
+                    }}
+                    className="inline-flex h-8 items-center rounded-md border border-border px-2.5 text-xs font-medium transition-colors hover:bg-accent"
+                  >
+                    {t("useSuggestedName")}
+                  </button>
+                )}
+              </div>
+            )}
           </Field>
           <SelectField label={t("category")} value={values.categoryId} required onChange={handleCategoryChange}>
             <option value="">{t("selectCategory")}</option>
             {categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
           </SelectField>
-          <SelectField label={t("brand")} value={values.brandId ?? ""} onChange={(value) => setField("brandId", value)}>
+          <SelectField label={t("brand")} value={values.brandId ?? ""} onChange={handleBrandChange}>
             <option value="">{t("selectBrand")}</option>
             {brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.label}</option>)}
           </SelectField>
-          <SelectField label={t("model")} value={values.modelId ?? ""} onChange={(value) => setField("modelId", value)}>
+          <SelectField label={t("model")} value={values.modelId ?? ""} onChange={handleModelChange}>
             <option value="">{t("selectModel")}</option>
             {filteredModels.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
           </SelectField>
@@ -1092,6 +1163,20 @@ function SelectField({
       </select>
     </Field>
   )
+}
+
+function buildSuggestedAssetName(category?: Option, brand?: Option, model?: Option) {
+  const categoryName = getCompactLabel(category?.label)
+  const brandName = brand?.label?.trim() ?? ""
+  const modelName = model?.label?.trim() ?? ""
+  const modelStartsWithBrand =
+    Boolean(brandName) && Boolean(modelName) && modelName.toLocaleLowerCase().startsWith(brandName.toLocaleLowerCase())
+
+  return [categoryName, modelStartsWithBrand ? "" : brandName, modelName].filter(Boolean).join(" ")
+}
+
+function getCompactLabel(label?: string | null) {
+  return label?.split(" - ")[0]?.trim() ?? ""
 }
 
 function CustomFieldRowsEditor({
