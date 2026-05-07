@@ -11,6 +11,7 @@ import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { AssetComponentsPanel } from "@/components/assets/asset-components-panel"
 import { AssetPurchaseDocuments } from "@/components/assets/asset-purchase-documents"
 import { parseModelSpecs } from "@/lib/model-specs"
+import { getMovementDisplayLabels } from "@/lib/movement-labels"
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -136,6 +137,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const legacyPurchaseDocuments = asset.attachments.filter((attachment) => attachment.module === "asset_purchase")
   const assetAttachments = asset.attachments.filter((attachment) => attachment.module !== "asset_purchase")
   const modelSpecs = parseModelSpecs(asset.model?.specs)
+  const movementLabels = await getMovementDisplayLabels(asset.movements)
 
   const detailPath = `/${locale}/assets/${asset.id}`
   const qrValue = `${process.env.AUTH_URL ?? ""}${detailPath}`
@@ -258,8 +260,8 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
                         <div className="text-xs text-muted-foreground">{formatDateTime(movement.performedAt)}</div>
                       </div>
                       <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-muted-foreground md:grid-cols-2">
-                        <Info label={t("fromValue")} value={movement.fromValue} compact />
-                        <Info label={t("toValue")} value={movement.toValue} compact />
+                        <Info label={t("fromValue")} value={movementLabels.get(movement.id)?.from} compact />
+                        <Info label={t("toValue")} value={movementLabels.get(movement.id)?.to} compact />
                       </div>
                       {movement.reason && <p className="mt-2 text-sm text-muted-foreground">{movement.reason}</p>}
                     </div>

@@ -5,6 +5,7 @@ import { ArrowLeft, ClipboardCheck, FileText, History, Printer, Trash2 } from "l
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
+import { getMovementDisplayLabels } from "@/lib/movement-labels"
 
 type DisposalDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -49,6 +50,7 @@ export default async function DisposalDetailPage({ params }: DisposalDetailPageP
     where: { referenceType: "disposal", referenceId: disposalRequest.id },
     orderBy: { performedAt: "desc" },
   })
+  const movementLabels = await getMovementDisplayLabels(movements)
 
   const statusLabels = {
     pending: t("statuses.pending"),
@@ -134,6 +136,10 @@ export default async function DisposalDetailPage({ params }: DisposalDetailPageP
                       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
                         <div className="font-medium text-foreground">{movement.movementType.replaceAll("_", " ")}</div>
                         <div className="text-xs text-muted-foreground">{formatDateTime(movement.performedAt)}</div>
+                      </div>
+                      <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-muted-foreground md:grid-cols-2">
+                        <Info label={tAsset("fromValue")} value={movementLabels.get(movement.id)?.from} />
+                        <Info label={tAsset("toValue")} value={movementLabels.get(movement.id)?.to} />
                       </div>
                       {movement.reason ? <p className="mt-2 text-sm text-muted-foreground">{movement.reason}</p> : null}
                     </div>

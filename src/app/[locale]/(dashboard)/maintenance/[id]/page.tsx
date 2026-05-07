@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { MaintenanceAttachments } from "@/components/maintenance/maintenance-attachments"
+import { getMovementDisplayLabels } from "@/lib/movement-labels"
 
 type MaintenanceDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -15,6 +16,7 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
   const { locale, id } = await params
   await requirePagePermission(locale, "maintenance", "view")
   const t = await getTranslations("maintenancePage")
+  const tAsset = await getTranslations("asset")
   const tCommon = await getTranslations("common")
 
   const ticket = await prisma.maintenanceTicket.findFirst({
@@ -48,6 +50,7 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
       orderBy: { performedAt: "desc" },
     }),
   ])
+  const movementLabels = await getMovementDisplayLabels(movements)
 
   return (
     <div className="space-y-6">
@@ -127,6 +130,10 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
                       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
                         <div className="font-medium text-foreground">{movement.movementType.replaceAll("_", " ")}</div>
                         <div className="text-xs text-muted-foreground">{formatDateTime(movement.performedAt)}</div>
+                      </div>
+                      <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-muted-foreground md:grid-cols-2">
+                        <Info label={tAsset("fromValue")} value={movementLabels.get(movement.id)?.from} />
+                        <Info label={tAsset("toValue")} value={movementLabels.get(movement.id)?.to} />
                       </div>
                       {movement.reason ? <p className="mt-2 text-sm text-muted-foreground">{movement.reason}</p> : null}
                     </div>
