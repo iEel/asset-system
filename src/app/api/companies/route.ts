@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
           ? {
               OR: [
                 { code: { contains: search } },
+                { assetTagCode: { contains: search } },
                 { nameTh: { contains: search } },
                 { nameEn: { contains: search } },
                 { taxId: { contains: search } },

@@ -3,6 +3,7 @@ import { assetTagFormatTemplateKey } from "@/lib/system-setting-defaults"
 
 const assetTagFormatTokens = new Set([
   "companyCode",
+  "assetCompanyCode",
   "branchCode",
   "categoryCode",
   "assetPrefix",

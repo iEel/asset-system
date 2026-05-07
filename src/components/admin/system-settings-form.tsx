@@ -147,6 +147,7 @@ type LdapSyncPreview = {
 
 const assetTagFormatTokens = [
   "companyCode",
+  "assetCompanyCode",
   "branchCode",
   "categoryCode",
   "assetPrefix",
@@ -162,7 +163,7 @@ const assetTagFormatTokens = [
 const formatPresets = [
   {
     labelKey: "presetCompanyPrefixMonthRunning",
-    value: "{companyCode}{separator}{assetPrefix}{separator}{month}{separator}{running}",
+    value: "{assetCompanyCode}{separator}{assetPrefix}{separator}{month}{separator}{running}",
   },
   {
     labelKey: "presetCompanyBranchPrefixRunning",
@@ -397,7 +398,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
             </div>
           </div>
           <div className="rounded-md border border-border bg-muted/30 px-3 py-2 font-mono text-xs text-muted-foreground">
-            {labels.exampleFormat}: {"{companyCode}{separator}{assetPrefix}{separator}{month}{separator}{running}"}
+            {labels.exampleFormat}: {"{assetCompanyCode}{separator}{assetPrefix}{separator}{month}{separator}{running}"}
           </div>
         </div>
       </div>

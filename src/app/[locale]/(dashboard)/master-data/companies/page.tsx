@@ -32,6 +32,7 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
         ? {
             OR: [
               { code: { contains: searchText } },
+              { assetTagCode: { contains: searchText } },
               { nameTh: { contains: searchText } },
               { nameEn: { contains: searchText } },
               { taxId: { contains: searchText } },
@@ -64,6 +65,7 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
             <thead className="bg-muted/40">
               <tr>
                 <ColumnHeader>{t("code")}</ColumnHeader>
+                <ColumnHeader>{t("assetTagCode")}</ColumnHeader>
                 <ColumnHeader>{t("nameTh")}</ColumnHeader>
                 <ColumnHeader>{t("nameEn")}</ColumnHeader>
                 <ColumnHeader>{t("taxId")}</ColumnHeader>
@@ -74,7 +76,7 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
             <tbody className="divide-y divide-border">
               {companies.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="h-32 px-4 text-center text-muted-foreground">
+                  <td colSpan={7} className="h-32 px-4 text-center text-muted-foreground">
                     {tCommon("noData")}
                   </td>
                 </tr>
@@ -82,6 +84,7 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
                 companies.map((company) => (
                   <tr key={company.id} className="hover:bg-accent/50">
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{company.code}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{company.assetTagCode || company.code}</td>
                     <td className="min-w-48 px-4 py-3 text-foreground">{company.nameTh}</td>
                     <td className="min-w-48 px-4 py-3 text-muted-foreground">{company.nameEn || "-"}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{company.taxId || "-"}</td>

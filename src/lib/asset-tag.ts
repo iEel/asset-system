@@ -66,7 +66,7 @@ export async function generateAssetTag({
     formatSetting,
     categoryPrefixesSetting,
   ] = await Promise.all([
-    prisma.company.findUnique({ where: { id: companyId }, select: { code: true } }),
+    prisma.company.findUnique({ where: { id: companyId }, select: { code: true, assetTagCode: true } }),
     prisma.branch.findUnique({ where: { id: branchId }, select: { code: true } }),
     prisma.assetCategory.findUnique({ where: { id: categoryId }, select: { code: true } }),
     prisma.systemSetting.findUnique({ where: { key: "asset_tag_running_digits" }, select: { value: true } }),
@@ -87,6 +87,7 @@ export async function generateAssetTag({
   const now = new Date()
   const baseTokens = {
     companyCode: company.code,
+    assetCompanyCode: company.assetTagCode?.trim() || company.code,
     branchCode: branch.code,
     categoryCode: category.code,
     assetPrefix: categorySegment,
@@ -100,9 +101,6 @@ export async function generateAssetTag({
   const sequencePrefix = renderSequencePrefix(formatSetting?.value, baseTokens)
   const count = await prisma.asset.count({
     where: {
-      companyId,
-      branchId,
-      categoryId,
       assetTag: { startsWith: sequencePrefix },
     },
   })

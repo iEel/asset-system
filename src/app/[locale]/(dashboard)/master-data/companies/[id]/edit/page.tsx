@@ -22,6 +22,7 @@ export default async function EditCompanyPage({ params }: EditCompanyPageProps) 
       company={{
         id: company.id,
         code: company.code,
+        assetTagCode: company.assetTagCode,
         nameTh: company.nameTh,
         nameEn: company.nameEn,
         taxId: company.taxId,

@@ -14,17 +14,18 @@ datasource db {
 // ============================================================
 
 model Company {
-  id        String   @id @default(uuid())
-  code      String   @unique @db.NVarChar(20)
-  nameTh    String   @db.NVarChar(200)
-  nameEn    String?  @db.NVarChar(200)
-  taxId     String?  @db.NVarChar(20)
-  address   String?  @db.NVarChar(500)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  createdBy String?  @db.NVarChar(100)
-  updatedBy String?  @db.NVarChar(100)
+  id           String   @id @default(uuid())
+  code         String   @unique @db.NVarChar(20)
+  assetTagCode String?  @db.NVarChar(20)
+  nameTh       String   @db.NVarChar(200)
+  nameEn       String?  @db.NVarChar(200)
+  taxId        String?  @db.NVarChar(20)
+  address      String?  @db.NVarChar(500)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdBy    String?  @db.NVarChar(100)
+  updatedBy    String?  @db.NVarChar(100)
 
   branches    Branch[]
   departments Department[]

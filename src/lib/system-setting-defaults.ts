@@ -1,6 +1,6 @@
 export const assetTagCategoryPrefixesKey = "asset_tag_category_prefixes"
 export const assetTagFormatTemplateKey = "asset_tag_format_template"
-export const defaultAssetTagFormatTemplate = "{companyCode}{separator}{branchCode}{separator}{assetPrefix}{separator}{running}"
+export const defaultAssetTagFormatTemplate = "{assetCompanyCode}{separator}{branchCode}{separator}{assetPrefix}{separator}{running}"
 export const ldapSettingKeys = [
   "ldap_enabled",
   "ldap_url",
@@ -34,7 +34,7 @@ export const systemSettingDefaults = [
     key: assetTagFormatTemplateKey,
     value: defaultAssetTagFormatTemplate,
     description:
-      "รูปแบบ Asset Tag เช่น {companyCode}{separator}{assetPrefix}{separator}{month}{separator}{running}",
+      "รูปแบบ Asset Tag เช่น {assetCompanyCode}{separator}{assetPrefix}{separator}{month}{separator}{running}",
   },
   {
     key: assetTagCategoryPrefixesKey,

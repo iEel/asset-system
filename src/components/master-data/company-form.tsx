@@ -10,6 +10,7 @@ import Link from "next/link"
 type CompanyFormValues = {
   id?: string
   code: string
+  assetTagCode?: string | null
   nameTh: string
   nameEn?: string | null
   taxId?: string | null
@@ -19,6 +20,7 @@ type CompanyFormValues = {
 
 const emptyCompany: CompanyFormValues = {
   code: "",
+  assetTagCode: "",
   nameTh: "",
   nameEn: "",
   taxId: "",
@@ -92,11 +94,23 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
           <Field label={t("code")} required>
             <input
               value={values.code}
-              onChange={(event) => setField("code", event.target.value)}
+              onChange={(event) => setField("code", event.target.value.toUpperCase())}
               maxLength={20}
               required
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
+            <p className="mt-1.5 text-xs text-muted-foreground">{t("codeHelp")}</p>
+          </Field>
+
+          <Field label={t("assetTagCode")}>
+            <input
+              value={values.assetTagCode ?? ""}
+              onChange={(event) => setField("assetTagCode", event.target.value.toUpperCase())}
+              maxLength={20}
+              placeholder={values.code || t("code")}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+            <p className="mt-1.5 text-xs text-muted-foreground">{t("assetTagCodeHelp")}</p>
           </Field>
 
           <Field label={t("nameTh")} required>
