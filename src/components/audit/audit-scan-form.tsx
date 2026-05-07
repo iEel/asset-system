@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Camera, CheckCircle2, Info, Keyboard, Loader2, ScanLine, Save, X } from "lucide-react"
 import { toast } from "sonner"
+import { FileDropzone } from "@/components/ui/file-dropzone"
 
 type Option = { id: string; label: string }
 type AuditScanItem = {
@@ -18,6 +19,7 @@ type AuditScanItem = {
   expectedLocationId: string
   expectedCustodianId: string | null
   expectedConditionId: string | null
+  photoChecklist: string[]
 }
 
 type AuditScanOptions = {
@@ -71,6 +73,8 @@ export function AuditScanForm({
   const [scanSource, setScanSource] = useState<"manual" | "qr">("manual")
   const [lastResult, setLastResult] = useState<string | null>(null)
   const [lastDecodedText, setLastDecodedText] = useState("")
+  const [auditPhotoLabel, setAuditPhotoLabel] = useState("")
+  const [selectedAuditPhoto, setSelectedAuditPhoto] = useState<File | null>(null)
   const qrReaderRef = useRef<Html5QrcodeInstance | null>(null)
   const [values, setValues] = useState({
     assetId: "",
@@ -93,6 +97,9 @@ export function AuditScanForm({
       (actual.actualConditionId || null) !== selectedItem.expectedConditionId ? t("wrongCondition") : null,
     ].filter(Boolean)
   }, [selectedItem, t, values])
+  const selectedAuditPhotoChecklist = selectedItem?.photoChecklist ?? []
+  const effectiveAuditPhotoLabel =
+    selectedAuditPhotoChecklist.find((item) => item === auditPhotoLabel) ?? selectedAuditPhotoChecklist[0] ?? ""
 
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -204,6 +211,9 @@ export function AuditScanForm({
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (selectedAuditPhoto) {
+        await uploadAuditPhoto(values.assetId, selectedAuditPhoto, effectiveAuditPhotoLabel)
+      }
       setLastResult(payload.auditResult ?? null)
       toast.success(payload.auditResult === "found" ? t("foundSuccess") : t("mismatchSuccess"))
       setValues({
@@ -214,12 +224,30 @@ export function AuditScanForm({
         actualConditionId: "",
         remark: "",
       })
+      setSelectedAuditPhoto(null)
+      setAuditPhotoLabel("")
       setScanSource("manual")
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function uploadAuditPhoto(assetId: string, file: File, label: string) {
+    const formData = new FormData()
+    formData.append("file", file)
+    if (label) formData.append("photoLabel", label)
+
+    const response = await fetch(`/api/assets/${assetId}/attachments`, {
+      method: "POST",
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const result = await response.json().catch(() => null)
+      throw new Error(result?.error ?? t("auditPhotoUploadFailed"))
     }
   }
 
@@ -354,6 +382,54 @@ export function AuditScanForm({
               ) : (
                 <div className="text-warning">{t("mismatchPreview", { fields: mismatchPreview.join(", ") })}</div>
               )}
+            </div>
+          )}
+
+          {selectedItem && (
+            <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
+              <div className="mb-3 text-sm font-semibold text-foreground">{t("auditPhotoEvidence")}</div>
+              <p className="mb-3 text-sm text-muted-foreground">{t("auditPhotoEvidenceHelp")}</p>
+              {selectedAuditPhotoChecklist.length > 0 && (
+                <div className="mb-3 rounded-md border border-border bg-surface p-3">
+                  <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-sm font-semibold text-foreground">{t("selectAuditPhotoType")}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {t("autoAuditPhotoLabelHint", { label: effectiveAuditPhotoLabel })}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedAuditPhotoChecklist.map((item) => {
+                      const isSelected = effectiveAuditPhotoLabel === item
+
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => setAuditPhotoLabel(item)}
+                          className={[
+                            "inline-flex min-h-9 items-center rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                            isSelected
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-background text-foreground hover:bg-accent",
+                          ].join(" ")}
+                        >
+                          {item}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+              <FileDropzone
+                file={selectedAuditPhoto}
+                onFileChange={setSelectedAuditPhoto}
+                disabled={saving}
+                accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
+                capture="environment"
+                title={t("dropAuditPhotoTitle")}
+                hint={t("dropAuditPhotoSelected")}
+                browseLabel={t("dropAuditPhotoHint")}
+              />
             </div>
           )}
 

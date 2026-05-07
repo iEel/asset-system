@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { AuditScanForm } from "@/components/audit/audit-scan-form"
 import { getAuditRoundOptions } from "@/lib/audit-options"
+import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
 
 type AuditScanPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -27,6 +28,7 @@ export default async function AuditScanPage({ params }: AuditScanPageProps) {
                 id: true,
                 assetTag: true,
                 name: true,
+                categoryId: true,
               },
             },
           },
@@ -36,6 +38,17 @@ export default async function AuditScanPage({ params }: AuditScanPageProps) {
     getAuditRoundOptions(),
   ])
   if (!round) notFound()
+
+  const categoryIds = Array.from(new Set(round.items.map((item) => item.asset.categoryId).filter(Boolean)))
+  const checklistSettings = categoryIds.length > 0
+    ? await prisma.systemSetting.findMany({
+        where: { key: { in: categoryIds.map(categoryPhotoChecklistKey) } },
+        select: { key: true, value: true },
+      })
+    : []
+  const checklistByCategoryId = new Map(
+    checklistSettings.map((setting) => [setting.key.replace("asset_category_photo_checklist:", ""), parsePhotoChecklist(setting.value)])
+  )
 
   return (
     <AuditScanForm
@@ -52,6 +65,7 @@ export default async function AuditScanPage({ params }: AuditScanPageProps) {
         expectedLocationId: item.expectedLocationId,
         expectedCustodianId: item.expectedCustodianId,
         expectedConditionId: item.expectedConditionId,
+        photoChecklist: checklistByCategoryId.get(item.asset.categoryId) ?? [],
       }))}
       options={{
         locations: options.locations,

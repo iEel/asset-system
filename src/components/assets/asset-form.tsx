@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Code2, FileText, Loader2, Plus, Save, Trash2 } from "lucide-react"
+import { ArrowLeft, Camera, Code2, FileText, Loader2, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { FileDropzone } from "@/components/ui/file-dropzone"
@@ -83,6 +83,12 @@ type PurchaseDocumentDraft = {
   documentNo: string
   documentDate: string
   totalAmount: string
+  file: File
+}
+
+type AssetPhotoDraft = {
+  id: string
+  label: string
   file: File
 }
 
@@ -168,6 +174,9 @@ export function AssetForm({
   const [selectedPurchaseFile, setSelectedPurchaseFile] = useState<File | null>(null)
   const [newPurchaseDocuments, setNewPurchaseDocuments] = useState<PurchaseDocumentDraft[]>([])
   const [selectedPurchaseDocumentIds, setSelectedPurchaseDocumentIds] = useState<string[]>(asset?.purchaseDocumentIds ?? [])
+  const [photoLabel, setPhotoLabel] = useState("")
+  const [selectedAssetPhotoFile, setSelectedAssetPhotoFile] = useState<File | null>(null)
+  const [newAssetPhotos, setNewAssetPhotos] = useState<AssetPhotoDraft[]>([])
   const [showRawJson, setShowRawJson] = useState(false)
   const [saving, setSaving] = useState(false)
   const [duplicateState, setDuplicateState] = useState<{
@@ -200,6 +209,10 @@ export function AssetForm({
     .sort((first, second) => first.sortOrder - second.sortOrder)
   const selectedTemplateFieldNames = new Set(selectedCustomFieldDefinitions.map((definition) => definition.fieldName))
   const additionalCustomFieldRows = customFieldRows.filter((row) => !selectedTemplateFieldNames.has(row.key))
+  const selectedPhotoChecklist = categories.find((category) => category.id === values.categoryId)?.photoChecklist ?? []
+  const queuedPhotoLabels = new Set(newAssetPhotos.map((photo) => photo.label).filter(Boolean))
+  const firstMissingPhotoLabel = selectedPhotoChecklist.find((item) => !queuedPhotoLabels.has(item)) ?? selectedPhotoChecklist[0] ?? ""
+  const effectivePhotoLabel = photoLabel || firstMissingPhotoLabel
 
   useEffect(() => {
     const assetTag = values.assetTag?.trim() ?? ""
@@ -369,6 +382,13 @@ export function AssetForm({
         if (purchaseDocumentIds.length > 0) {
           await linkPurchaseDocuments(result.id, purchaseDocumentIds)
         }
+
+        const photosToUpload = selectedAssetPhotoFile
+          ? [...newAssetPhotos, { id: createClientId(), label: photoLabel, file: selectedAssetPhotoFile }]
+          : newAssetPhotos
+        if (photosToUpload.length > 0) {
+          await uploadAssetPhotos(result.id, photosToUpload)
+        }
       }
 
       toast.success(tCommon("savedSuccess"))
@@ -414,6 +434,51 @@ export function AssetForm({
 
   function removePurchaseDocument(id: string) {
     setNewPurchaseDocuments((current) => current.filter((document) => document.id !== id))
+  }
+
+  function addAssetPhoto() {
+    if (!selectedAssetPhotoFile) {
+      toast.error(t("fileRequired"))
+      return
+    }
+
+    const label = effectivePhotoLabel
+    const nextPhotos = [
+      ...newAssetPhotos,
+      {
+        id: createClientId(),
+        label,
+        file: selectedAssetPhotoFile,
+      },
+    ]
+    const nextQueuedLabels = new Set(nextPhotos.map((photo) => photo.label).filter(Boolean))
+    const nextMissingLabel = selectedPhotoChecklist.find((item) => !nextQueuedLabels.has(item)) ?? ""
+
+    setNewAssetPhotos(nextPhotos)
+    setSelectedAssetPhotoFile(null)
+    setPhotoLabel(nextMissingLabel)
+  }
+
+  function removeAssetPhoto(id: string) {
+    setNewAssetPhotos((current) => current.filter((photo) => photo.id !== id))
+  }
+
+  async function uploadAssetPhotos(assetId: string, photos: AssetPhotoDraft[]) {
+    for (const photo of photos) {
+      const formData = new FormData()
+      formData.append("file", photo.file)
+      if (photo.label) formData.append("photoLabel", photo.label)
+
+      const response = await fetch(`/api/assets/${assetId}/attachments`, {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => null)
+        throw new Error(result?.error ?? t("assetPhotoUploadFailed"))
+      }
+    }
   }
 
   async function createPurchaseDocuments(documents: PurchaseDocumentDraft[]) {
@@ -792,6 +857,104 @@ export function AssetForm({
                 </div>
               )}
             </div>
+          </div>
+        </Section>
+
+        <Section title={t("initialAssetPhotos")}>
+          <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
+            <div className="mb-3 flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <Camera className="h-5 w-5" />
+              </span>
+              <div>
+                <div className="text-sm font-semibold text-foreground">{t("initialAssetPhotos")}</div>
+                <p className="mt-1 text-sm text-muted-foreground">{t("initialAssetPhotosHelp")}</p>
+              </div>
+            </div>
+
+            {selectedPhotoChecklist.length > 0 ? (
+              <div className="mb-3 rounded-md border border-border bg-surface p-3">
+                <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-sm font-semibold text-foreground">{t("selectPhotoType")}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {t("autoPhotoLabelHint", { label: effectivePhotoLabel || t("generalPhoto") })}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedPhotoChecklist.map((item) => {
+                    const isSelected = effectivePhotoLabel === item
+                    const isQueued = queuedPhotoLabels.has(item)
+
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setPhotoLabel(item)}
+                        className={[
+                          "inline-flex min-h-9 items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                          isSelected
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-background text-foreground hover:bg-accent",
+                        ].join(" ")}
+                      >
+                        <span>{item}</span>
+                        <span className={isQueued ? "text-xs text-success" : "text-xs text-muted-foreground"}>
+                          {isQueued ? t("photoChecklistQueued") : t("photoChecklistPending")}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : (
+              <p className="mb-3 rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
+                {values.categoryId ? t("photoChecklistEmptyForCategory") : t("photoChecklistSelectCategory")}
+              </p>
+            )}
+
+            <FileDropzone
+              file={selectedAssetPhotoFile}
+              onFileChange={setSelectedAssetPhotoFile}
+              disabled={saving}
+              accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
+              capture="environment"
+              title={t("dropAssetPhotoTitle")}
+              hint={t("dropFileSelected")}
+              browseLabel={t("dropAssetPhotoHint")}
+            />
+            <button
+              type="button"
+              onClick={addAssetPhoto}
+              disabled={saving}
+              className="mt-3 inline-flex h-9 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
+            >
+              <Plus className="h-4 w-4" />
+              {effectivePhotoLabel ? t("addAssetPhotoWithLabel", { label: effectivePhotoLabel }) : t("addAssetPhoto")}
+            </button>
+
+            {newAssetPhotos.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {newAssetPhotos.map((photo) => (
+                  <div key={photo.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-foreground">
+                        {photo.label ? `${photo.label} · ` : ""}{photo.file.name}
+                      </div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">{formatFileSize(photo.file.size)}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeAssetPhoto(photo.id)}
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10"
+                      aria-label={t("removeAssetPhoto")}
+                      title={t("removeAssetPhoto")}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </Section>
 
