@@ -10,6 +10,7 @@ import { AssetAttachments } from "@/components/assets/asset-attachments"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { AssetComponentsPanel } from "@/components/assets/asset-components-panel"
 import { AssetPurchaseDocuments } from "@/components/assets/asset-purchase-documents"
+import { parseModelSpecs } from "@/lib/model-specs"
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -20,6 +21,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   await requirePagePermission(locale, "asset", "view")
 
   const t = await getTranslations("asset")
+  const tBrandModel = await getTranslations("brandModel")
   const tMaintenance = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
   const asset = await prisma.asset.findFirst({
@@ -133,6 +135,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   }))
   const legacyPurchaseDocuments = asset.attachments.filter((attachment) => attachment.module === "asset_purchase")
   const assetAttachments = asset.attachments.filter((attachment) => attachment.module !== "asset_purchase")
+  const modelSpecs = parseModelSpecs(asset.model?.specs)
 
   const detailPath = `/${locale}/assets/${asset.id}`
   const qrValue = `${process.env.AUTH_URL ?? ""}${detailPath}`
@@ -191,6 +194,24 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             componentHistory={componentHistory}
             availableAssets={availableComponentAssets}
           />
+
+          {asset.model && (modelSpecs.items.length > 0 || modelSpecs.notes) ? (
+            <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+              <h2 className="mb-5 text-lg font-semibold text-foreground">{tBrandModel("structuredSpecs")}</h2>
+              {modelSpecs.items.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {modelSpecs.items.map((item) => (
+                    <Info key={item.id} label={item.label} value={item.value} />
+                  ))}
+                </div>
+              ) : null}
+              {modelSpecs.notes ? (
+                <p className="mt-4 whitespace-pre-wrap rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
+                  {modelSpecs.notes}
+                </p>
+              ) : null}
+            </section>
+          ) : null}
 
           <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
             <h2 className="mb-5 text-lg font-semibold text-foreground">{t("ownership")}</h2>

@@ -65,7 +65,10 @@ export function FileDropzone({
         capture={capture}
         disabled={disabled}
         className="sr-only"
-        onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}
+        onChange={(event) => {
+          onFileChange(event.target.files?.[0] ?? null)
+          event.currentTarget.value = ""
+        }}
       />
       <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
         <Upload className="h-5 w-5" />
