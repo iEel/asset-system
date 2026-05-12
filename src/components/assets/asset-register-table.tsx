@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Columns3, Download, Edit, Eye, FileDown, FileSpreadsheet, ImageIcon, Printer } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Columns3, Download, Edit, Eye, FileDown, FileSpreadsheet, ImageIcon, Loader2, Printer, X } from "lucide-react"
+import { toast } from "sonner"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
 import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
@@ -55,6 +57,10 @@ type AssetRegisterTableProps = {
   totalPages: number
   fromRow: number
   toRow: number
+  bulkOptions: {
+    locations: { id: string; label: string }[]
+    employees: { id: string; label: string }[]
+  }
   labels: {
     actions: string
     all: string
@@ -69,6 +75,21 @@ type AssetRegisterTableProps = {
     edit: string
     exportFiltered: string
     exportSelected: string
+    bulkActions: string
+    bulkUpdate: string
+    bulkUpdateTitle: string
+    bulkUpdateDescription: string
+    clearSelection: string
+    selectLocation: string
+    selectCustodian: string
+    noChange: string
+    reason: string
+    remark: string
+    applyBulkUpdate: string
+    bulkUpdateSuccess: string
+    bulkUpdateFailed: string
+    cancel: string
+    close: string
     printSelectedLabels: string
     noData: string
     of: string
@@ -105,10 +126,20 @@ export function AssetRegisterTable({
   totalPages,
   fromRow,
   toRow,
+  bulkOptions,
   labels,
 }: AssetRegisterTableProps) {
+  const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set(columnOrder))
+  const [bulkUpdateOpen, setBulkUpdateOpen] = useState(false)
+  const [bulkSaving, setBulkSaving] = useState(false)
+  const [bulkForm, setBulkForm] = useState({
+    toLocationId: "",
+    toCustodianId: "",
+    reason: "",
+    remark: "",
+  })
   const selectedAssets = useMemo(
     () => assets.filter((asset) => selectedIds.has(asset.id)),
     [assets, selectedIds]
@@ -191,6 +222,39 @@ export function AssetRegisterTable({
     window.open(`/${locale}/assets/labels?${params.toString()}`, "_blank", "noopener,noreferrer")
   }
 
+  function clearSelection() {
+    setSelectedIds(new Set())
+  }
+
+  async function submitBulkUpdate(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (selectedAssets.length === 0 || (!bulkForm.toLocationId && !bulkForm.toCustodianId)) return
+
+    setBulkSaving(true)
+    try {
+      const response = await fetch("/api/assets/bulk-update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assetIds: selectedAssets.map((asset) => asset.id),
+          ...bulkForm,
+        }),
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(payload?.error ?? labels.bulkUpdateFailed)
+
+      toast.success(labels.bulkUpdateSuccess)
+      setBulkUpdateOpen(false)
+      setBulkForm({ toLocationId: "", toCustodianId: "", reason: "", remark: "" })
+      clearSelection()
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : labels.bulkUpdateFailed)
+    } finally {
+      setBulkSaving(false)
+    }
+  }
+
   function buildHref(overrides: { page?: number; sort?: string; direction?: string }) {
     return `/${locale}/assets?${buildAssetQueryString(filters, overrides)}`
   }
@@ -203,7 +267,7 @@ export function AssetRegisterTable({
     <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
       <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
         <div className="text-sm text-muted-foreground">
-          {selectedAssets.length > 0 ? `${selectedAssets.length} ${labels.selectedCount}` : `${fromRow}-${toRow} ${labels.of} ${total}`}
+          {fromRow}-{toRow} {labels.of} {total}
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <details className="relative">
@@ -227,24 +291,6 @@ export function AssetRegisterTable({
           </details>
           <button
             type="button"
-            onClick={exportSelected}
-            disabled={selectedAssets.length === 0}
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Download className="h-4 w-4" />
-            {labels.exportSelected}
-          </button>
-          <button
-            type="button"
-            onClick={printSelectedLabels}
-            disabled={selectedAssets.length === 0}
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Printer className="h-4 w-4" />
-            {labels.printSelectedLabels}
-          </button>
-          <button
-            type="button"
             onClick={() => downloadFile(`/api/assets/export?${buildAssetQueryString(filters)}`)}
             className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
           >
@@ -261,6 +307,50 @@ export function AssetRegisterTable({
           </button>
         </div>
       </div>
+      {selectedAssets.length > 0 ? (
+        <div className="flex flex-col gap-3 border-b border-border bg-primary/5 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="text-sm font-semibold text-foreground">{labels.bulkActions}</div>
+            <div className="mt-0.5 text-sm text-muted-foreground">
+              {selectedAssets.length} {labels.selectedCount}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <button
+              type="button"
+              onClick={printSelectedLabels}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+            >
+              <Printer className="h-4 w-4" />
+              {labels.printSelectedLabels}
+            </button>
+            <button
+              type="button"
+              onClick={() => setBulkUpdateOpen(true)}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+            >
+              <Edit className="h-4 w-4" />
+              {labels.bulkUpdate}
+            </button>
+            <button
+              type="button"
+              onClick={exportSelected}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+            >
+              <Download className="h-4 w-4" />
+              {labels.exportSelected}
+            </button>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+            >
+              <X className="h-4 w-4" />
+              {labels.clearSelection}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-border text-sm">
@@ -408,6 +498,97 @@ export function AssetRegisterTable({
           </PaginationLink>
         </div>
       </div>
+
+      {bulkUpdateOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-xl rounded-lg border border-border bg-surface shadow-xl">
+            <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">{labels.bulkUpdateTitle}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {labels.bulkUpdateDescription} ({selectedAssets.length} {labels.selectedCount})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBulkUpdateOpen(false)}
+                className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+                aria-label={labels.close}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <form onSubmit={submitBulkUpdate} className="space-y-4 px-5 py-4">
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.currentLocation}</span>
+                <select
+                  value={bulkForm.toLocationId}
+                  onChange={(event) => setBulkForm((current) => ({ ...current, toLocationId: event.target.value }))}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">{labels.noChange}</option>
+                  {bulkOptions.locations.map((location) => (
+                    <option key={location.id} value={location.id}>
+                      {location.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.custodian}</span>
+                <select
+                  value={bulkForm.toCustodianId}
+                  onChange={(event) => setBulkForm((current) => ({ ...current, toCustodianId: event.target.value }))}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">{labels.noChange}</option>
+                  {bulkOptions.employees.map((employee) => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.reason}</span>
+                <input
+                  value={bulkForm.reason}
+                  onChange={(event) => setBulkForm((current) => ({ ...current, reason: event.target.value }))}
+                  required
+                  maxLength={500}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.remark}</span>
+                <textarea
+                  value={bulkForm.remark}
+                  onChange={(event) => setBulkForm((current) => ({ ...current, remark: event.target.value }))}
+                  rows={3}
+                  className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </label>
+              <div className="flex justify-end gap-2 border-t border-border pt-4">
+                <button
+                  type="button"
+                  onClick={() => setBulkUpdateOpen(false)}
+                  className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+                >
+                  {labels.cancel}
+                </button>
+                <button
+                  type="submit"
+                  disabled={bulkSaving || (!bulkForm.toLocationId && !bulkForm.toCustodianId)}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {bulkSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {labels.applyBulkUpdate}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

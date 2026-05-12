@@ -25,7 +25,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   const tCommon = await getTranslations("common")
   const filters = parseAssetListParams(rawSearchParams)
   const where = buildAssetWhere(filters)
-  const [assets, total, companies, branches, categories, statuses, conditions] = await Promise.all([
+  const [assets, total, companies, branches, categories, statuses, conditions, locations, employees] = await Promise.all([
     prisma.asset.findMany({
       where,
       include: {
@@ -82,6 +82,16 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       where: { isActive: true },
       select: { id: true, nameTh: true },
       orderBy: { sortOrder: "asc" },
+    }),
+    prisma.location.findMany({
+      where: { isActive: true },
+      select: { id: true, code: true, name: true },
+      orderBy: { code: "asc" },
+    }),
+    prisma.employee.findMany({
+      where: { isActive: true },
+      select: { id: true, code: true, fullNameTh: true },
+      orderBy: { code: "asc" },
     }),
   ])
   const modelIds = Array.from(
@@ -192,6 +202,10 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
         totalPages={totalPages}
         fromRow={fromRow}
         toRow={toRow}
+        bulkOptions={{
+          locations: locations.map((location) => ({ id: location.id, label: `${location.code} - ${location.name}` })),
+          employees: employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` })),
+        }}
         labels={{
           actions: tCommon("actions"),
           all: tCommon("all"),
@@ -208,6 +222,21 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           edit: tCommon("edit"),
           exportFiltered: t("exportFiltered"),
           exportSelected: t("exportSelected"),
+          bulkActions: t("bulkActions"),
+          bulkUpdate: t("bulkUpdate"),
+          bulkUpdateTitle: t("bulkUpdateTitle"),
+          bulkUpdateDescription: t("bulkUpdateDescription"),
+          clearSelection: t("clearSelection"),
+          selectLocation: t("selectLocation"),
+          selectCustodian: t("selectCustodian"),
+          noChange: t("noChange"),
+          reason: t("reason"),
+          remark: t("remark"),
+          applyBulkUpdate: t("applyBulkUpdate"),
+          bulkUpdateSuccess: t("bulkUpdateSuccess"),
+          bulkUpdateFailed: t("bulkUpdateFailed"),
+          cancel: tCommon("cancel"),
+          close: tCommon("close"),
           printSelectedLabels: t("printSelectedLabels"),
           next: tCommon("next"),
           noData: tCommon("noData"),

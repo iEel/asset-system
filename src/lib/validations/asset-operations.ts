@@ -74,6 +74,24 @@ export const assetBulkMoveSchema = z.object({
   remark: optionalText,
 })
 
+export const assetBulkUpdateSchema = z
+  .object({
+    assetIds: z.array(z.string().trim().min(1)).min(1),
+    toLocationId: optionalText,
+    toCustodianId: optionalText,
+    reason: z.string().trim().min(1).max(500),
+    remark: optionalText,
+  })
+  .superRefine((input, context) => {
+    if (!input.toLocationId && !input.toCustodianId) {
+      context.addIssue({
+        code: "custom",
+        path: ["toLocationId"],
+        message: "At least one bulk update field is required",
+      })
+    }
+  })
+
 export const assetComponentInstallSchema = z.object({
   componentAssetId: z.string().trim().min(1),
   componentRole: z.string().trim().min(1).max(100),
@@ -95,5 +113,6 @@ export type AssetCheckoutInput = z.infer<typeof assetCheckoutSchema>
 export type AssetCheckinInput = z.infer<typeof assetCheckinSchema>
 export type AssetTransferInput = z.infer<typeof assetTransferSchema>
 export type AssetBulkMoveInput = z.infer<typeof assetBulkMoveSchema>
+export type AssetBulkUpdateInput = z.infer<typeof assetBulkUpdateSchema>
 export type AssetComponentInstallInput = z.infer<typeof assetComponentInstallSchema>
 export type AssetComponentRemoveInput = z.infer<typeof assetComponentRemoveSchema>
