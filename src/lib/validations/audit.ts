@@ -36,6 +36,7 @@ export const auditScanSchema = z.object({
   actualCustodianId: optionalText,
   actualConditionId: optionalText,
   scanSource: z.enum(["manual", "qr"]).default("manual"),
+  applyCorrections: z.boolean().default(false),
   remark: optionalText,
 })
 

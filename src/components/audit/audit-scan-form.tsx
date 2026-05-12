@@ -45,6 +45,7 @@ type Html5QrcodeInstance = {
 
 type CameraDevice = { id: string; label: string }
 type CameraReadiness = "checking" | "ready" | "unavailable"
+type AuditMismatchPreview = { type: string; label: string; canApply: boolean }
 
 export function AuditScanForm({
   roundId,
@@ -75,6 +76,7 @@ export function AuditScanForm({
   const [lastDecodedText, setLastDecodedText] = useState("")
   const [auditPhotoLabel, setAuditPhotoLabel] = useState("")
   const [selectedAuditPhoto, setSelectedAuditPhoto] = useState<File | null>(null)
+  const [applyCorrections, setApplyCorrections] = useState(false)
   const qrReaderRef = useRef<Html5QrcodeInstance | null>(null)
   const [values, setValues] = useState({
     assetId: "",
@@ -91,12 +93,21 @@ export function AuditScanForm({
     if (!selectedItem) return []
     const actual = getActualValues(values, selectedItem)
     return [
-      actual.actualLocationId !== selectedItem.expectedLocationId ? t("wrongLocation") : null,
-      (actual.actualCustodianId || null) !== selectedItem.expectedCustodianId ? t("wrongCustodian") : null,
-      (actual.actualDepartmentId || null) !== selectedItem.expectedDepartmentId ? t("wrongDepartment") : null,
-      (actual.actualConditionId || null) !== selectedItem.expectedConditionId ? t("wrongCondition") : null,
-    ].filter(Boolean)
+      actual.actualLocationId !== selectedItem.expectedLocationId
+        ? { type: "wrong_location", label: t("wrongLocation"), canApply: true }
+        : null,
+      (actual.actualCustodianId || null) !== selectedItem.expectedCustodianId
+        ? { type: "wrong_custodian", label: t("wrongCustodian"), canApply: true }
+        : null,
+      (actual.actualDepartmentId || null) !== selectedItem.expectedDepartmentId
+        ? { type: "wrong_department", label: t("wrongDepartment"), canApply: false }
+        : null,
+      (actual.actualConditionId || null) !== selectedItem.expectedConditionId
+        ? { type: "wrong_condition", label: t("wrongCondition"), canApply: false }
+        : null,
+    ].filter((mismatch): mismatch is AuditMismatchPreview => Boolean(mismatch))
   }, [selectedItem, t, values])
+  const correctionMismatchCount = mismatchPreview.filter((mismatch) => mismatch.canApply).length
   const selectedAuditPhotoChecklist = selectedItem?.photoChecklist ?? []
   const effectiveAuditPhotoLabel =
     selectedAuditPhotoChecklist.find((item) => item === auditPhotoLabel) ?? selectedAuditPhotoChecklist[0] ?? ""
@@ -112,6 +123,10 @@ export function AuditScanForm({
       void scanner.stop().then(() => scanner.clear()).catch(() => scanner.clear())
     }
   }, [])
+
+  useEffect(() => {
+    if (correctionMismatchCount === 0) setApplyCorrections(false)
+  }, [correctionMismatchCount])
 
   async function startScanner() {
     if (!isCameraAccessSupported()) {
@@ -206,6 +221,7 @@ export function AuditScanForm({
           assetId: values.assetId,
           ...emptyToNull(getActualValues(values, selectedItem)),
           scanSource,
+          applyCorrections: applyCorrections && correctionMismatchCount > 0,
           remark: values.remark,
         }),
       })
@@ -215,7 +231,15 @@ export function AuditScanForm({
         await uploadAuditPhoto(values.assetId, selectedAuditPhoto, effectiveAuditPhotoLabel)
       }
       setLastResult(payload.auditResult ?? null)
-      toast.success(payload.auditResult === "found" ? t("foundSuccess") : t("mismatchSuccess"))
+      toast.success(
+        payload.resolvedNotFoundFinding
+          ? t("foundAfterNotFoundSuccess")
+          : payload.appliedCorrections?.length
+          ? t("correctionAppliedSuccess")
+          : payload.auditResult === "found"
+            ? t("foundSuccess")
+            : t("mismatchSuccess")
+      )
       setValues({
         assetId: "",
         actualLocationId: "",
@@ -226,6 +250,7 @@ export function AuditScanForm({
       })
       setSelectedAuditPhoto(null)
       setAuditPhotoLabel("")
+      setApplyCorrections(false)
       setScanSource("manual")
       router.refresh()
     } catch (error) {
@@ -380,7 +405,23 @@ export function AuditScanForm({
               {mismatchPreview.length === 0 ? (
                 <div className="text-success">{t("matchedPreview")}</div>
               ) : (
-                <div className="text-warning">{t("mismatchPreview", { fields: mismatchPreview.join(", ") })}</div>
+                <div className="text-warning">
+                  {t("mismatchPreview", { fields: mismatchPreview.map((mismatch) => mismatch.label).join(", ") })}
+                </div>
+              )}
+              {correctionMismatchCount > 0 && (
+                <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-md border border-info/30 bg-info/10 p-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={applyCorrections}
+                    onChange={(event) => setApplyCorrections(event.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                  />
+                  <span>
+                    <span className="block font-semibold text-foreground">{t("applyAuditCorrections")}</span>
+                    <span className="mt-1 block text-muted-foreground">{t("applyAuditCorrectionsHelp")}</span>
+                  </span>
+                </label>
               )}
             </div>
           )}

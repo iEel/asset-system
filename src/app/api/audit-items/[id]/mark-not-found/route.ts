@@ -12,7 +12,7 @@ type MarkNotFoundContext = {
 export async function POST(request: NextRequest, context: MarkNotFoundContext) {
   try {
     const user = await requireAuth()
-    requirePermission(user, "audit", "approve")
+    requirePermission(user, "audit", "edit")
 
     const { id } = await context.params
     const input = auditMarkNotFoundSchema.parse(await request.json())

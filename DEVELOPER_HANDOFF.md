@@ -1,6 +1,6 @@
 # Developer Handoff — Asset Management System
 
-> **Last Updated:** 2026-05-07
+> **Last Updated:** 2026-05-12
 > **Phase:** Phase 4 AD/LDAP + Mobile Optimization (Started)
 > **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built with export polish, 🟨 Admin RBAC polish started, 🟨 Phase 4 AD/LDAP login + sync workflow validated, 🟨 Mobile optimization pass complete
 
@@ -23,7 +23,7 @@
 | **1B: Master Data** | Company, Branch, Dept, Employee, Location, Category, Brand, Supplier | ✅ Complete — Company, Branch, Department, Location, Employee, Category, Brand/Model, Supplier |
 | **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 Mostly Complete — CRUD, tag gen, QR labels, detail, movements, attachments/photos, shared PO/Invoice documents, category custom-field templates, asset components/assembly, import/export, duplicate UX |
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | 🟨 Started — Check-out/in, drag/drop photo/signature evidence, printable handover/return forms, stricter checkout/checkin status mapping, basic reports, system logs, and live KPI dashboard added |
-| **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move, audit round generation, QR/manual scan capture, finding review, pending/not-found workflow, approved reconciliation, granular multi-finding review status, and Excel/PDF exports |
+| **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move, audit round generation, QR/manual scan capture, immediate location/custodian correction from scan, finding review, pending/not-found and found-later workflow, approved reconciliation, granular multi-finding review status, and Excel/PDF exports |
 | **Phase 3** | Maintenance, Disposal | 🟨 Started — maintenance ticket flow mostly built with drag/drop attachment uploads and previews; disposal request create/list, approval/reject, detail, and print document added |
 | **Phase 4** | AD/LDAP, HR sync, Advanced dashboard | 🟨 Started — scope narrowed to AD/LDAP login and mobile optimization |
 
@@ -618,14 +618,15 @@ await logAudit({
 | **SQL Server TLS warning** | แก้แล้วด้วย `DB_TLS_SERVER_NAME=WIN-I284TKLAMMD` เพื่อไม่ให้ tedious ใช้ IP เป็น TLS ServerName |
 | **LDAP Manual Sync MSSQL transaction** | แก้แล้ว: Manual Sync ไม่ใช้ Prisma interactive transaction กับ MSSQL แล้ว เพราะเคยเจอ `Transaction has not begun`; ปัจจุบันใช้ idempotent preview-driven writes + small batches และแสดง applied counts บน UI |
 | **Phase 2 audit schema** | เพิ่ม `audit_rounds`, `audit_items`, `audit_findings`, `audit_scan_history` และ push schema ไป SQL Server `alpha` แล้ว |
-| **Audit scan behavior** | Scan API อัปเดต `audit_items` เป็น `scanned`, เพิ่ม `scanCount`, บันทึก `audit_scan_history`, ตรวจ mismatch location/custodian/department/condition และสร้าง `audit_findings` pending โดยไม่แก้ master asset |
+| **Audit scan behavior** | Scan API อัปเดต `audit_items`, เพิ่ม `scanCount`, บันทึก `audit_scan_history`, ตรวจ mismatch location/custodian/department/condition และสร้าง `audit_findings`; location/custodian mismatch สามารถ apply correction ทันทีจากหน้า scan ได้ โดยสร้าง approved finding + `asset_movements` และอัปเดต master asset |
 | **QR scanner integration** | หน้า `/audit/rounds/{id}/scan` รองรับกล้องผ่าน `html5-qrcode` และ fallback paste URL/Asset ID/Asset Tag; QR label URL `/assets/{id}` จะ map กลับ audit item ได้ |
 | **Audit exports** | เพิ่ม Excel export สำหรับ Audit Result รายรอบ และ Audit Findings ตาม filter/search ปัจจุบัน |
 | **Audit PDF exports** | เพิ่ม PDF export สำหรับ Audit Result รายรอบ และ Audit Findings ตาม filter/search ปัจจุบัน โดยใช้ `@react-pdf/renderer` และ font Tahoma runtime เมื่อรันบน Windows |
 | **Audit finding review** | หน้า `/audit/findings` รองรับ approve/reject; approve จะอัปเดต master asset เฉพาะ field ที่ finding ระบุและสร้าง `asset_movements` แบบ `audit_*_correction` |
 | **Audit multi-finding review** | Review finding ทีละรายการแล้วคำนวณสถานะ `audit_items` ใหม่จาก findings ทั้งหมดของ item นั้น เพื่อไม่ปิด item เป็น reconciled/rejected ถ้ายังมี finding pending อื่น |
 | **Audit finding labels** | หน้า Finding และ Excel export resolve expected/actual value จาก raw IDs เป็น label ของ Location/Employee/Department/Condition เพื่อให้ reviewer อ่านง่ายขึ้น |
-| **Audit pending/not found** | หน้า `/audit/rounds/{id}/pending` แสดง audit items ที่ยัง `pending`; Mark Not Found จะตั้ง item เป็น `reviewed/not_found`, สร้าง finding `not_found` pending investigation และไม่แก้ master asset เป็น Lost |
+| **Audit pending/not found** | หน้า `/audit/rounds/{id}/pending` แสดง audit items ที่ยัง `pending`; Mark Not Found ใช้สิทธิ์ `audit:edit`, ตั้ง item เป็น `reviewed/not_found`, สร้าง finding `not_found` pending investigation และไม่แก้ master asset เป็น Lost |
+| **Audit found-later recovery** | ถ้า item เคยถูก Mark Not Found แล้ว scan เจอทีหลังใน audit round เดียวกัน Scan API จะปิด finding `not_found` pending เดิมเป็น `rejected` พร้อม `actionTaken=found_later_by_audit_scan` แล้วบันทึก scan/mismatch/correction ใหม่ตามปกติ |
 | **Audit scan QA hardening** | หน้า `/audit/rounds/{id}/scan` เพิ่ม camera support detection, camera device picker, responsive QR scan box, last decoded value, camera status/error panel, และ manual fallback guidance สำหรับ browser/mobile QA |
 | **Operation print forms** | หลัง checkout/checkin สำเร็จจะ redirect ไปหน้าเอกสารพิมพ์ A4 สำหรับใบส่งมอบ/ใบรับคืน พร้อมข้อมูลทรัพย์สิน เงื่อนไข รายละเอียดธุรกรรม และช่องลายเซ็น |
 | **Operation status mapping** | Checkout ตั้ง asset status เป็น `Checked Out` แบบ exact จาก master status; Check-in อนุญาต next status เฉพาะ `Ready`, `Pending Repair`, `Pending Disposal` ทั้งใน dropdown และ API validation |
@@ -718,9 +719,9 @@ await logAudit({
 19. Audit schema foundation: `audit_rounds`, `audit_items`, `audit_findings`, `audit_scan_history`
 20. Audit Round API/page with scope filters and automatic expected asset list generation
 21. Audit Round detail page with progress metrics and first 100 expected asset items
-22. Audit Scan Capture API/page with manual scan entry, scan history logging, mismatch detection, and pending finding creation
+22. Audit Scan Capture API/page with manual/QR scan entry, scan history logging, mismatch detection, immediate location/custodian correction option, pending/approved finding creation, and found-later recovery for items previously marked not found
 23. Audit Finding list and review API with approve/reject; approved findings update master asset and write movement/audit trail
-24. Pending Audit Items page and Mark Not Found API; creates `not_found` finding without changing asset status to Lost
+24. Pending Audit Items page and Mark Not Found API; auditors with `audit:edit` can create `not_found` finding without changing asset status to Lost
 25. QR scanner integration on Audit Scan page using `html5-qrcode` plus manual URL/Asset ID/Asset Tag fallback
 26. Excel exports for Audit Result and Audit Finding reports
 27. Audit Finding label resolver for UI/export expected/actual values
@@ -771,6 +772,7 @@ await logAudit({
 72. Asset Model photo upload/display polish: broader image MIME support, retryable file picker, non-cropping previews, and compact model thumbnails in the Brand/Model table
 73. Receiving and audit photo capture using category checklist labels: `/assets/new` queues photos before create, and Audit Scan can save photo evidence with scan results; both use checklist button UX with automatic fallback labels
 74. Asset Tag Company Code for separating generated asset tags from AD/LDAP company codes, with `{assetCompanyCode}` template token and company master-data field
+75. Audit scan correction workflow: scan page exposes an "update location/custodian to actual" checkbox only when those fields mismatch; API creates approved findings, writes `audit_*_correction` movement logs, updates master asset, and closes stale `not_found` findings if the asset is found later in the same round
 
 ---
 
