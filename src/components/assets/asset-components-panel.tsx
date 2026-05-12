@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
@@ -44,11 +44,47 @@ export function AssetComponentsPanel({
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
   const [componentAssetId, setComponentAssetId] = useState("")
+  const [componentSearch, setComponentSearch] = useState("")
+  const [componentResults, setComponentResults] = useState<AssetOption[]>(availableAssets)
+  const [searchingComponents, setSearchingComponents] = useState(false)
   const [componentRole, setComponentRole] = useState("")
   const [slotNo, setSlotNo] = useState("")
   const [reason, setReason] = useState("")
   const [saving, setSaving] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const selectedComponentAsset = useMemo(
+    () => componentResults.find((asset) => asset.id === componentAssetId) ?? availableAssets.find((asset) => asset.id === componentAssetId),
+    [availableAssets, componentAssetId, componentResults]
+  )
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const timer = window.setTimeout(async () => {
+      setSearchingComponents(true)
+      try {
+        const params = new URLSearchParams({
+          parentAssetId: assetId,
+          search: componentSearch,
+        })
+        const response = await fetch(`/api/assets/component-candidates?${params.toString()}`, {
+          signal: controller.signal,
+        })
+        const payload = await response.json().catch(() => null)
+        if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+        setComponentResults(payload?.data ?? [])
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return
+        toast.error(error instanceof Error ? error.message : tCommon("error"))
+      } finally {
+        setSearchingComponents(false)
+      }
+    }, 250)
+
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [assetId, componentSearch, tCommon])
 
   async function handleInstall(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -69,6 +105,7 @@ export function AssetComponentsPanel({
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
 
       setComponentAssetId("")
+      setComponentSearch("")
       setComponentRole("")
       setSlotNo("")
       setReason("")
@@ -114,19 +151,49 @@ export function AssetComponentsPanel({
       <form onSubmit={handleInstall} className="mb-5 grid grid-cols-1 gap-3 rounded-md border border-border bg-background p-4 md:grid-cols-2 xl:grid-cols-4">
         <label className="block xl:col-span-2">
           <span className="mb-1.5 block text-sm font-medium text-foreground">{t("componentAsset")}</span>
-          <select
-            value={componentAssetId}
-            onChange={(event) => setComponentAssetId(event.target.value)}
-            required
+          <input
+            value={componentSearch}
+            onChange={(event) => {
+              setComponentSearch(event.target.value)
+              setComponentAssetId("")
+            }}
+            placeholder={t("componentSearchPlaceholder")}
             className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-          >
-            <option value="">{t("selectComponentAsset")}</option>
-            {availableAssets.map((asset) => (
-              <option key={asset.id} value={asset.id}>
-                {asset.assetTag} - {asset.name}
-              </option>
-            ))}
-          </select>
+          />
+          <div className="mt-1 text-xs text-muted-foreground">{t("componentSearchHelp")}</div>
+          <div className="mt-2 max-h-56 overflow-auto rounded-md border border-border bg-surface">
+            {searchingComponents ? (
+              <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t("searchingAssets")}
+              </div>
+            ) : componentResults.length === 0 ? (
+              <div className="px-3 py-3 text-sm text-muted-foreground">{t("noComponentSearchResults")}</div>
+            ) : (
+              componentResults.map((asset) => (
+                <button
+                  key={asset.id}
+                  type="button"
+                  onClick={() => {
+                    setComponentAssetId(asset.id)
+                    setComponentSearch(asset.assetTag)
+                  }}
+                  className={[
+                    "block w-full px-3 py-2 text-left text-sm transition-colors hover:bg-accent",
+                    componentAssetId === asset.id ? "bg-primary/10 text-primary" : "text-foreground",
+                  ].join(" ")}
+                >
+                  <span className="block font-medium">{asset.assetTag} - {asset.name}</span>
+                  {asset.serialNumber ? <span className="mt-0.5 block text-xs text-muted-foreground">SN: {asset.serialNumber}</span> : null}
+                </button>
+              ))
+            )}
+          </div>
+          {selectedComponentAsset ? (
+            <div className="mt-2 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-xs text-success">
+              {t("componentSelected")}: {selectedComponentAsset.assetTag} - {selectedComponentAsset.name}
+            </div>
+          ) : null}
         </label>
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium text-foreground">{t("componentRole")}</span>
@@ -160,7 +227,7 @@ export function AssetComponentsPanel({
         </label>
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || !componentAssetId}
           className="inline-flex h-10 items-center justify-center gap-2 self-end rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackagePlus className="h-4 w-4" />}
