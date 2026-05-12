@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { Columns3, Download, Edit, Eye, FileDown, FileSpreadsheet, ImageIcon, Printer } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
@@ -106,6 +107,7 @@ export function AssetRegisterTable({
   toRow,
   labels,
 }: AssetRegisterTableProps) {
+  const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set(columnOrder))
   const selectedAssets = useMemo(
@@ -301,8 +303,20 @@ export function AssetRegisterTable({
               </tr>
             ) : (
               assets.map((asset) => (
-                <tr key={asset.id} className="hover:bg-accent/50">
-                  <td className="whitespace-nowrap px-4 py-3">
+                <tr
+                  key={asset.id}
+                  tabIndex={0}
+                  onClick={() => router.push(`/${locale}/assets/${asset.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault()
+                      router.push(`/${locale}/assets/${asset.id}`)
+                    }
+                  }}
+                  aria-label={`${labels.detail}: ${asset.assetTag}`}
+                  className="cursor-pointer hover:bg-accent/50 focus:bg-accent/50 focus:outline-none"
+                >
+                  <td className="whitespace-nowrap px-4 py-3" onClick={(event) => event.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={selectedIds.has(asset.id)}
@@ -361,7 +375,7 @@ export function AssetRegisterTable({
                   {visibleColumns.has("purchasePrice") && (
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.purchasePrice)}</td>
                   )}
-                  <td className="whitespace-nowrap px-4 py-3 text-right">
+                  <td className="whitespace-nowrap px-4 py-3 text-right" onClick={(event) => event.stopPropagation()}>
                     <div className="inline-flex items-center gap-1">
                       <Link
                         href={`/${locale}/assets/${asset.id}`}
