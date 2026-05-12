@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { Columns3, Download, Edit, Eye, FileDown, FileSpreadsheet, Printer } from "lucide-react"
+import Image from "next/image"
+import { Columns3, Download, Edit, Eye, FileDown, FileSpreadsheet, ImageIcon, Printer } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
 import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
@@ -20,6 +21,7 @@ export type AssetRegisterRow = {
   status: { label: string; color: string | null }
   condition: { label: string; color: string | null }
   purchasePrice: number | null
+  photo: { id: string; alt: string; fileType: string } | null
 }
 
 type ColumnKey =
@@ -91,6 +93,8 @@ const columnOrder: ColumnKey[] = [
   "condition",
   "purchasePrice",
 ]
+
+const previewableAssetPhotoTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"])
 
 export function AssetRegisterTable({
   locale,
@@ -312,8 +316,26 @@ export function AssetRegisterTable({
                   )}
                   {visibleColumns.has("name") && (
                     <td className="min-w-56 px-4 py-3 text-foreground">
-                      <div className="font-medium">{asset.name}</div>
-                      {asset.serialNumber && <div className="text-xs text-muted-foreground">{asset.serialNumber}</div>}
+                      <div className="flex items-center gap-3">
+                        <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">
+                          {asset.photo && previewableAssetPhotoTypes.has(asset.photo.fileType) ? (
+                            <Image
+                              src={`/api/attachments/${asset.photo.id}?inline=1`}
+                              alt={asset.photo.alt}
+                              fill
+                              unoptimized
+                              className="object-contain p-1"
+                              sizes="48px"
+                            />
+                          ) : (
+                            <ImageIcon className="h-5 w-5" aria-hidden="true" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="truncate font-medium">{asset.name}</div>
+                          {asset.serialNumber && <div className="truncate text-xs text-muted-foreground">{asset.serialNumber}</div>}
+                        </div>
+                      </div>
                     </td>
                   )}
                   {visibleColumns.has("category") && <td className="min-w-40 px-4 py-3 text-muted-foreground">{asset.category}</td>}

@@ -36,6 +36,22 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
         currentLocation: { select: { code: true, name: true } },
         status: { select: { nameTh: true, colorCode: true } },
         condition: { select: { nameTh: true, colorCode: true } },
+        attachments: {
+          where: {
+            isActive: true,
+            module: "asset",
+            fileType: { startsWith: "image/" },
+          },
+          select: { id: true, originalName: true, fileType: true },
+          orderBy: { uploadedAt: "desc" },
+          take: 1,
+        },
+        model: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: buildAssetOrderBy(filters),
       skip: (filters.page - 1) * filters.pageSize,
@@ -68,6 +84,27 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       orderBy: { sortOrder: "asc" },
     }),
   ])
+  const modelIds = Array.from(
+    new Set(assets.map((asset) => asset.model?.id).filter((modelId): modelId is string => Boolean(modelId)))
+  )
+  const modelPhotos = modelIds.length
+    ? await prisma.attachment.findMany({
+        where: {
+          module: "asset_model",
+          referenceId: { in: modelIds },
+          isActive: true,
+          fileType: { startsWith: "image/" },
+        },
+        select: { id: true, referenceId: true, originalName: true, fileType: true },
+        orderBy: { uploadedAt: "desc" },
+      })
+    : []
+  const modelPhotoByModelId = new Map<string, (typeof modelPhotos)[number]>()
+  for (const photo of modelPhotos) {
+    if (!modelPhotoByModelId.has(photo.referenceId)) {
+      modelPhotoByModelId.set(photo.referenceId, photo)
+    }
+  }
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize))
   const fromRow = total === 0 ? 0 : (filters.page - 1) * filters.pageSize + 1
   const toRow = Math.min(total, filters.page * filters.pageSize)
@@ -83,6 +120,19 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
     status: { label: asset.status.nameTh, color: asset.status.colorCode },
     condition: { label: asset.condition.nameTh, color: asset.condition.colorCode },
     purchasePrice: asset.purchasePrice ? Number(asset.purchasePrice) : null,
+    photo: asset.attachments[0]
+      ? {
+          id: asset.attachments[0].id,
+          alt: asset.attachments[0].originalName,
+          fileType: asset.attachments[0].fileType,
+        }
+      : asset.model?.id && modelPhotoByModelId.get(asset.model.id)
+        ? {
+            id: modelPhotoByModelId.get(asset.model.id)!.id,
+            alt: modelPhotoByModelId.get(asset.model.id)!.originalName,
+            fileType: modelPhotoByModelId.get(asset.model.id)!.fileType,
+          }
+        : null,
   }))
 
   return (
