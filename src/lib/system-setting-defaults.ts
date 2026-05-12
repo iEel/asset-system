@@ -1,3 +1,5 @@
+import { assetLabelSettingKeys } from "@/lib/asset-label-template"
+
 export const assetTagCategoryPrefixesKey = "asset_tag_category_prefixes"
 export const assetTagFormatTemplateKey = "asset_tag_format_template"
 export const defaultAssetTagFormatTemplate = "{assetCompanyCode}{separator}{branchCode}{separator}{assetPrefix}{separator}{running}"
@@ -65,6 +67,18 @@ export const systemSettingDefaults = [
   { key: "ldap_sync_default_branch_code", value: "", description: "Branch code เริ่มต้นสำหรับ employee ที่ sync จาก LDAP" },
   { key: "ldap_sync_default_department_code", value: "", description: "Department code เริ่มต้นสำหรับ employee ที่ sync จาก LDAP" },
   { key: "ldap_sync_deactivate_missing", value: "false", description: "ปิดใช้งาน employee ที่ไม่พบใน LDAP sync result" },
+  { key: "asset_label_default_tape_size", value: "18", description: "ขนาดเทปเริ่มต้นสำหรับพิมพ์ Asset Label: 12 หรือ 18" },
+  { key: "asset_label_12_width_mm", value: "60", description: "ความกว้าง label สำหรับเทป 12mm หน่วยมิลลิเมตร" },
+  { key: "asset_label_12_qr_size", value: "34", description: "ขนาด QR Code สำหรับเทป 12mm หน่วย px" },
+  { key: "asset_label_12_primary_template", value: "{assetTag}", description: "บรรทัดหลักสำหรับเทป 12mm" },
+  { key: "asset_label_12_secondary_template", value: "{scanHint}", description: "บรรทัดรองสำหรับเทป 12mm" },
+  { key: "asset_label_12_tertiary_template", value: "", description: "บรรทัดที่สามสำหรับเทป 12mm" },
+  { key: "asset_label_18_width_mm", value: "70", description: "ความกว้าง label สำหรับเทป 18mm หน่วยมิลลิเมตร" },
+  { key: "asset_label_18_qr_size", value: "48", description: "ขนาด QR Code สำหรับเทป 18mm หน่วย px" },
+  { key: "asset_label_18_primary_template", value: "{assetTag}", description: "บรรทัดหลักสำหรับเทป 18mm" },
+  { key: "asset_label_18_secondary_template", value: "{assetName}", description: "บรรทัดรองสำหรับเทป 18mm" },
+  { key: "asset_label_18_tertiary_template", value: "{serialNumber}", description: "บรรทัดที่สามสำหรับเทป 18mm" },
 ]
 
 export const knownSystemSettingKeys = new Set(systemSettingDefaults.map((setting) => setting.key))
+export { assetLabelSettingKeys }

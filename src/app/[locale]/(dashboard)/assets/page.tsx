@@ -158,6 +158,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           edit: tCommon("edit"),
           exportFiltered: t("exportFiltered"),
           exportSelected: t("exportSelected"),
+          printSelectedLabels: t("printSelectedLabels"),
           next: tCommon("next"),
           noData: tCommon("noData"),
           of: tCommon("of"),

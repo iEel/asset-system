@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { Columns3, Download, Edit, Eye, FileDown, FileSpreadsheet } from "lucide-react"
+import { Columns3, Download, Edit, Eye, FileDown, FileSpreadsheet, Printer } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
 import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
@@ -66,6 +66,7 @@ type AssetRegisterTableProps = {
     edit: string
     exportFiltered: string
     exportSelected: string
+    printSelectedLabels: string
     noData: string
     of: string
     page: string
@@ -177,6 +178,14 @@ export function AssetRegisterTable({
     URL.revokeObjectURL(url)
   }
 
+  function printSelectedLabels() {
+    if (selectedAssets.length === 0) return
+
+    const params = new URLSearchParams()
+    selectedAssets.forEach((asset) => params.append("id", asset.id))
+    window.open(`/${locale}/assets/labels?${params.toString()}`, "_blank", "noopener,noreferrer")
+  }
+
   function buildHref(overrides: { page?: number; sort?: string; direction?: string }) {
     return `/${locale}/assets?${buildAssetQueryString(filters, overrides)}`
   }
@@ -219,6 +228,15 @@ export function AssetRegisterTable({
           >
             <Download className="h-4 w-4" />
             {labels.exportSelected}
+          </button>
+          <button
+            type="button"
+            onClick={printSelectedLabels}
+            disabled={selectedAssets.length === 0}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Printer className="h-4 w-4" />
+            {labels.printSelectedLabels}
           </button>
           <button
             type="button"

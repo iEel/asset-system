@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, PlugZap, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { assetLabelSettingKeys, assetLabelTemplateTokens } from "@/lib/asset-label-template"
 import {
   assetTagCategoryPrefixesKey,
   assetTagFormatTemplateKey,
@@ -44,6 +45,19 @@ type SystemSettingsFormProps = {
     separator: string
     globalPrefix: string
     invalidFormatTemplate: string
+    labelPrintTemplate: string
+    labelPrintTemplateDescription: string
+    defaultTapeSize: string
+    tape12mmTemplate: string
+    tape18mmTemplate: string
+    labelWidthMm: string
+    labelQrSize: string
+    labelPrimaryLine: string
+    labelSecondaryLine: string
+    labelTertiaryLine: string
+    labelTemplateTokens: string
+    invalidLabelTemplate: string
+    invalidLabelSize: string
     categoryPrefixes: string
     categoryPrefixesDescription: string
     noCategoryPrefixes: string
@@ -183,6 +197,7 @@ const friendlySettingKeys = new Set([
   "default_currency",
   assetTagCategoryPrefixesKey,
   assetTagFormatTemplateKey,
+  ...assetLabelSettingKeys,
   ...ldapSettingKeys,
 ])
 
@@ -256,6 +271,18 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     const templateTokens = Array.from(formatTemplate.matchAll(/\{([A-Za-z0-9]+)\}/g)).map((match) => match[1])
     const hasInvalidTemplate =
       !formatTemplate.includes("{running}") || templateTokens.some((token) => !assetTagFormatTokens.includes(token))
+    const labelTemplateKeys = assetLabelSettingKeys.filter((key) => key.endsWith("_template"))
+    const hasInvalidLabelTemplate = labelTemplateKeys.some((key) => {
+      const tokens = Array.from(getValue(key).matchAll(/\{([A-Za-z0-9]+)\}/g)).map((match) => match[1])
+      return tokens.some((token) => !assetLabelTemplateTokens.includes(token as (typeof assetLabelTemplateTokens)[number]))
+    })
+    const hasInvalidLabelSize = ["asset_label_12_width_mm", "asset_label_18_width_mm"].some((key) => {
+      const width = Number(getValue(key))
+      return !Number.isFinite(width) || width < 30 || width > 120
+    }) || ["asset_label_12_qr_size", "asset_label_18_qr_size"].some((key) => {
+      const qrSize = Number(getValue(key))
+      return !Number.isFinite(qrSize) || qrSize < 20 || qrSize > 90
+    })
 
     if (hasDuplicateCategory) {
       toast.error(labels.duplicateCategory)
@@ -267,6 +294,14 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     }
     if (hasInvalidTemplate) {
       toast.error(labels.invalidFormatTemplate)
+      return
+    }
+    if (hasInvalidLabelTemplate) {
+      toast.error(labels.invalidLabelTemplate)
+      return
+    }
+    if (hasInvalidLabelSize) {
+      toast.error(labels.invalidLabelSize)
       return
     }
 
@@ -433,6 +468,51 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
           </Field>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <SectionHeader title={labels.labelPrintTemplate} description={labels.labelPrintTemplateDescription} />
+        <div className="space-y-4 px-4 py-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            <Field label={labels.defaultTapeSize} htmlFor="asset-label-default-tape-size">
+              <select
+                id="asset-label-default-tape-size"
+                value={getValue("asset_label_default_tape_size")}
+                onChange={(event) => setValue("asset_label_default_tape_size", event.target.value)}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              >
+                <option value="12">12 mm</option>
+                <option value="18">18 mm</option>
+              </select>
+            </Field>
+          </div>
+          <div className="grid gap-4 xl:grid-cols-2">
+            <LabelTemplatePanel
+              tapeSize="12"
+              title={labels.tape12mmTemplate}
+              labels={labels}
+              getValue={getValue}
+              setValue={setValue}
+            />
+            <LabelTemplatePanel
+              tapeSize="18"
+              title={labels.tape18mmTemplate}
+              labels={labels}
+              getValue={getValue}
+              setValue={setValue}
+            />
+          </div>
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{labels.labelTemplateTokens}</div>
+            <div className="flex flex-wrap gap-2">
+              {assetLabelTemplateTokens.map((token) => (
+                <span key={token} className="inline-flex h-8 items-center rounded-md border border-border px-2 font-mono text-xs text-foreground">
+                  {`{${token}}`}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -934,6 +1014,78 @@ function Metric({ label, value }: { label: string; value: number }) {
     <div className="rounded-md border border-border px-3 py-2">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="mt-1 text-xl font-semibold text-foreground">{value}</div>
+    </div>
+  )
+}
+
+function LabelTemplatePanel({
+  tapeSize,
+  title,
+  labels,
+  getValue,
+  setValue,
+}: {
+  tapeSize: "12" | "18"
+  title: string
+  labels: SystemSettingsFormProps["labels"]
+  getValue: (key: string) => string
+  setValue: (key: string, value: string) => void
+}) {
+  const prefix = `asset_label_${tapeSize}`
+
+  return (
+    <div className="rounded-md border border-border bg-muted/20 p-3">
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <Field label={labels.labelWidthMm} htmlFor={`${prefix}-width-mm`}>
+          <input
+            id={`${prefix}-width-mm`}
+            type="number"
+            min={30}
+            max={120}
+            value={getValue(`${prefix}_width_mm`)}
+            onChange={(event) => setValue(`${prefix}_width_mm`, event.target.value)}
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+        </Field>
+        <Field label={labels.labelQrSize} htmlFor={`${prefix}-qr-size`}>
+          <input
+            id={`${prefix}-qr-size`}
+            type="number"
+            min={20}
+            max={90}
+            value={getValue(`${prefix}_qr_size`)}
+            onChange={(event) => setValue(`${prefix}_qr_size`, event.target.value)}
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+        </Field>
+      </div>
+      <div className="mt-3 grid gap-3">
+        <Field label={labels.labelPrimaryLine} htmlFor={`${prefix}-primary-template`}>
+          <input
+            id={`${prefix}-primary-template`}
+            value={getValue(`${prefix}_primary_template`)}
+            onChange={(event) => setValue(`${prefix}_primary_template`, event.target.value)}
+            className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+        </Field>
+        <Field label={labels.labelSecondaryLine} htmlFor={`${prefix}-secondary-template`}>
+          <input
+            id={`${prefix}-secondary-template`}
+            value={getValue(`${prefix}_secondary_template`)}
+            onChange={(event) => setValue(`${prefix}_secondary_template`, event.target.value)}
+            className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+        </Field>
+        <Field label={labels.labelTertiaryLine} htmlFor={`${prefix}-tertiary-template`}>
+          <input
+            id={`${prefix}-tertiary-template`}
+            value={getValue(`${prefix}_tertiary_template`)}
+            onChange={(event) => setValue(`${prefix}_tertiary_template`, event.target.value)}
+            className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+        </Field>
+      </div>
     </div>
   )
 }

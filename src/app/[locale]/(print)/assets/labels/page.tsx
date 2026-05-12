@@ -5,20 +5,25 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { assetLabelSettingKeys, parseAssetLabelTemplates } from "@/lib/asset-label-template"
 import { AssetLabelPrint } from "@/components/assets/asset-label-print"
 
-type AssetLabelPageProps = {
-  params: Promise<{ id: string; locale: string }>
+type AssetLabelsPageProps = {
+  params: Promise<{ locale: string }>
+  searchParams: Promise<{ id?: string | string[]; ids?: string }>
 }
 
-export default async function AssetLabelPage({ params }: AssetLabelPageProps) {
-  const { id, locale } = await params
+export default async function AssetLabelsPage({ params, searchParams }: AssetLabelsPageProps) {
+  const { locale } = await params
+  const rawSearchParams = await searchParams
   await requirePagePermission(locale, "asset", "view")
+
+  const ids = normalizeIds(rawSearchParams)
+  if (ids.length === 0) notFound()
 
   const t = await getTranslations("asset")
   const tCommon = await getTranslations("common")
 
-  const [asset, labelSettings] = await Promise.all([
-    prisma.asset.findFirst({
-      where: { id, isActive: true },
+  const [assets, labelSettings] = await Promise.all([
+    prisma.asset.findMany({
+      where: { id: { in: ids }, isActive: true },
       include: {
         category: { select: { code: true, name: true } },
         company: { select: { code: true, nameTh: true } },
@@ -32,15 +37,17 @@ export default async function AssetLabelPage({ params }: AssetLabelPageProps) {
     }),
   ])
 
-  if (!asset) notFound()
+  if (assets.length === 0) notFound()
 
-  const detailPath = `/${locale}/assets/${asset.id}`
-  const qrValue = `${process.env.AUTH_URL ?? ""}${detailPath}`
+  const assetMap = new Map(assets.map((asset) => [asset.id, asset]))
+  const orderedAssets = ids.map((id) => assetMap.get(id)).filter((asset) => asset != null)
 
   return (
     <AssetLabelPrint
-      assets={[
-        {
+      assets={orderedAssets.map((asset) => {
+        const detailPath = `/${locale}/assets/${asset.id}`
+
+        return {
           assetTag: asset.assetTag,
           name: asset.name,
           serialNumber: asset.serialNumber,
@@ -48,14 +55,14 @@ export default async function AssetLabelPage({ params }: AssetLabelPageProps) {
           company: asset.company.code,
           branch: asset.branch.code,
           location: `${asset.currentLocation.code} - ${asset.currentLocation.name}`,
-          qrValue,
-        },
-      ]}
-      backHref={detailPath}
+          qrValue: `${process.env.AUTH_URL ?? ""}${detailPath}`,
+        }
+      })}
+      backHref={`/${locale}/assets`}
       labelTemplates={parseAssetLabelTemplates(Object.fromEntries(labelSettings.map((setting) => [setting.key, setting.value])))}
       translations={{
-        title: t("printLabelTitle"),
-        preview: t("printLabelPreview"),
+        title: t("printLabelsTitle"),
+        preview: t("printLabelsPreview"),
         print: t("printLabel"),
         back: tCommon("back"),
         tapeSize: t("labelTapeSize"),
@@ -70,5 +77,22 @@ export default async function AssetLabelPage({ params }: AssetLabelPageProps) {
         currentLocation: t("currentLocation"),
       }}
     />
+  )
+}
+
+function normalizeIds(searchParams: { id?: string | string[]; ids?: string }) {
+  const repeatedIds = Array.isArray(searchParams.id)
+    ? searchParams.id
+    : searchParams.id
+      ? [searchParams.id]
+      : []
+  const commaIds = searchParams.ids?.split(",") ?? []
+
+  return Array.from(
+    new Set(
+      [...repeatedIds, ...commaIds]
+        .map((id) => id.trim())
+        .filter(Boolean)
+    )
   )
 }
