@@ -6,7 +6,6 @@ import { signOut } from "next-auth/react"
 import {
   Menu,
   Bell,
-  Search,
   Globe,
   LogOut,
   ChevronDown,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
+import { GlobalSearch } from "@/components/layout/global-search"
 
 export function Topbar({
   onToggleSidebar,
@@ -22,7 +22,6 @@ export function Topbar({
   onToggleSidebar: () => void
   onMobileMenuToggle: () => void
 }) {
-  const t = useTranslations("common")
   const tAuth = useTranslations("auth")
   const locale = useLocale()
   const router = useRouter()
@@ -58,18 +57,7 @@ export function Topbar({
           <PanelLeftClose size={20} />
         </button>
 
-        {/* Global Search */}
-        <div className="relative hidden xl:block">
-          <Search
-            size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <input
-            type="text"
-            placeholder={`${t("search")} Asset Tag, Serial, Employee...`}
-            className="h-9 w-[min(24rem,32vw)] rounded-md border border-border bg-background pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-          />
-        </div>
+        <GlobalSearch />
       </div>
 
       {/* Right side */}

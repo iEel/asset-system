@@ -34,6 +34,16 @@
     "yes": "ใช่",
     "no": "ไม่"
   },
+  "globalSearch": {
+    "label": "ค้นหาทรัพย์สินทั่วระบบ",
+    "placeholder": "ค้นหา Asset Tag, Serial, ผู้ถือครอง, Location...",
+    "clear": "ล้างคำค้น",
+    "minChars": "พิมพ์อย่างน้อย 2 ตัวอักษรเพื่อค้นหา",
+    "loading": "กำลังค้นหา...",
+    "noResults": "ไม่พบทรัพย์สินที่ตรงกับคำค้น",
+    "serial": "Serial",
+    "keyboardHint": "ใช้ ↑ ↓ เพื่อเลือก และ Enter เพื่อเปิดรายละเอียด"
+  },
   "nav": {
     "dashboard": "แดชบอร์ด",
     "assetManagement": "จัดการทรัพย์สิน",

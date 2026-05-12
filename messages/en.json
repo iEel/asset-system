@@ -34,6 +34,16 @@
     "yes": "Yes",
     "no": "No"
   },
+  "globalSearch": {
+    "label": "Search assets globally",
+    "placeholder": "Search Asset Tag, Serial, custodian, location...",
+    "clear": "Clear search",
+    "minChars": "Type at least 2 characters to search",
+    "loading": "Searching...",
+    "noResults": "No matching assets found",
+    "serial": "Serial",
+    "keyboardHint": "Use ↑ ↓ to select and Enter to open detail"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "assetManagement": "Asset Management",
