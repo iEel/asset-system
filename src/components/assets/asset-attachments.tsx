@@ -160,13 +160,13 @@ export function AssetAttachments({
               <div key={item.label} className="overflow-hidden rounded-md border border-border bg-surface">
                 {attachment ? (
                   <>
-                    <div className="relative aspect-video w-full bg-muted">
+                    <div className="relative aspect-video w-full bg-muted/40">
                       <Image
                         src={`/api/attachments/${attachment.id}?inline=1`}
                         alt={attachment.originalName}
                         fill
                         unoptimized
-                        className="object-cover"
+                        className="object-contain p-2"
                       />
                     </div>
                     <div className="p-3">
@@ -319,13 +319,13 @@ export function AssetAttachments({
 function PhotoPreview({ title, attachment }: { title: string; attachment: Attachment }) {
   return (
     <div className="overflow-hidden rounded-md border border-border bg-background">
-      <div className="relative aspect-video w-full">
+      <div className="relative aspect-video w-full bg-muted/40">
         <Image
           src={`/api/attachments/${attachment.id}?inline=1`}
           alt={attachment.originalName}
           fill
           unoptimized
-          className="object-cover"
+          className="object-contain p-2"
         />
       </div>
       <div className="p-3">
