@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { CheckCircle2, Download, FileText, ImageIcon, Loader2, Trash2, Upload, X } from "lucide-react"
+import { CheckCircle2, Download, FileText, ImageIcon, Loader2, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { formatFileSize } from "@/lib/uploads"
 import { FileDropzone } from "@/components/ui/file-dropzone"
@@ -41,7 +41,6 @@ export function AssetAttachments({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [photoLabel, setPhotoLabel] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [checklistFiles, setChecklistFiles] = useState<Record<string, File | null>>({})
   const [previewPhoto, setPreviewPhoto] = useState<PhotoPreviewState | null>(null)
   const imageAttachments = attachments.filter(isImage)
   const primaryModelPhoto = modelPhotos.find(isImage)
@@ -70,38 +69,29 @@ export function AssetAttachments({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [previewPhoto])
 
-  async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!selectedFile) {
-      toast.error(t("fileRequired"))
-      return
-    }
-
+  async function handleAutoUpload(file: File | null, label: string) {
+    if (!file) return
+    setSelectedFile(file)
     setUploading(true)
     try {
-      await uploadAttachment(selectedFile, photoLabel)
+      await uploadAttachment(file, label)
       setSelectedFile(null)
-      setPhotoLabel("")
+      if (label === photoLabel) setPhotoLabel("")
       toast.success(t("uploadSuccess"))
       router.refresh()
     } catch (error) {
+      setSelectedFile(null)
       toast.error(error instanceof Error ? error.message : tCommon("error"))
     } finally {
       setUploading(false)
     }
   }
 
-  async function handleChecklistUpload(label: string) {
-    const file = checklistFiles[label]
-    if (!file) {
-      toast.error(t("fileRequired"))
-      return
-    }
-
+  async function handleChecklistUpload(label: string, file: File | null) {
+    if (!file) return
     setUploadingPhotoLabel(label)
     try {
       await uploadAttachment(file, label)
-      setChecklistFiles((current) => ({ ...current, [label]: null }))
       toast.success(t("uploadSuccess"))
       router.refresh()
     } catch (error) {
@@ -234,24 +224,15 @@ export function AssetAttachments({
                       <span className="text-xs text-muted-foreground">{t("photoChecklistPending")}</span>
                     </div>
                     <FileDropzone
-                      file={checklistFiles[item.label] ?? null}
-                      onFileChange={(file) => setChecklistFiles((current) => ({ ...current, [item.label]: file }))}
+                      file={null}
+                      onFileChange={(file) => handleChecklistUpload(item.label, file)}
                       disabled={uploadingPhotoLabel === item.label}
                       accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
                       capture="environment"
                       title={t("dropAssetPhotoTitle")}
-                      hint={t("dropFileSelected")}
+                      hint={uploadingPhotoLabel === item.label ? t("uploading") : t("dropFileSelected")}
                       browseLabel={t("dropAssetPhotoHint")}
                     />
-                    <button
-                      type="button"
-                      onClick={() => handleChecklistUpload(item.label)}
-                      disabled={uploadingPhotoLabel === item.label}
-                      className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
-                    >
-                      {uploadingPhotoLabel === item.label ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                      {t("uploadChecklistPhoto")}
-                    </button>
                   </div>
                 )}
               </div>
@@ -261,7 +242,7 @@ export function AssetAttachments({
         </div>
       )}
 
-      <form onSubmit={handleUpload} className="mb-4 rounded-md border border-border bg-background p-3">
+      <div className="mb-4 rounded-md border border-border bg-background p-3">
         {photoChecklist.length > 0 && (
           <select
             value={photoLabel}
@@ -276,21 +257,13 @@ export function AssetAttachments({
         )}
         <FileDropzone
           file={selectedFile}
-          onFileChange={setSelectedFile}
+          onFileChange={(file) => handleAutoUpload(file, photoLabel)}
           disabled={uploading}
           title={t("dropFileTitle")}
-          hint={t("dropFileSelected")}
+          hint={uploading ? t("uploading") : t("dropFileSelected")}
           browseLabel={t("dropFileHint")}
         />
-        <button
-          type="submit"
-          disabled={uploading}
-          className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
-        >
-          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          {t("uploadAssetPhoto")}
-        </button>
-      </form>
+      </div>
 
       <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
         <FileText className="h-4 w-4 text-primary" />

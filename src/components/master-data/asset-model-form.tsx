@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { ArrowLeft, ImageIcon, Loader2, Plus, Save, Sparkles, Trash2, Upload } from "lucide-react"
+import { ArrowLeft, ImageIcon, Loader2, Plus, Save, Sparkles, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { formatFileSize } from "@/lib/uploads"
@@ -151,17 +151,14 @@ export function AssetModelForm({
     }
   }
 
-  async function handlePhotoUpload(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  async function handlePhotoUpload(file: File | null) {
     if (!model?.id) return
 
-    if (!selectedPhoto) {
-      toast.error(t("fileRequired"))
-      return
-    }
+    if (!file) return
 
     const formData = new FormData()
-    formData.append("file", selectedPhoto)
+    formData.append("file", file)
+    setSelectedPhoto(file)
     setUploading(true)
 
     try {
@@ -179,6 +176,7 @@ export function AssetModelForm({
       toast.success(t("photoUploadSuccess"))
       router.refresh()
     } catch (error) {
+      setSelectedPhoto(null)
       toast.error(error instanceof Error ? error.message : tCommon("error"))
     } finally {
       setUploading(false)
@@ -374,25 +372,17 @@ export function AssetModelForm({
           <p className="mb-4 text-sm text-muted-foreground">{t("modelPhotoHelp")}</p>
 
           {model?.id ? (
-            <form onSubmit={handlePhotoUpload} className="mb-4 rounded-md border border-border bg-background p-3">
+            <div className="mb-4 rounded-md border border-border bg-background p-3">
               <FileDropzone
                 file={selectedPhoto}
-                onFileChange={setSelectedPhoto}
+                onFileChange={handlePhotoUpload}
                 disabled={uploading}
                 accept={MODEL_PHOTO_ACCEPT}
                 title={t("dropModelPhotoTitle")}
-                hint={t("dropModelPhotoSelected")}
+                hint={uploading ? t("uploading") : t("dropModelPhotoSelected")}
                 browseLabel={t("dropModelPhotoHint")}
               />
-              <button
-                type="submit"
-                disabled={uploading}
-                className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
-              >
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                {t("uploadModelPhoto")}
-              </button>
-            </form>
+            </div>
           ) : (
             <div className="mb-4 rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
               {t("saveModelBeforePhoto")}

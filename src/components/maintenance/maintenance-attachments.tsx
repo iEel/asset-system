@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Download, Eye, FileText, Image as ImageIcon, Loader2, Trash2, Upload, X } from "lucide-react"
+import { Download, Eye, FileText, Image as ImageIcon, Loader2, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { formatFileSize } from "@/lib/uploads"
 import { FileDropzone } from "@/components/ui/file-dropzone"
@@ -30,15 +30,12 @@ export function MaintenanceAttachments({
   const [preview, setPreview] = useState<Attachment | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
-  async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!selectedFile) {
-      toast.error(t("fileRequired"))
-      return
-    }
+  async function handleUpload(file: File | null) {
+    if (!file) return
 
     const formData = new FormData()
-    formData.append("file", selectedFile)
+    formData.append("file", file)
+    setSelectedFile(file)
     setUploading(true)
 
     try {
@@ -53,6 +50,7 @@ export function MaintenanceAttachments({
       toast.success(t("uploadSuccess"))
       router.refresh()
     } catch (error) {
+      setSelectedFile(null)
       toast.error(error instanceof Error ? error.message : tCommon("error"))
     } finally {
       setUploading(false)
@@ -83,24 +81,16 @@ export function MaintenanceAttachments({
         {t("attachments")}
       </h2>
 
-      <form onSubmit={handleUpload} className="mb-4 rounded-md border border-border bg-background p-3">
+      <div className="mb-4 rounded-md border border-border bg-background p-3">
         <FileDropzone
           file={selectedFile}
-          onFileChange={setSelectedFile}
+          onFileChange={handleUpload}
           disabled={uploading}
           title={t("dropFileTitle")}
-          hint={t("dropFileSelected")}
+          hint={uploading ? t("uploading") : t("dropFileSelected")}
           browseLabel={t("dropFileHint")}
         />
-        <button
-          type="submit"
-          disabled={uploading}
-          className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
-        >
-          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          {t("uploadAttachment")}
-        </button>
-      </form>
+      </div>
 
       {attachments.length === 0 ? (
         <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
