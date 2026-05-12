@@ -47,10 +47,11 @@ export async function POST(request: NextRequest, context: AssetAttachmentRouteCo
     const documentLabel = [documentType && sanitizeFileName(documentType), documentNumber && sanitizeFileName(documentNumber)]
       .filter(Boolean)
       .join(" ")
+    const safePhotoLabel = sanitizeAttachmentLabel(photoLabel)
     const labeledOriginalName = documentLabel
       ? `${documentLabel} - ${safeOriginalName}`
       : photoLabel && file.type.startsWith("image/")
-        ? `${sanitizeFileName(photoLabel)} - ${safeOriginalName}`
+        ? `${safePhotoLabel} - ${safeOriginalName}`
         : safeOriginalName
     const extension = path.extname(safeOriginalName)
     const fileName = `${randomUUID()}${extension}`
@@ -94,4 +95,8 @@ export async function POST(request: NextRequest, context: AssetAttachmentRouteCo
   } catch (error) {
     return errorResponse(error, 400)
   }
+}
+
+function sanitizeAttachmentLabel(label: string) {
+  return label.replace(/[\\/:*?"<>|\r\n]+/g, " ").replace(/\s+/g, " ").trim()
 }

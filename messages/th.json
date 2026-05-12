@@ -173,6 +173,8 @@
     "photoChecklist": "Checklist รูป",
     "photoChecklistDone": "ครบแล้ว",
     "photoChecklistPending": "ยังไม่มีรูป",
+    "uploadChecklistPhoto": "อัปโหลดรูปหัวข้อนี้",
+    "otherAttachments": "เอกสารแนบอื่น",
     "selectPhotoType": "เลือกประเภท/มุมของรูป",
     "initialAssetPhotos": "รูปแรกเข้าทรัพย์สิน",
     "initialAssetPhotosHelp": "ถ่ายหรือแนบรูปตาม checklist ตอนรับเข้า เช่น Asset Tag, Serial Number หรือสภาพเครื่อง รูปจะถูกบันทึกหลังสร้างทรัพย์สินสำเร็จ",

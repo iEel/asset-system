@@ -432,7 +432,7 @@ export function AssetForm({
         }
 
         const photosToUpload = selectedAssetPhotoFile
-          ? [...newAssetPhotos, { id: createClientId(), label: photoLabel, file: selectedAssetPhotoFile }]
+          ? [...newAssetPhotos, { id: createClientId(), label: effectivePhotoLabel, file: selectedAssetPhotoFile }]
           : newAssetPhotos
         if (photosToUpload.length > 0) {
           await uploadAssetPhotos(result.id, photosToUpload)

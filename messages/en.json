@@ -173,6 +173,8 @@
     "photoChecklist": "Photo checklist",
     "photoChecklistDone": "Done",
     "photoChecklistPending": "Missing",
+    "uploadChecklistPhoto": "Upload this photo",
+    "otherAttachments": "Other attachments",
     "selectPhotoType": "Select photo type / angle",
     "initialAssetPhotos": "Receiving Photos",
     "initialAssetPhotosHelp": "Capture or attach checklist photos during receiving, such as asset tag, serial number, or condition. Photos are saved after the asset is created.",
