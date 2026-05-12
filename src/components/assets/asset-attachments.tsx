@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { CheckCircle2, Download, FileText, ImageIcon, Loader2, Trash2, Upload } from "lucide-react"
+import { CheckCircle2, Download, FileText, ImageIcon, Loader2, Trash2, Upload, X } from "lucide-react"
 import { toast } from "sonner"
 import { formatFileSize } from "@/lib/uploads"
 import { FileDropzone } from "@/components/ui/file-dropzone"
@@ -15,6 +15,11 @@ type Attachment = {
   fileType: string
   fileSize: number
   uploadedAt: Date | string
+}
+
+type PhotoPreviewState = {
+  title: string
+  attachment: Attachment
 }
 
 export function AssetAttachments({
@@ -37,6 +42,7 @@ export function AssetAttachments({
   const [photoLabel, setPhotoLabel] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [checklistFiles, setChecklistFiles] = useState<Record<string, File | null>>({})
+  const [previewPhoto, setPreviewPhoto] = useState<PhotoPreviewState | null>(null)
   const imageAttachments = attachments.filter(isImage)
   const primaryModelPhoto = modelPhotos.find(isImage)
   const legacyLabelCounts = photoChecklist.reduce<Record<string, number>>((counts, item) => {
@@ -50,6 +56,19 @@ export function AssetAttachments({
   }))
   const checklistAttachmentIds = new Set(checklistItems.map((item) => item.attachment?.id).filter(Boolean))
   const otherAttachments = attachments.filter((attachment) => !checklistAttachmentIds.has(attachment.id))
+
+  useEffect(() => {
+    if (!previewPhoto) return
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setPreviewPhoto(null)
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [previewPhoto])
 
   async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -140,7 +159,7 @@ export function AssetAttachments({
 
       <div className="mb-4 grid grid-cols-1 gap-3">
         {primaryModelPhoto && (
-          <PhotoPreview title={t("modelPhoto")} attachment={primaryModelPhoto} />
+          <PhotoPreview title={t("modelPhoto")} attachment={primaryModelPhoto} onPreview={setPreviewPhoto} />
         )}
       </div>
 
@@ -160,7 +179,11 @@ export function AssetAttachments({
               <div key={item.label} className="overflow-hidden rounded-md border border-border bg-surface">
                 {attachment ? (
                   <>
-                    <div className="relative aspect-video w-full bg-muted/40">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewPhoto({ title: item.label, attachment })}
+                      className="relative block aspect-video w-full bg-muted/40 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
                       <Image
                         src={`/api/attachments/${attachment.id}?inline=1`}
                         alt={attachment.originalName}
@@ -168,7 +191,7 @@ export function AssetAttachments({
                         unoptimized
                         className="object-contain p-2"
                       />
-                    </div>
+                    </button>
                     <div className="p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -312,14 +335,35 @@ export function AssetAttachments({
           ))}
         </div>
       )}
+
+      {previewPhoto ? (
+        <PhotoLightbox
+          preview={previewPhoto}
+          closeLabel={tCommon("close")}
+          downloadLabel={t("download")}
+          onClose={() => setPreviewPhoto(null)}
+        />
+      ) : null}
     </section>
   )
 }
 
-function PhotoPreview({ title, attachment }: { title: string; attachment: Attachment }) {
+function PhotoPreview({
+  title,
+  attachment,
+  onPreview,
+}: {
+  title: string
+  attachment: Attachment
+  onPreview: (preview: PhotoPreviewState) => void
+}) {
   return (
     <div className="overflow-hidden rounded-md border border-border bg-background">
-      <div className="relative aspect-video w-full bg-muted/40">
+      <button
+        type="button"
+        onClick={() => onPreview({ title, attachment })}
+        className="relative block aspect-video w-full bg-muted/40 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-primary"
+      >
         <Image
           src={`/api/attachments/${attachment.id}?inline=1`}
           alt={attachment.originalName}
@@ -327,10 +371,71 @@ function PhotoPreview({ title, attachment }: { title: string; attachment: Attach
           unoptimized
           className="object-contain p-2"
         />
-      </div>
+      </button>
       <div className="p-3">
         <div className="text-sm font-medium text-foreground">{title}</div>
         <div className="mt-1 text-xs text-muted-foreground">{attachment.originalName}</div>
+      </div>
+    </div>
+  )
+}
+
+function PhotoLightbox({
+  preview,
+  closeLabel,
+  downloadLabel,
+  onClose,
+}: {
+  preview: PhotoPreviewState
+  closeLabel: string
+  downloadLabel: string
+  onClose: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={preview.title}
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-surface shadow-xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-foreground">{preview.title}</div>
+            <div className="mt-1 truncate text-xs text-muted-foreground">{preview.attachment.originalName}</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label={closeLabel}
+            title={closeLabel}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="relative min-h-[45vh] flex-1 bg-black">
+          <Image
+            src={`/api/attachments/${preview.attachment.id}?inline=1`}
+            alt={preview.attachment.originalName}
+            fill
+            unoptimized
+            className="object-contain"
+          />
+        </div>
+        <div className="flex justify-end border-t border-border px-4 py-3">
+          <a
+            href={`/api/attachments/${preview.attachment.id}`}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            <Download className="h-4 w-4" />
+            {downloadLabel}
+          </a>
+        </div>
       </div>
     </div>
   )
