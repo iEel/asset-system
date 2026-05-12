@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { ColumnHeader, MasterDataHeader, MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { formatDate } from "@/lib/utils"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type AuditRoundsPageProps = {
   params: Promise<{ locale: string }>
@@ -82,7 +83,11 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                 </tr>
               ) : (
                 rounds.map((round) => (
-                  <tr key={round.id} className="hover:bg-accent/50">
+                  <ClickableTableRow
+                    key={round.id}
+                    href={`/${locale}/audit/rounds/${round.id}`}
+                    label={`${tCommon("view")}: ${round.auditNo}`}
+                  >
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{round.auditNo}</td>
                     <td className="min-w-56 px-4 py-3 text-foreground">{round.name}</td>
                     <td className="min-w-64 px-4 py-3 text-muted-foreground">{formatScope(round)}</td>
@@ -102,7 +107,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                         <Eye className="h-4 w-4" />
                       </Link>
                     </td>
-                  </tr>
+                  </ClickableTableRow>
                 ))
               )}
             </tbody>

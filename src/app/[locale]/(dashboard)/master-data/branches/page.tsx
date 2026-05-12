@@ -10,6 +10,7 @@ import {
   MasterDataHeader,
   MasterDataSearch,
 } from "@/components/master-data/master-data-layout"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type BranchesPageProps = {
   params: Promise<{ locale: string }>
@@ -89,7 +90,11 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
                 </tr>
               ) : (
                 branches.map((branch) => (
-                  <tr key={branch.id} className="hover:bg-accent/50">
+                  <ClickableTableRow
+                    key={branch.id}
+                    href={`/${locale}/master-data/branches/${branch.id}/edit`}
+                    label={`${tCommon("edit")}: ${branch.code}`}
+                  >
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{branch.code}</td>
                     <td className="min-w-48 px-4 py-3 text-foreground">{branch.name}</td>
                     <td className="min-w-56 px-4 py-3 text-muted-foreground">
@@ -111,7 +116,7 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
                         <BranchDeleteButton id={branch.id} />
                       </div>
                     </td>
-                  </tr>
+                  </ClickableTableRow>
                 ))
               )}
             </tbody>

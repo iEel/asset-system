@@ -12,6 +12,7 @@ import { AssetComponentsPanel } from "@/components/assets/asset-components-panel
 import { AssetPurchaseDocuments } from "@/components/assets/asset-purchase-documents"
 import { parseModelSpecs } from "@/lib/model-specs"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -294,7 +295,11 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
                   </thead>
                   <tbody className="divide-y divide-border">
                     {asset.maintenanceTickets.map((ticket) => (
-                      <tr key={ticket.id} className="hover:bg-accent/50">
+                      <ClickableTableRow
+                        key={ticket.id}
+                        href={`/${locale}/maintenance/${ticket.id}`}
+                        label={`${tCommon("view")}: ${ticket.repairNo}`}
+                      >
                         <td className="whitespace-nowrap px-4 py-3">
                           <Link href={`/${locale}/maintenance/${ticket.id}`} className="font-medium text-primary hover:underline">
                             {ticket.repairNo}
@@ -308,7 +313,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
                           {ticket.repairStatus === "open" ? tMaintenance("statuses.open") : ticket.repairStatus === "closed" ? tMaintenance("statuses.closed") : ticket.repairStatus}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(ticket.reportedDate)}</td>
-                      </tr>
+                      </ClickableTableRow>
                     ))}
                   </tbody>
                 </table>

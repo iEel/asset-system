@@ -7,6 +7,7 @@ import { ColumnHeader, MasterDataHeader, MasterDataSearch } from "@/components/m
 import { AuditFindingReviewActions } from "@/components/audit/audit-finding-review-actions"
 import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
 import { formatDateTime } from "@/lib/utils"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type AuditFindingsPageProps = {
   params: Promise<{ locale: string }>
@@ -123,7 +124,11 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                 </tr>
               ) : (
                 findings.map((finding) => (
-                  <tr key={finding.id} className="hover:bg-accent/50">
+                  <ClickableTableRow
+                    key={finding.id}
+                    href={finding.asset ? `/${locale}/assets/${finding.asset.id}` : `/${locale}/audit/rounds/${finding.auditRound.id}`}
+                    label={`${tCommon("view")}: ${finding.asset?.assetTag ?? finding.auditRound.auditNo}`}
+                  >
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(finding.reportedAt)}</td>
                     <td className="min-w-56 px-4 py-3 text-muted-foreground">
                       <Link href={`/${locale}/audit/rounds/${finding.auditRound.id}`} className="text-primary hover:underline">
@@ -145,7 +150,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     <td className="whitespace-nowrap px-4 py-3 text-right">
                       {finding.reviewStatus === "pending" ? <AuditFindingReviewActions findingId={finding.id} /> : "-"}
                     </td>
-                  </tr>
+                  </ClickableTableRow>
                 ))
               )}
             </tbody>

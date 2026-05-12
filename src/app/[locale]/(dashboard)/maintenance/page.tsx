@@ -10,6 +10,7 @@ import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
 import { MaintenanceTicketForm } from "@/components/maintenance/maintenance-ticket-form"
 import { MaintenanceTicketCloseButton } from "@/components/maintenance/maintenance-ticket-close-button"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type MaintenancePageProps = {
   params: Promise<{ locale: string }>
@@ -180,7 +181,11 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                 </tr>
               ) : (
                 tickets.map((ticket) => (
-                  <tr key={ticket.id} className="hover:bg-accent/50">
+                  <ClickableTableRow
+                    key={ticket.id}
+                    href={`/${locale}/maintenance/${ticket.id}`}
+                    label={`${tCommon("view")}: ${ticket.repairNo}`}
+                  >
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{ticket.repairNo}</td>
                     <td className="min-w-56 px-4 py-3">
                       <div className="font-medium text-foreground">{ticket.asset.assetTag}</div>
@@ -244,7 +249,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                         )}
                       </div>
                     </td>
-                  </tr>
+                  </ClickableTableRow>
                 ))
               )}
             </tbody>

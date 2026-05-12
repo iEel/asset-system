@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type RolesPageProps = {
   params: Promise<{ locale: string }>
@@ -98,7 +99,11 @@ export default async function RolesPage({ params }: RolesPageProps) {
             </thead>
             <tbody className="divide-y divide-border">
               {roles.map((role) => (
-                <tr key={role.id} className="hover:bg-accent/50">
+                <ClickableTableRow
+                  key={role.id}
+                  href={`/${locale}/admin/roles/${role.id}/edit`}
+                  label={`${tCommon("edit")}: ${role.displayNameTh || role.displayName}`}
+                >
                   <td className="min-w-64 px-4 py-3">
                     <div className="font-medium text-foreground">{role.displayNameTh || role.displayName}</div>
                     <div className="mt-1 font-mono text-xs text-muted-foreground">{role.name}</div>
@@ -135,7 +140,7 @@ export default async function RolesPage({ params }: RolesPageProps) {
                       {tCommon("edit")}
                     </Link>
                   </td>
-                </tr>
+                </ClickableTableRow>
               ))}
             </tbody>
           </table>

@@ -14,6 +14,7 @@ import {
   SortableColumnHeader,
 } from "@/components/master-data/master-data-layout"
 import { parseMasterDataListParams } from "@/lib/master-data-query"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type SuppliersPageProps = {
   params: Promise<{ locale: string }>
@@ -110,7 +111,11 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
                 </tr>
               ) : (
                 suppliers.map((supplier) => (
-                  <tr key={supplier.id} className="hover:bg-accent/50">
+                  <ClickableTableRow
+                    key={supplier.id}
+                    href={`/${locale}/master-data/suppliers/${supplier.id}/edit`}
+                    label={`${tCommon("edit")}: ${supplier.code}`}
+                  >
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{supplier.code}</td>
                     <td className="min-w-56 px-4 py-3 text-foreground">{supplier.name}</td>
                     <td className="min-w-44 px-4 py-3 text-muted-foreground">
@@ -134,7 +139,7 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
                         <SupplierDeleteButton id={supplier.id} />
                       </div>
                     </td>
-                  </tr>
+                  </ClickableTableRow>
                 ))
               )}
             </tbody>

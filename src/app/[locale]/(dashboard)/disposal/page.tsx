@@ -10,6 +10,7 @@ import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
 import { DisposalDecisionButton } from "@/components/disposal/disposal-decision-button"
 import { DisposalRequestForm } from "@/components/disposal/disposal-request-form"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type DisposalPageProps = {
   params: Promise<{ locale: string }>
@@ -168,7 +169,11 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                 </tr>
               ) : (
                 requests.map((request) => (
-                  <tr key={request.id} className="hover:bg-accent/50">
+                  <ClickableTableRow
+                    key={request.id}
+                    href={`/${locale}/disposal/${request.id}`}
+                    label={`${tCommon("view")}: ${request.disposalNo}`}
+                  >
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">
                       <Link href={`/${locale}/disposal/${request.id}`} className="hover:text-primary">
                         {request.disposalNo}
@@ -217,7 +222,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                         )}
                       </td>
                     ) : null}
-                  </tr>
+                  </ClickableTableRow>
                 ))
               )}
             </tbody>

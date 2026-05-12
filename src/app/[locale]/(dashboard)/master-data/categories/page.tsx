@@ -10,6 +10,7 @@ import {
   MasterDataHeader,
   MasterDataSearch,
 } from "@/components/master-data/master-data-layout"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type CategoriesPageProps = {
   params: Promise<{ locale: string }>
@@ -89,7 +90,11 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
                 </tr>
               ) : (
                 categories.map((category) => (
-                  <tr key={category.id} className="hover:bg-accent/50">
+                  <ClickableTableRow
+                    key={category.id}
+                    href={`/${locale}/master-data/categories/${category.id}/edit`}
+                    label={`${tCommon("edit")}: ${category.code}`}
+                  >
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{category.code}</td>
                     <td className="min-w-48 px-4 py-3 text-foreground">{category.name}</td>
                     <td className="min-w-64 px-4 py-3 text-muted-foreground">
@@ -116,7 +121,7 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
                         <CategoryDeleteButton id={category.id} />
                       </div>
                     </td>
-                  </tr>
+                  </ClickableTableRow>
                 ))
               )}
             </tbody>

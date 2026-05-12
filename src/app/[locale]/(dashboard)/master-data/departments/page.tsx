@@ -10,6 +10,7 @@ import {
   MasterDataHeader,
   MasterDataSearch,
 } from "@/components/master-data/master-data-layout"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type DepartmentsPageProps = {
   params: Promise<{ locale: string }>
@@ -87,7 +88,11 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
                 </tr>
               ) : (
                 departments.map((department) => (
-                  <tr key={department.id} className="hover:bg-accent/50">
+                  <ClickableTableRow
+                    key={department.id}
+                    href={`/${locale}/master-data/departments/${department.id}/edit`}
+                    label={`${tCommon("edit")}: ${department.code}`}
+                  >
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{department.code}</td>
                     <td className="min-w-48 px-4 py-3 text-foreground">{department.name}</td>
                     <td className="min-w-56 px-4 py-3 text-muted-foreground">
@@ -110,7 +115,7 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
                         <DepartmentDeleteButton id={department.id} />
                       </div>
                     </td>
-                  </tr>
+                  </ClickableTableRow>
                 ))
               )}
             </tbody>

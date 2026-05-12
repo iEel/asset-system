@@ -3,12 +3,12 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
 import { Columns3, Download, Edit, Eye, FileDown, FileSpreadsheet, ImageIcon, Printer } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
 import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
 import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 export type AssetRegisterRow = {
   id: string
@@ -107,7 +107,6 @@ export function AssetRegisterTable({
   toRow,
   labels,
 }: AssetRegisterTableProps) {
-  const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set(columnOrder))
   const selectedAssets = useMemo(
@@ -303,20 +302,12 @@ export function AssetRegisterTable({
               </tr>
             ) : (
               assets.map((asset) => (
-                <tr
+                <ClickableTableRow
                   key={asset.id}
-                  tabIndex={0}
-                  onClick={() => router.push(`/${locale}/assets/${asset.id}`)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault()
-                      router.push(`/${locale}/assets/${asset.id}`)
-                    }
-                  }}
-                  aria-label={`${labels.detail}: ${asset.assetTag}`}
-                  className="cursor-pointer hover:bg-accent/50 focus:bg-accent/50 focus:outline-none"
+                  href={`/${locale}/assets/${asset.id}`}
+                  label={`${labels.detail}: ${asset.assetTag}`}
                 >
-                  <td className="whitespace-nowrap px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                  <td className="whitespace-nowrap px-4 py-3">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(asset.id)}
@@ -375,7 +366,7 @@ export function AssetRegisterTable({
                   {visibleColumns.has("purchasePrice") && (
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.purchasePrice)}</td>
                   )}
-                  <td className="whitespace-nowrap px-4 py-3 text-right" onClick={(event) => event.stopPropagation()}>
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-1">
                       <Link
                         href={`/${locale}/assets/${asset.id}`}
@@ -394,7 +385,7 @@ export function AssetRegisterTable({
                       <AssetDeleteButton id={asset.id} />
                     </div>
                   </td>
-                </tr>
+                </ClickableTableRow>
               ))
             )}
           </tbody>

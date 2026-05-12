@@ -14,6 +14,7 @@ import {
   SortableColumnHeader,
 } from "@/components/master-data/master-data-layout"
 import { parseMasterDataListParams } from "@/lib/master-data-query"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type LocationsPageProps = {
   params: Promise<{ locale: string }>
@@ -124,7 +125,11 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
                 </tr>
               ) : (
                 locations.map((location) => (
-                  <tr key={location.id} className="hover:bg-accent/50">
+                  <ClickableTableRow
+                    key={location.id}
+                    href={`/${locale}/master-data/locations/${location.id}/edit`}
+                    label={`${tCommon("edit")}: ${location.code}`}
+                  >
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{location.code}</td>
                     <td className="min-w-48 px-4 py-3 text-foreground">{location.name}</td>
                     <td className="min-w-56 px-4 py-3 text-muted-foreground">
@@ -149,7 +154,7 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
                         <LocationDeleteButton id={location.id} />
                       </div>
                     </td>
-                  </tr>
+                  </ClickableTableRow>
                 ))
               )}
             </tbody>

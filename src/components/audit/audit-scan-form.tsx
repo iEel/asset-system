@@ -114,6 +114,7 @@ export function AuditScanForm({
 
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
+    if (field === "assetId") setApplyCorrections(false)
   }
 
   useEffect(() => {
@@ -123,10 +124,6 @@ export function AuditScanForm({
       void scanner.stop().then(() => scanner.clear()).catch(() => scanner.clear())
     }
   }, [])
-
-  useEffect(() => {
-    if (correctionMismatchCount === 0) setApplyCorrections(false)
-  }, [correctionMismatchCount])
 
   async function startScanner() {
     if (!isCameraAccessSupported()) {
@@ -202,6 +199,7 @@ export function AuditScanForm({
     }
 
     setValues((current) => ({ ...current, assetId: matchedItem.assetId }))
+    setApplyCorrections(false)
     setScanText(rawValue)
     setScanSource(source)
     toast.success(t("assetSelected"))

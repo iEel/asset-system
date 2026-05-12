@@ -14,6 +14,7 @@ import {
   SortableColumnHeader,
 } from "@/components/master-data/master-data-layout"
 import { parseMasterDataListParams } from "@/lib/master-data-query"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type EmployeesPageProps = {
   params: Promise<{ locale: string }>
@@ -112,7 +113,11 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                 </tr>
               ) : (
                 employees.map((employee) => (
-                  <tr key={employee.id} className="hover:bg-accent/50">
+                  <ClickableTableRow
+                    key={employee.id}
+                    href={`/${locale}/master-data/employees/${employee.id}/edit`}
+                    label={`${tCommon("edit")}: ${employee.code}`}
+                  >
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{employee.code}</td>
                     <td className="min-w-56 px-4 py-3 text-foreground">
                       <div className="font-medium">{employee.fullNameTh}</div>
@@ -145,7 +150,7 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                         <EmployeeDeleteButton id={employee.id} />
                       </div>
                     </td>
-                  </tr>
+                  </ClickableTableRow>
                 ))
               )}
             </tbody>

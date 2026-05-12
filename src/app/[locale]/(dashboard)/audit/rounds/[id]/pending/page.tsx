@@ -6,6 +6,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { AuditMarkNotFoundButton } from "@/components/audit/audit-mark-not-found-button"
 import { formatDateTime } from "@/lib/utils"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type AuditPendingPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -30,6 +31,7 @@ export default async function AuditPendingPage({ params }: AuditPendingPageProps
         include: {
           asset: {
             select: {
+              id: true,
               assetTag: true,
               name: true,
               currentLocation: { select: { code: true, name: true } },
@@ -82,7 +84,11 @@ export default async function AuditPendingPage({ params }: AuditPendingPageProps
                 </tr>
               ) : (
                 round.items.map((item) => (
-                  <tr key={item.id} className="hover:bg-accent/50">
+                  <ClickableTableRow
+                    key={item.id}
+                    href={`/${locale}/assets/${item.asset.id}`}
+                    label={`${tCommon("view")}: ${item.asset.assetTag}`}
+                  >
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{item.asset.assetTag}</td>
                     <td className="min-w-56 px-4 py-3 text-foreground">{item.asset.name}</td>
                     <td className="min-w-56 px-4 py-3 text-muted-foreground">
@@ -97,7 +103,7 @@ export default async function AuditPendingPage({ params }: AuditPendingPageProps
                     <td className="whitespace-nowrap px-4 py-3 text-right">
                       <AuditMarkNotFoundButton itemId={item.id} />
                     </td>
-                  </tr>
+                  </ClickableTableRow>
                 ))
               )}
             </tbody>

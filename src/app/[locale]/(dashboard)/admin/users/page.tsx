@@ -13,6 +13,7 @@ import {
 } from "@/components/master-data/master-data-layout"
 import { formatDateTime } from "@/lib/utils"
 import { parseMasterDataListParams } from "@/lib/master-data-query"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type UsersPageProps = {
   params: Promise<{ locale: string }>
@@ -108,7 +109,11 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
                 </tr>
               ) : (
                 users.map((user) => (
-                  <tr key={user.id} className="hover:bg-accent/50">
+                  <ClickableTableRow
+                    key={user.id}
+                    href={`${basePath}/${user.id}/edit`}
+                    label={`${tCommon("edit")}: ${user.username}`}
+                  >
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{user.username}</td>
                     <td className="min-w-56 px-4 py-3 text-foreground">{user.displayName}</td>
                     <td className="min-w-56 px-4 py-3 text-muted-foreground">{user.email ?? "-"}</td>
@@ -147,7 +152,7 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
                         {tCommon("edit")}
                       </Link>
                     </td>
-                  </tr>
+                  </ClickableTableRow>
                 ))
               )}
             </tbody>

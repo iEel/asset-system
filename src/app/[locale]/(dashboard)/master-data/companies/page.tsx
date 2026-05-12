@@ -10,6 +10,7 @@ import {
   MasterDataHeader,
   MasterDataSearch,
 } from "@/components/master-data/master-data-layout"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type CompaniesPageProps = {
   params: Promise<{ locale: string }>
@@ -82,7 +83,11 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
                 </tr>
               ) : (
                 companies.map((company) => (
-                  <tr key={company.id} className="hover:bg-accent/50">
+                  <ClickableTableRow
+                    key={company.id}
+                    href={`/${locale}/master-data/companies/${company.id}/edit`}
+                    label={`${tCommon("edit")}: ${company.code}`}
+                  >
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{company.code}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{company.assetTagCode || company.code}</td>
                     <td className="min-w-48 px-4 py-3 text-foreground">{company.nameTh}</td>
@@ -103,7 +108,7 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
                         <CompanyDeleteButton id={company.id} />
                       </div>
                     </td>
-                  </tr>
+                  </ClickableTableRow>
                 ))
               )}
             </tbody>

@@ -13,6 +13,7 @@ import {
   MasterDataHeader,
   MasterDataSearch,
 } from "@/components/master-data/master-data-layout"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type BrandsPageProps = {
   params: Promise<{ locale: string }>
@@ -119,7 +120,11 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                   </tr>
                 ) : (
                   brands.map((brand) => (
-                    <tr key={brand.id} className="hover:bg-accent/50">
+                    <ClickableTableRow
+                      key={brand.id}
+                      href={`/${locale}/master-data/brands/${brand.id}/edit`}
+                      label={`${tCommon("edit")}: ${brand.name}`}
+                    >
                       <td className="min-w-56 px-4 py-3 font-medium text-foreground">{brand.name}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{brand._count.models}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{brand._count.assets}</td>
@@ -138,7 +143,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                           <BrandDeleteButton id={brand.id} />
                         </div>
                       </td>
-                    </tr>
+                    </ClickableTableRow>
                   ))
                 )}
               </tbody>
@@ -189,7 +194,11 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                     const canPreviewPhoto = photo ? previewableModelPhotoTypes.has(photo.fileType) : false
 
                     return (
-                      <tr key={model.id} className="hover:bg-accent/50">
+                      <ClickableTableRow
+                        key={model.id}
+                        href={`/${locale}/master-data/brands/models/${model.id}/edit`}
+                        label={`${tCommon("edit")}: ${model.name}`}
+                      >
                         <td className="min-w-64 px-4 py-3 font-medium text-foreground">
                           <div className="flex items-center gap-3">
                             <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">
@@ -232,7 +241,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                             <AssetModelDeleteButton id={model.id} />
                           </div>
                         </td>
-                      </tr>
+                      </ClickableTableRow>
                     )
                   })
                 )}
