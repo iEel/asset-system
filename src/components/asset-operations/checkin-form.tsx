@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FileImage, Loader2, Save, Trash2, Wrench } from "lucide-react"
+import { FileImage, Loader2, PackageCheck, Save, Trash2, Wrench } from "lucide-react"
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
@@ -74,6 +75,7 @@ export function CheckinForm({
   const selectedStatus = statuses.find((status) => status.id === values.nextStatusId)
   const pendingRepairStatus = statuses.find((status) => status.name === "Pending Repair")
   const canCreateMaintenance = selectedStatus?.name === "Pending Repair"
+  const hasActiveCheckouts = activeCheckouts.length > 0
   const photoTypes = [
     { id: "overview", label: t("photoTypeOverview") },
     { id: "assetTag", label: t("photoTypeAssetTag") },
@@ -152,14 +154,36 @@ export function CheckinForm({
       </div>
       <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Select label={t("asset")} value={values.checkoutId} required onChange={(value) => setField("checkoutId", value)}>
-            <option value="">{t("selectCheckout")}</option>
+          <Select label={t("asset")} value={values.checkoutId} required disabled={!hasActiveCheckouts} onChange={(value) => setField("checkoutId", value)}>
+            <option value="">{hasActiveCheckouts ? t("selectCheckout") : t("noActiveCheckoutsOption")}</option>
             {activeCheckouts.map((checkout) => (
               <option key={checkout.id} value={checkout.id}>
                 {checkout.label}
               </option>
             ))}
           </Select>
+
+          {!hasActiveCheckouts && (
+            <div className="md:col-span-2 rounded-md border border-dashed border-border bg-background p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <PackageCheck className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">{t("noActiveCheckoutsTitle")}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{t("noActiveCheckoutsDescription")}</div>
+                  </div>
+                </div>
+                <Link href={`/${locale}/asset-management/checkout`} className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent">
+                  {t("goToCheckout")}
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {hasActiveCheckouts && (
+            <>
           <Field label={t("returnDate")} required>
             <input type="date" value={values.returnDate} onChange={(event) => setField("returnDate", event.target.value)} required className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </Field>
@@ -320,11 +344,13 @@ export function CheckinForm({
           </div>
 
           <div className="md:col-span-2 flex justify-end">
-            <button type="submit" disabled={saving} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50">
+            <button type="submit" disabled={saving || !selectedCheckout?.assetId} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {tCommon("save")}
             </button>
           </div>
+            </>
+          )}
         </form>
       </section>
     </div>
@@ -343,10 +369,10 @@ function Field({ label, required, children }: { label: string; required?: boolea
   )
 }
 
-function Select({ label, value, required, onChange, children }: { label: string; value: string; required?: boolean; onChange: (value: string) => void; children: React.ReactNode }) {
+function Select({ label, value, required, disabled, onChange, children }: { label: string; value: string; required?: boolean; disabled?: boolean; onChange: (value: string) => void; children: React.ReactNode }) {
   return (
     <Field label={label} required={required}>
-      <select value={value} required={required} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+      <select value={value} required={required} disabled={disabled} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">
         {children}
       </select>
     </Field>
