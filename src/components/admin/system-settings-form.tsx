@@ -8,9 +8,16 @@ import { assetLabelSettingKeys, assetLabelTemplateTokens } from "@/lib/asset-lab
 import {
   assetTagCategoryPrefixesKey,
   assetTagFormatTemplateKey,
+  checkinDocumentTemplateKey,
+  checkoutDocumentTemplateKey,
+  defaultCheckinDocumentTemplate,
+  defaultCheckoutDocumentTemplate,
   defaultAssetTagFormatTemplate,
   ldapSettingKeys,
+  operationDocumentRunningDigitsKey,
+  operationDocumentSettingKeys,
 } from "@/lib/system-setting-defaults"
+import { operationDocumentTemplateTokens, renderOperationDocumentTemplate, validateOperationDocumentTemplate } from "@/lib/operation-document-number"
 
 type SystemSettingItem = {
   key: string
@@ -58,6 +65,16 @@ type SystemSettingsFormProps = {
     labelTemplateTokens: string
     invalidLabelTemplate: string
     invalidLabelSize: string
+    operationDocumentNumbers: string
+    operationDocumentNumbersDescription: string
+    checkoutDocumentTemplate: string
+    checkinDocumentTemplate: string
+    operationDocumentRunningDigits: string
+    operationDocumentTemplateHelp: string
+    operationDocumentTokens: string
+    checkoutDocumentExample: string
+    checkinDocumentExample: string
+    invalidOperationDocumentTemplate: string
     categoryPrefixes: string
     categoryPrefixesDescription: string
     noCategoryPrefixes: string
@@ -198,6 +215,7 @@ const friendlySettingKeys = new Set([
   assetTagCategoryPrefixesKey,
   assetTagFormatTemplateKey,
   ...assetLabelSettingKeys,
+  ...operationDocumentSettingKeys,
   ...ldapSettingKeys,
 ])
 
@@ -255,6 +273,11 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     (setting) => !friendlySettingKeys.has(setting.key)
   )
   const formatTemplate = values[assetTagFormatTemplateKey] ?? defaultAssetTagFormatTemplate
+  const checkoutDocumentTemplate = values[checkoutDocumentTemplateKey] ?? defaultCheckoutDocumentTemplate
+  const checkinDocumentTemplate = values[checkinDocumentTemplateKey] ?? defaultCheckinDocumentTemplate
+  const operationDocumentDigits = Number(values[operationDocumentRunningDigitsKey] ?? "4")
+  const operationDocumentExampleDate = new Date(2026, 4, 13)
+  const operationDocumentExampleDigits = Number.isFinite(operationDocumentDigits) ? operationDocumentDigits : 4
   const getValue = (key: string) => values[key] ?? ""
   const setValue = (key: string, value: string) => setValues((current) => ({ ...current, [key]: value }))
   const setBooleanValue = (key: string, checked: boolean) => setValue(key, checked ? "true" : "false")
@@ -283,6 +306,13 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
       const qrSize = Number(getValue(key))
       return !Number.isFinite(qrSize) || qrSize < 20 || qrSize > 90
     })
+    const operationDigits = Number(getValue(operationDocumentRunningDigitsKey))
+    const hasInvalidOperationDocumentTemplate =
+      !validateOperationDocumentTemplate(checkoutDocumentTemplate) ||
+      !validateOperationDocumentTemplate(checkinDocumentTemplate) ||
+      !Number.isFinite(operationDigits) ||
+      operationDigits < 1 ||
+      operationDigits > 12
 
     if (hasDuplicateCategory) {
       toast.error(labels.duplicateCategory)
@@ -302,6 +332,10 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     }
     if (hasInvalidLabelSize) {
       toast.error(labels.invalidLabelSize)
+      return
+    }
+    if (hasInvalidOperationDocumentTemplate) {
+      toast.error(labels.invalidOperationDocumentTemplate)
       return
     }
 
@@ -507,6 +541,61 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
             <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{labels.labelTemplateTokens}</div>
             <div className="flex flex-wrap gap-2">
               {assetLabelTemplateTokens.map((token) => (
+                <span key={token} className="inline-flex h-8 items-center rounded-md border border-border px-2 font-mono text-xs text-foreground">
+                  {`{${token}}`}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <SectionHeader title={labels.operationDocumentNumbers} description={labels.operationDocumentNumbersDescription} />
+        <div className="space-y-4 px-4 py-4">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_260px]">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label={labels.checkoutDocumentTemplate} htmlFor="checkout-document-template">
+                <input
+                  id="checkout-document-template"
+                  value={checkoutDocumentTemplate}
+                  onChange={(event) => setValue(checkoutDocumentTemplateKey, event.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+              <Field label={labels.checkinDocumentTemplate} htmlFor="checkin-document-template">
+                <input
+                  id="checkin-document-template"
+                  value={checkinDocumentTemplate}
+                  onChange={(event) => setValue(checkinDocumentTemplateKey, event.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+              <Field label={labels.operationDocumentRunningDigits} htmlFor="operation-document-running-digits">
+                <input
+                  id="operation-document-running-digits"
+                  type="number"
+                  min={1}
+                  max={12}
+                  value={getValue(operationDocumentRunningDigitsKey)}
+                  onChange={(event) => setValue(operationDocumentRunningDigitsKey, event.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+            </div>
+            <div className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+              <div className="font-medium text-foreground">{labels.exampleFormat}</div>
+              <div className="mt-2 space-y-1 font-mono">
+                <div>{labels.checkoutDocumentExample}: {renderOperationDocumentTemplate(checkoutDocumentTemplate, operationDocumentExampleDate, 1, operationDocumentExampleDigits)}</div>
+                <div>{labels.checkinDocumentExample}: {renderOperationDocumentTemplate(checkinDocumentTemplate, operationDocumentExampleDate, 1, operationDocumentExampleDigits)}</div>
+              </div>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">{labels.operationDocumentTemplateHelp}</p>
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{labels.operationDocumentTokens}</div>
+            <div className="flex flex-wrap gap-2">
+              {operationDocumentTemplateTokens.map((token) => (
                 <span key={token} className="inline-flex h-8 items-center rounded-md border border-border px-2 font-mono text-xs text-foreground">
                   {`{${token}}`}
                 </span>

@@ -3,6 +3,16 @@ import { assetLabelSettingKeys } from "@/lib/asset-label-template"
 export const assetTagCategoryPrefixesKey = "asset_tag_category_prefixes"
 export const assetTagFormatTemplateKey = "asset_tag_format_template"
 export const defaultAssetTagFormatTemplate = "{assetCompanyCode}{separator}{branchCode}{separator}{assetPrefix}{separator}{running}"
+export const checkoutDocumentTemplateKey = "checkout_document_template"
+export const checkinDocumentTemplateKey = "checkin_document_template"
+export const operationDocumentRunningDigitsKey = "operation_document_running_digits"
+export const defaultCheckoutDocumentTemplate = "HO-{yyyyMM}-{running}"
+export const defaultCheckinDocumentTemplate = "RT-{yyyyMM}-{running}"
+export const operationDocumentSettingKeys = [
+  checkoutDocumentTemplateKey,
+  checkinDocumentTemplateKey,
+  operationDocumentRunningDigitsKey,
+] as const
 export const ldapSettingKeys = [
   "ldap_enabled",
   "ldap_url",
@@ -42,6 +52,21 @@ export const systemSettingDefaults = [
     key: assetTagCategoryPrefixesKey,
     value: "{}",
     description: "JSON mapping ประเภทสินค้าไปยัง prefix รหัสทรัพย์สิน เช่น {\"categoryId\":\"COM\"}",
+  },
+  {
+    key: checkoutDocumentTemplateKey,
+    value: defaultCheckoutDocumentTemplate,
+    description: "Template เลขที่ใบส่งมอบทรัพย์สิน เช่น HO-{yyyyMM}-{running}",
+  },
+  {
+    key: checkinDocumentTemplateKey,
+    value: defaultCheckinDocumentTemplate,
+    description: "Template เลขที่ใบรับคืนทรัพย์สิน เช่น RT-{yyyyMM}-{running}",
+  },
+  {
+    key: operationDocumentRunningDigitsKey,
+    value: "4",
+    description: "จำนวนหลัก Running Number สำหรับเอกสารส่งมอบ/รับคืน",
   },
   { key: "company_name", value: "บริษัท ตัวอย่าง จำกัด", description: "ชื่อบริษัทหลัก" },
   { key: "default_currency", value: "THB", description: "สกุลเงินเริ่มต้น" },

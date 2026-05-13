@@ -73,7 +73,7 @@ export default async function CheckoutPrintPage({ params }: CheckoutPrintPagePro
         {
           title: t("documentInfo"),
           fields: [
-            { label: t("documentNo"), value: checkout.id },
+            { label: t("documentNo"), value: checkout.documentNo ?? checkout.id },
             { label: t("checkoutDate"), value: formatDate(checkout.checkoutDate) },
             { label: t("expectedReturn"), value: formatDate(checkout.expectedReturnDate) },
             { label: t("createdAt"), value: formatDateTime(checkout.createdAt) },

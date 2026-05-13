@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { assetCheckoutSchema } from "@/lib/validations/asset-operations"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
+import { generateCheckoutDocumentNo } from "@/lib/operation-document-number"
 import {
   optionalFormFile,
   optionalFormText,
@@ -42,8 +43,10 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
     const nextDepartmentId = input.checkoutType === "department" ? input.departmentId : asset.departmentId
 
     const checkout = await prisma.$transaction(async (tx) => {
+      const documentNo = await generateCheckoutDocumentNo(tx, input.checkoutDate)
       const record = await tx.assetCheckout.create({
         data: {
+          documentNo,
           assetId: id,
           checkoutType: input.checkoutType,
           custodianId: input.checkoutType === "user" ? input.custodianId : null,

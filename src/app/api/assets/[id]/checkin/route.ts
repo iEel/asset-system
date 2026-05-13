@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { assetCheckinSchema } from "@/lib/validations/asset-operations"
 import { isValidCheckinReturnStatus } from "@/lib/asset-status-flow"
+import { generateCheckinDocumentNo } from "@/lib/operation-document-number"
 import {
   optionalFormFile,
   optionalFormText,
@@ -54,8 +55,10 @@ export async function POST(request: NextRequest, context: CheckinContext) {
     }
 
     const checkin = await prisma.$transaction(async (tx) => {
+      const documentNo = await generateCheckinDocumentNo(tx, input.returnDate)
       const record = await tx.assetCheckin.create({
         data: {
+          documentNo,
           assetId: id,
           checkoutId: checkout.id,
           returnDate: input.returnDate,

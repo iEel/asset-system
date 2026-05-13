@@ -401,6 +401,7 @@ model CustomFieldValue {
 
 model AssetCheckout {
   id                 String    @id @default(uuid())
+  documentNo         String?   @db.NVarChar(50)
   assetId            String
   asset              Asset     @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   checkoutType       String    @db.NVarChar(20) // user, department, location, asset
@@ -421,11 +422,13 @@ model AssetCheckout {
 
   checkin AssetCheckin?
 
+  @@index([documentNo])
   @@map("asset_checkouts")
 }
 
 model AssetCheckin {
   id                 String        @id @default(uuid())
+  documentNo         String?       @db.NVarChar(50)
   assetId            String
   asset              Asset         @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   checkoutId         String        @unique
@@ -442,6 +445,7 @@ model AssetCheckin {
   remark             String?       @db.NVarChar(Max)
   createdAt          DateTime      @default(now())
 
+  @@index([documentNo])
   @@map("asset_checkins")
 }
 

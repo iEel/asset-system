@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ArrowLeft, Edit, History, ImageIcon, Printer, QrCode } from "lucide-react"
+import { ArrowLeft, Edit, FileText, History, ImageIcon, Printer, QrCode } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
@@ -44,6 +44,13 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
       movements: {
         orderBy: { performedAt: "desc" },
         take: 20,
+      },
+      checkouts: {
+        orderBy: { checkoutDate: "desc" },
+        include: {
+          custodian: { select: { code: true, fullNameTh: true } },
+          checkin: true,
+        },
       },
       attachments: {
         where: { isActive: true },
@@ -143,9 +150,47 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
     attachments: purchaseDocumentAttachmentsByReferenceId.get(link.purchaseDocument.id) ?? [],
   }))
   const legacyPurchaseDocuments = asset.attachments.filter((attachment) => attachment.module === "asset_purchase")
-  const assetAttachments = asset.attachments.filter((attachment) => attachment.module !== "asset_purchase")
+  const assetAttachments = asset.attachments.filter((attachment) => attachment.module === "asset")
   const primaryAssetPhoto = assetAttachments.find((attachment) => isPreviewableImage(attachment.fileType))
   const primaryModelPhoto = modelPhotos.find((attachment) => isPreviewableImage(attachment.fileType))
+  const checkoutIds = asset.checkouts.map((checkout) => checkout.id)
+  const checkinIds = asset.checkouts.map((checkout) => checkout.checkin?.id).filter((checkinId): checkinId is string => Boolean(checkinId))
+  const [operationAttachments, checkoutDepartments, checkoutLocations, checkoutParentAssets] = await Promise.all([
+    checkoutIds.length > 0 || checkinIds.length > 0
+      ? prisma.attachment.findMany({
+          where: {
+            isActive: true,
+            OR: [
+              { module: { in: ["checkout_photo_before", "checkout_receiver_signature"] }, referenceId: { in: checkoutIds } },
+              { module: { in: ["checkin_photo_after", "checkin_return_signature", "checkin_receive_signature"] }, referenceId: { in: checkinIds } },
+            ],
+          },
+          orderBy: { uploadedAt: "asc" },
+        })
+      : [],
+    prisma.department.findMany({
+      where: { id: { in: uniqueTruthy(asset.checkouts.map((checkout) => checkout.departmentId)) } },
+      select: { id: true, code: true, name: true },
+    }),
+    prisma.location.findMany({
+      where: { id: { in: uniqueTruthy(asset.checkouts.map((checkout) => checkout.locationId)) } },
+      select: { id: true, code: true, name: true },
+    }),
+    prisma.asset.findMany({
+      where: { id: { in: uniqueTruthy(asset.checkouts.map((checkout) => checkout.parentAssetId)) } },
+      select: { id: true, assetTag: true, name: true },
+    }),
+  ])
+  const operationAttachmentsByReference = new Map<string, typeof operationAttachments>()
+  for (const attachment of operationAttachments) {
+    operationAttachmentsByReference.set(attachment.referenceId, [
+      ...(operationAttachmentsByReference.get(attachment.referenceId) ?? []),
+      attachment,
+    ])
+  }
+  const checkoutDepartmentLabels = new Map(checkoutDepartments.map((department) => [department.id, `${department.code} - ${department.name}`]))
+  const checkoutLocationLabels = new Map(checkoutLocations.map((location) => [location.id, `${location.code} - ${location.name}`]))
+  const checkoutParentAssetLabels = new Map(checkoutParentAssets.map((parentAsset) => [parentAsset.id, `${parentAsset.assetTag} - ${parentAsset.name}`]))
   const modelSpecs = parseModelSpecs(asset.model?.specs)
   const movementLabels = await getMovementDisplayLabels(asset.movements)
 
@@ -160,6 +205,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
     { id: "components", label: t("detailSections.components") },
     { id: "purchase", label: t("detailSections.purchase") },
     { id: "photos", label: t("detailSections.photos") },
+    { id: "handover", label: t("detailSections.handover") },
     { id: "movement", label: t("detailSections.movement") },
     { id: "maintenance", label: t("detailSections.maintenance") },
     { id: "audit", label: t("detailSections.audit") },
@@ -289,6 +335,63 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
               photoChecklist={photoChecklist}
             />
           </div>
+
+          <section id="handover" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <SectionHeading title={t("detailSections.handover")} subtitle={t("detailSections.handoverSubtitle")} icon={<FileText className="h-5 w-5 text-primary" />} />
+            {asset.checkouts.length === 0 ? (
+              <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                {tCommon("noData")}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {asset.checkouts.map((checkout) => {
+                  const checkoutAttachments = operationAttachmentsByReference.get(checkout.id) ?? []
+                  const checkinAttachments = checkout.checkin ? operationAttachmentsByReference.get(checkout.checkin.id) ?? [] : []
+
+                  return (
+                    <div key={checkout.id} className="rounded-md border border-border bg-background p-4">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
+                            <StatusPill label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} color={checkout.isReturned ? "#16A34A" : "#2563EB"} />
+                          </div>
+                          <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
+                            <Info label={t("documentNo")} value={checkout.documentNo ?? checkout.id} compact />
+                            <Info label={t("handoverTo")} value={getCheckoutDestination(checkout, {
+                              departments: checkoutDepartmentLabels,
+                              locations: checkoutLocationLabels,
+                              parentAssets: checkoutParentAssetLabels,
+                            })} compact />
+                            <Info label={t("expectedReturnDate")} value={formatDate(checkout.expectedReturnDate)} compact />
+                            {checkout.checkin ? <Info label={t("returnDate")} value={`${checkout.checkin.documentNo ?? checkout.checkin.id} · ${formatDate(checkout.checkin.returnDate)}`} compact /> : <Info label={t("returnDate")} value="-" compact />}
+                            <Info label={t("remark")} value={checkout.remark} compact />
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Link href={`/${locale}/asset-management/checkouts/${checkout.id}`} className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent">
+                            {t("openHandoverDocument")}
+                          </Link>
+                          {checkout.checkin ? (
+                            <Link href={`/${locale}/asset-management/checkins/${checkout.checkin.id}`} className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent">
+                              {t("openReturnDocument")}
+                            </Link>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                        <EvidenceLinks title={t("checkoutPhotoBefore")} attachments={checkoutAttachments.filter((attachment) => attachment.module === "checkout_photo_before")} emptyLabel={t("noEvidence")} />
+                        <EvidenceLinks title={t("receiverSignature")} attachments={checkoutAttachments.filter((attachment) => attachment.module === "checkout_receiver_signature")} emptyLabel={t("noEvidence")} />
+                        <EvidenceLinks title={t("checkinPhotoAfter")} attachments={checkinAttachments.filter((attachment) => attachment.module === "checkin_photo_after")} emptyLabel={t("noEvidence")} />
+                        <EvidenceLinks title={t("returnSignature")} attachments={checkinAttachments.filter((attachment) => attachment.module === "checkin_return_signature")} emptyLabel={t("noEvidence")} />
+                        <EvidenceLinks title={t("receiveSignature")} attachments={checkinAttachments.filter((attachment) => attachment.module === "checkin_receive_signature")} emptyLabel={t("noEvidence")} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
 
           <section id="movement" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={t("movementHistory")} subtitle={t("detailSections.movementSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
@@ -489,8 +592,84 @@ function SidebarPhotoCard({
   )
 }
 
+function EvidenceLinks({
+  title,
+  attachments,
+  emptyLabel,
+}: {
+  title: string
+  attachments: { id: string; originalName: string; fileType: string }[]
+  emptyLabel: string
+}) {
+  return (
+    <div className="rounded-md border border-border bg-surface p-3">
+      <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{title}</div>
+      {attachments.length === 0 ? (
+        <div className="mt-2 text-sm text-muted-foreground">{emptyLabel}</div>
+      ) : (
+        <div className="mt-2 grid gap-2">
+          {attachments.map((attachment) => (
+            <a
+              key={attachment.id}
+              href={`/api/attachments/${attachment.id}?inline=1`}
+              target="_blank"
+              rel="noreferrer"
+              className="group block overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary"
+              title={attachment.originalName}
+            >
+              {attachment.fileType.startsWith("image/") ? (
+                <div className="flex aspect-video w-full items-center justify-center bg-muted/40 p-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/api/attachments/${attachment.id}?inline=1`}
+                    alt={attachment.originalName}
+                    loading="lazy"
+                    className="max-h-full w-full object-contain transition-transform group-hover:scale-[1.01]"
+                  />
+                </div>
+              ) : (
+                <div className="flex aspect-video w-full items-center justify-center bg-muted/40 p-3 text-sm font-medium text-muted-foreground">
+                  {attachment.fileType}
+                </div>
+              )}
+              <div className="truncate border-t border-border px-2 py-1.5 text-xs font-medium text-foreground">
+                {attachment.originalName}
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function isPreviewableImage(fileType: string) {
   return fileType.startsWith("image/")
+}
+
+function uniqueTruthy(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.filter((value): value is string => Boolean(value))))
+}
+
+function getCheckoutDestination(
+  checkout: {
+    checkoutType: string
+    custodian: { code: string; fullNameTh: string } | null
+    departmentId: string | null
+    locationId: string | null
+    parentAssetId: string | null
+  },
+  labels: {
+    departments: Map<string, string>
+    locations: Map<string, string>
+    parentAssets: Map<string, string>
+  }
+) {
+  if (checkout.checkoutType === "user" && checkout.custodian) return `${checkout.custodian.code} - ${checkout.custodian.fullNameTh}`
+  if (checkout.checkoutType === "department" && checkout.departmentId) return labels.departments.get(checkout.departmentId) ?? checkout.departmentId
+  if (checkout.checkoutType === "location" && checkout.locationId) return labels.locations.get(checkout.locationId) ?? checkout.locationId
+  if (checkout.checkoutType === "asset" && checkout.parentAssetId) return labels.parentAssets.get(checkout.parentAssetId) ?? checkout.parentAssetId
+  return "-"
 }
 
 function SectionHeading({

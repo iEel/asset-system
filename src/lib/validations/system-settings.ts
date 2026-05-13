@@ -1,6 +1,12 @@
 import { z } from "zod"
 import { assetLabelSettingKeys, assetLabelTemplateTokens } from "@/lib/asset-label-template"
-import { assetTagFormatTemplateKey } from "@/lib/system-setting-defaults"
+import {
+  checkinDocumentTemplateKey,
+  checkoutDocumentTemplateKey,
+  operationDocumentRunningDigitsKey,
+  assetTagFormatTemplateKey,
+} from "@/lib/system-setting-defaults"
+import { validateOperationDocumentTemplate } from "@/lib/operation-document-number"
 
 const assetTagFormatTokens = new Set([
   "companyCode",
@@ -22,6 +28,7 @@ const assetLabelTemplateKeySet = new Set<string>(
 )
 const assetLabelWidthKeys = new Set<string>(["asset_label_12_width_mm", "asset_label_18_width_mm"])
 const assetLabelQrSizeKeys = new Set<string>(["asset_label_12_qr_size", "asset_label_18_qr_size"])
+const operationDocumentTemplateKeys = new Set<string>([checkoutDocumentTemplateKey, checkinDocumentTemplateKey])
 
 export const systemSettingsUpdateSchema = z.object({
   settings: z
@@ -85,6 +92,25 @@ export const systemSettingsUpdateSchema = z.object({
         context.addIssue({
           code: "custom",
           message: "Asset label template uses unsupported tokens",
+          path: ["settings", index, "value"],
+        })
+      }
+    }
+
+    if (operationDocumentTemplateKeys.has(setting.key) && !validateOperationDocumentTemplate(setting.value)) {
+      context.addIssue({
+        code: "custom",
+        message: "Operation document template must include {running} and only use supported tokens",
+        path: ["settings", index, "value"],
+      })
+    }
+
+    if (setting.key === operationDocumentRunningDigitsKey) {
+      const digits = Number(setting.value)
+      if (!Number.isFinite(digits) || digits < 1 || digits > 12) {
+        context.addIssue({
+          code: "custom",
+          message: "Operation document running digits must be between 1 and 12",
           path: ["settings", index, "value"],
         })
       }

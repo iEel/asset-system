@@ -37,6 +37,7 @@ export default async function CheckinPrintPage({ params }: CheckinPrintPageProps
       checkout: {
         select: {
           id: true,
+          documentNo: true,
           checkoutType: true,
           checkoutDate: true,
           expectedReturnDate: true,
@@ -95,9 +96,9 @@ export default async function CheckinPrintPage({ params }: CheckinPrintPageProps
         {
           title: t("documentInfo"),
           fields: [
-            { label: t("documentNo"), value: checkin.id },
+            { label: t("documentNo"), value: checkin.documentNo ?? checkin.id },
             { label: t("returnDate"), value: formatDate(checkin.returnDate) },
-            { label: tCheckout("documentNo"), value: checkin.checkout.id },
+            { label: tCheckout("documentNo"), value: checkin.checkout.documentNo ?? checkin.checkout.id },
             { label: t("createdAt"), value: formatDateTime(checkin.createdAt) },
           ],
         },
