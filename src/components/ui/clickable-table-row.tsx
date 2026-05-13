@@ -16,7 +16,7 @@ export function ClickableTableRow({
   const router = useRouter()
 
   function shouldIgnoreClick(target: EventTarget | null) {
-    return target instanceof HTMLElement && Boolean(target.closest("a,button,input,select,textarea,[data-no-row-click]"))
+    return target instanceof Element && Boolean(target.closest("a,button,input,select,textarea,[data-no-row-click]"))
   }
 
   function openDetail() {
