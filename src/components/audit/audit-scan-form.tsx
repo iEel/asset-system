@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Camera, CheckCircle2, Info, Keyboard, Loader2, ScanLine, Save, X } from "lucide-react"
+import { AlertTriangle, Camera, CheckCircle2, ImagePlus, Info, Keyboard, Loader2, ScanLine, Save, X } from "lucide-react"
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 
@@ -46,6 +46,16 @@ type Html5QrcodeInstance = {
 type CameraDevice = { id: string; label: string }
 type CameraReadiness = "checking" | "ready" | "unavailable"
 type AuditMismatchPreview = { type: string; label: string; canApply: boolean }
+type ScanFeedback = {
+  status: "found" | "mismatch" | "not_in_round" | "saved"
+  title: string
+  description: string
+}
+type QueuedAuditPhoto = {
+  id: string
+  label: string
+  file: File
+}
 
 export function AuditScanForm({
   roundId,
@@ -75,9 +85,12 @@ export function AuditScanForm({
   const [lastResult, setLastResult] = useState<string | null>(null)
   const [lastDecodedText, setLastDecodedText] = useState("")
   const [auditPhotoLabel, setAuditPhotoLabel] = useState("")
-  const [selectedAuditPhoto, setSelectedAuditPhoto] = useState<File | null>(null)
+  const [queuedAuditPhotos, setQueuedAuditPhotos] = useState<QueuedAuditPhoto[]>([])
+  const [continuousScan, setContinuousScan] = useState(true)
+  const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null)
   const [applyCorrections, setApplyCorrections] = useState(false)
   const qrReaderRef = useRef<Html5QrcodeInstance | null>(null)
+  const lastDecodedRef = useRef<{ value: string; at: number } | null>(null)
   const [values, setValues] = useState({
     assetId: "",
     actualLocationId: "",
@@ -115,6 +128,22 @@ export function AuditScanForm({
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
     if (field === "assetId") setApplyCorrections(false)
+  }
+
+  function queueAuditPhoto(file: File | null) {
+    if (!file) return
+    setQueuedAuditPhotos((current) => [
+      ...current,
+      {
+        id: `${Date.now()}-${file.name}-${current.length}`,
+        label: effectiveAuditPhotoLabel,
+        file,
+      },
+    ])
+  }
+
+  function removeQueuedAuditPhoto(id: string) {
+    setQueuedAuditPhotos((current) => current.filter((photo) => photo.id !== id))
   }
 
   useEffect(() => {
@@ -158,8 +187,12 @@ export function AuditScanForm({
         preferredCamera.id,
         { fps: 10, qrbox: getResponsiveQrBox },
         (decodedText) => {
+          const normalizedText = decodedText.trim()
+          const now = Date.now()
+          if (lastDecodedRef.current?.value === normalizedText && now - lastDecodedRef.current.at < 1500) return
+          lastDecodedRef.current = { value: normalizedText, at: now }
           setLastDecodedText(decodedText)
-          if (selectScannedAsset(decodedText, "qr")) {
+          if (selectScannedAsset(decodedText, "qr") && !continuousScan) {
             void stopScanner()
           }
         },
@@ -194,6 +227,11 @@ export function AuditScanForm({
     const normalizedValues = normalizeScanValue(rawValue)
     const matchedItem = normalizedValues.map((value) => assetLookup.get(value)).find(Boolean)
     if (!matchedItem) {
+      setScanFeedback({
+        status: "not_in_round",
+        title: t("feedbackNotInRoundTitle"),
+        description: t("feedbackNotInRoundDescription", { code: rawValue }),
+      })
       toast.error(t("assetNotInRound"))
       return false
     }
@@ -202,6 +240,11 @@ export function AuditScanForm({
     setApplyCorrections(false)
     setScanText(rawValue)
     setScanSource(source)
+    setScanFeedback({
+      status: "found",
+      title: t("feedbackFoundTitle"),
+      description: matchedItem.label,
+    })
     toast.success(t("assetSelected"))
     return true
   }
@@ -225,11 +268,11 @@ export function AuditScanForm({
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
-      if (selectedAuditPhoto) {
-        await uploadAuditPhoto(values.assetId, selectedAuditPhoto, effectiveAuditPhotoLabel)
+      for (const photo of queuedAuditPhotos) {
+        await uploadAuditPhoto(values.assetId, photo.file, photo.label)
       }
       setLastResult(payload.auditResult ?? null)
-      toast.success(
+      const successMessage =
         payload.resolvedNotFoundFinding
           ? t("foundAfterNotFoundSuccess")
           : payload.appliedCorrections?.length
@@ -237,7 +280,12 @@ export function AuditScanForm({
           : payload.auditResult === "found"
             ? t("foundSuccess")
             : t("mismatchSuccess")
-      )
+      setScanFeedback({
+        status: payload.auditResult === "found" ? "saved" : "mismatch",
+        title: successMessage,
+        description: selectedItem.label,
+      })
+      toast.success(successMessage)
       setValues({
         assetId: "",
         actualLocationId: "",
@@ -246,7 +294,7 @@ export function AuditScanForm({
         actualConditionId: "",
         remark: "",
       })
-      setSelectedAuditPhoto(null)
+      setQueuedAuditPhotos([])
       setAuditPhotoLabel("")
       setApplyCorrections(false)
       setScanSource("manual")
@@ -275,7 +323,7 @@ export function AuditScanForm({
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-6xl">
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
@@ -291,6 +339,16 @@ export function AuditScanForm({
 
       <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div className="md:col-span-2 grid gap-3 sm:grid-cols-3">
+            <AuditMetric label={t("pendingQueue")} value={items.filter((item) => item.auditStatus === "pending").length.toString()} />
+            <AuditMetric label={t("scannedQueue")} value={items.filter((item) => item.auditStatus !== "pending").length.toString()} />
+            <AuditMetric label={t("photoQueue")} value={queuedAuditPhotos.length.toString()} />
+          </div>
+
+          {scanFeedback && (
+            <ScanFeedbackCard feedback={scanFeedback} />
+          )}
+
           <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
             <div className="flex flex-col gap-3 md:flex-row md:items-end">
               <Field label={t("scanInput")}>
@@ -298,14 +356,14 @@ export function AuditScanForm({
                   value={scanText}
                   onChange={(event) => setScanText(event.target.value)}
                   placeholder={t("scanInputPlaceholder")}
-                  className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-12 w-full rounded-md border border-border bg-surface px-3 text-base outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
               </Field>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:flex">
                 <button
                   type="button"
                   onClick={() => selectScannedAsset(scanText, "manual")}
-                  className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
                 >
                   <Keyboard className="h-4 w-4" />
                   {t("useCode")}
@@ -314,17 +372,29 @@ export function AuditScanForm({
                   type="button"
                   onClick={scannerRunning ? stopScanner : startScanner}
                   disabled={scannerLoading}
-                  className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
                 >
                   {scannerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : scannerRunning ? <X className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
                   {scannerRunning ? t("stopCamera") : t("startCamera")}
                 </button>
               </div>
             </div>
+            <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-md border border-info/30 bg-info/10 p-3 text-sm">
+              <input
+                type="checkbox"
+                checked={continuousScan}
+                onChange={(event) => setContinuousScan(event.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              />
+              <span>
+                <span className="block font-semibold text-foreground">{t("continuousScan")}</span>
+                <span className="mt-1 block text-muted-foreground">{t("continuousScanHelp")}</span>
+              </span>
+            </label>
             <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
               <div
                 id="audit-qr-reader"
-                className={`min-h-72 overflow-hidden rounded-md border border-border bg-surface ${scannerRunning ? "block" : "hidden"}`}
+                className={`min-h-[22rem] overflow-hidden rounded-md border border-border bg-surface ${scannerRunning ? "block" : "hidden"}`}
               />
               <div className="rounded-md border border-border bg-surface p-3 text-sm text-muted-foreground">
                 <div className="flex items-start gap-2">
@@ -384,6 +454,14 @@ export function AuditScanForm({
               ))}
             </Select>
           </div>
+
+          {selectedItem && (
+            <div className="md:col-span-2 rounded-md border border-primary/30 bg-primary/5 p-4">
+              <div className="text-xs font-semibold uppercase text-primary">{t("currentTarget")}</div>
+              <div className="mt-1 text-lg font-semibold text-foreground">{selectedItem.label}</div>
+              <div className="mt-1 text-sm text-muted-foreground">{t("currentTargetHelp")}</div>
+            </div>
+          )}
 
           <Select label={t("actualLocation")} value={values.actualLocationId || selectedItem?.expectedLocationId || ""} required onChange={(value) => setField("actualLocationId", value)}>
             <OptionList options={options.locations} />
@@ -460,8 +538,8 @@ export function AuditScanForm({
                 </div>
               )}
               <FileDropzone
-                file={selectedAuditPhoto}
-                onFileChange={setSelectedAuditPhoto}
+                file={null}
+                onFileChange={queueAuditPhoto}
                 disabled={saving}
                 accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
                 capture="environment"
@@ -469,6 +547,32 @@ export function AuditScanForm({
                 hint={t("dropAuditPhotoSelected")}
                 browseLabel={t("dropAuditPhotoHint")}
               />
+              {queuedAuditPhotos.length > 0 && (
+                <div className="mt-3 rounded-md border border-border bg-surface p-3">
+                  <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <ImagePlus className="h-4 w-4 text-primary" />
+                    {t("queuedPhotos", { count: queuedAuditPhotos.length })}
+                  </div>
+                  <div className="space-y-2">
+                    {queuedAuditPhotos.map((photo) => (
+                      <div key={photo.id} className="flex items-center justify-between gap-3 rounded-md bg-background px-3 py-2 text-sm">
+                        <div className="min-w-0">
+                          <div className="truncate font-medium text-foreground">{photo.file.name}</div>
+                          <div className="truncate text-xs text-muted-foreground">{photo.label || t("unlabeledPhoto")}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeQueuedAuditPhoto(photo.id)}
+                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                          aria-label={t("removeQueuedPhoto")}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -478,13 +582,44 @@ export function AuditScanForm({
             </Field>
           </div>
           <div className="md:col-span-2 flex justify-end">
-            <button type="submit" disabled={saving || !selectedItem} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50">
+            <button type="submit" disabled={saving || !selectedItem} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-base font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {t("submitScan")}
             </button>
           </div>
         </form>
       </section>
+    </div>
+  )
+}
+
+function AuditMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border bg-background p-3">
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div className="mt-1 text-2xl font-bold text-foreground">{value}</div>
+    </div>
+  )
+}
+
+function ScanFeedbackCard({ feedback }: { feedback: ScanFeedback }) {
+  const tone =
+    feedback.status === "found" || feedback.status === "saved"
+      ? "border-success/40 bg-success/10 text-success"
+      : feedback.status === "not_in_round"
+        ? "border-danger/40 bg-danger/10 text-danger"
+        : "border-warning/40 bg-warning/10 text-warning"
+  const Icon = feedback.status === "found" || feedback.status === "saved" ? CheckCircle2 : AlertTriangle
+
+  return (
+    <div className={`md:col-span-2 rounded-md border p-4 ${tone}`}>
+      <div className="flex items-start gap-3">
+        <Icon className="mt-0.5 h-5 w-5 shrink-0" />
+        <div className="min-w-0">
+          <div className="font-semibold">{feedback.title}</div>
+          <div className="mt-1 break-words text-sm text-foreground">{feedback.description}</div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -576,7 +711,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
 function Select({ label, value, required, onChange, children }: { label: string; value: string; required?: boolean; onChange: (value: string) => void; children: React.ReactNode }) {
   return (
     <Field label={label} required={required}>
-      <select value={value} required={required} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+      <select value={value} required={required} onChange={(event) => onChange(event.target.value)} className="h-12 w-full rounded-md border border-border bg-background px-3 text-base outline-none focus:border-primary focus:ring-1 focus:ring-primary">
         {children}
       </select>
     </Field>
