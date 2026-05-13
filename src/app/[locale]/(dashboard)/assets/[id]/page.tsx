@@ -75,6 +75,13 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           reportedBy: { select: { code: true, fullNameTh: true } },
         },
       },
+      auditItems: {
+        orderBy: [{ lastScanAt: "desc" }, { createdAt: "desc" }],
+        take: 10,
+        include: {
+          auditRound: { select: { id: true, auditNo: true, name: true } },
+        },
+      },
     },
   })
 
@@ -142,6 +149,20 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
 
   const detailPath = `/${locale}/assets/${asset.id}`
   const qrValue = `${process.env.AUTH_URL ?? ""}${detailPath}`
+  const sectionLinks = [
+    { id: "overview", label: t("detailSections.overview") },
+    ...(asset.model && (modelSpecs.items.length > 0 || modelSpecs.notes)
+      ? [{ id: "specs", label: t("detailSections.specs") }]
+      : []),
+    { id: "ownership", label: t("detailSections.ownership") },
+    { id: "components", label: t("detailSections.components") },
+    { id: "purchase", label: t("detailSections.purchase") },
+    { id: "photos", label: t("detailSections.photos") },
+    { id: "movement", label: t("detailSections.movement") },
+    { id: "maintenance", label: t("detailSections.maintenance") },
+    { id: "audit", label: t("detailSections.audit") },
+    { id: "notes", label: t("detailSections.notes") },
+  ]
 
   return (
     <div className="space-y-6">
@@ -174,9 +195,24 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
         </div>
       </div>
 
+      <nav className="sticky top-0 z-20 -mx-4 border-y border-border bg-background/95 px-4 py-2 shadow-sm backdrop-blur md:top-0" aria-label={t("detailSections.nav")}>
+        <div className="flex gap-2 overflow-x-auto">
+          {sectionLinks.map((section) => (
+            <a
+              key={section.id}
+              href={`#${section.id}`}
+              className="inline-flex h-9 shrink-0 items-center rounded-md border border-border bg-surface px-3 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              {section.label}
+            </a>
+          ))}
+        </div>
+      </nav>
+
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_280px]">
         <div className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section id="overview" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <SectionHeading title={t("detailSections.overview")} subtitle={t("detailSections.overviewSubtitle")} />
             <div className="mb-5 flex flex-wrap items-center gap-3">
               <StatusPill label={asset.status.nameTh} color={asset.status.colorCode} />
               <StatusPill label={asset.condition.nameTh} color={asset.condition.colorCode} />
@@ -191,16 +227,9 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             </div>
           </section>
 
-          <AssetComponentsPanel
-            assetId={asset.id}
-            currentComponents={currentComponents}
-            componentHistory={componentHistory}
-            availableAssets={availableComponentAssets}
-          />
-
           {asset.model && (modelSpecs.items.length > 0 || modelSpecs.notes) ? (
-            <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-              <h2 className="mb-5 text-lg font-semibold text-foreground">{tBrandModel("structuredSpecs")}</h2>
+            <section id="specs" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+              <SectionHeading title={tBrandModel("structuredSpecs")} subtitle={t("detailSections.specsSubtitle")} />
               {modelSpecs.items.length > 0 ? (
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {modelSpecs.items.map((item) => (
@@ -216,8 +245,8 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             </section>
           ) : null}
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <h2 className="mb-5 text-lg font-semibold text-foreground">{t("ownership")}</h2>
+          <section id="ownership" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <SectionHeading title={t("ownership")} subtitle={t("detailSections.ownershipSubtitle")} />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <Info label={t("company")} value={`${asset.company.code} - ${asset.company.nameTh}`} />
               <Info label={t("branch")} value={`${asset.branch.code} - ${asset.branch.name}`} />
@@ -228,8 +257,17 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             </div>
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <h2 className="mb-5 text-lg font-semibold text-foreground">{t("purchaseWarranty")}</h2>
+          <div id="components" className="scroll-mt-24">
+            <AssetComponentsPanel
+              assetId={asset.id}
+              currentComponents={currentComponents}
+              componentHistory={componentHistory}
+              availableAssets={availableComponentAssets}
+            />
+          </div>
+
+          <section id="purchase" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <SectionHeading title={t("purchaseWarranty")} subtitle={t("detailSections.purchaseSubtitle")} />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <Info label={t("supplier")} value={asset.supplier ? `${asset.supplier.code} - ${asset.supplier.name}` : null} />
               <Info label={t("purchaseDate")} value={formatDate(asset.purchaseDate)} />
@@ -241,11 +279,17 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             <AssetPurchaseDocuments documents={purchaseDocuments} legacyAttachments={legacyPurchaseDocuments} />
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
-              <History className="h-5 w-5 text-primary" />
-              {t("movementHistory")}
-            </h2>
+          <div id="photos" className="scroll-mt-24">
+            <AssetAttachments
+              assetId={asset.id}
+              attachments={assetAttachments}
+              modelPhotos={modelPhotos}
+              photoChecklist={photoChecklist}
+            />
+          </div>
+
+          <section id="movement" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <SectionHeading title={t("movementHistory")} subtitle={t("detailSections.movementSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
             {asset.movements.length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                 {tCommon("noData")}
@@ -272,11 +316,8 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             )}
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
-              <History className="h-5 w-5 text-primary" />
-              {tMaintenance("maintenanceHistory")}
-            </h2>
+          <section id="maintenance" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <SectionHeading title={tMaintenance("maintenanceHistory")} subtitle={t("detailSections.maintenanceSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
             {asset.maintenanceTickets.length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                 {tCommon("noData")}
@@ -320,30 +361,84 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
               </div>
             )}
           </section>
+
+          <section id="audit" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <SectionHeading title={t("auditHistory")} subtitle={t("detailSections.auditSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
+            {asset.auditItems.length === 0 ? (
+              <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                {tCommon("noData")}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-border text-sm">
+                  <thead className="bg-muted/40">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("auditRound")}</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("status")}</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("result")}</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("lastAuditDate")}</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("scanCount")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {asset.auditItems.map((item) => (
+                      <ClickableTableRow
+                        key={item.id}
+                        href={`/${locale}/audit/rounds/${item.auditRound.id}`}
+                        label={`${tCommon("view")}: ${item.auditRound.auditNo}`}
+                      >
+                        <td className="min-w-64 px-4 py-3">
+                          <div className="font-medium text-foreground">{item.auditRound.auditNo}</div>
+                          <div className="mt-1 text-xs text-muted-foreground">{item.auditRound.name}</div>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{item.auditStatus}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{item.auditResult ?? "-"}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(item.lastScanAt ?? item.scannedAt)}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{item.scanCount}</td>
+                      </ClickableTableRow>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section id="notes" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <SectionHeading title={t("remark")} subtitle={t("detailSections.notesSubtitle")} />
+            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{asset.remark || "-"}</p>
+          </section>
         </div>
 
         <aside className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-6 text-center shadow-sm">
+          <section id="qr" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 text-center shadow-sm">
             <h2 className="mb-4 flex items-center justify-center gap-2 text-lg font-semibold text-foreground">
               <QrCode className="h-5 w-5 text-primary" />
               {t("qrCode")}
             </h2>
             <AssetQrCode value={qrValue} label={asset.assetTag} />
           </section>
-
-          <AssetAttachments
-            assetId={asset.id}
-            attachments={assetAttachments}
-            modelPhotos={modelPhotos}
-            photoChecklist={photoChecklist}
-          />
-
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">{t("remark")}</h2>
-            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{asset.remark || "-"}</p>
-          </section>
         </aside>
       </div>
+    </div>
+  )
+}
+
+function SectionHeading({
+  title,
+  subtitle,
+  icon,
+}: {
+  title: string
+  subtitle?: string
+  icon?: React.ReactNode
+}) {
+  return (
+    <div className="mb-5">
+      <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+        {icon}
+        {title}
+      </h2>
+      {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
     </div>
   )
 }
