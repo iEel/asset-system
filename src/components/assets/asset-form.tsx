@@ -92,6 +92,13 @@ type AssetPhotoDraft = {
   file: File
 }
 
+type ExistingAssetPhoto = {
+  id: string
+  originalName: string
+  fileType: string
+  fileSize: number
+}
+
 const purchaseDocumentTypes = ["purchase_order", "invoice", "delivery_note", "warranty", "quotation", "contract", "other"] as const
 
 const emptyAsset: AssetFormValues = {
@@ -138,6 +145,7 @@ export function AssetForm({
   parentAssets,
   purchaseDocuments: purchaseDocumentOptions,
   customFieldDefinitions,
+  existingAssetPhotos = [],
 }: {
   asset?: AssetFormValues
   companies: Option[]
@@ -154,6 +162,7 @@ export function AssetForm({
   parentAssets: Option[]
   purchaseDocuments: PurchaseDocumentOption[]
   customFieldDefinitions: CustomFieldDefinition[]
+  existingAssetPhotos?: ExistingAssetPhoto[]
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -218,8 +227,21 @@ export function AssetForm({
   const selectedTemplateFieldNames = new Set(selectedCustomFieldDefinitions.map((definition) => definition.fieldName))
   const additionalCustomFieldRows = customFieldRows.filter((row) => !selectedTemplateFieldNames.has(row.key))
   const selectedPhotoChecklist = categories.find((category) => category.id === values.categoryId)?.photoChecklist ?? []
+  const legacyPhotoLabelCounts = selectedPhotoChecklist.reduce<Record<string, number>>((counts, item) => {
+    const legacyLabel = legacySanitizedPhotoLabel(item)
+    counts[legacyLabel] = (counts[legacyLabel] ?? 0) + 1
+    return counts
+  }, {})
+  const existingPhotoLabels = new Set(
+    selectedPhotoChecklist.filter((item) =>
+      existingAssetPhotos.some((photo) => attachmentMatchesPhotoLabel(photo, item, legacyPhotoLabelCounts))
+    )
+  )
   const queuedPhotoLabels = new Set(newAssetPhotos.map((photo) => photo.label).filter(Boolean))
-  const firstMissingPhotoLabel = selectedPhotoChecklist.find((item) => !queuedPhotoLabels.has(item)) ?? selectedPhotoChecklist[0] ?? ""
+  const firstMissingPhotoLabel =
+    selectedPhotoChecklist.find((item) => !queuedPhotoLabels.has(item) && !existingPhotoLabels.has(item)) ??
+    selectedPhotoChecklist[0] ??
+    ""
   const effectivePhotoLabel = photoLabel || firstMissingPhotoLabel
 
   useEffect(() => {
@@ -955,6 +977,7 @@ export function AssetForm({
                   {selectedPhotoChecklist.map((item) => {
                     const isSelected = effectivePhotoLabel === item
                     const isQueued = queuedPhotoLabels.has(item)
+                    const alreadyExists = existingPhotoLabels.has(item)
 
                     return (
                       <button
@@ -967,10 +990,10 @@ export function AssetForm({
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border bg-background text-foreground hover:bg-accent",
                         ].join(" ")}
-                      >
+                        >
                         <span>{item}</span>
-                        <span className={isQueued ? "text-xs text-success" : "text-xs text-muted-foreground"}>
-                          {isQueued ? t("photoChecklistQueued") : t("photoChecklistPending")}
+                        <span className={alreadyExists || isQueued ? "text-xs text-success" : "text-xs text-muted-foreground"}>
+                          {alreadyExists ? t("photoChecklistDone") : isQueued ? t("photoChecklistQueued") : t("photoChecklistPending")}
                         </span>
                       </button>
                     )
@@ -993,6 +1016,40 @@ export function AssetForm({
               hint={t("dropFileSelected")}
               browseLabel={t("dropAssetPhotoHint")}
             />
+
+            {existingAssetPhotos.length > 0 && (
+              <div className="mt-4 rounded-md border border-border bg-surface p-3">
+                <div className="mb-3 text-sm font-semibold text-foreground">{t("existingAssetPhotos")}</div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {existingAssetPhotos.map((photo) => (
+                    <a
+                      key={photo.id}
+                      href={`/api/attachments/${photo.id}?inline=1`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <div className="flex aspect-video items-center justify-center bg-muted/40 p-2">
+                        {/* Authenticated attachment URLs render more reliably as browser-native images. */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`/api/attachments/${photo.id}?inline=1`}
+                          alt={photo.originalName}
+                          width={240}
+                          height={160}
+                          loading="lazy"
+                          className="max-h-full w-full object-contain"
+                        />
+                      </div>
+                      <div className="border-t border-border p-2">
+                        <div className="truncate text-xs font-medium text-foreground">{photo.originalName}</div>
+                        <div className="mt-0.5 text-xs text-muted-foreground">{formatFileSize(photo.fileSize)}</div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
             <button
               type="button"
               onClick={addAssetPhoto}
@@ -1351,6 +1408,29 @@ function createCustomFieldRow(key = "", value = ""): CustomFieldRow {
 
 function createClientId() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`
+}
+
+function attachmentMatchesPhotoLabel(
+  attachment: ExistingAssetPhoto,
+  label: string,
+  legacyLabelCounts: Record<string, number>
+) {
+  const normalizedLabel = normalizePhotoLabel(label)
+  const legacyLabel = legacySanitizedPhotoLabel(label)
+  const legacyLabelIsSafeFallback = Boolean(legacyLabel) && legacyLabelCounts[legacyLabel] === 1
+
+  return [label, normalizedLabel, legacyLabelIsSafeFallback ? legacyLabel : ""]
+    .filter(Boolean)
+    .some((candidate) => attachment.originalName.startsWith(`${candidate} - `))
+}
+
+function normalizePhotoLabel(label: string) {
+  return label.replace(/[\\/:*?"<>|\r\n]+/g, " ").replace(/\s+/g, " ").trim()
+}
+
+function legacySanitizedPhotoLabel(label: string) {
+  const normalized = label.normalize("NFKD")
+  return normalized.replace(/[^\w.\- ]+/g, "_").replace(/\s+/g, " ").trim()
 }
 
 function parseCustomFieldRows(json?: string | null): CustomFieldRow[] {

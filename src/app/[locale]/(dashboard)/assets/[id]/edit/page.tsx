@@ -17,6 +17,15 @@ export default async function EditAssetPage({ params }: EditAssetPageProps) {
     prisma.asset.findFirst({
       where: { id, isActive: true },
       include: {
+        attachments: {
+          where: {
+            isActive: true,
+            fileType: { startsWith: "image/" },
+            module: { not: "asset_purchase" },
+          },
+          orderBy: { uploadedAt: "desc" },
+          select: { id: true, originalName: true, fileType: true, fileSize: true },
+        },
         purchaseDocumentLinks: {
           select: { purchaseDocumentId: true },
         },
@@ -88,6 +97,7 @@ export default async function EditAssetPage({ params }: EditAssetPageProps) {
           purchaseDocumentIds: asset.purchaseDocumentLinks.map((link) => link.purchaseDocumentId),
           isActive: asset.isActive,
         }}
+        existingAssetPhotos={asset.attachments}
       />
 
       <div className="mx-auto max-w-6xl">
