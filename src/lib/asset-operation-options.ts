@@ -20,9 +20,16 @@ export async function getAssetOperationOptions() {
       select: {
         id: true,
         assetId: true,
+        departmentId: true,
+        locationId: true,
+        parentAssetId: true,
         checkoutDate: true,
+        expectedReturnDate: true,
         checkoutType: true,
-        asset: { select: { assetTag: true, name: true } },
+        conditionBefore: true,
+        remark: true,
+        custodian: { select: { code: true, fullNameTh: true } },
+        asset: { select: { assetTag: true, name: true, serialNumber: true } },
       },
       orderBy: { checkoutDate: "desc" },
     }),
@@ -50,6 +57,9 @@ export async function getAssetOperationOptions() {
   ])
 
   const activeCheckoutAssetIds = new Set(activeCheckouts.map((checkout) => checkout.assetId))
+  const assetLabelById = new Map(assets.map((asset) => [asset.id, `${asset.assetTag} - ${asset.name}`]))
+  const departmentLabelById = new Map(departments.map((department) => [department.id, `${department.code} - ${department.name}`]))
+  const locationLabelById = new Map(locations.map((location) => [location.id, `${location.code} - ${location.name}`]))
 
   return {
     assets: assets.map((asset) => ({
@@ -61,7 +71,19 @@ export async function getAssetOperationOptions() {
       id: checkout.id,
       assetId: checkout.assetId,
       label: `${checkout.asset.assetTag} - ${checkout.asset.name}`,
+      assetTag: checkout.asset.assetTag,
+      assetName: checkout.asset.name,
+      serialNumber: checkout.asset.serialNumber,
       checkoutType: checkout.checkoutType,
+      checkoutDate: checkout.checkoutDate.toISOString(),
+      expectedReturnDate: checkout.expectedReturnDate?.toISOString() ?? null,
+      conditionBefore: checkout.conditionBefore,
+      destinationLabel: getCheckoutDestinationLabel(checkout, {
+        departments: departmentLabelById,
+        locations: locationLabelById,
+        assets: assetLabelById,
+      }),
+      remark: checkout.remark,
     })),
     employees: employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` })),
     departments: departments.map((department) => ({ id: department.id, label: `${department.code} - ${department.name}` })),
@@ -69,4 +91,30 @@ export async function getAssetOperationOptions() {
     statuses: statuses.map((status) => ({ id: status.id, label: status.nameTh, name: status.name })),
     conditions: conditions.map((condition) => ({ id: condition.id, label: condition.nameTh, name: condition.name })),
   }
+}
+
+function getCheckoutDestinationLabel(checkout: {
+  checkoutType: string
+  departmentId: string | null
+  locationId: string | null
+  parentAssetId: string | null
+  custodian: { code: string; fullNameTh: string } | null
+}, labels: {
+  departments: Map<string, string>
+  locations: Map<string, string>
+  assets: Map<string, string>
+}) {
+  if (checkout.checkoutType === "user" && checkout.custodian) {
+    return `${checkout.custodian.code} - ${checkout.custodian.fullNameTh}`
+  }
+  if (checkout.checkoutType === "department" && checkout.departmentId) {
+    return labels.departments.get(checkout.departmentId) ?? checkout.departmentId
+  }
+  if (checkout.checkoutType === "location" && checkout.locationId) {
+    return labels.locations.get(checkout.locationId) ?? checkout.locationId
+  }
+  if (checkout.checkoutType === "asset" && checkout.parentAssetId) {
+    return labels.assets.get(checkout.parentAssetId) ?? checkout.parentAssetId
+  }
+  return "-"
 }

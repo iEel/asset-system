@@ -51,6 +51,24 @@ export default async function CheckinPrintPage({ params }: CheckinPrintPageProps
   })
   if (!checkin) notFound()
 
+  const [photoAttachments, returnSignatureAttachment, receiveSignatureAttachment] = await Promise.all([
+    prisma.attachment.findMany({
+      where: { module: "checkin_photo_after", referenceId: checkin.id },
+      select: { id: true },
+      orderBy: { uploadedAt: "asc" },
+    }),
+    prisma.attachment.findFirst({
+      where: { module: "checkin_return_signature", referenceId: checkin.id },
+      select: { id: true },
+      orderBy: { uploadedAt: "desc" },
+    }),
+    prisma.attachment.findFirst({
+      where: { module: "checkin_receive_signature", referenceId: checkin.id },
+      select: { id: true },
+      orderBy: { uploadedAt: "desc" },
+    }),
+  ])
+
   const labels = await buildReferenceLabelMap([
     checkin.checkout.departmentId,
     checkin.checkout.locationId,
@@ -102,7 +120,7 @@ export default async function CheckinPrintPage({ params }: CheckinPrintPageProps
             { label: t("returnBy"), value: checkin.returnBy },
             { label: t("receiveBy"), value: checkin.receiveBy },
             { label: t("conditionAfter"), value: labelOrDash(labels, checkin.conditionAfter) },
-            { label: t("photoAfter"), value: checkin.photoAfter ? t("evidenceAttached") : "-" },
+            { label: t("photoAfter"), value: photoAttachments.length > 0 || checkin.photoAfter ? t("evidenceAttached") : "-" },
             { label: t("nextStatus"), value: labelOrDash(labels, checkin.nextStatus) },
             { label: t("nextLocation"), value: labelOrDash(labels, checkin.nextLocationId) },
             { label: t("missingAccessories"), value: checkin.missingAccessories },
@@ -112,8 +130,8 @@ export default async function CheckinPrintPage({ params }: CheckinPrintPageProps
         },
       ]}
       signatures={[
-        { title: t("returnBy"), helper: t("signatureDate") },
-        { title: t("receiveBy"), helper: t("signatureDate") },
+        { title: t("returnBy"), helper: t("signatureDate"), imageSrc: returnSignatureAttachment ? `/api/attachments/${returnSignatureAttachment.id}?inline=1` : null },
+        { title: t("receiveBy"), helper: t("signatureDate"), imageSrc: receiveSignatureAttachment ? `/api/attachments/${receiveSignatureAttachment.id}?inline=1` : null },
         { title: t("approver"), helper: t("signatureDate") },
       ]}
     />

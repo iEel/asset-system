@@ -3,29 +3,54 @@
 import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Loader2, Save } from "lucide-react"
+import { FileImage, Loader2, Save, Trash2, Wrench } from "lucide-react"
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { SignaturePad } from "@/components/asset-operations/signature-pad"
 
-type Option = { id: string; label: string; assetId?: string }
+type Option = { id: string; label: string }
+type StatusOption = Option & { name?: string }
+type CheckoutOption = Option & {
+  assetId?: string
+  assetTag?: string
+  assetName?: string
+  serialNumber?: string | null
+  checkoutType?: string
+  checkoutDate?: string
+  expectedReturnDate?: string | null
+  conditionBefore?: string | null
+  destinationLabel?: string
+  remark?: string | null
+}
+type QueuedPhoto = {
+  id: string
+  label: string
+  file: File
+}
 
 export function CheckinForm({
   activeCheckouts,
+  employees,
   locations,
   statuses,
   conditions,
 }: {
-  activeCheckouts: Option[]
+  activeCheckouts: CheckoutOption[]
+  employees: Option[]
   locations: Option[]
-  statuses: Option[]
-  conditions: Option[]
+  statuses: StatusOption[]
+  conditions: StatusOption[]
 }) {
   const locale = useLocale()
   const router = useRouter()
   const t = useTranslations("checkin")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
-  const [photoAfter, setPhotoAfter] = useState<File | null>(null)
+  const [photoType, setPhotoType] = useState("overview")
+  const [photosAfter, setPhotosAfter] = useState<QueuedPhoto[]>([])
+  const [returnSignatureDataUrl, setReturnSignatureDataUrl] = useState<string | null>(null)
+  const [receiveSignatureDataUrl, setReceiveSignatureDataUrl] = useState<string | null>(null)
+  const [createMaintenance, setCreateMaintenance] = useState(false)
   const [values, setValues] = useState({
     checkoutId: "",
     returnDate: new Date().toISOString().slice(0, 10),
@@ -37,15 +62,54 @@ export function CheckinForm({
     missingAccessories: "",
     damageNote: "",
     remark: "",
+    maintenanceReportedById: "",
+    maintenanceProblem: "",
   })
 
   const selectedCheckout = useMemo(
     () => activeCheckouts.find((checkout) => checkout.id === values.checkoutId),
     [activeCheckouts, values.checkoutId]
   )
+  const conditionLabelById = useMemo(() => new Map(conditions.map((condition) => [condition.id, condition.label])), [conditions])
+  const selectedStatus = statuses.find((status) => status.id === values.nextStatusId)
+  const pendingRepairStatus = statuses.find((status) => status.name === "Pending Repair")
+  const canCreateMaintenance = selectedStatus?.name === "Pending Repair"
+  const photoTypes = [
+    { id: "overview", label: t("photoTypeOverview") },
+    { id: "assetTag", label: t("photoTypeAssetTag") },
+    { id: "serial", label: t("photoTypeSerial") },
+    { id: "accessories", label: t("photoTypeAccessories") },
+    { id: "damage", label: t("photoTypeDamage") },
+  ]
 
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
+    if (field === "nextStatusId") {
+      const status = statuses.find((item) => item.id === value)
+      setCreateMaintenance(status?.name === "Pending Repair")
+    }
+  }
+
+  function handleDamageNoteChange(value: string) {
+    setValues((current) => ({
+      ...current,
+      damageNote: value,
+      nextStatusId: value.trim() && !current.nextStatusId && pendingRepairStatus ? pendingRepairStatus.id : current.nextStatusId,
+    }))
+    if (value.trim() && pendingRepairStatus && !values.nextStatusId) setCreateMaintenance(true)
+  }
+
+  function addPhoto(file: File | null) {
+    if (!file) return
+    const selectedType = photoTypes.find((type) => type.id === photoType)
+    setPhotosAfter((current) => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        label: selectedType?.label ?? t("photoTypeOverview"),
+        file,
+      },
+    ])
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -56,7 +120,13 @@ export function CheckinForm({
     for (const [key, value] of Object.entries(values)) {
       body.set(key, value)
     }
-    if (photoAfter) body.set("photoAfter", photoAfter)
+    body.set("createMaintenance", String(createMaintenance && canCreateMaintenance))
+    body.set("photoAfterLabels", JSON.stringify(photosAfter.map((photo) => photo.label)))
+    for (const photo of photosAfter) {
+      body.append("photoAfterFiles", photo.file)
+    }
+    if (returnSignatureDataUrl) body.set("returnSignatureFile", dataUrlToFile(returnSignatureDataUrl, `return-signature-${Date.now()}.png`))
+    if (receiveSignatureDataUrl) body.set("receiveSignatureFile", dataUrlToFile(receiveSignatureDataUrl, `receive-signature-${Date.now()}.png`))
 
     try {
       const response = await fetch(`/api/assets/${selectedCheckout.assetId}/checkin`, {
@@ -93,6 +163,24 @@ export function CheckinForm({
           <Field label={t("returnDate")} required>
             <input type="date" value={values.returnDate} onChange={(event) => setField("returnDate", event.target.value)} required className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </Field>
+
+          {selectedCheckout && (
+            <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
+              <div className="mb-3 text-sm font-semibold text-foreground">{t("previousCheckout")}</div>
+              <div className="grid gap-3 text-sm md:grid-cols-3">
+                <ReadOnly label={t("assetTag")} value={selectedCheckout.assetTag ?? "-"} />
+                <ReadOnly label={t("assetName")} value={selectedCheckout.assetName ?? "-"} />
+                <ReadOnly label={t("serialNumber")} value={selectedCheckout.serialNumber ?? "-"} />
+                <ReadOnly label={t("checkoutType")} value={selectedCheckout.checkoutType ? t(`type_${selectedCheckout.checkoutType}`) : "-"} />
+                <ReadOnly label={t("checkoutTo")} value={selectedCheckout.destinationLabel ?? "-"} />
+                <ReadOnly label={t("conditionBefore")} value={selectedCheckout.conditionBefore ? conditionLabelById.get(selectedCheckout.conditionBefore) ?? selectedCheckout.conditionBefore : "-"} />
+                <ReadOnly label={t("checkoutDate")} value={formatDate(selectedCheckout.checkoutDate)} />
+                <ReadOnly label={t("expectedReturnDate")} value={formatDate(selectedCheckout.expectedReturnDate)} />
+                <ReadOnly label={t("checkoutRemark")} value={selectedCheckout.remark ?? "-"} />
+              </div>
+            </div>
+          )}
+
           <Field label={t("returnBy")} required>
             <input value={values.returnBy} onChange={(event) => setField("returnBy", event.target.value)} required maxLength={100} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </Field>
@@ -122,7 +210,7 @@ export function CheckinForm({
           </Field>
           <div className="md:col-span-2">
             <Field label={t("damageNote")}>
-              <textarea value={values.damageNote} onChange={(event) => setField("damageNote", event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+              <textarea value={values.damageNote} onChange={(event) => handleDamageNoteChange(event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
             </Field>
           </div>
           <div className="md:col-span-2">
@@ -130,20 +218,107 @@ export function CheckinForm({
               <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
             </Field>
           </div>
-          <div className="md:col-span-2">
-            <Field label={t("photoAfter")}>
+
+          <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
+            <div className="mb-3 flex items-start gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <FileImage className="h-5 w-5" />
+              </span>
+              <div>
+                <div className="text-sm font-semibold text-foreground">{t("returnPhotoChecklist")}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{t("returnPhotoChecklistHelp")}</div>
+              </div>
+            </div>
+            <div className="mb-3 grid gap-3 md:grid-cols-[220px_1fr]">
+              <Select label={t("photoType")} value={photoType} onChange={setPhotoType}>
+                {photoTypes.map((type) => (
+                  <option key={type.id} value={type.id}>{type.label}</option>
+                ))}
+              </Select>
               <FileDropzone
-                file={photoAfter}
-                onFileChange={setPhotoAfter}
+                file={null}
+                onFileChange={addPhoto}
                 disabled={saving}
                 accept="image/*"
                 capture="environment"
                 title={t("photoAfterDropTitle")}
-                hint={t("photoAfterSelected")}
+                hint={t("photoQueued")}
                 browseLabel={t("photoAfterDropHint")}
               />
-            </Field>
+            </div>
+            <div className="grid gap-2">
+              {photosAfter.length === 0 ? (
+                <div className="rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">{t("noQueuedPhotos")}</div>
+              ) : (
+                photosAfter.map((photo) => (
+                  <div key={photo.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2 text-sm">
+                    <div className="min-w-0">
+                      <div className="font-medium text-foreground">{photo.label}</div>
+                      <div className="truncate text-xs text-muted-foreground">{photo.file.name}</div>
+                    </div>
+                    <button type="button" onClick={() => setPhotosAfter((current) => current.filter((item) => item.id !== photo.id))} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">{t("removePhoto")}</span>
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
+
+          <div className="md:col-span-2 grid gap-4 md:grid-cols-2">
+            <SignaturePad
+              label={t("returnSignature")}
+              helper={t("returnSignatureHelp")}
+              clearLabel={t("clearSignature")}
+              disabled={saving}
+              onChange={setReturnSignatureDataUrl}
+            />
+            <SignaturePad
+              label={t("receiveSignature")}
+              helper={t("receiveSignatureHelp")}
+              clearLabel={t("clearSignature")}
+              disabled={saving}
+              onChange={setReceiveSignatureDataUrl}
+            />
+          </div>
+
+          <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={createMaintenance}
+                disabled={!canCreateMaintenance}
+                onChange={(event) => setCreateMaintenance(event.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              />
+              <span>
+                <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Wrench className="h-4 w-4" />
+                  {t("createMaintenance")}
+                </span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  {canCreateMaintenance ? t("createMaintenanceHelp") : t("createMaintenanceDisabledHelp")}
+                </span>
+              </span>
+            </label>
+            {createMaintenance && canCreateMaintenance && (
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <Select label={t("maintenanceReportedBy")} value={values.maintenanceReportedById} required onChange={(value) => setField("maintenanceReportedById", value)}>
+                  <option value="">{t("selectMaintenanceReportedBy")}</option>
+                  {employees.map((employee) => (
+                    <option key={employee.id} value={employee.id}>{employee.label}</option>
+                  ))}
+                </Select>
+                <div className="md:col-span-2">
+                  <Field label={t("maintenanceProblem")}>
+                    <textarea value={values.maintenanceProblem} onChange={(event) => setField("maintenanceProblem", event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder={t("maintenanceProblemPlaceholder")} />
+                  </Field>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="md:col-span-2 flex justify-end">
             <button type="submit" disabled={saving} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -176,4 +351,30 @@ function Select({ label, value, required, onChange, children }: { label: string;
       </select>
     </Field>
   )
+}
+
+function ReadOnly({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-xs uppercase text-muted-foreground">{label}</div>
+      <div className="mt-1 truncate font-medium text-foreground" title={value}>{value}</div>
+    </div>
+  )
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "-"
+  return new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(new Date(value))
+}
+
+function dataUrlToFile(dataUrl: string, fileName: string) {
+  const [metadata, base64Data] = dataUrl.split(",")
+  const mimeMatch = metadata.match(/data:(.*);base64/)
+  const mimeType = mimeMatch?.[1] ?? "image/png"
+  const binary = atob(base64Data)
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index)
+  }
+  return new File([bytes], fileName, { type: mimeType })
 }

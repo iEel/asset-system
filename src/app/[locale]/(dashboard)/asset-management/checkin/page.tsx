@@ -14,6 +14,7 @@ export default async function CheckinPage({ params }: CheckinPageProps) {
   return (
     <CheckinForm
       activeCheckouts={options.activeCheckouts}
+      employees={options.employees}
       locations={options.locations}
       statuses={options.statuses}
       conditions={options.conditions}

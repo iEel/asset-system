@@ -47,6 +47,14 @@ export const assetCheckinSchema = z.object({
   nextStatusId: z.string().trim().min(1),
   nextLocationId: z.string().trim().min(1),
   remark: optionalText,
+  createMaintenance: z.coerce.boolean().optional().default(false),
+  maintenanceReportedById: optionalText,
+  maintenanceProblem: optionalText,
+}).superRefine((input, context) => {
+  if (!input.createMaintenance) return
+  if (!input.maintenanceReportedById) {
+    context.addIssue({ code: "custom", path: ["maintenanceReportedById"], message: "Reported by is required" })
+  }
 })
 
 export const assetTransferSchema = z
