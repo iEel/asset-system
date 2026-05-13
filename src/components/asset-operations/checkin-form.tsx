@@ -53,6 +53,8 @@ export function CheckinForm({
   const [returnSignatureDataUrl, setReturnSignatureDataUrl] = useState<string | null>(null)
   const [receiveSignatureDataUrl, setReceiveSignatureDataUrl] = useState<string | null>(null)
   const [createMaintenance, setCreateMaintenance] = useState(false)
+  const [returnByEmployeeId, setReturnByEmployeeId] = useState("")
+  const [receiveByEmployeeId, setReceiveByEmployeeId] = useState("")
   const [values, setValues] = useState({
     checkoutId: "",
     returnDate: new Date().toISOString().slice(0, 10),
@@ -89,8 +91,15 @@ export function CheckinForm({
     setValues((current) => ({ ...current, [field]: value }))
     if (field === "nextStatusId") {
       const status = statuses.find((item) => item.id === value)
-      setCreateMaintenance(status?.name === "Pending Repair")
+      if (status?.name !== "Pending Repair") setCreateMaintenance(false)
     }
+  }
+
+  function setEmployeeField(field: "returnBy" | "receiveBy", employeeId: string) {
+    const employee = employees.find((item) => item.id === employeeId)
+    if (field === "returnBy") setReturnByEmployeeId(employeeId)
+    if (field === "receiveBy") setReceiveByEmployeeId(employeeId)
+    setField(field, employee?.label ?? "")
   }
 
   function handleDamageNoteChange(value: string) {
@@ -99,7 +108,13 @@ export function CheckinForm({
       damageNote: value,
       nextStatusId: value.trim() && !current.nextStatusId && pendingRepairStatus ? pendingRepairStatus.id : current.nextStatusId,
     }))
-    if (value.trim() && pendingRepairStatus && !values.nextStatusId) setCreateMaintenance(true)
+  }
+
+  function handleCreateMaintenanceChange(checked: boolean) {
+    setCreateMaintenance(checked)
+    if (checked && returnByEmployeeId && !values.maintenanceReportedById) {
+      setField("maintenanceReportedById", returnByEmployeeId)
+    }
   }
 
   function addPhoto(file: File | null) {
@@ -117,7 +132,22 @@ export function CheckinForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!selectedCheckout?.assetId) return
+    if (!selectedCheckout?.assetId) {
+      toast.error(t("selectCheckoutRequired"))
+      return
+    }
+    if (!returnByEmployeeId || !receiveByEmployeeId) {
+      toast.error(t("selectReturnAndReceiver"))
+      return
+    }
+    if (!values.conditionAfter || !values.nextStatusId || !values.nextLocationId) {
+      toast.error(t("completeRequiredFields"))
+      return
+    }
+    if (createMaintenance && canCreateMaintenance && !values.maintenanceReportedById) {
+      toast.error(t("selectMaintenanceReportedBy"))
+      return
+    }
     setSaving(true)
     const body = new FormData()
     for (const [key, value] of Object.entries(values)) {
@@ -154,7 +184,7 @@ export function CheckinForm({
         <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
       </div>
       <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <SearchableSelect
             label={t("asset")}
             value={values.checkoutId}
@@ -189,7 +219,7 @@ export function CheckinForm({
           {hasActiveCheckouts && (
             <>
           <Field label={t("returnDate")} required>
-            <input type="date" value={values.returnDate} onChange={(event) => setField("returnDate", event.target.value)} required className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="date" value={values.returnDate} onChange={(event) => setField("returnDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </Field>
 
           {selectedCheckout && (
@@ -209,12 +239,26 @@ export function CheckinForm({
             </div>
           )}
 
-          <Field label={t("returnBy")} required>
-            <input value={values.returnBy} onChange={(event) => setField("returnBy", event.target.value)} required maxLength={100} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
-          </Field>
-          <Field label={t("receiveBy")} required>
-            <input value={values.receiveBy} onChange={(event) => setField("receiveBy", event.target.value)} required maxLength={100} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
-          </Field>
+          <SearchableSelect
+            label={t("returnBy")}
+            value={returnByEmployeeId}
+            required
+            options={employees}
+            placeholder={t("selectReturnBy")}
+            searchPlaceholder={tCommon("searchSelectPlaceholder")}
+            emptyLabel={tCommon("searchSelectNoResults")}
+            onChange={(value) => setEmployeeField("returnBy", value)}
+          />
+          <SearchableSelect
+            label={t("receiveBy")}
+            value={receiveByEmployeeId}
+            required
+            options={employees}
+            placeholder={t("selectReceiveBy")}
+            searchPlaceholder={tCommon("searchSelectPlaceholder")}
+            emptyLabel={tCommon("searchSelectNoResults")}
+            onChange={(value) => setEmployeeField("receiveBy", value)}
+          />
           <Select label={t("conditionAfter")} value={values.conditionAfter} required onChange={(value) => setField("conditionAfter", value)}>
             <option value="">{t("selectCondition")}</option>
             {conditions.map((condition) => (
@@ -317,7 +361,7 @@ export function CheckinForm({
                 type="checkbox"
                 checked={createMaintenance}
                 disabled={!canCreateMaintenance}
-                onChange={(event) => setCreateMaintenance(event.target.checked)}
+                onChange={(event) => handleCreateMaintenanceChange(event.target.checked)}
                 className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
               />
               <span>
@@ -352,7 +396,7 @@ export function CheckinForm({
           </div>
 
           <div className="md:col-span-2 flex justify-end">
-            <button type="submit" disabled={saving || !selectedCheckout?.assetId} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50">
+            <button type="submit" disabled={saving} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {tCommon("save")}
             </button>

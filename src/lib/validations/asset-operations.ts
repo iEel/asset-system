@@ -5,6 +5,15 @@ const optionalDate = z.preprocess(
   (value) => (typeof value === "string" && value.trim().length === 0 ? null : value),
   z.coerce.date().nullable().optional()
 )
+const optionalBoolean = z.preprocess((value) => {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase()
+    if (["true", "1", "yes", "on"].includes(normalized)) return true
+    if (["false", "0", "no", "off", ""].includes(normalized)) return false
+  }
+  if (value == null) return false
+  return value
+}, z.boolean().default(false))
 
 export const checkoutTypes = ["user", "department", "location", "asset"] as const
 
@@ -47,7 +56,7 @@ export const assetCheckinSchema = z.object({
   nextStatusId: z.string().trim().min(1),
   nextLocationId: z.string().trim().min(1),
   remark: optionalText,
-  createMaintenance: z.coerce.boolean().optional().default(false),
+  createMaintenance: optionalBoolean,
   maintenanceReportedById: optionalText,
   maintenanceProblem: optionalText,
 }).superRefine((input, context) => {
