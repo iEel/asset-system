@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ArrowLeft, Edit, History, Printer, QrCode } from "lucide-react"
+import { ArrowLeft, Edit, History, ImageIcon, Printer, QrCode } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
@@ -144,6 +144,8 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   }))
   const legacyPurchaseDocuments = asset.attachments.filter((attachment) => attachment.module === "asset_purchase")
   const assetAttachments = asset.attachments.filter((attachment) => attachment.module !== "asset_purchase")
+  const primaryAssetPhoto = assetAttachments.find((attachment) => isPreviewableImage(attachment.fileType))
+  const primaryModelPhoto = modelPhotos.find((attachment) => isPreviewableImage(attachment.fileType))
   const modelSpecs = parseModelSpecs(asset.model?.specs)
   const movementLabels = await getMovementDisplayLabels(asset.movements)
 
@@ -417,10 +419,78 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             </h2>
             <AssetQrCode value={qrValue} label={asset.assetTag} />
           </section>
+          <SidebarPhotoCard
+            title={t("modelPhoto")}
+            caption={asset.model?.name ?? t("modelPhoto")}
+            attachment={primaryModelPhoto}
+            emptyLabel={tCommon("noData")}
+          />
+          <SidebarPhotoCard
+            title={t("assetPhotos")}
+            caption={t("primaryAssetPhoto")}
+            attachment={primaryAssetPhoto}
+            emptyLabel={tCommon("noData")}
+          />
         </aside>
       </div>
     </div>
   )
+}
+
+function SidebarPhotoCard({
+  title,
+  caption,
+  attachment,
+  emptyLabel,
+}: {
+  title: string
+  caption: string
+  attachment?: { id: string; originalName: string } | null
+  emptyLabel: string
+}) {
+  return (
+    <section className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+      <h2 className="mb-4 flex items-center justify-center gap-2 text-lg font-semibold text-foreground">
+        <ImageIcon className="h-5 w-5 text-primary" />
+        {title}
+      </h2>
+      {attachment ? (
+        <a
+          href="#photos"
+          className="group block overflow-hidden rounded-lg border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          <div className="flex aspect-[4/3] w-full items-center justify-center bg-muted/40 p-2">
+            {/* Authenticated attachment URLs render more reliably as browser-native images. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/api/attachments/${attachment.id}?inline=1`}
+              alt={attachment.originalName}
+              width={320}
+              height={240}
+              loading="eager"
+              fetchPriority="high"
+              className="max-h-full w-full object-contain transition-transform group-hover:scale-[1.01]"
+            />
+          </div>
+          <div className="border-t border-border p-3 text-left">
+            <div className="text-sm font-medium text-foreground">{caption}</div>
+            <div className="mt-1 truncate text-xs text-muted-foreground">{attachment.originalName}</div>
+          </div>
+        </a>
+      ) : (
+        <a
+          href="#photos"
+          className="flex aspect-[4/3] items-center justify-center rounded-lg border border-dashed border-border bg-background text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+        >
+          {emptyLabel}
+        </a>
+      )}
+    </section>
+  )
+}
+
+function isPreviewableImage(fileType: string) {
+  return fileType.startsWith("image/")
 }
 
 function SectionHeading({
