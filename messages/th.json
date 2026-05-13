@@ -32,7 +32,9 @@
     "next": "ถัดไป",
     "all": "ทั้งหมด",
     "yes": "ใช่",
-    "no": "ไม่"
+    "no": "ไม่",
+    "searchSelectPlaceholder": "พิมพ์เพื่อค้นหา...",
+    "searchSelectNoResults": "ไม่พบรายการที่ตรงกับคำค้น"
   },
   "globalSearch": {
     "label": "ค้นหาทรัพย์สินทั่วระบบ",

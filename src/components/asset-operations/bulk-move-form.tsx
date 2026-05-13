@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Check, Loader2, Save } from "lucide-react"
+import { Check, Loader2, Save, Search } from "lucide-react"
 import { toast } from "sonner"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 
 type Option = { id: string; label: string; disabled?: boolean }
 
@@ -14,6 +15,7 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
   const t = useTranslations("bulkMove")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
+  const [assetQuery, setAssetQuery] = useState("")
   const [assetIds, setAssetIds] = useState<string[]>([])
   const [values, setValues] = useState({
     toLocationId: "",
@@ -21,7 +23,14 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
     remark: "",
   })
 
-  const availableAssets = useMemo(() => assets.filter((asset) => !asset.disabled), [assets])
+  const availableAssets = useMemo(() => {
+    const normalizedQuery = assetQuery.toLocaleLowerCase().replace(/\s+/g, "")
+    return assets.filter((asset) => {
+      if (asset.disabled) return false
+      if (!normalizedQuery) return true
+      return asset.label.toLocaleLowerCase().replace(/\s+/g, "").includes(normalizedQuery)
+    })
+  }, [assetQuery, assets])
 
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -74,6 +83,15 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
               {t("assets")}
               <span className="ml-1 text-danger">*</span>
             </span>
+            <div className="mb-2 flex h-10 items-center gap-2 rounded-md border border-border bg-background px-3">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <input
+                value={assetQuery}
+                onChange={(event) => setAssetQuery(event.target.value)}
+                placeholder={tCommon("searchSelectPlaceholder")}
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              />
+            </div>
             <div className="max-h-72 overflow-y-auto rounded-md border border-border bg-background">
               {availableAssets.length === 0 ? (
                 <div className="px-3 py-6 text-center text-sm text-muted-foreground">{tCommon("noData")}</div>
@@ -97,14 +115,7 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
               )}
             </div>
           </div>
-          <Select label={t("toLocation")} value={values.toLocationId} required onChange={(value) => setField("toLocationId", value)}>
-            <option value="">{t("selectLocation")}</option>
-            {locations.map((location) => (
-              <option key={location.id} value={location.id}>
-                {location.label}
-              </option>
-            ))}
-          </Select>
+          <SearchableSelect label={t("toLocation")} value={values.toLocationId} required options={locations} placeholder={t("selectLocation")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toLocationId", value)} />
           <Field label={t("reason")} required>
             <input value={values.reason} onChange={(event) => setField("reason", event.target.value)} required maxLength={500} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </Field>
@@ -134,15 +145,5 @@ function Field({ label, required, children }: { label: string; required?: boolea
       </span>
       {children}
     </label>
-  )
-}
-
-function Select({ label, value, required, onChange, children }: { label: string; value: string; required?: boolean; onChange: (value: string) => void; children: React.ReactNode }) {
-  return (
-    <Field label={label} required={required}>
-      <select value={value} required={required} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary">
-        {children}
-      </select>
-    </Field>
   )
 }

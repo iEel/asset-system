@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 
 type Option = { id: string; label: string }
 
@@ -70,14 +71,7 @@ export function DisposalRequestForm({
         <p className="mt-1 text-sm text-muted-foreground">{t("createSubtitle")}</p>
       </div>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <Select label={t("asset")} value={values.assetId} required onChange={(value) => setField("assetId", value)}>
-          <option value="">{t("selectAsset")}</option>
-          {assets.map((asset) => (
-            <option key={asset.id} value={asset.id}>
-              {asset.label}
-            </option>
-          ))}
-        </Select>
+        <SearchableSelect label={t("asset")} value={values.assetId} required options={assets} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assetId", value)} />
         <Select label={t("disposalType")} value={values.disposalType} required onChange={(value) => setField("disposalType", value)}>
           <option value="dispose">{t("types.dispose")}</option>
           <option value="sell">{t("types.sell")}</option>
@@ -85,22 +79,8 @@ export function DisposalRequestForm({
           <option value="destroy">{t("types.destroy")}</option>
           <option value="lost">{t("types.lost")}</option>
         </Select>
-        <Select label={t("requestedBy")} value={values.requestedById} required onChange={(value) => setField("requestedById", value)}>
-          <option value="">{t("selectEmployee")}</option>
-          {employees.map((employee) => (
-            <option key={employee.id} value={employee.id}>
-              {employee.label}
-            </option>
-          ))}
-        </Select>
-        <Select label={t("approver")} value={values.approverId} onChange={(value) => setField("approverId", value)}>
-          <option value="">{t("noApprover")}</option>
-          {employees.map((employee) => (
-            <option key={employee.id} value={employee.id}>
-              {employee.label}
-            </option>
-          ))}
-        </Select>
+        <SearchableSelect label={t("requestedBy")} value={values.requestedById} required options={employees} placeholder={t("selectEmployee")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("requestedById", value)} />
+        <SearchableSelect label={t("approver")} value={values.approverId} options={employees} placeholder={t("noApprover")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("approverId", value)} />
         <Field label={t("saleValue")}>
           <input
             type="number"

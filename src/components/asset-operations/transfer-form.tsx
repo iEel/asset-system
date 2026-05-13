@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 
 type Option = { id: string; label: string; disabled?: boolean }
 
@@ -76,38 +77,10 @@ export function TransferForm({
       </div>
       <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Select label={t("asset")} value={values.assetId} required onChange={(value) => setField("assetId", value)}>
-            <option value="">{t("selectAsset")}</option>
-            {assets.map((asset) => (
-              <option key={asset.id} value={asset.id} disabled={asset.disabled}>
-                {asset.label}
-              </option>
-            ))}
-          </Select>
-          <Select label={t("toLocation")} value={values.toLocationId} onChange={(value) => setField("toLocationId", value)}>
-            <option value="">{t("noChange")}</option>
-            {locations.map((location) => (
-              <option key={location.id} value={location.id}>
-                {location.label}
-              </option>
-            ))}
-          </Select>
-          <Select label={t("toCustodian")} value={values.toCustodianId} onChange={(value) => setField("toCustodianId", value)}>
-            <option value="">{t("noChange")}</option>
-            {employees.map((employee) => (
-              <option key={employee.id} value={employee.id}>
-                {employee.label}
-              </option>
-            ))}
-          </Select>
-          <Select label={t("toDepartment")} value={values.toDepartmentId} onChange={(value) => setField("toDepartmentId", value)}>
-            <option value="">{t("noChange")}</option>
-            {departments.map((department) => (
-              <option key={department.id} value={department.id}>
-                {department.label}
-              </option>
-            ))}
-          </Select>
+          <SearchableSelect label={t("asset")} value={values.assetId} required options={assets} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assetId", value)} />
+          <SearchableSelect label={t("toLocation")} value={values.toLocationId} options={locations} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toLocationId", value)} />
+          <SearchableSelect label={t("toCustodian")} value={values.toCustodianId} options={employees} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toCustodianId", value)} />
+          <SearchableSelect label={t("toDepartment")} value={values.toDepartmentId} options={departments} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toDepartmentId", value)} />
           <div className="md:col-span-2">
             <Field label={t("reason")} required>
               <input value={values.reason} onChange={(event) => setField("reason", event.target.value)} required maxLength={500} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
@@ -139,15 +112,5 @@ function Field({ label, required, children }: { label: string; required?: boolea
       </span>
       {children}
     </label>
-  )
-}
-
-function Select({ label, value, required, onChange, children }: { label: string; value: string; required?: boolean; onChange: (value: string) => void; children: React.ReactNode }) {
-  return (
-    <Field label={label} required={required}>
-      <select value={value} required={required} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary">
-        {children}
-      </select>
-    </Field>
   )
 }

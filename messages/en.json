@@ -32,7 +32,9 @@
     "next": "Next",
     "all": "All",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "searchSelectPlaceholder": "Type to search...",
+    "searchSelectNoResults": "No matching options"
   },
   "globalSearch": {
     "label": "Search assets globally",

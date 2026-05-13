@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { FileImage, Loader2, PackageCheck, Save, Trash2, Wrench } from "lucide-react"
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
 
 type Option = { id: string; label: string }
@@ -154,14 +155,17 @@ export function CheckinForm({
       </div>
       <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Select label={t("asset")} value={values.checkoutId} required disabled={!hasActiveCheckouts} onChange={(value) => setField("checkoutId", value)}>
-            <option value="">{hasActiveCheckouts ? t("selectCheckout") : t("noActiveCheckoutsOption")}</option>
-            {activeCheckouts.map((checkout) => (
-              <option key={checkout.id} value={checkout.id}>
-                {checkout.label}
-              </option>
-            ))}
-          </Select>
+          <SearchableSelect
+            label={t("asset")}
+            value={values.checkoutId}
+            required
+            disabled={!hasActiveCheckouts}
+            options={activeCheckouts}
+            placeholder={hasActiveCheckouts ? t("selectCheckout") : t("noActiveCheckoutsOption")}
+            searchPlaceholder={tCommon("searchSelectPlaceholder")}
+            emptyLabel={tCommon("searchSelectNoResults")}
+            onChange={(value) => setField("checkoutId", value)}
+          />
 
           {!hasActiveCheckouts && (
             <div className="md:col-span-2 rounded-md border border-dashed border-border bg-background p-4">
@@ -328,12 +332,16 @@ export function CheckinForm({
             </label>
             {createMaintenance && canCreateMaintenance && (
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <Select label={t("maintenanceReportedBy")} value={values.maintenanceReportedById} required onChange={(value) => setField("maintenanceReportedById", value)}>
-                  <option value="">{t("selectMaintenanceReportedBy")}</option>
-                  {employees.map((employee) => (
-                    <option key={employee.id} value={employee.id}>{employee.label}</option>
-                  ))}
-                </Select>
+                <SearchableSelect
+                  label={t("maintenanceReportedBy")}
+                  value={values.maintenanceReportedById}
+                  required
+                  options={employees}
+                  placeholder={t("selectMaintenanceReportedBy")}
+                  searchPlaceholder={tCommon("searchSelectPlaceholder")}
+                  emptyLabel={tCommon("searchSelectNoResults")}
+                  onChange={(value) => setField("maintenanceReportedById", value)}
+                />
                 <div className="md:col-span-2">
                   <Field label={t("maintenanceProblem")}>
                     <textarea value={values.maintenanceProblem} onChange={(event) => setField("maintenanceProblem", event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder={t("maintenanceProblemPlaceholder")} />

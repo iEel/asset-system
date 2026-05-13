@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 
 type Option = { id: string; label: string }
 
@@ -75,22 +76,8 @@ export function MaintenanceTicketForm({
         <p className="mt-1 text-sm text-muted-foreground">{t("createSubtitle")}</p>
       </div>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <Select label={t("asset")} value={values.assetId} required onChange={(value) => setField("assetId", value)}>
-          <option value="">{t("selectAsset")}</option>
-          {assets.map((asset) => (
-            <option key={asset.id} value={asset.id}>
-              {asset.label}
-            </option>
-          ))}
-        </Select>
-        <Select label={t("reportedBy")} value={values.reportedById} required onChange={(value) => setField("reportedById", value)}>
-          <option value="">{t("selectEmployee")}</option>
-          {employees.map((employee) => (
-            <option key={employee.id} value={employee.id}>
-              {employee.label}
-            </option>
-          ))}
-        </Select>
+        <SearchableSelect label={t("asset")} value={values.assetId} required options={assets} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assetId", value)} />
+        <SearchableSelect label={t("reportedBy")} value={values.reportedById} required options={employees} placeholder={t("selectEmployee")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("reportedById", value)} />
         <Field label={t("reportedDate")} required>
           <input
             type="date"
@@ -100,31 +87,12 @@ export function MaintenanceTicketForm({
             className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </Field>
-        <Select label={t("assignedTo")} value={values.assignedToId} onChange={(value) => setField("assignedToId", value)}>
-          <option value="">{t("unassigned")}</option>
-          {employees.map((employee) => (
-            <option key={employee.id} value={employee.id}>
-              {employee.label}
-            </option>
-          ))}
-        </Select>
+        <SearchableSelect label={t("assignedTo")} value={values.assignedToId} options={employees} placeholder={t("unassigned")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assignedToId", value)} />
         <Select label={t("repairType")} value={values.repairType} required onChange={(value) => setField("repairType", value)}>
           <option value="internal">{t("internalRepair")}</option>
           <option value="vendor">{t("vendorRepair")}</option>
         </Select>
-        <Select
-          label={t("vendor")}
-          value={values.vendorId}
-          required={values.repairType === "vendor"}
-          onChange={(value) => setField("vendorId", value)}
-        >
-          <option value="">{t("selectVendor")}</option>
-          {suppliers.map((supplier) => (
-            <option key={supplier.id} value={supplier.id}>
-              {supplier.label}
-            </option>
-          ))}
-        </Select>
+        <SearchableSelect label={t("vendor")} value={values.vendorId} required={values.repairType === "vendor"} options={suppliers} placeholder={t("selectVendor")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("vendorId", value)} />
         <Field label={t("repairCost")}>
           <input
             type="number"

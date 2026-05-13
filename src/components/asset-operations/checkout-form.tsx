@@ -7,6 +7,7 @@ import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 
 type Option = { id: string; label: string; disabled?: boolean }
 type CheckoutType = "user" | "department" | "location" | "asset"
@@ -94,14 +95,16 @@ export function CheckoutForm({
   return (
     <OperationShell title={t("title")}>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <Select label={t("asset")} value={values.assetId} required onChange={(value) => setField("assetId", value)}>
-          <option value="">{t("selectAsset")}</option>
-          {assets.map((asset) => (
-            <option key={asset.id} value={asset.id} disabled={asset.disabled}>
-              {asset.label}
-            </option>
-          ))}
-        </Select>
+        <SearchableSelect
+          label={t("asset")}
+          value={values.assetId}
+          required
+          options={assets}
+          placeholder={t("selectAsset")}
+          searchPlaceholder={tCommon("searchSelectPlaceholder")}
+          emptyLabel={tCommon("searchSelectNoResults")}
+          onChange={(value) => setField("assetId", value)}
+        />
         <Select
           label={t("checkoutType")}
           value={values.checkoutType}
@@ -122,19 +125,16 @@ export function CheckoutForm({
           <option value="location">{t("toLocation")}</option>
           <option value="asset">{t("toAsset")}</option>
         </Select>
-        <Select
+        <SearchableSelect
           label={t("checkoutTo")}
           value={destinationValue(values)}
           required
+          options={destinationOptions}
+          placeholder={t("selectDestination")}
+          searchPlaceholder={tCommon("searchSelectPlaceholder")}
+          emptyLabel={tCommon("searchSelectNoResults")}
           onChange={(value) => setDestinationValue(values.checkoutType, value)}
-        >
-          <option value="">{t("selectDestination")}</option>
-          {destinationOptions.map((option) => (
-            <option key={option.id} value={option.id} disabled={option.disabled}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
+        />
         <Select label={t("conditionBefore")} value={values.conditionBefore} required onChange={(value) => setField("conditionBefore", value)}>
           <option value="">{t("selectCondition")}</option>
           {conditions.map((condition) => (
