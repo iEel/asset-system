@@ -272,6 +272,8 @@
     "fromValue": "จาก",
     "toValue": "ไปยัง",
     "movementSummary": "สรุป",
+    "movementSnapshot": "สถานะปัจจุบันโดยย่อ",
+    "latestMovement": "ความเคลื่อนไหวล่าสุด",
     "handoverTo": "ส่งมอบให้",
     "handoverBy": "ผู้ส่งมอบ",
     "performedBy": "ผู้ทำรายการ",

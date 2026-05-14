@@ -310,6 +310,9 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
       details: compactMovementDetails(details),
     }
   })
+  const latestMovement = movementTimelineItems[0]
+  const currentLocationLabel = asset.currentLocation ? `${asset.currentLocation.code} - ${asset.currentLocation.name}` : null
+  const currentCustodianLabel = asset.custodian ? formatEmployeeLabel(asset.custodian) : null
   const modelSpecs = parseModelSpecs(asset.model?.specs)
 
   const detailPath = `/${locale}/assets/${asset.id}`
@@ -513,6 +516,21 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
 
           <section id="movement" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={t("movementHistory")} subtitle={t("detailSections.movementSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
+            <div className="mb-5 rounded-md border border-border bg-background p-4">
+              <div className="mb-3 text-sm font-semibold text-foreground">{t("movementSnapshot")}</div>
+              <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
+                <Info label={t("currentLocation")} value={currentLocationLabel} compact />
+                <Info label={t("custodian")} value={currentCustodianLabel} compact />
+                <Info label={t("status")} value={asset.status?.nameTh ?? asset.status?.name} compact />
+                <Info label={t("latestMovement")} value={latestMovement ? `${latestMovement.title} · ${formatDateTime(latestMovement.performedAt)}` : null} compact />
+              </div>
+              {latestMovement ? (
+                <div className="mt-3 rounded-md bg-surface/80 px-3 py-2 text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">{t("movementSummary")}: </span>
+                  {latestMovement.summary}
+                </div>
+              ) : null}
+            </div>
             {movementTimelineItems.length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                 {tCommon("noData")}

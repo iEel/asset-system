@@ -272,6 +272,8 @@
     "fromValue": "From",
     "toValue": "To",
     "movementSummary": "Summary",
+    "movementSnapshot": "Current Snapshot",
+    "latestMovement": "Latest Movement",
     "handoverTo": "Handover To",
     "handoverBy": "Handover By",
     "performedBy": "Performed By",
