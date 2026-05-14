@@ -18,6 +18,11 @@ type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
 }
 
+type MovementCustodyDetail = {
+  label: string
+  value?: string | null
+}
+
 export default async function AssetDetailPage({ params }: AssetDetailPageProps) {
   const { id, locale } = await params
   await requirePagePermission(locale, "asset", "view")
@@ -155,7 +160,11 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const primaryModelPhoto = modelPhotos.find((attachment) => isPreviewableImage(attachment.fileType))
   const checkoutIds = asset.checkouts.map((checkout) => checkout.id)
   const checkinIds = asset.checkouts.map((checkout) => checkout.checkin?.id).filter((checkinId): checkinId is string => Boolean(checkinId))
-  const [operationAttachments, checkoutDepartments, checkoutLocations, checkoutParentAssets] = await Promise.all([
+  const movementActorIds = uniqueTruthy([
+    ...asset.movements.map((movement) => movement.performedBy),
+    ...asset.checkouts.map((checkout) => checkout.checkedOutBy),
+  ])
+  const [operationAttachments, checkoutDepartments, checkoutLocations, checkoutParentAssets, movementUsers] = await Promise.all([
     checkoutIds.length > 0 || checkinIds.length > 0
       ? prisma.attachment.findMany({
           where: {
@@ -180,6 +189,18 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
       where: { id: { in: uniqueTruthy(asset.checkouts.map((checkout) => checkout.parentAssetId)) } },
       select: { id: true, assetTag: true, name: true },
     }),
+    movementActorIds.length > 0
+      ? prisma.user.findMany({
+          where: { id: { in: movementActorIds } },
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            email: true,
+            employee: { select: { code: true, fullNameTh: true } },
+          },
+        })
+      : [],
   ])
   const operationAttachmentsByReference = new Map<string, typeof operationAttachments>()
   for (const attachment of operationAttachments) {
@@ -191,6 +212,53 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const checkoutDepartmentLabels = new Map(checkoutDepartments.map((department) => [department.id, `${department.code} - ${department.name}`]))
   const checkoutLocationLabels = new Map(checkoutLocations.map((location) => [location.id, `${location.code} - ${location.name}`]))
   const checkoutParentAssetLabels = new Map(checkoutParentAssets.map((parentAsset) => [parentAsset.id, `${parentAsset.assetTag} - ${parentAsset.name}`]))
+  const movementUserLabels = new Map(movementUsers.map((user) => [user.id, formatUserLabel(user)]))
+  const checkoutsById = new Map(asset.checkouts.map((checkout) => [checkout.id, checkout]))
+  const checkinsById = new Map(asset.checkouts.flatMap((checkout) => checkout.checkin ? [[checkout.checkin.id, { ...checkout.checkin, checkout }]] : []))
+  const movementCustodyDetails = new Map<string, MovementCustodyDetail[]>()
+  for (const movement of asset.movements) {
+    const details: MovementCustodyDetail[] = []
+
+    if (movement.referenceType === "checkout" && movement.referenceId) {
+      const checkout = checkoutsById.get(movement.referenceId)
+      if (checkout) {
+        details.push(
+          { label: t("documentNo"), value: checkout.documentNo ?? checkout.id },
+          {
+            label: t("handoverTo"),
+            value: getCheckoutDestination(checkout, {
+              departments: checkoutDepartmentLabels,
+              locations: checkoutLocationLabels,
+              parentAssets: checkoutParentAssetLabels,
+            }),
+          },
+          { label: t("handoverBy"), value: movementUserLabels.get(checkout.checkedOutBy) ?? checkout.checkedOutBy }
+        )
+      }
+    }
+
+    if (movement.referenceType === "checkin" && movement.referenceId) {
+      const checkin = checkinsById.get(movement.referenceId)
+      if (checkin) {
+        details.push(
+          { label: t("documentNo"), value: checkin.documentNo ?? checkin.id },
+          {
+            label: t("returnedFrom"),
+            value: getCheckoutDestination(checkin.checkout, {
+              departments: checkoutDepartmentLabels,
+              locations: checkoutLocationLabels,
+              parentAssets: checkoutParentAssetLabels,
+            }),
+          },
+          { label: t("returnBy"), value: checkin.returnBy },
+          { label: t("receiveBy"), value: checkin.receiveBy }
+        )
+      }
+    }
+
+    details.push({ label: t("performedBy"), value: movementUserLabels.get(movement.performedBy) ?? movement.performedBy })
+    movementCustodyDetails.set(movement.id, compactMovementDetails(details))
+  }
   const modelSpecs = parseModelSpecs(asset.model?.specs)
   const movementLabels = await getMovementDisplayLabels(asset.movements)
 
@@ -413,6 +481,13 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
                         <Info label={t("fromValue")} value={movementLabels.get(movement.id)?.from} compact />
                         <Info label={t("toValue")} value={movementLabels.get(movement.id)?.to} compact />
                       </div>
+                      {movementCustodyDetails.get(movement.id)?.length ? (
+                        <div className="mt-3 grid grid-cols-1 gap-2 rounded-md border border-border bg-surface/70 p-3 text-sm text-muted-foreground md:grid-cols-2 xl:grid-cols-3">
+                          {movementCustodyDetails.get(movement.id)?.map((detail) => (
+                            <Info key={`${movement.id}-${detail.label}`} label={detail.label} value={detail.value} compact />
+                          ))}
+                        </div>
+                      ) : null}
                       {movement.reason && <p className="mt-2 text-sm text-muted-foreground">{movement.reason}</p>}
                     </div>
                   </li>
@@ -720,4 +795,29 @@ function StatusPill({ label, color }: { label: string; color?: string | null }) 
       {label}
     </span>
   )
+}
+
+function formatUserLabel(user: {
+  username: string
+  displayName: string
+  email: string | null
+  employee: { code: string; fullNameTh: string } | null
+}) {
+  if (user.employee) return `${user.employee.code} - ${user.employee.fullNameTh}`
+  if (user.displayName) return `${user.displayName} (${user.username})`
+  return user.email ?? user.username
+}
+
+function compactMovementDetails(details: MovementCustodyDetail[]) {
+  const seen = new Set<string>()
+
+  return details.filter((detail) => {
+    const value = detail.value?.trim()
+    if (!value) return false
+
+    const key = `${detail.label}:${value}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
