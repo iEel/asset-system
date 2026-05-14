@@ -244,7 +244,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
       </div>
 
       <nav className="sticky top-0 z-20 -mx-4 border-y border-border bg-background/95 px-4 py-2 shadow-sm backdrop-blur md:top-0" aria-label={t("detailSections.nav")}>
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="scrollbar-none flex gap-2 overflow-x-auto">
           {sectionLinks.map((section) => (
             <a
               key={section.id}

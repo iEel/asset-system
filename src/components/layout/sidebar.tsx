@@ -122,7 +122,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-border bg-sidebar transition-all duration-300 lg:relative",
+        "fixed inset-y-0 left-0 z-40 flex max-h-dvh flex-col border-r border-border bg-sidebar transition-all duration-300 lg:relative",
         collapsed ? "w-[min(18rem,85vw)] lg:w-16" : "w-[min(18rem,85vw)] lg:w-64",
         mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}
@@ -144,7 +144,7 @@ export function Sidebar({
       </div>
 
       {/* Menu */}
-      <nav className="flex-1 overflow-y-auto py-4">
+      <nav className="min-h-0 flex-1 overflow-y-auto py-4">
         {menuItems.map((item) => (
           <SidebarItem
             key={item.labelKey}
