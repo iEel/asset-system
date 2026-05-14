@@ -1,8 +1,8 @@
 # Developer Handoff — Asset Management System
 
-> **Last Updated:** 2026-05-13
+> **Last Updated:** 2026-05-14
 > **Phase:** Phase 4 AD/LDAP + Mobile Optimization (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built with export polish, 🟨 Admin RBAC polish started, 🟨 Phase 4 AD/LDAP login + sync workflow validated, 🟨 Mobile optimization pass complete, ✅ Table row navigation UX pass complete, ✅ Searchable dropdown UX pass complete for high-volume operational forms, ✅ Handover/return evidence and readable operation document numbers added
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built with export polish, 🟨 Admin RBAC polish started, 🟨 Phase 4 AD/LDAP login + sync workflow validated, 🟨 Mobile optimization pass complete, ✅ Table row navigation UX pass complete, ✅ Searchable dropdown UX pass complete for high-volume operational forms, ✅ Handover/return evidence and readable operation document numbers added, ✅ Asset movement custody timeline enriched
 
 ---
 
@@ -181,6 +181,7 @@ Connection settings อยู่ใน `.env`:
 - Maintenance schema pushed; `maintenance_tickets` table exists on SQL Server `alpha`
 - Disposal schema pushed; `disposal_requests` table exists on SQL Server `alpha`
 - Operation document number schema pushed; `asset_checkouts.documentNo` and `asset_checkins.documentNo` exist and existing records were backfilled to readable monthly sequences
+- Check-in custody schema pushed; `asset_checkins.returnByEmployeeId` and `asset_checkins.receiveByEmployeeId` exist as nullable employee references for new return transactions while legacy text names remain supported
 
 ### Schema (25+ tables)
 
@@ -211,7 +212,7 @@ Connection settings อยู่ใน `.env`:
 - **Operation Document Numbers** ใบส่งมอบ/ใบรับคืนมี `documentNo` แยกจาก UUID; ค่า default คือ `HO-{yyyyMM}-{running}` และ `RT-{yyyyMM}-{running}` โดยแก้ Template และจำนวนหลัก running ได้ที่ `/admin/settings`; UUID ยังใช้เป็น internal id/URL
 - **Asset Components / Assembly** ใช้ตาราง `asset_components` เพื่อผูก parent asset กับ component asset แบบมีประวัติ install/remove, `componentRole`, `slotNo`, reference fields, movement ทั้งสองฝั่ง และ audit log
 - **Location hierarchy** ผ่าน `parentId` self-reference
-- **Movement tracking** ทุกการเปลี่ยนแปลง asset ถูกบันทึกใน `asset_movements`
+- **Movement tracking** ทุกการเปลี่ยนแปลง asset ถูกบันทึกใน `asset_movements`; หน้า Asset Detail แสดง timeline แบบอ่านง่ายพร้อมประเภท movement, summary, document link, และ chain-of-custody ว่าใครส่งมอบ/ใครรับ/ไปที่ไหน
 - ทุก table มี `createdAt`, `updatedAt`, `createdBy`, `updatedBy`
 
 ---
@@ -680,6 +681,7 @@ await logAudit({
 | **Searchable dropdowns** | เพิ่ม `SearchableSelect` กลางแทน native select สำหรับรายการยาวใน operational forms: checkout asset/destination, checkin active checkout/maintenance reporter, transfer asset/location/custodian/department, bulk move location + asset list search, maintenance asset/reporter/assignee/vendor, และ disposal asset/requester/approver; รองรับค้นหา, empty state, disabled option, clear optional value และ keyboard Enter/Escape |
 | **Asset detail handover evidence** | หน้า Asset Detail เพิ่ม section ส่งมอบ/รับคืนพร้อมเลขเอกสาร, link ใบส่งมอบ/ใบรับคืน, รูปก่อนส่งมอบ, รูปหลังรับคืน และลายเซ็นแบบ preview รูปจริง; รูป/ลายเซ็น operation ถูกแยกจากรูปทรัพย์สินหลักด้วย `attachments.module` |
 | **Operation document numbering** | เพิ่ม `documentNo` ใน `asset_checkouts` และ `asset_checkins`, generator กลาง `src/lib/operation-document-number.ts`, default format `HO-{yyyyMM}-{running}` / `RT-{yyyyMM}-{running}`, และ System Settings UI สำหรับแก้ template เช่น `{yyyyMM}-{running}` เพื่อให้ได้ `YYYYMM-0001` |
+| **Asset movement custody timeline** | หน้า Asset Detail movement section แสดงชื่อ movement แบบ localize, badge/dot แยกสีตามประเภท, summary สั้น, link ไปเอกสารส่งมอบ/รับคืน, และรายละเอียด chain-of-custody เช่น ผู้ส่งมอบ ผู้รับ ผู้คืน ผู้รับคืน ปลายทาง และหมายเหตุ; check-in form/API บันทึก `returnByEmployeeId` และ `receiveByEmployeeId` เพิ่มเติมโดยยัง fallback ไปชื่อ legacy ได้; local DB sync แล้วด้วย `npx prisma db push` และ environment อื่นต้อง `prisma generate` หลัง sync |
 
 ---
 
@@ -786,6 +788,7 @@ await logAudit({
 77. Searchable dropdown UX: reusable `SearchableSelect` replaces long native select controls in checkout/checkin/transfer/bulk move/maintenance/disposal forms, and bulk move asset selection now has a quick filter input for large asset lists
 78. Asset Detail handover/return section with document links, operation photo evidence previews, and signature previews; asset photo gallery now filters to `module=asset` so operation signatures/photos no longer appear as asset photos
 79. Readable checkout/checkin document numbers with DB columns, generator, print-page display, Asset Detail display, configurable System Settings templates, and local SQL Server backfill for existing operation records
+80. Asset Detail movement custody timeline with human-readable movement titles, color-coded badges/dots, summary text, checkout/checkin document deep links, destination/custody actor details, and nullable employee references for check-in return/receive actors
 
 ---
 

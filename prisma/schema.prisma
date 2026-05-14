@@ -103,6 +103,8 @@ model Employee {
 
   custodianAssets            Asset[]             @relation("AssetCustodian")
   checkouts                  AssetCheckout[]     @relation("CheckoutCustodian")
+  checkinReturns             AssetCheckin[]      @relation("CheckinReturnByEmployee")
+  checkinReceives            AssetCheckin[]      @relation("CheckinReceiveByEmployee")
   reportedMaintenanceTickets MaintenanceTicket[] @relation("MaintenanceReportedBy")
   assignedMaintenanceTickets MaintenanceTicket[] @relation("MaintenanceAssignedTo")
   requestedDisposals         DisposalRequest[]   @relation("DisposalRequestedBy")
@@ -427,23 +429,27 @@ model AssetCheckout {
 }
 
 model AssetCheckin {
-  id                 String        @id @default(uuid())
-  documentNo         String?       @db.NVarChar(50)
-  assetId            String
-  asset              Asset         @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  checkoutId         String        @unique
-  checkout           AssetCheckout @relation(fields: [checkoutId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  returnDate         DateTime
-  returnBy           String        @db.NVarChar(100)
-  receiveBy          String        @db.NVarChar(100)
-  conditionAfter     String        @db.NVarChar(50)
-  missingAccessories String?       @db.NVarChar(Max)
-  damageNote         String?       @db.NVarChar(Max)
-  photoAfter         String?       @db.NVarChar(500)
-  nextStatus         String        @db.NVarChar(50) // Ready, Repair, Disposal
-  nextLocationId     String        @db.NVarChar(100)
-  remark             String?       @db.NVarChar(Max)
-  createdAt          DateTime      @default(now())
+  id                  String        @id @default(uuid())
+  documentNo          String?       @db.NVarChar(50)
+  assetId             String
+  asset               Asset         @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  checkoutId          String        @unique
+  checkout            AssetCheckout @relation(fields: [checkoutId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  returnDate          DateTime
+  returnByEmployeeId  String?
+  returnByEmployee    Employee?     @relation("CheckinReturnByEmployee", fields: [returnByEmployeeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  returnBy            String        @db.NVarChar(100)
+  receiveByEmployeeId String?
+  receiveByEmployee   Employee?     @relation("CheckinReceiveByEmployee", fields: [receiveByEmployeeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  receiveBy           String        @db.NVarChar(100)
+  conditionAfter      String        @db.NVarChar(50)
+  missingAccessories  String?       @db.NVarChar(Max)
+  damageNote          String?       @db.NVarChar(Max)
+  photoAfter          String?       @db.NVarChar(500)
+  nextStatus          String        @db.NVarChar(50) // Ready, Repair, Disposal
+  nextLocationId      String        @db.NVarChar(100)
+  remark              String?       @db.NVarChar(Max)
+  createdAt           DateTime      @default(now())
 
   @@index([documentNo])
   @@map("asset_checkins")

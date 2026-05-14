@@ -153,6 +153,8 @@ export function CheckinForm({
     for (const [key, value] of Object.entries(values)) {
       body.set(key, value)
     }
+    body.set("returnByEmployeeId", returnByEmployeeId)
+    body.set("receiveByEmployeeId", receiveByEmployeeId)
     body.set("createMaintenance", String(createMaintenance && canCreateMaintenance))
     body.set("photoAfterLabels", JSON.stringify(photosAfter.map((photo) => photo.label)))
     for (const photo of photosAfter) {

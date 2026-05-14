@@ -21,7 +21,22 @@ type AssetDetailPageProps = {
 type MovementCustodyDetail = {
   label: string
   value?: string | null
+  href?: string
 }
+
+type MovementTimelineItem = {
+  id: string
+  title: string
+  summary: string
+  tone: MovementTone
+  performedAt: Date
+  from: string | null | undefined
+  to: string | null | undefined
+  reason: string | null
+  details: MovementCustodyDetail[]
+}
+
+type MovementTone = "neutral" | "success" | "info" | "warning" | "danger"
 
 export default async function AssetDetailPage({ params }: AssetDetailPageProps) {
   const { id, locale } = await params
@@ -54,7 +69,12 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
         orderBy: { checkoutDate: "desc" },
         include: {
           custodian: { select: { code: true, fullNameTh: true } },
-          checkin: true,
+          checkin: {
+            include: {
+              returnByEmployee: { select: { code: true, fullNameTh: true } },
+              receiveByEmployee: { select: { code: true, fullNameTh: true } },
+            },
+          },
         },
       },
       attachments: {
@@ -164,7 +184,11 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
     ...asset.movements.map((movement) => movement.performedBy),
     ...asset.checkouts.map((checkout) => checkout.checkedOutBy),
   ])
-  const [operationAttachments, checkoutDepartments, checkoutLocations, checkoutParentAssets, movementUsers] = await Promise.all([
+  const movementEmployeeIds = uniqueTruthy([
+    ...asset.checkouts.map((checkout) => checkout.checkin?.returnByEmployeeId),
+    ...asset.checkouts.map((checkout) => checkout.checkin?.receiveByEmployeeId),
+  ])
+  const [operationAttachments, checkoutDepartments, checkoutLocations, checkoutParentAssets, movementUsers, movementEmployees] = await Promise.all([
     checkoutIds.length > 0 || checkinIds.length > 0
       ? prisma.attachment.findMany({
           where: {
@@ -201,6 +225,12 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           },
         })
       : [],
+    movementEmployeeIds.length > 0
+      ? prisma.employee.findMany({
+          where: { id: { in: movementEmployeeIds } },
+          select: { id: true, code: true, fullNameTh: true },
+        })
+      : [],
   ])
   const operationAttachmentsByReference = new Map<string, typeof operationAttachments>()
   for (const attachment of operationAttachments) {
@@ -213,26 +243,30 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const checkoutLocationLabels = new Map(checkoutLocations.map((location) => [location.id, `${location.code} - ${location.name}`]))
   const checkoutParentAssetLabels = new Map(checkoutParentAssets.map((parentAsset) => [parentAsset.id, `${parentAsset.assetTag} - ${parentAsset.name}`]))
   const movementUserLabels = new Map(movementUsers.map((user) => [user.id, formatUserLabel(user)]))
+  const movementEmployeeLabels = new Map(movementEmployees.map((employee) => [employee.id, formatEmployeeLabel(employee)]))
   const checkoutsById = new Map(asset.checkouts.map((checkout) => [checkout.id, checkout]))
   const checkinsById = new Map(asset.checkouts.flatMap((checkout) => checkout.checkin ? [[checkout.checkin.id, { ...checkout.checkin, checkout }]] : []))
-  const movementCustodyDetails = new Map<string, MovementCustodyDetail[]>()
-  for (const movement of asset.movements) {
+  const movementLabels = await getMovementDisplayLabels(asset.movements)
+  const movementTimelineItems: MovementTimelineItem[] = asset.movements.map((movement) => {
     const details: MovementCustodyDetail[] = []
+    let summary: string | null = null
 
     if (movement.referenceType === "checkout" && movement.referenceId) {
       const checkout = checkoutsById.get(movement.referenceId)
+      const destination = checkout
+        ? getCheckoutDestination(checkout, {
+            departments: checkoutDepartmentLabels,
+            locations: checkoutLocationLabels,
+            parentAssets: checkoutParentAssetLabels,
+          })
+        : null
       if (checkout) {
+        const handoverBy = movementUserLabels.get(checkout.checkedOutBy) ?? checkout.checkedOutBy
+        summary = destination ? `${t("movementTypes.checkout")}: ${destination}` : t("movementTypes.checkout")
         details.push(
-          { label: t("documentNo"), value: checkout.documentNo ?? checkout.id },
-          {
-            label: t("handoverTo"),
-            value: getCheckoutDestination(checkout, {
-              departments: checkoutDepartmentLabels,
-              locations: checkoutLocationLabels,
-              parentAssets: checkoutParentAssetLabels,
-            }),
-          },
-          { label: t("handoverBy"), value: movementUserLabels.get(checkout.checkedOutBy) ?? checkout.checkedOutBy }
+          { label: t("documentNo"), value: checkout.documentNo ?? checkout.id, href: `/${locale}/asset-management/checkouts/${checkout.id}` },
+          { label: t("handoverTo"), value: destination },
+          { label: t("handoverBy"), value: handoverBy }
         )
       }
     }
@@ -240,27 +274,43 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
     if (movement.referenceType === "checkin" && movement.referenceId) {
       const checkin = checkinsById.get(movement.referenceId)
       if (checkin) {
+        const returnedFrom = getCheckoutDestination(checkin.checkout, {
+          departments: checkoutDepartmentLabels,
+          locations: checkoutLocationLabels,
+          parentAssets: checkoutParentAssetLabels,
+        })
+        const returnBy = checkin.returnByEmployeeId
+          ? movementEmployeeLabels.get(checkin.returnByEmployeeId) ?? checkin.returnBy
+          : checkin.returnBy
+        const receiveBy = checkin.receiveByEmployeeId
+          ? movementEmployeeLabels.get(checkin.receiveByEmployeeId) ?? checkin.receiveBy
+          : checkin.receiveBy
+        summary = `${t("movementTypes.checkin")}: ${returnBy}`
         details.push(
-          { label: t("documentNo"), value: checkin.documentNo ?? checkin.id },
-          {
-            label: t("returnedFrom"),
-            value: getCheckoutDestination(checkin.checkout, {
-              departments: checkoutDepartmentLabels,
-              locations: checkoutLocationLabels,
-              parentAssets: checkoutParentAssetLabels,
-            }),
-          },
-          { label: t("returnBy"), value: checkin.returnBy },
-          { label: t("receiveBy"), value: checkin.receiveBy }
+          { label: t("documentNo"), value: checkin.documentNo ?? checkin.id, href: `/${locale}/asset-management/checkins/${checkin.id}` },
+          { label: t("returnedFrom"), value: returnedFrom },
+          { label: t("returnBy"), value: returnBy },
+          { label: t("receiveBy"), value: receiveBy }
         )
       }
     }
 
     details.push({ label: t("performedBy"), value: movementUserLabels.get(movement.performedBy) ?? movement.performedBy })
-    movementCustodyDetails.set(movement.id, compactMovementDetails(details))
-  }
+    const from = movementLabels.get(movement.id)?.from
+    const to = movementLabels.get(movement.id)?.to
+    return {
+      id: movement.id,
+      title: getMovementTitle(movement.movementType, t),
+      summary: summary ?? getMovementSummary(movement.movementType, from, to, t),
+      tone: getMovementTone(movement.movementType),
+      performedAt: movement.performedAt,
+      from,
+      to,
+      reason: movement.reason,
+      details: compactMovementDetails(details),
+    }
+  })
   const modelSpecs = parseModelSpecs(asset.model?.specs)
-  const movementLabels = await getMovementDisplayLabels(asset.movements)
 
   const detailPath = `/${locale}/assets/${asset.id}`
   const qrValue = `${process.env.AUTH_URL ?? ""}${detailPath}`
@@ -463,28 +513,35 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
 
           <section id="movement" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={t("movementHistory")} subtitle={t("detailSections.movementSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
-            {asset.movements.length === 0 ? (
+            {movementTimelineItems.length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                 {tCommon("noData")}
               </div>
             ) : (
               <ol className="space-y-4">
-                {asset.movements.map((movement) => (
+                {movementTimelineItems.map((movement) => (
                   <li key={movement.id} className="relative border-l border-border pl-4">
-                    <span className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-primary" />
+                    <span className={`absolute -left-1.5 top-1.5 h-3 w-3 rounded-full ${getMovementDotClass(movement.tone)}`} />
                     <div className="rounded-md bg-background p-4">
-                      <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-                        <div className="font-medium text-foreground">{movement.movementType.replaceAll("_", " ")}</div>
-                        <div className="text-xs text-muted-foreground">{formatDateTime(movement.performedAt)}</div>
+                      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getMovementBadgeClass(movement.tone)}`}>
+                              {movement.title}
+                            </span>
+                            <span className="text-xs text-muted-foreground">{formatDateTime(movement.performedAt)}</span>
+                          </div>
+                          <div className="mt-2 text-sm font-medium text-foreground">{movement.summary}</div>
+                        </div>
                       </div>
                       <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-muted-foreground md:grid-cols-2">
-                        <Info label={t("fromValue")} value={movementLabels.get(movement.id)?.from} compact />
-                        <Info label={t("toValue")} value={movementLabels.get(movement.id)?.to} compact />
+                        <Info label={t("fromValue")} value={movement.from} compact />
+                        <Info label={t("toValue")} value={movement.to} compact />
                       </div>
-                      {movementCustodyDetails.get(movement.id)?.length ? (
+                      {movement.details.length ? (
                         <div className="mt-3 grid grid-cols-1 gap-2 rounded-md border border-border bg-surface/70 p-3 text-sm text-muted-foreground md:grid-cols-2 xl:grid-cols-3">
-                          {movementCustodyDetails.get(movement.id)?.map((detail) => (
-                            <Info key={`${movement.id}-${detail.label}`} label={detail.label} value={detail.value} compact />
+                          {movement.details.map((detail) => (
+                            <MovementInfo key={`${movement.id}-${detail.label}`} detail={detail} />
                           ))}
                         </div>
                       ) : null}
@@ -786,6 +843,23 @@ function Info({
   )
 }
 
+function MovementInfo({ detail }: { detail: MovementCustodyDetail }) {
+  const value = detail.value || "-"
+
+  return (
+    <div>
+      <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{detail.label}</div>
+      {detail.href && detail.value ? (
+        <Link href={detail.href} className="mt-0.5 block text-sm font-medium text-primary hover:underline">
+          {value}
+        </Link>
+      ) : (
+        <div className="mt-0.5 text-sm text-foreground">{value}</div>
+      )}
+    </div>
+  )
+}
+
 function StatusPill({ label, color }: { label: string; color?: string | null }) {
   return (
     <span
@@ -797,6 +871,41 @@ function StatusPill({ label, color }: { label: string; color?: string | null }) 
   )
 }
 
+function getMovementTitle(movementType: string, t: (key: string) => string) {
+  if (knownMovementTypeKeys.has(movementType)) return t(`movementTypes.${movementType}`)
+  return formatMovementType(movementType)
+}
+
+function getMovementSummary(movementType: string, from: string | null | undefined, to: string | null | undefined, t: (key: string) => string) {
+  const title = getMovementTitle(movementType, t)
+  if (from || to) return `${title}: ${t("fromValue")} ${from ?? "-"} ${t("toValue")} ${to ?? "-"}`
+  return title
+}
+
+function getMovementTone(movementType: string): MovementTone {
+  if (movementType === "checkin") return "success"
+  if (movementType === "checkout" || movementType === "transfer") return "info"
+  if (movementType.includes("audit") || movementType.includes("maintenance")) return "warning"
+  if (movementType.includes("remove") || movementType.includes("disposal")) return "danger"
+  return "neutral"
+}
+
+function getMovementBadgeClass(tone: MovementTone) {
+  if (tone === "success") return "bg-success/10 text-success"
+  if (tone === "info") return "bg-info/10 text-info"
+  if (tone === "warning") return "bg-warning/10 text-warning"
+  if (tone === "danger") return "bg-danger/10 text-danger"
+  return "bg-muted text-muted-foreground"
+}
+
+function getMovementDotClass(tone: MovementTone) {
+  if (tone === "success") return "bg-success"
+  if (tone === "info") return "bg-info"
+  if (tone === "warning") return "bg-warning"
+  if (tone === "danger") return "bg-danger"
+  return "bg-primary"
+}
+
 function formatUserLabel(user: {
   username: string
   displayName: string
@@ -806,6 +915,16 @@ function formatUserLabel(user: {
   if (user.employee) return `${user.employee.code} - ${user.employee.fullNameTh}`
   if (user.displayName) return `${user.displayName} (${user.username})`
   return user.email ?? user.username
+}
+
+function formatEmployeeLabel(employee: { code: string; fullNameTh: string }) {
+  return `${employee.code} - ${employee.fullNameTh}`
+}
+
+function formatMovementType(movementType: string) {
+  return movementType
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
 function compactMovementDetails(details: MovementCustodyDetail[]) {
@@ -821,3 +940,25 @@ function compactMovementDetails(details: MovementCustodyDetail[]) {
     return true
   })
 }
+
+const knownMovementTypeKeys = new Set([
+  "create",
+  "import",
+  "checkout",
+  "checkin",
+  "transfer",
+  "location_change",
+  "custodian_change",
+  "status_change",
+  "condition_change",
+  "department_change",
+  "bulk_location_move",
+  "bulk_location_update",
+  "bulk_custodian_update",
+  "component_install",
+  "component_remove",
+  "installed_in_parent",
+  "removed_from_parent",
+  "maintenance_create",
+  "audit_correction",
+])

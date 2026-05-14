@@ -48,7 +48,9 @@ export const assetCheckoutSchema = z
 export const assetCheckinSchema = z.object({
   checkoutId: z.string().trim().min(1),
   returnDate: z.coerce.date(),
+  returnByEmployeeId: optionalText,
   returnBy: z.string().trim().min(1).max(100),
+  receiveByEmployeeId: optionalText,
   receiveBy: z.string().trim().min(1).max(100),
   conditionAfter: z.string().trim().min(1),
   missingAccessories: optionalText,
