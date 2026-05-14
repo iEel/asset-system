@@ -285,6 +285,8 @@
     "returnDate": "Return Date",
     "handoverActive": "Not returned",
     "handoverReturned": "Returned",
+    "latestTransaction": "Latest transaction",
+    "viewEvidence": "View evidence",
     "openHandoverDocument": "Open Handover",
     "openReturnDocument": "Open Return",
     "checkoutPhotoBefore": "Before-handover photo",

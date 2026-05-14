@@ -465,27 +465,44 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
               </div>
             ) : (
               <div className="space-y-3">
-                {asset.checkouts.map((checkout) => {
+                {asset.checkouts.map((checkout, index) => {
                   const checkoutAttachments = operationAttachmentsByReference.get(checkout.id) ?? []
                   const checkinAttachments = checkout.checkin ? operationAttachmentsByReference.get(checkout.checkin.id) ?? [] : []
+                  const destination = getCheckoutDestination(checkout, {
+                    departments: checkoutDepartmentLabels,
+                    locations: checkoutLocationLabels,
+                    parentAssets: checkoutParentAssetLabels,
+                  })
+                  const returnLabel = checkout.checkin ? `${checkout.checkin.documentNo ?? checkout.checkin.id} · ${formatDate(checkout.checkin.returnDate)}` : "-"
+                  const evidenceGrid = (
+                    <HandoverEvidenceGrid
+                      checkoutAttachments={checkoutAttachments}
+                      checkinAttachments={checkinAttachments}
+                      labels={{
+                        checkoutPhotoBefore: t("checkoutPhotoBefore"),
+                        receiverSignature: t("receiverSignature"),
+                        checkinPhotoAfter: t("checkinPhotoAfter"),
+                        returnSignature: t("returnSignature"),
+                        receiveSignature: t("receiveSignature"),
+                        noEvidence: t("noEvidence"),
+                      }}
+                    />
+                  )
 
-                  return (
+                  return index === 0 ? (
                     <div key={checkout.id} className="rounded-md border border-border bg-background p-4">
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">{t("latestTransaction")}</span>
                             <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
                             <StatusPill label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} color={checkout.isReturned ? "#16A34A" : "#2563EB"} />
                           </div>
                           <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
                             <Info label={t("documentNo")} value={checkout.documentNo ?? checkout.id} compact />
-                            <Info label={t("handoverTo")} value={getCheckoutDestination(checkout, {
-                              departments: checkoutDepartmentLabels,
-                              locations: checkoutLocationLabels,
-                              parentAssets: checkoutParentAssetLabels,
-                            })} compact />
+                            <Info label={t("handoverTo")} value={destination} compact />
                             <Info label={t("expectedReturnDate")} value={formatDate(checkout.expectedReturnDate)} compact />
-                            {checkout.checkin ? <Info label={t("returnDate")} value={`${checkout.checkin.documentNo ?? checkout.checkin.id} · ${formatDate(checkout.checkin.returnDate)}`} compact /> : <Info label={t("returnDate")} value="-" compact />}
+                            <Info label={t("returnDate")} value={returnLabel} compact />
                             <Info label={t("remark")} value={checkout.remark} compact />
                           </div>
                         </div>
@@ -500,14 +517,41 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
                           ) : null}
                         </div>
                       </div>
-                      <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                        <EvidenceLinks title={t("checkoutPhotoBefore")} attachments={checkoutAttachments.filter((attachment) => attachment.module === "checkout_photo_before")} emptyLabel={t("noEvidence")} />
-                        <EvidenceLinks title={t("receiverSignature")} attachments={checkoutAttachments.filter((attachment) => attachment.module === "checkout_receiver_signature")} emptyLabel={t("noEvidence")} />
-                        <EvidenceLinks title={t("checkinPhotoAfter")} attachments={checkinAttachments.filter((attachment) => attachment.module === "checkin_photo_after")} emptyLabel={t("noEvidence")} />
-                        <EvidenceLinks title={t("returnSignature")} attachments={checkinAttachments.filter((attachment) => attachment.module === "checkin_return_signature")} emptyLabel={t("noEvidence")} />
-                        <EvidenceLinks title={t("receiveSignature")} attachments={checkinAttachments.filter((attachment) => attachment.module === "checkin_receive_signature")} emptyLabel={t("noEvidence")} />
-                      </div>
+                      {evidenceGrid}
                     </div>
+                  ) : (
+                    <details key={checkout.id} className="group rounded-md border border-border bg-background">
+                      <summary className="flex cursor-pointer list-none flex-col gap-3 p-4 marker:hidden md:flex-row md:items-center md:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
+                            <StatusPill label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} color={checkout.isReturned ? "#16A34A" : "#2563EB"} />
+                          </div>
+                          <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2 xl:grid-cols-4">
+                            <Info label={t("documentNo")} value={checkout.documentNo ?? checkout.id} compact />
+                            <Info label={t("handoverTo")} value={destination} compact />
+                            <Info label={t("returnDate")} value={returnLabel} compact />
+                            <Info label={t("remark")} value={checkout.remark} compact />
+                          </div>
+                        </div>
+                        <span className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium text-foreground transition-colors group-open:bg-accent">
+                          {t("viewEvidence")}
+                        </span>
+                      </summary>
+                      <div className="border-t border-border px-4 pb-4 pt-3">
+                        <div className="mb-3 flex flex-wrap gap-2">
+                          <Link href={`/${locale}/asset-management/checkouts/${checkout.id}`} className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent">
+                            {t("openHandoverDocument")}
+                          </Link>
+                          {checkout.checkin ? (
+                            <Link href={`/${locale}/asset-management/checkins/${checkout.checkin.id}`} className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent">
+                              {t("openReturnDocument")}
+                            </Link>
+                          ) : null}
+                        </div>
+                        {evidenceGrid}
+                      </div>
+                    </details>
                   )
                 })}
               </div>
@@ -789,6 +833,33 @@ function EvidenceLinks({
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function HandoverEvidenceGrid({
+  checkoutAttachments,
+  checkinAttachments,
+  labels,
+}: {
+  checkoutAttachments: { id: string; originalName: string; fileType: string; module: string }[]
+  checkinAttachments: { id: string; originalName: string; fileType: string; module: string }[]
+  labels: {
+    checkoutPhotoBefore: string
+    receiverSignature: string
+    checkinPhotoAfter: string
+    returnSignature: string
+    receiveSignature: string
+    noEvidence: string
+  }
+}) {
+  return (
+    <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+      <EvidenceLinks title={labels.checkoutPhotoBefore} attachments={checkoutAttachments.filter((attachment) => attachment.module === "checkout_photo_before")} emptyLabel={labels.noEvidence} />
+      <EvidenceLinks title={labels.receiverSignature} attachments={checkoutAttachments.filter((attachment) => attachment.module === "checkout_receiver_signature")} emptyLabel={labels.noEvidence} />
+      <EvidenceLinks title={labels.checkinPhotoAfter} attachments={checkinAttachments.filter((attachment) => attachment.module === "checkin_photo_after")} emptyLabel={labels.noEvidence} />
+      <EvidenceLinks title={labels.returnSignature} attachments={checkinAttachments.filter((attachment) => attachment.module === "checkin_return_signature")} emptyLabel={labels.noEvidence} />
+      <EvidenceLinks title={labels.receiveSignature} attachments={checkinAttachments.filter((attachment) => attachment.module === "checkin_receive_signature")} emptyLabel={labels.noEvidence} />
     </div>
   )
 }

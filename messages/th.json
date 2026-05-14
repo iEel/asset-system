@@ -285,6 +285,8 @@
     "returnDate": "วันที่รับคืน",
     "handoverActive": "ยังไม่รับคืน",
     "handoverReturned": "รับคืนแล้ว",
+    "latestTransaction": "รายการล่าสุด",
+    "viewEvidence": "ดูหลักฐาน",
     "openHandoverDocument": "เปิดใบส่งมอบ",
     "openReturnDocument": "เปิดใบรับคืน",
     "checkoutPhotoBefore": "รูปก่อนส่งมอบ",

@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-05-14
 > **Phase:** Phase 4 AD/LDAP + Mobile Optimization (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built with export polish, 🟨 Admin RBAC polish started, 🟨 Phase 4 AD/LDAP login + sync workflow validated, 🟨 Mobile optimization pass complete, ✅ Table row navigation UX pass complete, ✅ Searchable dropdown UX pass complete for high-volume operational forms, ✅ Handover/return evidence and readable operation document numbers added, ✅ Asset movement custody timeline enriched
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built with export polish, 🟨 Admin RBAC polish started, 🟨 Phase 4 AD/LDAP login + sync workflow validated, 🟨 Mobile optimization pass complete, ✅ Table row navigation UX pass complete, ✅ Searchable dropdown UX pass complete for high-volume operational forms, ✅ Handover/return evidence and readable operation document numbers added, ✅ Asset movement custody timeline enriched, ✅ Handover history compacted for repeated transactions
 
 ---
 
@@ -679,7 +679,7 @@ await logAudit({
 | **Asset component DB sync** | Local DB sync แล้วด้วย `npx prisma db push`; environment อื่นต้อง sync schema/generate Prisma ก่อนเปิดใช้งานหน้า component section หรือ API ใหม่ |
 | **Clickable table rows** | เพิ่ม `ClickableTableRow` กลางและปรับตารางหลักให้คลิกทั้งแถวเพื่อเข้า detail/edit ได้ ได้แก่ Asset register, Maintenance, Disposal, Audit rounds/findings/pending/detail, Master Data หลัก, Admin Users/Roles และ maintenance history ใน Asset Detail; nested actions เช่น edit/delete/download/checkbox ยังไม่โดน row navigation แทรก |
 | **Searchable dropdowns** | เพิ่ม `SearchableSelect` กลางแทน native select สำหรับรายการยาวใน operational forms: checkout asset/destination, checkin active checkout/maintenance reporter, transfer asset/location/custodian/department, bulk move location + asset list search, maintenance asset/reporter/assignee/vendor, และ disposal asset/requester/approver; รองรับค้นหา, empty state, disabled option, clear optional value และ keyboard Enter/Escape |
-| **Asset detail handover evidence** | หน้า Asset Detail เพิ่ม section ส่งมอบ/รับคืนพร้อมเลขเอกสาร, link ใบส่งมอบ/ใบรับคืน, รูปก่อนส่งมอบ, รูปหลังรับคืน และลายเซ็นแบบ preview รูปจริง; รูป/ลายเซ็น operation ถูกแยกจากรูปทรัพย์สินหลักด้วย `attachments.module` |
+| **Asset detail handover evidence** | หน้า Asset Detail เพิ่ม section ส่งมอบ/รับคืนพร้อมเลขเอกสาร, link ใบส่งมอบ/ใบรับคืน, รูปก่อนส่งมอบ, รูปหลังรับคืน และลายเซ็นแบบ preview รูปจริง; รูป/ลายเซ็น operation ถูกแยกจากรูปทรัพย์สินหลักด้วย `attachments.module`; รายการล่าสุดแสดงหลักฐานครบ ส่วนประวัติเก่าถูกยุบเป็น summary row ที่กดดูหลักฐานได้เพื่อรองรับ asset ที่ส่งมอบ/รับคืนหลายรอบ |
 | **Operation document numbering** | เพิ่ม `documentNo` ใน `asset_checkouts` และ `asset_checkins`, generator กลาง `src/lib/operation-document-number.ts`, default format `HO-{yyyyMM}-{running}` / `RT-{yyyyMM}-{running}`, และ System Settings UI สำหรับแก้ template เช่น `{yyyyMM}-{running}` เพื่อให้ได้ `YYYYMM-0001` |
 | **Asset movement custody timeline** | หน้า Asset Detail movement section แสดงชื่อ movement แบบ localize, badge/dot แยกสีตามประเภท, summary สั้น, link ไปเอกสารส่งมอบ/รับคืน, และรายละเอียด chain-of-custody เช่น ผู้ส่งมอบ ผู้รับ ผู้คืน ผู้รับคืน ปลายทาง และหมายเหตุ; check-in form/API บันทึก `returnByEmployeeId` และ `receiveByEmployeeId` เพิ่มเติมโดยยัง fallback ไปชื่อ legacy ได้; local DB sync แล้วด้วย `npx prisma db push` และ environment อื่นต้อง `prisma generate` หลัง sync |
 
@@ -789,6 +789,7 @@ await logAudit({
 78. Asset Detail handover/return section with document links, operation photo evidence previews, and signature previews; asset photo gallery now filters to `module=asset` so operation signatures/photos no longer appear as asset photos
 79. Readable checkout/checkin document numbers with DB columns, generator, print-page display, Asset Detail display, configurable System Settings templates, and local SQL Server backfill for existing operation records
 80. Asset Detail movement custody timeline with human-readable movement titles, color-coded badges/dots, summary text, checkout/checkin document deep links, destination/custody actor details, and nullable employee references for check-in return/receive actors
+81. Asset Detail handover/return history compact layout: latest transaction remains fully expanded with evidence previews, while older checkout/checkin rounds are collapsed into summary rows with document links and expandable evidence panels
 
 ---
 
