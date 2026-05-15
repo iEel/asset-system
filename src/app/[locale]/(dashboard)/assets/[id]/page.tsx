@@ -58,6 +58,14 @@ type MovementTimelineItem = {
 
 type MovementTone = "neutral" | "success" | "info" | "warning" | "danger"
 
+type ActivitySummaryItem = {
+  label: string
+  value: string
+  href: string
+  tone: MovementTone
+  actionLabel?: string
+}
+
 export default async function AssetDetailPage({ params }: AssetDetailPageProps) {
   const { id, locale } = await params
   await requirePagePermission(locale, "asset", "view")
@@ -250,6 +258,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
     poNumber: link.purchaseDocument.poNumber,
     invoiceNumber: link.purchaseDocument.invoiceNumber,
     documentDate: link.purchaseDocument.documentDate,
+    linkedAt: link.linkedAt,
     supplierName: link.purchaseDocument.supplier ? `${link.purchaseDocument.supplier.code} - ${link.purchaseDocument.supplier.name}` : null,
     totalAmount: link.purchaseDocument.totalAmount ? Number(link.purchaseDocument.totalAmount) : null,
     currency: link.purchaseDocument.currency,
@@ -392,7 +401,14 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
       details: compactMovementDetails(details),
     }
   })
-  const latestMovement = movementTimelineItems[0]
+  const unifiedTimelineItems = [
+    ...movementTimelineItems,
+    ...buildPurchaseTimelineItems(purchaseDocuments, legacyPurchaseDocuments, t),
+    ...buildComponentTimelineItems(currentComponentsForPanel, componentHistoryForPanel, installedInLinksForPanel, locale, t),
+    ...buildMaintenanceTimelineItems(asset.maintenanceTickets, locale, t),
+    ...buildAuditTimelineItems(asset.auditItems, locale, t),
+  ].sort((a, b) => b.performedAt.getTime() - a.performedAt.getTime())
+  const latestMovement = unifiedTimelineItems[0]
   const currentLocationLabel = asset.currentLocation ? `${asset.currentLocation.code} - ${asset.currentLocation.name}` : null
   const currentCustodianLabel = asset.custodian ? formatEmployeeLabel(asset.custodian) : null
   const modelSpecs = parseModelSpecs(asset.model?.specs)
@@ -431,13 +447,6 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
         result: latestAuditItem.auditResult ?? latestAuditItem.auditStatus,
       })
     : tCommon("noData")
-  const movementTimelineItemsForClient: AssetMovementTimelineItem[] = movementTimelineItems.map((movement) => ({
-    ...movement,
-    performedAt: movement.performedAt.toISOString(),
-    from: movement.from ?? null,
-    to: movement.to ?? null,
-  }))
-
   const detailPath = `/${locale}/assets/${asset.id}`
   const encodedAssetId = encodeURIComponent(asset.id)
   const checkoutHref = `/${locale}/asset-management/checkout?assetId=${encodedAssetId}`
@@ -446,6 +455,73 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
     : "#handover"
   const transferHref = `/${locale}/asset-management/transfer?assetId=${encodedAssetId}`
   const maintenanceHref = `/${locale}/maintenance?assetId=${encodedAssetId}`
+  const activeCheckoutDestination = activeCheckout
+    ? getCheckoutDestination(activeCheckout, {
+        departments: checkoutDepartmentLabels,
+        locations: checkoutLocationLabels,
+        parentAssets: checkoutParentAssetLabels,
+      })
+    : null
+  const latestActivityItem: ActivitySummaryItem = {
+    label: t("activityLatestEvent"),
+    value: latestMovement ? `${latestMovement.title}: ${latestMovement.summary}` : tCommon("noData"),
+    href: "#movement",
+    tone: latestMovement ? latestMovement.tone : "neutral" as const,
+  }
+  const activityFollowUpCandidates: (ActivitySummaryItem | null)[] = [
+    activeCheckout
+      ? {
+          label: t("activityOpenHandover"),
+          value: activeCheckoutDestination ?? t("handoverActive"),
+          href: checkinHref,
+          actionLabel: t("quickCheckin"),
+          tone: "warning" as const,
+        }
+      : null,
+    openMaintenanceCount > 0
+      ? {
+          label: t("activityOpenMaintenance"),
+          value: maintenanceSummary,
+          href: "#maintenance",
+          actionLabel: t("quickMaintenance"),
+          tone: "warning" as const,
+        }
+      : null,
+    warrantyState.tone === "danger" || warrantyState.tone === "warning"
+      ? {
+          label: t("activityWarranty"),
+          value: getWarrantyStatusLabel(warrantyState, t),
+          href: "#purchase",
+          actionLabel: t("detailSections.purchase"),
+          tone: warrantyState.tone,
+        }
+      : null,
+    dataHealthDone < dataHealthItems.length
+      ? {
+          label: t("activityDataHealth"),
+          value: t("dataHealthProgress", { done: dataHealthDone, total: dataHealthItems.length }),
+          href: "#photos",
+          actionLabel: t("dataHealthNeedsReview"),
+          tone: dataHealthTone === "danger" ? "danger" as const : "warning" as const,
+        }
+      : null,
+    latestAuditItem?.findingRequired
+      ? {
+          label: t("activityAuditFinding"),
+          value: auditSummary,
+          href: "#audit",
+          actionLabel: t("detailSections.audit"),
+          tone: "warning" as const,
+        }
+      : null,
+  ]
+  const activityFollowUpItems = activityFollowUpCandidates.filter((item): item is ActivitySummaryItem => item !== null)
+  const movementTimelineItemsForClient: AssetMovementTimelineItem[] = unifiedTimelineItems.map((movement) => ({
+    ...movement,
+    performedAt: movement.performedAt.toISOString(),
+    from: movement.from ?? null,
+    to: movement.to ?? null,
+  }))
   const qrValue = `${process.env.AUTH_URL ?? ""}${detailPath}`
   const sectionLinks = [
     { id: "overview", label: t("detailSections.overview") },
@@ -507,6 +583,16 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           ))}
         </div>
       </nav>
+
+      <ActivitySummaryPanel
+        title={t("activitySummaryTitle")}
+        subtitle={t("activitySummaryHelp")}
+        latestTitle={t("activityLatest")}
+        followUpTitle={t("activityFollowUp")}
+        noFollowUpLabel={t("activityNoFollowUp")}
+        latestItem={latestActivityItem}
+        followUpItems={activityFollowUpItems}
+      />
 
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -830,6 +916,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
                 filters: {
                   handover: t("movementFilters.handover"),
                   transfer: t("movementFilters.transfer"),
+                  purchase: t("movementFilters.purchase"),
                   maintenance: t("movementFilters.maintenance"),
                   audit: t("movementFilters.audit"),
                   component: t("movementFilters.component"),
@@ -992,6 +1079,84 @@ function SummaryCard({
       </div>
       <div className="line-clamp-2 text-sm font-semibold text-foreground">{value || "-"}</div>
     </a>
+  )
+}
+
+function ActivitySummaryPanel({
+  title,
+  subtitle,
+  latestTitle,
+  followUpTitle,
+  noFollowUpLabel,
+  latestItem,
+  followUpItems,
+}: {
+  title: string
+  subtitle: string
+  latestTitle: string
+  followUpTitle: string
+  noFollowUpLabel: string
+  latestItem: ActivitySummaryItem
+  followUpItems: ActivitySummaryItem[]
+}) {
+  return (
+    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">{title}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+        </div>
+      </div>
+      <div className="grid gap-4 xl:grid-cols-[1fr_420px]">
+        <div>
+          <div className="mb-2 text-xs font-medium uppercase tracking-normal text-muted-foreground">{latestTitle}</div>
+          <ActivitySummaryLink item={latestItem} spacious />
+        </div>
+        <div>
+          <div className="mb-2 text-xs font-medium uppercase tracking-normal text-muted-foreground">{followUpTitle}</div>
+          {followUpItems.length === 0 ? (
+            <div className="rounded-md border border-success/20 bg-success/5 px-3 py-2 text-sm font-medium text-success">
+              {noFollowUpLabel}
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              {followUpItems.map((item) => (
+                <ActivitySummaryLink key={item.label} item={item} showAction />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function ActivitySummaryLink({
+  item,
+  showAction,
+  spacious,
+}: {
+  item: ActivitySummaryItem
+  showAction?: boolean
+  spacious?: boolean
+}) {
+  return (
+    <Link
+      href={item.href}
+      className={`block rounded-md border px-3 transition-colors hover:border-primary/40 hover:bg-primary/5 ${spacious ? "py-4" : "py-2"} ${getActivityToneClass(item.tone)}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{item.label}</div>
+          <div className={`mt-1 text-sm font-semibold text-foreground ${spacious ? "line-clamp-3" : "line-clamp-2"}`}>{item.value || "-"}</div>
+        </div>
+        {showAction && item.actionLabel ? (
+          <span className="shrink-0 rounded-full bg-surface/80 px-2 py-1 text-xs font-medium text-primary">
+            {item.actionLabel}
+          </span>
+        ) : null}
+      </div>
+    </Link>
   )
 }
 
@@ -1355,6 +1520,214 @@ function getMovementCategory(movementType: string) {
   return "other"
 }
 
+function buildPurchaseTimelineItems(
+  documents: {
+    id: string
+    documentType: string
+    documentNo: string | null
+    poNumber: string | null
+    invoiceNumber: string | null
+    documentDate: Date | null
+    linkedAt: Date
+    supplierName: string | null
+    totalAmount: number | null
+    currency: string | null
+  }[],
+  legacyAttachments: { id: string; originalName: string; uploadedAt: Date }[],
+  t: (key: string, values?: Record<string, string | number | Date>) => string
+): MovementTimelineItem[] {
+  const documentItems = documents.map((document) => ({
+    id: `purchase-${document.id}`,
+    title: t("timelinePurchaseDocument"),
+    summary: document.documentNo || document.poNumber || document.invoiceNumber || document.documentType,
+    category: "purchase",
+    tone: "neutral" as const,
+    performedAt: document.documentDate ?? document.linkedAt,
+    from: null,
+    to: null,
+    reason: null,
+    details: compactMovementDetails([
+      { label: t("documentType"), value: document.documentType },
+      { label: t("documentNo"), value: document.documentNo },
+      { label: t("poNumber"), value: document.poNumber },
+      { label: t("invoiceNumber"), value: document.invoiceNumber },
+      { label: t("supplier"), value: document.supplierName },
+      { label: t("purchasePrice"), value: document.totalAmount == null ? null : `${formatCurrency(document.totalAmount)} ${document.currency ?? ""}`.trim() },
+    ]),
+  }))
+
+  const legacyItems = legacyAttachments.map((attachment) => ({
+    id: `purchase-legacy-${attachment.id}`,
+    title: t("timelinePurchaseAttachment"),
+    summary: attachment.originalName,
+    category: "purchase",
+    tone: "neutral" as const,
+    performedAt: attachment.uploadedAt,
+    from: null,
+    to: null,
+    reason: null,
+    details: [{ label: t("documentNo"), value: attachment.originalName, href: `/api/attachments/${attachment.id}` }],
+  }))
+
+  return [...documentItems, ...legacyItems]
+}
+
+function buildComponentTimelineItems(
+  currentComponents: {
+    id: string
+    componentRole: string
+    slotNo: string | null
+    installedAt: Date
+    removedAt: Date | null
+    componentAsset: { id: string; assetTag: string; name: string }
+    installedByLabel?: string | null
+    removedByLabel?: string | null
+  }[],
+  componentHistory: {
+    id: string
+    componentRole: string
+    slotNo: string | null
+    installedAt: Date
+    removedAt: Date | null
+    componentAsset: { id: string; assetTag: string; name: string }
+    installedByLabel?: string | null
+    removedByLabel?: string | null
+  }[],
+  installedInLinks: {
+    id: string
+    componentRole: string
+    slotNo: string | null
+    installedAt: Date
+    removedAt: Date | null
+    parentAsset: { id: string; assetTag: string; name: string }
+    installedByLabel?: string | null
+    removedByLabel?: string | null
+  }[],
+  locale: string,
+  t: (key: string, values?: Record<string, string | number | Date>) => string
+): MovementTimelineItem[] {
+  const childInstallItems = [...currentComponents, ...componentHistory].map((component) => ({
+    id: `component-install-${component.id}`,
+    title: t("timelineComponentInstalled"),
+    summary: `${component.componentAsset.assetTag} - ${component.componentAsset.name}`,
+    category: "component",
+    tone: "info" as const,
+    performedAt: component.installedAt,
+    from: null,
+    to: t("relationshipCurrent"),
+    reason: null,
+    details: compactMovementDetails([
+      { label: t("componentAsset"), value: `${component.componentAsset.assetTag} - ${component.componentAsset.name}`, href: `/${locale}/assets/${component.componentAsset.id}` },
+      { label: t("componentRole"), value: component.componentRole },
+      { label: t("slotNo"), value: component.slotNo },
+      { label: t("installedBy"), value: component.installedByLabel },
+    ]),
+  }))
+
+  const childRemoveItems = componentHistory
+    .filter((component) => component.removedAt)
+    .map((component) => ({
+      id: `component-remove-${component.id}`,
+      title: t("timelineComponentRemoved"),
+      summary: `${component.componentAsset.assetTag} - ${component.componentAsset.name}`,
+      category: "component",
+      tone: "danger" as const,
+      performedAt: component.removedAt as Date,
+      from: t("relationshipCurrent"),
+      to: null,
+      reason: null,
+      details: compactMovementDetails([
+        { label: t("componentAsset"), value: `${component.componentAsset.assetTag} - ${component.componentAsset.name}`, href: `/${locale}/assets/${component.componentAsset.id}` },
+        { label: t("componentRole"), value: component.componentRole },
+        { label: t("slotNo"), value: component.slotNo },
+        { label: t("removedBy"), value: component.removedByLabel },
+      ]),
+    }))
+
+  const parentInstallItems = installedInLinks.map((link) => ({
+    id: `installed-in-parent-${link.id}`,
+    title: t("timelineInstalledInParent"),
+    summary: `${link.parentAsset.assetTag} - ${link.parentAsset.name}`,
+    category: "component",
+    tone: "info" as const,
+    performedAt: link.installedAt,
+    from: null,
+    to: `${link.parentAsset.assetTag} - ${link.parentAsset.name}`,
+    reason: null,
+    details: compactMovementDetails([
+      { label: t("relationshipParent"), value: `${link.parentAsset.assetTag} - ${link.parentAsset.name}`, href: `/${locale}/assets/${link.parentAsset.id}` },
+      { label: t("componentRole"), value: link.componentRole },
+      { label: t("slotNo"), value: link.slotNo },
+      { label: t("installedBy"), value: link.installedByLabel },
+    ]),
+  }))
+
+  return [...childInstallItems, ...childRemoveItems, ...parentInstallItems]
+}
+
+function buildMaintenanceTimelineItems(
+  tickets: {
+    id: string
+    repairNo: string
+    problem: string
+    repairStatus: string
+    reportedDate: Date
+    reportedBy: { code: string; fullNameTh: string }
+  }[],
+  locale: string,
+  t: (key: string, values?: Record<string, string | number | Date>) => string
+): MovementTimelineItem[] {
+  return tickets.map((ticket) => ({
+    id: `maintenance-${ticket.id}`,
+    title: t("timelineMaintenanceTicket"),
+    summary: `${ticket.repairNo}: ${ticket.problem}`,
+    category: "maintenance",
+    tone: (ticket.repairStatus === "closed" ? "success" : "warning") as MovementTone,
+    performedAt: ticket.reportedDate,
+    from: null,
+    to: null,
+    reason: null,
+    details: compactMovementDetails([
+      { label: t("repairNo"), value: ticket.repairNo, href: `/${locale}/maintenance/${ticket.id}` },
+      { label: t("reportedBy"), value: `${ticket.reportedBy.code} - ${ticket.reportedBy.fullNameTh}` },
+      { label: t("repairStatus"), value: ticket.repairStatus },
+    ]),
+  }))
+}
+
+function buildAuditTimelineItems(
+  auditItems: {
+    id: string
+    auditStatus: string
+    auditResult: string | null
+    findingRequired: boolean
+    lastScanAt: Date | null
+    scanCount: number
+    createdAt: Date
+    auditRound: { id: string; auditNo: string; name: string }
+  }[],
+  locale: string,
+  t: (key: string, values?: Record<string, string | number | Date>) => string
+): MovementTimelineItem[] {
+  return auditItems.map((item) => ({
+    id: `audit-${item.id}`,
+    title: t("timelineAuditRound"),
+    summary: `${item.auditRound.auditNo}: ${item.auditResult ?? item.auditStatus}`,
+    category: "audit",
+    tone: (item.findingRequired ? "warning" : "success") as MovementTone,
+    performedAt: item.lastScanAt ?? item.createdAt,
+    from: null,
+    to: null,
+    reason: null,
+    details: compactMovementDetails([
+      { label: t("auditRound"), value: `${item.auditRound.auditNo} - ${item.auditRound.name}`, href: `/${locale}/audit/rounds/${item.auditRound.id}` },
+      { label: t("result"), value: item.auditResult ?? item.auditStatus },
+      { label: t("scanCount"), value: String(item.scanCount) },
+      { label: t("auditFindingRequired"), value: item.findingRequired ? t("timelineYes") : t("timelineNo") },
+    ]),
+  }))
+}
+
 function createHealthItem(done: boolean, label: string, href: string) {
   return { done, label, href }
 }
@@ -1445,6 +1818,14 @@ function getHealthBadgeClass(tone: "success" | "warning" | "danger") {
   if (tone === "success") return "bg-success/10 text-success"
   if (tone === "warning") return "bg-warning/10 text-warning"
   return "bg-danger/10 text-danger"
+}
+
+function getActivityToneClass(tone: MovementTone) {
+  if (tone === "success") return "border-success/20 bg-success/5"
+  if (tone === "info") return "border-info/20 bg-info/5"
+  if (tone === "warning") return "border-warning/30 bg-warning/10"
+  if (tone === "danger") return "border-danger/30 bg-danger/10"
+  return "border-border bg-background"
 }
 
 function getSummaryToneClass(tone: "success" | "warning" | "danger" | "neutral") {
