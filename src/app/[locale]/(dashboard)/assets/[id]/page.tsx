@@ -99,6 +99,18 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           },
         },
       },
+      installedInLinks: {
+        where: { status: "installed", removedAt: null },
+        orderBy: { installedAt: "desc" },
+        include: {
+          parentAsset: {
+            select: { id: true, assetTag: true, name: true, serialNumber: true },
+          },
+          componentAsset: {
+            select: { id: true, assetTag: true, name: true, serialNumber: true },
+          },
+        },
+      },
       maintenanceTickets: {
         where: { isActive: true },
         orderBy: { reportedDate: "desc" },
@@ -148,13 +160,62 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   ])
   const currentComponents = asset.parentComponents.filter((component) => component.status === "installed" && !component.removedAt)
   const componentHistory = asset.parentComponents.filter((component) => component.status !== "installed" || component.removedAt)
+  const componentLinks = [...asset.parentComponents, ...asset.installedInLinks]
+  const componentLinkIds = componentLinks.map((component) => component.id)
+  const componentUserIds = uniqueTruthy(componentLinks.flatMap((component) => [component.createdBy, component.updatedBy]))
   const purchaseDocumentIds = asset.purchaseDocumentLinks.map((link) => link.purchaseDocumentId)
-  const purchaseDocumentAttachments = purchaseDocumentIds.length > 0
-    ? await prisma.attachment.findMany({
-        where: { module: "purchase_document", referenceId: { in: purchaseDocumentIds }, isActive: true },
-        orderBy: { uploadedAt: "desc" },
-      })
-    : []
+  const [purchaseDocumentAttachments, componentAttachments, componentUsers] = await Promise.all([
+    purchaseDocumentIds.length > 0
+      ? prisma.attachment.findMany({
+          where: { module: "purchase_document", referenceId: { in: purchaseDocumentIds }, isActive: true },
+          orderBy: { uploadedAt: "desc" },
+        })
+      : [],
+    componentLinkIds.length > 0
+      ? prisma.attachment.findMany({
+          where: { module: { in: ["asset_component_install", "asset_component_remove"] }, referenceId: { in: componentLinkIds }, isActive: true },
+          orderBy: { uploadedAt: "asc" },
+        })
+      : [],
+    componentUserIds.length > 0
+      ? prisma.user.findMany({
+          where: { id: { in: componentUserIds } },
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            email: true,
+            employee: { select: { code: true, fullNameTh: true } },
+          },
+        })
+      : [],
+  ])
+  const componentUserLabels = new Map(componentUsers.map((user) => [user.id, formatUserLabel(user)]))
+  const componentAttachmentsByReference = new Map<string, typeof componentAttachments>()
+  for (const attachment of componentAttachments) {
+    componentAttachmentsByReference.set(attachment.referenceId, [
+      ...(componentAttachmentsByReference.get(attachment.referenceId) ?? []),
+      attachment,
+    ])
+  }
+  const currentComponentsForPanel = currentComponents.map((component) => ({
+    ...component,
+    installedByLabel: component.createdBy ? componentUserLabels.get(component.createdBy) ?? component.createdBy : null,
+    removedByLabel: component.updatedBy ? componentUserLabels.get(component.updatedBy) ?? component.updatedBy : null,
+    attachments: componentAttachmentsByReference.get(component.id) ?? [],
+  }))
+  const componentHistoryForPanel = componentHistory.map((component) => ({
+    ...component,
+    installedByLabel: component.createdBy ? componentUserLabels.get(component.createdBy) ?? component.createdBy : null,
+    removedByLabel: component.updatedBy ? componentUserLabels.get(component.updatedBy) ?? component.updatedBy : null,
+    attachments: componentAttachmentsByReference.get(component.id) ?? [],
+  }))
+  const installedInLinksForPanel = asset.installedInLinks.map((component) => ({
+    ...component,
+    installedByLabel: component.createdBy ? componentUserLabels.get(component.createdBy) ?? component.createdBy : null,
+    removedByLabel: component.updatedBy ? componentUserLabels.get(component.updatedBy) ?? component.updatedBy : null,
+    attachments: componentAttachmentsByReference.get(component.id) ?? [],
+  }))
   const purchaseDocumentAttachmentsByReferenceId = new Map<string, typeof purchaseDocumentAttachments>()
   for (const attachment of purchaseDocumentAttachments) {
     purchaseDocumentAttachmentsByReferenceId.set(attachment.referenceId, [
@@ -429,8 +490,9 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           <div id="components" className="scroll-mt-24">
             <AssetComponentsPanel
               assetId={asset.id}
-              currentComponents={currentComponents}
-              componentHistory={componentHistory}
+              currentComponents={currentComponentsForPanel}
+              componentHistory={componentHistoryForPanel}
+              installedInLinks={installedInLinksForPanel}
               availableAssets={availableComponentAssets}
             />
           </div>

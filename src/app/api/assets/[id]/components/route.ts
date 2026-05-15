@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { assertCanInstallComponent } from "@/lib/asset-components"
+import { optionalFormFile, optionalFormText, saveComponentEvidenceFile } from "@/lib/asset-component-evidence"
 import { assetComponentInstallSchema } from "@/lib/validations/asset-operations"
 
 type ComponentRouteContext = {
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest, context: ComponentRouteContext)
     requirePermission(user, "asset", "edit")
 
     const { id: parentAssetId } = await context.params
-    const input = assetComponentInstallSchema.parse(await request.json())
+    const { input, installEvidence } = await parseInstallRequest(request)
     await assertCanInstallComponent(parentAssetId, input.componentAssetId, input.slotNo)
 
     const component = await prisma.$transaction(async (tx) => {
@@ -38,6 +39,22 @@ export async function POST(request: NextRequest, context: ComponentRouteContext)
           componentAsset: { select: { assetTag: true, name: true } },
         },
       })
+
+      if (installEvidence) {
+        await tx.attachment.create({
+          data: {
+            assetId: parentAssetId,
+            module: "asset_component_install",
+            referenceId: record.id,
+            fileName: installEvidence.fileName,
+            originalName: installEvidence.originalName,
+            fileType: installEvidence.fileType,
+            fileSize: installEvidence.fileSize,
+            filePath: installEvidence.filePath,
+            uploadedBy: user.id,
+          },
+        })
+      }
 
       await tx.assetMovement.createMany({
         data: [
@@ -86,5 +103,30 @@ export async function POST(request: NextRequest, context: ComponentRouteContext)
     return NextResponse.json(component, { status: 201 })
   } catch (error) {
     return errorResponse(error, 400)
+  }
+}
+
+async function parseInstallRequest(request: NextRequest) {
+  const contentType = request.headers.get("content-type") ?? ""
+  if (!contentType.includes("multipart/form-data")) {
+    return {
+      input: assetComponentInstallSchema.parse(await request.json()),
+      installEvidence: null,
+    }
+  }
+
+  const formData = await request.formData()
+  const evidenceFile = optionalFormFile(formData, "installEvidence")
+  return {
+    input: assetComponentInstallSchema.parse({
+      componentAssetId: optionalFormText(formData, "componentAssetId") ?? "",
+      componentRole: optionalFormText(formData, "componentRole") ?? "",
+      slotNo: optionalFormText(formData, "slotNo"),
+      installedAt: optionalFormText(formData, "installedAt"),
+      reason: optionalFormText(formData, "reason"),
+      referenceType: optionalFormText(formData, "referenceType"),
+      referenceId: optionalFormText(formData, "referenceId"),
+    }),
+    installEvidence: evidenceFile ? await saveComponentEvidenceFile(evidenceFile) : null,
   }
 }
