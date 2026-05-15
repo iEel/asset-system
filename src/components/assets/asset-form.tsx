@@ -7,6 +7,7 @@ import { ArrowLeft, Camera, Code2, FileText, Loader2, Plus, Save, Trash2 } from 
 import { toast } from "sonner"
 import Link from "next/link"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { formatFileSize } from "@/lib/uploads"
 
@@ -744,10 +745,15 @@ export function AssetForm({
             <option value="">{t("selectDepartment")}</option>
             {filteredDepartments.map((department) => <option key={department.id} value={department.id}>{department.label}</option>)}
           </SelectField>
-          <SelectField label={t("custodian")} value={values.custodianId ?? ""} onChange={(value) => setField("custodianId", value)}>
-            <option value="">{t("selectCustodian")}</option>
-            {filteredEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.label}</option>)}
-          </SelectField>
+          <SearchableSelect
+            label={t("custodian")}
+            value={values.custodianId ?? ""}
+            options={filteredEmployees}
+            placeholder={t("selectCustodian")}
+            searchPlaceholder={tCommon("searchSelectPlaceholder")}
+            emptyLabel={tCommon("searchSelectNoResults")}
+            onChange={(value) => setField("custodianId", value)}
+          />
         </Section>
 
         <Section title={t("locationCustodian")}>
