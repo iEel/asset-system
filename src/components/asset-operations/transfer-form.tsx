@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
+import { FormContextBanner } from "@/components/ui/form-context-banner"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 
 type Option = { id: string; label: string; disabled?: boolean }
@@ -14,19 +15,22 @@ export function TransferForm({
   employees,
   departments,
   locations,
+  initialAssetId,
 }: {
   assets: Option[]
   employees: Option[]
   departments: Option[]
   locations: Option[]
+  initialAssetId?: string
 }) {
   const locale = useLocale()
   const router = useRouter()
   const t = useTranslations("transfer")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
+  const initialAsset = assets.find((asset) => asset.id === initialAssetId && !asset.disabled)
   const [values, setValues] = useState({
-    assetId: "",
+    assetId: initialAsset?.id ?? "",
     toLocationId: "",
     toCustodianId: "",
     toDepartmentId: "",
@@ -77,6 +81,11 @@ export function TransferForm({
       </div>
       <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          {initialAsset ? (
+            <div className="md:col-span-2">
+              <FormContextBanner label={t("asset")} value={initialAsset.label} />
+            </div>
+          ) : null}
           <SearchableSelect label={t("asset")} value={values.assetId} required options={assets} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assetId", value)} />
           <SearchableSelect label={t("toLocation")} value={values.toLocationId} options={locations} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toLocationId", value)} />
           <SearchableSelect label={t("toCustodian")} value={values.toCustodianId} options={employees} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toCustodianId", value)} />

@@ -1,7 +1,25 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ArrowLeft, Edit, FileText, History, ImageIcon, Printer, QrCode } from "lucide-react"
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Edit,
+  FileText,
+  GitBranch,
+  History,
+  ImageIcon,
+  MapPin,
+  PackageCheck,
+  Printer,
+  QrCode,
+  RotateCcw,
+  ScanLine,
+  ShieldCheck,
+  Truck,
+  Wrench,
+} from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
@@ -13,6 +31,7 @@ import { AssetPurchaseDocuments } from "@/components/assets/asset-purchase-docum
 import { parseModelSpecs } from "@/lib/model-specs"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { AssetMovementTimeline, type AssetMovementTimelineItem } from "@/components/assets/asset-movement-timeline"
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -28,6 +47,7 @@ type MovementTimelineItem = {
   id: string
   title: string
   summary: string
+  category: string
   tone: MovementTone
   performedAt: Date
   from: string | null | undefined
@@ -363,6 +383,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
       id: movement.id,
       title: getMovementTitle(movement.movementType, t),
       summary: summary ?? getMovementSummary(movement.movementType, from, to, t),
+      category: getMovementCategory(movement.movementType),
       tone: getMovementTone(movement.movementType),
       performedAt: movement.performedAt,
       from,
@@ -375,8 +396,56 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const currentLocationLabel = asset.currentLocation ? `${asset.currentLocation.code} - ${asset.currentLocation.name}` : null
   const currentCustodianLabel = asset.custodian ? formatEmployeeLabel(asset.custodian) : null
   const modelSpecs = parseModelSpecs(asset.model?.specs)
+  const activeCheckout = asset.checkouts.find((checkout) => !checkout.isReturned)
+  const latestCheckout = asset.checkouts[0]
+  const warrantyState = getWarrantyState(asset.warrantyEndDate)
+  const openMaintenanceCount = asset.maintenanceTickets.filter((ticket) => ticket.repairStatus !== "closed").length
+  const latestMaintenanceTicket = asset.maintenanceTickets[0]
+  const latestAuditItem = asset.auditItems[0]
+  const checklistMissingLabels = getMissingPhotoChecklistLabels(photoChecklist, assetAttachments)
+  const hasPurchaseDocuments = purchaseDocuments.length > 0 || legacyPurchaseDocuments.length > 0
+  const dataHealthItems = [
+    createHealthItem(Boolean(asset.serialNumber), t("dataHealthSerial"), "#overview"),
+    createHealthItem(Boolean(primaryAssetPhoto), t("dataHealthAssetPhoto"), "#photos"),
+    createHealthItem(
+      checklistMissingLabels.length === 0,
+      checklistMissingLabels.length === 0
+        ? t("dataHealthChecklistComplete")
+        : t("dataHealthChecklistMissing", { count: checklistMissingLabels.length }),
+      "#photos"
+    ),
+    createHealthItem(hasPurchaseDocuments, t("dataHealthPurchaseDocument"), "#purchase"),
+    createHealthItem(Boolean(asset.custodian), t("dataHealthCustodian"), "#ownership"),
+    createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthWarranty"), "#purchase"),
+  ]
+  const dataHealthDone = dataHealthItems.filter((item) => item.done).length
+  const dataHealthTone = dataHealthDone === dataHealthItems.length ? "success" : dataHealthDone >= dataHealthItems.length - 2 ? "warning" : "danger"
+  const maintenanceSummary = openMaintenanceCount > 0
+    ? t("openMaintenanceCount", { count: openMaintenanceCount })
+    : latestMaintenanceTicket
+      ? t("latestMaintenanceSummary", { repairNo: latestMaintenanceTicket.repairNo })
+      : tCommon("noData")
+  const auditSummary = latestAuditItem
+    ? t("latestAuditSummary", {
+        auditNo: latestAuditItem.auditRound.auditNo,
+        result: latestAuditItem.auditResult ?? latestAuditItem.auditStatus,
+      })
+    : tCommon("noData")
+  const movementTimelineItemsForClient: AssetMovementTimelineItem[] = movementTimelineItems.map((movement) => ({
+    ...movement,
+    performedAt: movement.performedAt.toISOString(),
+    from: movement.from ?? null,
+    to: movement.to ?? null,
+  }))
 
   const detailPath = `/${locale}/assets/${asset.id}`
+  const encodedAssetId = encodeURIComponent(asset.id)
+  const checkoutHref = `/${locale}/asset-management/checkout?assetId=${encodedAssetId}`
+  const checkinHref = activeCheckout
+    ? `/${locale}/asset-management/checkin?checkoutId=${encodeURIComponent(activeCheckout.id)}`
+    : "#handover"
+  const transferHref = `/${locale}/asset-management/transfer?assetId=${encodedAssetId}`
+  const maintenanceHref = `/${locale}/maintenance?assetId=${encodedAssetId}`
   const qrValue = `${process.env.AUTH_URL ?? ""}${detailPath}`
   const sectionLinks = [
     { id: "overview", label: t("detailSections.overview") },
@@ -439,6 +508,89 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
         </div>
       </nav>
 
+      <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <SummaryCard
+            icon={<MapPin className="h-5 w-5 text-info" />}
+            label={t("currentLocation")}
+            value={currentLocationLabel}
+            href="#ownership"
+          />
+          <SummaryCard
+            icon={<PackageCheck className="h-5 w-5 text-primary" />}
+            label={t("custodian")}
+            value={currentCustodianLabel}
+            href="#ownership"
+          />
+          <SummaryCard
+            icon={activeCheckout ? <Truck className="h-5 w-5 text-info" /> : <CheckCircle2 className="h-5 w-5 text-success" />}
+            label={t("handoverStatus")}
+            value={activeCheckout ? t("handoverActive") : t("assetAvailable")}
+            href="#handover"
+          />
+          <SummaryCard
+            icon={<ShieldCheck className={`h-5 w-5 ${getWarrantyIconClass(warrantyState.tone)}`} />}
+            label={t("warrantyStatus")}
+            value={getWarrantyStatusLabel(warrantyState, t)}
+            href="#purchase"
+          />
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
+        <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">{t("quickActions")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("quickActionsHelp")}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+            <QuickAction href={checkoutHref} icon={<Truck className="h-4 w-4" />} label={t("quickCheckout")} disabled={Boolean(activeCheckout)} />
+            <QuickAction href={checkinHref} icon={<RotateCcw className="h-4 w-4" />} label={t("quickCheckin")} disabled={!activeCheckout} />
+            <QuickAction href={transferHref} icon={<GitBranch className="h-4 w-4" />} label={t("quickTransfer")} disabled={Boolean(activeCheckout)} />
+            <QuickAction href={maintenanceHref} icon={<Wrench className="h-4 w-4" />} label={t("quickMaintenance")} />
+            <QuickAction href={`/${locale}/audit/rounds`} icon={<ScanLine className="h-4 w-4" />} label={t("quickAudit")} />
+            <QuickAction
+              href={latestCheckout ? `/${locale}/asset-management/checkouts/${latestCheckout.id}` : "#handover"}
+              icon={<FileText className="h-4 w-4" />}
+              label={t("quickLatestDocument")}
+              disabled={!latestCheckout}
+            />
+          </div>
+        </div>
+
+        <div className={`rounded-lg border p-4 shadow-sm ${getHealthPanelClass(dataHealthTone)}`}>
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">{t("dataHealthTitle")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t("dataHealthProgress", { done: dataHealthDone, total: dataHealthItems.length })}
+              </p>
+            </div>
+            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getHealthBadgeClass(dataHealthTone)}`}>
+              {dataHealthDone === dataHealthItems.length ? t("dataHealthComplete") : t("dataHealthNeedsReview")}
+            </span>
+          </div>
+          <div className="grid gap-2">
+            {dataHealthItems.map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                className="flex items-center gap-2 rounded-md bg-surface/80 px-2 py-1.5 text-sm transition-colors hover:bg-background"
+              >
+                {item.done ? (
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+                )}
+                <span className={item.done ? "text-muted-foreground" : "font-medium text-foreground"}>{item.label}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_280px]">
         <div className="space-y-6">
           <section id="overview" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
@@ -487,7 +639,29 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             </div>
           </section>
 
-          <div id="components" className="scroll-mt-24">
+          <div id="components" className="scroll-mt-24 space-y-4">
+            <AssetRelationshipMap
+              title={t("relationshipMap")}
+              subtitle={t("relationshipMapHelp")}
+              parentTitle={t("relationshipParent")}
+              currentTitle={t("relationshipCurrent")}
+              componentsTitle={t("relationshipComponents")}
+              assetTag={asset.assetTag}
+              assetName={asset.name}
+              parentLinks={installedInLinksForPanel.map((link) => ({
+                id: link.id,
+                href: `/${locale}/assets/${link.parentAsset.id}`,
+                label: `${link.parentAsset.assetTag} - ${link.parentAsset.name}`,
+                role: link.componentRole,
+              }))}
+              childLinks={currentComponentsForPanel.map((component) => ({
+                id: component.id,
+                href: `/${locale}/assets/${component.componentAsset.id}`,
+                label: `${component.componentAsset.assetTag} - ${component.componentAsset.name}`,
+                role: component.componentRole,
+              }))}
+              emptyLabel={t("relationshipMapEmpty")}
+            />
             <AssetComponentsPanel
               assetId={asset.id}
               currentComponents={currentComponentsForPanel}
@@ -499,6 +673,15 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
 
           <section id="purchase" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={t("purchaseWarranty")} subtitle={t("detailSections.purchaseSubtitle")} />
+            <div className={`mb-4 rounded-md border px-4 py-3 ${getWarrantyPanelClass(warrantyState.tone)}`}>
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-foreground">{t("warrantyStatus")}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">{getWarrantyStatusLabel(warrantyState, t)}</div>
+                </div>
+                <ShieldCheck className={`h-5 w-5 ${getWarrantyIconClass(warrantyState.tone)}`} />
+              </div>
+            </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <Info label={t("supplier")} value={asset.supplier ? `${asset.supplier.code} - ${asset.supplier.name}` : null} />
               <Info label={t("purchaseDate")} value={formatDate(asset.purchaseDate)} />
@@ -637,48 +820,35 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
                 </div>
               ) : null}
             </div>
-            {movementTimelineItems.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                {tCommon("noData")}
-              </div>
-            ) : (
-              <ol className="space-y-4">
-                {movementTimelineItems.map((movement) => (
-                  <li key={movement.id} className="relative border-l border-border pl-4">
-                    <span className={`absolute -left-1.5 top-1.5 h-3 w-3 rounded-full ${getMovementDotClass(movement.tone)}`} />
-                    <div className="rounded-md bg-background p-4">
-                      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getMovementBadgeClass(movement.tone)}`}>
-                              {movement.title}
-                            </span>
-                            <span className="text-xs text-muted-foreground">{formatDateTime(movement.performedAt)}</span>
-                          </div>
-                          <div className="mt-2 text-sm font-medium text-foreground">{movement.summary}</div>
-                        </div>
-                      </div>
-                      <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-muted-foreground md:grid-cols-2">
-                        <Info label={t("fromValue")} value={movement.from} compact />
-                        <Info label={t("toValue")} value={movement.to} compact />
-                      </div>
-                      {movement.details.length ? (
-                        <div className="mt-3 grid grid-cols-1 gap-2 rounded-md border border-border bg-surface/70 p-3 text-sm text-muted-foreground md:grid-cols-2 xl:grid-cols-3">
-                          {movement.details.map((detail) => (
-                            <MovementInfo key={`${movement.id}-${detail.label}`} detail={detail} />
-                          ))}
-                        </div>
-                      ) : null}
-                      {movement.reason && <p className="mt-2 text-sm text-muted-foreground">{movement.reason}</p>}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            )}
+            <AssetMovementTimeline
+              items={movementTimelineItemsForClient}
+              labels={{
+                all: t("movementFilters.all"),
+                fromValue: t("fromValue"),
+                toValue: t("toValue"),
+                noData: tCommon("noData"),
+                filters: {
+                  handover: t("movementFilters.handover"),
+                  transfer: t("movementFilters.transfer"),
+                  maintenance: t("movementFilters.maintenance"),
+                  audit: t("movementFilters.audit"),
+                  component: t("movementFilters.component"),
+                  disposal: t("movementFilters.disposal"),
+                  other: t("movementFilters.other"),
+                },
+              }}
+            />
           </section>
 
           <section id="maintenance" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={tMaintenance("maintenanceHistory")} subtitle={t("detailSections.maintenanceSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
+            <SummaryStrip
+              items={[
+                { label: t("openMaintenance"), value: String(openMaintenanceCount), tone: openMaintenanceCount > 0 ? "warning" : "success" },
+                { label: t("latestMaintenance"), value: maintenanceSummary },
+                { label: t("totalMaintenance"), value: String(asset.maintenanceTickets.length) },
+              ]}
+            />
             {asset.maintenanceTickets.length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                 {tCommon("noData")}
@@ -725,6 +895,13 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
 
           <section id="audit" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={t("auditHistory")} subtitle={t("detailSections.auditSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
+            <SummaryStrip
+              items={[
+                { label: t("latestAudit"), value: auditSummary },
+                { label: t("scanCount"), value: latestAuditItem ? String(latestAuditItem.scanCount) : "0" },
+                { label: t("auditFindingRequired"), value: latestAuditItem?.findingRequired ? tCommon("yes") : tCommon("no"), tone: latestAuditItem?.findingRequired ? "warning" : "success" },
+              ]}
+            />
             {asset.auditItems.length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                 {tCommon("noData")}
@@ -792,6 +969,150 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           />
         </aside>
       </div>
+    </div>
+  )
+}
+
+function SummaryCard({
+  icon,
+  label,
+  value,
+  href,
+}: {
+  icon: React.ReactNode
+  label: string
+  value?: string | null
+  href: string
+}) {
+  return (
+    <a href={href} className="rounded-md border border-border bg-background p-3 transition-colors hover:border-primary/40 hover:bg-primary/5">
+      <div className="mb-2 flex items-center gap-2">
+        {icon}
+        <span className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{label}</span>
+      </div>
+      <div className="line-clamp-2 text-sm font-semibold text-foreground">{value || "-"}</div>
+    </a>
+  )
+}
+
+function QuickAction({
+  href,
+  icon,
+  label,
+  disabled,
+}: {
+  href: string
+  icon: React.ReactNode
+  label: string
+  disabled?: boolean
+}) {
+  if (disabled) {
+    return (
+      <span className="inline-flex h-10 cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-muted/50 px-3 text-sm font-medium text-muted-foreground opacity-70">
+        {icon}
+        {label}
+      </span>
+    )
+  }
+
+  return (
+    <Link href={href} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary">
+      {icon}
+      {label}
+    </Link>
+  )
+}
+
+function SummaryStrip({
+  items,
+}: {
+  items: { label: string; value: string; tone?: "success" | "warning" | "danger" | "neutral" }[]
+}) {
+  return (
+    <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+      {items.map((item) => (
+        <div key={item.label} className={`rounded-md border px-3 py-2 ${getSummaryToneClass(item.tone ?? "neutral")}`}>
+          <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{item.label}</div>
+          <div className="mt-1 text-sm font-semibold text-foreground">{item.value || "-"}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function AssetRelationshipMap({
+  title,
+  subtitle,
+  parentTitle,
+  currentTitle,
+  componentsTitle,
+  assetTag,
+  assetName,
+  parentLinks,
+  childLinks,
+  emptyLabel,
+}: {
+  title: string
+  subtitle: string
+  parentTitle: string
+  currentTitle: string
+  componentsTitle: string
+  assetTag: string
+  assetName: string
+  parentLinks: { id: string; href: string; label: string; role: string }[]
+  childLinks: { id: string; href: string; label: string; role: string }[]
+  emptyLabel: string
+}) {
+  const hasLinks = parentLinks.length > 0 || childLinks.length > 0
+
+  return (
+    <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+      <SectionHeading title={title} subtitle={subtitle} icon={<GitBranch className="h-5 w-5 text-primary" />} />
+      {!hasLinks ? (
+        <div className="rounded-md border border-dashed border-border p-5 text-center text-sm text-muted-foreground">
+          {emptyLabel}
+        </div>
+      ) : (
+        <div className="grid gap-3 lg:grid-cols-[1fr_auto_1fr] lg:items-stretch">
+          <RelationshipColumn title={parentTitle} links={parentLinks} emptyLabel={emptyLabel} />
+          <div className="flex items-center justify-center">
+            <div className="w-full rounded-md border border-primary/30 bg-primary/10 px-4 py-3 text-center lg:w-56">
+              <div className="text-xs font-medium uppercase tracking-normal text-primary">{currentTitle}</div>
+              <div className="mt-1 text-sm font-semibold text-foreground">{assetTag}</div>
+              <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{assetName}</div>
+            </div>
+          </div>
+          <RelationshipColumn title={componentsTitle} links={childLinks} emptyLabel={emptyLabel} />
+        </div>
+      )}
+    </section>
+  )
+}
+
+function RelationshipColumn({
+  title,
+  links,
+  emptyLabel,
+}: {
+  title: string
+  links: { id: string; href: string; label: string; role: string }[]
+  emptyLabel: string
+}) {
+  return (
+    <div className="rounded-md border border-border bg-background p-3">
+      <div className="mb-2 text-xs font-medium uppercase tracking-normal text-muted-foreground">{title}</div>
+      {links.length === 0 ? (
+        <div className="text-sm text-muted-foreground">{emptyLabel}</div>
+      ) : (
+        <div className="space-y-2">
+          {links.map((link) => (
+            <Link key={link.id} href={link.href} className="block rounded-md border border-border bg-surface px-3 py-2 transition-colors hover:border-primary/40 hover:bg-primary/5">
+              <div className="text-sm font-medium text-primary">{link.label}</div>
+              <div className="mt-1 text-xs text-muted-foreground">{link.role}</div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -994,23 +1315,6 @@ function Info({
   )
 }
 
-function MovementInfo({ detail }: { detail: MovementCustodyDetail }) {
-  const value = detail.value || "-"
-
-  return (
-    <div>
-      <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{detail.label}</div>
-      {detail.href && detail.value ? (
-        <Link href={detail.href} className="mt-0.5 block text-sm font-medium text-primary hover:underline">
-          {value}
-        </Link>
-      ) : (
-        <div className="mt-0.5 text-sm text-foreground">{value}</div>
-      )}
-    </div>
-  )
-}
-
 function StatusPill({ label, color }: { label: string; color?: string | null }) {
   return (
     <span
@@ -1041,20 +1345,113 @@ function getMovementTone(movementType: string): MovementTone {
   return "neutral"
 }
 
-function getMovementBadgeClass(tone: MovementTone) {
-  if (tone === "success") return "bg-success/10 text-success"
-  if (tone === "info") return "bg-info/10 text-info"
-  if (tone === "warning") return "bg-warning/10 text-warning"
-  if (tone === "danger") return "bg-danger/10 text-danger"
-  return "bg-muted text-muted-foreground"
+function getMovementCategory(movementType: string) {
+  if (movementType === "checkout" || movementType === "checkin") return "handover"
+  if (movementType === "transfer" || movementType.includes("location") || movementType.includes("custodian")) return "transfer"
+  if (movementType.includes("maintenance")) return "maintenance"
+  if (movementType.includes("audit")) return "audit"
+  if (movementType.includes("component")) return "component"
+  if (movementType.includes("disposal")) return "disposal"
+  return "other"
 }
 
-function getMovementDotClass(tone: MovementTone) {
-  if (tone === "success") return "bg-success"
-  if (tone === "info") return "bg-info"
-  if (tone === "warning") return "bg-warning"
-  if (tone === "danger") return "bg-danger"
-  return "bg-primary"
+function createHealthItem(done: boolean, label: string, href: string) {
+  return { done, label, href }
+}
+
+function getWarrantyState(warrantyEndDate: Date | null) {
+  if (!warrantyEndDate) return { tone: "neutral" as const, daysLeft: null }
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const warrantyEnd = new Date(warrantyEndDate)
+  warrantyEnd.setHours(0, 0, 0, 0)
+  const daysLeft = Math.ceil((warrantyEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (daysLeft < 0) return { tone: "danger" as const, daysLeft }
+  if (daysLeft <= 30) return { tone: "warning" as const, daysLeft }
+  return { tone: "success" as const, daysLeft }
+}
+
+function getWarrantyStatusLabel(
+  warrantyState: ReturnType<typeof getWarrantyState>,
+  t: (key: string, values?: Record<string, string | number | Date>) => string
+) {
+  if (warrantyState.tone === "neutral") return t("warrantyUnknown")
+  if (warrantyState.tone === "danger") return t("warrantyExpired", { days: Math.abs(warrantyState.daysLeft ?? 0) })
+  if (warrantyState.tone === "warning") return t("warrantyExpiringSoon", { days: warrantyState.daysLeft ?? 0 })
+  return t("warrantyActive", { days: warrantyState.daysLeft ?? 0 })
+}
+
+function getMissingPhotoChecklistLabels(
+  photoChecklist: string[],
+  attachments: { id: string; originalName: string; fileType: string }[]
+) {
+  const imageAttachments = attachments.filter((attachment) => attachment.fileType.startsWith("image/"))
+  const legacyLabelCounts = photoChecklist.reduce<Record<string, number>>((counts, item) => {
+    const legacyLabel = legacySanitizedPhotoLabel(item)
+    counts[legacyLabel] = (counts[legacyLabel] ?? 0) + 1
+    return counts
+  }, {})
+
+  return photoChecklist.filter(
+    (item) => !imageAttachments.some((attachment) => attachmentMatchesPhotoLabel(attachment, item, legacyLabelCounts))
+  )
+}
+
+function attachmentMatchesPhotoLabel(
+  attachment: { originalName: string },
+  label: string,
+  legacyLabelCounts: Record<string, number>
+) {
+  const normalizedLabel = normalizePhotoLabel(label)
+  const legacyLabel = legacySanitizedPhotoLabel(label)
+  const legacyLabelIsSafeFallback = Boolean(legacyLabel) && legacyLabelCounts[legacyLabel] === 1
+
+  return [label, normalizedLabel, legacyLabelIsSafeFallback ? legacyLabel : ""]
+    .filter(Boolean)
+    .some((candidate) => attachment.originalName.startsWith(`${candidate} - `))
+}
+
+function normalizePhotoLabel(label: string) {
+  return label.replace(/[\\/:*?"<>|\r\n]+/g, " ").replace(/\s+/g, " ").trim()
+}
+
+function legacySanitizedPhotoLabel(label: string) {
+  const normalized = label.normalize("NFKD")
+  return normalized.replace(/[^\w.\- ]+/g, "_").replace(/\s+/g, " ").trim()
+}
+
+function getWarrantyIconClass(tone: "success" | "warning" | "danger" | "neutral") {
+  if (tone === "success") return "text-success"
+  if (tone === "warning") return "text-warning"
+  if (tone === "danger") return "text-danger"
+  return "text-muted-foreground"
+}
+
+function getWarrantyPanelClass(tone: "success" | "warning" | "danger" | "neutral") {
+  if (tone === "success") return "border-success/20 bg-success/5"
+  if (tone === "warning") return "border-warning/30 bg-warning/10"
+  if (tone === "danger") return "border-danger/30 bg-danger/10"
+  return "border-border bg-background"
+}
+
+function getHealthPanelClass(tone: "success" | "warning" | "danger") {
+  if (tone === "success") return "border-success/20 bg-success/5"
+  if (tone === "warning") return "border-warning/30 bg-warning/10"
+  return "border-danger/30 bg-danger/10"
+}
+
+function getHealthBadgeClass(tone: "success" | "warning" | "danger") {
+  if (tone === "success") return "bg-success/10 text-success"
+  if (tone === "warning") return "bg-warning/10 text-warning"
+  return "bg-danger/10 text-danger"
+}
+
+function getSummaryToneClass(tone: "success" | "warning" | "danger" | "neutral") {
+  if (tone === "success") return "border-success/20 bg-success/5"
+  if (tone === "warning") return "border-warning/30 bg-warning/10"
+  if (tone === "danger") return "border-danger/30 bg-danger/10"
+  return "border-border bg-background"
 }
 
 function formatUserLabel(user: {

@@ -14,7 +14,7 @@ import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type MaintenancePageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string; status?: string; repairType?: string; evidence?: string; dateFrom?: string; dateTo?: string }>
+  searchParams: Promise<{ search?: string; status?: string; repairType?: string; evidence?: string; dateFrom?: string; dateTo?: string; assetId?: string }>
 }
 
 export default async function MaintenancePage({ params, searchParams }: MaintenancePageProps) {
@@ -54,7 +54,12 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
       </div>
 
       {canCreate && options ? (
-        <MaintenanceTicketForm assets={options.assets} employees={options.employees} suppliers={options.suppliers} />
+        <MaintenanceTicketForm
+          assets={options.assets}
+          employees={options.employees}
+          suppliers={options.suppliers}
+          initialAssetId={filters.assetId}
+        />
       ) : null}
 
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">

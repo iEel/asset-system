@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { FileImage, Loader2, PackageCheck, Save, Trash2, Wrench } from "lucide-react"
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { FormContextBanner } from "@/components/ui/form-context-banner"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
 
@@ -36,12 +37,14 @@ export function CheckinForm({
   locations,
   statuses,
   conditions,
+  initialCheckoutId,
 }: {
   activeCheckouts: CheckoutOption[]
   employees: Option[]
   locations: Option[]
   statuses: StatusOption[]
   conditions: StatusOption[]
+  initialCheckoutId?: string
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -55,8 +58,9 @@ export function CheckinForm({
   const [createMaintenance, setCreateMaintenance] = useState(false)
   const [returnByEmployeeId, setReturnByEmployeeId] = useState("")
   const [receiveByEmployeeId, setReceiveByEmployeeId] = useState("")
+  const initialCheckout = activeCheckouts.find((checkout) => checkout.id === initialCheckoutId)
   const [values, setValues] = useState({
-    checkoutId: "",
+    checkoutId: initialCheckout?.id ?? "",
     returnDate: new Date().toISOString().slice(0, 10),
     returnBy: "",
     receiveBy: "",
@@ -187,6 +191,11 @@ export function CheckinForm({
       </div>
       <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
         <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          {initialCheckout ? (
+            <div className="md:col-span-2">
+              <FormContextBanner label={t("asset")} value={initialCheckout.label} />
+            </div>
+          ) : null}
           <SearchableSelect
             label={t("asset")}
             value={values.checkoutId}

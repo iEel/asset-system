@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-05-15
 > **Phase:** Phase 4 AD/LDAP + Mobile Optimization (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built with export polish, 🟨 Admin RBAC polish started, 🟨 Phase 4 AD/LDAP login + sync workflow validated, 🟨 Mobile optimization pass complete, ✅ Table row navigation UX pass complete, ✅ Searchable dropdown UX pass complete for high-volume operational forms, ✅ Handover/return evidence and readable operation document numbers added, ✅ Asset movement custody timeline enriched, ✅ Handover history compacted for repeated transactions, ✅ Serial Number QR/barcode scan input added to Asset Form
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built with export polish, 🟨 Admin RBAC polish started, 🟨 Phase 4 AD/LDAP login + sync workflow validated, 🟨 Mobile optimization pass complete, ✅ Table row navigation UX pass complete, ✅ Searchable dropdown UX pass complete for high-volume operational forms, ✅ Handover/return evidence and readable operation document numbers added, ✅ Asset movement custody timeline enriched, ✅ Handover history compacted for repeated transactions, ✅ Serial Number QR/barcode scan input added to Asset Form, ✅ Asset Detail command center/data health/relationship summaries and context-aware quick actions added
 
 ---
 
@@ -109,7 +109,8 @@ d:\Antigravity\asset-system\
 │   │   │   ├── file-dropzone.tsx           # Reusable drag/drop + camera-capture file picker
 │   │   │   ├── searchable-select.tsx       # Reusable searchable dropdown
 │   │   │   ├── clickable-table-row.tsx     # Whole-row table navigation helper
-│   │   │   └── scanner-text-input.tsx      # Camera QR/barcode scanner text input
+│   │   │   ├── scanner-text-input.tsx      # Camera QR/barcode scanner text input
+│   │   │   └── form-context-banner.tsx     # Shared banner for preselected operation form context
 │   │   └── master-data/
 │   │       ├── master-data-layout.tsx      # Header/Search/Table helpers
 │   │       ├── master-data-delete-button.tsx
@@ -625,7 +626,7 @@ await logAudit({
 | **Next.js 16 middleware deprecation** | `middleware.ts` แสดง warning "use proxy instead" — ยังทำงานได้ปกติ อาจต้อง migrate ในอนาคต |
 | **Prisma 7 breaking changes** | ต้องใช้ driver adapter (`@prisma/adapter-mssql`), ไม่มี `url` ใน schema แล้ว, config อยู่ใน `prisma.config.ts` |
 | **shadcn/ui** | ยังไม่ได้ init — ต้อง run `npx shadcn@latest init` แล้วเพิ่ม components ตามต้องการ |
-| **Lint/build verification** | ล่าสุด `npm run lint`, `npx tsc --noEmit`, และ `npm run build` ผ่านหลังปรับ table row navigation UX |
+| **Lint/build verification** | ล่าสุด `npm run lint`, `npx tsc --noEmit`, และ `npm run build` ผ่านหลังปรับ Asset Detail command center, context-aware quick actions, movement/data-health/detail summaries, และ operation form prefill |
 | **Next.js 16 docs** | โปรเจกต์นี้มี AGENTS.md ระบุให้อ่าน docs ใน `node_modules/next/dist/docs/` ก่อนแก้โค้ด Next.js |
 | **SQL Server TLS warning** | แก้แล้วด้วย `DB_TLS_SERVER_NAME=WIN-I284TKLAMMD` เพื่อไม่ให้ tedious ใช้ IP เป็น TLS ServerName |
 | **LDAP Manual Sync MSSQL transaction** | แก้แล้ว: Manual Sync ไม่ใช้ Prisma interactive transaction กับ MSSQL แล้ว เพราะเคยเจอ `Transaction has not begun`; ปัจจุบันใช้ idempotent preview-driven writes + small batches และแสดง applied counts บน UI |
@@ -689,6 +690,8 @@ await logAudit({
 | **Operation document numbering** | เพิ่ม `documentNo` ใน `asset_checkouts` และ `asset_checkins`, generator กลาง `src/lib/operation-document-number.ts`, default format `HO-{yyyyMM}-{running}` / `RT-{yyyyMM}-{running}`, และ System Settings UI สำหรับแก้ template เช่น `{yyyyMM}-{running}` เพื่อให้ได้ `YYYYMM-0001` |
 | **Asset movement custody timeline** | หน้า Asset Detail movement section แสดงชื่อ movement แบบ localize, badge/dot แยกสีตามประเภท, summary สั้น, link ไปเอกสารส่งมอบ/รับคืน, และรายละเอียด chain-of-custody เช่น ผู้ส่งมอบ ผู้รับ ผู้คืน ผู้รับคืน ปลายทาง และหมายเหตุ; check-in form/API บันทึก `returnByEmployeeId` และ `receiveByEmployeeId` เพิ่มเติมโดยยัง fallback ไปชื่อ legacy ได้; local DB sync แล้วด้วย `npx prisma db push` และ environment อื่นต้อง `prisma generate` หลัง sync |
 | **Asset Form Serial scanning** | หน้า `/assets/new` และ `/assets/{id}/edit` ใช้ `ScannerTextInput` กับช่อง Serial Number เพื่อเปิดกล้องมือถือสแกน QR/barcode ผ่าน `html5-qrcode`; รองรับ QR, Code 128/39/93, EAN/UPC, ITF, Codabar, Data Matrix, PDF417, auto-fill แล้วหยุดสแกนทันที โดยยังแก้ไขค่าด้วยมือก่อนบันทึกได้ |
+| **Asset Detail command center** | หน้า Asset Detail เพิ่ม summary cards, sticky section nav, quick actions, data completeness panel, relationship map, maintenance/audit summaries, และ movement filter; data-health photo checklist ตรวจรูปจาก naming convention `label - filename` ให้ตรงกับ gallery upload เดิม |
+| **Context-aware quick actions** | Quick actions จาก Asset Detail ส่ง `assetId` หรือ active `checkoutId` ไปยัง checkout/checkin/transfer/maintenance; ฟอร์มปลายทาง preselect รายการและแสดง `FormContextBanner`; ถ้า id ไม่อยู่ใน option จะ fallback เป็นฟอร์มว่าง และปุ่ม checkout/transfer ถูก disabled เมื่อ asset มี active checkout |
 
 ---
 
@@ -798,6 +801,8 @@ await logAudit({
 80. Asset Detail movement custody timeline with human-readable movement titles, color-coded badges/dots, summary text, checkout/checkin document deep links, destination/custody actor details, and nullable employee references for check-in return/receive actors
 81. Asset Detail handover/return history compact layout: latest transaction remains fully expanded with evidence previews, while older checkout/checkin rounds are collapsed into summary rows with document links and expandable evidence panels
 82. Asset Form Serial Number QR/barcode scanning using a reusable `ScannerTextInput`, mobile camera access, camera picker, supported serial barcode formats, and auto-fill with manual edit fallback
+83. Asset Detail command center with summary cards, sticky section navigation, data completeness checks, relationship map, maintenance/audit summaries, movement filtering, warranty/data-health callouts, and corrected photo checklist completeness detection
+84. Context-aware Asset Detail quick actions that pass `assetId`/active `checkoutId` into checkout, checkin, transfer, and maintenance forms; destination forms preselect the relevant asset/checkout and show a shared context banner while safely falling back when the query id is not available
 
 ---
 

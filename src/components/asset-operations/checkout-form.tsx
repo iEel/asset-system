@@ -7,6 +7,7 @@ import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { FormContextBanner } from "@/components/ui/form-context-banner"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 
 type Option = { id: string; label: string; disabled?: boolean }
@@ -18,12 +19,14 @@ export function CheckoutForm({
   departments,
   locations,
   conditions,
+  initialAssetId,
 }: {
   assets: Option[]
   employees: Option[]
   departments: Option[]
   locations: Option[]
   conditions: Option[]
+  initialAssetId?: string
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -32,8 +35,9 @@ export function CheckoutForm({
   const [saving, setSaving] = useState(false)
   const [photoBefore, setPhotoBefore] = useState<File | null>(null)
   const [receiverSignatureDataUrl, setReceiverSignatureDataUrl] = useState<string | null>(null)
+  const initialAsset = assets.find((asset) => asset.id === initialAssetId && !asset.disabled)
   const [values, setValues] = useState({
-    assetId: "",
+    assetId: initialAsset?.id ?? "",
     checkoutType: "user" as CheckoutType,
     custodianId: "",
     departmentId: "",
@@ -95,6 +99,11 @@ export function CheckoutForm({
   return (
     <OperationShell title={t("title")}>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        {initialAsset ? (
+          <div className="md:col-span-2">
+            <FormContextBanner label={t("asset")} value={initialAsset.label} />
+          </div>
+        ) : null}
         <SearchableSelect
           label={t("asset")}
           value={values.assetId}

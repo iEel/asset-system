@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
+import { FormContextBanner } from "@/components/ui/form-context-banner"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 
 type Option = { id: string; label: string }
@@ -13,17 +14,20 @@ export function MaintenanceTicketForm({
   assets,
   employees,
   suppliers,
+  initialAssetId,
 }: {
   assets: Option[]
   employees: Option[]
   suppliers: Option[]
+  initialAssetId?: string
 }) {
   const router = useRouter()
   const t = useTranslations("maintenancePage")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
+  const initialAsset = assets.find((asset) => asset.id === initialAssetId)
   const [values, setValues] = useState({
-    assetId: "",
+    assetId: initialAsset?.id ?? "",
     problem: "",
     reportedById: "",
     reportedDate: new Date().toISOString().slice(0, 10),
@@ -60,7 +64,7 @@ export function MaintenanceTicketForm({
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
       toast.success(t("createSuccess"))
-      setValues((current) => ({ ...current, assetId: "", problem: "", repairCost: "", vendorId: "" }))
+      setValues((current) => ({ ...current, assetId: initialAsset?.id ?? "", problem: "", repairCost: "", vendorId: "" }))
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))
@@ -76,6 +80,11 @@ export function MaintenanceTicketForm({
         <p className="mt-1 text-sm text-muted-foreground">{t("createSubtitle")}</p>
       </div>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        {initialAsset ? (
+          <div className="md:col-span-2">
+            <FormContextBanner label={t("asset")} value={initialAsset.label} />
+          </div>
+        ) : null}
         <SearchableSelect label={t("asset")} value={values.assetId} required options={assets} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assetId", value)} />
         <SearchableSelect label={t("reportedBy")} value={values.reportedById} required options={employees} placeholder={t("selectEmployee")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("reportedById", value)} />
         <Field label={t("reportedDate")} required>
