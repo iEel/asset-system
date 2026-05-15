@@ -7,6 +7,7 @@ import { ArrowLeft, Camera, Code2, FileText, Loader2, Plus, Save, Trash2 } from 
 import { toast } from "sonner"
 import Link from "next/link"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { formatFileSize } from "@/lib/uploads"
 
 type Option = {
@@ -705,11 +706,24 @@ export function AssetForm({
             {filteredModels.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
           </SelectField>
           <Field label={t("serialNumber")}>
-            <input
+            <ScannerTextInput
               value={values.serialNumber ?? ""}
-              onChange={(event) => setField("serialNumber", event.target.value)}
+              onChange={(value) => setField("serialNumber", value)}
               maxLength={100}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              disabled={saving}
+              labels={{
+                start: t("scanSerialNumber"),
+                stop: t("stopSerialScan"),
+                title: t("serialScannerTitle"),
+                help: t("serialScannerHelp"),
+                cameraUnsupported: t("cameraUnsupported"),
+                cameraNotFound: t("cameraNotFound"),
+                cameraError: t("cameraError"),
+                cameraDevice: t("cameraDevice"),
+                cameraDeviceFallback: t("cameraDeviceFallback"),
+                scanning: t("serialScannerRunning"),
+                scanned: t("serialScanned"),
+              }}
             />
             {duplicateState.serialNumberExists && (
               <p className="mt-1.5 text-xs font-medium text-danger">{t("duplicateSerialNumber")}</p>
