@@ -30,6 +30,10 @@ export default async function AssetLabelsToolPage({ params }: AssetLabelsToolPag
         minChars: tGlobalSearch("minChars"),
         loading: tGlobalSearch("loading"),
         serial: tGlobalSearch("serial"),
+        recentQueueTitle: t("recentLabelQueueTitle"),
+        recentQueueHelp: t("recentLabelQueueHelp"),
+        addAllRecent: t("addAllRecentLabels"),
+        recentQueueEmpty: t("recentLabelQueueEmpty"),
       }}
     />
   )

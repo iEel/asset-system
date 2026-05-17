@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useTranslations, useLocale } from "next-intl"
 import { useRouter, usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
@@ -8,6 +9,7 @@ import {
   Bell,
   Globe,
   LogOut,
+  ScanLine,
   ChevronDown,
   PanelLeftClose,
 } from "lucide-react"
@@ -23,6 +25,7 @@ export function Topbar({
   onMobileMenuToggle: () => void
 }) {
   const tAuth = useTranslations("auth")
+  const tAssetTools = useTranslations("assetTools")
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
@@ -62,6 +65,16 @@ export function Topbar({
 
       {/* Right side */}
       <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+        <Link
+          href={`/${locale}/asset-management/scan`}
+          className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary sm:px-3"
+          title={tAssetTools("globalScanShortcut")}
+          aria-label={tAssetTools("globalScanShortcut")}
+        >
+          <ScanLine className="h-4 w-4" />
+          <span className="hidden xl:inline">{tAssetTools("globalScanShortcut")}</span>
+        </Link>
+
         {/* Notifications */}
         <button className="relative rounded-md p-2 hover:bg-accent" aria-label="Notifications">
           <Bell size={20} />

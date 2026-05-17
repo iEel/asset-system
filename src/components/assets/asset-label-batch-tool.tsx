@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Loader2, MapPin, Plus, Printer, Search, X } from "lucide-react"
+import { Clock3, Loader2, MapPin, Plus, Printer, Search, X } from "lucide-react"
 
 type SearchResult = {
   id: string
@@ -29,14 +29,20 @@ type AssetLabelBatchToolProps = {
     minChars: string
     loading: string
     serial: string
+    recentQueueTitle: string
+    recentQueueHelp: string
+    addAllRecent: string
+    recentQueueEmpty: string
   }
 }
 
 export function AssetLabelBatchTool({ locale, labels }: AssetLabelBatchToolProps) {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
+  const [recentAssets, setRecentAssets] = useState<SearchResult[]>([])
   const [selected, setSelected] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
+  const [queueLoading, setQueueLoading] = useState(false)
   const trimmedQuery = query.trim()
   const visibleResults = trimmedQuery.length < 2 ? [] : results
   const selectedIds = useMemo(() => new Set(selected.map((asset) => asset.id)), [selected])
@@ -68,12 +74,43 @@ export function AssetLabelBatchTool({ locale, labels }: AssetLabelBatchToolProps
     }
   }, [locale, trimmedQuery])
 
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadRecentAssets() {
+      setQueueLoading(true)
+      try {
+        const response = await fetch("/api/assets?page=1&pageSize=20&sort=createdAt&direction=desc", {
+          signal: controller.signal,
+        })
+        const payload = (await response.json().catch(() => null)) as { data?: AssetApiRow[] } | null
+        if (!response.ok) throw new Error("Queue failed")
+        setRecentAssets((payload?.data ?? []).map((asset) => toSearchResult(asset, locale)))
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return
+        setRecentAssets([])
+      } finally {
+        setQueueLoading(false)
+      }
+    }
+
+    void loadRecentAssets()
+
+    return () => {
+      controller.abort()
+    }
+  }, [locale])
+
   function addAsset(asset: SearchResult) {
     setSelected((current) => current.some((item) => item.id === asset.id) ? current : [...current, asset])
   }
 
   function removeAsset(id: string) {
     setSelected((current) => current.filter((asset) => asset.id !== id))
+  }
+
+  function addRecentAssets() {
+    setSelected((current) => mergeSelectedAssets(current, recentAssets))
   }
 
   function printLabels() {
@@ -138,6 +175,52 @@ export function AssetLabelBatchTool({ locale, labels }: AssetLabelBatchToolProps
         </section>
 
         <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+          <div className="mb-5 rounded-md border border-border bg-background">
+            <div className="flex items-start justify-between gap-3 border-b border-border px-3 py-3">
+              <div>
+                <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Clock3 className="h-4 w-4 text-primary" />
+                  {labels.recentQueueTitle}
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">{labels.recentQueueHelp}</p>
+              </div>
+              <button
+                type="button"
+                disabled={recentAssets.length === 0}
+                onClick={addRecentAssets}
+                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {labels.addAllRecent}
+              </button>
+            </div>
+            <div className="max-h-72 overflow-y-auto">
+              {queueLoading ? (
+                <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {labels.loading}
+                </div>
+              ) : recentAssets.length === 0 ? (
+                <div className="px-3 py-4 text-sm text-muted-foreground">{labels.recentQueueEmpty}</div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {recentAssets.map((asset) => (
+                    <button
+                      key={asset.id}
+                      type="button"
+                      disabled={selectedIds.has(asset.id)}
+                      onClick={() => addAsset(asset)}
+                      className="flex w-full items-start gap-2 px-3 py-2 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Plus className="mt-1 h-3.5 w-3.5 shrink-0 text-primary" />
+                      <AssetLabelSearchResult asset={asset} serialLabel={labels.serial} compact />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold text-foreground">{labels.selectedTitle}</h2>
@@ -179,6 +262,53 @@ export function AssetLabelBatchTool({ locale, labels }: AssetLabelBatchToolProps
       </div>
     </div>
   )
+}
+
+type AssetApiRow = {
+  id: string
+  assetTag: string
+  name: string
+  serialNumber: string | null
+  category: { code: string; name: string } | null
+  brand: { name: string } | null
+  model: { name: string } | null
+  currentLocation: { code: string; name: string } | null
+  custodian: { code: string; fullNameTh: string } | null
+  status: { name: string; nameTh: string; colorCode: string | null } | null
+}
+
+function toSearchResult(asset: AssetApiRow, locale: string): SearchResult {
+  const category = asset.category ? `${asset.category.code} - ${asset.category.name}` : "-"
+  const subtitleParts = [asset.name, asset.brand?.name, asset.model?.name].filter(Boolean)
+
+  return {
+    id: asset.id,
+    title: asset.assetTag,
+    subtitle: subtitleParts.join(" / ") || category,
+    href: `/${locale}/assets/${asset.id}`,
+    serialNumber: asset.serialNumber,
+    status: {
+      label: locale === "th" ? asset.status?.nameTh ?? asset.status?.name ?? "-" : asset.status?.name ?? asset.status?.nameTh ?? "-",
+      colorCode: asset.status?.colorCode ?? null,
+    },
+    meta: {
+      custodian: asset.custodian?.fullNameTh ?? null,
+      location: asset.currentLocation ? `${asset.currentLocation.code} - ${asset.currentLocation.name}` : "-",
+      category,
+    },
+  }
+}
+
+function mergeSelectedAssets(current: SearchResult[], assets: SearchResult[]) {
+  const selectedIds = new Set(current.map((asset) => asset.id))
+  const next = [...current]
+  for (const asset of assets) {
+    if (!selectedIds.has(asset.id)) {
+      next.push(asset)
+      selectedIds.add(asset.id)
+    }
+  }
+  return next
 }
 
 function AssetLabelSearchResult({
