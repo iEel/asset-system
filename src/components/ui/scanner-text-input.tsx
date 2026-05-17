@@ -29,6 +29,7 @@ type ScannerTextInputProps = {
   labels: ScannerTextInputLabels
   disabled?: boolean
   maxLength?: number
+  placeholder?: string
   inputClassName?: string
 }
 
@@ -38,6 +39,7 @@ export function ScannerTextInput({
   labels,
   disabled,
   maxLength,
+  placeholder,
   inputClassName,
 }: ScannerTextInputProps) {
   const reactId = useId()
@@ -156,6 +158,7 @@ export function ScannerTextInput({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           maxLength={maxLength}
+          placeholder={placeholder}
           className={
             inputClassName ??
             "h-10 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"

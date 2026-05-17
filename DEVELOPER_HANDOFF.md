@@ -1,8 +1,8 @@
 # Developer Handoff — Asset Management System
 
-> **Last Updated:** 2026-05-15
+> **Last Updated:** 2026-05-17
 > **Phase:** Phase 4 AD/LDAP + Mobile Optimization (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built with export polish, 🟨 Admin RBAC polish started, 🟨 Phase 4 AD/LDAP login + sync workflow validated, 🟨 Mobile optimization pass complete, ✅ Table row navigation UX pass complete, ✅ Searchable dropdown UX pass complete for high-volume operational forms, ✅ Handover/return evidence and readable operation document numbers added, ✅ Asset movement custody timeline enriched, ✅ Handover history compacted for repeated transactions, ✅ Serial Number QR/barcode scan input added to Asset Form, ✅ Asset Detail command center/data health/relationship summaries and context-aware quick actions added, ✅ Unified asset event timeline and focused activity follow-up summary added
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports and scan QA hardening, 🟨 Phase 3 maintenance/disposal mostly built with export polish, 🟨 Admin RBAC polish started, 🟨 Phase 4 AD/LDAP login + sync workflow validated, 🟨 Mobile optimization pass complete, ✅ Table row navigation UX pass complete, ✅ Searchable dropdown UX pass complete for high-volume operational forms, ✅ Handover/return evidence and readable operation document numbers added, ✅ Asset movement custody timeline enriched, ✅ Handover history compacted for repeated transactions, ✅ Serial Number QR/barcode scan input added to Asset Form, ✅ Asset Detail command center/data health/relationship summaries and context-aware quick actions added, ✅ Unified asset event timeline and focused activity follow-up summary added, ✅ Asset Management menu reorganized with scan/search, label batch printing, and import/export tools
 
 ---
 
@@ -90,6 +90,7 @@ d:\Antigravity\asset-system\
 │   │           ├── dashboard/page.tsx      # KPI cards
 │   │           ├── maintenance/page.tsx    # Maintenance ticket list/create
 │   │           ├── assets/                 # Asset Register list / detail / new / edit
+│   │           ├── asset-management/       # Checkout/checkin/transfer/bulk update + scan/search, label batch, import/export tools
 │   │           └── master-data/
 │   │               ├── companies/          # List / new / edit
 │   │               ├── branches/           # List / new / edit
@@ -126,6 +127,8 @@ d:\Antigravity\asset-system\
 │   │   └── assets/
 │   │       ├── asset-form.tsx
 │   │       ├── asset-import-preview-panel.tsx
+│   │       ├── asset-scan-search-tool.tsx
+│   │       ├── asset-label-batch-tool.tsx
 │   │       ├── asset-register-table.tsx
 │   │       └── asset-label-print.tsx
 │   ├── i18n/
@@ -694,6 +697,7 @@ await logAudit({
 | **Context-aware quick actions** | Quick actions จาก Asset Detail ส่ง `assetId` หรือ active `checkoutId` ไปยัง checkout/checkin/transfer/maintenance; ฟอร์มปลายทาง preselect รายการและแสดง `FormContextBanner`; ถ้า id ไม่อยู่ใน option จะ fallback เป็นฟอร์มว่าง และปุ่ม checkout/transfer ถูก disabled เมื่อ asset มี active checkout |
 | **Unified Asset Timeline** | หน้า Asset Detail movement section เปลี่ยนเป็น Timeline รวมเหตุการณ์ โดยรวม movement log เดิม, เอกสารจัดซื้อ/ไฟล์จัดซื้อเดิม, ส่วนควบ install/remove, ใบซ่อม, และรอบตรวจนับไว้ใน feed เดียว พร้อม filter `purchase`, `component`, `maintenance`, `audit`, deep link ไปเอกสาร/ใบซ่อม/รอบตรวจนับ/asset ที่เกี่ยวข้อง |
 | **Focused Activity Summary** | เพิ่มแถบ “สรุปสถานะและสิ่งที่ต้องติดตาม” ด้านบนหน้า Asset Detail สำหรับเหตุการณ์ล่าสุดและประเด็นที่ต้องตามต่อ เช่น ส่งมอบค้าง ใบซ่อมเปิด ประกันใกล้หมด ข้อมูลไม่ครบ หรือ audit finding; ตัด location/custodian ออกจาก summary นี้เพราะมี summary cards แถวถัดไปอยู่แล้ว |
+| **Asset Management menu/tools** | เมนู `จัดการทรัพย์สิน` ถูกจัดกลุ่มเป็น `ทะเบียน` และ `ธุรกรรม`; ยุบเมนู `ประวัติทรัพย์สิน` ที่ไม่มี route และใช้ Unified Timeline ใน Asset Detail แทน; เพิ่มหน้า `/asset-management/scan` สำหรับสแกน/ค้นเร็ว, `/asset-management/labels` สำหรับเลือกหลายทรัพย์สินเพื่อพิมพ์ label, และ `/asset-management/import-export` สำหรับ template/import/export; `bulkMove` เปลี่ยนชื่อ UI เป็น `อัปเดตหลายรายการ` |
 
 ---
 
@@ -807,6 +811,7 @@ await logAudit({
 84. Context-aware Asset Detail quick actions that pass `assetId`/active `checkoutId` into checkout, checkin, transfer, and maintenance forms; destination forms preselect the relevant asset/checkout and show a shared context banner while safely falling back when the query id is not available
 85. Unified Asset Detail event timeline combining movement logs, handover/return, purchase documents, component install/remove, maintenance tickets, and audit rounds into one filtered timeline with deep links to related records
 86. Focused Asset Detail activity summary showing latest event and actionable follow-ups only, with duplicate location/custodian content removed because the summary cards already cover those fields
+87. Asset Management menu reorganization with `Register` and `Transactions` subgroups, removal of the obsolete Asset History menu item, quick scan/search tool for mobile QR/barcode lookup, batch label-print selection page, and consolidated import/export tool page
 
 ---
 

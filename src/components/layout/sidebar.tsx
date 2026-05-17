@@ -14,8 +14,11 @@ import {
   ChevronRight,
   PackagePlus,
   ArrowRightLeft,
+  FileSpreadsheet,
   LogOut,
   LogIn,
+  Printer,
+  ScanLine,
   Wrench,
   Trash2,
   Building2,
@@ -61,13 +64,27 @@ export function Sidebar({
       labelKey: "assetManagement",
       icon: <Package size={20} />,
       children: [
-        { labelKey: "assetRegister", href: `/${locale}/assets`, icon: <Package size={18} /> },
-        { labelKey: "addAsset", href: `/${locale}/assets/new`, icon: <PackagePlus size={18} /> },
-        { labelKey: "checkout", href: `/${locale}/asset-management/checkout`, icon: <LogOut size={18} /> },
-        { labelKey: "checkin", href: `/${locale}/asset-management/checkin`, icon: <LogIn size={18} /> },
-        { labelKey: "transfer", href: `/${locale}/asset-management/transfer`, icon: <ArrowRightLeft size={18} /> },
-        { labelKey: "bulkMove", href: `/${locale}/asset-management/bulk-move`, icon: <MapPin size={18} /> },
-        { labelKey: "assetHistory", href: `/${locale}/asset-management/history`, icon: <History size={18} /> },
+        {
+          labelKey: "assetRegistryGroup",
+          icon: <Package size={18} />,
+          children: [
+            { labelKey: "assetRegister", href: `/${locale}/assets`, icon: <Package size={18} /> },
+            { labelKey: "addAsset", href: `/${locale}/assets/new`, icon: <PackagePlus size={18} /> },
+            { labelKey: "scanSearchAsset", href: `/${locale}/asset-management/scan`, icon: <ScanLine size={18} /> },
+            { labelKey: "printLabels", href: `/${locale}/asset-management/labels`, icon: <Printer size={18} /> },
+            { labelKey: "importExport", href: `/${locale}/asset-management/import-export`, icon: <FileSpreadsheet size={18} /> },
+          ],
+        },
+        {
+          labelKey: "assetTransactionsGroup",
+          icon: <ArrowRightLeft size={18} />,
+          children: [
+            { labelKey: "checkout", href: `/${locale}/asset-management/checkout`, icon: <LogOut size={18} /> },
+            { labelKey: "checkin", href: `/${locale}/asset-management/checkin`, icon: <LogIn size={18} /> },
+            { labelKey: "transfer", href: `/${locale}/asset-management/transfer`, icon: <ArrowRightLeft size={18} /> },
+            { labelKey: "bulkMove", href: `/${locale}/asset-management/bulk-move`, icon: <MapPin size={18} /> },
+          ],
+        },
       ],
     },
     {
@@ -177,9 +194,7 @@ function SidebarItem({
 }) {
   const [open, setOpen] = useState(false)
   const isActive = item.href ? pathname === item.href : false
-  const hasActiveChild = item.children?.some((child) =>
-    child.href ? pathname.startsWith(child.href) : false
-  )
+  const hasActiveChild = hasActiveDescendant(item, pathname)
 
   if (item.children) {
     return (
@@ -199,7 +214,7 @@ function SidebarItem({
           </span>
         </button>
         {open && (
-          <div className="ml-4 border-l border-border">
+          <div className={cn("border-l border-border", depth === 0 ? "ml-4" : "ml-6")}>
             {item.children.map((child) => (
               <SidebarItem
                 key={child.labelKey}
@@ -233,4 +248,11 @@ function SidebarItem({
       <span className={cn("truncate", collapsed && "lg:hidden")}>{t(item.labelKey)}</span>
     </Link>
   )
+}
+
+function hasActiveDescendant(item: MenuItem, pathname: string): boolean {
+  return item.children?.some((child) => {
+    if (child.href) return pathname.startsWith(child.href)
+    return hasActiveDescendant(child, pathname)
+  }) ?? false
 }
