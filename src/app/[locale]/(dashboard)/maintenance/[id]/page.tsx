@@ -1,13 +1,18 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ArrowLeft, CheckCircle2, FileText, History, Printer } from "lucide-react"
+import { AlertTriangle, ArrowLeft, CheckCircle2, FileText, History, Printer, Trash2 } from "lucide-react"
 import { prisma } from "@/lib/db"
+import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
+import { getMaintenanceOptions } from "@/lib/maintenance-options"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { MaintenanceAttachments } from "@/components/maintenance/maintenance-attachments"
+import { MaintenanceTicketCloseButton } from "@/components/maintenance/maintenance-ticket-close-button"
+import { MaintenanceTicketStatusButton } from "@/components/maintenance/maintenance-ticket-status-button"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
-import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
+import { getMaintenanceAttachmentType } from "@/lib/maintenance-attachments"
+import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceClosed, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
 
 type MaintenanceDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -15,7 +20,9 @@ type MaintenanceDetailPageProps = {
 
 export default async function MaintenanceDetailPage({ params }: MaintenanceDetailPageProps) {
   const { locale, id } = await params
-  await requirePagePermission(locale, "maintenance", "view")
+  const user = await requirePagePermission(locale, "maintenance", "view")
+  const canEdit = hasPermission(user, "maintenance", "edit")
+  const canCreateDisposal = hasPermission(user, "disposal", "create")
   const t = await getTranslations("maintenancePage")
   const tAsset = await getTranslations("asset")
   const tCommon = await getTranslations("common")
@@ -32,6 +39,7 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
           condition: { select: { nameTh: true, colorCode: true } },
           currentLocation: { select: { code: true, name: true } },
           custodian: { select: { code: true, fullNameTh: true } },
+          purchasePrice: true,
         },
       },
       reportedBy: { select: { code: true, fullNameTh: true } },
@@ -42,7 +50,7 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
   })
   if (!ticket) notFound()
 
-  const [attachments, movements] = await Promise.all([
+  const [attachments, movements, assetRepairSummary, options] = await Promise.all([
     prisma.attachment.findMany({
       where: { module: "maintenance", referenceId: ticket.id, isActive: true },
       orderBy: { uploadedAt: "desc" },
@@ -51,8 +59,25 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
       where: { referenceType: "maintenance", referenceId: ticket.id },
       orderBy: { performedAt: "desc" },
     }),
+    prisma.maintenanceTicket.aggregate({
+      where: { assetId: ticket.asset.id, isActive: true },
+      _count: { _all: true },
+      _sum: { repairCost: true },
+    }),
+    canEdit ? getMaintenanceOptions() : Promise.resolve(null),
   ])
   const movementLabels = await getMovementDisplayLabels(movements)
+  const statuses = options?.statuses ?? []
+  const totalRepairCount = assetRepairSummary._count._all
+  const totalRepairCost = Number(assetRepairSummary._sum.repairCost ?? 0)
+  const purchasePrice = Number(ticket.asset.purchasePrice ?? 0)
+  const repairCostRatio = purchasePrice > 0 ? totalRepairCost / purchasePrice : 0
+  const shouldReviewDisposal = totalRepairCount >= 3 || repairCostRatio >= 0.5
+  const hasAfterRepairEvidence = attachments.some((attachment) => getMaintenanceAttachmentType(attachment.originalName) === "after_repair")
+  const disposalReason = `${t("disposalReasonPrefix")} ${ticket.asset.assetTag} / ${ticket.repairNo}: ${t("disposalReasonDetail", {
+    count: totalRepairCount,
+    cost: formatCurrency(totalRepairCost),
+  })}`
 
   return (
     <div className="space-y-6">
@@ -75,6 +100,30 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
             <Printer className="h-4 w-4" />
             {t("printRepair")}
           </Link>
+          {canEdit && !isMaintenanceClosed(ticket.repairStatus) && options ? (
+            <>
+              <MaintenanceTicketStatusButton
+                ticketId={ticket.id}
+                repairNo={ticket.repairNo}
+                currentStatus={ticket.repairStatus}
+                assignedToId={ticket.assignedToId}
+                dueDate={ticket.dueDate}
+                employees={options.employees}
+              />
+              <MaintenanceTicketCloseButton
+                ticketId={ticket.id}
+                repairNo={ticket.repairNo}
+                statuses={statuses}
+                defaultLaborCost={ticket.laborCost?.toString()}
+                defaultPartsCost={ticket.partsCost?.toString()}
+                defaultRepairCost={ticket.repairCost?.toString()}
+                defaultQuotationNo={ticket.quotationNo}
+                defaultInvoiceNo={ticket.invoiceNo}
+                defaultWarrantyClaim={ticket.warrantyClaim}
+                employees={options.employees}
+              />
+            </>
+          ) : null}
           <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, getStatusLabels(t))} tone={getMaintenanceStatusTone(ticket.repairStatus)} />
         </div>
       </div>
@@ -128,7 +177,7 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
               <div className="mt-3 grid gap-2 text-sm md:grid-cols-2">
                 <ChecklistItem done={Boolean(ticket.rootCause)} label={t("closeChecklistRootCause")} />
                 <ChecklistItem done={Boolean(ticket.resolution)} label={t("closeChecklistResolution")} />
-                <ChecklistItem done={attachments.length > 0} label={t("closeChecklistEvidence")} />
+                <ChecklistItem done={hasAfterRepairEvidence || attachments.length > 0} label={t("closeChecklistEvidence")} />
                 <ChecklistItem done={Boolean(ticket.inspectedById)} label={t("closeChecklistInspector")} />
               </div>
             </div>
@@ -183,6 +232,27 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
               </Link>
             </div>
           </section>
+
+          {shouldReviewDisposal && canCreateDisposal ? (
+            <section className="rounded-lg border border-warning/40 bg-warning/5 p-6 shadow-sm">
+              <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
+                <AlertTriangle className="h-5 w-5 text-warning" />
+                {t("disposalReviewTitle")}
+              </h2>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <div>{t("disposalReviewCount", { count: totalRepairCount })}</div>
+                <div>{t("disposalReviewCost", { cost: formatCurrency(totalRepairCost) })}</div>
+                {purchasePrice > 0 ? <div>{t("disposalReviewRatio", { percent: Math.round(repairCostRatio * 100) })}</div> : null}
+              </div>
+              <Link
+                href={`/${locale}/disposal?assetId=${ticket.asset.id}&reason=${encodeURIComponent(disposalReason)}`}
+                className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 text-sm font-medium text-warning transition-colors hover:bg-warning/10"
+              >
+                <Trash2 className="h-4 w-4" />
+                {t("openDisposalRequest")}
+              </Link>
+            </section>
+          ) : null}
 
           <MaintenanceAttachments ticketId={ticket.id} attachments={attachments} />
         </aside>

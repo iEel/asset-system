@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { buildMaintenanceAttachmentName, normalizeMaintenanceAttachmentType } from "@/lib/maintenance-attachments"
 import { getUploadRoot, sanitizeFileName, validateUploadFile } from "@/lib/uploads"
 
 export const runtime = "nodejs"
@@ -28,6 +29,7 @@ export async function POST(request: NextRequest, context: MaintenanceAttachmentC
 
     const formData = await request.formData()
     const file = formData.get("file")
+    const attachmentType = normalizeMaintenanceAttachmentType(formData.get("attachmentType"))
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "File is required" }, { status: 400 })
     }
@@ -53,7 +55,7 @@ export async function POST(request: NextRequest, context: MaintenanceAttachmentC
         module: "maintenance",
         referenceId: ticket.id,
         fileName,
-        originalName: safeOriginalName,
+        originalName: buildMaintenanceAttachmentName(attachmentType, safeOriginalName),
         fileType: file.type,
         fileSize: file.size,
         filePath,
@@ -69,6 +71,7 @@ export async function POST(request: NextRequest, context: MaintenanceAttachmentC
       newValue: {
         attachmentId: attachment.id,
         originalName: attachment.originalName,
+        attachmentType,
         fileSize: attachment.fileSize,
       },
     })

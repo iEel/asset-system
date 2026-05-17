@@ -12,18 +12,22 @@ type Option = { id: string; label: string }
 export function DisposalRequestForm({
   assets,
   employees,
+  initialAssetId,
+  initialReason,
 }: {
   assets: Option[]
   employees: Option[]
+  initialAssetId?: string
+  initialReason?: string
 }) {
   const router = useRouter()
   const t = useTranslations("disposalPage")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
   const [values, setValues] = useState({
-    assetId: "",
+    assetId: initialAssetId ?? "",
     disposalType: "dispose",
-    reason: "",
+    reason: initialReason ?? "",
     requestedById: "",
     approverId: "",
     saleValue: "",

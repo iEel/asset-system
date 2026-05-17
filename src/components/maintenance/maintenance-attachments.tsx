@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Download, Eye, FileText, Image as ImageIcon, Loader2, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { formatFileSize } from "@/lib/uploads"
+import { getMaintenanceAttachmentDisplayName, getMaintenanceAttachmentType, maintenanceAttachmentTypes, type MaintenanceAttachmentType } from "@/lib/maintenance-attachments"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 
 type Attachment = {
@@ -29,12 +30,20 @@ export function MaintenanceAttachments({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [preview, setPreview] = useState<Attachment | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [attachmentType, setAttachmentType] = useState<MaintenanceAttachmentType>("after_repair")
+  const groupedAttachments = maintenanceAttachmentTypes
+    .map((type) => ({
+      type,
+      attachments: attachments.filter((attachment) => getMaintenanceAttachmentType(attachment.originalName) === type),
+    }))
+    .filter((group) => group.attachments.length > 0)
 
   async function handleUpload(file: File | null) {
     if (!file) return
 
     const formData = new FormData()
     formData.append("file", file)
+    formData.append("attachmentType", attachmentType)
     setSelectedFile(file)
     setUploading(true)
 
@@ -82,6 +91,20 @@ export function MaintenanceAttachments({
       </h2>
 
       <div className="mb-4 rounded-md border border-border bg-background p-3">
+        <label className="mb-3 block">
+          <span className="mb-1.5 block text-sm font-medium text-foreground">{t("attachmentType")}</span>
+          <select
+            value={attachmentType}
+            onChange={(event) => setAttachmentType(event.target.value as MaintenanceAttachmentType)}
+            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          >
+            {maintenanceAttachmentTypes.map((type) => (
+              <option key={type} value={type}>
+                {t(`attachmentTypes.${type}`)}
+              </option>
+            ))}
+          </select>
+        </label>
         <FileDropzone
           file={selectedFile}
           onFileChange={handleUpload}
@@ -97,9 +120,15 @@ export function MaintenanceAttachments({
           {tCommon("noData")}
         </div>
       ) : (
-        <div className="space-y-3">
-          {attachments.map((attachment) => (
-            <div key={attachment.id} className="rounded-md border border-border bg-background p-3">
+        <div className="space-y-4">
+          {groupedAttachments.map((group) => (
+            <div key={group.type} className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-foreground">{t(`attachmentTypes.${group.type}`)}</h3>
+                <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">{group.attachments.length}</span>
+              </div>
+              {group.attachments.map((attachment) => (
+                <div key={attachment.id} className="rounded-md border border-border bg-background p-3">
               {isPreviewable(attachment) ? (
                 <button
                   type="button"
@@ -132,7 +161,7 @@ export function MaintenanceAttachments({
                   <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 )}
                 <div className="min-w-0">
-                  <div className="break-words text-sm font-medium text-foreground">{attachment.originalName}</div>
+                  <div className="break-words text-sm font-medium text-foreground">{getMaintenanceAttachmentDisplayName(attachment.originalName)}</div>
                   <div className="mt-1 text-xs text-muted-foreground">
                     {attachment.fileType} · {formatFileSize(attachment.fileSize)}
                   </div>
@@ -171,6 +200,8 @@ export function MaintenanceAttachments({
                 </button>
               </div>
             </div>
+              ))}
+            </div>
           ))}
         </div>
       )}
@@ -180,7 +211,7 @@ export function MaintenanceAttachments({
           <section className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="min-w-0">
-                <h3 className="truncate text-sm font-semibold text-foreground">{preview.originalName}</h3>
+                <h3 className="truncate text-sm font-semibold text-foreground">{getMaintenanceAttachmentDisplayName(preview.originalName)}</h3>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {preview.fileType} · {formatFileSize(preview.fileSize)}
                 </p>

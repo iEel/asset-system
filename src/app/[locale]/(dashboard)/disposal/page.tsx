@@ -14,7 +14,7 @@ import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type DisposalPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string; status?: string; disposalType?: string; dateFrom?: string; dateTo?: string }>
+  searchParams: Promise<{ search?: string; status?: string; disposalType?: string; dateFrom?: string; dateTo?: string; assetId?: string; reason?: string }>
 }
 
 export default async function DisposalPage({ params, searchParams }: DisposalPageProps) {
@@ -51,7 +51,14 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
 
-      {canCreate && options ? <DisposalRequestForm assets={options.assets} employees={options.employees} /> : null}
+      {canCreate && options ? (
+        <DisposalRequestForm
+          assets={options.assets}
+          employees={options.employees}
+          initialAssetId={rawSearchParams.assetId}
+          initialReason={rawSearchParams.reason}
+        />
+      ) : null}
 
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
         <form className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(220px,1fr)_160px_160px_160px_160px_auto]" action={`/${locale}/disposal`}>
