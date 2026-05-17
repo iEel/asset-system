@@ -7,14 +7,16 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { getMaintenanceOptions } from "@/lib/maintenance-options"
 import { buildMaintenanceQueryString, buildMaintenanceWhere, parseMaintenanceListParams } from "@/lib/maintenance-query"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
-import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
+import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { MaintenanceTicketForm } from "@/components/maintenance/maintenance-ticket-form"
 import { MaintenanceTicketCloseButton } from "@/components/maintenance/maintenance-ticket-close-button"
+import { MaintenanceTicketStatusButton } from "@/components/maintenance/maintenance-ticket-status-button"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceClosed, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
 
 type MaintenancePageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string; status?: string; repairType?: string; evidence?: string; dateFrom?: string; dateTo?: string; assetId?: string }>
+  searchParams: Promise<{ search?: string; status?: string; repairType?: string; evidence?: string; overdue?: string; dateFrom?: string; dateTo?: string; assetId?: string }>
 }
 
 export default async function MaintenancePage({ params, searchParams }: MaintenancePageProps) {
@@ -37,6 +39,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
         asset: { select: { assetTag: true, name: true } },
         reportedBy: { select: { code: true, fullNameTh: true } },
         assignedTo: { select: { code: true, fullNameTh: true } },
+        inspectedBy: { select: { code: true, fullNameTh: true } },
         vendor: { select: { code: true, name: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -63,7 +66,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
       ) : null}
 
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-        <form className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(220px,1fr)_150px_150px_150px_150px_150px_auto]" action={`/${locale}/maintenance`}>
+        <form className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(220px,1fr)_150px_150px_150px_150px_150px_150px_auto]" action={`/${locale}/maintenance`}>
           <label>
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("search")}</span>
             <input
@@ -82,8 +85,11 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             >
               <option value="">{tCommon("all")}</option>
-              <option value="open">{t("statuses.open")}</option>
-              <option value="closed">{t("statuses.closed")}</option>
+              {maintenanceStatuses.map((status) => (
+                <option key={status} value={status}>
+                  {t(`statuses.${status}`)}
+                </option>
+              ))}
             </select>
           </label>
           <label>
@@ -96,6 +102,17 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
               <option value="">{tCommon("all")}</option>
               <option value="internal">{t("internalRepair")}</option>
               <option value="vendor">{t("vendorRepair")}</option>
+            </select>
+          </label>
+          <label>
+            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("sla")}</span>
+            <select
+              name="overdue"
+              defaultValue={listFilters.overdue}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            >
+              <option value="">{tCommon("all")}</option>
+              <option value="yes">{t("overdueOnly")}</option>
             </select>
           </label>
           <label>
@@ -173,6 +190,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                 <ColumnHeader>{t("repairType")}</ColumnHeader>
                 <ColumnHeader>{t("repairCost")}</ColumnHeader>
                 <ColumnHeader>{tCommon("status")}</ColumnHeader>
+                <ColumnHeader>{t("dueDate")}</ColumnHeader>
                 <ColumnHeader>{t("reportedDate")}</ColumnHeader>
                 <ColumnHeader>{tCommon("actions")}</ColumnHeader>
               </tr>
@@ -180,7 +198,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
             <tbody className="divide-y divide-border">
               {tickets.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="h-32 px-4 text-center text-muted-foreground">
+                  <td colSpan={11} className="h-32 px-4 text-center text-muted-foreground">
                     {tCommon("noData")}
                   </td>
                 </tr>
@@ -212,16 +230,18 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                       {ticket.repairCost == null ? "-" : formatCurrency(Number(ticket.repairCost))}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">
-                      {ticket.repairStatus === "open" ? (
-                        <ActiveBadge label={t("statuses.open")} />
-                      ) : ticket.repairStatus === "closed" ? (
-                        <span className="inline-flex rounded-full bg-info/10 px-2 py-1 text-xs font-medium text-info">
-                          {t("statuses.closed")}
-                        </span>
+                      <MaintenanceStatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, getStatusLabels(t))} tone={getMaintenanceStatusTone(ticket.repairStatus)} />
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      {ticket.dueDate ? (
+                        <div>
+                          <div className="text-muted-foreground">{formatDateTime(ticket.dueDate)}</div>
+                          {isMaintenanceOverdue(ticket.repairStatus, ticket.dueDate) ? (
+                            <div className="mt-1 text-xs font-medium text-danger">{t("overdue")}</div>
+                          ) : null}
+                        </div>
                       ) : (
-                        <span className="inline-flex rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-                          {ticket.repairStatus}
-                        </span>
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(ticket.reportedDate)}</td>
@@ -239,19 +259,30 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                         >
                           {t("printRepair")}
                         </Link>
-                        {ticket.repairStatus === "open" ? (
-                          canEdit ? (
+                        {canEdit && !isMaintenanceClosed(ticket.repairStatus) && options ? (
+                          <>
+                            <MaintenanceTicketStatusButton
+                              ticketId={ticket.id}
+                              repairNo={ticket.repairNo}
+                              currentStatus={ticket.repairStatus}
+                              assignedToId={ticket.assignedToId}
+                              dueDate={ticket.dueDate}
+                              employees={options.employees}
+                            />
                             <MaintenanceTicketCloseButton
                               ticketId={ticket.id}
                               repairNo={ticket.repairNo}
                               statuses={statuses}
+                              defaultLaborCost={ticket.laborCost?.toString()}
+                              defaultPartsCost={ticket.partsCost?.toString()}
                               defaultRepairCost={ticket.repairCost?.toString()}
+                              defaultQuotationNo={ticket.quotationNo}
+                              defaultInvoiceNo={ticket.invoiceNo}
                               defaultWarrantyClaim={ticket.warrantyClaim}
+                              employees={options.employees}
                             />
-                          ) : null
-                        ) : (
-                          canEdit ? <span className="text-muted-foreground">-</span> : null
-                        )}
+                          </>
+                        ) : canEdit ? <span className="text-muted-foreground">-</span> : null}
                       </div>
                     </td>
                   </ClickableTableRow>
@@ -263,6 +294,25 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
       </section>
     </div>
   )
+}
+
+function getStatusLabels(t: (key: string) => string) {
+  return Object.fromEntries(maintenanceStatuses.map((status) => [status, t(`statuses.${status}`)]))
+}
+
+function MaintenanceStatusBadge({ label, tone }: { label: string; tone: string }) {
+  const className =
+    tone === "info"
+      ? "bg-info/10 text-info"
+      : tone === "success"
+        ? "bg-success/10 text-success"
+        : tone === "warning"
+          ? "bg-warning/10 text-warning"
+          : tone === "primary"
+            ? "bg-primary/10 text-primary"
+            : "bg-muted text-muted-foreground"
+
+  return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${className}`}>{label}</span>
 }
 
 async function getMaintenanceAttachmentTicketIds() {

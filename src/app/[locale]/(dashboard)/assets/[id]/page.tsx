@@ -417,6 +417,10 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const warrantyState = getWarrantyState(asset.warrantyEndDate)
   const openMaintenanceCount = asset.maintenanceTickets.filter((ticket) => ticket.repairStatus !== "closed").length
   const latestMaintenanceTicket = asset.maintenanceTickets[0]
+  const totalMaintenanceCost = asset.maintenanceTickets.reduce((total, ticket) => total + Number(ticket.repairCost ?? 0), 0)
+  const maintenanceReplacementWarning =
+    asset.maintenanceTickets.length >= 3 ||
+    (asset.purchasePrice && totalMaintenanceCost >= Number(asset.purchasePrice) * 0.5)
   const latestAuditItem = asset.auditItems[0]
   const checklistMissingLabels = getMissingPhotoChecklistLabels(photoChecklist, assetAttachments)
   const hasPurchaseDocuments = purchaseDocuments.length > 0 || legacyPurchaseDocuments.length > 0
@@ -934,8 +938,14 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
                 { label: t("openMaintenance"), value: String(openMaintenanceCount), tone: openMaintenanceCount > 0 ? "warning" : "success" },
                 { label: t("latestMaintenance"), value: maintenanceSummary },
                 { label: t("totalMaintenance"), value: String(asset.maintenanceTickets.length) },
+                { label: t("maintenanceTotalCost"), value: formatCurrency(totalMaintenanceCost) },
               ]}
             />
+            {maintenanceReplacementWarning ? (
+              <div className="mb-4 rounded-md border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning">
+                {t("maintenanceReplacementWarning")}
+              </div>
+            ) : null}
             {asset.maintenanceTickets.length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                 {tCommon("noData")}

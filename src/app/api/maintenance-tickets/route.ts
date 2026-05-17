@@ -9,6 +9,7 @@ const ticketInclude = {
   asset: { select: { assetTag: true, name: true } },
   reportedBy: { select: { code: true, fullNameTh: true } },
   assignedTo: { select: { code: true, fullNameTh: true } },
+  inspectedBy: { select: { code: true, fullNameTh: true } },
   vendor: { select: { code: true, name: true } },
 } as const
 
@@ -57,9 +58,15 @@ export async function POST(request: NextRequest) {
           reportedById: input.reportedById,
           reportedDate: input.reportedDate,
           assignedToId: input.assignedToId,
+          dueDate: input.dueDate,
           repairType: input.repairType,
           vendorId: input.vendorId,
+          repairStatus: "reported",
+          laborCost: input.laborCost,
+          partsCost: input.partsCost,
           repairCost: input.repairCost,
+          quotationNo: input.quotationNo,
+          invoiceNo: input.invoiceNo,
           warrantyClaim: input.warrantyClaim,
           rootCause: input.rootCause,
           resolution: input.resolution,

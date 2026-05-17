@@ -20,9 +20,14 @@ export const maintenanceTicketSchema = z
     reportedById: z.string().trim().min(1),
     reportedDate: z.coerce.date(),
     assignedToId: optionalText,
+    dueDate: optionalDate,
     repairType: z.enum(repairTypes),
     vendorId: optionalText,
+    laborCost: optionalDecimal,
+    partsCost: optionalDecimal,
     repairCost: optionalDecimal,
+    quotationNo: optionalText,
+    invoiceNo: optionalText,
     warrantyClaim: z.coerce.boolean().optional().default(false),
     rootCause: optionalText,
     resolution: optionalText,
@@ -37,12 +42,26 @@ export const maintenanceTicketSchema = z
 export type MaintenanceTicketInput = z.infer<typeof maintenanceTicketSchema>
 
 export const maintenanceTicketCloseSchema = z.object({
+  laborCost: optionalDecimal,
+  partsCost: optionalDecimal,
   repairCost: optionalDecimal,
+  quotationNo: optionalText,
+  invoiceNo: optionalText,
   warrantyClaim: z.coerce.boolean().optional().default(false),
   rootCause: z.string().trim().min(1).max(4000),
   resolution: z.string().trim().min(1).max(4000),
   returnDate: z.coerce.date(),
+  inspectedById: z.string().trim().min(1),
   nextStatusId: z.string().trim().min(1),
 })
 
 export type MaintenanceTicketCloseInput = z.infer<typeof maintenanceTicketCloseSchema>
+
+export const maintenanceTicketStatusSchema = z.object({
+  repairStatus: z.enum(["reported", "accepted", "in_progress", "waiting_parts", "waiting_vendor", "completed"]),
+  assignedToId: optionalText,
+  dueDate: optionalDate,
+  remark: optionalText,
+})
+
+export type MaintenanceTicketStatusInput = z.infer<typeof maintenanceTicketStatusSchema>

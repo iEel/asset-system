@@ -107,6 +107,7 @@ model Employee {
   checkinReceives            AssetCheckin[]      @relation("CheckinReceiveByEmployee")
   reportedMaintenanceTickets MaintenanceTicket[] @relation("MaintenanceReportedBy")
   assignedMaintenanceTickets MaintenanceTicket[] @relation("MaintenanceAssignedTo")
+  inspectedMaintenanceTickets MaintenanceTicket[] @relation("MaintenanceInspectedBy")
   requestedDisposals         DisposalRequest[]   @relation("DisposalRequestedBy")
   approvedDisposals          DisposalRequest[]   @relation("DisposalApprover")
   user                       User?
@@ -610,15 +611,22 @@ model MaintenanceTicket {
   reportedDate  DateTime  @default(now())
   assignedToId  String?
   assignedTo    Employee? @relation("MaintenanceAssignedTo", fields: [assignedToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  dueDate       DateTime?
   repairType    String    @db.NVarChar(30)
   vendorId      String?
   vendor        Supplier? @relation(fields: [vendorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   repairStatus  String    @default("open") @db.NVarChar(30)
+  laborCost     Decimal?  @db.Decimal(18, 2)
+  partsCost     Decimal?  @db.Decimal(18, 2)
   repairCost    Decimal?  @db.Decimal(18, 2)
+  quotationNo   String?   @db.NVarChar(100)
+  invoiceNo     String?   @db.NVarChar(100)
   warrantyClaim Boolean   @default(false)
   rootCause     String?   @db.NVarChar(Max)
   resolution    String?   @db.NVarChar(Max)
   returnDate    DateTime?
+  inspectedById String?
+  inspectedBy   Employee? @relation("MaintenanceInspectedBy", fields: [inspectedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
   createdBy     String    @db.NVarChar(100)
   updatedBy     String?   @db.NVarChar(100)
   createdAt     DateTime  @default(now())

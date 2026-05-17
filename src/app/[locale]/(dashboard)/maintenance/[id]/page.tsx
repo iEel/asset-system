@@ -7,6 +7,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { MaintenanceAttachments } from "@/components/maintenance/maintenance-attachments"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
+import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
 
 type MaintenanceDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -35,6 +36,7 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
       },
       reportedBy: { select: { code: true, fullNameTh: true } },
       assignedTo: { select: { code: true, fullNameTh: true } },
+      inspectedBy: { select: { code: true, fullNameTh: true } },
       vendor: { select: { code: true, name: true } },
     },
   })
@@ -73,7 +75,7 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
             <Printer className="h-4 w-4" />
             {t("printRepair")}
           </Link>
-          <StatusBadge status={ticket.repairStatus} openLabel={t("statuses.open")} closedLabel={t("statuses.closed")} />
+          <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, getStatusLabels(t))} tone={getMaintenanceStatusTone(ticket.repairStatus)} />
         </div>
       </div>
 
@@ -87,13 +89,24 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <Info label={t("reportedBy")} value={`${ticket.reportedBy.code} - ${ticket.reportedBy.fullNameTh}`} />
               <Info label={t("reportedDate")} value={formatDateTime(ticket.reportedDate)} />
+              <Info label={t("dueDate")} value={formatDateTime(ticket.dueDate)} />
               <Info label={t("assignedTo")} value={ticket.assignedTo ? `${ticket.assignedTo.code} - ${ticket.assignedTo.fullNameTh}` : null} />
               <Info label={t("repairType")} value={ticket.repairType === "vendor" ? t("vendorRepair") : t("internalRepair")} />
               <Info label={t("vendor")} value={ticket.vendor ? `${ticket.vendor.code} - ${ticket.vendor.name}` : null} />
+              <Info label={t("laborCost")} value={ticket.laborCost == null ? null : formatCurrency(Number(ticket.laborCost))} />
+              <Info label={t("partsCost")} value={ticket.partsCost == null ? null : formatCurrency(Number(ticket.partsCost))} />
               <Info label={t("repairCost")} value={ticket.repairCost == null ? null : formatCurrency(Number(ticket.repairCost))} />
+              <Info label={t("quotationNo")} value={ticket.quotationNo} />
+              <Info label={t("invoiceNo")} value={ticket.invoiceNo} />
               <Info label={t("warrantyClaim")} value={ticket.warrantyClaim ? tCommon("yes") : tCommon("no")} />
               <Info label={t("returnDate")} value={formatDateTime(ticket.returnDate)} />
+              <Info label={t("inspectedBy")} value={ticket.inspectedBy ? `${ticket.inspectedBy.code} - ${ticket.inspectedBy.fullNameTh}` : null} />
             </div>
+            {isMaintenanceOverdue(ticket.repairStatus, ticket.dueDate) ? (
+              <div className="mt-5 rounded-md border border-danger/30 bg-danger/5 p-3 text-sm font-medium text-danger">
+                {t("overdueWarning")}
+              </div>
+            ) : null}
           </section>
 
           <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
@@ -109,6 +122,15 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <TextBlock label={t("rootCause")} value={ticket.rootCause} />
               <TextBlock label={t("resolution")} value={ticket.resolution} />
+            </div>
+            <div className="mt-5 rounded-md border border-border bg-background p-4">
+              <h3 className="text-sm font-semibold text-foreground">{t("closeChecklistTitle")}</h3>
+              <div className="mt-3 grid gap-2 text-sm md:grid-cols-2">
+                <ChecklistItem done={Boolean(ticket.rootCause)} label={t("closeChecklistRootCause")} />
+                <ChecklistItem done={Boolean(ticket.resolution)} label={t("closeChecklistResolution")} />
+                <ChecklistItem done={attachments.length > 0} label={t("closeChecklistEvidence")} />
+                <ChecklistItem done={Boolean(ticket.inspectedById)} label={t("closeChecklistInspector")} />
+              </div>
             </div>
           </section>
 
@@ -189,22 +211,29 @@ function TextBlock({ label, value }: { label: string; value?: string | null }) {
   )
 }
 
-function StatusBadge({
-  status,
-  openLabel,
-  closedLabel,
-}: {
-  status: string
-  openLabel: string
-  closedLabel: string
-}) {
-  const label = status === "open" ? openLabel : status === "closed" ? closedLabel : status
+function getStatusLabels(t: (key: string) => string) {
+  return Object.fromEntries(maintenanceStatuses.map((status) => [status, t(`statuses.${status}`)]))
+}
+
+function StatusBadge({ label, tone }: { label: string; tone: string }) {
   const className =
-    status === "closed"
+    tone === "info"
       ? "bg-info/10 text-info"
-      : status === "open"
+      : tone === "success"
         ? "bg-success/10 text-success"
-        : "bg-muted text-muted-foreground"
+        : tone === "warning"
+          ? "bg-warning/10 text-warning"
+          : tone === "primary"
+            ? "bg-primary/10 text-primary"
+            : "bg-muted text-muted-foreground"
 
   return <span className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${className}`}>{label}</span>
+}
+
+function ChecklistItem({ done, label }: { done: boolean; label: string }) {
+  return (
+    <div className={done ? "text-success" : "text-muted-foreground"}>
+      {done ? "[x]" : "[ ]"} {label}
+    </div>
+  )
 }

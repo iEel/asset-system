@@ -5,21 +5,33 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { CheckCircle2, Loader2, X } from "lucide-react"
 import { toast } from "sonner"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 
 type StatusOption = { id: string; label: string; name: string }
+type EmployeeOption = { id: string; label: string }
 
 export function MaintenanceTicketCloseButton({
   ticketId,
   repairNo,
   statuses,
   defaultRepairCost,
+  defaultLaborCost,
+  defaultPartsCost,
+  defaultQuotationNo,
+  defaultInvoiceNo,
   defaultWarrantyClaim,
+  employees,
 }: {
   ticketId: string
   repairNo: string
   statuses: StatusOption[]
   defaultRepairCost?: string
+  defaultLaborCost?: string
+  defaultPartsCost?: string
+  defaultQuotationNo?: string | null
+  defaultInvoiceNo?: string | null
   defaultWarrantyClaim: boolean
+  employees: EmployeeOption[]
 }) {
   const router = useRouter()
   const t = useTranslations("maintenancePage")
@@ -31,8 +43,13 @@ export function MaintenanceTicketCloseButton({
     rootCause: "",
     resolution: "",
     returnDate: new Date().toISOString().slice(0, 10),
+    laborCost: defaultLaborCost ?? "",
+    partsCost: defaultPartsCost ?? "",
     repairCost: defaultRepairCost ?? "",
+    quotationNo: defaultQuotationNo ?? "",
+    invoiceNo: defaultInvoiceNo ?? "",
     warrantyClaim: defaultWarrantyClaim,
+    inspectedById: "",
     nextStatusId: readyStatus?.id ?? "",
   })
 
@@ -51,8 +68,13 @@ export function MaintenanceTicketCloseButton({
           rootCause: values.rootCause,
           resolution: values.resolution,
           returnDate: values.returnDate,
+          laborCost: values.laborCost || null,
+          partsCost: values.partsCost || null,
           repairCost: values.repairCost || null,
+          quotationNo: values.quotationNo || null,
+          invoiceNo: values.invoiceNo || null,
           warrantyClaim: values.warrantyClaim,
+          inspectedById: values.inspectedById,
           nextStatusId: values.nextStatusId,
         }),
       })
@@ -96,7 +118,17 @@ export function MaintenanceTicketCloseButton({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 p-5 md:grid-cols-2">
+            <form onSubmit={handleSubmit} className="max-h-[78vh] overflow-y-auto p-5">
+              <div className="mb-5 rounded-md border border-warning/30 bg-warning/5 p-3">
+                <h3 className="text-sm font-semibold text-foreground">{t("closeChecklistTitle")}</h3>
+                <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  <li>{t("closeChecklistRootCause")}</li>
+                  <li>{t("closeChecklistResolution")}</li>
+                  <li>{t("closeChecklistEvidence")}</li>
+                  <li>{t("closeChecklistInspector")}</li>
+                </ul>
+              </div>
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <Field label={t("returnDate")} required>
                 <input
                   type="date"
@@ -120,6 +152,36 @@ export function MaintenanceTicketCloseButton({
                   ))}
                 </select>
               </Field>
+              <SearchableSelect
+                label={t("inspectedBy")}
+                value={values.inspectedById}
+                required
+                options={employees}
+                placeholder={t("selectEmployee")}
+                searchPlaceholder={tCommon("searchSelectPlaceholder")}
+                emptyLabel={tCommon("searchSelectNoResults")}
+                onChange={(value) => setField("inspectedById", value)}
+              />
+              <Field label={t("laborCost")}>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={values.laborCost}
+                  onChange={(event) => setField("laborCost", event.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+              <Field label={t("partsCost")}>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={values.partsCost}
+                  onChange={(event) => setField("partsCost", event.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </Field>
               <Field label={t("repairCost")}>
                 <input
                   type="number"
@@ -127,6 +189,22 @@ export function MaintenanceTicketCloseButton({
                   step="0.01"
                   value={values.repairCost}
                   onChange={(event) => setField("repairCost", event.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+              <Field label={t("quotationNo")}>
+                <input
+                  value={values.quotationNo}
+                  maxLength={100}
+                  onChange={(event) => setField("quotationNo", event.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+              <Field label={t("invoiceNo")}>
+                <input
+                  value={values.invoiceNo}
+                  maxLength={100}
+                  onChange={(event) => setField("invoiceNo", event.target.value)}
                   className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
               </Field>
@@ -179,6 +257,7 @@ export function MaintenanceTicketCloseButton({
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                   {t("closeTicket")}
                 </button>
+              </div>
               </div>
             </form>
           </section>

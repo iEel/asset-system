@@ -31,10 +31,15 @@ export function MaintenanceTicketForm({
     problem: "",
     reportedById: "",
     reportedDate: new Date().toISOString().slice(0, 10),
+    dueDate: "",
     assignedToId: "",
     repairType: "internal",
     vendorId: "",
+    laborCost: "",
+    partsCost: "",
     repairCost: "",
+    quotationNo: "",
+    invoiceNo: "",
     warrantyClaim: false,
   })
 
@@ -54,17 +59,33 @@ export function MaintenanceTicketForm({
           problem: values.problem,
           reportedById: values.reportedById,
           reportedDate: values.reportedDate,
+          dueDate: values.dueDate || null,
           assignedToId: values.assignedToId || null,
           repairType: values.repairType,
           vendorId: values.repairType === "vendor" ? values.vendorId || null : null,
+          laborCost: values.laborCost || null,
+          partsCost: values.partsCost || null,
           repairCost: values.repairCost || null,
+          quotationNo: values.quotationNo || null,
+          invoiceNo: values.invoiceNo || null,
           warrantyClaim: values.warrantyClaim,
         }),
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
       toast.success(t("createSuccess"))
-      setValues((current) => ({ ...current, assetId: initialAsset?.id ?? "", problem: "", repairCost: "", vendorId: "" }))
+      setValues((current) => ({
+        ...current,
+        assetId: initialAsset?.id ?? "",
+        problem: "",
+        dueDate: "",
+        laborCost: "",
+        partsCost: "",
+        repairCost: "",
+        quotationNo: "",
+        invoiceNo: "",
+        vendorId: "",
+      }))
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))
@@ -96,12 +117,40 @@ export function MaintenanceTicketForm({
             className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </Field>
+        <Field label={t("dueDate")}>
+          <input
+            type="date"
+            value={values.dueDate}
+            onChange={(event) => setField("dueDate", event.target.value)}
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+        </Field>
         <SearchableSelect label={t("assignedTo")} value={values.assignedToId} options={employees} placeholder={t("unassigned")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assignedToId", value)} />
         <Select label={t("repairType")} value={values.repairType} required onChange={(value) => setField("repairType", value)}>
           <option value="internal">{t("internalRepair")}</option>
           <option value="vendor">{t("vendorRepair")}</option>
         </Select>
         <SearchableSelect label={t("vendor")} value={values.vendorId} required={values.repairType === "vendor"} options={suppliers} placeholder={t("selectVendor")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("vendorId", value)} />
+        <Field label={t("laborCost")}>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={values.laborCost}
+            onChange={(event) => setField("laborCost", event.target.value)}
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+        </Field>
+        <Field label={t("partsCost")}>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={values.partsCost}
+            onChange={(event) => setField("partsCost", event.target.value)}
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+        </Field>
         <Field label={t("repairCost")}>
           <input
             type="number"
@@ -109,6 +158,22 @@ export function MaintenanceTicketForm({
             step="0.01"
             value={values.repairCost}
             onChange={(event) => setField("repairCost", event.target.value)}
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+        </Field>
+        <Field label={t("quotationNo")}>
+          <input
+            value={values.quotationNo}
+            maxLength={100}
+            onChange={(event) => setField("quotationNo", event.target.value)}
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+        </Field>
+        <Field label={t("invoiceNo")}>
+          <input
+            value={values.invoiceNo}
+            maxLength={100}
+            onChange={(event) => setField("invoiceNo", event.target.value)}
             className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </Field>

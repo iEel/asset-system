@@ -1,15 +1,17 @@
 import type { Prisma } from "@prisma/client"
+import { maintenanceStatuses } from "@/lib/maintenance-status"
 
 export type MaintenanceListParams = {
   search?: string
   status?: string
   repairType?: string
   evidence?: string
+  overdue?: string
   dateFrom?: string
   dateTo?: string
 }
 
-export const maintenanceStatusFilters = ["open", "closed"] as const
+export const maintenanceStatusFilters = maintenanceStatuses
 export const maintenanceRepairTypeFilters = ["internal", "vendor"] as const
 export const maintenanceEvidenceFilters = ["with", "without"] as const
 
@@ -21,10 +23,11 @@ export function parseMaintenanceListParams(input: URLSearchParams | MaintenanceL
   const status = normalizeOption(getValue("status"), maintenanceStatusFilters)
   const repairType = normalizeOption(getValue("repairType"), maintenanceRepairTypeFilters)
   const evidence = normalizeOption(getValue("evidence"), maintenanceEvidenceFilters)
+  const overdue = normalizeOption(getValue("overdue"), ["yes"] as const)
   const dateFrom = normalizeDate(getValue("dateFrom"))
   const dateTo = normalizeDate(getValue("dateTo"))
 
-  return { search, status, repairType, evidence, dateFrom, dateTo }
+  return { search, status, repairType, evidence, overdue, dateFrom, dateTo }
 }
 
 export function buildMaintenanceWhere(
@@ -35,6 +38,7 @@ export function buildMaintenanceWhere(
     isActive: true,
     ...(filters.status ? { repairStatus: filters.status } : {}),
     ...(filters.repairType ? { repairType: filters.repairType } : {}),
+    ...(filters.overdue === "yes" ? { dueDate: { lt: startOfDay(new Date()) }, repairStatus: { not: "closed" } } : {}),
     ...(filters.evidence === "with" ? { id: { in: evidenceTicketIds?.length ? evidenceTicketIds : ["__no_matching_ticket__"] } } : {}),
     ...(filters.evidence === "without" && evidenceTicketIds?.length ? { id: { notIn: evidenceTicketIds } } : {}),
     ...(filters.dateFrom || filters.dateTo
@@ -71,6 +75,7 @@ export function buildMaintenanceQueryString(filters: ReturnType<typeof parseMain
   if (filters.status) params.set("status", filters.status)
   if (filters.repairType) params.set("repairType", filters.repairType)
   if (filters.evidence) params.set("evidence", filters.evidence)
+  if (filters.overdue) params.set("overdue", filters.overdue)
   if (filters.dateFrom) params.set("dateFrom", filters.dateFrom)
   if (filters.dateTo) params.set("dateTo", filters.dateTo)
   return params.toString()
@@ -84,7 +89,10 @@ function normalizeDate(value: string | undefined) {
   return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : ""
 }
 
-function startOfDay(value: string) {
+function startOfDay(value: Date): Date
+function startOfDay(value: string): Date
+function startOfDay(value: string | Date) {
+  if (value instanceof Date) return new Date(value.getFullYear(), value.getMonth(), value.getDate())
   return new Date(`${value}T00:00:00.000`)
 }
 
