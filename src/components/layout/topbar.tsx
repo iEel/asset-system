@@ -76,10 +76,15 @@ export function Topbar({
         </Link>
 
         {/* Notifications */}
-        <button className="relative rounded-md p-2 hover:bg-accent" aria-label="Notifications">
+        <Link
+          href={`/${locale}/work-center`}
+          className="relative rounded-md p-2 hover:bg-accent"
+          aria-label="Notifications"
+          title="Work center"
+        >
           <Bell size={20} />
           <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-danger" />
-        </button>
+        </Link>
 
         {/* Language Switcher */}
         <div className="relative shrink-0">

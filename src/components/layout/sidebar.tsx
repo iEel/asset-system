@@ -29,6 +29,7 @@ import {
   Layers,
   Truck,
   History,
+  Inbox,
   X,
 } from "lucide-react"
 import { useState } from "react"
@@ -59,6 +60,11 @@ export function Sidebar({
       labelKey: "dashboard",
       href: `/${locale}/dashboard`,
       icon: <LayoutDashboard size={20} />,
+    },
+    {
+      labelKey: "workCenter",
+      href: `/${locale}/work-center`,
+      icon: <Inbox size={20} />,
     },
     {
       labelKey: "assetManagement",
