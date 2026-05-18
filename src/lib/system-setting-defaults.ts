@@ -1,5 +1,13 @@
 import { assetLabelSettingKeys } from "@/lib/asset-label-template"
 import { assetDataQualityRulesKey, defaultAssetDataQualityRules } from "@/lib/data-quality-rules"
+import {
+  workflowApprovalAuditCloseRequiredKey,
+  workflowApprovalDisposalRequiredKey,
+  workflowApprovalMaintenanceCloseRequiredKey,
+  workflowApprovalMinApproversKey,
+  workflowApprovalSegregationRequiredKey,
+  workflowApprovalSettingKeys,
+} from "@/lib/workflow-approval"
 
 export const assetTagCategoryPrefixesKey = "asset_tag_category_prefixes"
 export const assetTagFormatTemplateKey = "asset_tag_format_template"
@@ -90,6 +98,11 @@ export const systemSettingDefaults = [
   { key: "notification_audit_action_due_soon_days", value: "7", description: "จำนวนวันล่วงหน้าสำหรับแจ้งเตือน action plan จากการตรวจนับที่ใกล้ครบกำหนด" },
   { key: "notification_warranty_expiry_days", value: "30", description: "จำนวนวันล่วงหน้าสำหรับแจ้งเตือนประกันทรัพย์สินใกล้หมดอายุ" },
   { key: "notification_license_expiry_days", value: "30", description: "จำนวนวันล่วงหน้าสำหรับแจ้งเตือน Software/License ใกล้หมดอายุ" },
+  { key: workflowApprovalDisposalRequiredKey, value: "true", description: "บังคับใช้ขั้นตอนอนุมัติก่อนตัดจำหน่ายทรัพย์สิน" },
+  { key: workflowApprovalAuditCloseRequiredKey, value: "true", description: "บังคับใช้ผู้อนุมัติแยกจากผู้สร้างรอบ ก่อนปิดรอบตรวจนับ" },
+  { key: workflowApprovalMaintenanceCloseRequiredKey, value: "false", description: "บังคับใช้การอนุมัติก่อนปิดงานซ่อมบำรุง" },
+  { key: workflowApprovalMinApproversKey, value: "1", description: "จำนวนผู้อนุมัติขั้นต่ำสำหรับ workflow approval" },
+  { key: workflowApprovalSegregationRequiredKey, value: "true", description: "บังคับใช้ Segregation of Duties ไม่ให้ผู้ทำรายการอนุมัติรายการของตนเอง" },
   { key: "ldap_enabled", value: "false", description: "เปิดใช้งาน AD/LDAP login" },
   { key: "ldap_url", value: "", description: "LDAP URL เช่น ldap://dc.company.local:389 หรือ ldaps://dc.company.local:636" },
   { key: "ldap_base_dn", value: "", description: "Base DN สำหรับค้นหา user เช่น DC=company,DC=local" },
@@ -153,3 +166,4 @@ export const systemSettingDefaults = [
 
 export const knownSystemSettingKeys = new Set(systemSettingDefaults.map((setting) => setting.key))
 export { assetLabelSettingKeys }
+export { workflowApprovalSettingKeys }

@@ -35,6 +35,15 @@ import {
   operationDocumentSettingKeys,
 } from "@/lib/system-setting-defaults"
 import { operationDocumentTemplateTokens, renderOperationDocumentTemplate, validateOperationDocumentTemplate } from "@/lib/operation-document-number"
+import {
+  parseWorkflowApprovalPolicy,
+  workflowApprovalAuditCloseRequiredKey,
+  workflowApprovalDisposalRequiredKey,
+  workflowApprovalMaintenanceCloseRequiredKey,
+  workflowApprovalMinApproversKey,
+  workflowApprovalSegregationRequiredKey,
+  workflowApprovalSettingKeys,
+} from "@/lib/workflow-approval"
 
 type SystemSettingItem = {
   key: string
@@ -58,6 +67,7 @@ type SystemSettingsFormProps = {
     tabDocuments: string
     tabOrganization: string
     tabNotifications: string
+    tabWorkflowApproval: string
     tabLdapLogin: string
     tabLdapSync: string
     tabAdvanced: string
@@ -68,6 +78,7 @@ type SystemSettingsFormProps = {
     overviewDocuments: string
     overviewOrganization: string
     overviewNotifications: string
+    overviewApproval: string
     overviewLdapLogin: string
     overviewLdapSync: string
     overviewAdvanced: string
@@ -156,6 +167,18 @@ type SystemSettingsFormProps = {
     licenseExpiryDays: string
     notificationDaysHelp: string
     invalidNotificationRule: string
+    workflowApprovalPolicy: string
+    workflowApprovalPolicyDescription: string
+    workflowApprovalDisposalRequired: string
+    workflowApprovalAuditCloseRequired: string
+    workflowApprovalMaintenanceCloseRequired: string
+    workflowApprovalSegregationRequired: string
+    workflowApprovalMinApprovers: string
+    workflowApprovalMinApproversHelp: string
+    workflowApprovalFoundationNote: string
+    workflowApprovalSodOn: string
+    workflowApprovalSodOff: string
+    invalidWorkflowApproval: string
     advancedSettings: string
     advancedSettingsDescription: string
     ldapSettings: string
@@ -256,6 +279,7 @@ type SettingsTabId =
   | "documents"
   | "organization"
   | "notifications"
+  | "workflow-approval"
   | "ldap-login"
   | "ldap-sync"
   | "advanced"
@@ -301,6 +325,7 @@ const friendlySettingKeys = new Set([
   ...assetLabelSettingKeys,
   ...operationDocumentSettingKeys,
   ...notificationRuleSettingKeys,
+  ...workflowApprovalSettingKeys,
   ...ldapSettingKeys,
 ])
 
@@ -386,6 +411,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     ...values,
     [assetTagCategoryPrefixesKey]: serializePrefixRows(prefixRows),
   }
+  const workflowApprovalPolicy = parseWorkflowApprovalPolicy(Object.entries(effectiveValues))
   const changedSettings = settings.filter(
     (setting) => normalizeSettingValue(setting.key, effectiveValues[setting.key]) !== normalizeSettingValue(setting.key, initialValues[setting.key])
   )
@@ -438,6 +464,13 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     const days = Number(getValue(key))
     return !Number.isInteger(days) || days < 0 || days > 365
   })
+  const workflowApprovalToggleKeys = workflowApprovalSettingKeys.filter((key) => key !== workflowApprovalMinApproversKey)
+  const workflowApprovalMinApprovers = Number(getValue(workflowApprovalMinApproversKey))
+  const hasInvalidWorkflowApproval =
+    workflowApprovalToggleKeys.some((key) => getValue(key) !== "true" && getValue(key) !== "false") ||
+    !Number.isInteger(workflowApprovalMinApprovers) ||
+    workflowApprovalMinApprovers < 1 ||
+    workflowApprovalMinApprovers > 5
   const syncSchedule = getValue("ldap_sync_schedule")
   const selectedSyncSchedulePreset = !customScheduleSelected && ldapSchedulePresets.some((preset) => preset.value === syncSchedule)
     ? syncSchedule
@@ -448,6 +481,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     { id: "documents", label: labels.tabDocuments },
     { id: "organization", label: labels.tabOrganization },
     { id: "notifications", label: labels.tabNotifications },
+    { id: "workflow-approval", label: labels.tabWorkflowApproval },
     { id: "ldap-login", label: labels.tabLdapLogin },
     { id: "ldap-sync", label: labels.tabLdapSync },
     { id: "advanced", label: labels.tabAdvanced },
@@ -482,6 +516,11 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
       label: labels.overviewNotifications,
       value: `${getValue(notificationReturnDueSoonDaysKey) || "3"}d / ${getValue(notificationWarrantyExpiryDaysKey) || "30"}d`,
       tone: "blue",
+    },
+    {
+      label: labels.overviewApproval,
+      value: `${workflowApprovalPolicy.minApprovers} / ${workflowApprovalPolicy.segregationRequired ? labels.workflowApprovalSodOn : labels.workflowApprovalSodOff}`,
+      tone: "amber",
     },
     {
       label: labels.overviewLdapLogin,
@@ -528,6 +567,10 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     }
     if (hasInvalidNotificationRule) {
       toast.error(labels.invalidNotificationRule)
+      return
+    }
+    if (hasInvalidWorkflowApproval) {
+      toast.error(labels.invalidWorkflowApproval)
       return
     }
 
@@ -1012,6 +1055,52 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
         <div className="border-t border-border px-4 py-3">
           <p className="text-sm text-muted-foreground">{labels.notificationDaysHelp}</p>
           {hasInvalidNotificationRule ? <ValidationMessage message={labels.invalidNotificationRule} /> : null}
+        </div>
+      </div>
+      ) : null}
+
+      {activeTab === "workflow-approval" ? (
+      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <SectionHeader title={labels.workflowApprovalPolicy} description={labels.workflowApprovalPolicyDescription} />
+        <div className="space-y-4 px-4 py-4">
+          <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+            {labels.workflowApprovalFoundationNote}
+          </p>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <ToggleField
+              label={labels.workflowApprovalDisposalRequired}
+              checked={getValue(workflowApprovalDisposalRequiredKey) === "true"}
+              onChange={(checked) => setBooleanValue(workflowApprovalDisposalRequiredKey, checked)}
+            />
+            <ToggleField
+              label={labels.workflowApprovalAuditCloseRequired}
+              checked={getValue(workflowApprovalAuditCloseRequiredKey) === "true"}
+              onChange={(checked) => setBooleanValue(workflowApprovalAuditCloseRequiredKey, checked)}
+            />
+            <ToggleField
+              label={labels.workflowApprovalMaintenanceCloseRequired}
+              checked={getValue(workflowApprovalMaintenanceCloseRequiredKey) === "true"}
+              onChange={(checked) => setBooleanValue(workflowApprovalMaintenanceCloseRequiredKey, checked)}
+            />
+            <ToggleField
+              label={labels.workflowApprovalSegregationRequired}
+              checked={getValue(workflowApprovalSegregationRequiredKey) === "true"}
+              onChange={(checked) => setBooleanValue(workflowApprovalSegregationRequiredKey, checked)}
+            />
+            <Field label={labels.workflowApprovalMinApprovers} htmlFor="workflow-approval-min-approvers">
+              <input
+                id="workflow-approval-min-approvers"
+                type="number"
+                min={1}
+                max={5}
+                value={getValue(workflowApprovalMinApproversKey)}
+                onChange={(event) => setValue(workflowApprovalMinApproversKey, event.target.value)}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </Field>
+          </div>
+          <p className="text-sm text-muted-foreground">{labels.workflowApprovalMinApproversHelp}</p>
+          {hasInvalidWorkflowApproval ? <ValidationMessage message={labels.invalidWorkflowApproval} /> : null}
         </div>
       </div>
       ) : null}

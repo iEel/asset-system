@@ -8,6 +8,7 @@ import {
   notificationRuleSettingKeys,
 } from "@/lib/system-setting-defaults"
 import { validateOperationDocumentTemplate } from "@/lib/operation-document-number"
+import { workflowApprovalMinApproversKey, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
 
 const assetTagFormatTokens = new Set([
   "companyCode",
@@ -37,6 +38,9 @@ const assetLabelSpacingKeys = new Set<string>([
 const assetLabelLayoutKeys = new Set<string>(assetLabelTapeSizes.map((size) => `asset_label_${size}_layout`))
 const operationDocumentTemplateKeys = new Set<string>([checkoutDocumentTemplateKey, checkinDocumentTemplateKey])
 const notificationRuleKeys = new Set<string>(notificationRuleSettingKeys)
+const workflowApprovalBooleanKeys = new Set<string>(
+  workflowApprovalSettingKeys.filter((key) => key !== workflowApprovalMinApproversKey)
+)
 
 export const systemSettingsUpdateSchema = z.object({
   settings: z
@@ -160,6 +164,25 @@ export const systemSettingsUpdateSchema = z.object({
         context.addIssue({
           code: "custom",
           message: "Notification rule days must be an integer between 0 and 365",
+          path: ["settings", index, "value"],
+        })
+      }
+    }
+
+    if (workflowApprovalBooleanKeys.has(setting.key) && setting.value !== "true" && setting.value !== "false") {
+      context.addIssue({
+        code: "custom",
+        message: "Workflow approval toggle values must be true or false",
+        path: ["settings", index, "value"],
+      })
+    }
+
+    if (setting.key === workflowApprovalMinApproversKey) {
+      const approvers = Number(setting.value)
+      if (!Number.isInteger(approvers) || approvers < 1 || approvers > 5) {
+        context.addIssue({
+          code: "custom",
+          message: "Workflow approval minimum approvers must be an integer between 1 and 5",
           path: ["settings", index, "value"],
         })
       }
