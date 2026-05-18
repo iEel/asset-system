@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Check, Edit, Plus, ShieldCheck } from "lucide-react"
+import { Check, Download, Edit, Plus, ShieldAlert, ShieldCheck } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
@@ -44,6 +44,7 @@ export default async function RolesPage({ params }: RolesPageProps) {
   const { locale } = await params
   const user = await requirePagePermission(locale, "role", "view")
   const canCreate = hasPermission(user, "role", "create")
+  const canExport = hasPermission(user, "role", "export")
 
   const t = await getTranslations("adminRolesPage")
   const tCommon = await getTranslations("common")
@@ -72,13 +73,50 @@ export default async function RolesPage({ params }: RolesPageProps) {
       new Set(role.rolePermissions.map((rolePermission) => `${rolePermission.permission.module}:${rolePermission.permission.action}`)),
     ])
   )
+  const highRiskRoles = roles.filter((role) =>
+    role.rolePermissions.some((rolePermission) => ["delete", "approve", "export"].includes(rolePermission.permission.action))
+  )
+  const inactiveRolesWithUsers = roles.filter((role) => !role.isActive && role._count.userRoles > 0)
+  const systemRoles = roles.filter((role) => role.isSystem)
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
+        </div>
+        {canExport ? (
+          <Link
+            href="/api/admin/roles/export"
+            className="inline-flex h-10 w-fit items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            <Download className="h-4 w-4" />
+            {t("exportAudit")}
+          </Link>
+        ) : null}
       </div>
+
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <RoleAuditCard
+          label={t("systemRoleCount")}
+          value={systemRoles.length}
+          detail={t("systemRoleCountDetail")}
+          tone="primary"
+        />
+        <RoleAuditCard
+          label={t("highRiskRoleCount")}
+          value={highRiskRoles.length}
+          detail={t("highRiskRoleCountDetail")}
+          tone="warning"
+        />
+        <RoleAuditCard
+          label={t("inactiveRoleWithUsers")}
+          value={inactiveRolesWithUsers.length}
+          detail={t("inactiveRoleWithUsersDetail")}
+          tone={inactiveRolesWithUsers.length > 0 ? "danger" : "muted"}
+        />
+      </section>
 
       <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-4 py-3">
@@ -212,4 +250,36 @@ export default async function RolesPage({ params }: RolesPageProps) {
       ) : null}
     </div>
   )
+}
+
+function RoleAuditCard({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string
+  value: number
+  detail: string
+  tone: "primary" | "warning" | "danger" | "muted"
+}) {
+  return (
+    <div className={`rounded-lg border p-4 shadow-sm ${roleAuditToneClass(tone)}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-foreground">{label}</p>
+          <p className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString("th-TH")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+        </div>
+        <ShieldAlert className="h-5 w-5 shrink-0 text-current" />
+      </div>
+    </div>
+  )
+}
+
+function roleAuditToneClass(tone: "primary" | "warning" | "danger" | "muted") {
+  if (tone === "primary") return "border-primary/30 bg-primary/5 text-primary"
+  if (tone === "warning") return "border-warning/30 bg-warning/5 text-warning"
+  if (tone === "danger") return "border-danger/30 bg-danger/5 text-danger"
+  return "border-border bg-surface text-muted-foreground"
 }
