@@ -6,6 +6,7 @@ import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { ColumnHeader, MasterDataHeader, MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { AuditFindingReviewActions } from "@/components/audit/audit-finding-review-actions"
+import { AuditFindingsBatchActions } from "@/components/audit/audit-findings-batch-actions"
 import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
 import { formatDateTime } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
@@ -73,6 +74,13 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   const employeeOptions = employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` }))
   const employeeLabelById = new Map(employeeOptions.map((employee) => [employee.id, employee.label]))
   const valueLabels = await buildFindingValueLabels(findings)
+  const batchReviewFindings = findings
+    .filter((finding) => finding.reviewStatus === "pending")
+    .map((finding) => ({
+      id: finding.id,
+      label: finding.asset ? `${finding.asset.assetTag} - ${finding.asset.name}` : finding.auditRound.auditNo,
+      detail: `${finding.auditRound.auditNo} · ${t(`type_${finding.findingType}`)}`,
+    }))
 
   return (
     <div>
@@ -121,6 +129,8 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
           </a>
         </div>
       </div>
+
+      {canApprove ? <AuditFindingsBatchActions findings={batchReviewFindings} /> : null}
 
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <div className="grid gap-3 p-3 md:hidden">
