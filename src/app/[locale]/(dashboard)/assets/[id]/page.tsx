@@ -85,7 +85,6 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
       category: { select: { code: true, name: true } },
       brand: { select: { name: true } },
       model: { select: { id: true, name: true, specs: true } },
-      licenseAssignedAsset: { select: { id: true, assetTag: true, name: true, serialNumber: true } },
       company: { select: { code: true, nameTh: true } },
       branch: { select: { code: true, name: true } },
       department: { select: { code: true, name: true } },
@@ -186,7 +185,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
     ...installedComponentAssetIds.map((component) => component.componentAssetId),
   ])
 
-  const [photoChecklist, modelPhotos, availableComponentAssets] = await Promise.all([
+  const [photoChecklist, modelPhotos, availableComponentAssets, licenseAssignedAsset] = await Promise.all([
     getCategoryPhotoChecklist(asset.categoryId),
     asset.model?.id
       ? prisma.attachment.findMany({
@@ -203,6 +202,12 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
       orderBy: { assetTag: "asc" },
       take: 300,
     }),
+    asset.licenseAssignedAssetId
+      ? prisma.asset.findFirst({
+          where: { id: asset.licenseAssignedAssetId, isActive: true },
+          select: { id: true, assetTag: true, name: true, serialNumber: true },
+        })
+      : null,
   ])
   const currentComponents = asset.parentComponents.filter((component) => component.status === "installed" && !component.removedAt)
   const componentHistory = asset.parentComponents.filter((component) => component.status !== "installed" || component.removedAt)
@@ -525,6 +530,24 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
     : "#handover"
   const transferHref = `/${locale}/asset-management/transfer?assetId=${encodedAssetId}`
   const maintenanceHref = `/${locale}/maintenance?assetId=${encodedAssetId}`
+  const editHref = `/${locale}/assets/${asset.id}/edit`
+  const assignedAssetHref = licenseAssignedAsset ? `/${locale}/assets/${licenseAssignedAsset.id}` : "#overview"
+  const latestDocumentHref = latestCheckout ? `/${locale}/asset-management/checkouts/${latestCheckout.id}` : "#handover"
+  const lifecycle = getOwnershipLifecycle({
+    ownershipType,
+    activeCheckout: Boolean(activeCheckout),
+    latestCheckout: Boolean(latestCheckout),
+    checkoutHref,
+    checkinHref,
+    transferHref,
+    maintenanceHref,
+    editHref,
+    assignedAssetHref,
+    latestDocumentHref,
+    hasAssignedAsset: Boolean(licenseAssignedAsset),
+    licenseSeatSummary,
+    t,
+  })
   const activeCheckoutDestination = activeCheckout
     ? getCheckoutDestination(activeCheckout, {
         departments: checkoutDepartmentLabels,
@@ -671,9 +694,9 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
       </div>
       <MobileActionBar
         actions={[
-          { href: `/${locale}/assets/${asset.id}/edit`, label: tCommon("edit"), icon: <Edit className="h-4 w-4" />, primary: true },
-          { href: checkoutHref, label: t("quickCheckout"), icon: <Truck className="h-4 w-4" />, disabled: Boolean(activeCheckout) },
-          { href: checkinHref, label: t("quickCheckin"), icon: <RotateCcw className="h-4 w-4" />, disabled: !activeCheckout },
+          { href: editHref, label: tCommon("edit"), icon: <Edit className="h-4 w-4" />, primary: true },
+          lifecycle.mobilePrimary,
+          lifecycle.mobileSecondary,
           { href: "#movement", label: t("detailSections.movement"), icon: <History className="h-4 w-4" /> },
         ]}
       />
@@ -712,15 +735,15 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           />
           <SummaryCard
             icon={<PackageCheck className="h-5 w-5 text-primary" />}
-            label={t("custodian")}
-            value={currentCustodianLabel}
+            label={lifecycle.responsibilityLabel}
+            value={lifecycle.responsibilityValue ?? currentCustodianLabel}
             href="#ownership"
           />
           <SummaryCard
             icon={activeCheckout ? <Truck className="h-5 w-5 text-info" /> : <CheckCircle2 className="h-5 w-5 text-success" />}
-            label={t("handoverStatus")}
-            value={activeCheckout ? t("handoverActive") : t("assetAvailable")}
-            href="#handover"
+            label={lifecycle.statusLabel}
+            value={lifecycle.statusValue}
+            href={lifecycle.statusHref}
           />
           <SummaryCard
             icon={<ShieldCheck className={`h-5 w-5 ${getWarrantyIconClass(warrantyState.tone)}`} />}
@@ -736,21 +759,17 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold text-foreground">{t("quickActions")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{t("quickActionsHelp")}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{lifecycle.help}</p>
             </div>
           </div>
+          <div className="mb-3 rounded-md border border-info/30 bg-info/10 px-3 py-2">
+            <div className="text-sm font-semibold text-foreground">{lifecycle.title}</div>
+            <p className="mt-1 text-xs text-muted-foreground">{lifecycle.description}</p>
+          </div>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-            <QuickAction href={checkoutHref} icon={<Truck className="h-4 w-4" />} label={t("quickCheckout")} disabled={Boolean(activeCheckout)} />
-            <QuickAction href={checkinHref} icon={<RotateCcw className="h-4 w-4" />} label={t("quickCheckin")} disabled={!activeCheckout} />
-            <QuickAction href={transferHref} icon={<GitBranch className="h-4 w-4" />} label={t("quickTransfer")} disabled={Boolean(activeCheckout)} />
-            <QuickAction href={maintenanceHref} icon={<Wrench className="h-4 w-4" />} label={t("quickMaintenance")} />
-            <QuickAction href={`/${locale}/audit/rounds`} icon={<ScanLine className="h-4 w-4" />} label={t("quickAudit")} />
-            <QuickAction
-              href={latestCheckout ? `/${locale}/asset-management/checkouts/${latestCheckout.id}` : "#handover"}
-              icon={<FileText className="h-4 w-4" />}
-              label={t("quickLatestDocument")}
-              disabled={!latestCheckout}
-            />
+            {lifecycle.actions.map((action) => (
+              <QuickAction key={action.label} {...action} />
+            ))}
           </div>
         </div>
 
@@ -801,7 +820,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
               {ownershipType === "software_license" ? (
                 <>
                   <Info label={t("licenseSeatUsage")} value={licenseSeatSummary} />
-                  <Info label={t("licenseAssignedAsset")} value={asset.licenseAssignedAsset ? `${asset.licenseAssignedAsset.assetTag} - ${asset.licenseAssignedAsset.name}` : null} />
+                  <Info label={t("licenseAssignedAsset")} value={licenseAssignedAsset ? `${licenseAssignedAsset.assetTag} - ${licenseAssignedAsset.name}` : null} />
                 </>
               ) : null}
               <Info label={t("fixedAssetCode")} value={asset.fixedAssetCode} />
@@ -1263,6 +1282,157 @@ function SummaryCard({
       <div className="line-clamp-2 text-sm font-semibold text-foreground">{value || "-"}</div>
     </a>
   )
+}
+
+type LifecycleAction = {
+  href: string
+  icon: React.ReactNode
+  label: string
+  disabled?: boolean
+}
+
+function getOwnershipLifecycle({
+  ownershipType,
+  activeCheckout,
+  latestCheckout,
+  checkoutHref,
+  checkinHref,
+  transferHref,
+  maintenanceHref,
+  editHref,
+  assignedAssetHref,
+  latestDocumentHref,
+  hasAssignedAsset,
+  licenseSeatSummary,
+  t,
+}: {
+  ownershipType: string
+  activeCheckout: boolean
+  latestCheckout: boolean
+  checkoutHref: string
+  checkinHref: string
+  transferHref: string
+  maintenanceHref: string
+  editHref: string
+  assignedAssetHref: string
+  latestDocumentHref: string
+  hasAssignedAsset: boolean
+  licenseSeatSummary: string | null
+  t: (key: string) => string
+}) {
+  const latestDocumentAction: LifecycleAction = {
+    href: latestDocumentHref,
+    icon: <FileText className="h-4 w-4" />,
+    label: t("quickLatestDocument"),
+    disabled: !latestCheckout,
+  }
+
+  if (ownershipType === "software_license") {
+    const assignAction = { href: editHref, icon: <Edit className="h-4 w-4" />, label: t("quickAssignLicense") }
+    const deviceAction = {
+      href: assignedAssetHref,
+      icon: <PackageCheck className="h-4 w-4" />,
+      label: t("quickAssignedDevice"),
+      disabled: !hasAssignedAsset,
+    }
+    const renewAction = { href: "#purchase", icon: <ShieldCheck className="h-4 w-4" />, label: t("quickRenewLicense") }
+    const auditAction = { href: "#audit", icon: <ScanLine className="h-4 w-4" />, label: t("quickAuditLicense") }
+
+    return {
+      title: t("lifecycleSoftwareTitle"),
+      description: t("lifecycleSoftwareDescription"),
+      help: t("quickActionsSoftwareHelp"),
+      responsibilityLabel: t("licenseAssignee"),
+      responsibilityValue: null,
+      statusLabel: t("licenseSeatUsage"),
+      statusValue: licenseSeatSummary ?? t("licensePool"),
+      statusHref: "#overview",
+      mobilePrimary: assignAction,
+      mobileSecondary: renewAction,
+      actions: [assignAction, deviceAction, renewAction, auditAction, { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickLicenseIssue") }],
+    }
+  }
+
+  if (ownershipType === "stock") {
+    const issueAction = { href: checkoutHref, icon: <Truck className="h-4 w-4" />, label: t("quickIssueFromStock"), disabled: activeCheckout }
+    const relocateAction = { href: transferHref, icon: <GitBranch className="h-4 w-4" />, label: t("quickMoveStock"), disabled: activeCheckout }
+
+    return {
+      title: t("lifecycleStockTitle"),
+      description: t("lifecycleStockDescription"),
+      help: t("quickActionsStockHelp"),
+      responsibilityLabel: t("department"),
+      responsibilityValue: null,
+      statusLabel: t("stockStatus"),
+      statusValue: activeCheckout ? t("handoverActive") : t("stockAvailable"),
+      statusHref: "#handover",
+      mobilePrimary: issueAction,
+      mobileSecondary: relocateAction,
+      actions: [issueAction, relocateAction, { href: `#audit`, icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") }, { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickMaintenance") }, latestDocumentAction],
+    }
+  }
+
+  if (ownershipType === "shared") {
+    const relocateAction = { href: transferHref, icon: <GitBranch className="h-4 w-4" />, label: t("quickRelocateShared"), disabled: activeCheckout }
+    const checkoutAction = { href: checkoutHref, icon: <Truck className="h-4 w-4" />, label: t("quickTemporaryHandover"), disabled: activeCheckout }
+
+    return {
+      title: t("lifecycleSharedTitle"),
+      description: t("lifecycleSharedDescription"),
+      help: t("quickActionsSharedHelp"),
+      responsibilityLabel: t("department"),
+      responsibilityValue: null,
+      statusLabel: t("sharedStatus"),
+      statusValue: activeCheckout ? t("handoverActive") : t("sharedInstalled"),
+      statusHref: "#ownership",
+      mobilePrimary: relocateAction,
+      mobileSecondary: checkoutAction,
+      actions: [relocateAction, checkoutAction, { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickMaintenance") }, { href: "#audit", icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") }, latestDocumentAction],
+    }
+  }
+
+  if (ownershipType === "component") {
+    const componentAction = { href: "#components", icon: <GitBranch className="h-4 w-4" />, label: t("quickManageComponent") }
+    const transferAction = { href: transferHref, icon: <Truck className="h-4 w-4" />, label: t("quickMoveComponent"), disabled: activeCheckout }
+
+    return {
+      title: t("lifecycleComponentTitle"),
+      description: t("lifecycleComponentDescription"),
+      help: t("quickActionsComponentHelp"),
+      responsibilityLabel: t("parentAsset"),
+      responsibilityValue: null,
+      statusLabel: t("componentStatus"),
+      statusValue: t("componentInstalled"),
+      statusHref: "#components",
+      mobilePrimary: componentAction,
+      mobileSecondary: transferAction,
+      actions: [componentAction, transferAction, { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickMaintenance") }, { href: "#audit", icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") }],
+    }
+  }
+
+  const checkoutAction = { href: checkoutHref, icon: <Truck className="h-4 w-4" />, label: t("quickCheckout"), disabled: activeCheckout }
+  const checkinAction = { href: checkinHref, icon: <RotateCcw className="h-4 w-4" />, label: t("quickCheckin"), disabled: !activeCheckout }
+
+  return {
+    title: t("lifecyclePersonalTitle"),
+    description: t("lifecyclePersonalDescription"),
+    help: t("quickActionsHelp"),
+    responsibilityLabel: t("custodian"),
+    responsibilityValue: null,
+    statusLabel: t("handoverStatus"),
+    statusValue: activeCheckout ? t("handoverActive") : t("assetAvailable"),
+    statusHref: "#handover",
+    mobilePrimary: checkoutAction,
+    mobileSecondary: checkinAction,
+    actions: [
+      checkoutAction,
+      checkinAction,
+      { href: transferHref, icon: <GitBranch className="h-4 w-4" />, label: t("quickTransfer"), disabled: activeCheckout },
+      { href: maintenanceHref, icon: <Wrench className="h-4 w-4" />, label: t("quickMaintenance") },
+      { href: "#audit", icon: <ScanLine className="h-4 w-4" />, label: t("quickAudit") },
+      latestDocumentAction,
+    ],
+  }
 }
 
 function ActivitySummaryPanel({
