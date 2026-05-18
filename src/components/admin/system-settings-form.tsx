@@ -43,6 +43,18 @@ type SystemSettingsFormProps = {
     tabLdapLogin: string
     tabLdapSync: string
     tabAdvanced: string
+    settingsOverview: string
+    settingsOverviewDescription: string
+    overviewAssetTag: string
+    overviewLabel: string
+    overviewDocuments: string
+    overviewOrganization: string
+    overviewLdapLogin: string
+    overviewLdapSync: string
+    overviewAdvanced: string
+    enabled: string
+    disabled: string
+    advancedSettingCount: string
     generalSettings: string
     assetTagFormat: string
     assetTagFormatDescription: string
@@ -304,6 +316,48 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     { id: "ldap-sync", label: labels.tabLdapSync },
     { id: "advanced", label: labels.tabAdvanced },
   ]
+  const overviewCards = [
+    {
+      label: labels.overviewAssetTag,
+      value: formatTemplate,
+      tone: "blue",
+    },
+    {
+      label: labels.overviewLabel,
+      value: `${getValue("asset_label_default_tape_size") || "12"}mm`,
+      tone: "green",
+    },
+    {
+      label: labels.overviewDocuments,
+      value: `${renderOperationDocumentTemplate(checkoutDocumentTemplate, operationDocumentExampleDate, 1, operationDocumentExampleDigits)} / ${renderOperationDocumentTemplate(
+        checkinDocumentTemplate,
+        operationDocumentExampleDate,
+        1,
+        operationDocumentExampleDigits
+      )}`,
+      tone: "amber",
+    },
+    {
+      label: labels.overviewOrganization,
+      value: getValue("company_name") || "-",
+      tone: "slate",
+    },
+    {
+      label: labels.overviewLdapLogin,
+      value: getValue("ldap_enabled") === "true" ? labels.enabled : labels.disabled,
+      tone: getValue("ldap_enabled") === "true" ? "green" : "slate",
+    },
+    {
+      label: labels.overviewLdapSync,
+      value: getValue("ldap_sync_enabled") === "true" ? `${labels.enabled} (${getValue("ldap_sync_mode") || "preview"})` : labels.disabled,
+      tone: getValue("ldap_sync_enabled") === "true" ? "green" : "slate",
+    },
+    {
+      label: labels.overviewAdvanced,
+      value: labels.advancedSettingCount.replace("{count}", String(generalSettings.length)),
+      tone: "rose",
+    },
+  ] as const
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -451,6 +505,15 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               </button>
             )
           })}
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <SectionHeader title={labels.settingsOverview} description={labels.settingsOverviewDescription} />
+        <div className="grid gap-3 px-4 py-4 sm:grid-cols-2 xl:grid-cols-4">
+          {overviewCards.map((card) => (
+            <StatusCard key={card.label} label={card.label} value={card.value} tone={card.tone} />
+          ))}
         </div>
       </div>
 
@@ -1150,6 +1213,31 @@ function SyncPreviewPanel({
           </ul>
         </div>
       ) : null}
+    </div>
+  )
+}
+
+function StatusCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string
+  value: string
+  tone: "blue" | "green" | "amber" | "slate" | "rose"
+}) {
+  const toneClass = {
+    blue: "border-blue-200 bg-blue-50 text-blue-950",
+    green: "border-emerald-200 bg-emerald-50 text-emerald-950",
+    amber: "border-amber-200 bg-amber-50 text-amber-950",
+    slate: "border-slate-200 bg-slate-50 text-slate-950",
+    rose: "border-rose-200 bg-rose-50 text-rose-950",
+  }[tone]
+
+  return (
+    <div className={`min-h-24 rounded-md border px-3 py-3 ${toneClass}`}>
+      <div className="text-xs font-medium opacity-80">{label}</div>
+      <div className="mt-2 break-words text-sm font-semibold leading-6">{value}</div>
     </div>
   )
 }
