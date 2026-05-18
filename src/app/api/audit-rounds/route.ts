@@ -4,7 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { auditRoundSchema } from "@/lib/validations/audit"
-import { buildAuditAssetWhere, generateAuditNo, selectAuditSample } from "@/lib/audit-round"
+import { generateAuditNo, getAuditRoundCandidateAssets, selectAuditSample } from "@/lib/audit-round"
 
 const roundInclude = {
   scopeCompany: { select: { code: true, nameTh: true } },
@@ -52,19 +52,7 @@ export async function POST(request: NextRequest) {
     requirePermission(user, "audit", "create")
 
     const input = auditRoundSchema.parse(await request.json())
-    const candidateAssets = await prisma.asset.findMany({
-      where: buildAuditAssetWhere(input),
-      orderBy: { assetTag: "asc" },
-      select: {
-        id: true,
-        companyId: true,
-        branchId: true,
-        departmentId: true,
-        currentLocationId: true,
-        custodianId: true,
-        conditionId: true,
-      },
-    })
+    const candidateAssets = await getAuditRoundCandidateAssets(input)
     const assets = selectAuditSample(candidateAssets, input.sampleRate)
     if (assets.length === 0) {
       return NextResponse.json({ error: "No assets found in audit scope" }, { status: 400 })

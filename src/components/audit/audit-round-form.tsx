@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Loader2, Save } from "lucide-react"
+import { ClipboardList, Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 
 type Option = { id: string; label: string }
@@ -19,6 +19,14 @@ type AuditRoundOptions = {
   conditions: Option[]
 }
 
+type AuditRoundPreview = {
+  matchedAssets: number
+  sampledAssets: number
+  sampleRate: number
+  riskPreset: string
+  previewAssets: Array<{ id: string; assetTag: string; name: string }>
+}
+
 const riskPresetValues = ["all", "data_quality", "high_value", "stale_movement", "repair_history", "license_expiring"] as const
 
 export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
@@ -27,6 +35,8 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   const t = useTranslations("auditRound")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
+  const [preview, setPreview] = useState<AuditRoundPreview | null>(null)
   const [values, setValues] = useState({
     name: "",
     auditYear: String(new Date().getFullYear()),
@@ -46,7 +56,26 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   })
 
   function setField(field: string, value: string) {
+    setPreview(null)
     setValues((current) => ({ ...current, [field]: value }))
+  }
+
+  async function handlePreview() {
+    setPreviewing(true)
+    try {
+      const response = await fetch("/api/audit-rounds/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(emptyToNull(values)),
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      setPreview(payload as AuditRoundPreview)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : tCommon("error"))
+    } finally {
+      setPreviewing(false)
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -120,6 +149,46 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
                 <p className="mt-1.5 text-xs text-muted-foreground">{t("sampleRateHelp")}</p>
               </Field>
             </div>
+            <div className="mt-4 flex flex-col gap-3 rounded-md border border-border bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-sm font-semibold text-foreground">{t("previewTitle")}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{t("previewHelp")}</div>
+              </div>
+              <button
+                type="button"
+                onClick={handlePreview}
+                disabled={previewing}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+              >
+                {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
+                {t("preview")}
+              </button>
+            </div>
+            {preview ? (
+              <div className="mt-4 rounded-md border border-primary/30 bg-primary/5 p-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <PreviewMetric label={t("previewMatched")} value={String(preview.matchedAssets)} />
+                  <PreviewMetric label={t("previewSampled")} value={String(preview.sampledAssets)} />
+                  <PreviewMetric label={t("previewSampleRate")} value={`${preview.sampleRate}%`} />
+                  <PreviewMetric label={t("previewRisk")} value={t(`riskPreset_${preview.riskPreset}`)} />
+                </div>
+                <div className="mt-4">
+                  <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("previewAssets")}</div>
+                  {preview.previewAssets.length > 0 ? (
+                    <div className="mt-2 grid gap-2 md:grid-cols-2">
+                      {preview.previewAssets.map((asset) => (
+                        <div key={asset.id} className="rounded-md border border-border bg-surface px-3 py-2">
+                          <div className="text-sm font-semibold text-foreground">{asset.assetTag}</div>
+                          <div className="mt-0.5 truncate text-xs text-muted-foreground">{asset.name}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-muted-foreground">{t("previewEmpty")}</p>
+                  )}
+                </div>
+              </div>
+            ) : null}
           </div>
           <Select label={t("scopeCompany")} value={values.scopeCompanyId} onChange={(value) => setField("scopeCompanyId", value)}>
             <OptionList emptyLabel={t("all")} options={options.companies} />
@@ -146,13 +215,22 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
             <OptionList emptyLabel={t("all")} options={options.conditions} />
           </Select>
           <div className="md:col-span-2 flex justify-end">
-            <button type="submit" disabled={saving} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50">
+            <button type="submit" disabled={saving || previewing} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {tCommon("save")}
             </button>
           </div>
         </form>
       </section>
+    </div>
+  )
+}
+
+function PreviewMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border bg-surface px-3 py-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 text-lg font-bold text-foreground">{value}</div>
     </div>
   )
 }

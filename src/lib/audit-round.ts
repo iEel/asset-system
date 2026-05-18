@@ -2,6 +2,20 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import type { AuditRoundInput } from "@/lib/validations/audit"
 
+export const auditRoundAssetSelect = {
+  id: true,
+  assetTag: true,
+  name: true,
+  companyId: true,
+  branchId: true,
+  departmentId: true,
+  currentLocationId: true,
+  custodianId: true,
+  conditionId: true,
+} satisfies Prisma.AssetSelect
+
+export type AuditRoundCandidateAsset = Prisma.AssetGetPayload<{ select: typeof auditRoundAssetSelect }>
+
 export function buildAuditAssetWhere(input: AuditRoundInput): Prisma.AssetWhereInput {
   const riskWhere = buildAuditRiskWhere(input.riskPreset)
 
@@ -17,6 +31,14 @@ export function buildAuditAssetWhere(input: AuditRoundInput): Prisma.AssetWhereI
     ...(input.scopeConditionId ? { conditionId: input.scopeConditionId } : {}),
     ...riskWhere,
   }
+}
+
+export async function getAuditRoundCandidateAssets(input: AuditRoundInput) {
+  return prisma.asset.findMany({
+    where: buildAuditAssetWhere(input),
+    orderBy: { assetTag: "asc" },
+    select: auditRoundAssetSelect,
+  })
 }
 
 export function selectAuditSample<T extends { id: string }>(assets: T[], sampleRate: number): T[] {
