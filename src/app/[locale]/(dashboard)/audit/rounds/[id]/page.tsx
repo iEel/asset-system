@@ -19,7 +19,7 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
   const t = await getTranslations("auditRound")
   const tCommon = await getTranslations("common")
 
-  const [round, statusCounts, resultCounts] = await Promise.all([
+  const [round, statusCounts, resultCounts, findingTypeCounts, pendingReviewCount, outOfScopeCount] = await Promise.all([
     prisma.auditRound.findFirst({
       where: { id, isActive: true },
       include: {
@@ -57,6 +57,13 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
       where: { auditRoundId: id },
       _count: { _all: true },
     }),
+    prisma.auditFinding.groupBy({
+      by: ["findingType"],
+      where: { auditRoundId: id },
+      _count: { _all: true },
+    }),
+    prisma.auditFinding.count({ where: { auditRoundId: id, reviewStatus: "pending" } }),
+    prisma.auditScanHistory.count({ where: { auditRoundId: id, auditItemId: null } }),
   ])
   if (!round) notFound()
 
@@ -67,6 +74,9 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
     .reduce((sum, row) => sum + row._count._all, 0)
   const foundCount = resultCounts.find((row) => row.auditResult === "found")?._count._all ?? 0
   const notFoundCount = resultCounts.find((row) => row.auditResult === "not_found")?._count._all ?? 0
+  const wrongLocationCount = findingTypeCounts.find((row) => row.findingType === "wrong_location")?._count._all ?? 0
+  const wrongCustodianCount = findingTypeCounts.find((row) => row.findingType === "wrong_custodian")?._count._all ?? 0
+  const wrongConditionCount = findingTypeCounts.find((row) => row.findingType === "wrong_condition")?._count._all ?? 0
   const mismatchCount = resultCounts
     .filter((row) => row.auditResult && row.auditResult !== "found" && row.auditResult !== "not_found")
     .reduce((sum, row) => sum + row._count._all, 0)
@@ -145,6 +155,22 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
         />
       </div>
 
+      <section className="mb-6 rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-foreground">{t("resultDashboard")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("resultDashboardHelp")}</p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+          <DashboardCard label={t("found")} value={foundCount} tone="success" />
+          <DashboardCard label={t("wrongLocation")} value={wrongLocationCount} tone="warning" />
+          <DashboardCard label={t("wrongCustodian")} value={wrongCustodianCount} tone="warning" />
+          <DashboardCard label={t("wrongCondition")} value={wrongConditionCount} tone="warning" />
+          <DashboardCard label={t("notFound")} value={notFoundCount} tone="danger" />
+          <DashboardCard label={t("outOfScope")} value={outOfScopeCount} tone="info" />
+          <DashboardCard label={t("pendingReview")} value={pendingReviewCount} tone="muted" />
+        </div>
+      </section>
+
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-4 py-3">
           <h2 className="text-base font-semibold text-foreground">{t("expectedAssets")}</h2>
@@ -201,6 +227,34 @@ function Metric({ label, value }: { label: string; value: number | string }) {
     <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
       <div className="text-sm text-muted-foreground">{label}</div>
       <div className="mt-2 text-2xl font-semibold text-foreground">{value}</div>
+    </div>
+  )
+}
+
+function DashboardCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string
+  value: number
+  tone: "success" | "warning" | "danger" | "info" | "muted"
+}) {
+  const className =
+    tone === "success"
+      ? "border-success/30 bg-success/10 text-success"
+      : tone === "warning"
+        ? "border-warning/30 bg-warning/10 text-warning"
+        : tone === "danger"
+          ? "border-danger/30 bg-danger/10 text-danger"
+          : tone === "info"
+            ? "border-info/30 bg-info/10 text-info"
+            : "border-border bg-background text-muted-foreground"
+
+  return (
+    <div className={`rounded-md border px-3 py-3 ${className}`}>
+      <div className="text-xs font-medium">{label}</div>
+      <div className="mt-2 text-2xl font-bold">{value}</div>
     </div>
   )
 }
