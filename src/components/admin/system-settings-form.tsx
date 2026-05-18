@@ -342,6 +342,33 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     (setting) => normalizeSettingValue(setting.key, effectiveValues[setting.key]) !== normalizeSettingValue(setting.key, initialValues[setting.key])
   )
   const changedCount = changedSettings.length
+  const selectedCategories = prefixRows.map((row) => row.categoryId).filter(Boolean)
+  const hasDuplicateCategory = new Set(selectedCategories).size !== selectedCategories.length
+  const hasInvalidPrefix = prefixRows.some((row) => row.categoryId && !/^[A-Z0-9]{2,10}$/.test(row.prefix.trim().toUpperCase()))
+  const templateTokens = Array.from(formatTemplate.matchAll(/\{([A-Za-z0-9]+)\}/g)).map((match) => match[1])
+  const hasInvalidTemplate =
+    !formatTemplate.includes("{running}") || templateTokens.some((token) => !assetTagFormatTokens.includes(token))
+  const labelTemplateKeys = assetLabelSettingKeys.filter((key) => key.endsWith("_template"))
+  const hasInvalidLabelTemplate = labelTemplateKeys.some((key) => {
+    const tokens = Array.from(getValue(key).matchAll(/\{([A-Za-z0-9]+)\}/g)).map((match) => match[1])
+    return tokens.some((token) => !assetLabelTemplateTokens.includes(token as (typeof assetLabelTemplateTokens)[number]))
+  })
+  const hasInvalidLabelSize =
+    ["asset_label_12_width_mm", "asset_label_18_width_mm"].some((key) => {
+      const width = Number(getValue(key))
+      return !Number.isFinite(width) || width < 30 || width > 120
+    }) ||
+    ["asset_label_12_qr_size", "asset_label_18_qr_size"].some((key) => {
+      const qrSize = Number(getValue(key))
+      return !Number.isFinite(qrSize) || qrSize < 20 || qrSize > 90
+    })
+  const operationDigits = Number(getValue(operationDocumentRunningDigitsKey))
+  const hasInvalidOperationDocumentTemplate =
+    !validateOperationDocumentTemplate(checkoutDocumentTemplate) ||
+    !validateOperationDocumentTemplate(checkinDocumentTemplate) ||
+    !Number.isFinite(operationDigits) ||
+    operationDigits < 1 ||
+    operationDigits > 12
   const syncSchedule = getValue("ldap_sync_schedule")
   const selectedSyncSchedulePreset = !customScheduleSelected && ldapSchedulePresets.some((preset) => preset.value === syncSchedule)
     ? syncSchedule
@@ -400,32 +427,6 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const selectedCategories = prefixRows.map((row) => row.categoryId).filter(Boolean)
-    const hasDuplicateCategory = new Set(selectedCategories).size !== selectedCategories.length
-    const hasInvalidPrefix = prefixRows.some((row) => row.categoryId && !/^[A-Z0-9]{2,10}$/.test(row.prefix.trim().toUpperCase()))
-    const templateTokens = Array.from(formatTemplate.matchAll(/\{([A-Za-z0-9]+)\}/g)).map((match) => match[1])
-    const hasInvalidTemplate =
-      !formatTemplate.includes("{running}") || templateTokens.some((token) => !assetTagFormatTokens.includes(token))
-    const labelTemplateKeys = assetLabelSettingKeys.filter((key) => key.endsWith("_template"))
-    const hasInvalidLabelTemplate = labelTemplateKeys.some((key) => {
-      const tokens = Array.from(getValue(key).matchAll(/\{([A-Za-z0-9]+)\}/g)).map((match) => match[1])
-      return tokens.some((token) => !assetLabelTemplateTokens.includes(token as (typeof assetLabelTemplateTokens)[number]))
-    })
-    const hasInvalidLabelSize = ["asset_label_12_width_mm", "asset_label_18_width_mm"].some((key) => {
-      const width = Number(getValue(key))
-      return !Number.isFinite(width) || width < 30 || width > 120
-    }) || ["asset_label_12_qr_size", "asset_label_18_qr_size"].some((key) => {
-      const qrSize = Number(getValue(key))
-      return !Number.isFinite(qrSize) || qrSize < 20 || qrSize > 90
-    })
-    const operationDigits = Number(getValue(operationDocumentRunningDigitsKey))
-    const hasInvalidOperationDocumentTemplate =
-      !validateOperationDocumentTemplate(checkoutDocumentTemplate) ||
-      !validateOperationDocumentTemplate(checkinDocumentTemplate) ||
-      !Number.isFinite(operationDigits) ||
-      operationDigits < 1 ||
-      operationDigits > 12
-
     if (hasDuplicateCategory) {
       toast.error(labels.duplicateCategory)
       return
@@ -573,6 +574,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
                 className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
               />
               <p className="text-sm text-muted-foreground">{labels.assetTagTemplateHelp}</p>
+              {hasInvalidTemplate ? <ValidationMessage message={labels.invalidFormatTemplate} /> : null}
             </div>
             <div className="space-y-2">
               <div className="text-sm font-medium text-foreground">{labels.formatPresets}</div>
@@ -684,6 +686,8 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               setValue={setValue}
             />
           </div>
+          {hasInvalidLabelTemplate ? <ValidationMessage message={labels.invalidLabelTemplate} /> : null}
+          {hasInvalidLabelSize ? <ValidationMessage message={labels.invalidLabelSize} /> : null}
           <div className="space-y-2">
             <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{labels.labelTemplateTokens}</div>
             <div className="flex flex-wrap gap-2">
@@ -741,6 +745,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
             </div>
           </div>
           <p className="text-sm text-muted-foreground">{labels.operationDocumentTemplateHelp}</p>
+          {hasInvalidOperationDocumentTemplate ? <ValidationMessage message={labels.invalidOperationDocumentTemplate} /> : null}
           <div className="space-y-2">
             <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{labels.operationDocumentTokens}</div>
             <div className="flex flex-wrap gap-2">
@@ -830,6 +835,8 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
           </table>
         </div>
         <div className="border-t border-border px-4 py-3">
+          {hasDuplicateCategory ? <ValidationMessage message={labels.duplicateCategory} /> : null}
+          {hasInvalidPrefix ? <ValidationMessage message={labels.invalidPrefix} /> : null}
           <button
             type="button"
             onClick={() => setPrefixRows((current) => [...current, { categoryId: "", prefix: "" }])}
@@ -1257,6 +1264,14 @@ function Field({ label, htmlFor, children }: { label: string; htmlFor: string; c
       </label>
       {children}
     </div>
+  )
+}
+
+function ValidationMessage({ message }: { message: string }) {
+  return (
+    <p className="my-2 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">
+      {message}
+    </p>
   )
 }
 
