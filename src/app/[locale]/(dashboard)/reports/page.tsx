@@ -363,7 +363,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             </div>
           ) : (
             dataQualityAssets.map((asset) => {
-              const issues = getDataQualityIssues(asset, warrantyThreshold, t)
+              const issues = getDataQualityIssues(asset, warrantyThreshold, t, locale)
+              const primaryFixHref = issues[0]?.href ?? `/${locale}/assets/${asset.id}/edit`
 
               return (
                 <div key={asset.id} className="rounded-md border border-border bg-background p-4">
@@ -380,9 +381,9 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
                       </div>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {issues.map((issue) => (
-                          <span key={issue} className="rounded-full bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
-                            {issue}
-                          </span>
+                          <Link key={issue.label} href={issue.href} className="rounded-full bg-warning/10 px-2 py-1 text-xs font-medium text-warning transition-colors hover:bg-warning/20">
+                            {issue.label}
+                          </Link>
                         ))}
                       </div>
                     </div>
@@ -390,7 +391,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
                       <Link href={`/${locale}/assets/${asset.id}`} className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent">
                         {t("openAsset")}
                       </Link>
-                      <Link href={`/${locale}/assets/${asset.id}/edit`} className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary/90">
+                      <Link href={primaryFixHref} className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary/90">
                         {t("fixData")}
                       </Link>
                     </div>
@@ -590,6 +591,7 @@ function PermissionPill({
 
 function getDataQualityIssues(
   asset: {
+    id: string
     ownershipType?: string | null
     custodian: { code: string; fullNameTh: string } | null
     department?: { code: string; name: string } | null
@@ -599,14 +601,19 @@ function getDataQualityIssues(
     attachments: Array<{ id: string }>
   },
   warrantyThreshold: Date,
-  t: (key: string) => string
+  t: (key: string) => string,
+  locale: string
 ) {
-  const issues: string[] = []
-  if (!hasAssetResponsibility(asset)) issues.push(t("missingCustodian"))
-  if (!asset.serialNumber) issues.push(t("missingSerial"))
-  if (asset.ownershipType !== "software_license" && asset.attachments.length === 0) issues.push(t("missingPhoto"))
+  const editHref = `/${locale}/assets/${asset.id}/edit`
+  const detailHref = `/${locale}/assets/${asset.id}`
+  const issues: Array<{ label: string; href: string }> = []
+  if (!hasAssetResponsibility(asset)) issues.push({ label: t("missingCustodian"), href: editHref })
+  if (!asset.serialNumber) issues.push({ label: t("missingSerial"), href: editHref })
+  if (asset.ownershipType !== "software_license" && asset.attachments.length === 0) {
+    issues.push({ label: t("missingPhoto"), href: `${detailHref}#photos` })
+  }
   if (asset.warrantyEndDate && asset.warrantyEndDate >= new Date() && asset.warrantyEndDate <= warrantyThreshold) {
-    issues.push(t("warrantyExpiring"))
+    issues.push({ label: t("warrantyExpiring"), href: `${detailHref}#purchase` })
   }
   return issues
 }

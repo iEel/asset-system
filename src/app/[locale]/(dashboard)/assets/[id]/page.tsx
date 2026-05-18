@@ -487,30 +487,36 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const latestAuditItem = asset.auditItems[0]
   const checklistMissingLabels = getMissingPhotoChecklistLabels(photoChecklist, assetAttachments)
   const hasPurchaseDocuments = purchaseDocuments.length > 0 || legacyPurchaseDocuments.length > 0
+  const detailPath = `/${locale}/assets/${asset.id}`
+  const encodedAssetId = encodeURIComponent(asset.id)
+  const editHref = `/${locale}/assets/${asset.id}/edit`
   const dataHealthItems = ownershipType === "software_license"
     ? [
-        createHealthItem(Boolean(asset.serialNumber), t("dataHealthLicenseKey"), "#overview"),
-        createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, "#ownership"),
-        createHealthItem(asset.licenseTotalSeats != null, t("dataHealthLicenseSeats"), "#overview"),
-        createHealthItem(hasPurchaseDocuments, t("dataHealthPurchaseDocument"), "#purchase"),
-        createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthLicenseExpiry"), "#purchase"),
+        createHealthItem(Boolean(asset.serialNumber), t("dataHealthLicenseKey"), "#overview", t("dataHealthFixIdentity"), editHref),
+        createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, "#ownership", t("dataHealthFixResponsibility"), editHref),
+        createHealthItem(asset.licenseTotalSeats != null, t("dataHealthLicenseSeats"), "#overview", t("dataHealthFixLicenseSeats"), editHref),
+        createHealthItem(hasPurchaseDocuments, t("dataHealthPurchaseDocument"), "#purchase", t("dataHealthFixPurchaseDocument"), "#purchase"),
+        createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthLicenseExpiry"), "#purchase", t("dataHealthFixExpiry"), editHref),
       ]
     : [
-        createHealthItem(Boolean(asset.serialNumber), t("dataHealthSerial"), "#overview"),
-        createHealthItem(Boolean(primaryAssetPhoto), t("dataHealthAssetPhoto"), "#photos"),
+        createHealthItem(Boolean(asset.serialNumber), t("dataHealthSerial"), "#overview", t("dataHealthFixIdentity"), editHref),
+        createHealthItem(Boolean(primaryAssetPhoto), t("dataHealthAssetPhoto"), "#photos", t("dataHealthFixPhoto"), "#photos"),
         createHealthItem(
           checklistMissingLabels.length === 0,
           checklistMissingLabels.length === 0
             ? t("dataHealthChecklistComplete")
             : t("dataHealthChecklistMissing", { count: checklistMissingLabels.length }),
+          "#photos",
+          t("dataHealthFixPhoto"),
           "#photos"
         ),
-        createHealthItem(hasPurchaseDocuments, t("dataHealthPurchaseDocument"), "#purchase"),
-        createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, "#ownership"),
-        createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthWarranty"), "#purchase"),
+        createHealthItem(hasPurchaseDocuments, t("dataHealthPurchaseDocument"), "#purchase", t("dataHealthFixPurchaseDocument"), "#purchase"),
+        createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, "#ownership", t("dataHealthFixResponsibility"), editHref),
+        createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthWarranty"), "#purchase", t("dataHealthFixExpiry"), editHref),
       ]
   const dataHealthDone = dataHealthItems.filter((item) => item.done).length
   const dataHealthTone = dataHealthDone === dataHealthItems.length ? "success" : dataHealthDone >= dataHealthItems.length - 2 ? "warning" : "danger"
+  const firstMissingHealthItem = dataHealthItems.find((item) => !item.done)
   const maintenanceSummary = openMaintenanceCount > 0
     ? t("openMaintenanceCount", { count: openMaintenanceCount })
     : latestMaintenanceTicket
@@ -522,15 +528,12 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
         result: latestAuditItem.auditResult ?? latestAuditItem.auditStatus,
       })
     : tCommon("noData")
-  const detailPath = `/${locale}/assets/${asset.id}`
-  const encodedAssetId = encodeURIComponent(asset.id)
   const checkoutHref = `/${locale}/asset-management/checkout?assetId=${encodedAssetId}`
   const checkinHref = activeCheckout
     ? `/${locale}/asset-management/checkin?checkoutId=${encodeURIComponent(activeCheckout.id)}`
     : "#handover"
   const transferHref = `/${locale}/asset-management/transfer?assetId=${encodedAssetId}`
   const maintenanceHref = `/${locale}/maintenance?assetId=${encodedAssetId}`
-  const editHref = `/${locale}/assets/${asset.id}/edit`
   const assignedAssetHref = licenseAssignedAsset ? `/${locale}/assets/${licenseAssignedAsset.id}` : "#overview"
   const latestDocumentHref = latestCheckout ? `/${locale}/asset-management/checkouts/${latestCheckout.id}` : "#handover"
   const lifecycle = getOwnershipLifecycle({
@@ -593,8 +596,8 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
       ? {
           label: t("activityDataHealth"),
           value: t("dataHealthProgress", { done: dataHealthDone, total: dataHealthItems.length }),
-          href: "#photos",
-          actionLabel: t("dataHealthNeedsReview"),
+          href: firstMissingHealthItem?.fixHref ?? firstMissingHealthItem?.href ?? "#overview",
+          actionLabel: firstMissingHealthItem?.actionLabel ?? t("dataHealthNeedsReview"),
           tone: dataHealthTone === "danger" ? "danger" as const : "warning" as const,
         }
       : null,
@@ -789,7 +792,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             {dataHealthItems.map((item) => (
               <a
                 key={item.label}
-                href={item.href}
+                href={item.done ? item.href : item.fixHref}
                 className="flex items-center gap-2 rounded-md bg-surface/80 px-2 py-1.5 text-sm transition-colors hover:bg-background"
               >
                 {item.done ? (
@@ -798,6 +801,11 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
                   <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
                 )}
                 <span className={item.done ? "text-muted-foreground" : "font-medium text-foreground"}>{item.label}</span>
+                {!item.done ? (
+                  <span className="ml-auto shrink-0 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+                    {item.actionLabel}
+                  </span>
+                ) : null}
               </a>
             ))}
           </div>
@@ -2106,8 +2114,8 @@ function buildAuditTimelineItems(
   }))
 }
 
-function createHealthItem(done: boolean, label: string, href: string) {
-  return { done, label, href }
+function createHealthItem(done: boolean, label: string, href: string, actionLabel: string, fixHref: string) {
+  return { done, label, href, actionLabel, fixHref }
 }
 
 function maskLicenseKey(value?: string | null) {
