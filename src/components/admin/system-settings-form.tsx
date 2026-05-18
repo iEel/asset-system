@@ -36,6 +36,13 @@ type SystemSettingsFormProps = {
     key: string
     value: string
     description: string
+    tabAssetNumbering: string
+    tabLabelTemplate: string
+    tabDocuments: string
+    tabOrganization: string
+    tabLdapLogin: string
+    tabLdapSync: string
+    tabAdvanced: string
     generalSettings: string
     assetTagFormat: string
     assetTagFormatDescription: string
@@ -176,6 +183,8 @@ type LdapSyncPreview = {
   }
 }
 
+type SettingsTabId = "asset-numbering" | "label-template" | "documents" | "organization" | "ldap-login" | "ldap-sync" | "advanced"
+
 const assetTagFormatTokens = [
   "companyCode",
   "assetCompanyCode",
@@ -254,6 +263,7 @@ function serializePrefixRows(rows: PrefixRow[]) {
 
 export function SystemSettingsForm({ settings, categories, labels }: SystemSettingsFormProps) {
   const router = useRouter()
+  const [activeTab, setActiveTab] = useState<SettingsTabId>("asset-numbering")
   const [saving, setSaving] = useState(false)
   const [testingLdap, setTestingLdap] = useState(false)
   const [syncingLdap, setSyncingLdap] = useState<"preview" | "apply" | null>(null)
@@ -285,6 +295,15 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
   const selectedSyncSchedulePreset = !customScheduleSelected && ldapSchedulePresets.some((preset) => preset.value === syncSchedule)
     ? syncSchedule
     : "custom"
+  const tabs: Array<{ id: SettingsTabId; label: string }> = [
+    { id: "asset-numbering", label: labels.tabAssetNumbering },
+    { id: "label-template", label: labels.tabLabelTemplate },
+    { id: "documents", label: labels.tabDocuments },
+    { id: "organization", label: labels.tabOrganization },
+    { id: "ldap-login", label: labels.tabLdapLogin },
+    { id: "ldap-sync", label: labels.tabLdapSync },
+    { id: "advanced", label: labels.tabAdvanced },
+  ]
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -414,6 +433,29 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="rounded-lg border border-border bg-surface p-2 shadow-sm">
+        <div className="flex gap-2 overflow-x-auto">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`h-10 whitespace-nowrap rounded-md px-3 text-sm font-medium transition-colors ${
+                  isActive ? "bg-primary text-white" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
+                aria-pressed={isActive}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {activeTab === "asset-numbering" ? (
+      <>
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.assetTagFormat} description={labels.assetTagFormatDescription} />
         <div className="space-y-4 px-4 py-4">
@@ -504,7 +546,10 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
           </Field>
         </div>
       </div>
+      </>
+      ) : null}
 
+      {activeTab === "label-template" ? (
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.labelPrintTemplate} description={labels.labelPrintTemplateDescription} />
         <div className="space-y-4 px-4 py-4">
@@ -549,7 +594,9 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
           </div>
         </div>
       </div>
+      ) : null}
 
+      {activeTab === "documents" ? (
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.operationDocumentNumbers} description={labels.operationDocumentNumbersDescription} />
         <div className="space-y-4 px-4 py-4">
@@ -604,7 +651,9 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
           </div>
         </div>
       </div>
+      ) : null}
 
+      {activeTab === "asset-numbering" ? (
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.categoryPrefixes} description={labels.categoryPrefixesDescription} />
         <div className="overflow-x-auto">
@@ -689,7 +738,9 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
           </button>
         </div>
       </div>
+      ) : null}
 
+      {activeTab === "organization" ? (
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.organizationDefaults} description={labels.organizationDefaultsDescription} />
         <div className="grid gap-4 px-4 py-4 md:grid-cols-2">
@@ -711,7 +762,9 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
           </Field>
         </div>
       </div>
+      ) : null}
 
+      {activeTab === "ldap-login" ? (
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.ldapSettings} description={labels.ldapSettingsDescription} />
         <div className="space-y-5 px-4 py-4">
@@ -831,7 +884,9 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
           </button>
         </div>
       </div>
+      ) : null}
 
+      {activeTab === "ldap-sync" ? (
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.ldapSyncStrategy} description={labels.ldapSyncStrategyDescription} />
         <div className="space-y-4 px-4 py-4">
@@ -974,8 +1029,9 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
           <SyncPreviewPanel labels={labels} preview={syncPreview} />
         </div>
       </div>
+      ) : null}
 
-      {generalSettings.length > 0 ? (
+      {activeTab === "advanced" && generalSettings.length > 0 ? (
         <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
           <SectionHeader title={labels.advancedSettings} description={labels.advancedSettingsDescription} />
           <div className="overflow-x-auto">
