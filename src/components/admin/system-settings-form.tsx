@@ -57,6 +57,10 @@ type SystemSettingsFormProps = {
     advancedSettingCount: string
     unsavedChanges: string
     noUnsavedChanges: string
+    changeReview: string
+    changeReviewDescription: string
+    beforeValue: string
+    afterValue: string
     generalSettings: string
     assetTagFormat: string
     assetTagFormatDescription: string
@@ -281,6 +285,12 @@ function normalizeSettingValue(key: string, value: string | undefined) {
   }
 
   return value ?? ""
+}
+
+function formatReviewValue(key: string, value: string | undefined) {
+  const normalized = normalizeSettingValue(key, value)
+  if (key.toLowerCase().includes("password") && normalized) return "********"
+  return normalized || "-"
 }
 
 export function SystemSettingsForm({ settings, categories, labels }: SystemSettingsFormProps) {
@@ -1141,6 +1151,36 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               ))}
             </tbody>
           </table>
+          </div>
+        </div>
+      ) : null}
+
+      {changedCount > 0 ? (
+        <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+          <SectionHeader title={labels.changeReview} description={labels.changeReviewDescription} />
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-border text-sm">
+              <thead className="bg-muted/40">
+                <tr>
+                  <Head>{labels.key}</Head>
+                  <Head>{labels.beforeValue}</Head>
+                  <Head>{labels.afterValue}</Head>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {changedSettings.map((setting) => (
+                  <tr key={setting.key} className="hover:bg-accent/50">
+                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{setting.key}</td>
+                    <td className="max-w-md break-words px-4 py-3 text-muted-foreground">
+                      {formatReviewValue(setting.key, initialValues[setting.key])}
+                    </td>
+                    <td className="max-w-md break-words px-4 py-3 font-medium text-foreground">
+                      {formatReviewValue(setting.key, effectiveValues[setting.key])}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       ) : null}
