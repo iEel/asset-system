@@ -9,8 +9,12 @@ import {
   ArrowRight,
   ClipboardCheck,
   Trash2,
+  ArrowDownRight,
+  ArrowUpRight,
+  Minus,
 } from "lucide-react"
 import { prisma } from "@/lib/db"
+import { cn } from "@/lib/utils"
 
 type DashboardPageProps = {
   params: Promise<{ locale: string }>
@@ -23,6 +27,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
+  const monthRange = getMonthRange(new Date())
 
   const [
     totalAssets,
@@ -35,6 +40,14 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     pendingAuditFindings,
     pendingDisposals,
     approvedDisposals,
+    currentMonthAssets,
+    previousMonthAssets,
+    currentMonthMaintenance,
+    previousMonthMaintenance,
+    currentMonthAuditFindings,
+    previousMonthAuditFindings,
+    currentMonthDisposals,
+    previousMonthDisposals,
   ] = await Promise.all([
     prisma.asset.count({ where: { isActive: true } }),
     prisma.asset.count({
@@ -76,6 +89,14 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     prisma.auditFinding.count({ where: { reviewStatus: "pending" } }),
     prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "pending" } }),
     prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "approved" } }),
+    prisma.asset.count({ where: { isActive: true, createdAt: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
+    prisma.asset.count({ where: { isActive: true, createdAt: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
+    prisma.maintenanceTicket.count({ where: { isActive: true, reportedDate: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
+    prisma.maintenanceTicket.count({ where: { isActive: true, reportedDate: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
+    prisma.auditFinding.count({ where: { reportedAt: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
+    prisma.auditFinding.count({ where: { reportedAt: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
+    prisma.disposalRequest.count({ where: { isActive: true, requestDate: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
+    prisma.disposalRequest.count({ where: { isActive: true, requestDate: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
   ])
 
   const kpiCards = [
@@ -120,6 +141,37 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       tone: "warning",
     },
   ]
+  const trendCards = [
+    {
+      label: t("trendAssetsCreated"),
+      href: `/${locale}/assets`,
+      current: currentMonthAssets,
+      previous: previousMonthAssets,
+      tone: "primary" as const,
+    },
+    {
+      label: t("trendMaintenanceOpened"),
+      href: `/${locale}/maintenance`,
+      current: currentMonthMaintenance,
+      previous: previousMonthMaintenance,
+      tone: "warning" as const,
+    },
+    {
+      label: t("trendAuditFindings"),
+      href: `/${locale}/audit/findings?status=all`,
+      current: currentMonthAuditFindings,
+      previous: previousMonthAuditFindings,
+      tone: "info" as const,
+    },
+    {
+      label: t("trendDisposalsRequested"),
+      href: `/${locale}/disposal`,
+      current: currentMonthDisposals,
+      previous: previousMonthDisposals,
+      tone: "danger" as const,
+    },
+  ]
+  const readableLogs = recentLogs.map((log) => formatDashboardLog(log, locale, t))
 
   return (
     <div>
@@ -177,7 +229,27 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         </div>
       </section>
 
-      {/* Placeholder sections */}
+      <section className="mb-8 rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-foreground">{t("monthlyTrendTitle")}</h2>
+          <p className="text-sm text-muted-foreground">{t("monthlyTrendSubtitle")}</p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {trendCards.map((card) => (
+            <TrendCard
+              key={card.label}
+              href={card.href}
+              label={card.label}
+              current={card.current}
+              previous={card.previous}
+              currentLabel={t("thisMonth")}
+              previousLabel={t("previousMonth")}
+              tone={card.tone}
+            />
+          ))}
+        </div>
+      </section>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold">{t("statusOverview")}</h2>
@@ -197,21 +269,215 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold">{t("recentActivity")}</h2>
           {recentLogs.length === 0 ? (
-            <div className="flex h-48 items-center justify-center text-muted-foreground">ยังไม่มีกิจกรรมล่าสุด</div>
+            <div className="flex h-48 items-center justify-center text-muted-foreground">{t("noRecentActivity")}</div>
           ) : (
             <div className="space-y-3">
-              {recentLogs.map((log) => (
-                <div key={log.id} className="rounded-md border border-border bg-background p-3 text-sm">
-                  <div className="font-medium text-foreground">{log.module} · {log.action}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {log.user?.displayName ?? log.user?.username ?? "-"} · {new Date(log.createdAt).toLocaleString("th-TH")}
+              {readableLogs.map((log) =>
+                log.href ? (
+                  <Link key={log.id} href={log.href} className="block rounded-md border border-border bg-background p-3 text-sm transition-colors hover:border-primary/40 hover:bg-primary/5">
+                    <ActivityLogContent log={log} />
+                  </Link>
+                ) : (
+                  <div key={log.id} className="rounded-md border border-border bg-background p-3 text-sm">
+                    <ActivityLogContent log={log} />
                   </div>
-                </div>
-              ))}
+                ),
+              )}
             </div>
           )}
         </div>
       </div>
     </div>
   )
+}
+
+type DashboardLog = {
+  id: string
+  module: string
+  action: string
+  recordId: string | null
+  newValue: string | null
+  oldValue: string | null
+  remark: string | null
+  createdAt: Date
+  user: { displayName: string | null; username: string } | null
+}
+
+type ReadableDashboardLog = {
+  id: string
+  title: string
+  detail: string
+  meta: string
+  href: string | null
+}
+
+type DashboardTranslator = {
+  (key: string): string
+  (key: string, values: Record<string, string | number | Date>): string
+}
+
+function TrendCard({
+  href,
+  label,
+  current,
+  previous,
+  currentLabel,
+  previousLabel,
+  tone,
+}: {
+  href: string
+  label: string
+  current: number
+  previous: number
+  currentLabel: string
+  previousLabel: string
+  tone: "primary" | "warning" | "info" | "danger"
+}) {
+  const delta = current - previous
+  const percent = previous > 0 ? Math.round((delta / previous) * 100) : current > 0 ? 100 : 0
+  const trendClass = delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-foreground"
+  const toneClass =
+    tone === "danger"
+      ? "border-danger/30 bg-danger/5"
+      : tone === "warning"
+        ? "border-warning/30 bg-warning/5"
+        : tone === "info"
+          ? "border-info/30 bg-info/5"
+          : "border-primary/30 bg-primary/5"
+
+  return (
+    <Link href={href} className={cn("rounded-md border p-4 transition-colors hover:bg-accent", toneClass)}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-foreground">{label}</p>
+          <p className="mt-2 text-3xl font-bold text-foreground">{current.toLocaleString("th-TH")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {currentLabel} · {previousLabel}: {previous.toLocaleString("th-TH")}
+          </p>
+        </div>
+        <div className={cn("inline-flex items-center gap-1 rounded-full bg-surface px-2 py-1 text-xs font-medium", trendClass)}>
+          {delta > 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : delta < 0 ? <ArrowDownRight className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
+          {delta === 0 ? "0%" : `${delta > 0 ? "+" : ""}${percent}%`}
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+function ActivityLogContent({ log }: { log: ReadableDashboardLog }) {
+  return (
+    <div>
+      <div className="font-medium text-foreground">{log.title}</div>
+      <div className="mt-1 text-sm text-muted-foreground">{log.detail}</div>
+      <div className="mt-1 text-xs text-muted-foreground">{log.meta}</div>
+    </div>
+  )
+}
+
+function getMonthRange(now: Date) {
+  const currentStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const nextStart = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  return { previousStart, currentStart, nextStart }
+}
+
+function formatDashboardLog(log: DashboardLog, locale: string, t: DashboardTranslator): ReadableDashboardLog {
+  const userLabel = log.user?.displayName ?? log.user?.username ?? t("systemUser")
+  const moduleLabel = getDashboardModuleLabel(log.module, t)
+  const actionLabel = getDashboardActionLabel(log.action, t)
+  const recordLabel = getLogRecordLabel(log)
+  const href = getLogHref(log, locale)
+
+  return {
+    id: log.id,
+    title: recordLabel ? t("activityTitleWithRecord", { action: actionLabel, module: moduleLabel, record: recordLabel }) : t("activityTitle", { action: actionLabel, module: moduleLabel }),
+    detail: log.remark || t("activityDetail", { user: userLabel }),
+    meta: new Date(log.createdAt).toLocaleString("th-TH"),
+    href,
+  }
+}
+
+function getDashboardModuleLabel(module: string, t: DashboardTranslator) {
+  const labels: Record<string, string> = {
+    asset: t("module_asset"),
+    maintenance: t("module_maintenance"),
+    disposal: t("module_disposal"),
+    audit: t("module_audit"),
+    employee: t("module_employee"),
+    role: t("module_role"),
+    user: t("module_user"),
+    setting: t("module_setting"),
+    company: t("module_company"),
+    branch: t("module_branch"),
+    department: t("module_department"),
+    location: t("module_location"),
+    category: t("module_category"),
+    brand: t("module_brand"),
+    supplier: t("module_supplier"),
+    purchase_document: t("module_purchaseDocument"),
+  }
+  return labels[module] ?? module
+}
+
+function getDashboardActionLabel(action: string, t: DashboardTranslator) {
+  const labels: Record<string, string> = {
+    create: t("action_create"),
+    update: t("action_update"),
+    delete: t("action_delete"),
+    login: t("action_login"),
+    checkout: t("action_checkout"),
+    checkin: t("action_checkin"),
+    transfer: t("action_transfer"),
+    approve: t("action_approve"),
+    reject: t("action_reject"),
+    close: t("action_close"),
+    upload: t("action_upload"),
+  }
+  return labels[action] ?? action.replaceAll("_", " ")
+}
+
+function getLogRecordLabel(log: DashboardLog) {
+  const values = [parseLogJson(log.newValue), parseLogJson(log.oldValue)].filter((value): value is Record<string, unknown> => Boolean(value))
+  for (const value of values) {
+    const label = getFirstString(value, ["assetTag", "repairNo", "disposalNo", "auditNo", "documentNo", "code", "nameTh", "name", "title", "username", "email"])
+    if (label) return label
+  }
+  return log.recordId
+}
+
+function parseLogJson(value?: string | null) {
+  if (!value) return null
+  try {
+    const parsed = JSON.parse(value) as unknown
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null
+  } catch {
+    return null
+  }
+}
+
+function getFirstString(record: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === "string" && value.trim()) return value
+  }
+  return null
+}
+
+function getLogHref(log: DashboardLog, locale: string) {
+  if (log.module === "asset" && log.recordId) return `/${locale}/assets/${log.recordId}`
+  if (log.module === "maintenance" && log.recordId) return `/${locale}/maintenance/${log.recordId}`
+  if (log.module === "disposal" && log.recordId) return `/${locale}/disposal/${log.recordId}`
+  if (log.module === "audit") return `/${locale}/audit/findings`
+  if (log.module === "employee") return `/${locale}/master-data/employees`
+  if (log.module === "role") return `/${locale}/admin/roles`
+  if (log.module === "user") return `/${locale}/admin/users`
+  if (log.module === "setting") return `/${locale}/admin/settings`
+  if (log.module === "company") return `/${locale}/master-data/companies`
+  if (log.module === "branch") return `/${locale}/master-data/branches`
+  if (log.module === "department") return `/${locale}/master-data/departments`
+  if (log.module === "location") return `/${locale}/master-data/locations`
+  if (log.module === "category") return `/${locale}/master-data/categories`
+  if (log.module === "brand") return `/${locale}/master-data/brands`
+  if (log.module === "supplier") return `/${locale}/master-data/suppliers`
+  return null
 }
