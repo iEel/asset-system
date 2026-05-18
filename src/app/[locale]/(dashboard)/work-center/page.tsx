@@ -85,7 +85,7 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
       where: { auditStatus: "pending", auditRound: { isActive: true, status: { not: "closed" } } },
     }),
     prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "pending" } }),
-    prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "approved", completedAt: null } }),
+    prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "approved" } }),
     prisma.asset.findMany({
       where: {
         isActive: true,

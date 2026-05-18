@@ -147,7 +147,19 @@
     "assetByCategory": "Assets by Category",
     "assetByStatus": "Assets by Status",
     "recentActivity": "Recent Activity",
-    "alerts": "Alerts"
+    "alerts": "Alerts",
+    "actionableTitle": "Urgent work to handle",
+    "actionableSubtitle": "Click a card to open the related page with context filters",
+    "openWorkCenter": "Open Work Center",
+    "overdueMaintenance": "Overdue repairs",
+    "overdueMaintenanceDetail": "Tickets past their SLA due date",
+    "pendingAuditFindings": "Findings pending review",
+    "pendingAuditFindingsDetail": "Variances not yet decided",
+    "pendingDisposals": "Disposals pending approval",
+    "pendingDisposalsDetail": "Requests waiting for approval",
+    "approvedDisposals": "Approved pending execution",
+    "approvedDisposalsDetail": "Actual disposal execution is not recorded yet",
+    "statusOverview": "Actionable status overview"
   },
   "workCenter": {
     "title": "Follow-up Work Center",

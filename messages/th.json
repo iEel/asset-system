@@ -147,7 +147,19 @@
     "assetByCategory": "ทรัพย์สินตามหมวดหมู่",
     "assetByStatus": "ทรัพย์สินตามสถานะ",
     "recentActivity": "กิจกรรมล่าสุด",
-    "alerts": "การแจ้งเตือน"
+    "alerts": "การแจ้งเตือน",
+    "actionableTitle": "งานเร่งด่วนที่ควรจัดการ",
+    "actionableSubtitle": "กดการ์ดเพื่อไปหน้าที่เกี่ยวข้องพร้อมตัวกรอง",
+    "openWorkCenter": "เปิดศูนย์งานค้าง",
+    "overdueMaintenance": "ซ่อมเกินกำหนด",
+    "overdueMaintenanceDetail": "ใบซ่อมที่เลยกำหนด SLA",
+    "pendingAuditFindings": "Finding รอตรวจ",
+    "pendingAuditFindingsDetail": "ผลต่างที่ยังไม่ถูกตัดสินใจ",
+    "pendingDisposals": "ตัดจำหน่ายรออนุมัติ",
+    "pendingDisposalsDetail": "คำขอที่ยังรอผู้อนุมัติ",
+    "approvedDisposals": "อนุมัติแล้วรอดำเนินการ",
+    "approvedDisposalsDetail": "ยังไม่ได้บันทึกการตัดจำหน่ายจริง",
+    "statusOverview": "ภาพรวมสถานะที่กดไปทำงานต่อได้"
   },
   "workCenter": {
     "title": "ศูนย์แจ้งเตือนงานค้าง",
