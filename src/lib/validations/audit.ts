@@ -2,6 +2,14 @@ import { z } from "zod"
 import { optionalText } from "@/lib/validations/shared"
 
 const auditStatuses = ["draft", "open", "closed"] as const
+export const auditRiskPresets = [
+  "all",
+  "data_quality",
+  "high_value",
+  "stale_movement",
+  "repair_history",
+  "license_expiring",
+] as const
 
 export const auditRoundSchema = z
   .object({
@@ -15,6 +23,8 @@ export const auditRoundSchema = z
     scopeCustodianId: optionalText,
     scopeStatusId: optionalText,
     scopeConditionId: optionalText,
+    riskPreset: z.enum(auditRiskPresets).default("all"),
+    sampleRate: z.coerce.number().int().min(1).max(100).default(100),
     startDate: z.coerce.date(),
     endDate: z.coerce.date(),
     status: z.enum(auditStatuses).default("draft"),

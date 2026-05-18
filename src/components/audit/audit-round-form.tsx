@@ -19,6 +19,8 @@ type AuditRoundOptions = {
   conditions: Option[]
 }
 
+const riskPresetValues = ["all", "data_quality", "high_value", "stale_movement", "repair_history", "license_expiring"] as const
+
 export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   const locale = useLocale()
   const router = useRouter()
@@ -36,6 +38,8 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
     scopeCustodianId: "",
     scopeStatusId: "",
     scopeConditionId: "",
+    riskPreset: "all",
+    sampleRate: "100",
     startDate: new Date().toISOString().slice(0, 10),
     endDate: new Date().toISOString().slice(0, 10),
     status: "draft",
@@ -90,6 +94,33 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
             <option value="open">{t("statusOpen")}</option>
           </Select>
           <div />
+          <div className="md:col-span-2 rounded-lg border border-border bg-muted/20 p-4">
+            <div className="mb-4">
+              <h2 className="text-sm font-semibold text-foreground">{t("riskSampling")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("riskSamplingHelp")}</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Select label={t("riskPreset")} value={values.riskPreset} onChange={(value) => setField("riskPreset", value)}>
+                {riskPresetValues.map((preset) => (
+                  <option key={preset} value={preset}>
+                    {t(`riskPreset_${preset}`)}
+                  </option>
+                ))}
+              </Select>
+              <Field label={t("sampleRate")} required>
+                <input
+                  type="number"
+                  value={values.sampleRate}
+                  onChange={(event) => setField("sampleRate", event.target.value)}
+                  required
+                  min={1}
+                  max={100}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+                <p className="mt-1.5 text-xs text-muted-foreground">{t("sampleRateHelp")}</p>
+              </Field>
+            </div>
+          </div>
           <Select label={t("scopeCompany")} value={values.scopeCompanyId} onChange={(value) => setField("scopeCompanyId", value)}>
             <OptionList emptyLabel={t("all")} options={options.companies} />
           </Select>
