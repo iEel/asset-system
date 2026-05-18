@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { FileDropzone } from "@/components/ui/file-dropzone"
 
 type Option = { id: string; label: string }
 
@@ -14,16 +15,21 @@ export function DisposalRequestForm({
   employees,
   initialAssetId,
   initialReason,
+  initialSourceType,
+  initialSourceId,
 }: {
   assets: Option[]
   employees: Option[]
   initialAssetId?: string
   initialReason?: string
+  initialSourceType?: string
+  initialSourceId?: string
 }) {
   const router = useRouter()
   const t = useTranslations("disposalPage")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
+  const [evidenceFiles, setEvidenceFiles] = useState<File[]>([])
   const [values, setValues] = useState({
     assetId: initialAssetId ?? "",
     disposalType: "dispose",
@@ -54,18 +60,36 @@ export function DisposalRequestForm({
           approverId: values.approverId || null,
           saleValue: values.saleValue || null,
           salvageValue: values.salvageValue || null,
+          sourceType: initialSourceType || null,
+          sourceId: initialSourceId || null,
         }),
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      for (const file of evidenceFiles) {
+        const formData = new FormData()
+        formData.append("file", file)
+        const uploadResponse = await fetch(`/api/disposal-requests/${payload.id}/attachments`, {
+          method: "POST",
+          body: formData,
+        })
+        const uploadPayload = await uploadResponse.json().catch(() => null)
+        if (!uploadResponse.ok) throw new Error(uploadPayload?.error ?? t("evidenceUploadFailed"))
+      }
       toast.success(t("createSuccess"))
       setValues((current) => ({ ...current, assetId: "", reason: "", saleValue: "", salvageValue: "" }))
+      setEvidenceFiles([])
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))
     } finally {
       setSaving(false)
     }
+  }
+
+  function addEvidenceFile(file: File | null) {
+    if (!file) return
+    setEvidenceFiles((current) => [...current, file])
   }
 
   return (
@@ -116,6 +140,35 @@ export function DisposalRequestForm({
               className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
           </Field>
+        </div>
+        <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
+          <div className="mb-3 text-sm font-semibold text-foreground">{t("requestEvidence")}</div>
+          <FileDropzone
+            file={null}
+            onFileChange={addEvidenceFile}
+            disabled={saving}
+            accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif,application/pdf"
+            capture="environment"
+            title={t("dropEvidenceTitle")}
+            hint={t("dropEvidenceSelected")}
+            browseLabel={t("dropEvidenceHint")}
+          />
+          {evidenceFiles.length > 0 ? (
+            <div className="mt-3 space-y-2">
+              {evidenceFiles.map((file, index) => (
+                <div key={`${file.name}-${index}`} className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2 text-sm">
+                  <span className="min-w-0 truncate text-foreground">{file.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setEvidenceFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                    className="text-xs font-medium text-danger"
+                  >
+                    {tCommon("delete")}
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className="md:col-span-2 flex justify-end">
           <button

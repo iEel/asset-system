@@ -124,6 +124,7 @@ export function DisposalDecisionButton({
                 <select
                   value={values.nextStatusId}
                   required
+                  disabled={values.decision === "approve"}
                   onChange={(event) => setField("nextStatusId", event.target.value)}
                   className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 >
@@ -133,6 +134,9 @@ export function DisposalDecisionButton({
                     </option>
                   ))}
                 </select>
+                {values.decision === "approve" ? (
+                  <p className="mt-1 text-xs text-muted-foreground">{t("approveKeepsPendingDisposal")}</p>
+                ) : null}
               </Field>
               <Field label={t("saleValue")}>
                 <input

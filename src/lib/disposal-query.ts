@@ -8,7 +8,7 @@ export type DisposalListParams = {
   dateTo?: string
 }
 
-export const disposalStatusFilters = ["pending", "approved", "rejected"] as const
+export const disposalStatusFilters = ["pending", "approved", "disposed", "rejected"] as const
 export const disposalTypeFilters = ["sell", "donate", "destroy", "lost", "dispose"] as const
 
 export function parseDisposalListParams(input: URLSearchParams | DisposalListParams) {

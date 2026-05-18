@@ -16,6 +16,8 @@ export const disposalRequestSchema = z.object({
   approverId: optionalText,
   saleValue: optionalDecimal,
   salvageValue: optionalDecimal,
+  sourceType: optionalText,
+  sourceId: optionalText,
 })
 
 export const disposalDecisionSchema = z.object({
@@ -26,5 +28,17 @@ export const disposalDecisionSchema = z.object({
   approvalRemark: optionalText,
 })
 
+export const disposalExecutionSchema = z.object({
+  executionDate: z.coerce.date(),
+  executedById: z.string().trim().min(1),
+  nextStatusId: z.string().trim().min(1),
+  recipientName: optionalText,
+  documentNo: optionalText,
+  actualSaleValue: optionalDecimal,
+  actualSalvageValue: optionalDecimal,
+  executionRemark: optionalText,
+})
+
 export type DisposalRequestInput = z.infer<typeof disposalRequestSchema>
 export type DisposalDecisionInput = z.infer<typeof disposalDecisionSchema>
+export type DisposalExecutionInput = z.infer<typeof disposalExecutionSchema>

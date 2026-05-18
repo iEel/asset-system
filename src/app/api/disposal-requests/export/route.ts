@@ -11,14 +11,24 @@ const disposalExportColumns = [
   { header: "Asset Name", key: "assetName", width: 32 },
   { header: "Disposal Type", key: "disposalType", width: 18 },
   { header: "Reason", key: "reason", width: 40 },
+  { header: "Source Type", key: "sourceType", width: 18 },
+  { header: "Source ID", key: "sourceId", width: 28 },
   { header: "Requested By", key: "requestedBy", width: 28 },
   { header: "Approver", key: "approver", width: 28 },
   { header: "Status", key: "status", width: 18 },
   { header: "Request Date", key: "requestDate", width: 18 },
   { header: "Reviewed At", key: "approvedAt", width: 18 },
+  { header: "Execution Date", key: "executionDate", width: 18 },
+  { header: "Executed By", key: "executedBy", width: 28 },
+  { header: "Recipient / Buyer", key: "recipientName", width: 28 },
+  { header: "Reference Document No.", key: "documentNo", width: 24 },
   { header: "Sale Value", key: "saleValue", width: 16 },
   { header: "Salvage Value", key: "salvageValue", width: 16 },
+  { header: "Actual Sale Value", key: "actualSaleValue", width: 18 },
+  { header: "Actual Salvage Value", key: "actualSalvageValue", width: 20 },
+  { header: "Completed At", key: "completedAt", width: 18 },
   { header: "Review Remark", key: "approvalRemark", width: 40 },
+  { header: "Execution Remark", key: "executionRemark", width: 40 },
 ]
 
 export async function GET(request: NextRequest) {
@@ -33,6 +43,7 @@ export async function GET(request: NextRequest) {
         asset: { select: { assetTag: true, name: true } },
         requestedBy: { select: { code: true, fullNameTh: true } },
         approver: { select: { code: true, fullNameTh: true } },
+        executedBy: { select: { code: true, fullNameTh: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 5000,
@@ -48,19 +59,31 @@ export async function GET(request: NextRequest) {
         assetName: item.asset.name,
         disposalType: item.disposalType,
         reason: item.reason,
+        sourceType: item.sourceType ?? "",
+        sourceId: item.sourceId ?? "",
         requestedBy: `${item.requestedBy.code} - ${item.requestedBy.fullNameTh}`,
         approver: item.approver ? `${item.approver.code} - ${item.approver.fullNameTh}` : "",
         status: item.requestStatus,
         requestDate: toExcelDate(item.requestDate),
         approvedAt: toExcelDate(item.approvedAt),
+        executionDate: toExcelDate(item.executionDate),
+        executedBy: item.executedBy ? `${item.executedBy.code} - ${item.executedBy.fullNameTh}` : "",
+        recipientName: item.recipientName ?? "",
+        documentNo: item.documentNo ?? "",
         saleValue: item.saleValue == null ? "" : Number(item.saleValue),
         salvageValue: item.salvageValue == null ? "" : Number(item.salvageValue),
+        actualSaleValue: item.actualSaleValue == null ? "" : Number(item.actualSaleValue),
+        actualSalvageValue: item.actualSalvageValue == null ? "" : Number(item.actualSalvageValue),
+        completedAt: toExcelDate(item.completedAt),
         approvalRemark: item.approvalRemark ?? "",
+        executionRemark: item.executionRemark ?? "",
       }))
     )
     styleWorksheetHeader(worksheet)
     worksheet.getColumn("saleValue").numFmt = "#,##0.00"
     worksheet.getColumn("salvageValue").numFmt = "#,##0.00"
+    worksheet.getColumn("actualSaleValue").numFmt = "#,##0.00"
+    worksheet.getColumn("actualSalvageValue").numFmt = "#,##0.00"
 
     const buffer = await workbook.xlsx.writeBuffer()
     return workbookResponse(buffer, `disposal-requests-${new Date().toISOString().slice(0, 10)}.xlsx`)

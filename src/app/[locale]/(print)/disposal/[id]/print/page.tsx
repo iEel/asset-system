@@ -16,32 +16,36 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
   const tAsset = await getTranslations("asset")
   const tCommon = await getTranslations("common")
 
-  const disposalRequest = await prisma.disposalRequest.findFirst({
-    where: { id, isActive: true },
-    include: {
-      asset: {
-        select: {
-          id: true,
-          assetTag: true,
-          name: true,
-          serialNumber: true,
-          fixedAssetCode: true,
-          purchasePrice: true,
-          company: { select: { code: true, nameTh: true } },
-          branch: { select: { code: true, name: true } },
-          category: { select: { code: true, name: true } },
-          brand: { select: { name: true } },
-          model: { select: { name: true } },
-          status: { select: { nameTh: true } },
-          condition: { select: { nameTh: true } },
-          currentLocation: { select: { code: true, name: true } },
-          custodian: { select: { code: true, fullNameTh: true } },
+  const [disposalRequest, evidenceCount] = await Promise.all([
+    prisma.disposalRequest.findFirst({
+      where: { id, isActive: true },
+      include: {
+        asset: {
+          select: {
+            id: true,
+            assetTag: true,
+            name: true,
+            serialNumber: true,
+            fixedAssetCode: true,
+            purchasePrice: true,
+            company: { select: { code: true, nameTh: true } },
+            branch: { select: { code: true, name: true } },
+            category: { select: { code: true, name: true } },
+            brand: { select: { name: true } },
+            model: { select: { name: true } },
+            status: { select: { nameTh: true } },
+            condition: { select: { nameTh: true } },
+            currentLocation: { select: { code: true, name: true } },
+            custodian: { select: { code: true, fullNameTh: true } },
+          },
         },
+        requestedBy: { select: { code: true, fullNameTh: true } },
+        approver: { select: { code: true, fullNameTh: true } },
+        executedBy: { select: { code: true, fullNameTh: true } },
       },
-      requestedBy: { select: { code: true, fullNameTh: true } },
-      approver: { select: { code: true, fullNameTh: true } },
-    },
-  })
+    }),
+    prisma.attachment.count({ where: { module: "disposal", referenceId: id, isActive: true } }),
+  ])
   if (!disposalRequest) notFound()
 
   const statusLabel =
@@ -49,9 +53,12 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
       ? t("statuses.pending")
       : disposalRequest.requestStatus === "approved"
         ? t("statuses.approved")
-        : disposalRequest.requestStatus === "rejected"
-          ? t("statuses.rejected")
-          : disposalRequest.requestStatus
+        : disposalRequest.requestStatus === "disposed"
+          ? t("statuses.disposed")
+          : disposalRequest.requestStatus === "rejected"
+            ? t("statuses.rejected")
+            : disposalRequest.requestStatus
+  const sourceLabel = formatSource(disposalRequest.sourceType, disposalRequest.sourceId)
 
   return (
     <OperationDocumentPrint
@@ -66,6 +73,7 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
           fields: [
             { label: t("disposalNo"), value: disposalRequest.disposalNo },
             { label: tCommon("status"), value: statusLabel },
+            { label: t("source"), value: sourceLabel },
             { label: t("disposalType"), value: t(`types.${disposalRequest.disposalType}`) },
             { label: t("requestedBy"), value: `${disposalRequest.requestedBy.code} - ${disposalRequest.requestedBy.fullNameTh}` },
             { label: t("requestDate"), value: formatDateTime(disposalRequest.requestDate) },
@@ -73,6 +81,7 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
             { label: t("approvedAt"), value: formatDateTime(disposalRequest.approvedAt) },
             { label: t("saleValue"), value: disposalRequest.saleValue == null ? null : formatCurrency(Number(disposalRequest.saleValue)) },
             { label: t("salvageValue"), value: disposalRequest.salvageValue == null ? null : formatCurrency(Number(disposalRequest.salvageValue)) },
+            { label: t("requestEvidence"), value: `${evidenceCount}` },
           ],
         },
         {
@@ -101,6 +110,19 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
           title: t("decisionDetail"),
           fields: [{ label: t("approvalRemark"), value: disposalRequest.approvalRemark }],
         },
+        {
+          title: t("executionDetail"),
+          fields: [
+            { label: t("executionDate"), value: formatDateTime(disposalRequest.executionDate) },
+            { label: t("executedBy"), value: disposalRequest.executedBy ? `${disposalRequest.executedBy.code} - ${disposalRequest.executedBy.fullNameTh}` : null },
+            { label: t("recipientName"), value: disposalRequest.recipientName },
+            { label: t("documentNo"), value: disposalRequest.documentNo },
+            { label: t("actualSaleValue"), value: disposalRequest.actualSaleValue == null ? null : formatCurrency(Number(disposalRequest.actualSaleValue)) },
+            { label: t("actualSalvageValue"), value: disposalRequest.actualSalvageValue == null ? null : formatCurrency(Number(disposalRequest.actualSalvageValue)) },
+            { label: t("completedAt"), value: formatDateTime(disposalRequest.completedAt) },
+            { label: t("executionRemark"), value: disposalRequest.executionRemark },
+          ],
+        },
       ]}
       signatures={[
         { title: t("requestedBy"), helper: t("signatureDate") },
@@ -109,4 +131,9 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
       ]}
     />
   )
+}
+
+function formatSource(sourceType: string | null, sourceId: string | null) {
+  if (!sourceType && !sourceId) return null
+  return [sourceType, sourceId].filter(Boolean).join(" / ")
 }

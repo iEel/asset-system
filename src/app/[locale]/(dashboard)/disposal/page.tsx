@@ -14,7 +14,7 @@ import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type DisposalPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string; status?: string; disposalType?: string; dateFrom?: string; dateTo?: string; assetId?: string; reason?: string }>
+  searchParams: Promise<{ search?: string; status?: string; disposalType?: string; dateFrom?: string; dateTo?: string; assetId?: string; reason?: string; sourceType?: string; sourceId?: string }>
 }
 
 export default async function DisposalPage({ params, searchParams }: DisposalPageProps) {
@@ -57,6 +57,8 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
           employees={options.employees}
           initialAssetId={rawSearchParams.assetId}
           initialReason={rawSearchParams.reason}
+          initialSourceType={rawSearchParams.sourceType}
+          initialSourceId={rawSearchParams.sourceId}
         />
       ) : null}
 
@@ -82,6 +84,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
               <option value="">{tCommon("all")}</option>
               <option value="pending">{t("statuses.pending")}</option>
               <option value="approved">{t("statuses.approved")}</option>
+              <option value="disposed">{t("statuses.disposed")}</option>
               <option value="rejected">{t("statuses.rejected")}</option>
             </select>
           </label>
@@ -209,6 +212,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                       <DisposalStatusBadge status={request.requestStatus} labels={{
                         pending: t("statuses.pending"),
                         approved: t("statuses.approved"),
+                        disposed: t("statuses.disposed"),
                         rejected: t("statuses.rejected"),
                       }} />
                     </td>
@@ -245,7 +249,7 @@ function DisposalStatusBadge({
   labels,
 }: {
   status: string
-  labels: { pending: string; approved: string; rejected: string }
+  labels: { pending: string; approved: string; disposed: string; rejected: string }
 }) {
   if (status === "pending") return <ActiveBadge label={labels.pending} />
   if (status === "approved") {
@@ -259,6 +263,13 @@ function DisposalStatusBadge({
     return (
       <span className="inline-flex rounded-full bg-danger/10 px-2 py-1 text-xs font-medium text-danger">
         {labels.rejected}
+      </span>
+    )
+  }
+  if (status === "disposed") {
+    return (
+      <span className="inline-flex rounded-full bg-success/10 px-2 py-1 text-xs font-medium text-success">
+        {labels.disposed}
       </span>
     )
   }

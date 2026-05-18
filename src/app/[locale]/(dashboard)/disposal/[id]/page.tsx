@@ -3,9 +3,13 @@ import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { ArrowLeft, ClipboardCheck, FileText, History, Printer, Trash2 } from "lucide-react"
 import { prisma } from "@/lib/db"
+import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
+import { getDisposalOptions } from "@/lib/disposal-options"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
+import { DisposalAttachments } from "@/components/disposal/disposal-attachments"
+import { DisposalExecutionButton } from "@/components/disposal/disposal-execution-button"
 
 type DisposalDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -13,7 +17,9 @@ type DisposalDetailPageProps = {
 
 export default async function DisposalDetailPage({ params }: DisposalDetailPageProps) {
   const { locale, id } = await params
-  await requirePagePermission(locale, "disposal", "view")
+  const user = await requirePagePermission(locale, "disposal", "view")
+  const canApprove = hasPermission(user, "disposal", "approve")
+  const canEdit = hasPermission(user, "disposal", "edit")
   const t = await getTranslations("disposalPage")
   const tAsset = await getTranslations("asset")
   const tCommon = await getTranslations("common")
@@ -42,19 +48,28 @@ export default async function DisposalDetailPage({ params }: DisposalDetailPageP
       },
       requestedBy: { select: { code: true, fullNameTh: true } },
       approver: { select: { code: true, fullNameTh: true } },
+      executedBy: { select: { code: true, fullNameTh: true } },
     },
   })
   if (!disposalRequest) notFound()
 
-  const movements = await prisma.assetMovement.findMany({
-    where: { referenceType: "disposal", referenceId: disposalRequest.id },
-    orderBy: { performedAt: "desc" },
-  })
+  const [movements, attachments, options] = await Promise.all([
+    prisma.assetMovement.findMany({
+      where: { referenceType: "disposal", referenceId: disposalRequest.id },
+      orderBy: { performedAt: "desc" },
+    }),
+    prisma.attachment.findMany({
+      where: { module: "disposal", referenceId: disposalRequest.id, isActive: true },
+      orderBy: { uploadedAt: "desc" },
+    }),
+    canApprove || canEdit ? getDisposalOptions() : Promise.resolve(null),
+  ])
   const movementLabels = await getMovementDisplayLabels(movements)
 
   const statusLabels = {
     pending: t("statuses.pending"),
     approved: t("statuses.approved"),
+    disposed: t("statuses.disposed"),
     rejected: t("statuses.rejected"),
   }
 
@@ -81,6 +96,17 @@ export default async function DisposalDetailPage({ params }: DisposalDetailPageP
             <Printer className="h-4 w-4" />
             {t("printDisposal")}
           </Link>
+          {disposalRequest.requestStatus === "approved" && options ? (
+            <DisposalExecutionButton
+              requestId={disposalRequest.id}
+              disposalNo={disposalRequest.disposalNo}
+              disposalType={disposalRequest.disposalType}
+              statuses={options.statuses}
+              employees={options.employees}
+              defaultActualSaleValue={disposalRequest.actualSaleValue?.toString() ?? disposalRequest.saleValue?.toString()}
+              defaultActualSalvageValue={disposalRequest.actualSalvageValue?.toString() ?? disposalRequest.salvageValue?.toString()}
+            />
+          ) : null}
           <StatusBadge status={disposalRequest.requestStatus} labels={statusLabels} />
         </div>
       </div>
@@ -102,6 +128,7 @@ export default async function DisposalDetailPage({ params }: DisposalDetailPageP
               <Info label={t("saleValue")} value={disposalRequest.saleValue == null ? null : formatCurrency(Number(disposalRequest.saleValue))} />
               <Info label={t("salvageValue")} value={disposalRequest.salvageValue == null ? null : formatCurrency(Number(disposalRequest.salvageValue))} />
               <Info label={t("approvedAt")} value={formatDateTime(disposalRequest.approvedAt)} />
+              <Info label={t("source")} value={formatSource(disposalRequest.sourceType, disposalRequest.sourceId)} />
             </div>
           </section>
 
@@ -116,6 +143,25 @@ export default async function DisposalDetailPage({ params }: DisposalDetailPageP
               {t("decisionDetail")}
             </h2>
             <TextBlock label={t("approvalRemark")} value={disposalRequest.approvalRemark} />
+          </section>
+
+          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
+              <ClipboardCheck className="h-5 w-5 text-primary" />
+              {t("executionDetail")}
+            </h2>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <Info label={t("executionDate")} value={formatDateTime(disposalRequest.executionDate)} />
+              <Info label={t("executedBy")} value={disposalRequest.executedBy ? `${disposalRequest.executedBy.code} - ${disposalRequest.executedBy.fullNameTh}` : null} />
+              <Info label={t("recipientName")} value={disposalRequest.recipientName} />
+              <Info label={t("documentNo")} value={disposalRequest.documentNo} />
+              <Info label={t("actualSaleValue")} value={disposalRequest.actualSaleValue == null ? null : formatCurrency(Number(disposalRequest.actualSaleValue))} />
+              <Info label={t("actualSalvageValue")} value={disposalRequest.actualSalvageValue == null ? null : formatCurrency(Number(disposalRequest.actualSalvageValue))} />
+              <Info label={t("completedAt")} value={formatDateTime(disposalRequest.completedAt)} />
+            </div>
+            <div className="mt-5">
+              <TextBlock label={t("executionRemark")} value={disposalRequest.executionRemark} />
+            </div>
           </section>
 
           <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
@@ -178,10 +224,17 @@ export default async function DisposalDetailPage({ params }: DisposalDetailPageP
               </Link>
             </div>
           </section>
+
+          <DisposalAttachments requestId={disposalRequest.id} attachments={attachments} />
         </aside>
       </div>
     </div>
   )
+}
+
+function formatSource(sourceType?: string | null, sourceId?: string | null) {
+  if (!sourceType && !sourceId) return "-"
+  return [sourceType, sourceId].filter(Boolean).join(" / ")
 }
 
 function Info({ label, value }: { label: string; value?: string | number | null }) {
@@ -209,6 +262,8 @@ function StatusBadge({ status, labels }: { status: string; labels: Record<string
   const className =
     status === "approved"
       ? "bg-primary/10 text-primary"
+      : status === "disposed"
+        ? "bg-success/10 text-success"
       : status === "rejected"
         ? "bg-danger/10 text-danger"
         : status === "pending"

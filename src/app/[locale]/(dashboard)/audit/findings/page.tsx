@@ -21,6 +21,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   const user = await requirePagePermission(locale, "audit", "view")
   const canEdit = hasPermission(user, "audit", "edit")
   const canApprove = hasPermission(user, "audit", "approve")
+  const canCreateDisposal = hasPermission(user, "disposal", "create")
 
   const t = await getTranslations("auditFinding")
   const tCommon = await getTranslations("common")
@@ -162,6 +163,14 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                       employees={employeeOptions}
                     />
                   ) : null}
+                  {canCreateDisposal && finding.asset ? (
+                    <Link
+                      href={`/${locale}/disposal?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`}
+                      className="inline-flex h-10 items-center justify-center rounded-md border border-warning/40 bg-warning/5 px-3 text-sm font-medium text-warning"
+                    >
+                      {t("openDisposalRequest")}
+                    </Link>
+                  ) : null}
                 </div>
               </div>
             ))
@@ -238,6 +247,14 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                           employees={employeeOptions}
                         />
                       ) : "-"}
+                      {canCreateDisposal && finding.asset ? (
+                        <Link
+                          href={`/${locale}/disposal?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`}
+                          className="ml-2 inline-flex h-8 items-center rounded-md border border-warning/40 bg-warning/5 px-2 text-xs font-medium text-warning"
+                        >
+                          {t("openDisposalRequest")}
+                        </Link>
+                      ) : null}
                     </td>
                   </ClickableTableRow>
                 ))

@@ -1,8 +1,8 @@
 # Developer Handoff — Asset Management System
 
-> **Last Updated:** 2026-05-17
+> **Last Updated:** 2026-05-18
 > **Phase:** Phase 4 AD/LDAP + Mobile Optimization (Started)
-> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports, scan QA hardening, and finding action-plan closure, 🟨 Phase 3 maintenance/disposal mostly built with export polish and maintenance workflow/SLA controls, 🟨 Admin RBAC polish started, 🟨 Phase 4 AD/LDAP login + sync workflow validated, 🟨 Mobile optimization pass complete, ✅ Table row navigation UX pass complete, ✅ Searchable dropdown UX pass complete for high-volume operational forms, ✅ Handover/return evidence and readable operation document numbers added, ✅ Asset movement custody timeline enriched, ✅ Handover history compacted for repeated transactions, ✅ Serial Number QR/barcode scan input added to Asset Form, ✅ Asset Detail command center/data health/relationship summaries and context-aware quick actions added, ✅ Unified asset event timeline and focused activity follow-up summary added, ✅ Asset Management menu reorganized with scan/search, label batch printing, and import/export tools, ✅ Topbar scan shortcut and recent asset label queue added, ✅ Maintenance workflow status, SLA dashboard/Kanban, typed evidence, costs, inspector, and close checklist added
+> **Status:** ✅ Foundation complete, ✅ SQL Server connected, ✅ Phase 1B Master Data complete, ✅ Phase 1C mostly complete, 🟨 Phase 1D Operations/Reports started, 🟨 Phase 2 audit workflow mostly built with Excel/PDF audit exports, scan QA hardening, and finding action-plan closure, 🟨 Phase 3 maintenance/disposal mostly built with export polish, maintenance workflow/SLA controls, and disposal execution evidence lifecycle, 🟨 Admin RBAC polish started, 🟨 Phase 4 AD/LDAP login + sync workflow validated, 🟨 Mobile optimization pass complete, ✅ Table row navigation UX pass complete, ✅ Searchable dropdown UX pass complete for high-volume operational forms, ✅ Handover/return evidence and readable operation document numbers added, ✅ Asset movement custody timeline enriched, ✅ Handover history compacted for repeated transactions, ✅ Serial Number QR/barcode scan input added to Asset Form, ✅ Asset Detail command center/data health/relationship summaries and context-aware quick actions added, ✅ Unified asset event timeline and focused activity follow-up summary added, ✅ Asset Management menu reorganized with scan/search, label batch printing, and import/export tools, ✅ Topbar scan shortcut and recent asset label queue added, ✅ Maintenance workflow status, SLA dashboard/Kanban, typed evidence, costs, inspector, and close checklist added, ✅ Disposal duplicate guard, evidence/photo upload, approval vs execution split, and source-prefilled shortcuts added
 
 ---
 
@@ -24,7 +24,7 @@
 | **1C: Asset Register** | Asset CRUD, Tag gen, Custom fields, QR, Attachments | 🟨 Mostly Complete — CRUD, tag gen, QR labels, detail, movements, attachments/photos, shared PO/Invoice documents, category custom-field templates, asset components/assembly, import/export, duplicate UX |
 | **1D: Operations** | Check-out/in, Import/Export, Reports, Dashboard | 🟨 Started — Check-out/in, drag/drop photo/signature evidence, printable handover/return forms, stricter checkout/checkin status mapping, basic reports, system logs, and live KPI dashboard added |
 | **Phase 2** | Transfer, Audit workflow | 🟨 Started — transfer/bulk move, audit round generation, QR/manual scan capture, immediate location/custodian correction from scan, finding review, pending/not-found and found-later workflow, approved reconciliation, granular multi-finding review status, and Excel/PDF exports |
-| **Phase 3** | Maintenance, Disposal | 🟨 Started — maintenance ticket workflow includes status stages, SLA due dates, overdue filter, close checklist, inspector, cost/document fields, attachment previews, export/print polish; disposal request create/list, approval/reject, detail, and print document added |
+| **Phase 3** | Maintenance, Disposal | 🟨 Started — maintenance ticket workflow includes status stages, SLA due dates, overdue filter, close checklist, inspector, cost/document fields, attachment previews, export/print polish; disposal now has create/list, duplicate guard, source links from maintenance/audit findings, evidence/photo upload, approval vs actual execution split, execution detail, export, detail, and print document |
 | **Phase 4** | AD/LDAP, HR sync, Advanced dashboard | 🟨 Started — scope narrowed to AD/LDAP login and mobile optimization |
 
 ---
@@ -188,7 +188,7 @@ Connection settings อยู่ใน `.env`:
 - Seed data รันแล้ว
 - Runtime verified against `WIN-I284TKLAMMD\ALPHA / asset_management`
 - Maintenance schema pushed; `maintenance_tickets` table exists on SQL Server `alpha` with workflow/SLA/cost/inspector columns (`dueDate`, `laborCost`, `partsCost`, `quotationNo`, `invoiceNo`, `inspectedById`)
-- Disposal schema pushed; `disposal_requests` table exists on SQL Server `alpha`
+- Disposal schema pushed; `disposal_requests` table exists on SQL Server `alpha` and now includes source reference + actual execution fields (`sourceType/sourceId`, `executionDate`, `executedById`, recipient/document/value/remark, `completedAt`)
 - Operation document number schema pushed; `asset_checkouts.documentNo` and `asset_checkins.documentNo` exist and existing records were backfilled to readable monthly sequences
 - Check-in custody schema pushed; `asset_checkins.returnByEmployeeId` and `asset_checkins.receiveByEmployeeId` exist as nullable employee references for new return transactions while legacy text names remain supported
 
@@ -677,6 +677,8 @@ await logAudit({
 | **Disposal approval flow** | เพิ่ม `PATCH /api/disposal-requests/{id}` และปุ่มพิจารณาในหน้า `/disposal` สำหรับ approve/reject, บันทึก sale/salvage value และ remark, อัปเดตสถานะ asset หลังพิจารณา, พร้อม movement/audit log |
 | **Disposal detail/print** | เพิ่มหน้า `/disposal/{id}` สำหรับดูคำขอ, ทรัพย์สิน, ผลพิจารณา, movement history และหน้า `/disposal/{id}/print` สำหรับใบอนุมัติตัดจำหน่าย A4 พร้อมช่องลงชื่อ |
 | **Disposal polish** | หน้า `/disposal` เพิ่ม search, status/type/date filters, clear filter, result count, และ Excel export `GET /api/disposal-requests/export` ตามตัวกรองเดียวกับหน้าจอ |
+| **Disposal execution lifecycle** | แยก approve ออกจากการตัดจำหน่ายจริง: approve จะคง asset status ไว้ก่อน, execution ทำได้เฉพาะคำขอที่ approved, บังคับมีหลักฐาน/รูปทรัพย์สินอย่างน้อย 1 ไฟล์, บันทึกวันที่ดำเนินการจริง ผู้ดำเนินการ ผู้รับ/ผู้ซื้อ/ปลายทาง เลขเอกสาร มูลค่าจริง และปิดคำขอเป็น `disposed` พร้อมอัปเดต asset status/movement/audit log |
+| **Disposal evidence/source/export** | หน้า create/detail รองรับรูปทรัพย์สินและหลักฐานตัดจำหน่ายผ่าน `module=disposal`, ป้องกันคำขอซ้ำสำหรับ asset ที่มี `pending/approved`, shortcut จาก maintenance และ audit finding ส่ง `sourceType/sourceId` กับเหตุผลตั้งต้นให้ฟอร์ม, หน้า detail/print/export แสดง source และ execution fields ใหม่ |
 | **Asset tag category prefixes** | หน้า `/admin/settings` เพิ่ม section สำหรับจับคู่ประเภทสินค้ากับ prefix เช่น IT = COM, Furniture = FUR; asset tag generation จะใช้ prefix ตาม category ก่อน fallback เป็น category code |
 | **Flexible asset tag format** | หน้า `/admin/settings` เพิ่ม `asset_tag_format_template` พร้อม token เช่น `{companyCode}`, `{assetCompanyCode}`, `{assetPrefix}`, `{month}`, `{running}` เพื่อกำหนดรูปแบบรหัสทรัพย์สินเอง |
 | **Asset Tag Company Code** | เพิ่ม `companies.assetTagCode` และช่อง “รหัสบริษัทสำหรับ Asset Tag” ใน master บริษัท; `{assetCompanyCode}` ใช้ค่านี้ก่อน fallback เป็น `company.code` เพื่อแยกรหัสทรัพย์สินออกจากรหัสบริษัท/AD LDAP |
@@ -826,6 +828,7 @@ await logAudit({
 87. Asset Management menu reorganization with `Register` and `Transactions` subgroups, removal of the obsolete Asset History menu item, quick scan/search tool for mobile QR/barcode lookup, batch label-print selection page, and consolidated import/export tool page
 88. Topbar global scan shortcut and recent asset label queue for newly created assets, allowing batch label selection without adding misleading label-print status tracking
 89. Maintenance workflow/SLA upgrade with staged repair statuses, due date and overdue filter, update-status modal, labor/parts/document fields, close checklist with inspector and required evidence, enhanced export/print, and Asset Detail repair-cost/disposal-warning summary
+90. Disposal execution lifecycle upgrade with duplicate-open-request guard, request/source prefill from maintenance and audit findings, disposal evidence/asset photo uploads, approval separated from actual execution, execution fields, disposed status, and print/export coverage
 
 ---
 

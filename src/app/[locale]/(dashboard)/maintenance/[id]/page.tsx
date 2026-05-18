@@ -245,7 +245,7 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
                 {purchasePrice > 0 ? <div>{t("disposalReviewRatio", { percent: Math.round(repairCostRatio * 100) })}</div> : null}
               </div>
               <Link
-                href={`/${locale}/disposal?assetId=${ticket.asset.id}&reason=${encodeURIComponent(disposalReason)}`}
+                href={`/${locale}/disposal?assetId=${ticket.asset.id}&reason=${encodeURIComponent(disposalReason)}&sourceType=maintenance&sourceId=${ticket.id}`}
                 className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 text-sm font-medium text-warning transition-colors hover:bg-warning/10"
               >
                 <Trash2 className="h-4 w-4" />

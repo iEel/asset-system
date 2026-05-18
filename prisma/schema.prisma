@@ -101,18 +101,19 @@ model Employee {
   createdBy        String?    @db.NVarChar(100)
   updatedBy        String?    @db.NVarChar(100)
 
-  custodianAssets            Asset[]             @relation("AssetCustodian")
-  checkouts                  AssetCheckout[]     @relation("CheckoutCustodian")
-  checkinReturns             AssetCheckin[]      @relation("CheckinReturnByEmployee")
-  checkinReceives            AssetCheckin[]      @relation("CheckinReceiveByEmployee")
-  reportedMaintenanceTickets MaintenanceTicket[] @relation("MaintenanceReportedBy")
-  assignedMaintenanceTickets MaintenanceTicket[] @relation("MaintenanceAssignedTo")
-    inspectedMaintenanceTickets MaintenanceTicket[] @relation("MaintenanceInspectedBy")
-    assignedAuditFindings       AuditFinding[]      @relation("AuditFindingActionOwner")
-  requestedDisposals         DisposalRequest[]   @relation("DisposalRequestedBy")
-  approvedDisposals          DisposalRequest[]   @relation("DisposalApprover")
-  user                       User?
-  auditRounds                AuditRound[]
+  custodianAssets             Asset[]             @relation("AssetCustodian")
+  checkouts                   AssetCheckout[]     @relation("CheckoutCustodian")
+  checkinReturns              AssetCheckin[]      @relation("CheckinReturnByEmployee")
+  checkinReceives             AssetCheckin[]      @relation("CheckinReceiveByEmployee")
+  reportedMaintenanceTickets  MaintenanceTicket[] @relation("MaintenanceReportedBy")
+  assignedMaintenanceTickets  MaintenanceTicket[] @relation("MaintenanceAssignedTo")
+  inspectedMaintenanceTickets MaintenanceTicket[] @relation("MaintenanceInspectedBy")
+  assignedAuditFindings       AuditFinding[]      @relation("AuditFindingActionOwner")
+  requestedDisposals          DisposalRequest[]   @relation("DisposalRequestedBy")
+  approvedDisposals           DisposalRequest[]   @relation("DisposalApprover")
+  executedDisposals           DisposalRequest[]   @relation("DisposalExecutedBy")
+  user                        User?
+  auditRounds                 AuditRound[]
 
   @@map("employees")
 }
@@ -567,19 +568,19 @@ model AuditFinding {
   reportedBy    String     @db.NVarChar(100)
   reportedAt    DateTime   @default(now())
   reviewStatus  String     @default("pending") @db.NVarChar(30)
-    reviewedBy    String?    @db.NVarChar(100)
-    reviewedAt    DateTime?
-    reviewRemark  String?    @db.NVarChar(Max)
-    actionTaken   String?    @db.NVarChar(100)
-    actionPlan    String?    @db.NVarChar(Max)
-    actionOwnerId String?
-    actionOwner   Employee?  @relation("AuditFindingActionOwner", fields: [actionOwnerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-    actionDueDate DateTime?
-    actionStatus  String     @default("not_required") @db.NVarChar(30)
-    closedAt      DateTime?
-    closureRemark String?    @db.NVarChar(Max)
-    createdAt     DateTime   @default(now())
-    updatedAt     DateTime   @updatedAt
+  reviewedBy    String?    @db.NVarChar(100)
+  reviewedAt    DateTime?
+  reviewRemark  String?    @db.NVarChar(Max)
+  actionTaken   String?    @db.NVarChar(100)
+  actionPlan    String?    @db.NVarChar(Max)
+  actionOwnerId String?
+  actionOwner   Employee?  @relation("AuditFindingActionOwner", fields: [actionOwnerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  actionDueDate DateTime?
+  actionStatus  String     @default("not_required") @db.NVarChar(30)
+  closedAt      DateTime?
+  closureRemark String?    @db.NVarChar(Max)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
   @@map("audit_findings")
 }
@@ -645,27 +646,38 @@ model MaintenanceTicket {
 }
 
 model DisposalRequest {
-  id             String    @id @default(uuid())
-  disposalNo     String    @unique @db.NVarChar(50)
-  assetId        String
-  asset          Asset     @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  disposalType   String    @db.NVarChar(30)
-  reason         String    @db.NVarChar(Max)
-  requestedById  String
-  requestedBy    Employee  @relation("DisposalRequestedBy", fields: [requestedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  requestDate    DateTime  @default(now())
-  approverId     String?
-  approver       Employee? @relation("DisposalApprover", fields: [approverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  requestStatus  String    @default("pending") @db.NVarChar(30)
-  saleValue      Decimal?  @db.Decimal(18, 2)
-  salvageValue   Decimal?  @db.Decimal(18, 2)
-  approvalRemark String?   @db.NVarChar(Max)
-  approvedAt     DateTime?
-  createdBy      String    @db.NVarChar(100)
-  updatedBy      String?   @db.NVarChar(100)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  isActive       Boolean   @default(true)
+  id                 String    @id @default(uuid())
+  disposalNo         String    @unique @db.NVarChar(50)
+  assetId            String
+  asset              Asset     @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  disposalType       String    @db.NVarChar(30)
+  reason             String    @db.NVarChar(Max)
+  requestedById      String
+  requestedBy        Employee  @relation("DisposalRequestedBy", fields: [requestedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  requestDate        DateTime  @default(now())
+  approverId         String?
+  approver           Employee? @relation("DisposalApprover", fields: [approverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  requestStatus      String    @default("pending") @db.NVarChar(30)
+  saleValue          Decimal?  @db.Decimal(18, 2)
+  salvageValue       Decimal?  @db.Decimal(18, 2)
+  approvalRemark     String?   @db.NVarChar(Max)
+  approvedAt         DateTime?
+  sourceType         String?   @db.NVarChar(50)
+  sourceId           String?   @db.NVarChar(100)
+  executionDate      DateTime?
+  executedById       String?
+  executedBy         Employee? @relation("DisposalExecutedBy", fields: [executedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  recipientName      String?   @db.NVarChar(200)
+  documentNo         String?   @db.NVarChar(100)
+  actualSaleValue    Decimal?  @db.Decimal(18, 2)
+  actualSalvageValue Decimal?  @db.Decimal(18, 2)
+  executionRemark    String?   @db.NVarChar(Max)
+  completedAt        DateTime?
+  createdBy          String    @db.NVarChar(100)
+  updatedBy          String?   @db.NVarChar(100)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  isActive           Boolean   @default(true)
 
   @@map("disposal_requests")
 }

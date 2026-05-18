@@ -40,6 +40,20 @@ export async function POST(request: NextRequest) {
       select: { id: true, statusId: true },
     })
     if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
+    const existingOpenRequest = await prisma.disposalRequest.findFirst({
+      where: {
+        assetId: input.assetId,
+        isActive: true,
+        requestStatus: { in: ["pending", "approved"] },
+      },
+      select: { disposalNo: true },
+    })
+    if (existingOpenRequest) {
+      return NextResponse.json(
+        { error: `This asset already has an open disposal request: ${existingOpenRequest.disposalNo}` },
+        { status: 400 }
+      )
+    }
 
     const pendingDisposalStatus = await prisma.assetStatus.findFirst({
       where: { OR: [{ name: "Pending Disposal" }, { nameTh: "รอตัดจำหน่าย" }] },
@@ -58,6 +72,8 @@ export async function POST(request: NextRequest) {
           approverId: input.approverId,
           saleValue: input.saleValue,
           salvageValue: input.salvageValue,
+          sourceType: input.sourceType,
+          sourceId: input.sourceId,
           createdBy: user.id,
           updatedBy: user.id,
         },

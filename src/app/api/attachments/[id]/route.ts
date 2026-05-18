@@ -87,6 +87,8 @@ function requireAttachmentPermission(
       ? "maintenance"
       : module === "audit_finding"
         ? "audit"
+        : module === "disposal"
+          ? "disposal"
         : module === "asset_model"
           ? "brand"
           : "asset"
