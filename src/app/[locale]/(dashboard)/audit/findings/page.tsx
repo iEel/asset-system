@@ -2,6 +2,7 @@ import Link from "next/link"
 import { getTranslations } from "next-intl/server"
 import { Download, FileText } from "lucide-react"
 import { prisma } from "@/lib/db"
+import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { ColumnHeader, MasterDataHeader, MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { AuditFindingReviewActions } from "@/components/audit/audit-finding-review-actions"
@@ -17,7 +18,9 @@ type AuditFindingsPageProps = {
 export default async function AuditFindingsPage({ params, searchParams }: AuditFindingsPageProps) {
   const { locale } = await params
   const { search = "", status = "pending" } = await searchParams
-  await requirePagePermission(locale, "audit", "view")
+  const user = await requirePagePermission(locale, "audit", "view")
+  const canEdit = hasPermission(user, "audit", "edit")
+  const canApprove = hasPermission(user, "audit", "approve")
 
   const t = await getTranslations("auditFinding")
   const tCommon = await getTranslations("common")
@@ -25,7 +28,8 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   const exportParams = new URLSearchParams()
   if (searchText) exportParams.set("search", searchText)
   exportParams.set("status", status)
-  const findings = await prisma.auditFinding.findMany({
+  const [findings, employees] = await Promise.all([
+    prisma.auditFinding.findMany({
     where: {
       ...(status === "all" ? {} : { reviewStatus: status }),
       ...(searchText
@@ -47,7 +51,26 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
     },
     orderBy: { reportedAt: "desc" },
     take: 200,
-  })
+    }),
+    canEdit
+      ? prisma.employee.findMany({
+          where: { isActive: true },
+          select: { id: true, code: true, fullNameTh: true },
+          orderBy: { code: "asc" },
+        })
+      : Promise.resolve([]),
+  ])
+  const findingIds = findings.map((finding) => finding.id)
+  const attachmentCounts = findingIds.length
+    ? await prisma.attachment.groupBy({
+        by: ["referenceId"],
+        where: { module: "audit_finding", referenceId: { in: findingIds }, isActive: true },
+        _count: { _all: true },
+      })
+    : []
+  const attachmentCountByFindingId = new Map(attachmentCounts.map((row) => [row.referenceId, row._count._all]))
+  const employeeOptions = employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` }))
+  const employeeLabelById = new Map(employeeOptions.map((employee) => [employee.id, employee.label]))
   const valueLabels = await buildFindingValueLabels(findings)
 
   return (
@@ -99,7 +122,52 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
       </div>
 
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="grid gap-3 p-3 md:hidden">
+          {findings.length === 0 ? (
+            <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">{tCommon("noData")}</div>
+          ) : (
+            findings.map((finding) => (
+              <div key={finding.id} className="rounded-md border border-border bg-background p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-foreground">{finding.asset ? `${finding.asset.assetTag} - ${finding.asset.name}` : finding.auditRound.auditNo}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{formatDateTime(finding.reportedAt)}</div>
+                  </div>
+                  <ReviewStatusBadge status={finding.reviewStatus} />
+                </div>
+                <div className="mt-3 grid gap-2 text-sm">
+                  <Info label={t("findingType")} value={t(`type_${finding.findingType}`)} />
+                  <Info label={t("expectedValue")} value={formatFindingValue(finding.findingType, finding.expectedValue, valueLabels)} />
+                  <Info label={t("actualValue")} value={formatFindingValue(finding.findingType, finding.actualValue, valueLabels)} />
+                  <Info label={t("actionStatus")} value={t(`actionStatus_${finding.actionStatus}`)} />
+                  <Info label={t("actionOwner")} value={finding.actionOwnerId ? (employeeLabelById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : "-"} />
+                  <Info label={t("actionDueDate")} value={formatDateTime(finding.actionDueDate)} />
+                </div>
+                <div className="mt-3 flex flex-col gap-2">
+                  <Link
+                    href={finding.asset ? `/${locale}/assets/${finding.asset.id}` : `/${locale}/audit/rounds/${finding.auditRound.id}`}
+                    className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium"
+                  >
+                    {tCommon("view")}
+                  </Link>
+                  {canEdit || canApprove ? (
+                    <AuditFindingReviewActions
+                      findingId={finding.id}
+                      reviewStatus={finding.reviewStatus}
+                      actionStatus={finding.actionStatus}
+                      actionPlan={finding.actionPlan}
+                      actionOwnerId={finding.actionOwnerId}
+                      actionDueDate={finding.actionDueDate}
+                      evidenceCount={attachmentCountByFindingId.get(finding.id) ?? 0}
+                      employees={employeeOptions}
+                    />
+                  ) : null}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">
               <tr>
@@ -110,6 +178,9 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                 <ColumnHeader>{t("expectedValue")}</ColumnHeader>
                 <ColumnHeader>{t("actualValue")}</ColumnHeader>
                 <ColumnHeader>{t("reviewStatus")}</ColumnHeader>
+                <ColumnHeader>{t("actionStatus")}</ColumnHeader>
+                <ColumnHeader>{t("actionOwner")}</ColumnHeader>
+                <ColumnHeader>{t("actionDueDate")}</ColumnHeader>
                 <ColumnHeader>{t("itemStatus")}</ColumnHeader>
                 <ColumnHeader>{t("reconcileStatus")}</ColumnHeader>
                 <ColumnHeader align="right">{tCommon("actions")}</ColumnHeader>
@@ -118,7 +189,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
             <tbody className="divide-y divide-border">
               {findings.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="h-32 px-4 text-center text-muted-foreground">
+                  <td colSpan={13} className="h-32 px-4 text-center text-muted-foreground">
                     {tCommon("noData")}
                   </td>
                 </tr>
@@ -145,10 +216,28 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     <td className="whitespace-nowrap px-4 py-3">
                       <ReviewStatusBadge status={finding.reviewStatus} />
                     </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <ActionStatusBadge status={finding.actionStatus} label={t(`actionStatus_${finding.actionStatus}`)} />
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                      {finding.actionOwnerId ? (employeeLabelById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(finding.actionDueDate)}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{finding.auditItem.auditStatus}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{finding.auditItem.reconcileStatus ?? "-"}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-right">
-                      {finding.reviewStatus === "pending" ? <AuditFindingReviewActions findingId={finding.id} /> : "-"}
+                      {canEdit || canApprove ? (
+                        <AuditFindingReviewActions
+                          findingId={finding.id}
+                          reviewStatus={finding.reviewStatus}
+                          actionStatus={finding.actionStatus}
+                          actionPlan={finding.actionPlan}
+                          actionOwnerId={finding.actionOwnerId}
+                          actionDueDate={finding.actionDueDate}
+                          evidenceCount={attachmentCountByFindingId.get(finding.id) ?? 0}
+                          employees={employeeOptions}
+                        />
+                      ) : "-"}
                     </td>
                   </ClickableTableRow>
                 ))
@@ -157,6 +246,15 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
           </table>
         </div>
       </div>
+    </div>
+  )
+}
+
+function Info({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div>
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div className="mt-0.5 break-words text-sm text-foreground">{value || "-"}</div>
     </div>
   )
 }
@@ -172,4 +270,19 @@ function ReviewStatusBadge({ status }: { status: string }) {
           : "bg-info/10 text-info"
 
   return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${className}`}>{status}</span>
+}
+
+function ActionStatusBadge({ status, label }: { status: string; label: string }) {
+  const className =
+    status === "closed"
+      ? "bg-success/10 text-success"
+      : status === "done"
+        ? "bg-primary/10 text-primary"
+        : status === "in_progress"
+          ? "bg-warning/10 text-warning"
+          : status === "planned"
+            ? "bg-info/10 text-info"
+            : "bg-muted text-muted-foreground"
+
+  return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${className}`}>{label}</span>
 }

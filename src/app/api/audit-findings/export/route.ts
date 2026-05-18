@@ -35,6 +35,14 @@ export async function GET(request: NextRequest) {
       take: 5000,
     })
     const valueLabels = await buildFindingValueLabels(findings)
+    const ownerIds = Array.from(new Set(findings.map((finding) => finding.actionOwnerId).filter(Boolean)))
+    const owners = ownerIds.length
+      ? await prisma.employee.findMany({
+          where: { id: { in: ownerIds as string[] } },
+          select: { id: true, code: true, fullNameTh: true },
+        })
+      : []
+    const ownerLabelById = new Map(owners.map((owner) => [owner.id, `${owner.code} - ${owner.fullNameTh}`]))
 
     const workbook = createAuditWorkbook()
     const worksheet = workbook.addWorksheet("Audit Findings")
@@ -50,6 +58,11 @@ export async function GET(request: NextRequest) {
         expectedValue: formatFindingValue(finding.findingType, finding.expectedValue, valueLabels),
         actualValue: formatFindingValue(finding.findingType, finding.actualValue, valueLabels),
         reviewStatus: finding.reviewStatus,
+        actionStatus: finding.actionStatus,
+        actionOwner: finding.actionOwnerId ? (ownerLabelById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : "",
+        actionDueDate: finding.actionDueDate ?? "",
+        actionPlan: finding.actionPlan ?? "",
+        closedAt: finding.closedAt ?? "",
         reviewedAt: finding.reviewedAt ?? "",
         actionTaken: finding.actionTaken ?? "",
         remark: finding.remark ?? "",

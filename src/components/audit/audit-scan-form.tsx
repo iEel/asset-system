@@ -337,8 +337,8 @@ export function AuditScanForm({
         )}
       </div>
 
-      <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
+      <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
           <div className="md:col-span-2 grid gap-3 sm:grid-cols-3">
             <AuditMetric label={t("pendingQueue")} value={items.filter((item) => item.auditStatus === "pending").length.toString()} />
             <AuditMetric label={t("scannedQueue")} value={items.filter((item) => item.auditStatus !== "pending").length.toString()} />
@@ -394,7 +394,7 @@ export function AuditScanForm({
             <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
               <div
                 id="audit-qr-reader"
-                className={`min-h-[22rem] overflow-hidden rounded-md border border-border bg-surface ${scannerRunning ? "block" : "hidden"}`}
+                className={`min-h-[18rem] overflow-hidden rounded-md border border-border bg-surface sm:min-h-[22rem] ${scannerRunning ? "block" : "hidden"}`}
               />
               <div className="rounded-md border border-border bg-surface p-3 text-sm text-muted-foreground">
                 <div className="flex items-start gap-2">
@@ -581,7 +581,7 @@ export function AuditScanForm({
               <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
             </Field>
           </div>
-          <div className="md:col-span-2 flex justify-end">
+          <div className="sticky bottom-0 z-10 -mx-4 flex justify-end border-t border-border bg-surface/95 p-3 backdrop-blur md:col-span-2 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
             <button type="submit" disabled={saving || !selectedItem} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-base font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {t("submitScan")}

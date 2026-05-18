@@ -33,6 +33,11 @@ export const auditFindingColumns = [
   { header: "Expected Value", key: "expectedValue", width: 36 },
   { header: "Actual Value", key: "actualValue", width: 36 },
   { header: "Review Status", key: "reviewStatus", width: 18 },
+  { header: "Action Status", key: "actionStatus", width: 18 },
+  { header: "Action Owner", key: "actionOwner", width: 28 },
+  { header: "Action Due Date", key: "actionDueDate", width: 20 },
+  { header: "Action Plan", key: "actionPlan", width: 40 },
+  { header: "Closed At", key: "closedAt", width: 20 },
   { header: "Reviewed At", key: "reviewedAt", width: 20 },
   { header: "Action Taken", key: "actionTaken", width: 26 },
   { header: "Remark", key: "remark", width: 40 },
@@ -45,7 +50,7 @@ export function createAuditWorkbook() {
 
 export function finalizeAuditWorksheet(worksheet: ExcelJS.Worksheet) {
   styleWorksheetHeader(worksheet)
-  for (const key of ["scannedAt", "lastScanAt", "reportedAt", "reviewedAt"]) {
+  for (const key of ["scannedAt", "lastScanAt", "reportedAt", "reviewedAt", "actionDueDate", "closedAt"]) {
     const column = worksheet.getColumn(key)
     if (column) column.numFmt = "yyyy-mm-dd hh:mm"
   }

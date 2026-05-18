@@ -38,6 +38,14 @@ export async function GET(request: NextRequest) {
       take: 5000,
     })
     const valueLabels = await buildFindingValueLabels(findings)
+    const ownerIds = Array.from(new Set(findings.map((finding) => finding.actionOwnerId).filter(Boolean)))
+    const owners = ownerIds.length
+      ? await prisma.employee.findMany({
+          where: { id: { in: ownerIds as string[] } },
+          select: { id: true, code: true },
+        })
+      : []
+    const ownerCodeById = new Map(owners.map((owner) => [owner.id, owner.code]))
 
     const buffer = await renderAuditFindingPdf({
       title: `Audit Findings - ${status}`,
@@ -56,6 +64,8 @@ export async function GET(request: NextRequest) {
         expectedValue: formatFindingValue(finding.findingType, finding.expectedValue, valueLabels),
         actualValue: formatFindingValue(finding.findingType, finding.actualValue, valueLabels),
         reviewStatus: finding.reviewStatus,
+        actionStatus: finding.actionStatus,
+        actionOwner: finding.actionOwnerId ? (ownerCodeById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : "",
         actionTaken: finding.actionTaken ?? "",
       })),
     })

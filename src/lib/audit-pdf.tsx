@@ -109,6 +109,8 @@ type AuditFindingPdfRow = {
   expectedValue: string
   actualValue: string
   reviewStatus: string
+  actionStatus: string
+  actionOwner: string
   actionTaken: string
 }
 
@@ -134,10 +136,12 @@ const auditFindingColumns: Array<PdfColumn<AuditFindingPdfRow>> = [
   { key: "auditNo", label: "Audit No.", width: 58 },
   { key: "assetTag", label: "Asset Tag", width: 66 },
   { key: "findingType", label: "Type", width: 72 },
-  { key: "expectedValue", label: "Expected", width: 132 },
-  { key: "actualValue", label: "Actual", width: 132 },
+  { key: "expectedValue", label: "Expected", width: 104 },
+  { key: "actualValue", label: "Actual", width: 104 },
   { key: "reviewStatus", label: "Review", width: 58 },
-  { key: "actionTaken", label: "Action", width: 80 },
+  { key: "actionStatus", label: "Plan", width: 56 },
+  { key: "actionOwner", label: "Owner", width: 72 },
+  { key: "actionTaken", label: "Action", width: 58 },
 ]
 
 export type AuditResultPdfData = {

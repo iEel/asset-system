@@ -45,6 +45,22 @@ export const auditFindingReviewSchema = z.object({
   reviewRemark: optionalText,
 })
 
+const optionalDate = z.preprocess(
+  (value) => (value == null || (typeof value === "string" && value.trim().length === 0) ? undefined : value),
+  z.union([z.coerce.date(), z.null(), z.undefined()])
+)
+
+export const auditFindingActionPlanSchema = z.object({
+  actionPlan: z.string().trim().min(1).max(4000),
+  actionOwnerId: optionalText,
+  actionDueDate: optionalDate,
+  actionStatus: z.enum(["planned", "in_progress", "done"]).default("planned"),
+})
+
+export const auditFindingCloseSchema = z.object({
+  closureRemark: optionalText,
+})
+
 export const auditMarkNotFoundSchema = z.object({
   remark: optionalText,
 })
@@ -52,4 +68,6 @@ export const auditMarkNotFoundSchema = z.object({
 export type AuditRoundInput = z.infer<typeof auditRoundSchema>
 export type AuditScanInput = z.infer<typeof auditScanSchema>
 export type AuditFindingReviewInput = z.infer<typeof auditFindingReviewSchema>
+export type AuditFindingActionPlanInput = z.infer<typeof auditFindingActionPlanSchema>
+export type AuditFindingCloseInput = z.infer<typeof auditFindingCloseSchema>
 export type AuditMarkNotFoundInput = z.infer<typeof auditMarkNotFoundSchema>

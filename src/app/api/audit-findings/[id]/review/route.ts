@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { auditFindingReviewSchema } from "@/lib/validations/audit"
+import { auditFindingActionPlanSchema, auditFindingCloseSchema, auditFindingReviewSchema } from "@/lib/validations/audit"
 
 type ReviewContext = {
   params: Promise<{ id: string }>
@@ -30,7 +30,8 @@ export async function POST(request: NextRequest, context: ReviewContext) {
     requirePermission(user, "audit", "approve")
 
     const { id } = await context.params
-    const input = auditFindingReviewSchema.parse(await request.json())
+    const body = await request.json()
+    const actionType = typeof body?.action === "string" ? body.action : "review"
     const finding = await prisma.auditFinding.findUnique({
       where: { id },
       include: {
@@ -39,6 +40,67 @@ export async function POST(request: NextRequest, context: ReviewContext) {
       },
     })
     if (!finding) return NextResponse.json({ error: "Audit finding not found" }, { status: 404 })
+
+    if (actionType === "plan") {
+      const input = auditFindingActionPlanSchema.parse(body)
+      const updatedFinding = await prisma.auditFinding.update({
+        where: { id },
+        data: {
+          actionPlan: input.actionPlan,
+          actionOwnerId: input.actionOwnerId,
+          actionDueDate: input.actionDueDate,
+          actionStatus: input.actionStatus,
+        },
+      })
+
+      await logAudit({
+        userId: user.id,
+        action: "update_action_plan",
+        module: "audit",
+        recordId: finding.id,
+        oldValue: {
+          actionPlan: finding.actionPlan,
+          actionOwnerId: finding.actionOwnerId,
+          actionDueDate: finding.actionDueDate,
+          actionStatus: finding.actionStatus,
+        },
+        newValue: input,
+      })
+
+      return NextResponse.json(updatedFinding)
+    }
+
+    if (actionType === "close") {
+      const input = auditFindingCloseSchema.parse(body)
+      const evidenceCount = await prisma.attachment.count({
+        where: { module: "audit_finding", referenceId: finding.id, isActive: true },
+      })
+      if (evidenceCount === 0) {
+        return NextResponse.json({ error: "Please attach closure evidence before closing this finding" }, { status: 400 })
+      }
+
+      const updatedFinding = await prisma.auditFinding.update({
+        where: { id },
+        data: {
+          actionStatus: "closed",
+          closedAt: new Date(),
+          closureRemark: input.closureRemark,
+        },
+      })
+
+      await logAudit({
+        userId: user.id,
+        action: "close_action_plan",
+        module: "audit",
+        recordId: finding.id,
+        oldValue: { actionStatus: finding.actionStatus, closedAt: finding.closedAt },
+        newValue: { actionStatus: "closed", closureRemark: input.closureRemark, evidenceCount },
+      })
+
+      return NextResponse.json(updatedFinding)
+    }
+
+    const input = auditFindingReviewSchema.parse(body)
     if (finding.reviewStatus !== "pending") {
       return NextResponse.json({ error: "Audit finding has already been reviewed" }, { status: 400 })
     }
