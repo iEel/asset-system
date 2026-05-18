@@ -1280,7 +1280,14 @@
     "openDataQualityRules": "เปิดกฎคุณภาพข้อมูล",
     "dataQualityEmpty": "ยังไม่พบรายการที่ต้องแก้ไขตามตัวกรองนี้",
     "openAsset": "เปิดรายละเอียด",
-    "fixData": "แก้ไขข้อมูล"
+    "fixData": "แก้ไขข้อมูล",
+    "operationInsightsTitle": "รายงาน Operation",
+    "operationInsightsHelp": "สรุปการใช้งานจริงของทรัพย์สิน เพื่อดูผู้ถือครอง พื้นที่ งานซ่อม และรายการที่ไม่มีความเคลื่อนไหว",
+    "byCustodian": "ทรัพย์สินตามผู้ถือครอง",
+    "byLocation": "ทรัพย์สินตามพื้นที่",
+    "frequentRepairAssets": "ทรัพย์สินที่ซ่อมบ่อย",
+    "idleAssets": "ทรัพย์สินไม่มี movement นาน",
+    "idleAssetsHelp": "ไม่มี movement ใน 180 วันล่าสุดตามตัวกรองปัจจุบัน"
   },
   "maintenancePage": {
     "title": "ซ่อมบำรุง",

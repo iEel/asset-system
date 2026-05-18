@@ -669,6 +669,7 @@ await logAudit({
 | **Reports shared filters** | หน้า `/reports` เพิ่ม filter panel กลางสำหรับ search, company, branch, category, status, และ condition; ตัวเลข overview, data quality counters, group tables, link ไปทะเบียนทรัพย์สิน, `/api/assets/export`, และ `/api/reports/assets-overview/export` ใช้ query filter ชุดเดียวกัน |
 | **Reports export preview** | หน้า `/reports` เพิ่มตาราง preview ก่อน export แสดง asset ล่าสุด 10 รายการตามตัวกรองเดียวกับรายงาน พร้อม Asset Tag, ชื่อ, หมวด, สาขา, แผนก, ผู้ถือครอง และสถานะ เพื่อให้ผู้ใช้ตรวจชุดข้อมูลก่อนโหลด Excel |
 | **Reports data-quality action list** | หน้า `/reports` เพิ่มรายการ “ข้อมูลที่ควรแก้ไข” แสดง asset ล่าสุดที่ขาดผู้ถือครอง, Serial, รูปทรัพย์สิน หรือประกันใกล้หมดตามตัวกรองเดียวกับรายงาน พร้อม badge ปัญหา, ปุ่มเปิดรายละเอียด, ปุ่มแก้ไขข้อมูล และ link ไป Data Quality Rule Center |
+| **Reports operation insights** | หน้า `/reports` เพิ่มสรุปรายงาน Operation ได้แก่ทรัพย์สินตามผู้ถือครอง, ทรัพย์สินตามพื้นที่, ทรัพย์สินที่ซ่อมบ่อย และจำนวนทรัพย์สินที่ไม่มี movement ใน 180 วันล่าสุด โดยใช้ตัวกรองรายงานชุดเดียวกัน |
 | **Data quality rule center** | เพิ่มหน้า `/admin/data-quality` ใต้เมนู Administration สำหรับดู/ตั้งค่า rule คุณภาพข้อมูลทะเบียนโดยเก็บใน `system_settings.asset_data_quality_rules`; รองรับ rule ขาดผู้ถือครอง, Serial, รูป, แผนก, ข้อมูลจัดซื้อ, และประกันใกล้หมด พร้อม severity warning/danger, count ตาม rule, และ link ไปหน้าทะเบียน/รายงาน |
 | **Centralized asset evidence** | หน้า Asset Detail เพิ่ม section `#evidence` “ศูนย์หลักฐานของทรัพย์สิน” รวม attachment จากทะเบียน, รูปรุ่น, purchase documents, ส่วนควบ, checkout/checkin, maintenance, audit findings, และ disposal โดยแสดงจำนวนรวม/รูป/เอกสาร พร้อม thumbnail/download link เรียงตามวันที่อัปโหลดล่าสุด |
 | **Operation print forms** | หลัง checkout/checkin สำเร็จจะ redirect ไปหน้าเอกสารพิมพ์ A4 สำหรับใบส่งมอบ/ใบรับคืน พร้อมข้อมูลทรัพย์สิน เงื่อนไข รายละเอียดธุรกรรม และช่องลายเซ็น |
@@ -871,6 +872,7 @@ await logAudit({
 109. Reports shared filter panel for asset-focused summaries and export endpoints
 110. Reports export preview table showing the latest filtered assets before Excel download
 111. Reports data-quality action list with issue badges and direct asset detail/edit links
+112. Reports operation insight panels for custodian, location, frequent repair, and idle movement follow-up
 
 ---
 

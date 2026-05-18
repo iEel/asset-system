@@ -1280,7 +1280,14 @@
     "openDataQualityRules": "Open Data Quality Rules",
     "dataQualityEmpty": "No records need fixing under the current filters",
     "openAsset": "Open Detail",
-    "fixData": "Fix Data"
+    "fixData": "Fix Data",
+    "operationInsightsTitle": "Operation Reports",
+    "operationInsightsHelp": "Summarizes real asset usage by custodian, location, repair frequency, and inactive movement.",
+    "byCustodian": "Assets by Custodian",
+    "byLocation": "Assets by Location",
+    "frequentRepairAssets": "Frequently Repaired Assets",
+    "idleAssets": "Assets Without Recent Movement",
+    "idleAssetsHelp": "No movement during the latest 180 days under the current filters"
   },
   "maintenancePage": {
     "title": "Maintenance",

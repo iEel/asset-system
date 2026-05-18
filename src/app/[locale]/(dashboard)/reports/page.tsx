@@ -41,6 +41,10 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     filterConditions,
     previewAssets,
     dataQualityAssets,
+    byCustodian,
+    byLocation,
+    repairGroups,
+    idleAssetsCount,
   ] = await Promise.all([
     prisma.asset.count({ where: assetWhere }),
     prisma.asset.aggregate({ where: assetWhere, _sum: { purchasePrice: true } }),
@@ -96,6 +100,15 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         attachments: { where: { module: "asset", fileType: { startsWith: "image/" }, isActive: true }, select: { id: true }, take: 1 },
       },
     }),
+    prisma.asset.groupBy({ by: ["custodianId"], where: { ...assetWhere, custodianId: { not: null } }, _count: { _all: true }, orderBy: { _count: { custodianId: "desc" } }, take: 5 }),
+    prisma.asset.groupBy({ by: ["currentLocationId"], where: assetWhere, _count: { _all: true }, orderBy: { _count: { currentLocationId: "desc" } }, take: 5 }),
+    prisma.maintenanceTicket.groupBy({ by: ["assetId"], where: { isActive: true }, _count: { _all: true }, _sum: { repairCost: true }, orderBy: { _count: { assetId: "desc" } }, take: 5 }),
+    prisma.asset.count({ where: { AND: [assetWhere, { movements: { none: { performedAt: { gte: daysAgo(180) } } } }] } }),
+  ])
+  const [custodianOptions, locationOptions, repairAssets] = await Promise.all([
+    prisma.employee.findMany({ where: { id: { in: byCustodian.map((item) => item.custodianId).filter((id): id is string => Boolean(id)) } }, select: { id: true, code: true, fullNameTh: true } }),
+    prisma.location.findMany({ where: { id: { in: byLocation.map((item) => item.currentLocationId) } }, select: { id: true, code: true, name: true } }),
+    prisma.asset.findMany({ where: { id: { in: repairGroups.map((item) => item.assetId) } }, select: { id: true, assetTag: true, name: true } }),
   ])
   const [statuses, categories, companies, branches, departments] = await Promise.all([
     prisma.assetStatus.findMany({ where: { id: { in: byStatus.map((item) => item.statusId) } }, select: { id: true, nameTh: true } }),
@@ -110,6 +123,9 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const companyMap = new Map(companies.map((company) => [company.id, `${company.code} - ${company.nameTh}`]))
   const branchMap = new Map(branches.map((branch) => [branch.id, `${branch.code} - ${branch.name}`]))
   const departmentMap = new Map(departments.map((department) => [department.id, `${department.code} - ${department.name}`]))
+  const custodianMap = new Map(custodianOptions.map((employee) => [employee.id, `${employee.code} - ${employee.fullNameTh}`]))
+  const locationMap = new Map(locationOptions.map((location) => [location.id, `${location.code} - ${location.name}`]))
+  const repairAssetMap = new Map(repairAssets.map((asset) => [asset.id, `${asset.assetTag} - ${asset.name}`]))
   const reportCatalog = [
     {
       title: t("catalogAssetTitle"),
@@ -358,6 +374,25 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         <ReportTable title={t("byDepartment")} rows={byDepartment.map((item) => [departmentMap.get(item.departmentId ?? "") ?? item.departmentId ?? t("unassigned"), item._count._all])} />
       </div>
 
+      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-foreground">{t("operationInsightsTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("operationInsightsHelp")}</p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <ReportTable title={t("byCustodian")} rows={byCustodian.map((item) => [custodianMap.get(item.custodianId ?? "") ?? t("unassigned"), item._count._all])} />
+          <ReportTable title={t("byLocation")} rows={byLocation.map((item) => [locationMap.get(item.currentLocationId) ?? item.currentLocationId, item._count._all])} />
+          <ReportTable title={t("frequentRepairAssets")} rows={repairGroups.map((item) => [repairAssetMap.get(item.assetId) ?? item.assetId, item._count._all])} />
+          <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+            <h2 className="mb-4 text-base font-semibold text-foreground">{t("idleAssets")}</h2>
+            <Link href={`/${locale}/assets?${exportQuery}`} className="block rounded-md border border-warning/30 bg-warning/5 p-4 transition-colors hover:bg-warning/10">
+              <div className="text-sm text-muted-foreground">{t("idleAssetsHelp")}</div>
+              <div className="mt-2 text-2xl font-bold text-foreground">{idleAssetsCount.toLocaleString("th-TH")}</div>
+            </Link>
+          </section>
+        </div>
+      </section>
+
       <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
         <div className="mb-5">
           <h2 className="text-lg font-semibold text-foreground">{t("reportCatalog")}</h2>
@@ -463,6 +498,12 @@ function getDataQualityIssues(
     issues.push(t("warrantyExpiring"))
   }
   return issues
+}
+
+function daysAgo(days: number) {
+  const date = new Date()
+  date.setDate(date.getDate() - days)
+  return date
 }
 
 function ReportTable({ title, rows }: { title: string; rows: [string, number][] }) {
