@@ -4,6 +4,7 @@ import { ClipboardCheck, DatabaseZap, Download, FileSpreadsheet, ShieldCheck, Tr
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
+import { hasPermission } from "@/lib/auth-utils"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type AssetListParams } from "@/lib/asset-list-query"
 
@@ -15,8 +16,14 @@ type ReportsPageProps = {
 export default async function ReportsPage({ params, searchParams }: ReportsPageProps) {
   const { locale } = await params
   const rawSearchParams = await searchParams
-  await requirePagePermission(locale, "report", "view")
+  const user = await requirePagePermission(locale, "report", "view")
   const t = await getTranslations("reportsPage")
+  const canReportExport = hasPermission(user, "report", "export")
+  const canAssetExport = hasPermission(user, "asset", "view")
+  const canMaintenanceExport = hasPermission(user, "maintenance", "export")
+  const canAuditExport = hasPermission(user, "audit", "export")
+  const canDisposalExport = hasPermission(user, "disposal", "export")
+  const canRoleExport = hasPermission(user, "role", "export")
   const filters = parseAssetListParams(rawSearchParams)
   const assetWhere = buildAssetWhere(filters)
   const exportQuery = buildAssetQueryString(filters, { page: 1, pageSize: 100 })
@@ -128,10 +135,10 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const repairAssetMap = new Map(repairAssets.map((asset) => [asset.id, `${asset.assetTag} - ${asset.name}`]))
   const savedFilterUrl = `/${locale}/reports?${exportQuery}`
   const recurringReports = [
-    { name: t("monthlyAssetOverview"), cadence: t("monthly"), href: `/api/reports/assets-overview/export?${exportQuery}`, owner: t("ownerAccounting") },
-    { name: t("weeklyMaintenanceFollowUp"), cadence: t("weekly"), href: "/api/maintenance-tickets/export", owner: t("ownerMaintenance") },
-    { name: t("monthlyDisposalFollowUp"), cadence: t("monthly"), href: "/api/disposal-requests/export", owner: t("ownerApprover") },
-    { name: t("weeklyAuditFindings"), cadence: t("weekly"), href: "/api/audit-findings/export?status=pending", owner: t("ownerAudit") },
+    { name: t("monthlyAssetOverview"), cadence: t("monthly"), href: `/api/reports/assets-overview/export?${exportQuery}`, owner: t("ownerAccounting"), allowed: canReportExport },
+    { name: t("weeklyMaintenanceFollowUp"), cadence: t("weekly"), href: "/api/maintenance-tickets/export", owner: t("ownerMaintenance"), allowed: canMaintenanceExport },
+    { name: t("monthlyDisposalFollowUp"), cadence: t("monthly"), href: "/api/disposal-requests/export", owner: t("ownerApprover"), allowed: canDisposalExport },
+    { name: t("weeklyAuditFindings"), cadence: t("weekly"), href: "/api/audit-findings/export?status=pending", owner: t("ownerAudit"), allowed: canAuditExport },
   ]
   const reportCatalog = [
     {
@@ -140,8 +147,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       audience: t("catalogAssetAudience"),
       icon: <FileSpreadsheet className="h-5 w-5" />,
       reports: [
-        { label: t("assetRegister"), viewHref: `/${locale}/assets?${exportQuery}`, exportHref: `/api/assets/export?${exportQuery}`, exportLabel: t("exportAssetRegister") },
-        { label: t("assetOverviewExcel"), viewHref: `/${locale}/reports?${exportQuery}`, exportHref: `/api/reports/assets-overview/export?${exportQuery}`, exportLabel: t("exportAssetOverview") },
+        { label: t("assetRegister"), viewHref: `/${locale}/assets?${exportQuery}`, exportHref: `/api/assets/export?${exportQuery}`, exportLabel: t("exportAssetRegister"), exportAllowed: canAssetExport },
+        { label: t("assetOverviewExcel"), viewHref: `/${locale}/reports?${exportQuery}`, exportHref: `/api/reports/assets-overview/export?${exportQuery}`, exportLabel: t("exportAssetOverview"), exportAllowed: canReportExport },
       ],
     },
     {
@@ -150,7 +157,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       audience: t("catalogDataQualityAudience"),
       icon: <DatabaseZap className="h-5 w-5" />,
       reports: [
-        { label: t("dataQuality"), viewHref: `/${locale}/admin/data-quality`, exportHref: `/api/reports/assets-overview/export?${exportQuery}`, exportLabel: t("exportAssetOverview") },
+        { label: t("dataQuality"), viewHref: `/${locale}/admin/data-quality`, exportHref: `/api/reports/assets-overview/export?${exportQuery}`, exportLabel: t("exportAssetOverview"), exportAllowed: canReportExport },
       ],
     },
     {
@@ -159,7 +166,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       audience: t("catalogMaintenanceAudience"),
       icon: <Wrench className="h-5 w-5" />,
       reports: [
-        { label: t("maintenanceReport"), viewHref: `/${locale}/maintenance`, exportHref: "/api/maintenance-tickets/export", exportLabel: t("exportMaintenance") },
+        { label: t("maintenanceReport"), viewHref: `/${locale}/maintenance`, exportHref: "/api/maintenance-tickets/export", exportLabel: t("exportMaintenance"), exportAllowed: canMaintenanceExport },
       ],
     },
     {
@@ -168,8 +175,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       audience: t("catalogAuditAudience"),
       icon: <ClipboardCheck className="h-5 w-5" />,
       reports: [
-        { label: t("auditFindingsReport"), viewHref: `/${locale}/audit/findings`, exportHref: "/api/audit-findings/export?status=all", exportLabel: t("exportAuditFindings") },
-        { label: t("auditFindingsPdf"), viewHref: `/${locale}/audit/findings`, exportHref: "/api/audit-findings/export-pdf?status=all", exportLabel: t("exportPdf") },
+        { label: t("auditFindingsReport"), viewHref: `/${locale}/audit/findings`, exportHref: "/api/audit-findings/export?status=all", exportLabel: t("exportAuditFindings"), exportAllowed: canAuditExport },
+        { label: t("auditFindingsPdf"), viewHref: `/${locale}/audit/findings`, exportHref: "/api/audit-findings/export-pdf?status=all", exportLabel: t("exportPdf"), exportAllowed: canAuditExport },
       ],
     },
     {
@@ -178,7 +185,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       audience: t("catalogDisposalAudience"),
       icon: <Trash2 className="h-5 w-5" />,
       reports: [
-        { label: t("disposalReport"), viewHref: `/${locale}/disposal`, exportHref: "/api/disposal-requests/export", exportLabel: t("exportDisposal") },
+        { label: t("disposalReport"), viewHref: `/${locale}/disposal`, exportHref: "/api/disposal-requests/export", exportLabel: t("exportDisposal"), exportAllowed: canDisposalExport },
       ],
     },
     {
@@ -187,7 +194,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       audience: t("catalogSystemAudience"),
       icon: <ShieldCheck className="h-5 w-5" />,
       reports: [
-        { label: t("rolePermissionAudit"), viewHref: `/${locale}/admin/roles`, exportHref: "/api/admin/roles/export", exportLabel: t("exportRoleAudit") },
+        { label: t("rolePermissionAudit"), viewHref: `/${locale}/admin/roles`, exportHref: "/api/admin/roles/export", exportLabel: t("exportRoleAudit"), exportAllowed: canRoleExport },
         { label: t("systemLogs"), viewHref: `/${locale}/admin/logs` },
       ],
     },
@@ -202,20 +209,24 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/api/reports/assets-overview/export?${exportQuery}`}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
-          >
-            <Download className="h-4 w-4" />
-            {t("exportAssetOverview")}
-          </Link>
-          <Link
-            href={`/api/assets/export?${exportQuery}`}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-          >
-            <Download className="h-4 w-4" />
-            {t("exportAssetRegister")}
-          </Link>
+          {canReportExport ? (
+            <Link
+              href={`/api/reports/assets-overview/export?${exportQuery}`}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+            >
+              <Download className="h-4 w-4" />
+              {t("exportAssetOverview")}
+            </Link>
+          ) : null}
+          {canAssetExport ? (
+            <Link
+              href={`/api/assets/export?${exportQuery}`}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+            >
+              <Download className="h-4 w-4" />
+              {t("exportAssetRegister")}
+            </Link>
+          ) : null}
         </div>
       </div>
 
@@ -259,6 +270,21 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
         <div className="mb-4">
+          <h2 className="text-base font-semibold text-foreground">{t("permissionTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("permissionHelp")}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <PermissionPill label={t("exportAssetOverview")} allowed={canReportExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
+          <PermissionPill label={t("exportAssetRegister")} allowed={canAssetExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
+          <PermissionPill label={t("exportMaintenance")} allowed={canMaintenanceExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
+          <PermissionPill label={t("exportAuditFindings")} allowed={canAuditExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
+          <PermissionPill label={t("exportDisposal")} allowed={canDisposalExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
+          <PermissionPill label={t("exportRoleAudit")} allowed={canRoleExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="mb-4">
           <h2 className="text-base font-semibold text-foreground">{t("savedReportsTitle")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("savedReportsHelp")}</p>
         </div>
@@ -280,10 +306,16 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
                   </div>
                   <span className="rounded-full bg-info/10 px-2 py-1 text-xs font-medium text-info">{report.cadence}</span>
                 </div>
-                <Link href={report.href} className="mt-4 inline-flex h-8 items-center gap-1 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent">
-                  <Download className="h-3.5 w-3.5" />
-                  {t("runNow")}
-                </Link>
+                {report.allowed ? (
+                  <Link href={report.href} className="mt-4 inline-flex h-8 items-center gap-1 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent">
+                    <Download className="h-3.5 w-3.5" />
+                    {t("runNow")}
+                  </Link>
+                ) : (
+                  <span className="mt-4 inline-flex h-8 items-center rounded-md bg-muted px-3 text-xs font-medium text-muted-foreground">
+                    {t("notAllowed")}
+                  </span>
+                )}
               </div>
             ))}
           </div>
@@ -457,11 +489,15 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
                       <Link href={report.viewHref} className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-3 text-xs font-medium transition-colors hover:bg-accent">
                         {t("openReport")}
                       </Link>
-                      {report.exportHref ? (
+                      {report.exportHref && report.exportAllowed ? (
                         <Link href={report.exportHref} className="inline-flex h-8 items-center justify-center gap-1 rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary/90">
                           <Download className="h-3.5 w-3.5" />
                           {report.exportLabel}
                         </Link>
+                      ) : report.exportHref ? (
+                        <span className="inline-flex h-8 items-center rounded-md bg-muted px-3 text-xs font-medium text-muted-foreground">
+                          {t("notAllowed")}
+                        </span>
                       ) : null}
                     </div>
                   </div>
@@ -518,6 +554,24 @@ function ReportSelect({
 
 function PreviewHead({ children }: { children: React.ReactNode }) {
   return <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{children}</th>
+}
+
+function PermissionPill({
+  label,
+  allowed,
+  allowedLabel,
+  deniedLabel,
+}: {
+  label: string
+  allowed: boolean
+  allowedLabel: string
+  deniedLabel: string
+}) {
+  return (
+    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${allowed ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
+      {label}: {allowed ? allowedLabel : deniedLabel}
+    </span>
+  )
 }
 
 function getDataQualityIssues(

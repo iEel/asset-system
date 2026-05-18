@@ -1303,7 +1303,11 @@
     "ownerMaintenance": "ผู้รับผิดชอบ: ทีมซ่อมบำรุง",
     "ownerApprover": "ผู้รับผิดชอบ: ผู้อนุมัติ",
     "ownerAudit": "ผู้รับผิดชอบ: ทีมตรวจนับ",
-    "runNow": "ส่งออกตอนนี้"
+    "runNow": "ส่งออกตอนนี้",
+    "permissionTitle": "สิทธิ์รายงานของคุณ",
+    "permissionHelp": "ปุ่ม Export จะแสดงเฉพาะรายงานที่บัญชีนี้มีสิทธิ์ใช้งาน",
+    "allowed": "ใช้ได้",
+    "notAllowed": "ไม่มีสิทธิ์"
   },
   "maintenancePage": {
     "title": "ซ่อมบำรุง",

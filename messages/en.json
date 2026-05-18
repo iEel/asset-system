@@ -1303,7 +1303,11 @@
     "ownerMaintenance": "Owner: Maintenance team",
     "ownerApprover": "Owner: Approver",
     "ownerAudit": "Owner: Audit team",
-    "runNow": "Export Now"
+    "runNow": "Export Now",
+    "permissionTitle": "Your Report Permissions",
+    "permissionHelp": "Export buttons are shown only for reports this account can access.",
+    "allowed": "Allowed",
+    "notAllowed": "No permission"
   },
   "maintenancePage": {
     "title": "Maintenance",
