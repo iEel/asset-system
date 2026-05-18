@@ -11,6 +11,7 @@ import {
   History,
   ImageIcon,
   MapPin,
+  Paperclip,
   PackageCheck,
   Printer,
   QrCode,
@@ -154,6 +155,18 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           auditRound: { select: { id: true, auditNo: true, name: true } },
         },
       },
+      auditFindings: {
+        orderBy: { reportedAt: "desc" },
+        take: 20,
+        include: {
+          auditRound: { select: { auditNo: true, name: true } },
+        },
+      },
+      disposalRequests: {
+        where: { isActive: true },
+        orderBy: { requestDate: "desc" },
+        take: 20,
+      },
     },
   })
 
@@ -192,7 +205,10 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const componentLinkIds = componentLinks.map((component) => component.id)
   const componentUserIds = uniqueTruthy(componentLinks.flatMap((component) => [component.createdBy, component.updatedBy]))
   const purchaseDocumentIds = asset.purchaseDocumentLinks.map((link) => link.purchaseDocumentId)
-  const [purchaseDocumentAttachments, componentAttachments, componentUsers] = await Promise.all([
+  const maintenanceTicketIds = asset.maintenanceTickets.map((ticket) => ticket.id)
+  const auditFindingIds = asset.auditFindings.map((finding) => finding.id)
+  const disposalRequestIds = asset.disposalRequests.map((request) => request.id)
+  const [purchaseDocumentAttachments, componentAttachments, componentUsers, maintenanceAttachments, auditFindingAttachments, disposalAttachments] = await Promise.all([
     purchaseDocumentIds.length > 0
       ? prisma.attachment.findMany({
           where: { module: "purchase_document", referenceId: { in: purchaseDocumentIds }, isActive: true },
@@ -215,6 +231,24 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             email: true,
             employee: { select: { code: true, fullNameTh: true } },
           },
+        })
+      : [],
+    maintenanceTicketIds.length > 0
+      ? prisma.attachment.findMany({
+          where: { module: "maintenance", referenceId: { in: maintenanceTicketIds }, isActive: true },
+          orderBy: { uploadedAt: "desc" },
+        })
+      : [],
+    auditFindingIds.length > 0
+      ? prisma.attachment.findMany({
+          where: { module: "audit_finding", referenceId: { in: auditFindingIds }, isActive: true },
+          orderBy: { uploadedAt: "desc" },
+        })
+      : [],
+    disposalRequestIds.length > 0
+      ? prisma.attachment.findMany({
+          where: { module: "disposal", referenceId: { in: disposalRequestIds }, isActive: true },
+          orderBy: { uploadedAt: "desc" },
         })
       : [],
   ])
@@ -536,12 +570,24 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
     { id: "components", label: t("detailSections.components") },
     { id: "purchase", label: t("detailSections.purchase") },
     { id: "photos", label: t("detailSections.photos") },
+    { id: "evidence", label: t("detailSections.evidence") },
     { id: "handover", label: t("detailSections.handover") },
     { id: "movement", label: t("detailSections.movement") },
     { id: "maintenance", label: t("detailSections.maintenance") },
     { id: "audit", label: t("detailSections.audit") },
     { id: "notes", label: t("detailSections.notes") },
   ]
+  const allEvidenceItems = [
+    ...buildEvidenceItems(assetAttachments, t("evidenceGroupAsset"), asset.assetTag),
+    ...buildEvidenceItems(modelPhotos, t("evidenceGroupModel"), asset.model?.name ?? asset.name),
+    ...buildEvidenceItems(purchaseDocumentAttachments, t("evidenceGroupPurchase"), t("detailSections.purchase")),
+    ...buildEvidenceItems(legacyPurchaseDocuments, t("evidenceGroupPurchase"), t("detailSections.purchase")),
+    ...buildEvidenceItems(componentAttachments, t("evidenceGroupComponent"), t("detailSections.components")),
+    ...buildEvidenceItems(operationAttachments, t("evidenceGroupHandover"), t("detailSections.handover")),
+    ...buildEvidenceItems(maintenanceAttachments, t("evidenceGroupMaintenance"), t("detailSections.maintenance")),
+    ...buildEvidenceItems(auditFindingAttachments, t("evidenceGroupAudit"), t("detailSections.audit")),
+    ...buildEvidenceItems(disposalAttachments, t("evidenceGroupDisposal"), t("movementFilters.disposal")),
+  ].sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime())
 
   return (
     <div className="space-y-6">
@@ -791,6 +837,56 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
               photoChecklist={photoChecklist}
             />
           </div>
+
+          <section id="evidence" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <SectionHeading title={t("evidenceCenter")} subtitle={t("detailSections.evidenceSubtitle")} icon={<Paperclip className="h-5 w-5 text-primary" />} />
+            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <SummaryPill label={t("evidenceTotal")} value={String(allEvidenceItems.length)} />
+              <SummaryPill label={t("evidenceImages")} value={String(allEvidenceItems.filter((item) => item.fileType.startsWith("image/")).length)} />
+              <SummaryPill label={t("evidenceDocuments")} value={String(allEvidenceItems.filter((item) => !item.fileType.startsWith("image/")).length)} />
+            </div>
+            {allEvidenceItems.length === 0 ? (
+              <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                {t("noEvidence")}
+              </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {allEvidenceItems.map((item) => (
+                  <a
+                    key={`${item.group}-${item.id}`}
+                    href={item.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    {item.fileType.startsWith("image/") ? (
+                      <div className="flex aspect-video w-full items-center justify-center bg-muted/40 p-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`${item.href}?inline=1`}
+                          alt={item.title}
+                          loading="lazy"
+                          className="max-h-full w-full object-contain transition-transform group-hover:scale-[1.01]"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex aspect-video w-full items-center justify-center bg-muted/40 p-3 text-sm font-medium text-muted-foreground">
+                        {item.fileType}
+                      </div>
+                    )}
+                    <div className="border-t border-border p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">{item.group}</span>
+                        <span className="text-xs text-muted-foreground">{formatDate(item.uploadedAt)}</span>
+                      </div>
+                      <div className="mt-2 truncate text-sm font-medium text-foreground">{item.title}</div>
+                      <div className="mt-1 truncate text-xs text-muted-foreground">{item.detail}</div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            )}
+          </section>
 
           <section id="handover" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={t("detailSections.handover")} subtitle={t("detailSections.handoverSubtitle")} icon={<FileText className="h-5 w-5 text-primary" />} />
@@ -1393,6 +1489,31 @@ function EvidenceLinks({
       )}
     </div>
   )
+}
+
+function SummaryPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border bg-background p-3">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 text-2xl font-bold text-foreground">{value}</div>
+    </div>
+  )
+}
+
+function buildEvidenceItems(
+  attachments: Array<{ id: string; originalName: string; fileType: string; uploadedAt: Date }>,
+  group: string,
+  detail: string
+) {
+  return attachments.map((attachment) => ({
+    id: attachment.id,
+    title: attachment.originalName,
+    group,
+    detail,
+    uploadedAt: attachment.uploadedAt,
+    fileType: attachment.fileType,
+    href: `/api/attachments/${attachment.id}`,
+  }))
 }
 
 function HandoverEvidenceGrid({
