@@ -167,6 +167,13 @@ type SystemSettingsFormProps = {
     ldapSyncApplySuccess: string
     ldapSyncFailed: string
     ldapSyncRecommendation: string
+    ldapStepConnection: string
+    ldapStepLoginMapping: string
+    ldapStepProvisioning: string
+    ldapStepSyncStrategy: string
+    ldapStepOrgMapping: string
+    ldapStepSchedule: string
+    ldapStepPreviewApply: string
     testLdapConnection: string
     ldapTestSuccess: string
     ldapTestFailed: string
@@ -860,120 +867,132 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.ldapSettings} description={labels.ldapSettingsDescription} />
         <div className="space-y-5 px-4 py-4">
-          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-            <ToggleField
-              label={labels.ldapEnabled}
-              checked={getValue("ldap_enabled") === "true"}
-              onChange={(checked) => setBooleanValue("ldap_enabled", checked)}
-            />
-            <ToggleField
-              label={labels.ldapAutoProvision}
-              checked={getValue("ldap_auto_provision") === "true"}
-              onChange={(checked) => setBooleanValue("ldap_auto_provision", checked)}
-            />
-            <ToggleField
-              label={labels.ldapStartTls}
-              checked={getValue("ldap_start_tls") === "true"}
-              onChange={(checked) => setBooleanValue("ldap_start_tls", checked)}
-            />
-            <ToggleField
-              label={labels.ldapTlsRejectUnauthorized}
-              checked={getValue("ldap_tls_reject_unauthorized") !== "false"}
-              onChange={(checked) => setBooleanValue("ldap_tls_reject_unauthorized", checked)}
-            />
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Field label={labels.ldapUrl} htmlFor="ldap-url">
-              <input
-                id="ldap-url"
-                value={getValue("ldap_url")}
-                onChange={(event) => setValue("ldap_url", event.target.value)}
-                placeholder="ldap://dc.company.local:389"
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          <WizardStep number={1} title={labels.ldapStepConnection}>
+            <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+              <ToggleField
+                label={labels.ldapEnabled}
+                checked={getValue("ldap_enabled") === "true"}
+                onChange={(checked) => setBooleanValue("ldap_enabled", checked)}
               />
-            </Field>
-            <Field label={labels.ldapBaseDn} htmlFor="ldap-base-dn">
-              <input
-                id="ldap-base-dn"
-                value={getValue("ldap_base_dn")}
-                onChange={(event) => setValue("ldap_base_dn", event.target.value)}
-                placeholder="DC=company,DC=local"
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              <ToggleField
+                label={labels.ldapStartTls}
+                checked={getValue("ldap_start_tls") === "true"}
+                onChange={(checked) => setBooleanValue("ldap_start_tls", checked)}
               />
-            </Field>
-            <Field label={labels.ldapBindDn} htmlFor="ldap-bind-dn">
-              <input
-                id="ldap-bind-dn"
-                value={getValue("ldap_bind_dn")}
-                onChange={(event) => setValue("ldap_bind_dn", event.target.value)}
-                placeholder="CN=ldap-reader,OU=Service Accounts,DC=company,DC=local"
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              <ToggleField
+                label={labels.ldapTlsRejectUnauthorized}
+                checked={getValue("ldap_tls_reject_unauthorized") !== "false"}
+                onChange={(checked) => setBooleanValue("ldap_tls_reject_unauthorized", checked)}
               />
-            </Field>
-            <Field label={labels.ldapBindPassword} htmlFor="ldap-bind-password">
-              <input
-                id="ldap-bind-password"
-                type="password"
-                value={getValue("ldap_bind_password")}
-                onChange={(event) => setValue("ldap_bind_password", event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </Field>
-            <Field label={labels.ldapUserFilter} htmlFor="ldap-user-filter">
-              <input
-                id="ldap-user-filter"
-                value={getValue("ldap_user_filter")}
-                onChange={(event) => setValue("ldap_user_filter", event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </Field>
-            <Field label={labels.ldapDefaultRole} htmlFor="ldap-default-role">
-              <input
-                id="ldap-default-role"
-                value={getValue("ldap_default_role")}
-                onChange={(event) => setValue("ldap_default_role", event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </Field>
-            <Field label={labels.ldapUpnDomain} htmlFor="ldap-upn-domain">
-              <input
-                id="ldap-upn-domain"
-                value={getValue("ldap_upn_domain")}
-                onChange={(event) => setValue("ldap_upn_domain", event.target.value)}
-                placeholder="company.local"
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </Field>
-            <Field label={labels.ldapDomain} htmlFor="ldap-domain">
-              <input
-                id="ldap-domain"
-                value={getValue("ldap_domain")}
-                onChange={(event) => setValue("ldap_domain", event.target.value)}
-                placeholder="COMPANY"
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </Field>
-            <div className="lg:col-span-2">
-              <Field label={labels.ldapUserDnTemplate} htmlFor="ldap-user-dn-template">
+            </div>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <Field label={labels.ldapUrl} htmlFor="ldap-url">
                 <input
-                  id="ldap-user-dn-template"
-                  value={getValue("ldap_user_dn_template")}
-                  onChange={(event) => setValue("ldap_user_dn_template", event.target.value)}
-                  placeholder="CN={username},OU=Users,DC=company,DC=local"
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  id="ldap-url"
+                  value={getValue("ldap_url")}
+                  onChange={(event) => setValue("ldap_url", event.target.value)}
+                  placeholder="ldap://dc.company.local:389"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+              <Field label={labels.ldapBaseDn} htmlFor="ldap-base-dn">
+                <input
+                  id="ldap-base-dn"
+                  value={getValue("ldap_base_dn")}
+                  onChange={(event) => setValue("ldap_base_dn", event.target.value)}
+                  placeholder="DC=company,DC=local"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+              <Field label={labels.ldapBindDn} htmlFor="ldap-bind-dn">
+                <input
+                  id="ldap-bind-dn"
+                  value={getValue("ldap_bind_dn")}
+                  onChange={(event) => setValue("ldap_bind_dn", event.target.value)}
+                  placeholder="CN=ldap-reader,OU=Service Accounts,DC=company,DC=local"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+              <Field label={labels.ldapBindPassword} htmlFor="ldap-bind-password">
+                <input
+                  id="ldap-bind-password"
+                  type="password"
+                  value={getValue("ldap_bind_password")}
+                  onChange={(event) => setValue("ldap_bind_password", event.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
               </Field>
             </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleLdapTest}
-            disabled={testingLdap}
-            className="inline-flex h-10 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
-          >
-            {testingLdap ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlugZap className="h-4 w-4" />}
-            {labels.testLdapConnection}
-          </button>
+            <button
+              type="button"
+              onClick={handleLdapTest}
+              disabled={testingLdap}
+              className="mt-4 inline-flex h-10 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+            >
+              {testingLdap ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlugZap className="h-4 w-4" />}
+              {labels.testLdapConnection}
+            </button>
+          </WizardStep>
+
+          <WizardStep number={2} title={labels.ldapStepLoginMapping}>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Field label={labels.ldapUserFilter} htmlFor="ldap-user-filter">
+                <input
+                  id="ldap-user-filter"
+                  value={getValue("ldap_user_filter")}
+                  onChange={(event) => setValue("ldap_user_filter", event.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+              <Field label={labels.ldapUpnDomain} htmlFor="ldap-upn-domain">
+                <input
+                  id="ldap-upn-domain"
+                  value={getValue("ldap_upn_domain")}
+                  onChange={(event) => setValue("ldap_upn_domain", event.target.value)}
+                  placeholder="company.local"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+              <Field label={labels.ldapDomain} htmlFor="ldap-domain">
+                <input
+                  id="ldap-domain"
+                  value={getValue("ldap_domain")}
+                  onChange={(event) => setValue("ldap_domain", event.target.value)}
+                  placeholder="COMPANY"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+              <div className="lg:col-span-2">
+                <Field label={labels.ldapUserDnTemplate} htmlFor="ldap-user-dn-template">
+                  <input
+                    id="ldap-user-dn-template"
+                    value={getValue("ldap_user_dn_template")}
+                    onChange={(event) => setValue("ldap_user_dn_template", event.target.value)}
+                    placeholder="CN={username},OU=Users,DC=company,DC=local"
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                </Field>
+              </div>
+            </div>
+          </WizardStep>
+
+          <WizardStep number={3} title={labels.ldapStepProvisioning}>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <ToggleField
+                label={labels.ldapAutoProvision}
+                checked={getValue("ldap_auto_provision") === "true"}
+                onChange={(checked) => setBooleanValue("ldap_auto_provision", checked)}
+              />
+              <Field label={labels.ldapDefaultRole} htmlFor="ldap-default-role">
+                <input
+                  id="ldap-default-role"
+                  value={getValue("ldap_default_role")}
+                  onChange={(event) => setValue("ldap_default_role", event.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+            </div>
+          </WizardStep>
         </div>
       </div>
       ) : null}
@@ -985,39 +1004,43 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
           <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
             {labels.ldapSyncRecommendation}
           </p>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <ToggleField
-              label={labels.ldapSyncEnabled}
-              checked={getValue("ldap_sync_enabled") === "true"}
-              onChange={(checked) => setBooleanValue("ldap_sync_enabled", checked)}
-            />
-            <ToggleField
-              label={labels.ldapSyncDeactivateMissing}
-              checked={getValue("ldap_sync_deactivate_missing") === "true"}
-              onChange={(checked) => setBooleanValue("ldap_sync_deactivate_missing", checked)}
-            />
-            <Field label={labels.ldapSyncMode} htmlFor="ldap-sync-mode">
-              <select
-                id="ldap-sync-mode"
-                value={getValue("ldap_sync_mode")}
-                onChange={(event) => setValue("ldap_sync_mode", event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              >
-                <option value="preview">Preview</option>
-                <option value="manual">Manual</option>
-                <option value="scheduled">Scheduled</option>
-              </select>
-            </Field>
-            <Field label={labels.ldapSyncBaseDn} htmlFor="ldap-sync-base-dn">
-              <input
-                id="ldap-sync-base-dn"
-                value={getValue("ldap_sync_base_dn")}
-                onChange={(event) => setValue("ldap_sync_base_dn", event.target.value)}
-                placeholder="OU=Employees,DC=company,DC=local"
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          <WizardStep number={1} title={labels.ldapStepSyncStrategy}>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <ToggleField
+                label={labels.ldapSyncEnabled}
+                checked={getValue("ldap_sync_enabled") === "true"}
+                onChange={(checked) => setBooleanValue("ldap_sync_enabled", checked)}
               />
-            </Field>
-            <div className="lg:col-span-2">
+              <ToggleField
+                label={labels.ldapSyncDeactivateMissing}
+                checked={getValue("ldap_sync_deactivate_missing") === "true"}
+                onChange={(checked) => setBooleanValue("ldap_sync_deactivate_missing", checked)}
+              />
+              <Field label={labels.ldapSyncMode} htmlFor="ldap-sync-mode">
+                <select
+                  id="ldap-sync-mode"
+                  value={getValue("ldap_sync_mode")}
+                  onChange={(event) => setValue("ldap_sync_mode", event.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                >
+                  <option value="preview">Preview</option>
+                  <option value="manual">Manual</option>
+                  <option value="scheduled">Scheduled</option>
+                </select>
+              </Field>
+              <Field label={labels.ldapSyncBaseDn} htmlFor="ldap-sync-base-dn">
+                <input
+                  id="ldap-sync-base-dn"
+                  value={getValue("ldap_sync_base_dn")}
+                  onChange={(event) => setValue("ldap_sync_base_dn", event.target.value)}
+                  placeholder="OU=Employees,DC=company,DC=local"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+            </div>
+          </WizardStep>
+
+          <WizardStep number={2} title={labels.ldapStepOrgMapping}>
               <div className="rounded-md border border-border bg-muted/30 px-3 py-3">
                 <div className="text-sm font-medium text-foreground">{labels.ldapSyncDefaultMapping}</div>
                 <p className="mt-1 text-sm text-muted-foreground">{labels.ldapSyncDefaultMappingDescription}</p>
@@ -1048,7 +1071,10 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
                   </Field>
                 </div>
               </div>
-            </div>
+          </WizardStep>
+
+          <WizardStep number={3} title={labels.ldapStepSchedule}>
+            <div className="grid gap-4 lg:grid-cols-2">
             <Field label={labels.ldapSyncSchedule} htmlFor="ldap-sync-schedule-preset">
               <select
                 id="ldap-sync-schedule-preset"
@@ -1093,7 +1119,10 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               </div>
             ) : null}
           </div>
-          <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row">
+          </WizardStep>
+
+          <WizardStep number={4} title={labels.ldapStepPreviewApply}>
+          <div className="flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
               onClick={() => handleLdapSync("preview")}
@@ -1119,6 +1148,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
             </div>
           ) : null}
           <SyncPreviewPanel labels={labels} preview={syncPreview} />
+          </WizardStep>
         </div>
       </div>
       ) : null}
@@ -1213,6 +1243,20 @@ function Field({ label, htmlFor, children }: { label: string; htmlFor: string; c
       <label className="block text-sm font-medium text-foreground" htmlFor={htmlFor}>
         {label}
       </label>
+      {children}
+    </div>
+  )
+}
+
+function WizardStep({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-md border border-border bg-muted/20 p-4">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
+          {number}
+        </span>
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      </div>
       {children}
     </div>
   )
