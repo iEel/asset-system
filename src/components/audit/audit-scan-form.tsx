@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { AlertTriangle, Camera, CheckCircle2, ImagePlus, Info, Keyboard, Loader2, ScanLine, Save, X } from "lucide-react"
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 
 type Option = { id: string; label: string }
 type AuditScanItem = {
@@ -121,6 +122,8 @@ export function AuditScanForm({
     ].filter((mismatch): mismatch is AuditMismatchPreview => Boolean(mismatch))
   }, [selectedItem, t, values])
   const correctionMismatchCount = mismatchPreview.filter((mismatch) => mismatch.canApply).length
+  const pendingCount = items.filter((item) => item.auditStatus === "pending").length
+  const processedCount = items.length - pendingCount
   const selectedAuditPhotoChecklist = selectedItem?.photoChecklist ?? []
   const effectiveAuditPhotoLabel =
     selectedAuditPhotoChecklist.find((item) => item === auditPhotoLabel) ?? selectedAuditPhotoChecklist[0] ?? ""
@@ -337,11 +340,23 @@ export function AuditScanForm({
         )}
       </div>
 
+      <div className="sticky top-0 z-20 mb-4 rounded-lg border border-border bg-surface/95 p-3 shadow-sm backdrop-blur">
+        <AuditProgressBar
+          compact
+          total={items.length}
+          processed={processedCount}
+          pending={pendingCount}
+          label={t("progress")}
+          processedLabel={t("scannedQueue")}
+          pendingLabel={t("pendingQueue")}
+        />
+      </div>
+
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
           <div className="md:col-span-2 grid gap-3 sm:grid-cols-3">
-            <AuditMetric label={t("pendingQueue")} value={items.filter((item) => item.auditStatus === "pending").length.toString()} />
-            <AuditMetric label={t("scannedQueue")} value={items.filter((item) => item.auditStatus !== "pending").length.toString()} />
+            <AuditMetric label={t("pendingQueue")} value={pendingCount.toString()} />
+            <AuditMetric label={t("scannedQueue")} value={processedCount.toString()} />
             <AuditMetric label={t("photoQueue")} value={queuedAuditPhotos.length.toString()} />
           </div>
 

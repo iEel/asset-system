@@ -7,6 +7,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { formatDate } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 
 type AuditRoundDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -18,7 +19,7 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
   const t = await getTranslations("auditRound")
   const tCommon = await getTranslations("common")
 
-  const [round, pendingCount, scannedCount] = await Promise.all([
+  const [round, statusCounts, resultCounts] = await Promise.all([
     prisma.auditRound.findFirst({
       where: { id, isActive: true },
       include: {
@@ -46,11 +47,29 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
         _count: { select: { items: true, findings: true } },
       },
     }),
-    prisma.auditItem.count({ where: { auditRoundId: id, auditStatus: "pending" } }),
-    prisma.auditItem.count({ where: { auditRoundId: id, auditStatus: "scanned" } }),
+    prisma.auditItem.groupBy({
+      by: ["auditStatus"],
+      where: { auditRoundId: id },
+      _count: { _all: true },
+    }),
+    prisma.auditItem.groupBy({
+      by: ["auditResult"],
+      where: { auditRoundId: id },
+      _count: { _all: true },
+    }),
   ])
   if (!round) notFound()
 
+  const pendingCount = statusCounts.find((row) => row.auditStatus === "pending")?._count._all ?? 0
+  const processedCount = Math.max(round._count.items - pendingCount, 0)
+  const scannedCount = statusCounts
+    .filter((row) => row.auditStatus !== "pending")
+    .reduce((sum, row) => sum + row._count._all, 0)
+  const foundCount = resultCounts.find((row) => row.auditResult === "found")?._count._all ?? 0
+  const notFoundCount = resultCounts.find((row) => row.auditResult === "not_found")?._count._all ?? 0
+  const mismatchCount = resultCounts
+    .filter((row) => row.auditResult && row.auditResult !== "found" && row.auditResult !== "not_found")
+    .reduce((sum, row) => sum + row._count._all, 0)
   const progress = round._count.items > 0 ? Math.round(((round._count.items - pendingCount) / round._count.items) * 100) : 0
 
   return (
@@ -107,6 +126,23 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
         <Metric label={t("pending")} value={pendingCount} />
         <Metric label={t("scanned")} value={scannedCount} />
         <Metric label={t("progress")} value={`${progress}%`} />
+      </div>
+
+      <div className="mb-6">
+        <AuditProgressBar
+          total={round._count.items}
+          processed={processedCount}
+          pending={pendingCount}
+          label={t("progress")}
+          processedLabel={t("scanned")}
+          pendingLabel={t("pending")}
+          breakdown={[
+            { label: t("found"), value: foundCount, tone: "success" },
+            { label: t("mismatch"), value: mismatchCount, tone: "warning" },
+            { label: t("notFound"), value: notFoundCount, tone: "danger" },
+            { label: t("pending"), value: pendingCount, tone: "muted" },
+          ]}
+        />
       </div>
 
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">

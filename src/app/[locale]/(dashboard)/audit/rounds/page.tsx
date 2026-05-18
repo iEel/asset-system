@@ -6,6 +6,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { ColumnHeader, MasterDataHeader, MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { formatDate } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 
 type AuditRoundsPageProps = {
   params: Promise<{ locale: string }>
@@ -43,6 +44,24 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
     },
     orderBy: { createdAt: "desc" },
   })
+  const roundIds = rounds.map((round) => round.id)
+  const statusCounts = roundIds.length
+    ? await prisma.auditItem.groupBy({
+        by: ["auditRoundId", "auditStatus"],
+        where: { auditRoundId: { in: roundIds } },
+        _count: { _all: true },
+      })
+    : []
+  const progressByRoundId = new Map<string, { pending: number; processed: number }>()
+  for (const row of statusCounts) {
+    const current = progressByRoundId.get(row.auditRoundId) ?? { pending: 0, processed: 0 }
+    if (row.auditStatus === "pending") {
+      current.pending += row._count._all
+    } else {
+      current.processed += row._count._all
+    }
+    progressByRoundId.set(row.auditRoundId, current)
+  }
 
   return (
     <div>
@@ -71,44 +90,60 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                 <ColumnHeader>{t("dateRange")}</ColumnHeader>
                 <ColumnHeader>{t("status")}</ColumnHeader>
                 <ColumnHeader align="right">{t("items")}</ColumnHeader>
+                <ColumnHeader>{t("progress")}</ColumnHeader>
                 <ColumnHeader align="right">{tCommon("actions")}</ColumnHeader>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {rounds.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="h-32 px-4 text-center text-muted-foreground">
+                  <td colSpan={8} className="h-32 px-4 text-center text-muted-foreground">
                     {tCommon("noData")}
                   </td>
                 </tr>
               ) : (
-                rounds.map((round) => (
-                  <ClickableTableRow
-                    key={round.id}
-                    href={`/${locale}/audit/rounds/${round.id}`}
-                    label={`${tCommon("view")}: ${round.auditNo}`}
-                  >
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{round.auditNo}</td>
-                    <td className="min-w-56 px-4 py-3 text-foreground">{round.name}</td>
-                    <td className="min-w-64 px-4 py-3 text-muted-foreground">{formatScope(round)}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                      {formatDate(round.startDate)} - {formatDate(round.endDate)}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <AuditStatusBadge status={round.status} />
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-muted-foreground">{round._count.items}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right">
-                      <Link
-                        href={`/${locale}/audit/rounds/${round.id}`}
-                        title={tCommon("view")}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Link>
-                    </td>
-                  </ClickableTableRow>
-                ))
+                rounds.map((round) => {
+                  const progress = progressByRoundId.get(round.id) ?? { pending: round._count.items, processed: 0 }
+
+                  return (
+                    <ClickableTableRow
+                      key={round.id}
+                      href={`/${locale}/audit/rounds/${round.id}`}
+                      label={`${tCommon("view")}: ${round.auditNo}`}
+                    >
+                      <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{round.auditNo}</td>
+                      <td className="min-w-56 px-4 py-3 text-foreground">{round.name}</td>
+                      <td className="min-w-64 px-4 py-3 text-muted-foreground">{formatScope(round)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                        {formatDate(round.startDate)} - {formatDate(round.endDate)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <AuditStatusBadge status={round.status} />
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right text-muted-foreground">{round._count.items}</td>
+                      <td className="min-w-52 px-4 py-3">
+                        <AuditProgressBar
+                          compact
+                          total={round._count.items}
+                          processed={progress.processed}
+                          pending={progress.pending}
+                          label={t("progress")}
+                          processedLabel={t("scanned")}
+                          pendingLabel={t("pending")}
+                        />
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                        <Link
+                          href={`/${locale}/audit/rounds/${round.id}`}
+                          title={tCommon("view")}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                      </td>
+                    </ClickableTableRow>
+                  )
+                })
               )}
             </tbody>
           </table>
