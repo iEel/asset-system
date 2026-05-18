@@ -8,6 +8,8 @@ import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { formatDate } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
+import { AuditRoundCloseButton } from "@/components/audit/audit-round-close-button"
+import { hasPermission } from "@/lib/auth-utils"
 
 type AuditRoundDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -15,11 +17,12 @@ type AuditRoundDetailPageProps = {
 
 export default async function AuditRoundDetailPage({ params }: AuditRoundDetailPageProps) {
   const { locale, id } = await params
-  await requirePagePermission(locale, "audit", "view")
+  const user = await requirePagePermission(locale, "audit", "view")
+  const canApprove = hasPermission(user, "audit", "approve")
   const t = await getTranslations("auditRound")
   const tCommon = await getTranslations("common")
 
-  const [round, statusCounts, resultCounts, findingTypeCounts, pendingReviewCount, outOfScopeCount] = await Promise.all([
+  const [round, statusCounts, resultCounts, findingTypeCounts, pendingReviewCount, outOfScopeCount, openActionCount] = await Promise.all([
     prisma.auditRound.findFirst({
       where: { id, isActive: true },
       include: {
@@ -64,6 +67,7 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
     }),
     prisma.auditFinding.count({ where: { auditRoundId: id, reviewStatus: "pending" } }),
     prisma.auditScanHistory.count({ where: { auditRoundId: id, auditItemId: null } }),
+    prisma.auditFinding.count({ where: { auditRoundId: id, actionStatus: { in: ["planned", "in_progress", "done"] } } }),
   ])
   if (!round) notFound()
 
@@ -81,6 +85,12 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
     .filter((row) => row.auditResult && row.auditResult !== "found" && row.auditResult !== "not_found")
     .reduce((sum, row) => sum + row._count._all, 0)
   const progress = round._count.items > 0 ? Math.round(((round._count.items - pendingCount) / round._count.items) * 100) : 0
+  const closeChecklist = [
+    { label: t("closePendingItems"), value: pendingCount, ok: pendingCount === 0 },
+    { label: t("closePendingFindings"), value: pendingReviewCount, ok: pendingReviewCount === 0 },
+    { label: t("closeOpenActions"), value: openActionCount, ok: openActionCount === 0 },
+  ]
+  const canCloseRound = round.status !== "closed" && closeChecklist.every((item) => item.ok)
 
   return (
     <div>
@@ -170,6 +180,16 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
           <DashboardCard label={t("pendingReview")} value={pendingReviewCount} tone="muted" />
         </div>
       </section>
+
+      {canApprove ? (
+        <div className="mb-6">
+          <AuditRoundCloseButton
+            roundId={round.id}
+            disabled={!canCloseRound}
+            checklist={closeChecklist}
+          />
+        </div>
+      ) : null}
 
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-4 py-3">
