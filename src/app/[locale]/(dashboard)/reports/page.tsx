@@ -126,6 +126,13 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const custodianMap = new Map(custodianOptions.map((employee) => [employee.id, `${employee.code} - ${employee.fullNameTh}`]))
   const locationMap = new Map(locationOptions.map((location) => [location.id, `${location.code} - ${location.name}`]))
   const repairAssetMap = new Map(repairAssets.map((asset) => [asset.id, `${asset.assetTag} - ${asset.name}`]))
+  const savedFilterUrl = `/${locale}/reports?${exportQuery}`
+  const recurringReports = [
+    { name: t("monthlyAssetOverview"), cadence: t("monthly"), href: `/api/reports/assets-overview/export?${exportQuery}`, owner: t("ownerAccounting") },
+    { name: t("weeklyMaintenanceFollowUp"), cadence: t("weekly"), href: "/api/maintenance-tickets/export", owner: t("ownerMaintenance") },
+    { name: t("monthlyDisposalFollowUp"), cadence: t("monthly"), href: "/api/disposal-requests/export", owner: t("ownerApprover") },
+    { name: t("weeklyAuditFindings"), cadence: t("weekly"), href: "/api/audit-findings/export?status=pending", owner: t("ownerAudit") },
+  ]
   const reportCatalog = [
     {
       title: t("catalogAssetTitle"),
@@ -248,6 +255,39 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             </Link>
           </div>
         </form>
+      </section>
+
+      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-foreground">{t("savedReportsTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("savedReportsHelp")}</p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[360px_1fr]">
+          <div className="rounded-md border border-border bg-background p-4">
+            <div className="text-sm font-semibold text-foreground">{t("currentFilterPreset")}</div>
+            <p className="mt-1 text-sm text-muted-foreground">{t("currentFilterPresetHelp")}</p>
+            <Link href={savedFilterUrl} className="mt-4 inline-flex h-9 items-center rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90">
+              {t("openSavedFilter")}
+            </Link>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {recurringReports.map((report) => (
+              <div key={report.name} className="rounded-md border border-border bg-background p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">{report.name}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{report.owner}</div>
+                  </div>
+                  <span className="rounded-full bg-info/10 px-2 py-1 text-xs font-medium text-info">{report.cadence}</span>
+                </div>
+                <Link href={report.href} className="mt-4 inline-flex h-8 items-center gap-1 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent">
+                  <Download className="h-3.5 w-3.5" />
+                  {t("runNow")}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
