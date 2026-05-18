@@ -10,6 +10,7 @@ import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 import { AuditRoundCloseButton } from "@/components/audit/audit-round-close-button"
 import { hasPermission } from "@/lib/auth-utils"
+import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
 
 type AuditRoundDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -22,7 +23,7 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
   const t = await getTranslations("auditRound")
   const tCommon = await getTranslations("common")
 
-  const [round, statusCounts, resultCounts, findingTypeCounts, pendingReviewCount, outOfScopeCount, openActionCount] = await Promise.all([
+  const [round, statusCounts, resultCounts, findingTypeCounts, pendingReviewCount, outOfScopeCount, openActionCount, evidenceItems] = await Promise.all([
     prisma.auditRound.findFirst({
       where: { id, isActive: true },
       include: {
@@ -68,6 +69,17 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
     prisma.auditFinding.count({ where: { auditRoundId: id, reviewStatus: "pending" } }),
     prisma.auditScanHistory.count({ where: { auditRoundId: id, auditItemId: null } }),
     prisma.auditFinding.count({ where: { auditRoundId: id, actionStatus: { in: ["planned", "in_progress", "done"] } } }),
+    prisma.auditItem.findMany({
+      where: { auditRoundId: id },
+      select: {
+        assetId: true,
+        asset: {
+          select: {
+            categoryId: true,
+          },
+        },
+      },
+    }),
   ])
   if (!round) notFound()
 
@@ -91,6 +103,10 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
     { label: t("closeOpenActions"), value: openActionCount, ok: openActionCount === 0 },
   ]
   const canCloseRound = round.status !== "closed" && closeChecklist.every((item) => item.ok)
+  const evidenceSummary = await getEvidenceSummary({
+    auditStartDate: round.startDate,
+    items: evidenceItems,
+  })
 
   return (
     <div>
@@ -178,6 +194,19 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
           <DashboardCard label={t("notFound")} value={notFoundCount} tone="danger" />
           <DashboardCard label={t("outOfScope")} value={outOfScopeCount} tone="info" />
           <DashboardCard label={t("pendingReview")} value={pendingReviewCount} tone="muted" />
+        </div>
+      </section>
+
+      <section className="mb-6 rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-foreground">{t("evidenceSummary")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("evidenceSummaryHelp")}</p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <DashboardCard label={t("evidenceAttached")} value={evidenceSummary.withEvidence} tone="success" />
+          <DashboardCard label={t("evidenceMissing")} value={evidenceSummary.missingEvidence} tone="warning" />
+          <DashboardCard label={t("checklistComplete")} value={evidenceSummary.checklistComplete} tone="info" />
+          <DashboardCard label={t("checklistIncomplete")} value={evidenceSummary.checklistIncomplete} tone="danger" />
         </div>
       </section>
 
@@ -277,4 +306,71 @@ function DashboardCard({
       <div className="mt-2 text-2xl font-bold">{value}</div>
     </div>
   )
+}
+
+async function getEvidenceSummary({
+  auditStartDate,
+  items,
+}: {
+  auditStartDate: Date
+  items: Array<{ assetId: string; asset: { categoryId: string } }>
+}) {
+  const assetIds = Array.from(new Set(items.map((item) => item.assetId)))
+  const categoryIds = Array.from(new Set(items.map((item) => item.asset.categoryId).filter(Boolean)))
+  const [attachments, checklistSettings] = await Promise.all([
+    assetIds.length
+      ? prisma.attachment.findMany({
+          where: {
+            assetId: { in: assetIds },
+            module: "asset",
+            isActive: true,
+            uploadedAt: { gte: auditStartDate },
+          },
+          select: { assetId: true, originalName: true },
+        })
+      : Promise.resolve([]),
+    categoryIds.length
+      ? prisma.systemSetting.findMany({
+          where: { key: { in: categoryIds.map(categoryPhotoChecklistKey) } },
+          select: { key: true, value: true },
+        })
+      : Promise.resolve([]),
+  ])
+
+  const attachmentsByAssetId = new Map<string, string[]>()
+  for (const attachment of attachments) {
+    if (!attachment.assetId) continue
+    const current = attachmentsByAssetId.get(attachment.assetId) ?? []
+    current.push(attachment.originalName)
+    attachmentsByAssetId.set(attachment.assetId, current)
+  }
+
+  const checklistByCategoryId = new Map(
+    checklistSettings.map((setting) => [setting.key.replace("asset_category_photo_checklist:", ""), parsePhotoChecklist(setting.value)])
+  )
+
+  let withEvidence = 0
+  let checklistComplete = 0
+  let checklistIncomplete = 0
+  for (const item of items) {
+    const attachmentNames = attachmentsByAssetId.get(item.assetId) ?? []
+    if (attachmentNames.length > 0) withEvidence += 1
+
+    const checklist = checklistByCategoryId.get(item.asset.categoryId) ?? []
+    if (checklist.length === 0) continue
+
+    const complete = checklist.every((label) => attachmentNames.some((name) => name.startsWith(`${label} - `)))
+    if (complete) {
+      checklistComplete += 1
+    } else {
+      checklistIncomplete += 1
+    }
+  }
+
+  return {
+    withEvidence,
+    missingEvidence: Math.max(items.length - withEvidence, 0),
+    checklistComplete,
+    checklistIncomplete,
+  }
 }
