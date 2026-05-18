@@ -61,6 +61,9 @@ type SystemSettingsFormProps = {
     changeReviewDescription: string
     beforeValue: string
     afterValue: string
+    advancedWarningTitle: string
+    advancedWarningDescription: string
+    showAdvancedSettings: string
     generalSettings: string
     assetTagFormat: string
     assetTagFormatDescription: string
@@ -1154,35 +1157,44 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
       ) : null}
 
       {activeTab === "advanced" && generalSettings.length > 0 ? (
-        <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <details className="overflow-hidden rounded-lg border border-warning/30 bg-surface shadow-sm">
+          <summary className="cursor-pointer list-none border-b border-warning/20 bg-warning/10 px-4 py-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">{labels.advancedWarningTitle}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{labels.advancedWarningDescription}</p>
+              </div>
+              <span className="text-sm font-medium text-warning">{labels.showAdvancedSettings}</span>
+            </div>
+          </summary>
           <SectionHeader title={labels.advancedSettings} description={labels.advancedSettingsDescription} />
           <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <Head>{labels.key}</Head>
-                <Head>{labels.value}</Head>
-                <Head>{labels.description}</Head>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {generalSettings.map((setting) => (
-                <tr key={setting.key} className="hover:bg-accent/50">
-                  <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{setting.key}</td>
-                  <td className="min-w-80 px-4 py-3">
-                    <input
-                      value={values[setting.key] ?? ""}
-                      onChange={(event) => setValues((current) => ({ ...current, [setting.key]: event.target.value }))}
-                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                    />
-                  </td>
-                  <td className="min-w-80 px-4 py-3 text-muted-foreground">{setting.description || "-"}</td>
+            <table className="min-w-full divide-y divide-border text-sm">
+              <thead className="bg-muted/40">
+                <tr>
+                  <Head>{labels.key}</Head>
+                  <Head>{labels.value}</Head>
+                  <Head>{labels.description}</Head>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {generalSettings.map((setting) => (
+                  <tr key={setting.key} className="hover:bg-accent/50">
+                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{setting.key}</td>
+                    <td className="min-w-80 px-4 py-3">
+                      <input
+                        value={values[setting.key] ?? ""}
+                        onChange={(event) => setValues((current) => ({ ...current, [setting.key]: event.target.value }))}
+                        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      />
+                    </td>
+                    <td className="min-w-80 px-4 py-3 text-muted-foreground">{setting.description || "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
+        </details>
       ) : null}
 
       {changedCount > 0 ? (
