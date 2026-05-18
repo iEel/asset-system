@@ -1,4 +1,5 @@
 import { assetLabelSettingKeys } from "@/lib/asset-label-template"
+import { assetDataQualityRulesKey, defaultAssetDataQualityRules } from "@/lib/data-quality-rules"
 
 export const assetTagCategoryPrefixesKey = "asset_tag_category_prefixes"
 export const assetTagFormatTemplateKey = "asset_tag_format_template"
@@ -70,6 +71,11 @@ export const systemSettingDefaults = [
   },
   { key: "company_name", value: "บริษัท ตัวอย่าง จำกัด", description: "ชื่อบริษัทหลัก" },
   { key: "default_currency", value: "THB", description: "สกุลเงินเริ่มต้น" },
+  {
+    key: assetDataQualityRulesKey,
+    value: JSON.stringify(defaultAssetDataQualityRules),
+    description: "กฎตรวจคุณภาพข้อมูลทะเบียนทรัพย์สิน",
+  },
   { key: "ldap_enabled", value: "false", description: "เปิดใช้งาน AD/LDAP login" },
   { key: "ldap_url", value: "", description: "LDAP URL เช่น ldap://dc.company.local:389 หรือ ldaps://dc.company.local:636" },
   { key: "ldap_base_dn", value: "", description: "Base DN สำหรับค้นหา user เช่น DC=company,DC=local" },

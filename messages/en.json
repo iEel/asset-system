@@ -104,6 +104,7 @@
     "administration": "Administration",
     "userManagement": "User Management",
     "rolePermission": "Roles & Permissions",
+    "dataQuality": "Data Quality",
     "importExport": "Import / Export",
     "qrTemplate": "QR Label Template",
     "notification": "Notifications",
@@ -1461,6 +1462,43 @@
       "import": "Import",
       "export": "Export",
       "log": "System Log"
+    }
+  },
+  "dataQualityPage": {
+    "title": "Data Quality Rule Center",
+    "subtitle": "Configure asset register data-quality rules and review issue counts for enabled checks.",
+    "openReports": "Open Reports",
+    "enabledRules": "Enabled rules",
+    "totalIssues": "Issues to fix",
+    "rulesConfigured": "Total rules",
+    "warning": "Warning",
+    "danger": "Urgent",
+    "saved": "Data quality rules saved",
+    "rules": {
+      "missingCustodian": {
+        "label": "Custodian required",
+        "description": "Find assets without an assigned owner or custodian."
+      },
+      "missingSerial": {
+        "label": "Serial Number required",
+        "description": "Find assets missing a Serial Number for unique identification."
+      },
+      "missingPhoto": {
+        "label": "Asset photo required",
+        "description": "Find assets without register photo evidence."
+      },
+      "missingDepartment": {
+        "label": "Department required",
+        "description": "Find assets not linked to a department."
+      },
+      "missingPurchaseInfo": {
+        "label": "Purchase information required",
+        "description": "Find assets missing purchase date, price, supplier, PO, or invoice."
+      },
+      "warrantyExpiring": {
+        "label": "Warranty expiring",
+        "description": "Find assets whose warranty expires within 30 days."
+      }
     }
   },
   "systemSettingsPage": {

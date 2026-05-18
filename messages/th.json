@@ -104,6 +104,7 @@
     "administration": "การตั้งค่า",
     "userManagement": "จัดการผู้ใช้",
     "rolePermission": "สิทธิ์การใช้งาน",
+    "dataQuality": "คุณภาพข้อมูล",
     "importExport": "นำเข้า/ส่งออก",
     "qrTemplate": "แม่แบบ QR",
     "notification": "การแจ้งเตือน",
@@ -1461,6 +1462,43 @@
       "import": "นำเข้า",
       "export": "ส่งออก",
       "log": "ประวัติระบบ"
+    }
+  },
+  "dataQualityPage": {
+    "title": "ศูนย์กฎคุณภาพข้อมูล",
+    "subtitle": "กำหนดกฎตรวจข้อมูลทะเบียนทรัพย์สิน และดูจำนวนรายการที่ต้องแก้ไขตามกฎที่เปิดใช้งาน",
+    "openReports": "เปิดรายงาน",
+    "enabledRules": "กฎที่เปิดใช้งาน",
+    "totalIssues": "รายการที่ต้องแก้",
+    "rulesConfigured": "กฎทั้งหมด",
+    "warning": "เตือน",
+    "danger": "เร่งด่วน",
+    "saved": "บันทึกกฎคุณภาพข้อมูลสำเร็จ",
+    "rules": {
+      "missingCustodian": {
+        "label": "ต้องมีผู้ถือครอง",
+        "description": "ตรวจทรัพย์สินที่ยังไม่มีผู้รับผิดชอบหรือผู้ถือครอง"
+      },
+      "missingSerial": {
+        "label": "ต้องมี Serial Number",
+        "description": "ตรวจทรัพย์สินที่ยังไม่มีเลข Serial สำหรับระบุตัวตน"
+      },
+      "missingPhoto": {
+        "label": "ต้องมีรูปทรัพย์สิน",
+        "description": "ตรวจทรัพย์สินที่ยังไม่มีรูปหลักฐานในทะเบียน"
+      },
+      "missingDepartment": {
+        "label": "ต้องมีแผนก",
+        "description": "ตรวจทรัพย์สินที่ยังไม่ได้ผูกกับแผนก"
+      },
+      "missingPurchaseInfo": {
+        "label": "ต้องมีข้อมูลจัดซื้อ",
+        "description": "ตรวจทรัพย์สินที่ขาดวันที่ซื้อ ราคา ผู้ขาย PO หรือ Invoice"
+      },
+      "warrantyExpiring": {
+        "label": "ใกล้หมดประกัน",
+        "description": "ตรวจทรัพย์สินที่ประกันจะหมดภายใน 30 วัน"
+      }
     }
   },
   "systemSettingsPage": {
