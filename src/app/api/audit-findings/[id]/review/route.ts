@@ -5,6 +5,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { auditFindingActionPlanSchema, auditFindingCloseSchema, auditFindingReviewSchema } from "@/lib/validations/audit"
+import { auditSegregationErrors, isSameAuditActor } from "@/lib/audit-segregation"
 
 type ReviewContext = {
   params: Promise<{ id: string }>
@@ -103,6 +104,9 @@ export async function POST(request: NextRequest, context: ReviewContext) {
     const input = auditFindingReviewSchema.parse(body)
     if (finding.reviewStatus !== "pending") {
       return NextResponse.json({ error: "Audit finding has already been reviewed" }, { status: 400 })
+    }
+    if (isSameAuditActor(user.id, finding.reportedBy)) {
+      return NextResponse.json({ error: auditSegregationErrors.reviewOwnFinding }, { status: 403 })
     }
 
     const reviewedFinding = await prisma.$transaction(async (tx) => {

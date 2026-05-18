@@ -12,6 +12,7 @@ import { formatDateTime } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { isSameAuditActor } from "@/lib/audit-segregation"
 
 type AuditFindingsPageProps = {
   params: Promise<{ locale: string }>
@@ -77,7 +78,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   const employeeLabelById = new Map(employeeOptions.map((employee) => [employee.id, employee.label]))
   const valueLabels = await buildFindingValueLabels(findings)
   const batchReviewFindings = findings
-    .filter((finding) => finding.reviewStatus === "pending")
+    .filter((finding) => finding.reviewStatus === "pending" && !isSameAuditActor(user.id, finding.reportedBy))
     .map((finding) => ({
       id: finding.id,
       label: finding.asset ? `${finding.asset.assetTag} - ${finding.asset.name}` : finding.auditRound.auditNo,
@@ -179,6 +180,8 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                       actionDueDate={finding.actionDueDate}
                       evidenceCount={attachmentCountByFindingId.get(finding.id) ?? 0}
                       employees={employeeOptions}
+                      reviewBlocked={isSameAuditActor(user.id, finding.reportedBy)}
+                      reviewBlockedReason={t("segregationReviewBlocked")}
                     />
                   ) : null}
                   {canCreateDisposal && finding.asset ? (
@@ -269,6 +272,8 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                           actionDueDate={finding.actionDueDate}
                           evidenceCount={attachmentCountByFindingId.get(finding.id) ?? 0}
                           employees={employeeOptions}
+                          reviewBlocked={isSameAuditActor(user.id, finding.reportedBy)}
+                          reviewBlockedReason={t("segregationReviewBlocked")}
                         />
                       ) : "-"}
                       {canCreateDisposal && finding.asset ? (

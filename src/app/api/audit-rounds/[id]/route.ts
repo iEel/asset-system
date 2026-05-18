@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { auditSegregationErrors, isSameAuditActor } from "@/lib/audit-segregation"
 
 type AuditRoundContext = {
   params: Promise<{ id: string }>
@@ -61,10 +62,13 @@ export async function PATCH(request: NextRequest, context: AuditRoundContext) {
 
     const round = await prisma.auditRound.findFirst({
       where: { id, isActive: true },
-      select: { id: true, status: true },
+      select: { id: true, status: true, createdBy: true },
     })
     if (!round) return NextResponse.json({ error: "Audit round not found" }, { status: 404 })
     if (round.status === "closed") return NextResponse.json({ error: "Audit round is already closed" }, { status: 400 })
+    if (isSameAuditActor(user.id, round.createdBy)) {
+      return NextResponse.json({ error: auditSegregationErrors.closeOwnRound }, { status: 403 })
+    }
 
     const checklist = await getCloseChecklist(id)
     if (!checklist.canClose) {

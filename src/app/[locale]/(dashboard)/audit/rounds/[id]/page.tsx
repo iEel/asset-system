@@ -15,6 +15,7 @@ import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { MobileActionBar } from "@/components/ui/mobile-action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { isSameAuditActor } from "@/lib/audit-segregation"
 
 type AuditRoundDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -87,6 +88,7 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
   ])
   if (!round) notFound()
 
+  const isRoundCreator = isSameAuditActor(user.id, round.createdBy)
   const pendingCount = statusCounts.find((row) => row.auditStatus === "pending")?._count._all ?? 0
   const processedCount = Math.max(round._count.items - pendingCount, 0)
   const scannedCount = statusCounts
@@ -105,6 +107,7 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
     { label: t("closePendingItems"), value: pendingCount, ok: pendingCount === 0 },
     { label: t("closePendingFindings"), value: pendingReviewCount, ok: pendingReviewCount === 0 },
     { label: t("closeOpenActions"), value: openActionCount, ok: openActionCount === 0 },
+    { label: t("closeSeparateApprover"), value: isRoundCreator ? 1 : 0, ok: !isRoundCreator },
   ]
   const canCloseRound = round.status !== "closed" && closeChecklist.every((item) => item.ok)
   const evidenceSummary = await getEvidenceSummary({

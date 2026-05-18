@@ -19,6 +19,8 @@ export function AuditFindingReviewActions({
   actionDueDate,
   evidenceCount,
   employees,
+  reviewBlocked = false,
+  reviewBlockedReason,
 }: {
   findingId: string
   reviewStatus: string
@@ -28,6 +30,8 @@ export function AuditFindingReviewActions({
   actionDueDate?: Date | string | null
   evidenceCount: number
   employees: EmployeeOption[]
+  reviewBlocked?: boolean
+  reviewBlockedReason?: string
 }) {
   const t = useTranslations("auditFinding")
   const [reviewing, setReviewing] = useState<"approve" | "reject" | null>(null)
@@ -59,6 +63,11 @@ export function AuditFindingReviewActions({
   return (
     <div className="flex flex-wrap justify-end gap-1">
       {reviewStatus === "pending" ? (
+        reviewBlocked ? (
+          <div className="max-w-56 rounded-md border border-warning/30 bg-warning/10 px-2 py-1 text-left text-xs font-medium text-warning">
+            {reviewBlockedReason ?? t("segregationReviewBlocked")}
+          </div>
+        ) : (
         <>
           <button
             type="button"
@@ -81,6 +90,7 @@ export function AuditFindingReviewActions({
             {t("reject")}
           </button>
         </>
+        )
       ) : null}
       <button
         type="button"

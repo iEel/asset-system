@@ -63,7 +63,7 @@ export function AuditRoundCloseButton({
           {t("closeRound")}
         </button>
       </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         {checklist.map((item) => (
           <div
             key={item.label}
