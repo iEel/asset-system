@@ -907,6 +907,13 @@
     "feedbackFoundTitle": "พบทรัพย์สินในรอบตรวจ",
     "feedbackNotInRoundTitle": "ไม่อยู่ในรอบตรวจนี้",
     "feedbackNotInRoundDescription": "ค่าที่อ่านได้: {code}",
+    "feedbackOutOfScopeTitle": "พบทรัพย์สินในระบบ แต่นอก Scope รอบนี้",
+    "feedbackOutOfScopeSavedTitle": "บันทึกทรัพย์สินนอก Scope แล้ว",
+    "outOfScopeFound": "พบทรัพย์สินนอก Scope ของรอบนี้",
+    "outOfScopeTitle": "ทรัพย์สินนอก Scope",
+    "outOfScopeHelp": "บันทึกรายการนี้เพื่อสร้าง Finding รอ Review และให้ผู้รับผิดชอบตัดสินใจว่าจะเพิ่มเข้ารอบ โอนย้าย หรือปรับข้อมูลหลัก",
+    "recordOutOfScope": "บันทึกเป็นนอก Scope",
+    "outOfScopeSaved": "บันทึกทรัพย์สินนอก Scope สำเร็จ",
     "progress": "ความคืบหน้ารอบตรวจ",
     "pendingQueue": "รอตรวจ",
     "scannedQueue": "ตรวจแล้ว/ดำเนินการแล้ว",
@@ -999,7 +1006,8 @@
     "type_wrong_custodian": "ผู้ถือครองไม่ตรง",
     "type_wrong_department": "แผนกไม่ตรง",
     "type_wrong_condition": "สภาพไม่ตรง",
-    "type_not_found": "ไม่พบทรัพย์สิน"
+    "type_not_found": "ไม่พบทรัพย์สิน",
+    "type_out_of_scope": "ทรัพย์สินนอก Scope"
   },
   "auditPending": {
     "title": "รายการรอตรวจ",

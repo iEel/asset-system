@@ -62,19 +62,94 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
     if (!item) {
       const asset = await prisma.asset.findFirst({
         where: { id: input.assetId, isActive: true },
-        select: { id: true, assetTag: true, name: true },
+        select: {
+          id: true,
+          assetTag: true,
+          name: true,
+          companyId: true,
+          branchId: true,
+          departmentId: true,
+          currentLocationId: true,
+          custodianId: true,
+          conditionId: true,
+        },
       })
       if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
 
-      await prisma.auditScanHistory.create({
-        data: {
-          auditRoundId: id,
-          assetId: asset.id,
-          scannedBy: user.id,
-          scanSource: input.scanSource,
-          rawPayload: JSON.stringify(input),
-          remark: input.remark,
-        },
+      const scannedAt = new Date()
+      const outOfScopeItem = await prisma.$transaction(async (tx) => {
+        const createdItem = await tx.auditItem.create({
+          data: {
+            auditRoundId: id,
+            assetId: asset.id,
+            expectedCompanyId: asset.companyId,
+            expectedBranchId: asset.branchId,
+            expectedDepartmentId: asset.departmentId,
+            expectedLocationId: asset.currentLocationId,
+            expectedCustodianId: asset.custodianId,
+            expectedConditionId: asset.conditionId,
+            actualDepartmentId: input.actualDepartmentId ?? asset.departmentId,
+            actualLocationId: input.actualLocationId ?? asset.currentLocationId,
+            actualCustodianId: input.actualCustodianId ?? asset.custodianId,
+            actualConditionId: input.actualConditionId ?? asset.conditionId,
+            auditStatus: "reviewed",
+            auditResult: "out_of_scope",
+            findingRequired: true,
+            reconcileStatus: "pending",
+            scannedAt,
+            scannedBy: user.id,
+            lastScanAt: scannedAt,
+            scanCount: 1,
+            remark: input.remark,
+          },
+        })
+
+        await tx.auditScanHistory.create({
+          data: {
+            auditRoundId: id,
+            auditItemId: null,
+            assetId: asset.id,
+            scannedBy: user.id,
+            scannedAt,
+            scanLocationId: input.actualLocationId ?? asset.currentLocationId,
+            scanSource: input.scanSource,
+            rawPayload: JSON.stringify({ ...input, outOfScope: true }),
+            remark: input.remark,
+          },
+        })
+
+        await tx.auditFinding.create({
+          data: {
+            auditRoundId: id,
+            auditItemId: createdItem.id,
+            assetId: asset.id,
+            findingType: "out_of_scope",
+            expectedValue: null,
+            actualValue: JSON.stringify({
+              assetTag: asset.assetTag,
+              assetName: asset.name,
+              locationId: input.actualLocationId ?? asset.currentLocationId,
+              custodianId: input.actualCustodianId ?? asset.custodianId,
+              departmentId: input.actualDepartmentId ?? asset.departmentId,
+              conditionId: input.actualConditionId ?? asset.conditionId,
+            }),
+            remark: input.remark,
+            reportedBy: user.id,
+            reviewStatus: "pending",
+            actionTaken: "out_of_scope_detected_by_audit_scan",
+          },
+        })
+
+        return createdItem
+      })
+
+      await logAudit({
+        userId: user.id,
+        action: "scan_out_of_scope",
+        module: "audit",
+        recordId: outOfScopeItem.id,
+        newValue: { auditRoundId: id, assetId: asset.id, auditResult: "out_of_scope" },
+        remark: input.remark ?? undefined,
       })
 
       return NextResponse.json(
@@ -83,6 +158,7 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
           auditResult: "out_of_scope",
           message: "Asset is not in this audit scope",
           asset,
+          item: outOfScopeItem,
         },
         { status: 202 }
       )

@@ -82,7 +82,7 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
   const wrongCustodianCount = findingTypeCounts.find((row) => row.findingType === "wrong_custodian")?._count._all ?? 0
   const wrongConditionCount = findingTypeCounts.find((row) => row.findingType === "wrong_condition")?._count._all ?? 0
   const mismatchCount = resultCounts
-    .filter((row) => row.auditResult && row.auditResult !== "found" && row.auditResult !== "not_found")
+    .filter((row) => row.auditResult && row.auditResult !== "found" && row.auditResult !== "not_found" && row.auditResult !== "out_of_scope")
     .reduce((sum, row) => sum + row._count._all, 0)
   const progress = round._count.items > 0 ? Math.round(((round._count.items - pendingCount) / round._count.items) * 100) : 0
   const closeChecklist = [

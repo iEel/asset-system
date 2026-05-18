@@ -57,6 +57,16 @@ type QueuedAuditPhoto = {
   label: string
   file: File
 }
+type OutOfScopeAsset = {
+  id: string
+  assetTag: string
+  title: string
+  subtitle: string
+  meta: {
+    location: string
+    custodian: string | null
+  }
+}
 
 export function AuditScanForm({
   roundId,
@@ -89,6 +99,7 @@ export function AuditScanForm({
   const [queuedAuditPhotos, setQueuedAuditPhotos] = useState<QueuedAuditPhoto[]>([])
   const [continuousScan, setContinuousScan] = useState(true)
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null)
+  const [outOfScopeAsset, setOutOfScopeAsset] = useState<OutOfScopeAsset | null>(null)
   const [applyCorrections, setApplyCorrections] = useState(false)
   const qrReaderRef = useRef<Html5QrcodeInstance | null>(null)
   const lastDecodedRef = useRef<{ value: string; at: number } | null>(null)
@@ -195,9 +206,7 @@ export function AuditScanForm({
           if (lastDecodedRef.current?.value === normalizedText && now - lastDecodedRef.current.at < 1500) return
           lastDecodedRef.current = { value: normalizedText, at: now }
           setLastDecodedText(decodedText)
-          if (selectScannedAsset(decodedText, "qr") && !continuousScan) {
-            void stopScanner()
-          }
+          void selectScannedAsset(decodedText, "qr")
         },
         () => {}
       )
@@ -226,10 +235,26 @@ export function AuditScanForm({
     }
   }
 
-  function selectScannedAsset(rawValue: string, source: "manual" | "qr") {
+  async function selectScannedAsset(rawValue: string, source: "manual" | "qr") {
     const normalizedValues = normalizeScanValue(rawValue)
     const matchedItem = normalizedValues.map((value) => assetLookup.get(value)).find(Boolean)
     if (!matchedItem) {
+      const foundAsset = await findOutOfScopeAsset(rawValue)
+      if (foundAsset) {
+        setOutOfScopeAsset(foundAsset)
+        setValues((current) => ({ ...current, assetId: "" }))
+        setScanText(rawValue)
+        setScanSource(source)
+        setScanFeedback({
+          status: "not_in_round",
+          title: t("feedbackOutOfScopeTitle"),
+          description: `${foundAsset.title} - ${foundAsset.subtitle}`,
+        })
+        toast.warning(t("outOfScopeFound"))
+        if (!continuousScan) void stopScanner()
+        return false
+      }
+      setOutOfScopeAsset(null)
       setScanFeedback({
         status: "not_in_round",
         title: t("feedbackNotInRoundTitle"),
@@ -240,6 +265,7 @@ export function AuditScanForm({
     }
 
     setValues((current) => ({ ...current, assetId: matchedItem.assetId }))
+    setOutOfScopeAsset(null)
     setApplyCorrections(false)
     setScanText(rawValue)
     setScanSource(source)
@@ -249,7 +275,66 @@ export function AuditScanForm({
       description: matchedItem.label,
     })
     toast.success(t("assetSelected"))
+    if (source === "qr" && !continuousScan) void stopScanner()
     return true
+  }
+
+  async function findOutOfScopeAsset(rawValue: string) {
+    const candidates = normalizeScanValue(rawValue)
+    for (const candidate of candidates) {
+      if (candidate.length < 2) continue
+      const response = await fetch(`/api/search?q=${encodeURIComponent(candidate)}`)
+      if (!response.ok) continue
+      const payload = await response.json().catch(() => null)
+      const results = Array.isArray(payload?.results) ? payload.results : []
+      const exactMatch = results.find((result: OutOfScopeAsset) => result.id.toLowerCase() === candidate || result.assetTag.toLowerCase() === candidate)
+      if (exactMatch) return exactMatch as OutOfScopeAsset
+      if (results[0]) return results[0] as OutOfScopeAsset
+    }
+    return null
+  }
+
+  async function recordOutOfScopeAsset() {
+    if (!outOfScopeAsset) return
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/audit-rounds/${roundId}/scan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assetId: outOfScopeAsset.id,
+          scanSource,
+          remark: values.remark,
+        }),
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok && response.status !== 202) throw new Error(payload?.error ?? tCommon("error"))
+      for (const photo of queuedAuditPhotos) {
+        await uploadAuditPhoto(outOfScopeAsset.id, photo.file, photo.label)
+      }
+      toast.success(t("outOfScopeSaved"))
+      setScanFeedback({
+        status: "mismatch",
+        title: t("feedbackOutOfScopeSavedTitle"),
+        description: `${outOfScopeAsset.title} - ${outOfScopeAsset.subtitle}`,
+      })
+      setOutOfScopeAsset(null)
+      setScanText("")
+      setQueuedAuditPhotos([])
+      setValues({
+        assetId: "",
+        actualLocationId: "",
+        actualCustodianId: "",
+        actualDepartmentId: "",
+        actualConditionId: "",
+        remark: "",
+      })
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : tCommon("error"))
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -377,7 +462,7 @@ export function AuditScanForm({
               <div className="grid grid-cols-2 gap-2 sm:flex">
                 <button
                   type="button"
-                  onClick={() => selectScannedAsset(scanText, "manual")}
+                  onClick={() => void selectScannedAsset(scanText, "manual")}
                   className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
                 >
                   <Keyboard className="h-4 w-4" />
@@ -475,6 +560,29 @@ export function AuditScanForm({
               <div className="text-xs font-semibold uppercase text-primary">{t("currentTarget")}</div>
               <div className="mt-1 text-lg font-semibold text-foreground">{selectedItem.label}</div>
               <div className="mt-1 text-sm text-muted-foreground">{t("currentTargetHelp")}</div>
+            </div>
+          )}
+
+          {outOfScopeAsset && (
+            <div className="md:col-span-2 rounded-md border border-warning/40 bg-warning/10 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-warning">{t("outOfScopeTitle")}</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">{outOfScopeAsset.title} - {outOfScopeAsset.subtitle}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">{outOfScopeAsset.meta.location}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">{outOfScopeAsset.meta.custodian ?? t("none")}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={recordOutOfScopeAsset}
+                  disabled={saving}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-medium text-white transition-colors hover:bg-warning/90 disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
+                  {t("recordOutOfScope")}
+                </button>
+              </div>
+              <p className="mt-3 text-sm text-muted-foreground">{t("outOfScopeHelp")}</p>
             </div>
           )}
 

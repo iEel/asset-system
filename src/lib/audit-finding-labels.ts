@@ -45,6 +45,7 @@ export async function buildFindingValueLabels(findings: FindingValue[]) {
 export function formatFindingValue(findingType: string, value: string | null, labels: Map<string, string>) {
   if (!value) return "-"
   if (findingType === "not_found") return formatNotFoundValue(value)
+  if (findingType === "out_of_scope") return formatOutOfScopeValue(value)
   return labels.get(value) ?? value
 }
 
@@ -53,6 +54,15 @@ function shouldResolveValue(findingType: string, value: string) {
 }
 
 function formatNotFoundValue(value: string) {
+  try {
+    const parsed = JSON.parse(value) as { assetTag?: string; assetName?: string }
+    return [parsed.assetTag, parsed.assetName].filter(Boolean).join(" - ") || value
+  } catch {
+    return value
+  }
+}
+
+function formatOutOfScopeValue(value: string) {
   try {
     const parsed = JSON.parse(value) as { assetTag?: string; assetName?: string }
     return [parsed.assetTag, parsed.assetName].filter(Boolean).join(" - ") || value
