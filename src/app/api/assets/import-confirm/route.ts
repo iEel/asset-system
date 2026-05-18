@@ -9,7 +9,9 @@ import {
   parseAssetImportWorkbook,
   parseImportDate,
   parseImportMoney,
+  parseOptionalInteger,
 } from "@/lib/asset-import-preview"
+import { defaultAssetOwnershipType, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 
 const maxImportSize = 10 * 1024 * 1024
 
@@ -47,6 +49,10 @@ export async function POST(request: NextRequest) {
         brandId: nullableText(row.resolved.brandId),
         modelId: nullableText(row.resolved.modelId),
         serialNumber: nullableText(row.values.serialNumber),
+        ownershipType: normalizeAssetOwnershipType(nullableText(row.values.ownershipType) ?? defaultAssetOwnershipType),
+        licenseTotalSeats: parseOptionalInteger(row.values.licenseTotalSeats),
+        licenseUsedSeats: parseOptionalInteger(row.values.licenseUsedSeats),
+        licenseAssignedAssetId: nullableText(row.resolved.licenseAssignedAssetId),
         companyId: requiredResolved(row.resolved.companyId, "companyId"),
         branchId: requiredResolved(row.resolved.branchId, "branchId"),
         departmentId: nullableText(row.resolved.departmentId),

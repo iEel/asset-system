@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { buildAssetOrderBy, buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
 import { assetExportColumns, createWorkbook, styleWorksheetHeader, toExcelDate, workbookResponse } from "@/lib/asset-excel"
+import { normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,6 +24,7 @@ export async function GET(request: NextRequest) {
         status: { select: { nameTh: true } },
         condition: { select: { nameTh: true } },
         supplier: { select: { code: true, name: true } },
+        licenseAssignedAsset: { select: { assetTag: true, name: true } },
       },
       orderBy: buildAssetOrderBy(filters),
       take: 5000,
@@ -36,6 +38,10 @@ export async function GET(request: NextRequest) {
         assetTag: asset.assetTag,
         name: asset.name,
         serialNumber: asset.serialNumber ?? "",
+        ownershipType: normalizeAssetOwnershipType(asset.ownershipType),
+        licenseTotalSeats: asset.licenseTotalSeats ?? "",
+        licenseUsedSeats: asset.licenseUsedSeats ?? "",
+        licenseAssignedAsset: asset.licenseAssignedAsset ? `${asset.licenseAssignedAsset.assetTag} - ${asset.licenseAssignedAsset.name}` : "",
         category: `${asset.category.code} - ${asset.category.name}`,
         company: `${asset.company.code} - ${asset.company.nameTh}`,
         branch: `${asset.company.code} / ${asset.branch.code} - ${asset.branch.name}`,

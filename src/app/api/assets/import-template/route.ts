@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { assetImportColumns, createWorkbook, styleWorksheetHeader, workbookResponse } from "@/lib/asset-excel"
+import { assetOwnershipTypes } from "@/lib/asset-ownership"
 
 export async function GET() {
   try {
@@ -40,6 +41,7 @@ export async function GET() {
       status: statuses[0]?.nameTh ?? "พร้อมใช้งาน",
       condition: conditions[0]?.nameTh ?? "ดี",
       serialNumber: "SN-EXAMPLE-001",
+      ownershipType: "personal",
       purchaseDate: "2026-05-01",
       purchasePrice: 25000,
     })
@@ -65,6 +67,7 @@ export async function GET() {
     addReferenceSheet(workbook, "Conditions", ["Thai Name", "Name"], conditions.map((item) => [item.nameTh, item.name]))
     addReferenceSheet(workbook, "Employees", ["Code", "Name"], employees.map((item) => [item.code, item.fullNameTh]))
     addReferenceSheet(workbook, "Suppliers", ["Code", "Name"], suppliers.map((item) => [item.code, item.name]))
+    addReferenceSheet(workbook, "Ownership Types", ["Value"], assetOwnershipTypes.map((type) => [type]))
 
     const buffer = await workbook.xlsx.writeBuffer()
     return workbookResponse(buffer, "asset-import-template.xlsx")

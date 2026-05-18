@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs"
 import { prisma } from "@/lib/db"
 import { assetImportColumns } from "@/lib/asset-excel"
+import { assetOwnershipTypes, defaultAssetOwnershipType } from "@/lib/asset-ownership"
 
 export type AssetImportPreviewRow = {
   rowNumber: number
@@ -23,6 +24,7 @@ export type AssetImportPreviewResult = {
 
 export type AssetImportReferences = {
   assetTags: Set<string>
+  assetsByTag: Map<string, string>
   serialNumbers: Set<string>
   categories: Map<string, string>
   companies: Map<string, string>
@@ -54,7 +56,7 @@ export async function getAssetImportReferences(): Promise<AssetImportReferences>
   ] = await Promise.all([
     prisma.asset.findMany({
       where: { isActive: true },
-      select: { assetTag: true, serialNumber: true },
+      select: { id: true, assetTag: true, serialNumber: true },
     }),
     prisma.assetCategory.findMany({
       where: { isActive: true },
@@ -104,6 +106,7 @@ export async function getAssetImportReferences(): Promise<AssetImportReferences>
 
   return {
     assetTags: new Set(assets.map((asset) => asset.assetTag.trim().toLowerCase())),
+    assetsByTag: new Map(assets.map((asset) => [asset.assetTag.trim().toLowerCase(), asset.id])),
     serialNumbers: new Set(
       assets.flatMap((asset) => (asset.serialNumber ? [asset.serialNumber.trim().toLowerCase()] : []))
     ),
@@ -178,6 +181,7 @@ export async function parseAssetImportWorkbook(buffer: ArrayBuffer, references: 
       custodianId: null,
       homeLocationId: null,
       supplierId: null,
+      licenseAssignedAssetId: null,
     }
 
     requireValue(values.name, "Asset Name", errors)
@@ -232,6 +236,12 @@ export async function parseAssetImportWorkbook(buffer: ArrayBuffer, references: 
         resolved.supplierId = id
       })
     }
+    const ownershipType = resolveOwnershipType(values.ownershipType, errors)
+    if (values.licenseAssignedAssetTag) {
+      resolveMap(values.licenseAssignedAssetTag, references.assetsByTag, "License Assigned Asset Tag", errors, (id) => {
+        resolved.licenseAssignedAssetId = id
+      })
+    }
 
     if (branch && resolved.companyId && branch.companyId !== resolved.companyId) {
       errors.push("Branch Code ไม่อยู่ภายใต้ Company Code ที่ระบุ")
@@ -258,6 +268,16 @@ export async function parseAssetImportWorkbook(buffer: ArrayBuffer, references: 
     validateDate(values.warrantyStartDate, "Warranty Start", errors)
     validateDate(values.warrantyEndDate, "Warranty End", errors)
     validateMoney(values.purchasePrice, "Purchase Price", errors)
+    validateInteger(values.licenseTotalSeats, "License Total Seats", errors)
+    validateInteger(values.licenseUsedSeats, "License Used Seats", errors)
+    const licenseTotalSeats = parseOptionalInteger(values.licenseTotalSeats)
+    const licenseUsedSeats = parseOptionalInteger(values.licenseUsedSeats)
+    if (licenseTotalSeats != null && licenseUsedSeats != null && licenseUsedSeats > licenseTotalSeats) {
+      errors.push("License Used Seats ต้องไม่เกิน License Total Seats")
+    }
+    if (ownershipType !== "software_license" && (licenseTotalSeats != null || licenseUsedSeats != null || values.licenseAssignedAssetTag)) {
+      errors.push("ข้อมูล License ใช้ได้เฉพาะ Ownership Type = software_license")
+    }
 
     rows.push({
       rowNumber,
@@ -370,6 +390,28 @@ function validateMoney(value: string | number | null, label: string, errors: str
   if (!lookup) return
   const parsed = Number(value)
   if (Number.isNaN(parsed) || parsed < 0) errors.push(`${label} ต้องเป็นตัวเลข 0 ขึ้นไป`)
+}
+
+function resolveOwnershipType(value: string | number | null, errors: string[]) {
+  const lookup = key(value) || defaultAssetOwnershipType
+  if (!assetOwnershipTypes.includes(lookup as (typeof assetOwnershipTypes)[number])) {
+    errors.push("Ownership Type ต้องเป็น personal, shared, stock, component หรือ software_license")
+    return defaultAssetOwnershipType
+  }
+  return lookup
+}
+
+function validateInteger(value: string | number | null, label: string, errors: string[]) {
+  const parsed = parseOptionalInteger(value)
+  if (parsed == null) return
+  if (!Number.isInteger(parsed) || parsed < 0) errors.push(`${label} ต้องเป็นจำนวนเต็ม 0 ขึ้นไป`)
+}
+
+export function parseOptionalInteger(value: string | number | null | undefined) {
+  const normalized = nullableText(value)
+  if (normalized == null) return null
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed : Number.NaN
 }
 
 export function nullableText(value: string | number | null | undefined) {
