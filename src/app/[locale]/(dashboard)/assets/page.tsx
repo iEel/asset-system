@@ -10,10 +10,25 @@ import {
 import { AssetImportPreviewPanel } from "@/components/assets/asset-import-preview-panel"
 import { AssetRegisterTable, type AssetRegisterRow } from "@/components/assets/asset-register-table"
 import { MasterDataHeader } from "@/components/master-data/master-data-layout"
+import { assetOwnershipTypes, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 
 type AssetsPageProps = {
   params: Promise<{ locale: string }>
   searchParams: Promise<AssetListParams>
+}
+
+type AssetFilterLabels = {
+  search: string
+  filter: string
+  all: string
+  company: string
+  branch: string
+  category: string
+  status: string
+  condition: string
+  ownershipType: string
+  rowsPerPage: string
+  ownershipTypes: Record<string, string>
 }
 
 export default async function AssetsPage({ params, searchParams }: AssetsPageProps) {
@@ -127,6 +142,10 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
     companyBranch: `${asset.company.code} / ${asset.branch.code}`,
     currentLocation: `${asset.currentLocation.code} - ${asset.currentLocation.name}`,
     custodian: asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : null,
+    ownershipType: {
+      value: normalizeAssetOwnershipType(asset.ownershipType),
+      label: t(`ownershipType_${normalizeAssetOwnershipType(asset.ownershipType)}`),
+    },
     status: { label: asset.status.nameTh, color: asset.status.colorCode },
     condition: { label: asset.condition.nameTh, color: asset.condition.colorCode },
     purchasePrice: asset.purchasePrice ? Number(asset.purchasePrice) : null,
@@ -171,7 +190,9 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           category: t("category"),
           status: t("status"),
           condition: t("condition"),
+          ownershipType: t("ownershipType"),
           rowsPerPage: tCommon("rowsPerPage"),
+          ownershipTypes: Object.fromEntries(assetOwnershipTypes.map((type) => [type, t(`ownershipType_${type}`)])) as Record<string, string>,
         }}
       />
 
@@ -217,6 +238,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           condition: t("condition"),
           currentLocation: t("currentLocation"),
           custodian: t("custodian"),
+          ownershipType: t("ownershipType"),
           detail: t("detailTitle"),
           downloadTemplate: t("downloadTemplate"),
           edit: tCommon("edit"),
@@ -269,7 +291,7 @@ function AssetFilters({
   categories: { id: string; code: string; name: string }[]
   statuses: { id: string; nameTh: string }[]
   conditions: { id: string; nameTh: string }[]
-  labels: Record<string, string>
+  labels: AssetFilterLabels
 }) {
   const filteredBranches = filters.companyId
     ? branches.filter((branch) => branch.companyId === filters.companyId)
@@ -324,6 +346,14 @@ function AssetFilters({
           {conditions.map((condition) => (
             <option key={condition.id} value={condition.id}>
               {condition.nameTh}
+            </option>
+          ))}
+        </FilterSelect>
+        <FilterSelect name="ownershipType" label={labels.ownershipType} defaultValue={filters.ownershipType}>
+          <option value="">{labels.all}</option>
+          {assetOwnershipTypes.map((type) => (
+            <option key={type} value={type}>
+              {labels.ownershipTypes[type] ?? type}
             </option>
           ))}
         </FilterSelect>

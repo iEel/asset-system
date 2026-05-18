@@ -21,6 +21,7 @@ export type AssetRegisterRow = {
   companyBranch: string
   currentLocation: string
   custodian: string | null
+  ownershipType: { value: string; label: string }
   status: { label: string; color: string | null }
   condition: { label: string; color: string | null }
   purchasePrice: number | null
@@ -34,6 +35,7 @@ type ColumnKey =
   | "companyBranch"
   | "currentLocation"
   | "custodian"
+  | "ownershipType"
   | "status"
   | "condition"
   | "purchasePrice"
@@ -48,6 +50,7 @@ type AssetRegisterTableProps = {
     categoryId: string
     statusId: string
     conditionId: string
+    ownershipType: string
     page: number
     pageSize: number
     sort: string
@@ -70,6 +73,7 @@ type AssetRegisterTableProps = {
     company: string
     currentLocation: string
     custodian: string
+    ownershipType: string
     detail: string
     downloadTemplate: string
     edit: string
@@ -111,6 +115,7 @@ const columnOrder: ColumnKey[] = [
   "companyBranch",
   "currentLocation",
   "custodian",
+  "ownershipType",
   "status",
   "condition",
   "purchasePrice",
@@ -188,6 +193,7 @@ export function AssetRegisterTable({
       labels.company,
       labels.currentLocation,
       labels.custodian,
+      labels.ownershipType,
       labels.status,
       labels.condition,
       labels.purchasePrice,
@@ -200,6 +206,7 @@ export function AssetRegisterTable({
       asset.companyBranch,
       asset.currentLocation,
       asset.custodian ?? "",
+      asset.ownershipType.label,
       asset.status.label,
       asset.condition.label,
       asset.purchasePrice == null ? "" : String(asset.purchasePrice),
@@ -375,6 +382,7 @@ export function AssetRegisterTable({
               {visibleColumns.has("companyBranch") && <ColumnHeader>{labels.company}</ColumnHeader>}
               {visibleColumns.has("currentLocation") && <ColumnHeader>{labels.currentLocation}</ColumnHeader>}
               {visibleColumns.has("custodian") && <ColumnHeader>{labels.custodian}</ColumnHeader>}
+              {visibleColumns.has("ownershipType") && <ColumnHeader>{labels.ownershipType}</ColumnHeader>}
               {visibleColumns.has("status") && <ColumnHeader>{labels.status}</ColumnHeader>}
               {visibleColumns.has("condition") && <ColumnHeader>{labels.condition}</ColumnHeader>}
               {visibleColumns.has("purchasePrice") && (
@@ -442,6 +450,11 @@ export function AssetRegisterTable({
                   )}
                   {visibleColumns.has("custodian") && (
                     <td className="min-w-44 px-4 py-3 text-muted-foreground">{asset.custodian || "-"}</td>
+                  )}
+                  {visibleColumns.has("ownershipType") && (
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <OwnershipTypePill value={asset.ownershipType.value} label={asset.ownershipType.label} />
+                    </td>
                   )}
                   {visibleColumns.has("status") && (
                     <td className="whitespace-nowrap px-4 py-3">
@@ -653,6 +666,24 @@ function StatusPill({ label, color }: { label: string; color?: string | null }) 
   )
 }
 
+function OwnershipTypePill({ value, label }: { value: string; label: string }) {
+  const tone = ownershipTypeTone(value)
+
+  return (
+    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${tone}`}>
+      {label}
+    </span>
+  )
+}
+
+function ownershipTypeTone(value: string) {
+  if (value === "software_license") return "bg-info/10 text-info"
+  if (value === "stock") return "bg-warning/10 text-warning"
+  if (value === "shared") return "bg-success/10 text-success"
+  if (value === "component") return "bg-primary/10 text-primary"
+  return "bg-muted text-muted-foreground"
+}
+
 function columnLabel(column: ColumnKey, labels: AssetRegisterTableProps["labels"]) {
   const map: Record<ColumnKey, string> = {
     assetTag: labels.assetTag,
@@ -661,6 +692,7 @@ function columnLabel(column: ColumnKey, labels: AssetRegisterTableProps["labels"
     companyBranch: labels.company,
     currentLocation: labels.currentLocation,
     custodian: labels.custodian,
+    ownershipType: labels.ownershipType,
     status: labels.status,
     condition: labels.condition,
     purchasePrice: labels.purchasePrice,

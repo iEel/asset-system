@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client"
+import { assetOwnershipTypes } from "@/lib/asset-ownership"
 
 export type AssetListParams = {
   search?: string
@@ -7,6 +8,7 @@ export type AssetListParams = {
   categoryId?: string
   statusId?: string
   conditionId?: string
+  ownershipType?: string
   page?: string | number
   pageSize?: string | number
   sort?: string
@@ -24,6 +26,7 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
   const pageSize = Math.min(100, Math.max(10, pageSizeValue))
   const sort = String(getValue("sort") ?? "createdAt")
   const direction = getValue("direction") === "asc" ? "asc" : "desc"
+  const ownershipType = String(getValue("ownershipType") ?? "").trim()
 
   return {
     search: String(getValue("search") ?? "").trim(),
@@ -32,6 +35,7 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
     categoryId: String(getValue("categoryId") ?? "").trim(),
     statusId: String(getValue("statusId") ?? "").trim(),
     conditionId: String(getValue("conditionId") ?? "").trim(),
+    ownershipType: assetOwnershipTypes.includes(ownershipType as (typeof assetOwnershipTypes)[number]) ? ownershipType : "",
     page,
     pageSize,
     sort: sortableFields.has(sort) ? sort : "createdAt",
@@ -47,6 +51,7 @@ export function buildAssetWhere(filters: ReturnType<typeof parseAssetListParams>
     ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
     ...(filters.statusId ? { statusId: filters.statusId } : {}),
     ...(filters.conditionId ? { conditionId: filters.conditionId } : {}),
+    ...(filters.ownershipType ? { ownershipType: filters.ownershipType } : {}),
     ...(filters.search
       ? {
           OR: [
@@ -77,7 +82,7 @@ export function buildAssetQueryString(
   const next = { ...filters, ...overrides }
   const params = new URLSearchParams()
 
-  for (const key of ["search", "companyId", "branchId", "categoryId", "statusId", "conditionId", "sort", "direction"] as const) {
+  for (const key of ["search", "companyId", "branchId", "categoryId", "statusId", "conditionId", "ownershipType", "sort", "direction"] as const) {
     if (next[key]) params.set(key, String(next[key]))
   }
 
