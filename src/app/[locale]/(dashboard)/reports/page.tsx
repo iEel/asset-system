@@ -8,6 +8,7 @@ import { hasPermission } from "@/lib/auth-utils"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type AssetListParams } from "@/lib/asset-list-query"
 import { assetMissingResponsibilityWhere, assetOwnershipTypes, hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
+import { buildCostInsights, type CostExposureAsset } from "@/lib/cost-insights"
 
 type ReportsPageProps = {
   params: Promise<{ locale: string }>
@@ -55,6 +56,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     byLocation,
     repairGroups,
     idleAssetsCount,
+    costAssets,
+    costRepairGroups,
   ] = await Promise.all([
     prisma.asset.count({ where: assetWhere }),
     prisma.asset.aggregate({ where: assetWhere, _sum: { purchasePrice: true } }),
@@ -128,6 +131,16 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     prisma.asset.groupBy({ by: ["currentLocationId"], where: assetWhere, _count: { _all: true }, orderBy: { _count: { currentLocationId: "desc" } }, take: 5 }),
     prisma.maintenanceTicket.groupBy({ by: ["assetId"], where: { isActive: true }, _count: { _all: true }, _sum: { repairCost: true }, orderBy: { _count: { assetId: "desc" } }, take: 5 }),
     prisma.asset.count({ where: { AND: [assetWhere, { movements: { none: { performedAt: { gte: daysAgo(180) } } } }] } }),
+    prisma.asset.findMany({
+      where: assetWhere,
+      select: { id: true, assetTag: true, name: true, purchasePrice: true },
+    }),
+    prisma.maintenanceTicket.groupBy({
+      by: ["assetId"],
+      where: { isActive: true, asset: assetWhere },
+      _count: { _all: true },
+      _sum: { repairCost: true },
+    }),
   ])
   const [custodianOptions, locationOptions, repairAssets] = await Promise.all([
     prisma.employee.findMany({ where: { id: { in: byCustodian.map((item) => item.custodianId).filter((id): id is string => Boolean(id)) } }, select: { id: true, code: true, fullNameTh: true } }),
@@ -150,6 +163,19 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const custodianMap = new Map(custodianOptions.map((employee) => [employee.id, `${employee.code} - ${employee.fullNameTh}`]))
   const locationMap = new Map(locationOptions.map((location) => [location.id, `${location.code} - ${location.name}`]))
   const repairAssetMap = new Map(repairAssets.map((asset) => [asset.id, `${asset.assetTag} - ${asset.name}`]))
+  const costRepairMap = new Map(costRepairGroups.map((group) => [group.assetId, group]))
+  const costInsights = buildCostInsights(
+    costAssets.map((asset) => {
+      const repairGroup = costRepairMap.get(asset.id)
+      return {
+        id: asset.id,
+        label: `${asset.assetTag} - ${asset.name}`,
+        purchasePrice: asset.purchasePrice == null ? null : Number(asset.purchasePrice),
+        repairCost: Number(repairGroup?._sum.repairCost ?? 0),
+        repairCount: repairGroup?._count._all ?? 0,
+      }
+    })
+  )
   const savedFilterUrl = `/${locale}/reports?${exportQuery}`
   const recurringReports = [
     { name: t("monthlyAssetOverview"), cadence: t("monthly"), href: `/api/reports/assets-overview/export?${exportQuery}`, owner: t("ownerAccounting"), allowed: canReportExport },
@@ -252,6 +278,32 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         <Metric label={t("totalValue")} value={formatCurrency(totalValue._sum.purchasePrice ? Number(totalValue._sum.purchasePrice) : 0)} />
         <Metric label={t("reportsReady")} value={reportCount.toLocaleString("th-TH")} />
       </div>
+
+      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-foreground">{t("costInsightTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("costInsightHelp")}</p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <Metric label={t("costTotalRepair")} value={formatCurrency(costInsights.totalRepairCost)} compact />
+          <Metric label={t("costRepairRatio")} value={formatPercent(costInsights.repairToPurchaseRatio)} compact />
+          <Metric label={t("costMissingPrice")} value={costInsights.missingPurchasePriceCount.toLocaleString("th-TH")} compact />
+          <Metric label={t("costHighValueAssets")} value={costInsights.highValueAssetCount.toLocaleString("th-TH")} compact />
+        </div>
+        <CostExposureTable
+          title={t("costHighRepairRisk")}
+          rows={costInsights.highRepairExposureAssets}
+          locale={locale}
+          labels={{
+            asset: t("assetName"),
+            repairCost: t("costRepairCost"),
+            purchasePrice: t("costPurchasePrice"),
+            ratio: t("costRepairRatioShort"),
+            repairCount: t("costRepairCount"),
+            empty: t("costNoRepairRisk"),
+          }}
+        />
+      </section>
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
         <div className="mb-4">
@@ -540,6 +592,71 @@ function Metric({ label, value, compact = false }: { label: string; value: strin
       <div className={`mt-2 font-bold text-foreground ${compact ? "text-xl" : "text-2xl"}`}>{value}</div>
     </div>
   )
+}
+
+function CostExposureTable({
+  title,
+  rows,
+  locale,
+  labels,
+}: {
+  title: string
+  rows: CostExposureAsset[]
+  locale: string
+  labels: {
+    asset: string
+    repairCost: string
+    purchasePrice: string
+    ratio: string
+    repairCount: string
+    empty: string
+  }
+}) {
+  return (
+    <div className="mt-4 overflow-hidden rounded-md border border-border bg-background">
+      <div className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">{title}</div>
+      {rows.length === 0 ? (
+        <div className="px-4 py-6 text-center text-sm text-muted-foreground">{labels.empty}</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-border text-sm">
+            <thead className="bg-muted/40">
+              <tr>
+                <PreviewHead>{labels.asset}</PreviewHead>
+                <PreviewHead>{labels.repairCost}</PreviewHead>
+                <PreviewHead>{labels.purchasePrice}</PreviewHead>
+                <PreviewHead>{labels.ratio}</PreviewHead>
+                <PreviewHead>{labels.repairCount}</PreviewHead>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map((asset) => (
+                <tr key={asset.id}>
+                  <td className="min-w-64 px-4 py-3 font-medium text-foreground">
+                    <Link href={`/${locale}/assets/${asset.id}`} className="text-primary hover:underline">
+                      {asset.label}
+                    </Link>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.repairCost)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.purchasePrice)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatPercent(asset.repairToPurchaseRatio)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.repairCount.toLocaleString("th-TH")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function formatPercent(value: number | null) {
+  if (value == null) return "-"
+  return new Intl.NumberFormat("th-TH", {
+    style: "percent",
+    maximumFractionDigits: 1,
+  }).format(value)
 }
 
 function ReportSelect({
