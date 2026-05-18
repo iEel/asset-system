@@ -85,6 +85,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
       category: { select: { code: true, name: true } },
       brand: { select: { name: true } },
       model: { select: { id: true, name: true, specs: true } },
+      licenseAssignedAsset: { select: { id: true, assetTag: true, name: true, serialNumber: true } },
       company: { select: { code: true, nameTh: true } },
       branch: { select: { code: true, name: true } },
       department: { select: { code: true, name: true } },
@@ -462,6 +463,16 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const activeCheckout = asset.checkouts.find((checkout) => !checkout.isReturned)
   const latestCheckout = asset.checkouts[0]
   const warrantyState = getWarrantyState(asset.warrantyEndDate)
+  const licenseTotalSeats = asset.licenseTotalSeats ?? null
+  const licenseUsedSeats = asset.licenseUsedSeats ?? 0
+  const licenseRemainingSeats = licenseTotalSeats == null ? null : Math.max(licenseTotalSeats - licenseUsedSeats, 0)
+  const licenseSeatSummary = licenseTotalSeats == null
+    ? null
+    : t("licenseSeatSummary", {
+        used: licenseUsedSeats.toLocaleString("th-TH"),
+        total: licenseTotalSeats.toLocaleString("th-TH"),
+        remaining: licenseRemainingSeats?.toLocaleString("th-TH") ?? "0",
+      })
   const openMaintenanceCount = asset.maintenanceTickets.filter((ticket) => ticket.repairStatus !== "closed").length
   const latestMaintenanceTicket = asset.maintenanceTickets[0]
   const totalMaintenanceCost = asset.maintenanceTickets.reduce((total, ticket) => total + Number(ticket.repairCost ?? 0), 0)
@@ -475,6 +486,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
     ? [
         createHealthItem(Boolean(asset.serialNumber), t("dataHealthLicenseKey"), "#overview"),
         createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, "#ownership"),
+        createHealthItem(asset.licenseTotalSeats != null, t("dataHealthLicenseSeats"), "#overview"),
         createHealthItem(hasPurchaseDocuments, t("dataHealthPurchaseDocument"), "#purchase"),
         createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthLicenseExpiry"), "#purchase"),
       ]
@@ -785,7 +797,13 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
               <Info label={t("category")} value={`${asset.category.code} - ${asset.category.name}`} />
               <Info label={t("brand")} value={asset.brand?.name} />
               <Info label={t("model")} value={asset.model?.name} />
-              <Info label={t("serialNumber")} value={asset.serialNumber} />
+              <Info label={ownershipType === "software_license" ? t("licenseKey") : t("serialNumber")} value={ownershipType === "software_license" ? maskLicenseKey(asset.serialNumber) : asset.serialNumber} />
+              {ownershipType === "software_license" ? (
+                <>
+                  <Info label={t("licenseSeatUsage")} value={licenseSeatSummary} />
+                  <Info label={t("licenseAssignedAsset")} value={asset.licenseAssignedAsset ? `${asset.licenseAssignedAsset.assetTag} - ${asset.licenseAssignedAsset.name}` : null} />
+                </>
+              ) : null}
               <Info label={t("fixedAssetCode")} value={asset.fixedAssetCode} />
               <Info label={t("purchasePrice")} value={formatCurrency(asset.purchasePrice ? Number(asset.purchasePrice) : null)} />
             </div>
@@ -1922,6 +1940,13 @@ function createHealthItem(done: boolean, label: string, href: string) {
   return { done, label, href }
 }
 
+function maskLicenseKey(value?: string | null) {
+  if (!value) return null
+  const compact = value.replace(/\s+/g, "")
+  if (compact.length <= 8) return "••••"
+  return `${compact.slice(0, 4)}••••${compact.slice(-4)}`
+}
+
 function getWarrantyState(warrantyEndDate: Date | null) {
   if (!warrantyEndDate) return { tone: "neutral" as const, daysLeft: null }
   const today = new Date()
@@ -2071,6 +2096,10 @@ const knownMovementTypeKeys = new Set([
   "status_change",
   "condition_change",
   "department_change",
+  "ownership_type_change",
+  "license_total_seats_change",
+  "license_used_seats_change",
+  "license_assigned_asset_change",
   "bulk_location_move",
   "bulk_location_update",
   "bulk_custodian_update",

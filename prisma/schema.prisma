@@ -249,6 +249,11 @@ model Asset {
   modelId           String?
   model             AssetModel?    @relation(fields: [modelId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   serialNumber      String?        @db.NVarChar(100)
+  licenseTotalSeats Int?
+  licenseUsedSeats  Int?
+  licenseAssignedAssetId String?
+  licenseAssignedAsset   Asset?    @relation("LicenseAssignedAsset", fields: [licenseAssignedAssetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assignedLicenses        Asset[]   @relation("LicenseAssignedAsset")
   companyId         String
   company           Company        @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   branchId          String
@@ -298,6 +303,7 @@ model Asset {
   auditScanHistory      AuditScanHistory[]
 
   @@map("assets")
+  @@index([licenseAssignedAssetId])
 }
 
 model AssetComponent {

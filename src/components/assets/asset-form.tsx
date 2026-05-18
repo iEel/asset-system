@@ -42,6 +42,9 @@ type AssetFormValues = {
   brandId?: string | null
   modelId?: string | null
   serialNumber?: string | null
+  licenseTotalSeats?: string | number | null
+  licenseUsedSeats?: string | number | null
+  licenseAssignedAssetId?: string | null
   companyId: string
   branchId: string
   ownershipType?: string | null
@@ -112,6 +115,9 @@ const emptyAsset: AssetFormValues = {
   brandId: "",
   modelId: "",
   serialNumber: "",
+  licenseTotalSeats: "",
+  licenseUsedSeats: "",
+  licenseAssignedAssetId: "",
   companyId: "",
   branchId: "",
   ownershipType: defaultAssetOwnershipType,
@@ -416,6 +422,14 @@ export function AssetForm({
     if (isSoftwareLicense && !values.departmentId && !values.custodianId) {
       toast.error(t("licenseResponsibilityRequired"))
       return
+    }
+    if (isSoftwareLicense && values.licenseTotalSeats !== "" && values.licenseUsedSeats !== "") {
+      const totalSeats = Number(values.licenseTotalSeats ?? 0)
+      const usedSeats = Number(values.licenseUsedSeats ?? 0)
+      if (Number.isFinite(totalSeats) && Number.isFinite(usedSeats) && usedSeats > totalSeats) {
+        toast.error(t("licenseSeatUsageInvalid"))
+        return
+      }
     }
     if (selectedPurchaseFile && !purchaseDocumentNo.trim()) {
       toast.error(t("purchaseDocumentNoRequired"))
@@ -791,6 +805,45 @@ export function AssetForm({
             </div>
           )}
         </Section>
+
+        {isSoftwareLicense && (
+          <Section title={t("licenseManagement")}>
+            <Field label={t("licenseTotalSeats")} required>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={values.licenseTotalSeats ?? ""}
+                onChange={(event) => setField("licenseTotalSeats", event.target.value)}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </Field>
+            <Field label={t("licenseUsedSeats")}>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={values.licenseUsedSeats ?? ""}
+                onChange={(event) => setField("licenseUsedSeats", event.target.value)}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </Field>
+            <SelectField
+              label={t("licenseAssignedAsset")}
+              value={values.licenseAssignedAssetId ?? ""}
+              onChange={(value) => setField("licenseAssignedAssetId", value)}
+            >
+              <option value="">{t("selectLicenseAssignedAsset")}</option>
+              {parentAssets.map((parentAsset) => (
+                <option key={parentAsset.id} value={parentAsset.id}>{parentAsset.label}</option>
+              ))}
+            </SelectField>
+            <div className="rounded-md border border-info/30 bg-info/10 px-3 py-2 text-sm text-muted-foreground">
+              <div className="font-medium text-foreground">{t("licenseRemainingSeats")}: {getRemainingLicenseSeats(values.licenseTotalSeats, values.licenseUsedSeats)}</div>
+              <p className="mt-1 text-xs">{t("licenseManagementHelp")}</p>
+            </div>
+          </Section>
+        )}
 
         <Section title={t("locationCustodian")}>
           <SelectField label={t("homeLocation")} value={values.homeLocationId ?? ""} onChange={(value) => setField("homeLocationId", value)}>
@@ -1292,6 +1345,14 @@ function buildSuggestedAssetName(category?: Option, brand?: Option, model?: Opti
 
 function getCompactLabel(label?: string | null) {
   return label?.split(" - ")[0]?.trim() ?? ""
+}
+
+function getRemainingLicenseSeats(total?: string | number | null, used?: string | number | null) {
+  const totalSeats = Number(total ?? 0)
+  const usedSeats = Number(used ?? 0)
+  if (!Number.isFinite(totalSeats) || totalSeats <= 0) return "-"
+  const remainingSeats = Math.max(totalSeats - (Number.isFinite(usedSeats) ? usedSeats : 0), 0)
+  return remainingSeats.toLocaleString("th-TH")
 }
 
 function CustomFieldRowsEditor({

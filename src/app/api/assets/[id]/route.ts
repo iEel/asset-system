@@ -158,6 +158,9 @@ async function logAssetMovements({
   assetId: string
   existing: {
     ownershipType: string
+    licenseTotalSeats: number | null
+    licenseUsedSeats: number | null
+    licenseAssignedAssetId: string | null
     currentLocationId: string
     custodianId: string | null
     departmentId: string | null
@@ -166,6 +169,9 @@ async function logAssetMovements({
   }
   input: {
     ownershipType: string
+    licenseTotalSeats?: number | null
+    licenseUsedSeats?: number | null
+    licenseAssignedAssetId?: string | null
     currentLocationId: string
     custodianId?: string | null
     departmentId?: string | null
@@ -175,6 +181,9 @@ async function logAssetMovements({
 }) {
   const candidates = [
     ["ownership_type_change", existing.ownershipType, input.ownershipType],
+    ["license_total_seats_change", existing.licenseTotalSeats == null ? null : String(existing.licenseTotalSeats), input.licenseTotalSeats == null ? null : String(input.licenseTotalSeats)],
+    ["license_used_seats_change", existing.licenseUsedSeats == null ? null : String(existing.licenseUsedSeats), input.licenseUsedSeats == null ? null : String(input.licenseUsedSeats)],
+    ["license_assigned_asset_change", existing.licenseAssignedAssetId, input.licenseAssignedAssetId ?? null],
     ["location_change", existing.currentLocationId, input.currentLocationId],
     ["custodian_change", existing.custodianId, input.custodianId ?? null],
     ["department_change", existing.departmentId, input.departmentId ?? null],
