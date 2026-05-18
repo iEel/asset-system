@@ -4,7 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { createWorkbook, styleWorksheetHeader, workbookResponse } from "@/lib/asset-excel"
 import { errorResponse } from "@/lib/api-response"
 import { buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
-import { assetMissingResponsibilityWhere } from "@/lib/asset-ownership"
+import { assetMissingResponsibilityWhere, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const filters = parseAssetListParams(request.nextUrl.searchParams)
     const assetWhere = buildAssetWhere(filters)
 
-    const [totalAssets, totalValue, byStatus, byCategory, byCompany, byBranch, byDepartment, dataQuality] = await Promise.all([
+    const [totalAssets, totalValue, byStatus, byCategory, byCompany, byBranch, byDepartment, byOwnership, licenseSummary, dataQuality] = await Promise.all([
       prisma.asset.count({ where: assetWhere }),
       prisma.asset.aggregate({ where: assetWhere, _sum: { purchasePrice: true } }),
       prisma.asset.groupBy({ by: ["statusId"], where: assetWhere, _count: { _all: true } }),
@@ -21,6 +21,12 @@ export async function GET(request: NextRequest) {
       prisma.asset.groupBy({ by: ["companyId"], where: assetWhere, _count: { _all: true } }),
       prisma.asset.groupBy({ by: ["branchId"], where: assetWhere, _count: { _all: true } }),
       prisma.asset.groupBy({ by: ["departmentId"], where: { ...assetWhere, departmentId: { not: null } }, _count: { _all: true } }),
+      prisma.asset.groupBy({ by: ["ownershipType"], where: assetWhere, _count: { _all: true } }),
+      prisma.asset.aggregate({
+        where: { AND: [assetWhere, { ownershipType: "software_license" }] },
+        _count: { _all: true },
+        _sum: { licenseTotalSeats: true, licenseUsedSeats: true },
+      }),
       getAssetDataQualityCounts(assetWhere),
     ])
 
@@ -46,6 +52,9 @@ export async function GET(request: NextRequest) {
     summarySheet.addRows([
       { metric: "Total Assets", value: totalAssets },
       { metric: "Total Purchase Value", value: Number(totalValue._sum.purchasePrice ?? 0) },
+      { metric: "Software/License Assets", value: licenseSummary._count._all },
+      { metric: "License Total Seats", value: Number(licenseSummary._sum.licenseTotalSeats ?? 0) },
+      { metric: "License Used Seats", value: Number(licenseSummary._sum.licenseUsedSeats ?? 0) },
       { metric: "Missing Responsibility", value: dataQuality.missingCustodian },
       { metric: "Missing Serial Number", value: dataQuality.missingSerial },
       { metric: "Missing Asset Photo", value: dataQuality.missingPhoto },
@@ -58,6 +67,7 @@ export async function GET(request: NextRequest) {
     addGroupSheet(workbook, "By Company", byCompany.map((item) => [companyMap.get(item.companyId) ?? item.companyId, item._count._all]))
     addGroupSheet(workbook, "By Branch", byBranch.map((item) => [branchMap.get(item.branchId) ?? item.branchId, item._count._all]))
     addGroupSheet(workbook, "By Department", byDepartment.map((item) => [departmentMap.get(item.departmentId ?? "") ?? item.departmentId ?? "Unassigned", item._count._all]))
+    addGroupSheet(workbook, "By Ownership Type", byOwnership.map((item) => [normalizeAssetOwnershipType(item.ownershipType), item._count._all]))
 
     const buffer = await workbook.xlsx.writeBuffer()
     return workbookResponse(buffer, `asset-overview-report-${new Date().toISOString().slice(0, 10)}.xlsx`)
