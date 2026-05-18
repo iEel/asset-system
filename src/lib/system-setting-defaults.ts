@@ -14,6 +14,16 @@ export const operationDocumentSettingKeys = [
   checkinDocumentTemplateKey,
   operationDocumentRunningDigitsKey,
 ] as const
+export const notificationReturnDueSoonDaysKey = "notification_return_due_soon_days"
+export const notificationAuditActionDueSoonDaysKey = "notification_audit_action_due_soon_days"
+export const notificationWarrantyExpiryDaysKey = "notification_warranty_expiry_days"
+export const notificationLicenseExpiryDaysKey = "notification_license_expiry_days"
+export const notificationRuleSettingKeys = [
+  notificationReturnDueSoonDaysKey,
+  notificationAuditActionDueSoonDaysKey,
+  notificationWarrantyExpiryDaysKey,
+  notificationLicenseExpiryDaysKey,
+] as const
 export const ldapSettingKeys = [
   "ldap_enabled",
   "ldap_url",
@@ -76,6 +86,10 @@ export const systemSettingDefaults = [
     value: JSON.stringify(defaultAssetDataQualityRules),
     description: "กฎตรวจคุณภาพข้อมูลทะเบียนทรัพย์สิน",
   },
+  { key: "notification_return_due_soon_days", value: "3", description: "จำนวนวันล่วงหน้าสำหรับแจ้งเตือนรายการส่งมอบที่ใกล้ครบกำหนดคืน" },
+  { key: "notification_audit_action_due_soon_days", value: "7", description: "จำนวนวันล่วงหน้าสำหรับแจ้งเตือน action plan จากการตรวจนับที่ใกล้ครบกำหนด" },
+  { key: "notification_warranty_expiry_days", value: "30", description: "จำนวนวันล่วงหน้าสำหรับแจ้งเตือนประกันทรัพย์สินใกล้หมดอายุ" },
+  { key: "notification_license_expiry_days", value: "30", description: "จำนวนวันล่วงหน้าสำหรับแจ้งเตือน Software/License ใกล้หมดอายุ" },
   { key: "ldap_enabled", value: "false", description: "เปิดใช้งาน AD/LDAP login" },
   { key: "ldap_url", value: "", description: "LDAP URL เช่น ldap://dc.company.local:389 หรือ ldaps://dc.company.local:636" },
   { key: "ldap_base_dn", value: "", description: "Base DN สำหรับค้นหา user เช่น DC=company,DC=local" },

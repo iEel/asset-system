@@ -26,6 +26,11 @@ import {
   defaultCheckoutDocumentTemplate,
   defaultAssetTagFormatTemplate,
   ldapSettingKeys,
+  notificationAuditActionDueSoonDaysKey,
+  notificationLicenseExpiryDaysKey,
+  notificationReturnDueSoonDaysKey,
+  notificationRuleSettingKeys,
+  notificationWarrantyExpiryDaysKey,
   operationDocumentRunningDigitsKey,
   operationDocumentSettingKeys,
 } from "@/lib/system-setting-defaults"
@@ -52,6 +57,7 @@ type SystemSettingsFormProps = {
     tabLabelTemplate: string
     tabDocuments: string
     tabOrganization: string
+    tabNotifications: string
     tabLdapLogin: string
     tabLdapSync: string
     tabAdvanced: string
@@ -61,6 +67,7 @@ type SystemSettingsFormProps = {
     overviewLabel: string
     overviewDocuments: string
     overviewOrganization: string
+    overviewNotifications: string
     overviewLdapLogin: string
     overviewLdapSync: string
     overviewAdvanced: string
@@ -141,6 +148,14 @@ type SystemSettingsFormProps = {
     organizationDefaultsDescription: string
     companyName: string
     defaultCurrency: string
+    notificationRules: string
+    notificationRulesDescription: string
+    returnDueSoonDays: string
+    auditActionDueSoonDays: string
+    warrantyExpiryDays: string
+    licenseExpiryDays: string
+    notificationDaysHelp: string
+    invalidNotificationRule: string
     advancedSettings: string
     advancedSettingsDescription: string
     ldapSettings: string
@@ -235,7 +250,15 @@ type LdapSyncPreview = {
   }
 }
 
-type SettingsTabId = "asset-numbering" | "label-template" | "documents" | "organization" | "ldap-login" | "ldap-sync" | "advanced"
+type SettingsTabId =
+  | "asset-numbering"
+  | "label-template"
+  | "documents"
+  | "organization"
+  | "notifications"
+  | "ldap-login"
+  | "ldap-sync"
+  | "advanced"
 
 const assetTagFormatTokens = [
   "companyCode",
@@ -277,6 +300,7 @@ const friendlySettingKeys = new Set([
   assetTagFormatTemplateKey,
   ...assetLabelSettingKeys,
   ...operationDocumentSettingKeys,
+  ...notificationRuleSettingKeys,
   ...ldapSettingKeys,
 ])
 
@@ -410,6 +434,10 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     !Number.isFinite(operationDigits) ||
     operationDigits < 1 ||
     operationDigits > 12
+  const hasInvalidNotificationRule = notificationRuleSettingKeys.some((key) => {
+    const days = Number(getValue(key))
+    return !Number.isInteger(days) || days < 0 || days > 365
+  })
   const syncSchedule = getValue("ldap_sync_schedule")
   const selectedSyncSchedulePreset = !customScheduleSelected && ldapSchedulePresets.some((preset) => preset.value === syncSchedule)
     ? syncSchedule
@@ -419,6 +447,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     { id: "label-template", label: labels.tabLabelTemplate },
     { id: "documents", label: labels.tabDocuments },
     { id: "organization", label: labels.tabOrganization },
+    { id: "notifications", label: labels.tabNotifications },
     { id: "ldap-login", label: labels.tabLdapLogin },
     { id: "ldap-sync", label: labels.tabLdapSync },
     { id: "advanced", label: labels.tabAdvanced },
@@ -448,6 +477,11 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
       label: labels.overviewOrganization,
       value: getValue("company_name") || "-",
       tone: "slate",
+    },
+    {
+      label: labels.overviewNotifications,
+      value: `${getValue(notificationReturnDueSoonDaysKey) || "3"}d / ${getValue(notificationWarrantyExpiryDaysKey) || "30"}d`,
+      tone: "blue",
     },
     {
       label: labels.overviewLdapLogin,
@@ -490,6 +524,10 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     }
     if (hasInvalidOperationDocumentTemplate) {
       toast.error(labels.invalidOperationDocumentTemplate)
+      return
+    }
+    if (hasInvalidNotificationRule) {
+      toast.error(labels.invalidNotificationRule)
       return
     }
 
@@ -918,6 +956,62 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
           </Field>
+        </div>
+      </div>
+      ) : null}
+
+      {activeTab === "notifications" ? (
+      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <SectionHeader title={labels.notificationRules} description={labels.notificationRulesDescription} />
+        <div className="grid gap-4 px-4 py-4 md:grid-cols-2 xl:grid-cols-4">
+          <Field label={labels.returnDueSoonDays} htmlFor="notification-return-due-days">
+            <input
+              id="notification-return-due-days"
+              type="number"
+              min={0}
+              max={365}
+              value={getValue(notificationReturnDueSoonDaysKey)}
+              onChange={(event) => setValue(notificationReturnDueSoonDaysKey, event.target.value)}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </Field>
+          <Field label={labels.auditActionDueSoonDays} htmlFor="notification-audit-action-days">
+            <input
+              id="notification-audit-action-days"
+              type="number"
+              min={0}
+              max={365}
+              value={getValue(notificationAuditActionDueSoonDaysKey)}
+              onChange={(event) => setValue(notificationAuditActionDueSoonDaysKey, event.target.value)}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </Field>
+          <Field label={labels.warrantyExpiryDays} htmlFor="notification-warranty-expiry-days">
+            <input
+              id="notification-warranty-expiry-days"
+              type="number"
+              min={0}
+              max={365}
+              value={getValue(notificationWarrantyExpiryDaysKey)}
+              onChange={(event) => setValue(notificationWarrantyExpiryDaysKey, event.target.value)}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </Field>
+          <Field label={labels.licenseExpiryDays} htmlFor="notification-license-expiry-days">
+            <input
+              id="notification-license-expiry-days"
+              type="number"
+              min={0}
+              max={365}
+              value={getValue(notificationLicenseExpiryDaysKey)}
+              onChange={(event) => setValue(notificationLicenseExpiryDaysKey, event.target.value)}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </Field>
+        </div>
+        <div className="border-t border-border px-4 py-3">
+          <p className="text-sm text-muted-foreground">{labels.notificationDaysHelp}</p>
+          {hasInvalidNotificationRule ? <ValidationMessage message={labels.invalidNotificationRule} /> : null}
         </div>
       </div>
       ) : null}

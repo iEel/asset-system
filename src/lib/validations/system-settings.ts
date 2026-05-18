@@ -5,6 +5,7 @@ import {
   checkoutDocumentTemplateKey,
   operationDocumentRunningDigitsKey,
   assetTagFormatTemplateKey,
+  notificationRuleSettingKeys,
 } from "@/lib/system-setting-defaults"
 import { validateOperationDocumentTemplate } from "@/lib/operation-document-number"
 
@@ -35,6 +36,7 @@ const assetLabelSpacingKeys = new Set<string>([
 ])
 const assetLabelLayoutKeys = new Set<string>(assetLabelTapeSizes.map((size) => `asset_label_${size}_layout`))
 const operationDocumentTemplateKeys = new Set<string>([checkoutDocumentTemplateKey, checkinDocumentTemplateKey])
+const notificationRuleKeys = new Set<string>(notificationRuleSettingKeys)
 
 export const systemSettingsUpdateSchema = z.object({
   settings: z
@@ -147,6 +149,17 @@ export const systemSettingsUpdateSchema = z.object({
         context.addIssue({
           code: "custom",
           message: "Operation document running digits must be between 1 and 12",
+          path: ["settings", index, "value"],
+        })
+      }
+    }
+
+    if (notificationRuleKeys.has(setting.key)) {
+      const days = Number(setting.value)
+      if (!Number.isInteger(days) || days < 0 || days > 365) {
+        context.addIssue({
+          code: "custom",
+          message: "Notification rule days must be an integer between 0 and 365",
           path: ["settings", index, "value"],
         })
       }
