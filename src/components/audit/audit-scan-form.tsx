@@ -98,6 +98,8 @@ export function AuditScanForm({
   const [auditPhotoLabel, setAuditPhotoLabel] = useState("")
   const [queuedAuditPhotos, setQueuedAuditPhotos] = useState<QueuedAuditPhoto[]>([])
   const [continuousScan, setContinuousScan] = useState(true)
+  const [fastMode, setFastMode] = useState(true)
+  const [showDetailedFields, setShowDetailedFields] = useState(false)
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null)
   const [outOfScopeAsset, setOutOfScopeAsset] = useState<OutOfScopeAsset | null>(null)
   const [applyCorrections, setApplyCorrections] = useState(false)
@@ -141,7 +143,10 @@ export function AuditScanForm({
 
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
-    if (field === "assetId") setApplyCorrections(false)
+    if (field === "assetId") {
+      setApplyCorrections(false)
+      setShowDetailedFields(false)
+    }
   }
 
   function queueAuditPhoto(file: File | null) {
@@ -340,7 +345,11 @@ export function AuditScanForm({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!selectedItem) return
+    await submitAuditScan(getActualValues(values, selectedItem), false)
+  }
 
+  async function submitAuditScan(actualValues: ReturnType<typeof getActualValues>, quickMatched: boolean) {
+    if (!selectedItem) return
     setSaving(true)
     try {
       const response = await fetch(`/api/audit-rounds/${roundId}/scan`, {
@@ -348,9 +357,9 @@ export function AuditScanForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           assetId: values.assetId,
-          ...emptyToNull(getActualValues(values, selectedItem)),
+          ...emptyToNull(actualValues),
           scanSource,
-          applyCorrections: applyCorrections && correctionMismatchCount > 0,
+          applyCorrections: !quickMatched && applyCorrections && correctionMismatchCount > 0,
           remark: values.remark,
         }),
       })
@@ -385,6 +394,7 @@ export function AuditScanForm({
       setQueuedAuditPhotos([])
       setAuditPhotoLabel("")
       setApplyCorrections(false)
+      setShowDetailedFields(false)
       setScanSource("manual")
       router.refresh()
     } catch (error) {
@@ -392,6 +402,19 @@ export function AuditScanForm({
     } finally {
       setSaving(false)
     }
+  }
+
+  async function handleQuickMatchedScan() {
+    if (!selectedItem) return
+    await submitAuditScan(
+      {
+        actualLocationId: selectedItem.expectedLocationId,
+        actualCustodianId: selectedItem.expectedCustodianId ?? "",
+        actualDepartmentId: selectedItem.expectedDepartmentId ?? "",
+        actualConditionId: selectedItem.expectedConditionId ?? "",
+      },
+      true
+    )
   }
 
   async function uploadAuditPhoto(assetId: string, file: File, label: string) {
@@ -443,6 +466,24 @@ export function AuditScanForm({
             <AuditMetric label={t("pendingQueue")} value={pendingCount.toString()} />
             <AuditMetric label={t("scannedQueue")} value={processedCount.toString()} />
             <AuditMetric label={t("photoQueue")} value={queuedAuditPhotos.length.toString()} />
+          </div>
+
+          <div className="md:col-span-2 rounded-md border border-info/30 bg-info/10 p-3">
+            <label className="flex cursor-pointer items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={fastMode}
+                onChange={(event) => {
+                  setFastMode(event.target.checked)
+                  setShowDetailedFields(!event.target.checked)
+                }}
+                className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              />
+              <span>
+                <span className="block font-semibold text-foreground">{t("fastMode")}</span>
+                <span className="mt-1 block text-muted-foreground">{t("fastModeHelp")}</span>
+              </span>
+            </label>
           </div>
 
           {scanFeedback && (
@@ -563,6 +604,36 @@ export function AuditScanForm({
             </div>
           )}
 
+          {selectedItem && fastMode && !showDetailedFields && (
+            <div className="md:col-span-2 rounded-md border border-success/30 bg-success/10 p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <div className="text-base font-semibold text-foreground">{t("quickFieldMode")}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">{t("quickFieldModeHelp")}</div>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={handleQuickMatchedScan}
+                    disabled={saving}
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-success px-4 text-sm font-semibold text-white transition-colors hover:bg-success/90 disabled:opacity-50"
+                  >
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                    {t("quickMatched")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowDetailedFields(true)}
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                    {t("openDetailedScan")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {outOfScopeAsset && (
             <div className="md:col-span-2 rounded-md border border-warning/40 bg-warning/10 p-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -586,43 +657,47 @@ export function AuditScanForm({
             </div>
           )}
 
-          <Select label={t("actualLocation")} value={values.actualLocationId || selectedItem?.expectedLocationId || ""} required onChange={(value) => setField("actualLocationId", value)}>
-            <OptionList options={options.locations} />
-          </Select>
-          <Select label={t("actualCustodian")} value={values.actualCustodianId || selectedItem?.expectedCustodianId || ""} onChange={(value) => setField("actualCustodianId", value)}>
-            <OptionList emptyLabel={t("none")} options={options.employees} />
-          </Select>
-          <Select label={t("actualDepartment")} value={values.actualDepartmentId || selectedItem?.expectedDepartmentId || ""} onChange={(value) => setField("actualDepartmentId", value)}>
-            <OptionList emptyLabel={t("none")} options={options.departments} />
-          </Select>
-          <Select label={t("actualCondition")} value={values.actualConditionId || selectedItem?.expectedConditionId || ""} onChange={(value) => setField("actualConditionId", value)}>
-            <OptionList emptyLabel={t("none")} options={options.conditions} />
-          </Select>
+          {(!fastMode || showDetailedFields) && (
+            <>
+              <Select label={t("actualLocation")} value={values.actualLocationId || selectedItem?.expectedLocationId || ""} required onChange={(value) => setField("actualLocationId", value)}>
+                <OptionList options={options.locations} />
+              </Select>
+              <Select label={t("actualCustodian")} value={values.actualCustodianId || selectedItem?.expectedCustodianId || ""} onChange={(value) => setField("actualCustodianId", value)}>
+                <OptionList emptyLabel={t("none")} options={options.employees} />
+              </Select>
+              <Select label={t("actualDepartment")} value={values.actualDepartmentId || selectedItem?.expectedDepartmentId || ""} onChange={(value) => setField("actualDepartmentId", value)}>
+                <OptionList emptyLabel={t("none")} options={options.departments} />
+              </Select>
+              <Select label={t("actualCondition")} value={values.actualConditionId || selectedItem?.expectedConditionId || ""} onChange={(value) => setField("actualConditionId", value)}>
+                <OptionList emptyLabel={t("none")} options={options.conditions} />
+              </Select>
 
-          {selectedItem && (
-            <div className="md:col-span-2 rounded-md border border-border bg-background p-3 text-sm">
-              {mismatchPreview.length === 0 ? (
-                <div className="text-success">{t("matchedPreview")}</div>
-              ) : (
-                <div className="text-warning">
-                  {t("mismatchPreview", { fields: mismatchPreview.map((mismatch) => mismatch.label).join(", ") })}
+              {selectedItem && (
+                <div className="md:col-span-2 rounded-md border border-border bg-background p-3 text-sm">
+                  {mismatchPreview.length === 0 ? (
+                    <div className="text-success">{t("matchedPreview")}</div>
+                  ) : (
+                    <div className="text-warning">
+                      {t("mismatchPreview", { fields: mismatchPreview.map((mismatch) => mismatch.label).join(", ") })}
+                    </div>
+                  )}
+                  {correctionMismatchCount > 0 && (
+                    <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-md border border-info/30 bg-info/10 p-3 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={applyCorrections}
+                        onChange={(event) => setApplyCorrections(event.target.checked)}
+                        className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                      />
+                      <span>
+                        <span className="block font-semibold text-foreground">{t("applyAuditCorrections")}</span>
+                        <span className="mt-1 block text-muted-foreground">{t("applyAuditCorrectionsHelp")}</span>
+                      </span>
+                    </label>
+                  )}
                 </div>
               )}
-              {correctionMismatchCount > 0 && (
-                <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-md border border-info/30 bg-info/10 p-3 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={applyCorrections}
-                    onChange={(event) => setApplyCorrections(event.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                  />
-                  <span>
-                    <span className="block font-semibold text-foreground">{t("applyAuditCorrections")}</span>
-                    <span className="mt-1 block text-muted-foreground">{t("applyAuditCorrectionsHelp")}</span>
-                  </span>
-                </label>
-              )}
-            </div>
+            </>
           )}
 
           {selectedItem && (
@@ -705,7 +780,7 @@ export function AuditScanForm({
             </Field>
           </div>
           <div className="sticky bottom-0 z-10 -mx-4 flex justify-end border-t border-border bg-surface/95 p-3 backdrop-blur md:col-span-2 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
-            <button type="submit" disabled={saving || !selectedItem} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-base font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto">
+            <button type="submit" disabled={saving || !selectedItem || (fastMode && !showDetailedFields)} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-base font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {t("submitScan")}
             </button>
