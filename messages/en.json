@@ -46,6 +46,24 @@
     "serial": "Serial",
     "keyboardHint": "Use ↑ ↓ to select and Enter to open detail"
   },
+  "notifications": {
+    "title": "Notifications",
+    "subtitle": "Automatically summarized from follow-up work",
+    "empty": "No follow-up work to notify",
+    "openWorkCenter": "Open Work Center",
+    "overdueMaintenance": "Overdue repairs",
+    "overdueMaintenanceDetail": "Tickets past their SLA due date",
+    "pendingAuditFindings": "Findings pending review",
+    "pendingAuditFindingsDetail": "Variances not yet decided",
+    "openAuditActions": "Open action plans",
+    "openAuditActionsDetail": "Findings with pending action plans",
+    "pendingDisposals": "Disposals pending approval",
+    "pendingDisposalsDetail": "Requests waiting for approval",
+    "approvedDisposals": "Approved pending execution",
+    "approvedDisposalsDetail": "Actual disposal execution is not recorded yet",
+    "returnsDueSoon": "Returns due soon",
+    "returnsDueSoonDetail": "Checked-out assets not yet returned"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "workCenter": "Work Center",

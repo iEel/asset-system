@@ -13,9 +13,21 @@ import {
   ChevronDown,
   PanelLeftClose,
 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { GlobalSearch } from "@/components/layout/global-search"
+
+type NotificationItem = {
+  key: string
+  count: number
+  href: string
+  tone: "danger" | "warning" | "primary"
+}
+
+type NotificationSummary = {
+  total: number
+  items: NotificationItem[]
+}
 
 export function Topbar({
   onToggleSidebar,
@@ -26,11 +38,29 @@ export function Topbar({
 }) {
   const tAuth = useTranslations("auth")
   const tAssetTools = useTranslations("assetTools")
+  const tNotifications = useTranslations("notifications")
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [langMenuOpen, setLangMenuOpen] = useState(false)
+  const [notificationOpen, setNotificationOpen] = useState(false)
+  const [notificationSummary, setNotificationSummary] = useState<NotificationSummary>({ total: 0, items: [] })
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/notifications?locale=${locale}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: NotificationSummary | null) => {
+        if (!cancelled && data) setNotificationSummary(data)
+      })
+      .catch(() => {
+        if (!cancelled) setNotificationSummary({ total: 0, items: [] })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [locale])
 
   const switchLocale = (newLocale: string) => {
     const newPath = pathname.replace(`/${locale}`, `/${newLocale}`)
@@ -76,15 +106,68 @@ export function Topbar({
         </Link>
 
         {/* Notifications */}
-        <Link
-          href={`/${locale}/work-center`}
-          className="relative rounded-md p-2 hover:bg-accent"
-          aria-label="Notifications"
-          title="Work center"
-        >
-          <Bell size={20} />
-          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-danger" />
-        </Link>
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => setNotificationOpen(!notificationOpen)}
+            className="relative rounded-md p-2 hover:bg-accent"
+            aria-label={tNotifications("title")}
+            title={tNotifications("title")}
+          >
+            <Bell size={20} />
+            {notificationSummary.total > 0 ? (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold leading-none text-white">
+                {notificationSummary.total > 99 ? "99+" : notificationSummary.total}
+              </span>
+            ) : null}
+          </button>
+          {notificationOpen ? (
+            <div className="absolute right-0 top-full z-50 mt-1 w-80 rounded-md border border-border bg-surface shadow-lg">
+              <div className="border-b border-border px-4 py-3">
+                <p className="text-sm font-semibold text-foreground">{tNotifications("title")}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{tNotifications("subtitle")}</p>
+              </div>
+              <div className="max-h-80 overflow-y-auto p-2">
+                {notificationSummary.items.length === 0 ? (
+                  <div className="rounded-md border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+                    {tNotifications("empty")}
+                  </div>
+                ) : (
+                  notificationSummary.items.map((item) => (
+                    <Link
+                      key={item.key}
+                      href={item.href}
+                      onClick={() => setNotificationOpen(false)}
+                      className="flex items-start justify-between gap-3 rounded-md px-3 py-2 text-sm hover:bg-accent"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground">{tNotifications(item.key)}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{tNotifications(`${item.key}Detail`)}</p>
+                      </div>
+                      <span className={cn(
+                        "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
+                        item.tone === "danger" && "bg-danger/10 text-danger",
+                        item.tone === "warning" && "bg-warning/10 text-warning",
+                        item.tone === "primary" && "bg-primary/10 text-primary"
+                      )}>
+                        {item.count}
+                      </span>
+                    </Link>
+                  ))
+                )}
+              </div>
+              <div className="border-t border-border p-2">
+                <Link
+                  href={`/${locale}/work-center`}
+                  onClick={() => setNotificationOpen(false)}
+                  className="block rounded-md px-3 py-2 text-center text-sm font-medium text-primary hover:bg-accent"
+                >
+                  {tNotifications("openWorkCenter")}
+                </Link>
+              </div>
+            </div>
+          ) : null}
+        </div>
 
         {/* Language Switcher */}
         <div className="relative shrink-0">

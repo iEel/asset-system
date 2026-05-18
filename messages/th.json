@@ -46,6 +46,24 @@
     "serial": "Serial",
     "keyboardHint": "ใช้ ↑ ↓ เพื่อเลือก และ Enter เพื่อเปิดรายละเอียด"
   },
+  "notifications": {
+    "title": "การแจ้งเตือน",
+    "subtitle": "สรุปอัตโนมัติจากงานที่ต้องติดตาม",
+    "empty": "ยังไม่มีงานค้างที่ต้องแจ้งเตือน",
+    "openWorkCenter": "เปิดศูนย์งานค้าง",
+    "overdueMaintenance": "ซ่อมเกินกำหนด",
+    "overdueMaintenanceDetail": "ใบซ่อมที่เลยกำหนด SLA",
+    "pendingAuditFindings": "Finding รอตรวจ",
+    "pendingAuditFindingsDetail": "ผลต่างที่ยังไม่ถูกตัดสินใจ",
+    "openAuditActions": "แผนแก้ไขยังเปิด",
+    "openAuditActionsDetail": "Finding ที่ยังมี action plan ค้าง",
+    "pendingDisposals": "ตัดจำหน่ายรออนุมัติ",
+    "pendingDisposalsDetail": "คำขอที่ยังรอผู้อนุมัติ",
+    "approvedDisposals": "อนุมัติแล้วรอดำเนินการ",
+    "approvedDisposalsDetail": "ยังไม่ได้บันทึกการตัดจำหน่ายจริง",
+    "returnsDueSoon": "ใกล้/เลยกำหนดคืน",
+    "returnsDueSoonDetail": "รายการส่งมอบที่ยังไม่ได้รับคืน"
+  },
   "nav": {
     "dashboard": "แดชบอร์ด",
     "workCenter": "ศูนย์งานค้าง",
