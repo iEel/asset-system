@@ -157,6 +157,7 @@ async function logAssetMovements({
   userId: string
   assetId: string
   existing: {
+    ownershipType: string
     currentLocationId: string
     custodianId: string | null
     departmentId: string | null
@@ -164,6 +165,7 @@ async function logAssetMovements({
     conditionId: string
   }
   input: {
+    ownershipType: string
     currentLocationId: string
     custodianId?: string | null
     departmentId?: string | null
@@ -172,6 +174,7 @@ async function logAssetMovements({
   }
 }) {
   const candidates = [
+    ["ownership_type_change", existing.ownershipType, input.ownershipType],
     ["location_change", existing.currentLocationId, input.currentLocationId],
     ["custodian_change", existing.custodianId, input.custodianId ?? null],
     ["department_change", existing.departmentId, input.departmentId ?? null],

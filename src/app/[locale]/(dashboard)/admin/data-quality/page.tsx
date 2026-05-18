@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, FileWarning } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
+import { assetMissingResponsibilityWhere } from "@/lib/asset-ownership"
 import { assetDataQualityRulesKey, parseAssetDataQualityRules, type AssetDataQualityRule } from "@/lib/data-quality-rules"
 import { DataQualityRuleForm } from "@/components/admin/data-quality-rule-form"
 
@@ -80,10 +81,14 @@ export default async function DataQualityPage({ params }: DataQualityPageProps) 
 
 async function getRuleCounts(warrantyThreshold: Date) {
   const [missingCustodian, missingSerial, missingPhoto, missingDepartment, missingPurchaseInfo, warrantyExpiring] = await Promise.all([
-    prisma.asset.count({ where: { isActive: true, custodianId: null } }),
+    prisma.asset.count({ where: { AND: [{ isActive: true }, assetMissingResponsibilityWhere] } }),
     prisma.asset.count({ where: { isActive: true, OR: [{ serialNumber: null }, { serialNumber: "" }] } }),
     prisma.asset.count({
-      where: { isActive: true, attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
+      where: {
+        isActive: true,
+        ownershipType: { not: "software_license" },
+        attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } },
+      },
     }),
     prisma.asset.count({ where: { isActive: true, departmentId: null } }),
     prisma.asset.count({

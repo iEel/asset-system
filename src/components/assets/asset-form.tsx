@@ -9,6 +9,7 @@ import Link from "next/link"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
+import { assetOwnershipTypes, defaultAssetOwnershipType, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { formatFileSize } from "@/lib/uploads"
 
 type Option = {
@@ -43,6 +44,7 @@ type AssetFormValues = {
   serialNumber?: string | null
   companyId: string
   branchId: string
+  ownershipType?: string | null
   departmentId?: string | null
   custodianId?: string | null
   homeLocationId?: string | null
@@ -112,6 +114,7 @@ const emptyAsset: AssetFormValues = {
   serialNumber: "",
   companyId: "",
   branchId: "",
+  ownershipType: defaultAssetOwnershipType,
   departmentId: "",
   custodianId: "",
   homeLocationId: "",
@@ -200,6 +203,7 @@ export function AssetForm({
   const isEdit = Boolean(asset?.id)
   const backHref = `/${locale}/assets`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
+  const ownershipType = normalizeAssetOwnershipType(values.ownershipType)
 
   const filteredBranches = branches.filter((branch) => branch.companyId === values.companyId)
   const filteredDepartments = departments.filter(
@@ -217,6 +221,7 @@ export function AssetForm({
       (!values.brandId || model.brandId === values.brandId)
   )
   const selectedCategory = categories.find((category) => category.id === values.categoryId)
+  const isSoftwareLicense = ownershipType === "software_license"
   const selectedBrand = brands.find((brand) => brand.id === values.brandId)
   const selectedModel = models.find((model) => model.id === values.modelId)
   const suggestedAssetName = useMemo(
@@ -340,6 +345,14 @@ export function AssetForm({
     }))
   }
 
+  function handleOwnershipTypeChange(nextOwnershipType: string) {
+    setValues((current) => ({
+      ...current,
+      ownershipType: normalizeAssetOwnershipType(nextOwnershipType),
+      custodianId: nextOwnershipType === "personal" ? current.custodianId : "",
+    }))
+  }
+
   function handleCategoryChange(categoryId: string) {
     setValues((current) =>
       withSuggestedName({
@@ -394,6 +407,14 @@ export function AssetForm({
     }
     if (!isEdit && installAfterCreate.parentAssetId && !installAfterCreate.componentRole.trim()) {
       toast.error(t("componentRoleRequired"))
+      return
+    }
+    if (!isEdit && ownershipType === "component" && !installAfterCreate.parentAssetId) {
+      toast.error(t("componentParentRequired"))
+      return
+    }
+    if (isSoftwareLicense && !values.departmentId && !values.custodianId) {
+      toast.error(t("licenseResponsibilityRequired"))
       return
     }
     if (selectedPurchaseFile && !purchaseDocumentNo.trim()) {
@@ -706,7 +727,7 @@ export function AssetForm({
             <option value="">{t("selectModel")}</option>
             {filteredModels.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
           </SelectField>
-          <Field label={t("serialNumber")}>
+          <Field label={isSoftwareLicense ? t("licenseKey") : t("serialNumber")}>
             <ScannerTextInput
               value={values.serialNumber ?? ""}
               onChange={(value) => setField("serialNumber", value)}
@@ -733,6 +754,14 @@ export function AssetForm({
         </Section>
 
         <Section title={t("ownership")}>
+          <div className="md:col-span-2">
+            <SelectField label={t("ownershipType")} value={ownershipType} required onChange={handleOwnershipTypeChange}>
+              {assetOwnershipTypes.map((type) => (
+                <option key={type} value={type}>{t(`ownershipType_${type}`)}</option>
+              ))}
+            </SelectField>
+            <p className="mt-1.5 text-xs text-muted-foreground">{t(`ownershipType_${ownershipType}_help`)}</p>
+          </div>
           <SelectField label={t("company")} value={values.companyId} required onChange={handleCompanyChange}>
             <option value="">{t("selectCompany")}</option>
             {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
@@ -741,19 +770,26 @@ export function AssetForm({
             <option value="">{t("selectBranch")}</option>
             {filteredBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
           </SelectField>
-          <SelectField label={t("department")} value={values.departmentId ?? ""} onChange={(value) => setField("departmentId", value)}>
+          <SelectField label={t("department")} value={values.departmentId ?? ""} required={ownershipType !== "personal" && !isSoftwareLicense} onChange={(value) => setField("departmentId", value)}>
             <option value="">{t("selectDepartment")}</option>
             {filteredDepartments.map((department) => <option key={department.id} value={department.id}>{department.label}</option>)}
           </SelectField>
-          <SearchableSelect
-            label={t("custodian")}
-            value={values.custodianId ?? ""}
-            options={filteredEmployees}
-            placeholder={t("selectCustodian")}
-            searchPlaceholder={tCommon("searchSelectPlaceholder")}
-            emptyLabel={tCommon("searchSelectNoResults")}
-            onChange={(value) => setField("custodianId", value)}
-          />
+          {ownershipType === "personal" || isSoftwareLicense ? (
+            <SearchableSelect
+              label={isSoftwareLicense ? t("licenseAssignee") : t("custodian")}
+              value={values.custodianId ?? ""}
+              options={filteredEmployees}
+              placeholder={isSoftwareLicense ? t("selectLicenseAssignee") : t("selectCustodian")}
+              searchPlaceholder={tCommon("searchSelectPlaceholder")}
+              emptyLabel={tCommon("searchSelectNoResults")}
+              onChange={(value) => setField("custodianId", value)}
+            />
+          ) : (
+            <div className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
+              <div className="font-medium text-foreground">{t("custodianNotRequired")}</div>
+              <p className="mt-1 text-xs">{t("custodianNotRequiredHelp")}</p>
+            </div>
+          )}
         </Section>
 
         <Section title={t("locationCustodian")}>
@@ -778,7 +814,9 @@ export function AssetForm({
         {!isEdit && (
           <Section title={t("installAfterCreate")}>
             <div className="md:col-span-2">
-              <p className="text-sm text-muted-foreground">{t("installAfterCreateHelp")}</p>
+              <p className="text-sm text-muted-foreground">
+                {ownershipType === "component" ? t("installAfterCreateComponentHelp") : t("installAfterCreateHelp")}
+              </p>
             </div>
             <SelectField
               label={t("parentAsset")}

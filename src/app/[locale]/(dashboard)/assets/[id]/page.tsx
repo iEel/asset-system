@@ -36,6 +36,7 @@ import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { MobileActionBar } from "@/components/ui/mobile-action-bar"
 import { ActivityDrawer } from "@/components/ui/activity-drawer"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -448,6 +449,15 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const latestMovement = unifiedTimelineItems[0]
   const currentLocationLabel = asset.currentLocation ? `${asset.currentLocation.code} - ${asset.currentLocation.name}` : null
   const currentCustodianLabel = asset.custodian ? formatEmployeeLabel(asset.custodian) : null
+  const ownershipType = normalizeAssetOwnershipType(asset.ownershipType)
+  const responsibilityHealthLabel =
+    ownershipType === "personal"
+      ? t("dataHealthResponsiblePerson")
+      : ownershipType === "component"
+        ? t("dataHealthInstalledParent")
+        : ownershipType === "software_license"
+          ? t("dataHealthLicenseResponsibility")
+          : t("dataHealthResponsibleDepartment")
   const modelSpecs = parseModelSpecs(asset.model?.specs)
   const activeCheckout = asset.checkouts.find((checkout) => !checkout.isReturned)
   const latestCheckout = asset.checkouts[0]
@@ -461,20 +471,27 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const latestAuditItem = asset.auditItems[0]
   const checklistMissingLabels = getMissingPhotoChecklistLabels(photoChecklist, assetAttachments)
   const hasPurchaseDocuments = purchaseDocuments.length > 0 || legacyPurchaseDocuments.length > 0
-  const dataHealthItems = [
-    createHealthItem(Boolean(asset.serialNumber), t("dataHealthSerial"), "#overview"),
-    createHealthItem(Boolean(primaryAssetPhoto), t("dataHealthAssetPhoto"), "#photos"),
-    createHealthItem(
-      checklistMissingLabels.length === 0,
-      checklistMissingLabels.length === 0
-        ? t("dataHealthChecklistComplete")
-        : t("dataHealthChecklistMissing", { count: checklistMissingLabels.length }),
-      "#photos"
-    ),
-    createHealthItem(hasPurchaseDocuments, t("dataHealthPurchaseDocument"), "#purchase"),
-    createHealthItem(Boolean(asset.custodian), t("dataHealthCustodian"), "#ownership"),
-    createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthWarranty"), "#purchase"),
-  ]
+  const dataHealthItems = ownershipType === "software_license"
+    ? [
+        createHealthItem(Boolean(asset.serialNumber), t("dataHealthLicenseKey"), "#overview"),
+        createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, "#ownership"),
+        createHealthItem(hasPurchaseDocuments, t("dataHealthPurchaseDocument"), "#purchase"),
+        createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthLicenseExpiry"), "#purchase"),
+      ]
+    : [
+        createHealthItem(Boolean(asset.serialNumber), t("dataHealthSerial"), "#overview"),
+        createHealthItem(Boolean(primaryAssetPhoto), t("dataHealthAssetPhoto"), "#photos"),
+        createHealthItem(
+          checklistMissingLabels.length === 0,
+          checklistMissingLabels.length === 0
+            ? t("dataHealthChecklistComplete")
+            : t("dataHealthChecklistMissing", { count: checklistMissingLabels.length }),
+          "#photos"
+        ),
+        createHealthItem(hasPurchaseDocuments, t("dataHealthPurchaseDocument"), "#purchase"),
+        createHealthItem(hasAssetResponsibility(asset), responsibilityHealthLabel, "#ownership"),
+        createHealthItem(Boolean(asset.warrantyEndDate), t("dataHealthWarranty"), "#purchase"),
+      ]
   const dataHealthDone = dataHealthItems.filter((item) => item.done).length
   const dataHealthTone = dataHealthDone === dataHealthItems.length ? "success" : dataHealthDone >= dataHealthItems.length - 2 ? "warning" : "danger"
   const maintenanceSummary = openMaintenanceCount > 0
@@ -797,6 +814,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <Info label={t("company")} value={`${asset.company.code} - ${asset.company.nameTh}`} />
               <Info label={t("branch")} value={`${asset.branch.code} - ${asset.branch.name}`} />
+              <Info label={t("ownershipType")} value={t(`ownershipType_${ownershipType}`)} />
               <Info label={t("department")} value={asset.department ? `${asset.department.code} - ${asset.department.name}` : null} />
               <Info label={t("custodian")} value={asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : null} />
               <Info label={t("homeLocation")} value={asset.homeLocation ? `${asset.homeLocation.code} - ${asset.homeLocation.name}` : null} />

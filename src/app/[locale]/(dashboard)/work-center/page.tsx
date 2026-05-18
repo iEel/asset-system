@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
+import { assetMissingResponsibilityWhere, hasAssetResponsibility } from "@/lib/asset-ownership"
 import { formatDateTime } from "@/lib/utils"
 
 type WorkCenterPageProps = {
@@ -62,11 +63,12 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
     auditItems,
     disposalItems,
   ] = await Promise.all([
-    prisma.asset.count({ where: { isActive: true, custodianId: null } }),
+    prisma.asset.count({ where: { AND: [{ isActive: true }, assetMissingResponsibilityWhere] } }),
     prisma.asset.count({ where: { isActive: true, OR: [{ serialNumber: null }, { serialNumber: "" }] } }),
     prisma.asset.count({
       where: {
         isActive: true,
+        ownershipType: { not: "software_license" },
         attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } },
       },
     }),
@@ -90,10 +92,15 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
       where: {
         isActive: true,
         OR: [
-          { custodianId: null },
+          assetMissingResponsibilityWhere,
           { serialNumber: null },
           { serialNumber: "" },
-          { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
+          {
+            AND: [
+              { ownershipType: { not: "software_license" } },
+              { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
+            ],
+          },
         ],
       },
       select: {
@@ -101,7 +108,10 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
         assetTag: true,
         name: true,
         serialNumber: true,
+        ownershipType: true,
         custodianId: true,
+        departmentId: true,
+        installedInLinks: { where: { status: "installed", removedAt: null }, select: { id: true }, take: 1 },
         attachments: {
           where: { module: "asset", fileType: { startsWith: "image/" }, isActive: true },
           select: { id: true },
@@ -264,9 +274,9 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
           ) : (
             assetIssues.map((asset) => {
               const issues = [
-                asset.custodianId ? null : t("missingCustodianShort"),
+                hasAssetResponsibility(asset) ? null : t("missingCustodianShort"),
                 asset.serialNumber ? null : t("missingSerialShort"),
-                asset.attachments.length > 0 ? null : t("missingPhotoShort"),
+                asset.ownershipType === "software_license" || asset.attachments.length > 0 ? null : t("missingPhotoShort"),
               ].filter((issue): issue is string => Boolean(issue))
               return (
                 <FollowUpItem

@@ -7,6 +7,7 @@ import { AlertTriangle, Camera, CheckCircle2, ImagePlus, Info, Keyboard, Loader2
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
+import { normalizeAssetOwnershipType, requiresCustodian } from "@/lib/asset-ownership"
 
 type Option = { id: string; label: string }
 type AuditScanItem = {
@@ -20,6 +21,7 @@ type AuditScanItem = {
   expectedLocationId: string
   expectedCustodianId: string | null
   expectedConditionId: string | null
+  ownershipType?: string | null
   photoChecklist: string[]
 }
 
@@ -119,11 +121,12 @@ export function AuditScanForm({
   const mismatchPreview = useMemo(() => {
     if (!selectedItem) return []
     const actual = getActualValues(values, selectedItem)
+    const ownershipType = normalizeAssetOwnershipType(selectedItem.ownershipType)
     return [
-      actual.actualLocationId !== selectedItem.expectedLocationId
+      ownershipType !== "software_license" && actual.actualLocationId !== selectedItem.expectedLocationId
         ? { type: "wrong_location", label: t("wrongLocation"), canApply: true }
         : null,
-      (actual.actualCustodianId || null) !== selectedItem.expectedCustodianId
+      requiresCustodian(selectedItem.ownershipType) && (actual.actualCustodianId || null) !== selectedItem.expectedCustodianId
         ? { type: "wrong_custodian", label: t("wrongCustodian"), canApply: true }
         : null,
       (actual.actualDepartmentId || null) !== selectedItem.expectedDepartmentId
@@ -659,12 +662,16 @@ export function AuditScanForm({
 
           {(!fastMode || showDetailedFields) && (
             <>
-              <Select label={t("actualLocation")} value={values.actualLocationId || selectedItem?.expectedLocationId || ""} required onChange={(value) => setField("actualLocationId", value)}>
-                <OptionList options={options.locations} />
-              </Select>
-              <Select label={t("actualCustodian")} value={values.actualCustodianId || selectedItem?.expectedCustodianId || ""} onChange={(value) => setField("actualCustodianId", value)}>
-                <OptionList emptyLabel={t("none")} options={options.employees} />
-              </Select>
+              {selectedItem && normalizeAssetOwnershipType(selectedItem.ownershipType) !== "software_license" ? (
+                <Select label={t("actualLocation")} value={values.actualLocationId || selectedItem.expectedLocationId || ""} required onChange={(value) => setField("actualLocationId", value)}>
+                  <OptionList options={options.locations} />
+                </Select>
+              ) : null}
+              {selectedItem && requiresCustodian(selectedItem.ownershipType) ? (
+                <Select label={t("actualCustodian")} value={values.actualCustodianId || selectedItem.expectedCustodianId || ""} onChange={(value) => setField("actualCustodianId", value)}>
+                  <OptionList emptyLabel={t("none")} options={options.employees} />
+                </Select>
+              ) : null}
               <Select label={t("actualDepartment")} value={values.actualDepartmentId || selectedItem?.expectedDepartmentId || ""} onChange={(value) => setField("actualDepartmentId", value)}>
                 <OptionList emptyLabel={t("none")} options={options.departments} />
               </Select>

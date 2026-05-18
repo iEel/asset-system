@@ -29,6 +29,7 @@ export default async function AuditScanPage({ params }: AuditScanPageProps) {
                 assetTag: true,
                 name: true,
                 categoryId: true,
+                ownershipType: true,
               },
             },
           },
@@ -65,6 +66,7 @@ export default async function AuditScanPage({ params }: AuditScanPageProps) {
         expectedLocationId: item.expectedLocationId,
         expectedCustodianId: item.expectedCustodianId,
         expectedConditionId: item.expectedConditionId,
+        ownershipType: item.asset.ownershipType,
         photoChecklist: checklistByCategoryId.get(item.asset.categoryId) ?? [],
       }))}
       options={{

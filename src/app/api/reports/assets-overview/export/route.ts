@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { createWorkbook, styleWorksheetHeader, workbookResponse } from "@/lib/asset-excel"
 import { errorResponse } from "@/lib/api-response"
 import { buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
+import { assetMissingResponsibilityWhere } from "@/lib/asset-ownership"
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
     summarySheet.addRows([
       { metric: "Total Assets", value: totalAssets },
       { metric: "Total Purchase Value", value: Number(totalValue._sum.purchasePrice ?? 0) },
-      { metric: "Missing Custodian", value: dataQuality.missingCustodian },
+      { metric: "Missing Responsibility", value: dataQuality.missingCustodian },
       { metric: "Missing Serial Number", value: dataQuality.missingSerial },
       { metric: "Missing Asset Photo", value: dataQuality.missingPhoto },
       { metric: "Warranty Expiring in 30 Days", value: dataQuality.warrantyExpiring },
@@ -69,10 +70,16 @@ async function getAssetDataQualityCounts(assetWhere: ReturnType<typeof buildAsse
   const warrantyThreshold = new Date()
   warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
   const [missingCustodian, missingSerial, missingPhoto, warrantyExpiring] = await Promise.all([
-    prisma.asset.count({ where: { AND: [assetWhere, { custodianId: null }] } }),
+    prisma.asset.count({ where: { AND: [assetWhere, assetMissingResponsibilityWhere] } }),
     prisma.asset.count({ where: { AND: [assetWhere, { OR: [{ serialNumber: null }, { serialNumber: "" }] }] } }),
     prisma.asset.count({
-      where: { AND: [assetWhere, { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } }] },
+      where: {
+        AND: [
+          assetWhere,
+          { ownershipType: { not: "software_license" } },
+          { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
+        ],
+      },
     }),
     prisma.asset.count({ where: { AND: [assetWhere, { warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } }] } }),
   ])

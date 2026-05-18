@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { normalizeAssetOwnershipType, requiresCustodian } from "@/lib/asset-ownership"
 import { auditScanSchema } from "@/lib/validations/audit"
 
 type AuditScanContext = {
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
             id: true,
             assetTag: true,
             name: true,
+            ownershipType: true,
             currentLocationId: true,
             custodianId: true,
           },
@@ -69,6 +71,7 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
           companyId: true,
           branchId: true,
           departmentId: true,
+          ownershipType: true,
           currentLocationId: true,
           custodianId: true,
           conditionId: true,
@@ -170,7 +173,7 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
       custodianId: input.actualCustodianId ?? item.expectedCustodianId,
       conditionId: input.actualConditionId ?? item.expectedConditionId,
     }
-    const mismatches = getMismatches(item, actual)
+    const mismatches = getMismatches(item, actual, item.asset.ownershipType)
     const auditResult = mismatches.length === 0 ? "found" : mismatches.length === 1 ? resultByFindingType[mismatches[0].type] : "need_review"
     const scannedAt = new Date()
     const correctionMismatches = input.applyCorrections
@@ -382,12 +385,18 @@ function getMismatches(
     locationId: string
     custodianId: string | null
     conditionId: string | null
-  }
+  },
+  ownershipType?: string | null
 ) {
   const mismatches: Mismatch[] = []
+  const normalizedOwnershipType = normalizeAssetOwnershipType(ownershipType)
 
-  addMismatch(mismatches, "wrong_location", item.expectedLocationId, actual.locationId)
-  addMismatch(mismatches, "wrong_custodian", item.expectedCustodianId, actual.custodianId)
+  if (normalizedOwnershipType !== "software_license") {
+    addMismatch(mismatches, "wrong_location", item.expectedLocationId, actual.locationId)
+  }
+  if (requiresCustodian(normalizedOwnershipType)) {
+    addMismatch(mismatches, "wrong_custodian", item.expectedCustodianId, actual.custodianId)
+  }
   addMismatch(mismatches, "wrong_department", item.expectedDepartmentId, actual.departmentId)
   addMismatch(mismatches, "wrong_condition", item.expectedConditionId, actual.conditionId)
 

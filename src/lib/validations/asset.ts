@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { assetOwnershipTypes, defaultAssetOwnershipType } from "@/lib/asset-ownership"
 import { optionalText } from "@/lib/validations/shared"
 
 const optionalDate = z.preprocess(
@@ -20,6 +21,7 @@ export const assetSchema = z.object({
   serialNumber: optionalText,
   companyId: z.string().trim().min(1),
   branchId: z.string().trim().min(1),
+  ownershipType: z.enum(assetOwnershipTypes).default(defaultAssetOwnershipType),
   departmentId: optionalText,
   custodianId: optionalText,
   homeLocationId: optionalText,

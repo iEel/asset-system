@@ -78,6 +78,7 @@ export default async function EditAssetPage({ params }: EditAssetPageProps) {
           serialNumber: asset.serialNumber,
           companyId: asset.companyId,
           branchId: asset.branchId,
+          ownershipType: asset.ownershipType,
           departmentId: asset.departmentId,
           custodianId: asset.custodianId,
           homeLocationId: asset.homeLocationId,

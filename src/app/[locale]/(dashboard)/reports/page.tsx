@@ -7,6 +7,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type AssetListParams } from "@/lib/asset-list-query"
+import { assetMissingResponsibilityWhere, hasAssetResponsibility } from "@/lib/asset-ownership"
 
 type ReportsPageProps = {
   params: Promise<{ locale: string }>
@@ -60,10 +61,16 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     prisma.asset.groupBy({ by: ["companyId"], where: assetWhere, _count: { _all: true } }),
     prisma.asset.groupBy({ by: ["branchId"], where: assetWhere, _count: { _all: true } }),
     prisma.asset.groupBy({ by: ["departmentId"], where: { ...assetWhere, departmentId: { not: null } }, _count: { _all: true } }),
-    prisma.asset.count({ where: { AND: [assetWhere, { custodianId: null }] } }),
+    prisma.asset.count({ where: { AND: [assetWhere, assetMissingResponsibilityWhere] } }),
     prisma.asset.count({ where: { AND: [assetWhere, { OR: [{ serialNumber: null }, { serialNumber: "" }] }] } }),
     prisma.asset.count({
-      where: { AND: [assetWhere, { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } }] },
+      where: {
+        AND: [
+          assetWhere,
+          { ownershipType: { not: "software_license" } },
+          { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
+        ],
+      },
     }),
     prisma.asset.count({ where: { AND: [assetWhere, { warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } }] } }),
     prisma.company.findMany({ where: { isActive: true }, select: { id: true, code: true, nameTh: true }, orderBy: { code: "asc" } }),
@@ -89,10 +96,15 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           assetWhere,
           {
             OR: [
-              { custodianId: null },
+              assetMissingResponsibilityWhere,
               { serialNumber: null },
               { serialNumber: "" },
-              { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
+              {
+                AND: [
+                  { ownershipType: { not: "software_license" } },
+                  { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
+                ],
+              },
               { warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } },
             ],
           },
@@ -103,7 +115,9 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       include: {
         category: { select: { code: true, name: true } },
         branch: { select: { code: true, name: true } },
+        department: { select: { code: true, name: true } },
         custodian: { select: { code: true, fullNameTh: true } },
+        installedInLinks: { where: { status: "installed", removedAt: null }, select: { id: true }, take: 1 },
         attachments: { where: { module: "asset", fileType: { startsWith: "image/" }, isActive: true }, select: { id: true }, take: 1 },
       },
     }),
@@ -576,7 +590,10 @@ function PermissionPill({
 
 function getDataQualityIssues(
   asset: {
+    ownershipType?: string | null
     custodian: { code: string; fullNameTh: string } | null
+    department?: { code: string; name: string } | null
+    installedInLinks?: Array<{ id: string }>
     serialNumber: string | null
     warrantyEndDate: Date | null
     attachments: Array<{ id: string }>
@@ -585,9 +602,9 @@ function getDataQualityIssues(
   t: (key: string) => string
 ) {
   const issues: string[] = []
-  if (!asset.custodian) issues.push(t("missingCustodian"))
+  if (!hasAssetResponsibility(asset)) issues.push(t("missingCustodian"))
   if (!asset.serialNumber) issues.push(t("missingSerial"))
-  if (asset.attachments.length === 0) issues.push(t("missingPhoto"))
+  if (asset.ownershipType !== "software_license" && asset.attachments.length === 0) issues.push(t("missingPhoto"))
   if (asset.warrantyEndDate && asset.warrantyEndDate >= new Date() && asset.warrantyEndDate <= warrantyThreshold) {
     issues.push(t("warrantyExpiring"))
   }
