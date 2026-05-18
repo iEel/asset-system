@@ -1,4 +1,5 @@
 import Link from "next/link"
+import type React from "react"
 import { ClipboardCheck, DatabaseZap, Download, FileSpreadsheet, ShieldCheck, Trash2, Wrench } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
@@ -38,6 +39,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     filterCategories,
     filterStatuses,
     filterConditions,
+    previewAssets,
   ] = await Promise.all([
     prisma.asset.count({ where: assetWhere }),
     prisma.asset.aggregate({ where: assetWhere, _sum: { purchasePrice: true } }),
@@ -60,6 +62,18 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     prisma.assetCategory.findMany({ where: { isActive: true }, select: { id: true, code: true, name: true }, orderBy: { code: "asc" } }),
     prisma.assetStatus.findMany({ where: { isActive: true }, select: { id: true, nameTh: true }, orderBy: { nameTh: "asc" } }),
     prisma.assetCondition.findMany({ where: { isActive: true }, select: { id: true, nameTh: true }, orderBy: { nameTh: "asc" } }),
+    prisma.asset.findMany({
+      where: assetWhere,
+      take: 10,
+      orderBy: { createdAt: "desc" },
+      include: {
+        category: { select: { code: true, name: true } },
+        branch: { select: { code: true, name: true } },
+        department: { select: { code: true, name: true } },
+        custodian: { select: { code: true, fullNameTh: true } },
+        status: { select: { nameTh: true } },
+      },
+    }),
   ])
   const [statuses, categories, companies, branches, departments] = await Promise.all([
     prisma.assetStatus.findMany({ where: { id: { in: byStatus.map((item) => item.statusId) } }, select: { id: true, nameTh: true } }),
@@ -208,6 +222,56 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         </div>
       </section>
 
+      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <div className="flex flex-col gap-2 border-b border-border px-5 py-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">{t("previewTitle")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("previewHelp")}</p>
+          </div>
+          <span className="text-xs font-medium text-muted-foreground">{t("previewCount", { count: previewAssets.length })}</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-border text-sm">
+            <thead className="bg-muted/40">
+              <tr>
+                <PreviewHead>{t("assetTag")}</PreviewHead>
+                <PreviewHead>{t("assetName")}</PreviewHead>
+                <PreviewHead>{t("category")}</PreviewHead>
+                <PreviewHead>{t("branch")}</PreviewHead>
+                <PreviewHead>{t("department")}</PreviewHead>
+                <PreviewHead>{t("custodian")}</PreviewHead>
+                <PreviewHead>{t("status")}</PreviewHead>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {previewAssets.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                    {t("previewEmpty")}
+                  </td>
+                </tr>
+              ) : (
+                previewAssets.map((asset) => (
+                  <tr key={asset.id}>
+                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">
+                      <Link href={`/${locale}/assets/${asset.id}`} className="text-primary hover:underline">
+                        {asset.assetTag}
+                      </Link>
+                    </td>
+                    <td className="min-w-56 px-4 py-3 text-foreground">{asset.name}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.category.code} - {asset.category.name}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.branch.code} - {asset.branch.name}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.department ? `${asset.department.code} - ${asset.department.name}` : t("unassigned")}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : t("unassigned")}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.status.nameTh}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <ReportTable title={t("byStatus")} rows={byStatus.map((item) => [statusMap.get(item.statusId) ?? item.statusId, item._count._all])} />
         <ReportTable title={t("byCategory")} rows={byCategory.map((item) => [categoryMap.get(item.categoryId) ?? item.categoryId, item._count._all])} />
@@ -297,6 +361,10 @@ function ReportSelect({
       </select>
     </label>
   )
+}
+
+function PreviewHead({ children }: { children: React.ReactNode }) {
+  return <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{children}</th>
 }
 
 function ReportTable({ title, rows }: { title: string; rows: [string, number][] }) {

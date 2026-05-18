@@ -1266,7 +1266,15 @@
     "condition": "สภาพ",
     "all": "ทั้งหมด",
     "applyFilters": "ใช้ตัวกรอง",
-    "clearFilters": "ล้างตัวกรอง"
+    "clearFilters": "ล้างตัวกรอง",
+    "previewTitle": "ตัวอย่างข้อมูลก่อนส่งออก",
+    "previewHelp": "แสดงรายการล่าสุดตามตัวกรอง เพื่อเช็คความถูกต้องก่อนกด Export",
+    "previewCount": "แสดงตัวอย่าง {count} รายการ",
+    "previewEmpty": "ไม่พบรายการตามตัวกรอง",
+    "assetTag": "รหัสทรัพย์สิน",
+    "assetName": "ชื่อทรัพย์สิน",
+    "department": "แผนก",
+    "custodian": "ผู้ถือครอง"
   },
   "maintenancePage": {
     "title": "ซ่อมบำรุง",

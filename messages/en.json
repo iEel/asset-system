@@ -1266,7 +1266,15 @@
     "condition": "Condition",
     "all": "All",
     "applyFilters": "Apply Filters",
-    "clearFilters": "Clear Filters"
+    "clearFilters": "Clear Filters",
+    "previewTitle": "Preview Before Export",
+    "previewHelp": "Shows the latest matching records so users can confirm the dataset before exporting.",
+    "previewCount": "Previewing {count} records",
+    "previewEmpty": "No records match the current filters",
+    "assetTag": "Asset Tag",
+    "assetName": "Asset Name",
+    "department": "Department",
+    "custodian": "Custodian"
   },
   "maintenancePage": {
     "title": "Maintenance",
