@@ -3,7 +3,6 @@ import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import {
   AlertTriangle,
-  ArrowLeft,
   CheckCircle2,
   Edit,
   FileText,
@@ -33,6 +32,10 @@ import { parseModelSpecs } from "@/lib/model-specs"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AssetMovementTimeline, type AssetMovementTimelineItem } from "@/components/assets/asset-movement-timeline"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { MobileActionBar } from "@/components/ui/mobile-action-bar"
+import { ActivityDrawer } from "@/components/ui/activity-drawer"
+import { ActionEmptyState } from "@/components/ui/action-empty-state"
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -588,21 +591,39 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
     ...buildEvidenceItems(auditFindingAttachments, t("evidenceGroupAudit"), t("detailSections.audit")),
     ...buildEvidenceItems(disposalAttachments, t("evidenceGroupDisposal"), t("movementFilters.disposal")),
   ].sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime())
+  const activityDrawerItems = [
+    latestActivityItem,
+    ...activityFollowUpItems,
+    ...unifiedTimelineItems.slice(0, 8).map((movement) => ({
+      label: movement.title,
+      value: movement.summary,
+      meta: formatDateTime(movement.performedAt),
+      tone: movement.tone,
+    })),
+  ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24 md:pb-0">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-            <Link href={`/${locale}/assets`} className="inline-flex items-center gap-1 hover:text-primary">
-              <ArrowLeft className="h-4 w-4" />
-              {tCommon("back")}
-            </Link>
+          <div className="mb-2">
+            <Breadcrumbs
+              items={[
+                { label: t("title"), href: `/${locale}/assets` },
+                { label: asset.assetTag },
+              ]}
+            />
           </div>
           <h1 className="text-2xl font-bold text-foreground">{asset.assetTag}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{asset.name}</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
+          <ActivityDrawer
+            title={t("activityDrawerTitle")}
+            triggerLabel={t("activityDrawerOpen")}
+            emptyLabel={tCommon("noData")}
+            items={activityDrawerItems}
+          />
           <Link
             href={`/${locale}/assets/${asset.id}/label`}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent"
@@ -619,6 +640,14 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           </Link>
         </div>
       </div>
+      <MobileActionBar
+        actions={[
+          { href: `/${locale}/assets/${asset.id}/edit`, label: tCommon("edit"), icon: <Edit className="h-4 w-4" />, primary: true },
+          { href: checkoutHref, label: t("quickCheckout"), icon: <Truck className="h-4 w-4" />, disabled: Boolean(activeCheckout) },
+          { href: checkinHref, label: t("quickCheckin"), icon: <RotateCcw className="h-4 w-4" />, disabled: !activeCheckout },
+          { href: "#movement", label: t("detailSections.movement"), icon: <History className="h-4 w-4" /> },
+        ]}
+      />
 
       <nav className="sticky top-0 z-20 -mx-4 border-y border-border bg-background/95 px-4 py-2 shadow-sm backdrop-blur md:top-0" aria-label={t("detailSections.nav")}>
         <div className="scrollbar-none flex gap-2 overflow-x-auto">
@@ -846,9 +875,13 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
               <SummaryPill label={t("evidenceDocuments")} value={String(allEvidenceItems.filter((item) => !item.fileType.startsWith("image/")).length)} />
             </div>
             {allEvidenceItems.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                {t("noEvidence")}
-              </div>
+              <ActionEmptyState
+                icon={<Paperclip className="h-6 w-6" />}
+                title={t("noEvidence")}
+                description={t("noEvidenceHelp")}
+                actionHref="#photos"
+                actionLabel={t("detailSections.photos")}
+              />
             ) : (
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {allEvidenceItems.map((item) => (
@@ -1043,9 +1076,13 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
               </div>
             ) : null}
             {asset.maintenanceTickets.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                {tCommon("noData")}
-              </div>
+              <ActionEmptyState
+                icon={<Wrench className="h-6 w-6" />}
+                title={t("noMaintenanceTitle")}
+                description={t("noMaintenanceHelp")}
+                actionHref={maintenanceHref}
+                actionLabel={t("quickMaintenance")}
+              />
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-border text-sm">
@@ -1096,9 +1133,13 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
               ]}
             />
             {asset.auditItems.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                {tCommon("noData")}
-              </div>
+              <ActionEmptyState
+                icon={<ScanLine className="h-6 w-6" />}
+                title={t("noAuditTitle")}
+                description={t("noAuditHelp")}
+                actionHref={`/${locale}/audit/rounds`}
+                actionLabel={t("quickAudit")}
+              />
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-border text-sm">

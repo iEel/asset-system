@@ -1,16 +1,18 @@
 import Link from "next/link"
 import { getTranslations } from "next-intl/server"
-import { Download } from "lucide-react"
+import { Download, Trash2 } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { getDisposalOptions } from "@/lib/disposal-options"
 import { buildDisposalQueryString, buildDisposalWhere, parseDisposalListParams } from "@/lib/disposal-query"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
-import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
+import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { DisposalDecisionButton } from "@/components/disposal/disposal-decision-button"
 import { DisposalRequestForm } from "@/components/disposal/disposal-request-form"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 type DisposalPageProps = {
   params: Promise<{ locale: string }>
@@ -173,8 +175,14 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
             <tbody className="divide-y divide-border">
               {requests.length === 0 ? (
                 <tr>
-                  <td colSpan={canApprove ? 10 : 9} className="h-32 px-4 text-center text-muted-foreground">
-                    {tCommon("noData")}
+                  <td colSpan={canApprove ? 10 : 9} className="px-4 py-6">
+                    <ActionEmptyState
+                      icon={<Trash2 className="h-6 w-6" />}
+                      title={t("emptyTitle")}
+                      description={t("emptyHelp")}
+                      actionHref={`/${locale}/disposal`}
+                      actionLabel={t("clearFilters")}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -251,31 +259,5 @@ function DisposalStatusBadge({
   status: string
   labels: { pending: string; approved: string; disposed: string; rejected: string }
 }) {
-  if (status === "pending") return <ActiveBadge label={labels.pending} />
-  if (status === "approved") {
-    return (
-      <span className="inline-flex rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-        {labels.approved}
-      </span>
-    )
-  }
-  if (status === "rejected") {
-    return (
-      <span className="inline-flex rounded-full bg-danger/10 px-2 py-1 text-xs font-medium text-danger">
-        {labels.rejected}
-      </span>
-    )
-  }
-  if (status === "disposed") {
-    return (
-      <span className="inline-flex rounded-full bg-success/10 px-2 py-1 text-xs font-medium text-success">
-        {labels.disposed}
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-      {status}
-    </span>
-  )
+  return <StatusBadge label={labels[status as keyof typeof labels] ?? status} status={status} size="xs" />
 }

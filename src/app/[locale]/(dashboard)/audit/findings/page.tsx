@@ -10,6 +10,8 @@ import { AuditFindingsBatchActions } from "@/components/audit/audit-findings-bat
 import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
 import { formatDateTime } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 type AuditFindingsPageProps = {
   params: Promise<{ locale: string }>
@@ -135,7 +137,13 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <div className="grid gap-3 p-3 md:hidden">
           {findings.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">{tCommon("noData")}</div>
+            <ActionEmptyState
+              icon={<FileText className="h-6 w-6" />}
+              title={t("emptyTitle")}
+              description={t("emptyHelp")}
+              actionHref={`/${locale}/audit/rounds`}
+              actionLabel={t("backToRounds")}
+            />
           ) : (
             findings.map((finding) => (
               <div key={finding.id} className="rounded-md border border-border bg-background p-4">
@@ -208,8 +216,14 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
             <tbody className="divide-y divide-border">
               {findings.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="h-32 px-4 text-center text-muted-foreground">
-                    {tCommon("noData")}
+                  <td colSpan={13} className="px-4 py-6">
+                    <ActionEmptyState
+                      icon={<FileText className="h-6 w-6" />}
+                      title={t("emptyTitle")}
+                      description={t("emptyHelp")}
+                      actionHref={`/${locale}/audit/rounds`}
+                      actionLabel={t("backToRounds")}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -287,29 +301,9 @@ function Info({ label, value }: { label: string; value?: string | null }) {
 }
 
 function ReviewStatusBadge({ status }: { status: string }) {
-  const className =
-    status === "approved"
-      ? "bg-success/10 text-success"
-      : status === "rejected"
-        ? "bg-danger/10 text-danger"
-        : status === "exception"
-          ? "bg-warning/10 text-warning"
-          : "bg-info/10 text-info"
-
-  return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${className}`}>{status}</span>
+  return <StatusBadge label={status} status={status} size="xs" />
 }
 
 function ActionStatusBadge({ status, label }: { status: string; label: string }) {
-  const className =
-    status === "closed"
-      ? "bg-success/10 text-success"
-      : status === "done"
-        ? "bg-primary/10 text-primary"
-        : status === "in_progress"
-          ? "bg-warning/10 text-warning"
-          : status === "planned"
-            ? "bg-info/10 text-info"
-            : "bg-muted text-muted-foreground"
-
-  return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${className}`}>{label}</span>
+  return <StatusBadge label={label} status={status} size="xs" />
 }

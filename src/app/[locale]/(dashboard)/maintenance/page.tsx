@@ -14,6 +14,8 @@ import { MaintenanceTicketCloseButton } from "@/components/maintenance/maintenan
 import { MaintenanceTicketStatusButton } from "@/components/maintenance/maintenance-ticket-status-button"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceClosed, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
+import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 type MaintenancePageProps = {
   params: Promise<{ locale: string }>
@@ -253,8 +255,14 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
             <tbody className="divide-y divide-border">
               {tickets.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="h-32 px-4 text-center text-muted-foreground">
-                    {tCommon("noData")}
+                  <td colSpan={11} className="px-4 py-6">
+                    <ActionEmptyState
+                      icon={<Wrench className="h-6 w-6" />}
+                      title={t("emptyTitle")}
+                      description={t("emptyHelp")}
+                      actionHref={`/${locale}/maintenance`}
+                      actionLabel={t("clearFilters")}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -285,7 +293,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                       {ticket.repairCost == null ? "-" : formatCurrency(Number(ticket.repairCost))}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">
-                      <MaintenanceStatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, statusLabels)} tone={getMaintenanceStatusTone(ticket.repairStatus)} />
+                      <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, statusLabels)} tone={getMaintenanceStatusTone(ticket.repairStatus)} size="xs" />
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">
                       {ticket.dueDate ? (
@@ -459,21 +467,6 @@ function MaintenanceKanbanColumn({
       </div>
     </div>
   )
-}
-
-function MaintenanceStatusBadge({ label, tone }: { label: string; tone: string }) {
-  const className =
-    tone === "info"
-      ? "bg-info/10 text-info"
-      : tone === "success"
-        ? "bg-success/10 text-success"
-        : tone === "warning"
-          ? "bg-warning/10 text-warning"
-          : tone === "primary"
-            ? "bg-primary/10 text-primary"
-            : "bg-muted text-muted-foreground"
-
-  return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${className}`}>{label}</span>
 }
 
 async function getMaintenanceAttachmentTicketIds() {

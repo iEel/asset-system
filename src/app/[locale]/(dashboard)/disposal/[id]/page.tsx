@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ArrowLeft, ClipboardCheck, FileText, History, Printer, Trash2 } from "lucide-react"
+import { ClipboardCheck, FileText, History, Printer, Trash2 } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -10,6 +10,10 @@ import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
 import { DisposalAttachments } from "@/components/disposal/disposal-attachments"
 import { DisposalExecutionButton } from "@/components/disposal/disposal-execution-button"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { MobileActionBar } from "@/components/ui/mobile-action-bar"
+import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 type DisposalDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -74,14 +78,16 @@ export default async function DisposalDetailPage({ params }: DisposalDetailPageP
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24 md:pb-0">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-            <Link href={`/${locale}/disposal`} className="inline-flex items-center gap-1 hover:text-primary">
-              <ArrowLeft className="h-4 w-4" />
-              {tCommon("back")}
-            </Link>
+          <div className="mb-2">
+            <Breadcrumbs
+              items={[
+                { label: t("title"), href: `/${locale}/disposal` },
+                { label: disposalRequest.disposalNo },
+              ]}
+            />
           </div>
           <h1 className="text-2xl font-bold text-foreground">{disposalRequest.disposalNo}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -107,9 +113,17 @@ export default async function DisposalDetailPage({ params }: DisposalDetailPageP
               defaultActualSalvageValue={disposalRequest.actualSalvageValue?.toString() ?? disposalRequest.salvageValue?.toString()}
             />
           ) : null}
-          <StatusBadge status={disposalRequest.requestStatus} labels={statusLabels} />
+          <StatusBadge label={statusLabels[disposalRequest.requestStatus as keyof typeof statusLabels] ?? disposalRequest.requestStatus} status={disposalRequest.requestStatus} />
         </div>
       </div>
+      <MobileActionBar
+        actions={[
+          { href: `/${locale}/assets/${disposalRequest.asset.id}`, label: t("openAsset"), icon: <FileText className="h-4 w-4" />, primary: true },
+          { href: `/${locale}/disposal/${disposalRequest.id}/print`, label: t("printDisposal"), icon: <Printer className="h-4 w-4" /> },
+          { href: "#history", label: t("disposalHistory"), icon: <History className="h-4 w-4" /> },
+          { href: `/${locale}/disposal`, label: tCommon("back"), icon: <Trash2 className="h-4 w-4" /> },
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
         <div className="space-y-6">
@@ -164,15 +178,17 @@ export default async function DisposalDetailPage({ params }: DisposalDetailPageP
             </div>
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section id="history" className="rounded-lg border border-border bg-surface p-6 shadow-sm">
             <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
               <History className="h-5 w-5 text-primary" />
               {t("disposalHistory")}
             </h2>
             {movements.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                {tCommon("noData")}
-              </div>
+              <ActionEmptyState
+                icon={<History className="h-6 w-6" />}
+                title={t("emptyHistoryTitle")}
+                description={t("emptyHistoryHelp")}
+              />
             ) : (
               <ol className="space-y-4">
                 {movements.map((movement) => (
@@ -255,20 +271,4 @@ function TextBlock({ label, value }: { label: string; value?: string | null }) {
       </div>
     </div>
   )
-}
-
-function StatusBadge({ status, labels }: { status: string; labels: Record<string, string> }) {
-  const label = labels[status] ?? status
-  const className =
-    status === "approved"
-      ? "bg-primary/10 text-primary"
-      : status === "disposed"
-        ? "bg-success/10 text-success"
-      : status === "rejected"
-        ? "bg-danger/10 text-danger"
-        : status === "pending"
-          ? "bg-success/10 text-success"
-          : "bg-muted text-muted-foreground"
-
-  return <span className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${className}`}>{label}</span>
 }

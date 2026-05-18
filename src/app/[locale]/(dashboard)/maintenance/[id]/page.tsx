@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, ArrowLeft, CheckCircle2, FileText, History, Printer, Trash2 } from "lucide-react"
+import { AlertTriangle, CheckCircle2, FileText, History, Printer, Trash2, Wrench } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -13,6 +13,10 @@ import { MaintenanceTicketStatusButton } from "@/components/maintenance/maintena
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
 import { getMaintenanceAttachmentType } from "@/lib/maintenance-attachments"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceClosed, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { MobileActionBar } from "@/components/ui/mobile-action-bar"
+import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 type MaintenanceDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -80,14 +84,16 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
   })}`
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24 md:pb-0">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-            <Link href={`/${locale}/maintenance`} className="inline-flex items-center gap-1 hover:text-primary">
-              <ArrowLeft className="h-4 w-4" />
-              {tCommon("back")}
-            </Link>
+          <div className="mb-2">
+            <Breadcrumbs
+              items={[
+                { label: t("title"), href: `/${locale}/maintenance` },
+                { label: ticket.repairNo },
+              ]}
+            />
           </div>
           <h1 className="text-2xl font-bold text-foreground">{ticket.repairNo}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{ticket.asset.assetTag} - {ticket.asset.name}</p>
@@ -127,6 +133,14 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
           <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, getStatusLabels(t))} tone={getMaintenanceStatusTone(ticket.repairStatus)} />
         </div>
       </div>
+      <MobileActionBar
+        actions={[
+          { href: `/${locale}/assets/${ticket.asset.id}`, label: t("openAsset"), icon: <FileText className="h-4 w-4" />, primary: true },
+          { href: `/${locale}/maintenance/${ticket.id}/print`, label: t("printRepair"), icon: <Printer className="h-4 w-4" /> },
+          { href: "#history", label: t("maintenanceHistory"), icon: <History className="h-4 w-4" /> },
+          { href: `/${locale}/maintenance`, label: tCommon("back"), icon: <Wrench className="h-4 w-4" /> },
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
         <div className="space-y-6">
@@ -183,15 +197,17 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
             </div>
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section id="history" className="rounded-lg border border-border bg-surface p-6 shadow-sm">
             <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
               <History className="h-5 w-5 text-primary" />
               {t("maintenanceHistory")}
             </h2>
             {movements.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                {tCommon("noData")}
-              </div>
+              <ActionEmptyState
+                icon={<History className="h-6 w-6" />}
+                title={t("emptyHistoryTitle")}
+                description={t("emptyHistoryHelp")}
+              />
             ) : (
               <ol className="space-y-4">
                 {movements.map((movement) => (
@@ -283,21 +299,6 @@ function TextBlock({ label, value }: { label: string; value?: string | null }) {
 
 function getStatusLabels(t: (key: string) => string) {
   return Object.fromEntries(maintenanceStatuses.map((status) => [status, t(`statuses.${status}`)]))
-}
-
-function StatusBadge({ label, tone }: { label: string; tone: string }) {
-  const className =
-    tone === "info"
-      ? "bg-info/10 text-info"
-      : tone === "success"
-        ? "bg-success/10 text-success"
-        : tone === "warning"
-          ? "bg-warning/10 text-warning"
-          : tone === "primary"
-            ? "bg-primary/10 text-primary"
-            : "bg-muted text-muted-foreground"
-
-  return <span className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${className}`}>{label}</span>
 }
 
 function ChecklistItem({ done, label }: { done: boolean; label: string }) {

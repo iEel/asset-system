@@ -11,6 +11,10 @@ import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 import { AuditRoundCloseButton } from "@/components/audit/audit-round-close-button"
 import { hasPermission } from "@/lib/auth-utils"
 import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { MobileActionBar } from "@/components/ui/mobile-action-bar"
+import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 type AuditRoundDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -109,21 +113,24 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
   })
 
   return (
-    <div>
+    <div className="pb-24 md:pb-0">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <Link href={`/${locale}/audit/rounds`} className="text-sm text-primary hover:underline">
-            {tCommon("back")}
-          </Link>
-          <h1 className="mt-2 text-2xl font-bold text-foreground">{round.name}</h1>
+          <div className="mb-2">
+            <Breadcrumbs
+              items={[
+                { label: t("title"), href: `/${locale}/audit/rounds` },
+                { label: round.auditNo },
+              ]}
+            />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground">{round.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {round.auditNo} • {formatDate(round.startDate)} - {formatDate(round.endDate)}
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:items-end">
-          <span className="inline-flex w-fit rounded-full bg-warning/10 px-3 py-1 text-sm font-medium text-warning">
-            {round.status}
-          </span>
+          <StatusBadge label={round.status} status={round.status} />
           <div className="flex flex-wrap justify-end gap-2">
             <a
               href={`/api/audit-rounds/${round.id}/export`}
@@ -163,6 +170,14 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
           </div>
         </div>
       </div>
+      <MobileActionBar
+        actions={[
+          { href: `/${locale}/audit/rounds/${round.id}/scan`, label: t("scan"), icon: <ScanLine className="h-4 w-4" />, primary: true },
+          { href: `/${locale}/audit/rounds/${round.id}/pending`, label: t("pendingAssets"), icon: <AlertTriangle className="h-4 w-4" /> },
+          { href: `/${locale}/audit/findings?status=pending`, label: t("pendingReview"), icon: <FileText className="h-4 w-4" /> },
+          { href: `/${locale}/audit/rounds`, label: tCommon("back"), icon: <Download className="h-4 w-4" /> },
+        ]}
+      />
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
         <Metric label={t("totalExpected")} value={round._count.items} />
@@ -246,8 +261,14 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
             <tbody className="divide-y divide-border">
               {round.items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="h-32 px-4 text-center text-muted-foreground">
-                    {tCommon("noData")}
+                  <td colSpan={6} className="px-4 py-6">
+                    <ActionEmptyState
+                      icon={<ScanLine className="h-6 w-6" />}
+                      title={t("emptyAssetsTitle")}
+                      description={t("emptyAssetsHelp")}
+                      actionHref={`/${locale}/audit/rounds`}
+                      actionLabel={tCommon("back")}
+                    />
                   </td>
                 </tr>
               ) : (
