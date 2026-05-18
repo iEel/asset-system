@@ -1291,6 +1291,7 @@
     "byCompany": "ทรัพย์สินตามบริษัท",
     "byBranch": "ทรัพย์สินตามสาขา",
     "byDepartment": "ทรัพย์สินตามแผนก",
+    "byOwnership": "ทรัพย์สินตามประเภทการถือครอง",
     "dataQuality": "คุณภาพข้อมูลทะเบียน",
     "missingCustodian": "ไม่มีผู้รับผิดชอบ",
     "missingSerial": "ไม่มี Serial",

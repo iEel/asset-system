@@ -7,7 +7,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type AssetListParams } from "@/lib/asset-list-query"
-import { assetMissingResponsibilityWhere, hasAssetResponsibility } from "@/lib/asset-ownership"
+import { assetMissingResponsibilityWhere, assetOwnershipTypes, hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 
 type ReportsPageProps = {
   params: Promise<{ locale: string }>
@@ -19,6 +19,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const rawSearchParams = await searchParams
   const user = await requirePagePermission(locale, "report", "view")
   const t = await getTranslations("reportsPage")
+  const tAsset = await getTranslations("asset")
   const canReportExport = hasPermission(user, "report", "export")
   const canAssetExport = hasPermission(user, "asset", "view")
   const canMaintenanceExport = hasPermission(user, "maintenance", "export")
@@ -38,6 +39,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     byCompany,
     byBranch,
     byDepartment,
+    byOwnership,
     missingCustodian,
     missingSerial,
     missingPhoto,
@@ -61,6 +63,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     prisma.asset.groupBy({ by: ["companyId"], where: assetWhere, _count: { _all: true } }),
     prisma.asset.groupBy({ by: ["branchId"], where: assetWhere, _count: { _all: true } }),
     prisma.asset.groupBy({ by: ["departmentId"], where: { ...assetWhere, departmentId: { not: null } }, _count: { _all: true } }),
+    prisma.asset.groupBy({ by: ["ownershipType"], where: assetWhere, _count: { _all: true } }),
     prisma.asset.count({ where: { AND: [assetWhere, assetMissingResponsibilityWhere] } }),
     prisma.asset.count({ where: { AND: [assetWhere, { OR: [{ serialNumber: null }, { serialNumber: "" }] }] } }),
     prisma.asset.count({
@@ -271,6 +274,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           <ReportSelect name="categoryId" label={t("category")} value={filters.categoryId} options={filterCategories.map((category) => ({ value: category.id, label: `${category.code} - ${category.name}` }))} allLabel={t("all")} />
           <ReportSelect name="statusId" label={t("status")} value={filters.statusId} options={filterStatuses.map((status) => ({ value: status.id, label: status.nameTh }))} allLabel={t("all")} />
           <ReportSelect name="conditionId" label={t("condition")} value={filters.conditionId} options={filterConditions.map((condition) => ({ value: condition.id, label: condition.nameTh }))} allLabel={t("all")} />
+          <ReportSelect name="ownershipType" label={tAsset("ownershipType")} value={filters.ownershipType} options={assetOwnershipTypes.map((type) => ({ value: type, label: tAsset(`ownershipType_${type}`) }))} allLabel={t("all")} />
           <div className="flex flex-wrap gap-2 self-end md:col-span-2 xl:col-span-3">
             <button type="submit" className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90">
               {t("applyFilters")}
@@ -421,13 +425,14 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
                 <PreviewHead>{t("branch")}</PreviewHead>
                 <PreviewHead>{t("department")}</PreviewHead>
                 <PreviewHead>{t("custodian")}</PreviewHead>
+                <PreviewHead>{tAsset("ownershipType")}</PreviewHead>
                 <PreviewHead>{t("status")}</PreviewHead>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {previewAssets.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                     {t("previewEmpty")}
                   </td>
                 </tr>
@@ -444,6 +449,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.branch.code} - {asset.branch.name}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.department ? `${asset.department.code} - ${asset.department.name}` : t("unassigned")}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : t("unassigned")}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{tAsset(`ownershipType_${normalizeAssetOwnershipType(asset.ownershipType)}`)}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.status.nameTh}</td>
                   </tr>
                 ))
@@ -459,6 +465,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         <ReportTable title={t("byCompany")} rows={byCompany.map((item) => [companyMap.get(item.companyId) ?? item.companyId, item._count._all])} />
         <ReportTable title={t("byBranch")} rows={byBranch.map((item) => [branchMap.get(item.branchId) ?? item.branchId, item._count._all])} />
         <ReportTable title={t("byDepartment")} rows={byDepartment.map((item) => [departmentMap.get(item.departmentId ?? "") ?? item.departmentId ?? t("unassigned"), item._count._all])} />
+        <ReportTable title={t("byOwnership")} rows={byOwnership.map((item) => [tAsset(`ownershipType_${normalizeAssetOwnershipType(item.ownershipType)}`), item._count._all])} />
       </div>
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">

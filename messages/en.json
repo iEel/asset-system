@@ -1291,6 +1291,7 @@
     "byCompany": "Assets by Company",
     "byBranch": "Assets by Branch",
     "byDepartment": "Assets by Department",
+    "byOwnership": "Assets by Ownership Type",
     "dataQuality": "Register Data Quality",
     "missingCustodian": "No Responsible Owner",
     "missingSerial": "No Serial",
