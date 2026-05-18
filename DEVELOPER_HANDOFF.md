@@ -665,6 +665,7 @@ await logAudit({
 | **Automatic notification summary** | เพิ่ม `GET /api/notifications` และ helper `src/lib/notification-summary.ts` เพื่อสรุปแจ้งเตือนจากข้อมูลจริงตามสิทธิ์ผู้ใช้ ได้แก่ ซ่อมเกินกำหนด, Audit Finding รอตรวจ, action plan ค้าง, ตัดจำหน่ายรออนุมัติ/อนุมัติแล้วรอดำเนินการ, และรายการส่งมอบใกล้/เลยกำหนดคืน; Topbar Bell แสดง badge จำนวนรวมและ dropdown กดไปหน้าที่เกี่ยวข้องหรือ `/work-center` |
 | **Role permission audit** | หน้า `/admin/roles` เพิ่มสรุปตรวจสอบสิทธิ์ ได้แก่จำนวน system roles, roles ที่มีสิทธิ์สูง (`delete/approve/export`), และ inactive roles ที่ยังมีผู้ใช้; เพิ่ม `GET /api/admin/roles/export` สำหรับส่งออก Excel `Role Summary` + `Permission Matrix` ภายใต้สิทธิ์ `role:export` |
 | **Asset overview report** | หน้า `/reports` เพิ่มรายงานภาพรวมทรัพย์สินตามสาขา/แผนก, data quality counters (ขาดผู้ถือครอง/Serial/รูป/ใกล้หมดประกัน), และ `GET /api/reports/assets-overview/export` สำหรับ Excel หลาย sheet: Overview, By Status, By Category, By Company, By Branch, By Department ภายใต้สิทธิ์ `report:export` |
+| **Report catalog** | หน้า `/reports` เพิ่มคลังรายงานแบบแยกหมวด ได้แก่ทะเบียนทรัพย์สิน, คุณภาพข้อมูล, ซ่อมบำรุง, ตรวจนับ, ตัดจำหน่าย, และสิทธิ์/ระบบ; แต่ละหมวดมีคำอธิบาย, audience, ปุ่มเปิดหน้าจอ และปุ่ม export เฉพาะ endpoint ที่มีอยู่จริง เช่น Asset overview/register, Maintenance, Audit Findings, Disposal, และ Role Permission Audit |
 | **Data quality rule center** | เพิ่มหน้า `/admin/data-quality` ใต้เมนู Administration สำหรับดู/ตั้งค่า rule คุณภาพข้อมูลทะเบียนโดยเก็บใน `system_settings.asset_data_quality_rules`; รองรับ rule ขาดผู้ถือครอง, Serial, รูป, แผนก, ข้อมูลจัดซื้อ, และประกันใกล้หมด พร้อม severity warning/danger, count ตาม rule, และ link ไปหน้าทะเบียน/รายงาน |
 | **Centralized asset evidence** | หน้า Asset Detail เพิ่ม section `#evidence` “ศูนย์หลักฐานของทรัพย์สิน” รวม attachment จากทะเบียน, รูปรุ่น, purchase documents, ส่วนควบ, checkout/checkin, maintenance, audit findings, และ disposal โดยแสดงจำนวนรวม/รูป/เอกสาร พร้อม thumbnail/download link เรียงตามวันที่อัปโหลดล่าสุด |
 | **Operation print forms** | หลัง checkout/checkin สำเร็จจะ redirect ไปหน้าเอกสารพิมพ์ A4 สำหรับใบส่งมอบ/ใบรับคืน พร้อมข้อมูลทรัพย์สิน เงื่อนไข รายละเอียดธุรกรรม และช่องลายเซ็น |
@@ -863,6 +864,7 @@ await logAudit({
 105. Centralized asset evidence section on Asset Detail that aggregates attachments across register, model, purchase, component, handover/return, maintenance, audit, and disposal records
 106. Shared UI/UX pattern components for action empty states, breadcrumbs, mobile bottom actions, activity drawers, and standardized status badges across asset, maintenance, disposal, and audit pages
 107. Dashboard monthly trend cards and readable recent activity links using real asset, maintenance, audit finding, disposal, and system log data
+108. Reports page catalog grouped by business area with audience notes, view shortcuts, and existing export endpoints
 
 ---
 

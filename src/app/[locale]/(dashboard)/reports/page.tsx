@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Download, FileSpreadsheet } from "lucide-react"
+import { ClipboardCheck, DatabaseZap, Download, FileSpreadsheet, ShieldCheck, Trash2, Wrench } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -58,6 +58,66 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
   const companyMap = new Map(companies.map((company) => [company.id, `${company.code} - ${company.nameTh}`]))
   const branchMap = new Map(branches.map((branch) => [branch.id, `${branch.code} - ${branch.name}`]))
   const departmentMap = new Map(departments.map((department) => [department.id, `${department.code} - ${department.name}`]))
+  const reportCatalog = [
+    {
+      title: t("catalogAssetTitle"),
+      description: t("catalogAssetDescription"),
+      audience: t("catalogAssetAudience"),
+      icon: <FileSpreadsheet className="h-5 w-5" />,
+      reports: [
+        { label: t("assetRegister"), viewHref: `/${locale}/assets`, exportHref: "/api/assets/export", exportLabel: t("exportAssetRegister") },
+        { label: t("assetOverviewExcel"), viewHref: `/${locale}/reports`, exportHref: "/api/reports/assets-overview/export", exportLabel: t("exportAssetOverview") },
+      ],
+    },
+    {
+      title: t("catalogDataQualityTitle"),
+      description: t("catalogDataQualityDescription"),
+      audience: t("catalogDataQualityAudience"),
+      icon: <DatabaseZap className="h-5 w-5" />,
+      reports: [
+        { label: t("dataQuality"), viewHref: `/${locale}/admin/data-quality`, exportHref: "/api/reports/assets-overview/export", exportLabel: t("exportAssetOverview") },
+      ],
+    },
+    {
+      title: t("catalogMaintenanceTitle"),
+      description: t("catalogMaintenanceDescription"),
+      audience: t("catalogMaintenanceAudience"),
+      icon: <Wrench className="h-5 w-5" />,
+      reports: [
+        { label: t("maintenanceReport"), viewHref: `/${locale}/maintenance`, exportHref: "/api/maintenance-tickets/export", exportLabel: t("exportMaintenance") },
+      ],
+    },
+    {
+      title: t("catalogAuditTitle"),
+      description: t("catalogAuditDescription"),
+      audience: t("catalogAuditAudience"),
+      icon: <ClipboardCheck className="h-5 w-5" />,
+      reports: [
+        { label: t("auditFindingsReport"), viewHref: `/${locale}/audit/findings`, exportHref: "/api/audit-findings/export?status=all", exportLabel: t("exportAuditFindings") },
+        { label: t("auditFindingsPdf"), viewHref: `/${locale}/audit/findings`, exportHref: "/api/audit-findings/export-pdf?status=all", exportLabel: t("exportPdf") },
+      ],
+    },
+    {
+      title: t("catalogDisposalTitle"),
+      description: t("catalogDisposalDescription"),
+      audience: t("catalogDisposalAudience"),
+      icon: <Trash2 className="h-5 w-5" />,
+      reports: [
+        { label: t("disposalReport"), viewHref: `/${locale}/disposal`, exportHref: "/api/disposal-requests/export", exportLabel: t("exportDisposal") },
+      ],
+    },
+    {
+      title: t("catalogSystemTitle"),
+      description: t("catalogSystemDescription"),
+      audience: t("catalogSystemAudience"),
+      icon: <ShieldCheck className="h-5 w-5" />,
+      reports: [
+        { label: t("rolePermissionAudit"), viewHref: `/${locale}/admin/roles`, exportHref: "/api/admin/roles/export", exportLabel: t("exportRoleAudit") },
+        { label: t("systemLogs"), viewHref: `/${locale}/admin/logs` },
+      ],
+    },
+  ]
+  const reportCount = reportCatalog.reduce((sum, category) => sum + category.reports.length, 0)
 
   return (
     <div className="space-y-6">
@@ -87,7 +147,7 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Metric label={t("totalAssets")} value={totalAssets.toLocaleString("th-TH")} />
         <Metric label={t("totalValue")} value={formatCurrency(totalValue._sum.purchasePrice ? Number(totalValue._sum.purchasePrice) : 0)} />
-        <Metric label={t("reportsReady")} value="6" />
+        <Metric label={t("reportsReady")} value={reportCount.toLocaleString("th-TH")} />
       </div>
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
@@ -109,16 +169,41 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
       </div>
 
       <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">{t("quickReports")}</h2>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Link href={`/${locale}/assets`} className="flex items-center gap-3 rounded-md border border-border p-4 transition-colors hover:bg-accent">
-            <FileSpreadsheet className="h-5 w-5 text-primary" />
-            <span className="font-medium">{t("assetRegister")}</span>
-          </Link>
-          <Link href="/api/reports/assets-overview/export" className="flex items-center gap-3 rounded-md border border-border p-4 transition-colors hover:bg-accent">
-            <Download className="h-5 w-5 text-primary" />
-            <span className="font-medium">{t("assetOverviewExcel")}</span>
-          </Link>
+        <div className="mb-5">
+          <h2 className="text-lg font-semibold text-foreground">{t("reportCatalog")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("reportCatalogHelp")}</p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          {reportCatalog.map((category) => (
+            <div key={category.title} className="rounded-md border border-border bg-background p-4">
+              <div className="mb-4 flex items-start gap-3">
+                <div className="rounded-md bg-primary/10 p-2 text-primary">{category.icon}</div>
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">{category.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{category.description}</p>
+                  <p className="mt-2 text-xs font-medium text-primary">{category.audience}</p>
+                </div>
+              </div>
+              <div className="grid gap-2">
+                {category.reports.map((report) => (
+                  <div key={report.label} className="flex flex-col gap-2 rounded-md border border-border bg-surface px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-sm font-medium text-foreground">{report.label}</span>
+                    <div className="flex flex-wrap gap-2">
+                      <Link href={report.viewHref} className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-3 text-xs font-medium transition-colors hover:bg-accent">
+                        {t("openReport")}
+                      </Link>
+                      {report.exportHref ? (
+                        <Link href={report.exportHref} className="inline-flex h-8 items-center justify-center gap-1 rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary/90">
+                          <Download className="h-3.5 w-3.5" />
+                          {report.exportLabel}
+                        </Link>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     </div>
