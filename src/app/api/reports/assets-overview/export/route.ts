@@ -1,22 +1,26 @@
+import { NextRequest } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { createWorkbook, styleWorksheetHeader, workbookResponse } from "@/lib/asset-excel"
 import { errorResponse } from "@/lib/api-response"
+import { buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth()
     requirePermission(user, "report", "export")
+    const filters = parseAssetListParams(request.nextUrl.searchParams)
+    const assetWhere = buildAssetWhere(filters)
 
     const [totalAssets, totalValue, byStatus, byCategory, byCompany, byBranch, byDepartment, dataQuality] = await Promise.all([
-      prisma.asset.count({ where: { isActive: true } }),
-      prisma.asset.aggregate({ where: { isActive: true }, _sum: { purchasePrice: true } }),
-      prisma.asset.groupBy({ by: ["statusId"], where: { isActive: true }, _count: { _all: true } }),
-      prisma.asset.groupBy({ by: ["categoryId"], where: { isActive: true }, _count: { _all: true } }),
-      prisma.asset.groupBy({ by: ["companyId"], where: { isActive: true }, _count: { _all: true } }),
-      prisma.asset.groupBy({ by: ["branchId"], where: { isActive: true }, _count: { _all: true } }),
-      prisma.asset.groupBy({ by: ["departmentId"], where: { isActive: true, departmentId: { not: null } }, _count: { _all: true } }),
-      getAssetDataQualityCounts(),
+      prisma.asset.count({ where: assetWhere }),
+      prisma.asset.aggregate({ where: assetWhere, _sum: { purchasePrice: true } }),
+      prisma.asset.groupBy({ by: ["statusId"], where: assetWhere, _count: { _all: true } }),
+      prisma.asset.groupBy({ by: ["categoryId"], where: assetWhere, _count: { _all: true } }),
+      prisma.asset.groupBy({ by: ["companyId"], where: assetWhere, _count: { _all: true } }),
+      prisma.asset.groupBy({ by: ["branchId"], where: assetWhere, _count: { _all: true } }),
+      prisma.asset.groupBy({ by: ["departmentId"], where: { ...assetWhere, departmentId: { not: null } }, _count: { _all: true } }),
+      getAssetDataQualityCounts(assetWhere),
     ])
 
     const [statuses, categories, companies, branches, departments] = await Promise.all([
@@ -61,16 +65,16 @@ export async function GET() {
   }
 }
 
-async function getAssetDataQualityCounts() {
+async function getAssetDataQualityCounts(assetWhere: ReturnType<typeof buildAssetWhere>) {
   const warrantyThreshold = new Date()
   warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
   const [missingCustodian, missingSerial, missingPhoto, warrantyExpiring] = await Promise.all([
-    prisma.asset.count({ where: { isActive: true, custodianId: null } }),
-    prisma.asset.count({ where: { isActive: true, OR: [{ serialNumber: null }, { serialNumber: "" }] } }),
+    prisma.asset.count({ where: { ...assetWhere, custodianId: null } }),
+    prisma.asset.count({ where: { ...assetWhere, OR: [{ serialNumber: null }, { serialNumber: "" }] } }),
     prisma.asset.count({
-      where: { isActive: true, attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
+      where: { ...assetWhere, attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
     }),
-    prisma.asset.count({ where: { isActive: true, warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } } }),
+    prisma.asset.count({ where: { ...assetWhere, warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } } }),
   ])
   return { missingCustodian, missingSerial, missingPhoto, warrantyExpiring }
 }

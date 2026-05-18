@@ -1254,7 +1254,19 @@
     "exportDisposal": "Export Disposals",
     "rolePermissionAudit": "Role Permission Audit",
     "exportRoleAudit": "Export Role Audit",
-    "systemLogs": "System Logs"
+    "systemLogs": "System Logs",
+    "filterTitle": "Report Filters",
+    "filterHelp": "These filters affect summary metrics, grouped tables, and asset register/overview exports.",
+    "search": "Search",
+    "searchPlaceholder": "Asset Tag, Serial, asset name, custodian...",
+    "company": "Company",
+    "branch": "Branch",
+    "category": "Category",
+    "status": "Status",
+    "condition": "Condition",
+    "all": "All",
+    "applyFilters": "Apply Filters",
+    "clearFilters": "Clear Filters"
   },
   "maintenancePage": {
     "title": "Maintenance",

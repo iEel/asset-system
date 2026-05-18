@@ -4,15 +4,21 @@ import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency } from "@/lib/utils"
+import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type AssetListParams } from "@/lib/asset-list-query"
 
 type ReportsPageProps = {
   params: Promise<{ locale: string }>
+  searchParams: Promise<AssetListParams>
 }
 
-export default async function ReportsPage({ params }: ReportsPageProps) {
+export default async function ReportsPage({ params, searchParams }: ReportsPageProps) {
   const { locale } = await params
+  const rawSearchParams = await searchParams
   await requirePagePermission(locale, "report", "view")
   const t = await getTranslations("reportsPage")
+  const filters = parseAssetListParams(rawSearchParams)
+  const assetWhere = buildAssetWhere(filters)
+  const exportQuery = buildAssetQueryString(filters, { page: 1, pageSize: 100 })
   const warrantyThreshold = new Date()
   warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
   const [
@@ -27,23 +33,33 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
     missingSerial,
     missingPhoto,
     warrantyExpiring,
+    filterCompanies,
+    filterBranches,
+    filterCategories,
+    filterStatuses,
+    filterConditions,
   ] = await Promise.all([
-    prisma.asset.count({ where: { isActive: true } }),
-    prisma.asset.aggregate({ where: { isActive: true }, _sum: { purchasePrice: true } }),
-    prisma.asset.groupBy({ by: ["statusId"], where: { isActive: true }, _count: { _all: true } }),
-    prisma.asset.groupBy({ by: ["categoryId"], where: { isActive: true }, _count: { _all: true } }),
-    prisma.asset.groupBy({ by: ["companyId"], where: { isActive: true }, _count: { _all: true } }),
-    prisma.asset.groupBy({ by: ["branchId"], where: { isActive: true }, _count: { _all: true } }),
-    prisma.asset.groupBy({ by: ["departmentId"], where: { isActive: true, departmentId: { not: null } }, _count: { _all: true } }),
-    prisma.asset.count({ where: { isActive: true, custodianId: null } }),
-    prisma.asset.count({ where: { isActive: true, OR: [{ serialNumber: null }, { serialNumber: "" }] } }),
+    prisma.asset.count({ where: assetWhere }),
+    prisma.asset.aggregate({ where: assetWhere, _sum: { purchasePrice: true } }),
+    prisma.asset.groupBy({ by: ["statusId"], where: assetWhere, _count: { _all: true } }),
+    prisma.asset.groupBy({ by: ["categoryId"], where: assetWhere, _count: { _all: true } }),
+    prisma.asset.groupBy({ by: ["companyId"], where: assetWhere, _count: { _all: true } }),
+    prisma.asset.groupBy({ by: ["branchId"], where: assetWhere, _count: { _all: true } }),
+    prisma.asset.groupBy({ by: ["departmentId"], where: { ...assetWhere, departmentId: { not: null } }, _count: { _all: true } }),
+    prisma.asset.count({ where: { ...assetWhere, custodianId: null } }),
+    prisma.asset.count({ where: { ...assetWhere, OR: [{ serialNumber: null }, { serialNumber: "" }] } }),
     prisma.asset.count({
       where: {
-        isActive: true,
+        ...assetWhere,
         attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } },
       },
     }),
-    prisma.asset.count({ where: { isActive: true, warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } } }),
+    prisma.asset.count({ where: { ...assetWhere, warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } } }),
+    prisma.company.findMany({ where: { isActive: true }, select: { id: true, code: true, nameTh: true }, orderBy: { code: "asc" } }),
+    prisma.branch.findMany({ where: { isActive: true }, select: { id: true, code: true, name: true, company: { select: { code: true } } }, orderBy: { code: "asc" } }),
+    prisma.assetCategory.findMany({ where: { isActive: true }, select: { id: true, code: true, name: true }, orderBy: { code: "asc" } }),
+    prisma.assetStatus.findMany({ where: { isActive: true }, select: { id: true, nameTh: true }, orderBy: { nameTh: "asc" } }),
+    prisma.assetCondition.findMany({ where: { isActive: true }, select: { id: true, nameTh: true }, orderBy: { nameTh: "asc" } }),
   ])
   const [statuses, categories, companies, branches, departments] = await Promise.all([
     prisma.assetStatus.findMany({ where: { id: { in: byStatus.map((item) => item.statusId) } }, select: { id: true, nameTh: true } }),
@@ -65,8 +81,8 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
       audience: t("catalogAssetAudience"),
       icon: <FileSpreadsheet className="h-5 w-5" />,
       reports: [
-        { label: t("assetRegister"), viewHref: `/${locale}/assets`, exportHref: "/api/assets/export", exportLabel: t("exportAssetRegister") },
-        { label: t("assetOverviewExcel"), viewHref: `/${locale}/reports`, exportHref: "/api/reports/assets-overview/export", exportLabel: t("exportAssetOverview") },
+        { label: t("assetRegister"), viewHref: `/${locale}/assets?${exportQuery}`, exportHref: `/api/assets/export?${exportQuery}`, exportLabel: t("exportAssetRegister") },
+        { label: t("assetOverviewExcel"), viewHref: `/${locale}/reports?${exportQuery}`, exportHref: `/api/reports/assets-overview/export?${exportQuery}`, exportLabel: t("exportAssetOverview") },
       ],
     },
     {
@@ -75,7 +91,7 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
       audience: t("catalogDataQualityAudience"),
       icon: <DatabaseZap className="h-5 w-5" />,
       reports: [
-        { label: t("dataQuality"), viewHref: `/${locale}/admin/data-quality`, exportHref: "/api/reports/assets-overview/export", exportLabel: t("exportAssetOverview") },
+        { label: t("dataQuality"), viewHref: `/${locale}/admin/data-quality`, exportHref: `/api/reports/assets-overview/export?${exportQuery}`, exportLabel: t("exportAssetOverview") },
       ],
     },
     {
@@ -128,14 +144,14 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
-            href="/api/reports/assets-overview/export"
+            href={`/api/reports/assets-overview/export?${exportQuery}`}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
           >
             <Download className="h-4 w-4" />
             {t("exportAssetOverview")}
           </Link>
           <Link
-            href="/api/assets/export"
+            href={`/api/assets/export?${exportQuery}`}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
           >
             <Download className="h-4 w-4" />
@@ -149,6 +165,38 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
         <Metric label={t("totalValue")} value={formatCurrency(totalValue._sum.purchasePrice ? Number(totalValue._sum.purchasePrice) : 0)} />
         <Metric label={t("reportsReady")} value={reportCount.toLocaleString("th-TH")} />
       </div>
+
+      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-foreground">{t("filterTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("filterHelp")}</p>
+        </div>
+        <form action={`/${locale}/reports`} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <label>
+            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("search")}</span>
+            <input
+              type="search"
+              name="search"
+              defaultValue={filters.search}
+              placeholder={t("searchPlaceholder")}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </label>
+          <ReportSelect name="companyId" label={t("company")} value={filters.companyId} options={filterCompanies.map((company) => ({ value: company.id, label: `${company.code} - ${company.nameTh}` }))} allLabel={t("all")} />
+          <ReportSelect name="branchId" label={t("branch")} value={filters.branchId} options={filterBranches.map((branch) => ({ value: branch.id, label: `${branch.company.code} / ${branch.code} - ${branch.name}` }))} allLabel={t("all")} />
+          <ReportSelect name="categoryId" label={t("category")} value={filters.categoryId} options={filterCategories.map((category) => ({ value: category.id, label: `${category.code} - ${category.name}` }))} allLabel={t("all")} />
+          <ReportSelect name="statusId" label={t("status")} value={filters.statusId} options={filterStatuses.map((status) => ({ value: status.id, label: status.nameTh }))} allLabel={t("all")} />
+          <ReportSelect name="conditionId" label={t("condition")} value={filters.conditionId} options={filterConditions.map((condition) => ({ value: condition.id, label: condition.nameTh }))} allLabel={t("all")} />
+          <div className="flex flex-wrap gap-2 self-end md:col-span-2 xl:col-span-3">
+            <button type="submit" className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90">
+              {t("applyFilters")}
+            </button>
+            <Link href={`/${locale}/reports`} className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent">
+              {t("clearFilters")}
+            </Link>
+          </div>
+        </form>
+      </section>
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
         <h2 className="mb-4 text-base font-semibold text-foreground">{t("dataQuality")}</h2>
@@ -216,6 +264,38 @@ function Metric({ label, value, compact = false }: { label: string; value: strin
       <div className="text-sm text-muted-foreground">{label}</div>
       <div className={`mt-2 font-bold text-foreground ${compact ? "text-xl" : "text-2xl"}`}>{value}</div>
     </div>
+  )
+}
+
+function ReportSelect({
+  name,
+  label,
+  value,
+  options,
+  allLabel,
+}: {
+  name: string
+  label: string
+  value: string
+  options: Array<{ value: string; label: string }>
+  allLabel: string
+}) {
+  return (
+    <label>
+      <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{label}</span>
+      <select
+        name={name}
+        defaultValue={value}
+        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+      >
+        <option value="">{allLabel}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 

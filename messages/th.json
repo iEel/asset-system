@@ -1254,7 +1254,19 @@
     "exportDisposal": "ส่งออกตัดจำหน่าย",
     "rolePermissionAudit": "Audit สิทธิ์ผู้ใช้",
     "exportRoleAudit": "ส่งออก Audit สิทธิ์",
-    "systemLogs": "ประวัติระบบ"
+    "systemLogs": "ประวัติระบบ",
+    "filterTitle": "ตัวกรองรายงาน",
+    "filterHelp": "ตัวกรองนี้มีผลกับตัวเลขภาพรวม ตารางแยกกลุ่ม และ export ทะเบียน/ภาพรวมทรัพย์สิน",
+    "search": "ค้นหา",
+    "searchPlaceholder": "Asset Tag, Serial, ชื่อทรัพย์สิน, ผู้ถือครอง...",
+    "company": "บริษัท",
+    "branch": "สาขา",
+    "category": "หมวดหมู่",
+    "status": "สถานะ",
+    "condition": "สภาพ",
+    "all": "ทั้งหมด",
+    "applyFilters": "ใช้ตัวกรอง",
+    "clearFilters": "ล้างตัวกรอง"
   },
   "maintenancePage": {
     "title": "ซ่อมบำรุง",
