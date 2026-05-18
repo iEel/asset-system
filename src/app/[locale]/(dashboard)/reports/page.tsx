@@ -40,6 +40,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     filterStatuses,
     filterConditions,
     previewAssets,
+    dataQualityAssets,
   ] = await Promise.all([
     prisma.asset.count({ where: assetWhere }),
     prisma.asset.aggregate({ where: assetWhere, _sum: { purchasePrice: true } }),
@@ -48,15 +49,12 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     prisma.asset.groupBy({ by: ["companyId"], where: assetWhere, _count: { _all: true } }),
     prisma.asset.groupBy({ by: ["branchId"], where: assetWhere, _count: { _all: true } }),
     prisma.asset.groupBy({ by: ["departmentId"], where: { ...assetWhere, departmentId: { not: null } }, _count: { _all: true } }),
-    prisma.asset.count({ where: { ...assetWhere, custodianId: null } }),
-    prisma.asset.count({ where: { ...assetWhere, OR: [{ serialNumber: null }, { serialNumber: "" }] } }),
+    prisma.asset.count({ where: { AND: [assetWhere, { custodianId: null }] } }),
+    prisma.asset.count({ where: { AND: [assetWhere, { OR: [{ serialNumber: null }, { serialNumber: "" }] }] } }),
     prisma.asset.count({
-      where: {
-        ...assetWhere,
-        attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } },
-      },
+      where: { AND: [assetWhere, { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } }] },
     }),
-    prisma.asset.count({ where: { ...assetWhere, warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } } }),
+    prisma.asset.count({ where: { AND: [assetWhere, { warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } }] } }),
     prisma.company.findMany({ where: { isActive: true }, select: { id: true, code: true, nameTh: true }, orderBy: { code: "asc" } }),
     prisma.branch.findMany({ where: { isActive: true }, select: { id: true, code: true, name: true, company: { select: { code: true } } }, orderBy: { code: "asc" } }),
     prisma.assetCategory.findMany({ where: { isActive: true }, select: { id: true, code: true, name: true }, orderBy: { code: "asc" } }),
@@ -72,6 +70,30 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         department: { select: { code: true, name: true } },
         custodian: { select: { code: true, fullNameTh: true } },
         status: { select: { nameTh: true } },
+      },
+    }),
+    prisma.asset.findMany({
+      where: {
+        AND: [
+          assetWhere,
+          {
+            OR: [
+              { custodianId: null },
+              { serialNumber: null },
+              { serialNumber: "" },
+              { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
+              { warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } },
+            ],
+          },
+        ],
+      },
+      take: 8,
+      orderBy: { updatedAt: "desc" },
+      include: {
+        category: { select: { code: true, name: true } },
+        branch: { select: { code: true, name: true } },
+        custodian: { select: { code: true, fullNameTh: true } },
+        attachments: { where: { module: "asset", fileType: { startsWith: "image/" }, isActive: true }, select: { id: true }, take: 1 },
       },
     }),
   ])
@@ -222,6 +244,62 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         </div>
       </section>
 
+      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">{t("dataQualityActionTitle")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("dataQualityActionHelp")}</p>
+          </div>
+          <Link href={`/${locale}/admin/data-quality`} className="inline-flex h-9 w-fit items-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent">
+            {t("openDataQualityRules")}
+          </Link>
+        </div>
+        <div className="grid gap-3">
+          {dataQualityAssets.length === 0 ? (
+            <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              {t("dataQualityEmpty")}
+            </div>
+          ) : (
+            dataQualityAssets.map((asset) => {
+              const issues = getDataQualityIssues(asset, warrantyThreshold, t)
+
+              return (
+                <div key={asset.id} className="rounded-md border border-border bg-background p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link href={`/${locale}/assets/${asset.id}`} className="font-semibold text-primary hover:underline">
+                          {asset.assetTag}
+                        </Link>
+                        <span className="text-sm text-foreground">{asset.name}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {asset.category.code} - {asset.category.name} · {asset.branch.code} - {asset.branch.name}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {issues.map((issue) => (
+                          <span key={issue} className="rounded-full bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
+                            {issue}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Link href={`/${locale}/assets/${asset.id}`} className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent">
+                        {t("openAsset")}
+                      </Link>
+                      <Link href={`/${locale}/assets/${asset.id}/edit`} className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary/90">
+                        {t("fixData")}
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </section>
+
       <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <div className="flex flex-col gap-2 border-b border-border px-5 py-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -365,6 +443,26 @@ function ReportSelect({
 
 function PreviewHead({ children }: { children: React.ReactNode }) {
   return <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{children}</th>
+}
+
+function getDataQualityIssues(
+  asset: {
+    custodian: { code: string; fullNameTh: string } | null
+    serialNumber: string | null
+    warrantyEndDate: Date | null
+    attachments: Array<{ id: string }>
+  },
+  warrantyThreshold: Date,
+  t: (key: string) => string
+) {
+  const issues: string[] = []
+  if (!asset.custodian) issues.push(t("missingCustodian"))
+  if (!asset.serialNumber) issues.push(t("missingSerial"))
+  if (asset.attachments.length === 0) issues.push(t("missingPhoto"))
+  if (asset.warrantyEndDate && asset.warrantyEndDate >= new Date() && asset.warrantyEndDate <= warrantyThreshold) {
+    issues.push(t("warrantyExpiring"))
+  }
+  return issues
 }
 
 function ReportTable({ title, rows }: { title: string; rows: [string, number][] }) {

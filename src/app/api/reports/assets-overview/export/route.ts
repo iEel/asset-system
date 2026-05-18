@@ -69,12 +69,12 @@ async function getAssetDataQualityCounts(assetWhere: ReturnType<typeof buildAsse
   const warrantyThreshold = new Date()
   warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
   const [missingCustodian, missingSerial, missingPhoto, warrantyExpiring] = await Promise.all([
-    prisma.asset.count({ where: { ...assetWhere, custodianId: null } }),
-    prisma.asset.count({ where: { ...assetWhere, OR: [{ serialNumber: null }, { serialNumber: "" }] } }),
+    prisma.asset.count({ where: { AND: [assetWhere, { custodianId: null }] } }),
+    prisma.asset.count({ where: { AND: [assetWhere, { OR: [{ serialNumber: null }, { serialNumber: "" }] }] } }),
     prisma.asset.count({
-      where: { ...assetWhere, attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
+      where: { AND: [assetWhere, { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } }] },
     }),
-    prisma.asset.count({ where: { ...assetWhere, warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } } }),
+    prisma.asset.count({ where: { AND: [assetWhere, { warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } }] } }),
   ])
   return { missingCustodian, missingSerial, missingPhoto, warrantyExpiring }
 }

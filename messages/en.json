@@ -1274,7 +1274,13 @@
     "assetTag": "Asset Tag",
     "assetName": "Asset Name",
     "department": "Department",
-    "custodian": "Custodian"
+    "custodian": "Custodian",
+    "dataQualityActionTitle": "Data to Fix",
+    "dataQualityActionHelp": "Shows recent assets with incomplete key data under the current report filters.",
+    "openDataQualityRules": "Open Data Quality Rules",
+    "dataQualityEmpty": "No records need fixing under the current filters",
+    "openAsset": "Open Detail",
+    "fixData": "Fix Data"
   },
   "maintenancePage": {
     "title": "Maintenance",

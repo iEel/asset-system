@@ -1274,7 +1274,13 @@
     "assetTag": "รหัสทรัพย์สิน",
     "assetName": "ชื่อทรัพย์สิน",
     "department": "แผนก",
-    "custodian": "ผู้ถือครอง"
+    "custodian": "ผู้ถือครอง",
+    "dataQualityActionTitle": "รายการที่ควรแก้ไขข้อมูล",
+    "dataQualityActionHelp": "แสดงทรัพย์สินล่าสุดที่ยังมีข้อมูลสำคัญไม่ครบตามตัวกรองรายงาน",
+    "openDataQualityRules": "เปิดกฎคุณภาพข้อมูล",
+    "dataQualityEmpty": "ยังไม่พบรายการที่ต้องแก้ไขตามตัวกรองนี้",
+    "openAsset": "เปิดรายละเอียด",
+    "fixData": "แก้ไขข้อมูล"
   },
   "maintenancePage": {
     "title": "ซ่อมบำรุง",
