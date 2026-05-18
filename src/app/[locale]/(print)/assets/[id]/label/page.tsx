@@ -61,6 +61,8 @@ export default async function AssetLabelPage({ params }: AssetLabelPageProps) {
         tapeSize: t("labelTapeSize"),
         tape12mm: t("labelTape12mm"),
         tape18mm: t("labelTape18mm"),
+        tape24mm: t("labelTape24mm"),
+        tapeCustom: t("labelTapeCustom"),
         scanHint: t("scanToOpenDetail"),
         assetTag: t("assetTag"),
         assetName: t("assetName"),

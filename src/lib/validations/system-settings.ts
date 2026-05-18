@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { assetLabelSettingKeys, assetLabelTemplateTokens } from "@/lib/asset-label-template"
+import { assetLabelLayouts, assetLabelSettingKeys, assetLabelTapeSizes, assetLabelTemplateTokens } from "@/lib/asset-label-template"
 import {
   checkinDocumentTemplateKey,
   checkoutDocumentTemplateKey,
@@ -26,8 +26,14 @@ const assetLabelTokens = new Set<string>(assetLabelTemplateTokens)
 const assetLabelTemplateKeySet = new Set<string>(
   assetLabelSettingKeys.filter((key) => key.endsWith("_template"))
 )
-const assetLabelWidthKeys = new Set<string>(["asset_label_12_width_mm", "asset_label_18_width_mm"])
-const assetLabelQrSizeKeys = new Set<string>(["asset_label_12_qr_size", "asset_label_18_qr_size"])
+const assetLabelWidthKeys = new Set<string>(assetLabelTapeSizes.map((size) => `asset_label_${size}_width_mm`))
+const assetLabelHeightKeys = new Set<string>(assetLabelTapeSizes.map((size) => `asset_label_${size}_height_mm`))
+const assetLabelQrSizeKeys = new Set<string>(assetLabelTapeSizes.map((size) => `asset_label_${size}_qr_size`))
+const assetLabelSpacingKeys = new Set<string>([
+  ...assetLabelTapeSizes.map((size) => `asset_label_${size}_margin_mm`),
+  ...assetLabelTapeSizes.map((size) => `asset_label_${size}_gap_mm`),
+])
+const assetLabelLayoutKeys = new Set<string>(assetLabelTapeSizes.map((size) => `asset_label_${size}_layout`))
 const operationDocumentTemplateKeys = new Set<string>([checkoutDocumentTemplateKey, checkinDocumentTemplateKey])
 
 export const systemSettingsUpdateSchema = z.object({
@@ -55,10 +61,10 @@ export const systemSettingsUpdateSchema = z.object({
   }
 
   for (const [index, setting] of input.settings.entries()) {
-    if (setting.key === "asset_label_default_tape_size" && !["12", "18"].includes(setting.value)) {
+    if (setting.key === "asset_label_default_tape_size" && !assetLabelTapeSizes.includes(setting.value as (typeof assetLabelTapeSizes)[number])) {
       context.addIssue({
         code: "custom",
-        message: "Default asset label tape size must be 12 or 18",
+        message: "Default asset label tape size must be 12, 18, 24, or custom",
         path: ["settings", index, "value"],
       })
     }
@@ -83,6 +89,36 @@ export const systemSettingsUpdateSchema = z.object({
           path: ["settings", index, "value"],
         })
       }
+    }
+
+    if (assetLabelHeightKeys.has(setting.key)) {
+      const height = Number(setting.value)
+      if (!Number.isFinite(height) || height < 10 || height > 100) {
+        context.addIssue({
+          code: "custom",
+          message: "Asset label height must be between 10 and 100 mm",
+          path: ["settings", index, "value"],
+        })
+      }
+    }
+
+    if (assetLabelSpacingKeys.has(setting.key)) {
+      const spacing = Number(setting.value)
+      if (!Number.isFinite(spacing) || spacing < 0 || spacing > 10) {
+        context.addIssue({
+          code: "custom",
+          message: "Asset label spacing must be between 0 and 10 mm",
+          path: ["settings", index, "value"],
+        })
+      }
+    }
+
+    if (assetLabelLayoutKeys.has(setting.key) && !assetLabelLayouts.includes(setting.value as (typeof assetLabelLayouts)[number])) {
+      context.addIssue({
+        code: "custom",
+        message: "Asset label layout is not supported",
+        path: ["settings", index, "value"],
+      })
     }
 
     if (assetLabelTemplateKeySet.has(setting.key)) {

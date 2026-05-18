@@ -3,8 +3,20 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, PlugZap, Plus, Save, Trash2 } from "lucide-react"
+import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
-import { assetLabelSettingKeys, assetLabelTemplateTokens } from "@/lib/asset-label-template"
+import {
+  assetLabelLayouts,
+  assetLabelPresets,
+  assetLabelSettingKeys,
+  assetLabelTapeSizes,
+  assetLabelTemplateTokens,
+  parseAssetLabelTemplates,
+  renderAssetLabelTemplate,
+  type AssetLabelLayout,
+  type AssetLabelTapeSize,
+  type AssetLabelTemplates,
+} from "@/lib/asset-label-template"
 import {
   assetTagCategoryPrefixesKey,
   assetTagFormatTemplateKey,
@@ -85,8 +97,20 @@ type SystemSettingsFormProps = {
     defaultTapeSize: string
     tape12mmTemplate: string
     tape18mmTemplate: string
+    tape24mmTemplate: string
+    tapeCustomTemplate: string
+    labelPreset: string
     labelWidthMm: string
+    labelHeightMm: string
     labelQrSize: string
+    labelMarginMm: string
+    labelGapMm: string
+    labelLayout: string
+    labelLayoutQrLeft: string
+    labelLayoutQrTop: string
+    labelLayoutTextOnly: string
+    labelLayoutQrOnly: string
+    labelPreview: string
     labelPrimaryLine: string
     labelSecondaryLine: string
     labelTertiaryLine: string
@@ -354,14 +378,31 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     return tokens.some((token) => !assetLabelTemplateTokens.includes(token as (typeof assetLabelTemplateTokens)[number]))
   })
   const hasInvalidLabelSize =
-    ["asset_label_12_width_mm", "asset_label_18_width_mm"].some((key) => {
+    assetLabelTapeSizes.some((size) => {
+      const key = `asset_label_${size}_width_mm`
       const width = Number(getValue(key))
       return !Number.isFinite(width) || width < 30 || width > 120
     }) ||
-    ["asset_label_12_qr_size", "asset_label_18_qr_size"].some((key) => {
+    assetLabelTapeSizes.some((size) => {
+      const key = `asset_label_${size}_height_mm`
+      const height = Number(getValue(key))
+      return !Number.isFinite(height) || height < 10 || height > 100
+    }) ||
+    assetLabelTapeSizes.some((size) => {
+      const key = `asset_label_${size}_qr_size`
       const qrSize = Number(getValue(key))
       return !Number.isFinite(qrSize) || qrSize < 20 || qrSize > 90
+    }) ||
+    assetLabelTapeSizes.some((size) => {
+      const margin = Number(getValue(`asset_label_${size}_margin_mm`))
+      const gap = Number(getValue(`asset_label_${size}_gap_mm`))
+      return !Number.isFinite(margin) || margin < 0 || margin > 10 || !Number.isFinite(gap) || gap < 0 || gap > 10
+    }) ||
+    assetLabelTapeSizes.some((size) => {
+      const layout = getValue(`asset_label_${size}_layout`) as AssetLabelLayout
+      return !assetLabelLayouts.includes(layout)
     })
+  const labelTemplates = parseAssetLabelTemplates(values)
   const operationDigits = Number(getValue(operationDocumentRunningDigitsKey))
   const hasInvalidOperationDocumentTemplate =
     !validateOperationDocumentTemplate(checkoutDocumentTemplate) ||
@@ -390,7 +431,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     },
     {
       label: labels.overviewLabel,
-      value: `${getValue("asset_label_default_tape_size") || "12"}mm`,
+      value: assetLabelPresets[labelTemplates.defaultTapeSize].label,
       tone: "green",
     },
     {
@@ -665,29 +706,37 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
                 onChange={(event) => setValue("asset_label_default_tape_size", event.target.value)}
                 className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
               >
-                <option value="12">12 mm</option>
-                <option value="18">18 mm</option>
+                {assetLabelTapeSizes.map((size) => (
+                  <option key={size} value={size}>
+                    {assetLabelPresets[size].label}
+                  </option>
+                ))}
               </select>
             </Field>
           </div>
           <div className="grid gap-4 xl:grid-cols-2">
-            <LabelTemplatePanel
-              tapeSize="12"
-              title={labels.tape12mmTemplate}
-              labels={labels}
-              getValue={getValue}
-              setValue={setValue}
-            />
-            <LabelTemplatePanel
-              tapeSize="18"
-              title={labels.tape18mmTemplate}
-              labels={labels}
-              getValue={getValue}
-              setValue={setValue}
-            />
+            {assetLabelTapeSizes.map((size) => (
+              <LabelTemplatePanel
+                key={size}
+                tapeSize={size}
+                title={
+                  size === "12"
+                    ? labels.tape12mmTemplate
+                    : size === "18"
+                      ? labels.tape18mmTemplate
+                      : size === "24"
+                        ? labels.tape24mmTemplate
+                        : labels.tapeCustomTemplate
+                }
+                labels={labels}
+                getValue={getValue}
+                setValue={setValue}
+              />
+            ))}
           </div>
           {hasInvalidLabelTemplate ? <ValidationMessage message={labels.invalidLabelTemplate} /> : null}
           {hasInvalidLabelSize ? <ValidationMessage message={labels.invalidLabelSize} /> : null}
+          <LabelPreviewPanel labels={labels} templates={labelTemplates} />
           <div className="space-y-2">
             <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{labels.labelTemplateTokens}</div>
             <div className="flex flex-wrap gap-2">
@@ -1396,18 +1445,38 @@ function LabelTemplatePanel({
   getValue,
   setValue,
 }: {
-  tapeSize: "12" | "18"
+  tapeSize: AssetLabelTapeSize
   title: string
   labels: SystemSettingsFormProps["labels"]
   getValue: (key: string) => string
   setValue: (key: string, value: string) => void
 }) {
   const prefix = `asset_label_${tapeSize}`
+  const preset = assetLabelPresets[tapeSize]
 
   return (
     <div className="rounded-md border border-border bg-muted/20 p-3">
-      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        <button
+          type="button"
+          onClick={() => {
+            setValue(`${prefix}_width_mm`, String(preset.widthMm))
+            setValue(`${prefix}_height_mm`, String(preset.heightMm))
+            setValue(`${prefix}_qr_size`, String(preset.qrSize))
+            setValue(`${prefix}_margin_mm`, String(preset.marginMm))
+            setValue(`${prefix}_gap_mm`, String(preset.gapMm))
+            setValue(`${prefix}_layout`, preset.layout)
+            setValue(`${prefix}_primary_template`, preset.lines[0])
+            setValue(`${prefix}_secondary_template`, preset.lines[1])
+            setValue(`${prefix}_tertiary_template`, preset.lines[2])
+          }}
+          className="inline-flex h-8 items-center justify-center rounded-md border border-border px-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+        >
+          {labels.labelPreset}
+        </button>
+      </div>
+      <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         <Field label={labels.labelWidthMm} htmlFor={`${prefix}-width-mm`}>
           <input
             id={`${prefix}-width-mm`}
@@ -1416,6 +1485,17 @@ function LabelTemplatePanel({
             max={120}
             value={getValue(`${prefix}_width_mm`)}
             onChange={(event) => setValue(`${prefix}_width_mm`, event.target.value)}
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+        </Field>
+        <Field label={labels.labelHeightMm} htmlFor={`${prefix}-height-mm`}>
+          <input
+            id={`${prefix}-height-mm`}
+            type="number"
+            min={10}
+            max={100}
+            value={getValue(`${prefix}_height_mm`)}
+            onChange={(event) => setValue(`${prefix}_height_mm`, event.target.value)}
             className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </Field>
@@ -1429,6 +1509,43 @@ function LabelTemplatePanel({
             onChange={(event) => setValue(`${prefix}_qr_size`, event.target.value)}
             className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
+        </Field>
+        <Field label={labels.labelMarginMm} htmlFor={`${prefix}-margin-mm`}>
+          <input
+            id={`${prefix}-margin-mm`}
+            type="number"
+            min={0}
+            max={10}
+            step="0.5"
+            value={getValue(`${prefix}_margin_mm`)}
+            onChange={(event) => setValue(`${prefix}_margin_mm`, event.target.value)}
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+        </Field>
+        <Field label={labels.labelGapMm} htmlFor={`${prefix}-gap-mm`}>
+          <input
+            id={`${prefix}-gap-mm`}
+            type="number"
+            min={0}
+            max={10}
+            step="0.5"
+            value={getValue(`${prefix}_gap_mm`)}
+            onChange={(event) => setValue(`${prefix}_gap_mm`, event.target.value)}
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+        </Field>
+        <Field label={labels.labelLayout} htmlFor={`${prefix}-layout`}>
+          <select
+            id={`${prefix}-layout`}
+            value={getValue(`${prefix}_layout`)}
+            onChange={(event) => setValue(`${prefix}_layout`, event.target.value)}
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          >
+            <option value="qr-left">{labels.labelLayoutQrLeft}</option>
+            <option value="qr-top">{labels.labelLayoutQrTop}</option>
+            <option value="text-only">{labels.labelLayoutTextOnly}</option>
+            <option value="qr-only">{labels.labelLayoutQrOnly}</option>
+          </select>
         </Field>
       </div>
       <div className="mt-3 grid gap-3">
@@ -1457,6 +1574,77 @@ function LabelTemplatePanel({
           />
         </Field>
       </div>
+    </div>
+  )
+}
+
+function LabelPreviewPanel({ labels, templates }: { labels: SystemSettingsFormProps["labels"]; templates: AssetLabelTemplates }) {
+  const tapeSize = templates.defaultTapeSize
+  const config = templates.tapes[tapeSize]
+  const values = {
+    assetTag: "AST-HQ-COM-0001",
+    assetName: "Notebook Dell Latitude",
+    serialNumber: "SN123456789",
+    category: "Notebook",
+    company: "Demo Co.",
+    branch: "HQ",
+    location: "SathuPradit",
+    scanHint: "Scan for asset detail",
+  }
+  const lines = config.lines.map((line) => renderAssetLabelTemplate(line, values).trim()).filter(Boolean)
+  const widthPx = Math.min(520, Math.max(180, config.widthMm * 4))
+  const heightPx = Math.min(260, Math.max(48, config.heightMm * 4))
+  const marginPx = config.marginMm * 4
+  const gapPx = config.gapMm * 4
+  const qr = (
+    <div className="shrink-0 rounded-sm border border-slate-300 bg-white p-1">
+      <QRCodeSVG value="AST-HQ-COM-0001" size={Math.min(config.qrSize, Math.max(28, heightPx - marginPx * 2 - 6))} level="M" includeMargin={false} />
+    </div>
+  )
+  const text = (
+    <div className="min-w-0">
+      <div className="truncate text-sm font-bold leading-tight">{lines[0] || values.assetTag}</div>
+      {lines.slice(1).map((line) => (
+        <div key={line} className="mt-1 truncate text-xs leading-tight text-slate-700">
+          {line}
+        </div>
+      ))}
+    </div>
+  )
+
+  return (
+    <div className="rounded-md border border-border bg-muted/20 p-3">
+      <div className="text-sm font-semibold text-foreground">{labels.labelPreview}</div>
+      <div className="mt-3 overflow-x-auto">
+        <div
+          className="overflow-hidden rounded border border-slate-300 bg-white text-slate-950 shadow-sm"
+          style={{ width: widthPx, height: heightPx, padding: marginPx }}
+        >
+          <div
+            className={config.layout === "qr-top" ? "flex h-full flex-col items-center justify-center" : "grid h-full items-center"}
+            style={
+              config.layout === "qr-left"
+                ? { gridTemplateColumns: "auto 1fr", gap: gapPx }
+                : { gap: gapPx }
+            }
+          >
+            {config.layout === "text-only" ? text : config.layout === "qr-only" ? qr : config.layout === "qr-top" ? (
+              <>
+                {qr}
+                <div className="w-full text-center">{text}</div>
+              </>
+            ) : (
+              <>
+                {qr}
+                {text}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        {assetLabelPresets[tapeSize].label} · {config.widthMm} x {config.heightMm} mm
+      </p>
     </div>
   )
 }

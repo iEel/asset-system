@@ -6,6 +6,7 @@ import { ArrowLeft, Printer } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import {
   defaultAssetLabelTemplates,
+  assetLabelTapeSizes,
   renderAssetLabelTemplate,
   type AssetLabelTapeSize,
   type AssetLabelTemplates,
@@ -22,8 +23,6 @@ export type AssetLabelPrintItem = {
   qrValue: string
 }
 
-type TapeSize = "12" | "18"
-
 type AssetLabelPrintProps = {
   assets: AssetLabelPrintItem[]
   backHref: string
@@ -36,6 +35,8 @@ type AssetLabelPrintProps = {
     tapeSize: string
     tape12mm: string
     tape18mm: string
+    tape24mm: string
+    tapeCustom: string
     scanHint: string
     assetTag: string
     assetName: string
@@ -52,10 +53,10 @@ export function AssetLabelPrint({
   labelTemplates = defaultAssetLabelTemplates,
   translations,
 }: AssetLabelPrintProps) {
-  const [tapeSize, setTapeSize] = useState<TapeSize>(labelTemplates.defaultTapeSize)
+  const [tapeSize, setTapeSize] = useState<AssetLabelTapeSize>(labelTemplates.defaultTapeSize)
   const config = labelTemplates.tapes[tapeSize]
   const itemCountText = useMemo(() => `${assets.length} ${translations.assetTag}`, [assets.length, translations.assetTag])
-  const labelHeight = Number(tapeSize)
+  const labelHeight = config.heightMm
 
   return (
     <main className="min-h-screen bg-background text-foreground print:bg-white">
@@ -120,11 +121,20 @@ export function AssetLabelPrint({
               <span className="font-medium text-muted-foreground">{translations.tapeSize}</span>
               <select
                 value={tapeSize}
-                onChange={(event) => setTapeSize(event.target.value as TapeSize)}
+                onChange={(event) => setTapeSize(event.target.value as AssetLabelTapeSize)}
                 className="bg-transparent font-medium outline-none"
               >
-                <option value="12">{translations.tape12mm}</option>
-                <option value="18">{translations.tape18mm}</option>
+                {assetLabelTapeSizes.map((size) => (
+                  <option key={size} value={size}>
+                    {size === "12"
+                      ? translations.tape12mm
+                      : size === "18"
+                        ? translations.tape18mm
+                        : size === "24"
+                          ? translations.tape24mm
+                          : translations.tapeCustom}
+                  </option>
+                ))}
               </select>
             </label>
             <button
@@ -149,7 +159,7 @@ export function AssetLabelPrint({
       <section className="asset-label-preview flex min-h-[calc(100vh-160px)] items-start justify-center px-6 pb-10">
         <div className="asset-label-sheet flex max-w-full flex-col gap-3 rounded-md bg-white p-4 text-slate-950 shadow-sm">
           {assets.map((asset) => (
-            <AssetLabelItem key={asset.assetTag} asset={asset} config={config} tapeSize={tapeSize} scanHint={translations.scanHint} />
+            <AssetLabelItem key={asset.assetTag} asset={asset} config={config} scanHint={translations.scanHint} />
           ))}
         </div>
       </section>
@@ -160,12 +170,10 @@ export function AssetLabelPrint({
 function AssetLabelItem({
   asset,
   config,
-  tapeSize,
   scanHint,
 }: {
   asset: AssetLabelPrintItem
   config: AssetLabelTemplates["tapes"][AssetLabelTapeSize]
-  tapeSize: TapeSize
   scanHint: string
 }) {
   const values = {
@@ -180,36 +188,50 @@ function AssetLabelItem({
   }
   const lines = config.lines.map((line) => renderAssetLabelTemplate(line, values).trim()).filter(Boolean)
 
-  return (
-    <div className="asset-label-item overflow-hidden rounded border border-slate-300 bg-white p-[1.5mm]">
-      <div className="grid h-full grid-cols-[auto_1fr] items-center gap-[1.5mm]">
-        <div className="rounded-sm border border-slate-300 bg-white p-[0.8mm]">
-          <QRCodeSVG value={asset.qrValue} size={config.qrSize} level="M" includeMargin={false} />
+  const isSmallTape = config.heightMm <= 12
+  const primaryClass = isSmallTape ? "truncate text-[10px] font-bold leading-none" : "truncate text-[13px] font-bold leading-tight"
+  const secondaryClass = isSmallTape ? "mt-[0.8mm] truncate text-[6px] leading-tight text-slate-600" : "mt-[0.8mm] truncate text-[7px] leading-tight text-slate-700"
+  const qr = (
+    <div className="shrink-0 rounded-sm border border-slate-300 bg-white p-[0.8mm]">
+      <QRCodeSVG value={asset.qrValue} size={config.qrSize} level="M" includeMargin={false} />
+    </div>
+  )
+  const text = (
+    <div className="min-w-0">
+      <div className={primaryClass}>{lines[0] || asset.assetTag}</div>
+      {lines.slice(1).map((line, index) => (
+        <div key={`${asset.assetTag}-${index}-${line}`} className={secondaryClass}>
+          {line}
         </div>
+      ))}
+    </div>
+  )
 
-        <div className="min-w-0">
-          <div
-            className={
-              tapeSize === "12"
-                ? "truncate text-[10px] font-bold leading-none"
-                : "truncate text-[13px] font-bold leading-tight"
-            }
-          >
-            {lines[0] || asset.assetTag}
-          </div>
-          {lines.slice(1).map((line, index) => (
-            <div
-              key={`${asset.assetTag}-${index}-${line}`}
-              className={
-                tapeSize === "12"
-                  ? "mt-[0.8mm] truncate text-[6px] leading-tight text-slate-600"
-                  : "mt-[0.8mm] truncate text-[7px] leading-tight text-slate-700"
-              }
-            >
-              {line}
-            </div>
-          ))}
-        </div>
+  return (
+    <div className="asset-label-item overflow-hidden rounded border border-slate-300 bg-white" style={{ padding: `${config.marginMm}mm` }}>
+      <div
+        className={
+          config.layout === "qr-top"
+            ? "flex h-full flex-col items-center justify-center"
+            : "grid h-full items-center"
+        }
+        style={
+          config.layout === "qr-left"
+            ? { gridTemplateColumns: "auto 1fr", gap: `${config.gapMm}mm` }
+            : { gap: `${config.gapMm}mm` }
+        }
+      >
+        {config.layout === "text-only" ? text : config.layout === "qr-only" ? qr : config.layout === "qr-top" ? (
+          <>
+            {qr}
+            <div className="w-full text-center">{text}</div>
+          </>
+        ) : (
+          <>
+            {qr}
+            {text}
+          </>
+        )}
       </div>
     </div>
   )
