@@ -69,6 +69,8 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           enabled: t("enabled"),
           disabled: t("disabled"),
           advancedSettingCount: t("advancedSettingCount"),
+          unsavedChanges: t("unsavedChanges"),
+          noUnsavedChanges: t("noUnsavedChanges"),
           generalSettings: t("generalSettings"),
           assetTagFormat: t("assetTagFormat"),
           assetTagFormatDescription: t("assetTagFormatDescription"),

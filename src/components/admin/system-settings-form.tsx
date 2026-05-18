@@ -55,6 +55,8 @@ type SystemSettingsFormProps = {
     enabled: string
     disabled: string
     advancedSettingCount: string
+    unsavedChanges: string
+    noUnsavedChanges: string
     generalSettings: string
     assetTagFormat: string
     assetTagFormatDescription: string
@@ -273,8 +275,17 @@ function serializePrefixRows(rows: PrefixRow[]) {
   )
 }
 
+function normalizeSettingValue(key: string, value: string | undefined) {
+  if (key === assetTagCategoryPrefixesKey) {
+    return serializePrefixRows(parsePrefixRows(value))
+  }
+
+  return value ?? ""
+}
+
 export function SystemSettingsForm({ settings, categories, labels }: SystemSettingsFormProps) {
   const router = useRouter()
+  const initialValues = Object.fromEntries(settings.map((setting) => [setting.key, setting.value]))
   const [activeTab, setActiveTab] = useState<SettingsTabId>("asset-numbering")
   const [saving, setSaving] = useState(false)
   const [testingLdap, setTestingLdap] = useState(false)
@@ -303,6 +314,14 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
   const getValue = (key: string) => values[key] ?? ""
   const setValue = (key: string, value: string) => setValues((current) => ({ ...current, [key]: value }))
   const setBooleanValue = (key: string, checked: boolean) => setValue(key, checked ? "true" : "false")
+  const effectiveValues: Record<string, string> = {
+    ...values,
+    [assetTagCategoryPrefixesKey]: serializePrefixRows(prefixRows),
+  }
+  const changedSettings = settings.filter(
+    (setting) => normalizeSettingValue(setting.key, effectiveValues[setting.key]) !== normalizeSettingValue(setting.key, initialValues[setting.key])
+  )
+  const changedCount = changedSettings.length
   const syncSchedule = getValue("ldap_sync_schedule")
   const selectedSyncSchedulePreset = !customScheduleSelected && ldapSchedulePresets.some((preset) => preset.value === syncSchedule)
     ? syncSchedule
@@ -1126,15 +1145,23 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
         </div>
       ) : null}
 
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          disabled={saving}
-          className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {labels.save}
-        </button>
+      <div className="sticky bottom-3 z-20 rounded-lg border border-border bg-surface/95 p-3 shadow-lg backdrop-blur">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-sm font-semibold text-foreground">
+              {changedCount > 0 ? labels.unsavedChanges.replace("{count}", String(changedCount)) : labels.noUnsavedChanges}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">{labels.settingsOverviewDescription}</div>
+          </div>
+          <button
+            type="submit"
+            disabled={saving || changedCount === 0}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {labels.save}
+          </button>
+        </div>
       </div>
     </form>
   )

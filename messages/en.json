@@ -1797,6 +1797,8 @@
     "enabled": "Enabled",
     "disabled": "Disabled",
     "advancedSettingCount": "{count} settings",
+    "unsavedChanges": "{count} unsaved changes",
+    "noUnsavedChanges": "No unsaved changes",
     "generalSettings": "General Settings",
     "assetTagFormat": "Asset Tag Format",
     "assetTagFormatDescription": "Define the asset tag sequence with tokens. '{assetCompanyCode}' uses the company's Asset Tag Code, separate from the company/LDAP code.",
