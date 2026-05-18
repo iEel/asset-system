@@ -139,6 +139,13 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
               <FileText className="h-4 w-4" />
               {t("exportResultPdf")}
             </a>
+            <a
+              href={`/api/audit-rounds/${round.id}/variance-export`}
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+            >
+              <Download className="h-4 w-4" />
+              {t("exportVariance")}
+            </a>
             <Link
               href={`/${locale}/audit/rounds/${round.id}/pending`}
               className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"

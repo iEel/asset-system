@@ -884,7 +884,8 @@
     "scan": "Scan Audit",
     "pendingAssets": "Pending Assets",
     "exportResult": "Export Result",
-    "exportResultPdf": "Export PDF"
+    "exportResultPdf": "Export PDF",
+    "exportVariance": "Variance Report"
   },
   "auditScan": {
     "title": "Audit Scan",

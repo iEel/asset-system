@@ -884,7 +884,8 @@
     "scan": "สแกนตรวจนับ",
     "pendingAssets": "รายการรอตรวจ",
     "exportResult": "ส่งออกผลตรวจ",
-    "exportResultPdf": "ส่งออก PDF"
+    "exportResultPdf": "ส่งออก PDF",
+    "exportVariance": "รายงาน Variance"
   },
   "auditScan": {
     "title": "สแกนตรวจนับ",
