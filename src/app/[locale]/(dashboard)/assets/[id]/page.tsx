@@ -71,6 +71,8 @@ type ActivitySummaryItem = {
   actionLabel?: string
 }
 
+type RelationshipLink = { id: string; href: string; label: string; role: string }
+
 export default async function AssetDetailPage({ params }: AssetDetailPageProps) {
   const { id, locale } = await params
   await requirePagePermission(locale, "asset", "view")
@@ -170,6 +172,17 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
         where: { isActive: true },
         orderBy: { requestDate: "desc" },
         take: 20,
+      },
+      assignedLicenses: {
+        where: { isActive: true },
+        orderBy: { assetTag: "asc" },
+        select: {
+          id: true,
+          assetTag: true,
+          name: true,
+          licenseTotalSeats: true,
+          licenseUsedSeats: true,
+        },
       },
     },
   })
@@ -874,6 +887,8 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
               parentTitle={t("relationshipParent")}
               currentTitle={t("relationshipCurrent")}
               componentsTitle={t("relationshipComponents")}
+              licenseAssignedTitle={t("relationshipLicenseAssignedAsset")}
+              assignedLicensesTitle={t("relationshipAssignedLicenses")}
               assetTag={asset.assetTag}
               assetName={asset.name}
               parentLinks={installedInLinksForPanel.map((link) => ({
@@ -887,6 +902,18 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
                 href: `/${locale}/assets/${component.componentAsset.id}`,
                 label: `${component.componentAsset.assetTag} - ${component.componentAsset.name}`,
                 role: component.componentRole,
+              }))}
+              licenseAssignedLinks={licenseAssignedAsset ? [{
+                id: licenseAssignedAsset.id,
+                href: `/${locale}/assets/${licenseAssignedAsset.id}`,
+                label: `${licenseAssignedAsset.assetTag} - ${licenseAssignedAsset.name}`,
+                role: t("relationshipLicenseDeviceRole"),
+              }] : []}
+              assignedLicenseLinks={asset.assignedLicenses.map((license) => ({
+                id: license.id,
+                href: `/${locale}/assets/${license.id}`,
+                label: `${license.assetTag} - ${license.name}`,
+                role: formatLicenseRelationshipRole(license.licenseUsedSeats, license.licenseTotalSeats, t),
               }))}
               emptyLabel={t("relationshipMapEmpty")}
             />
@@ -1572,10 +1599,14 @@ function AssetRelationshipMap({
   parentTitle,
   currentTitle,
   componentsTitle,
+  licenseAssignedTitle,
+  assignedLicensesTitle,
   assetTag,
   assetName,
   parentLinks,
   childLinks,
+  licenseAssignedLinks,
+  assignedLicenseLinks,
   emptyLabel,
 }: {
   title: string
@@ -1583,13 +1614,17 @@ function AssetRelationshipMap({
   parentTitle: string
   currentTitle: string
   componentsTitle: string
+  licenseAssignedTitle: string
+  assignedLicensesTitle: string
   assetTag: string
   assetName: string
-  parentLinks: { id: string; href: string; label: string; role: string }[]
-  childLinks: { id: string; href: string; label: string; role: string }[]
+  parentLinks: RelationshipLink[]
+  childLinks: RelationshipLink[]
+  licenseAssignedLinks: RelationshipLink[]
+  assignedLicenseLinks: RelationshipLink[]
   emptyLabel: string
 }) {
-  const hasLinks = parentLinks.length > 0 || childLinks.length > 0
+  const hasLinks = parentLinks.length > 0 || childLinks.length > 0 || licenseAssignedLinks.length > 0 || assignedLicenseLinks.length > 0
 
   return (
     <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
@@ -1609,6 +1644,12 @@ function AssetRelationshipMap({
             </div>
           </div>
           <RelationshipColumn title={componentsTitle} links={childLinks} emptyLabel={emptyLabel} />
+          {(licenseAssignedLinks.length > 0 || assignedLicenseLinks.length > 0) ? (
+            <div className="grid gap-3 lg:col-span-3 lg:grid-cols-2">
+              <RelationshipColumn title={licenseAssignedTitle} links={licenseAssignedLinks} emptyLabel={emptyLabel} />
+              <RelationshipColumn title={assignedLicensesTitle} links={assignedLicenseLinks} emptyLabel={emptyLabel} />
+            </div>
+          ) : null}
         </div>
       )}
     </section>
@@ -1621,7 +1662,7 @@ function RelationshipColumn({
   emptyLabel,
 }: {
   title: string
-  links: { id: string; href: string; label: string; role: string }[]
+  links: RelationshipLink[]
   emptyLabel: string
 }) {
   return (
@@ -2123,6 +2164,14 @@ function maskLicenseKey(value?: string | null) {
   const compact = value.replace(/\s+/g, "")
   if (compact.length <= 8) return "••••"
   return `${compact.slice(0, 4)}••••${compact.slice(-4)}`
+}
+
+function formatLicenseRelationshipRole(usedSeats: number | null, totalSeats: number | null, t: (key: string, values?: Record<string, string | number>) => string) {
+  if (totalSeats == null) return t("relationshipLicenseRole")
+  return t("relationshipLicenseSeatRole", {
+    used: usedSeats ?? 0,
+    total: totalSeats,
+  })
 }
 
 function getWarrantyState(warrantyEndDate: Date | null) {
