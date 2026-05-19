@@ -125,6 +125,7 @@ NODE_ENV=production
 HOSTNAME=127.0.0.1
 PORT=3000
 WEB_PORT=3000
+NEXT_PUBLIC_APP_NAME="Asset Management System"
 
 AUTH_URL=https://asset.company.com
 NEXTAUTH_URL=https://asset.company.com
@@ -135,23 +136,34 @@ NEXTAUTH_SECRET=replace-with-same-value-as-auth-secret
 UPLOAD_DIR=/var/www/asset-system/uploads
 
 DB_SERVER=192.168.110.106
-DB_INSTANCE=
+DB_INSTANCE=alpha
 DB_PORT=1433
 DB_TLS_SERVER_NAME=WIN-I284TKLAMMD
 DB_USER=asset_app_user
 DB_PASSWORD=replace-with-db-password
-DATABASE_URL=sqlserver://192.168.110.106:1433;database=asset_management;user=asset_app_user;password=replace-with-db-password;encrypt=true;trustServerCertificate=true
+DATABASE_URL="sqlserver://192.168.110.106;instanceName=alpha;database=asset_management;user=asset_app_user;password=replace-with-db-password;encrypt=true;trustServerCertificate=true"
 
 LDAP_ENABLED=false
-LDAP_URL=
-LDAP_BASE_DN=
+LDAP_URL="ldap://dc.company.local:389"
+LDAP_BASE_DN="DC=company,DC=local"
 LDAP_BIND_DN=
 LDAP_BIND_PASSWORD=
 LDAP_USER_FILTER=(&(objectClass=user)(sAMAccountName={username}))
+LDAP_START_TLS=false
+LDAP_TLS_REJECT_UNAUTHORIZED=true
+LDAP_UPN_DOMAIN=
+LDAP_DOMAIN=
+LDAP_USER_DN_TEMPLATE=
 LDAP_AUTO_PROVISION=false
 LDAP_DEFAULT_ROLE=employee
 LDAP_SYNC_ENABLED=false
+LDAP_SYNC_BASE_DN=
+LDAP_SYNC_FILTER=(&(objectCategory=person)(objectClass=user)(employeeID=*)(company=*)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))
+LDAP_SYNC_MODE=preview
+LDAP_SYNC_SCHEDULE=0 2 * * *
 LDAP_SYNC_TOKEN=replace-with-long-random-token
+LDAP_TIMEOUT_MS=8000
+LDAP_CONNECT_TIMEOUT_MS=8000
 ```
 
 Generate secret:
@@ -169,9 +181,11 @@ sudo chmod 640 /var/www/asset-system/env/asset-system.env
 
 หมายเหตุสำคัญ:
 
-- Runtime ของระบบอ่าน `DB_SERVER`, `DB_USER`, `DB_PASSWORD`, และชื่อ database ที่ parse จาก `DATABASE_URL`
-- ถ้าใช้ named instance ให้ใส่ `DB_INSTANCE=alpha` และให้ SQL Browser/instance port เข้าถึงได้
-- ถ้าใช้ static port ให้ปล่อย `DB_INSTANCE=` ว่าง แล้วใช้ `DB_PORT=1433`
+- Runtime ของระบบใช้ `DB_SERVER`, `DB_INSTANCE` หรือ `DB_PORT`, `DB_TLS_SERVER_NAME`, `DB_USER`, `DB_PASSWORD` เป็นค่าหลักในการต่อ SQL Server
+- `DATABASE_URL` ยังจำเป็น เพราะโค้ด parse ชื่อ database จาก `database=...`; ให้ชื่อ database ตรงกับ `DB_*` เสมอ
+- ถ้าใช้ named instance เหมือนเครื่อง dev ปัจจุบัน ให้ใส่ `DB_INSTANCE=alpha`; runtime จะไม่ใช้ `DB_PORT` เมื่อมี `DB_INSTANCE`
+- ถ้าใช้ static TCP port ใน production ให้ปล่อย `DB_INSTANCE=` ว่าง แล้วใช้ `DB_PORT=1433`; ในกรณีนี้ให้เปลี่ยน `DATABASE_URL` เป็นรูปแบบ `sqlserver://192.168.110.106:1433;database=asset_management;...`
+- ถ้า `LDAP_AUTO_PROVISION=true`, `LDAP_DEFAULT_ROLE` ต้องเป็น role ที่มีอยู่จริง เช่น `employee`, `viewer`, หรือ role ที่สร้างเองในหน้า Roles; ค่า `asset_user` จะใช้ได้เฉพาะเมื่อสร้าง role นี้แล้ว
 - `UPLOAD_DIR` ควรเป็น absolute path เพื่อไม่ผูกกับ `.next/standalone`
 
 ---
