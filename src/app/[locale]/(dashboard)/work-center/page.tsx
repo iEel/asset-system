@@ -6,6 +6,7 @@ import {
   ArrowRight,
   ClipboardCheck,
   Clock,
+  FileCheck2,
   FileWarning,
   Package,
   ShieldAlert,
@@ -15,6 +16,9 @@ import {
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { assetMissingResponsibilityWhere, hasAssetResponsibility } from "@/lib/asset-ownership"
+import type { ApprovalInboxItem } from "@/lib/approval-inbox"
+import { getApprovalInboxAccess, getApprovalInboxSnapshot } from "@/lib/approval-inbox-query"
+import { buildWorkCenterMetricKeys, calculateWorkCenterUrgentCount, type WorkCenterMetricKey } from "@/lib/work-center-metrics"
 import { formatDateTime } from "@/lib/utils"
 
 type WorkCenterPageProps = {
@@ -22,7 +26,7 @@ type WorkCenterPageProps = {
 }
 
 type WorkCenterMetric = {
-  key: string
+  key: WorkCenterMetricKey
   label: string
   value: number
   detail: string
@@ -40,11 +44,12 @@ const startOfToday = () => {
 
 export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
   const { locale } = await params
-  await requirePagePermission(locale, "dashboard", "view")
+  const user = await requirePagePermission(locale, "dashboard", "view")
 
   const t = await getTranslations("workCenter")
   const tCommon = await getTranslations("common")
   const today = startOfToday()
+  const approvalInboxAccess = getApprovalInboxAccess(user)
 
   const [
     missingCustodian,
@@ -58,6 +63,7 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
     pendingAuditItems,
     pendingDisposals,
     approvedDisposals,
+    approvalInboxSnapshot,
     assetIssues,
     maintenanceItems,
     auditItems,
@@ -88,6 +94,7 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
     }),
     prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "pending" } }),
     prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "approved" } }),
+    approvalInboxAccess.canAnyApproval ? getApprovalInboxSnapshot(user, locale) : Promise.resolve(null),
     prisma.asset.findMany({
       where: {
         isActive: true,
@@ -144,8 +151,29 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
     }),
   ])
 
-  const metrics: WorkCenterMetric[] = [
-    {
+  const approvalInboxCounts = approvalInboxSnapshot?.summary ?? { total: 0, disposal: 0, maintenance: 0, audit: 0 }
+  const approvalInboxVisible = approvalInboxAccess.canAnyApproval
+  const visibleMaintenanceItems = approvalInboxVisible && approvalInboxCounts.maintenance > 0
+    ? maintenanceItems.filter((ticket) => ticket.repairStatus !== "completed")
+    : maintenanceItems
+  const visibleAuditItems = approvalInboxVisible && approvalInboxCounts.audit > 0
+    ? auditItems.filter((finding) => finding.reviewStatus !== "pending")
+    : auditItems
+  const visibleDisposalItems = approvalInboxVisible && approvalInboxCounts.disposal > 0
+    ? disposalItems.filter((request) => request.requestStatus !== "pending")
+    : disposalItems
+
+  const metricMap: Record<WorkCenterMetricKey, WorkCenterMetric> = {
+    approvalInbox: {
+      key: "approvalInbox",
+      label: t("approvalInbox"),
+      value: approvalInboxCounts.total,
+      detail: t("approvalInboxDetail"),
+      href: `/${locale}/admin/approvals`,
+      tone: approvalInboxCounts.total > 0 ? "danger" : "primary",
+      icon: <FileCheck2 className="h-5 w-5" />,
+    },
+    missingCustodian: {
       key: "missingCustodian",
       label: t("missingCustodian"),
       value: missingCustodian,
@@ -154,7 +182,7 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
       tone: "warning",
       icon: <Package className="h-5 w-5" />,
     },
-    {
+    missingSerial: {
       key: "missingSerial",
       label: t("missingSerial"),
       value: missingSerial,
@@ -163,7 +191,7 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
       tone: "muted",
       icon: <FileWarning className="h-5 w-5" />,
     },
-    {
+    missingPhoto: {
       key: "missingPhoto",
       label: t("missingPhoto"),
       value: missingPhoto,
@@ -172,7 +200,7 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
       tone: "muted",
       icon: <ShieldAlert className="h-5 w-5" />,
     },
-    {
+    overdueMaintenance: {
       key: "overdueMaintenance",
       label: t("overdueMaintenance"),
       value: overdueMaintenance,
@@ -181,7 +209,7 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
       tone: "danger",
       icon: <Wrench className="h-5 w-5" />,
     },
-    {
+    waitingMaintenance: {
       key: "waitingMaintenance",
       label: t("waitingMaintenance"),
       value: waitingMaintenance,
@@ -190,7 +218,7 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
       tone: "warning",
       icon: <Clock className="h-5 w-5" />,
     },
-    {
+    completedMaintenance: {
       key: "completedMaintenance",
       label: t("completedMaintenance"),
       value: completedMaintenance,
@@ -199,7 +227,7 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
       tone: "success",
       icon: <Wrench className="h-5 w-5" />,
     },
-    {
+    pendingAuditFindings: {
       key: "pendingAuditFindings",
       label: t("pendingAuditFindings"),
       value: pendingAuditFindings,
@@ -208,7 +236,7 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
       tone: "danger",
       icon: <ClipboardCheck className="h-5 w-5" />,
     },
-    {
+    openAuditActions: {
       key: "openAuditActions",
       label: t("openAuditActions"),
       value: openAuditActions,
@@ -217,7 +245,7 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
       tone: "warning",
       icon: <AlertTriangle className="h-5 w-5" />,
     },
-    {
+    pendingAuditItems: {
       key: "pendingAuditItems",
       label: t("pendingAuditItems"),
       value: pendingAuditItems,
@@ -226,7 +254,7 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
       tone: "primary",
       icon: <ClipboardCheck className="h-5 w-5" />,
     },
-    {
+    pendingDisposals: {
       key: "pendingDisposals",
       label: t("pendingDisposals"),
       value: pendingDisposals,
@@ -235,7 +263,7 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
       tone: "danger",
       icon: <Trash2 className="h-5 w-5" />,
     },
-    {
+    approvedDisposals: {
       key: "approvedDisposals",
       label: t("approvedDisposals"),
       value: approvedDisposals,
@@ -244,8 +272,23 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
       tone: "warning",
       icon: <Trash2 className="h-5 w-5" />,
     },
-  ]
-  const urgentCount = overdueMaintenance + pendingAuditFindings + pendingDisposals + approvedDisposals
+  }
+  const metrics = buildWorkCenterMetricKeys({
+    approvalInbox: {
+      visible: approvalInboxVisible,
+      ...approvalInboxCounts,
+    },
+  }).map((key) => metricMap[key])
+  const urgentCount = calculateWorkCenterUrgentCount({
+    approvalInbox: {
+      visible: approvalInboxVisible,
+      ...approvalInboxCounts,
+    },
+    overdueMaintenance,
+    pendingAuditFindings,
+    pendingDisposals,
+    approvedDisposals,
+  })
   const followUpCount = metrics.reduce((sum, metric) => sum + metric.value, 0)
 
   return (
@@ -268,6 +311,18 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
       </section>
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {approvalInboxVisible ? (
+          <FollowUpPanel title={t("approvalInboxTitle")} subtitle={t("approvalInboxSubtitle")} href={`/${locale}/admin/approvals`} viewAllLabel={tCommon("view")}>
+            {!approvalInboxSnapshot || approvalInboxSnapshot.items.length === 0 ? (
+              <EmptyState label={t("noApprovalInboxIssues")} />
+            ) : (
+              approvalInboxSnapshot.items.slice(0, 6).map((item) => (
+                <ApprovalFollowUpItem key={item.id} item={item} />
+              ))
+            )}
+          </FollowUpPanel>
+        ) : null}
+
         <FollowUpPanel title={t("assetDataTitle")} subtitle={t("assetDataSubtitle")} href={`/${locale}/assets`} viewAllLabel={tCommon("view")}>
           {assetIssues.length === 0 ? (
             <EmptyState label={t("noAssetDataIssues")} />
@@ -292,10 +347,10 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
         </FollowUpPanel>
 
         <FollowUpPanel title={t("maintenanceTitle")} subtitle={t("maintenanceSubtitle")} href={`/${locale}/maintenance?overdue=yes`} viewAllLabel={tCommon("view")}>
-          {maintenanceItems.length === 0 ? (
+          {visibleMaintenanceItems.length === 0 ? (
             <EmptyState label={t("noMaintenanceIssues")} />
           ) : (
-            maintenanceItems.map((ticket) => (
+            visibleMaintenanceItems.map((ticket) => (
               <FollowUpItem
                 key={ticket.id}
                 href={`/${locale}/maintenance/${ticket.id}`}
@@ -308,10 +363,10 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
         </FollowUpPanel>
 
         <FollowUpPanel title={t("auditTitle")} subtitle={t("auditSubtitle")} href={`/${locale}/audit/findings?status=pending`} viewAllLabel={tCommon("view")}>
-          {auditItems.length === 0 ? (
+          {visibleAuditItems.length === 0 ? (
             <EmptyState label={t("noAuditIssues")} />
           ) : (
-            auditItems.map((finding) => (
+            visibleAuditItems.map((finding) => (
               <FollowUpItem
                 key={finding.id}
                 href={finding.asset ? `/${locale}/assets/${finding.asset.id}` : `/${locale}/audit/rounds/${finding.auditRound.id}`}
@@ -324,10 +379,10 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
         </FollowUpPanel>
 
         <FollowUpPanel title={t("disposalTitle")} subtitle={t("disposalSubtitle")} href={`/${locale}/disposal?status=pending`} viewAllLabel={tCommon("view")}>
-          {disposalItems.length === 0 ? (
+          {visibleDisposalItems.length === 0 ? (
             <EmptyState label={t("noDisposalIssues")} />
           ) : (
-            disposalItems.map((request) => (
+            visibleDisposalItems.map((request) => (
               <FollowUpItem
                 key={request.id}
                 href={`/${locale}/disposal/${request.id}`}
@@ -400,11 +455,22 @@ function FollowUpPanel({
   )
 }
 
-function FollowUpItem({ href, title, meta, tone }: { href: string; title: string; meta: string; tone: "danger" | "warning" }) {
+function ApprovalFollowUpItem({ item }: { item: ApprovalInboxItem }) {
+  return (
+    <FollowUpItem
+      href={item.href}
+      title={item.title}
+      meta={`${item.description} · ${item.requestedBy} · ${formatDateTime(item.requestedAt)}`}
+      tone={item.tone}
+    />
+  )
+}
+
+function FollowUpItem({ href, title, meta, tone }: { href: string; title: string; meta: string; tone: "danger" | "warning" | "primary" }) {
   return (
     <Link href={href} className="block rounded-md border border-border bg-background p-3 text-sm transition-colors hover:border-primary/40 hover:bg-accent">
       <div className="flex items-start gap-2">
-        <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${tone === "danger" ? "bg-danger" : "bg-warning"}`} />
+        <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${followUpDotClass(tone)}`} />
         <div className="min-w-0">
           <p className="truncate font-medium text-foreground">{title}</p>
           <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{meta}</p>
@@ -412,6 +478,12 @@ function FollowUpItem({ href, title, meta, tone }: { href: string; title: string
       </div>
     </Link>
   )
+}
+
+function followUpDotClass(tone: "danger" | "warning" | "primary") {
+  if (tone === "danger") return "bg-danger"
+  if (tone === "primary") return "bg-primary"
+  return "bg-warning"
 }
 
 function EmptyState({ label }: { label: string }) {
