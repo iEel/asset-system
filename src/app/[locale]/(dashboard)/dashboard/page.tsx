@@ -1,4 +1,5 @@
 import Link from "next/link"
+import type { ReactNode } from "react"
 import { getTranslations } from "next-intl/server"
 import {
   Package,
@@ -8,16 +9,43 @@ import {
   Shield,
   ArrowRight,
   ClipboardCheck,
+  FileCheck2,
   Trash2,
   ArrowDownRight,
   ArrowUpRight,
   Minus,
 } from "lucide-react"
+import { getSessionUser } from "@/lib/auth-utils"
+import { getApprovalInboxAccess, getApprovalInboxCounts, type ApprovalInboxCounts } from "@/lib/approval-inbox-query"
+import { buildDashboardActionCardKeys, type DashboardActionCardKey } from "@/lib/dashboard-action-cards"
 import { prisma } from "@/lib/db"
 import { cn } from "@/lib/utils"
 
 type DashboardPageProps = {
   params: Promise<{ locale: string }>
+}
+
+type DashboardActionTone = "primary" | "warning" | "danger"
+
+type DashboardActionCard = {
+  label: string
+  value: number
+  detail: string
+  href: string
+  icon: ReactNode
+  tone: DashboardActionTone
+}
+
+const actionCardToneClass: Record<DashboardActionTone, string> = {
+  primary: "border-primary/30 bg-primary/5",
+  warning: "border-warning/30 bg-warning/5",
+  danger: "border-danger/30 bg-danger/5",
+}
+
+const actionCardIconClass: Record<DashboardActionTone, string> = {
+  primary: "text-primary",
+  warning: "text-warning",
+  danger: "text-danger",
 }
 
 export default async function DashboardPage({ params }: DashboardPageProps) {
@@ -28,6 +56,9 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const monthRange = getMonthRange(new Date())
+  const user = await getSessionUser()
+  const approvalInboxAccess = user ? getApprovalInboxAccess(user) : null
+  const emptyApprovalInboxCounts: ApprovalInboxCounts = { total: 0, disposal: 0, maintenance: 0, audit: 0 }
 
   const [
     totalAssets,
@@ -40,6 +71,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     pendingAuditFindings,
     pendingDisposals,
     approvedDisposals,
+    approvalInboxCounts,
     currentMonthAssets,
     previousMonthAssets,
     currentMonthMaintenance,
@@ -89,6 +121,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     prisma.auditFinding.count({ where: { reviewStatus: "pending" } }),
     prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "pending" } }),
     prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "approved" } }),
+    user && approvalInboxAccess?.canAnyApproval ? getApprovalInboxCounts(user) : Promise.resolve(emptyApprovalInboxCounts),
     prisma.asset.count({ where: { isActive: true, createdAt: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
     prisma.asset.count({ where: { isActive: true, createdAt: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
     prisma.maintenanceTicket.count({ where: { isActive: true, reportedDate: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
@@ -107,8 +140,16 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     { label: t("warrantyExpiring"), value: warrantyExpiring.toLocaleString("th-TH"), icon: <AlertTriangle size={24} />, color: "text-danger", href: `/${locale}/assets` },
   ]
 
-  const actionCards = [
-    {
+  const actionCardMap: Record<DashboardActionCardKey, DashboardActionCard> = {
+    approvalInbox: {
+      label: t("approvalInbox"),
+      value: approvalInboxCounts.total,
+      detail: t("approvalInboxDetail"),
+      href: `/${locale}/admin/approvals`,
+      icon: <FileCheck2 className="h-5 w-5" />,
+      tone: approvalInboxCounts.total > 0 ? "danger" : "primary",
+    },
+    overdueMaintenance: {
       label: t("overdueMaintenance"),
       value: overdueMaintenance,
       detail: t("overdueMaintenanceDetail"),
@@ -116,7 +157,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       icon: <Wrench className="h-5 w-5" />,
       tone: "danger",
     },
-    {
+    pendingAuditFindings: {
       label: t("pendingAuditFindings"),
       value: pendingAuditFindings,
       detail: t("pendingAuditFindingsDetail"),
@@ -124,7 +165,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       icon: <ClipboardCheck className="h-5 w-5" />,
       tone: "warning",
     },
-    {
+    pendingDisposals: {
       label: t("pendingDisposals"),
       value: pendingDisposals,
       detail: t("pendingDisposalsDetail"),
@@ -132,7 +173,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       icon: <Trash2 className="h-5 w-5" />,
       tone: "danger",
     },
-    {
+    approvedDisposals: {
       label: t("approvedDisposals"),
       value: approvedDisposals,
       detail: t("approvedDisposalsDetail"),
@@ -140,7 +181,17 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       icon: <Trash2 className="h-5 w-5" />,
       tone: "warning",
     },
-  ]
+  }
+  const actionCards = buildDashboardActionCardKeys({
+    approvalInbox: {
+      visible: Boolean(approvalInboxAccess?.canAnyApproval),
+      ...approvalInboxCounts,
+    },
+    overdueMaintenance,
+    pendingAuditFindings,
+    pendingDisposals,
+    approvedDisposals,
+  }).map((key) => actionCardMap[key])
   const trendCards = [
     {
       label: t("trendAssetsCreated"),
@@ -209,12 +260,12 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className={cn("grid grid-cols-1 gap-3 md:grid-cols-2", actionCards.length >= 5 ? "xl:grid-cols-5" : "xl:grid-cols-4")}>
           {actionCards.map((card) => (
             <Link
               key={card.label}
               href={card.href}
-              className={`rounded-md border p-4 transition-colors hover:bg-accent ${card.tone === "danger" ? "border-danger/30 bg-danger/5" : "border-warning/30 bg-warning/5"}`}
+              className={cn("rounded-md border p-4 transition-colors hover:bg-accent", actionCardToneClass[card.tone])}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -222,7 +273,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
                   <p className="mt-2 text-3xl font-bold text-foreground">{card.value.toLocaleString("th-TH")}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{card.detail}</p>
                 </div>
-                <div className={card.tone === "danger" ? "text-danger" : "text-warning"}>{card.icon}</div>
+                <div className={actionCardIconClass[card.tone]}>{card.icon}</div>
               </div>
             </Link>
           ))}

@@ -179,6 +179,8 @@
     "actionableTitle": "งานเร่งด่วนที่ควรจัดการ",
     "actionableSubtitle": "กดการ์ดเพื่อไปหน้าที่เกี่ยวข้องพร้อมตัวกรอง",
     "openWorkCenter": "เปิดศูนย์งานค้าง",
+    "approvalInbox": "งานรออนุมัติ",
+    "approvalInboxDetail": "รวมงานอนุมัติจากตัดจำหน่าย ซ่อมบำรุง และตรวจนับ",
     "overdueMaintenance": "ซ่อมเกินกำหนด",
     "overdueMaintenanceDetail": "ใบซ่อมที่เลยกำหนด SLA",
     "pendingAuditFindings": "Finding รอตรวจ",

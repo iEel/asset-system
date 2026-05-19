@@ -179,6 +179,8 @@
     "actionableTitle": "Urgent work to handle",
     "actionableSubtitle": "Click a card to open the related page with context filters",
     "openWorkCenter": "Open Work Center",
+    "approvalInbox": "Approval Inbox",
+    "approvalInboxDetail": "Central queue across disposal, maintenance, and audit approvals",
     "overdueMaintenance": "Overdue repairs",
     "overdueMaintenanceDetail": "Tickets past their SLA due date",
     "pendingAuditFindings": "Findings pending review",
