@@ -5,16 +5,19 @@ import { getTranslations } from "next-intl/server"
 import { ClipboardCheck, FileCheck2, ShieldCheck, Trash2, Wrench } from "lucide-react"
 import { getSessionUser } from "@/lib/auth-utils"
 import type { ApprovalInboxItem } from "@/lib/approval-inbox"
+import { approvalInboxFilters, filterApprovalInboxItems, parseApprovalInboxFilter, type ApprovalInboxFilter } from "@/lib/approval-inbox-filter"
 import { getApprovalInboxSnapshot } from "@/lib/approval-inbox-query"
 import { formatDateTime } from "@/lib/utils"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 
 type ApprovalInboxPageProps = {
   params: Promise<{ locale: string }>
+  searchParams: Promise<{ module?: string | string[] }>
 }
 
-export default async function ApprovalInboxPage({ params }: ApprovalInboxPageProps) {
+export default async function ApprovalInboxPage({ params, searchParams }: ApprovalInboxPageProps) {
   const { locale } = await params
+  const query = await searchParams
   const user = await getSessionUser()
   if (!user) redirect(`/${locale}/login`)
 
@@ -23,6 +26,13 @@ export default async function ApprovalInboxPage({ params }: ApprovalInboxPagePro
 
   const t = await getTranslations("approvalInboxPage")
   const { access, policy, items, summary } = snapshot
+  const activeFilter = parseApprovalInboxFilter(query.module)
+  const filteredItems = filterApprovalInboxItems(items, activeFilter)
+  const filterOptions: Array<{ key: ApprovalInboxFilter; label: string; count: number }> = approvalInboxFilters.map((filter) => ({
+    key: filter,
+    label: t(`filter_${filter}`),
+    count: filter === "all" ? summary.total : summary[filter],
+  }))
 
   return (
     <div className="space-y-6">
@@ -68,26 +78,68 @@ export default async function ApprovalInboxPage({ params }: ApprovalInboxPagePro
 
       <section className="rounded-lg border border-border bg-surface shadow-sm">
         <div className="border-b border-border p-5">
-          <h2 className="font-semibold text-foreground">{t("queueTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("queueDescription")}</p>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="font-semibold text-foreground">{t("queueTitle")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("queueDescription")}</p>
+            </div>
+            <div className="text-sm font-medium text-muted-foreground">{t("filteredCount", { count: filteredItems.length })}</div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {filterOptions.map((filter) => (
+              <FilterChip
+                key={filter.key}
+                href={filter.key === "all" ? `/${locale}/admin/approvals` : `/${locale}/admin/approvals?module=${filter.key}`}
+                active={activeFilter === filter.key}
+                label={filter.label}
+                count={filter.count}
+              />
+            ))}
+          </div>
         </div>
-        {items.length === 0 ? (
+        {filteredItems.length === 0 ? (
           <div className="p-5">
             <ActionEmptyState
               icon={<FileCheck2 className="h-6 w-6" />}
-              title={t("emptyTitle")}
-              description={t("emptyDescription")}
+              title={items.length === 0 ? t("emptyTitle") : t("emptyFilterTitle")}
+              description={items.length === 0 ? t("emptyDescription") : t("emptyFilterDescription")}
             />
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {items.map((item) => (
+            {filteredItems.map((item) => (
               <ApprovalInboxRow key={item.id} item={item} locale={locale} labels={{ requestedBy: t("requestedBy"), requestedAt: t("requestedAt") }} />
             ))}
           </div>
         )}
       </section>
     </div>
+  )
+}
+
+function FilterChip({
+  href,
+  active,
+  label,
+  count,
+}: {
+  href: string
+  active: boolean
+  label: string
+  count: number
+}) {
+  return (
+    <Link
+      href={href}
+      className={`inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors ${
+        active
+          ? "border-primary bg-primary/10 text-primary"
+          : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
+      }`}
+    >
+      <span>{label}</span>
+      <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-foreground">{count.toLocaleString("th-TH")}</span>
+    </Link>
   )
 }
 
