@@ -8,7 +8,8 @@ Last verified: 2026-05-19
 - `next.config.ts` ใช้ `output: "standalone"`
 - Runtime ใช้ SQL Server ผ่าน `@prisma/adapter-mssql`
 - Upload files อยู่ผ่าน `UPLOAD_DIR`
-- Public access ผ่าน Cloudflare Tunnel ไปยัง `http://127.0.0.1:3000`
+- Public access ผ่าน Cloudflare Tunnel ไปยัง Nginx reverse proxy ที่ `http://127.0.0.1:8080`
+- Nginx proxy ต่อเข้า Next.js standalone ที่ `http://127.0.0.1:3000`
 
 ตัวอย่างในคู่มือนี้ใช้:
 
@@ -20,11 +21,12 @@ Last verified: 2026-05-19
 | Env file | `/var/www/asset-system/env/asset-system.env` |
 | Upload path | `/var/www/asset-system/uploads` |
 | Local app port | `3000` |
+| Local Nginx proxy port | `8080` |
 | Cloudflare Tunnel name | `asset-system` |
 
 เปลี่ยนค่าเหล่านี้ให้ตรงกับ production จริงก่อนรันคำสั่ง
 
-หมายเหตุ: คู่มือนี้วางทุกอย่างไว้ใต้ `/var/www/asset-system` แต่แยกเป็น `app`, `env`, และ `uploads` เพื่อไม่ให้ code, secret, และไฟล์ข้อมูลปนกัน ยังไม่ได้ใช้ `/var/www/html` และไม่ได้ให้ Nginx/Apache serve directory นี้โดยตรง เพราะ traffic production จะเข้าผ่าน Cloudflare Tunnel ไปยัง Next.js service ที่ `127.0.0.1:3000`
+หมายเหตุ: คู่มือนี้วางทุกอย่างไว้ใต้ `/var/www/asset-system` แต่แยกเป็น `app`, `env`, และ `uploads` เพื่อไม่ให้ code, secret, และไฟล์ข้อมูลปนกัน ยังไม่ได้ใช้ `/var/www/html` และไม่ได้ให้ Nginx serve directory นี้โดยตรง เพราะ traffic production จะเข้าผ่าน Cloudflare Tunnel ไปยัง Nginx reverse proxy ที่ `127.0.0.1:8080` แล้ว Nginx ค่อยส่งต่อไป Next.js ที่ `127.0.0.1:3000`
 
 ---
 
@@ -65,7 +67,7 @@ sudo ufw --force enable
 sudo ufw status
 ```
 
-Cloudflare Tunnel ใช้ outbound connection เป็นหลัก จึงไม่ต้องเปิด inbound port `3000`
+Cloudflare Tunnel ใช้ outbound connection เป็นหลัก จึงไม่ต้องเปิด inbound port `3000` หรือ `8080`
 
 ---
 
@@ -312,7 +314,101 @@ curl -I http://127.0.0.1:3000/th/login
 
 ---
 
-## 11. Install cloudflared
+## 11. Install And Configure Nginx Reverse Proxy
+
+ติดตั้ง Nginx:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y nginx
+sudo systemctl enable nginx
+sudo systemctl start nginx
+sudo systemctl status nginx
+```
+
+สร้าง site config:
+
+```bash
+sudo nano /etc/nginx/sites-available/asset-system
+```
+
+ใส่ config นี้ โดยเปลี่ยน `asset.company.com` ให้เป็น domain production จริง:
+
+```nginx
+server {
+    listen 127.0.0.1:8080;
+    server_name asset.company.com;
+
+    client_max_body_size 50M;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+
+        # Auth.js can return large Set-Cookie headers after login.
+        proxy_buffer_size 16k;
+        proxy_buffers 8 16k;
+        proxy_busy_buffers_size 32k;
+
+        proxy_set_header Host asset.company.com;
+        proxy_set_header X-Forwarded-Host asset.company.com;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Port 443;
+
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+```
+
+เปิดใช้งาน config:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/asset-system /etc/nginx/sites-enabled/asset-system
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+ทดสอบว่า Nginx ส่งต่อไปหา Next.js ได้:
+
+```bash
+curl -sS -D- -o /dev/null http://127.0.0.1:8080/
+```
+
+ถ้า redirect จาก `/` ไปภาษา default ถูกต้อง ต้องเห็น `Location` ไม่มี port `:3000`:
+
+```text
+location: https://asset.company.com/th
+```
+
+ถ้ายังเห็น `https://asset.company.com:3000/th` ให้ตรวจว่า config มีบรรทัดนี้ครบและ reload Nginx แล้ว:
+
+```nginx
+proxy_set_header X-Forwarded-Port 443;
+```
+
+ถ้า login แล้วเจอ 502 และ `/var/log/nginx/error.log` มีข้อความ `upstream sent too big header while reading response header from upstream` ให้ตรวจว่า config มี buffer settings นี้ครบ:
+
+```nginx
+proxy_buffer_size 16k;
+proxy_buffers 8 16k;
+proxy_busy_buffers_size 32k;
+```
+
+ถ้ายังไม่พอสำหรับ cookie/header ที่ใหญ่ผิดปกติ ให้เพิ่มเป็น:
+
+```nginx
+proxy_buffer_size 32k;
+proxy_buffers 8 32k;
+proxy_busy_buffers_size 64k;
+```
+
+---
+
+## 12. Install cloudflared
 
 ติดตั้งจาก Cloudflare APT repository:
 
@@ -327,7 +423,7 @@ cloudflared --version
 
 ---
 
-## 12. Create Cloudflare Tunnel
+## 13. Create Cloudflare Tunnel
 
 Login:
 
@@ -356,7 +452,7 @@ cloudflared tunnel route dns asset-system asset.company.com
 
 ---
 
-## 13. Configure cloudflared
+## 14. Configure cloudflared
 
 สร้าง config:
 
@@ -377,7 +473,7 @@ originRequest:
 
 ingress:
   - hostname: asset.company.com
-    service: http://127.0.0.1:3000
+    service: http://127.0.0.1:8080
   - service: http_status:404
 ```
 
@@ -410,7 +506,20 @@ https://asset.company.com/th/login
 
 ---
 
-## 14. Run cloudflared As A Service
+ถ้าใช้ Cloudflare Zero Trust dashboard แบบ Published application routes แทน config file ให้ตั้งค่า route แบบนี้:
+
+| Field | Value |
+|---|---|
+| Hostname | `asset.company.com` |
+| Path | เว้นว่าง |
+| Service Type | `HTTP` |
+| Service URL | `127.0.0.1:8080` |
+
+สำคัญ: อย่าใส่ path เช่น `^/blog` เพราะจะทำให้ route ไม่ครอบทุกหน้า และให้ Tunnel วิ่งเข้า Nginx port `8080` ไม่ใช่ Next.js port `3000`
+
+---
+
+## 15. Run cloudflared As A Service
 
 ติดตั้ง service โดยระบุ config path ชัดเจน:
 
@@ -438,12 +547,13 @@ https://asset.company.com/th/login
 sudo systemctl status asset-system
 sudo systemctl status cloudflared
 curl -I http://127.0.0.1:3000/th/login
+curl -I http://127.0.0.1:8080/th/login
 cloudflared tunnel info asset-system
 ```
 
 ---
 
-## 15. Configure Public QR Base URL
+## 16. Configure Public QR Base URL
 
 หลัง domain ใช้งานได้แล้ว ให้เข้า:
 
@@ -465,7 +575,7 @@ https://asset.company.com
 
 ---
 
-## 16. Optional: Protect With Cloudflare Access
+## 17. Optional: Protect With Cloudflare Access
 
 ถ้าระบบใช้เฉพาะภายในองค์กร แนะนำเปิด Cloudflare Access หน้า hostname นี้:
 
@@ -482,7 +592,7 @@ https://asset.company.com
 
 ---
 
-## 17. Updating To A New Version
+## 18. Updating To A New Version
 
 ```bash
 cd /var/www/asset-system/app
@@ -500,6 +610,7 @@ sudo -u assetapp cp -r public .next/standalone/
 sudo -u assetapp cp -r .next/static .next/standalone/.next/
 
 sudo systemctl restart asset-system
+sudo systemctl reload nginx
 sudo systemctl status asset-system
 ```
 
@@ -507,11 +618,12 @@ sudo systemctl status asset-system
 
 ```bash
 curl -I http://127.0.0.1:3000/th/login
+curl -I http://127.0.0.1:8080/th/login
 ```
 
 ---
 
-## 18. Backup And Restore
+## 19. Backup And Restore
 
 ทุกอย่างอยู่ใต้ `/var/www/asset-system` แล้ว แต่เวลา backup ควรแยก code/config/data เพื่อ restore ได้ง่ายกว่า
 
@@ -543,7 +655,7 @@ SQL Server backup ให้ใช้ SQL Server Management Studio, maintenance p
 
 ---
 
-## 19. LDAP Sync Scheduler Optional
+## 20. LDAP Sync Scheduler Optional
 
 ถ้าเปิด LDAP sync แล้ว ต้องตั้ง `LDAP_SYNC_TOKEN` ใน env ก่อน
 
@@ -564,7 +676,7 @@ sudo crontab -u assetapp -e
 
 ---
 
-## 20. Production Checklist
+## 21. Production Checklist
 
 ก่อน Go Live:
 
@@ -576,16 +688,17 @@ sudo crontab -u assetapp -e
 - [ ] SQL Server มี backup schedule
 - [ ] `npm run build` ผ่านบน Ubuntu
 - [ ] `asset-system.service` restart แล้วใช้งานได้
+- [ ] `nginx.service` proxy ไป `127.0.0.1:3000` ได้
 - [ ] `cloudflared.service` connected
-- [ ] Cloudflare DNS route ไป Tunnel ถูกต้อง
+- [ ] Cloudflare DNS route ไป Tunnel ถูกต้อง และ Tunnel service ชี้ไป `http://127.0.0.1:8080`
 - [ ] Public QR Base URL ตั้งเป็น `https://asset.company.com`
-- [ ] ไม่เปิด inbound port `3000` ออก Internet
+- [ ] ไม่เปิด inbound port `3000` หรือ `8080` ออก Internet
 - [ ] ไม่รัน cleanup test-data บน production
 - [ ] ทดสอบ login, asset create, upload, QR scan, export Excel/PDF
 
 ---
 
-## 21. Common Troubleshooting
+## 22. Common Troubleshooting
 
 ### เข้า domain แล้วเจอ Cloudflare 1016
 
@@ -603,6 +716,34 @@ App local ไม่รันหรือ port ไม่ตรง:
 ```bash
 sudo systemctl status asset-system
 curl -I http://127.0.0.1:3000/th/login
+curl -I http://127.0.0.1:8080/th/login
+```
+
+ถ้าเกิดเฉพาะตอน login ให้ดู Nginx error log:
+
+```bash
+sudo tail -n 80 /var/log/nginx/error.log
+```
+
+ถ้าเจอข้อความนี้:
+
+```text
+upstream sent too big header while reading response header from upstream
+```
+
+ให้เพิ่ม buffer ใน `/etc/nginx/sites-available/asset-system` ภายใน `location /`:
+
+```nginx
+proxy_buffer_size 16k;
+proxy_buffers 8 16k;
+proxy_busy_buffers_size 32k;
+```
+
+แล้ว reload:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
 ### Login callback หรือ session ผิด domain
@@ -620,6 +761,40 @@ sudo cat /var/www/asset-system/env/asset-system.env
 AUTH_URL=https://asset.company.com
 NEXTAUTH_URL=https://asset.company.com
 AUTH_TRUST_HOST=true
+```
+
+### เข้า `https://asset.company.com` แล้ว redirect ไป `https://asset.company.com:3000/th`
+
+สาเหตุหลักคือ request ที่เข้า Next.js ไม่มี `X-Forwarded-Port: 443` ทำให้ Next.js ใช้ local app port `3000` ตอนสร้าง absolute redirect จาก `/` ไป `/th`
+
+ทดสอบ origin โดยตรง:
+
+```bash
+curl -sS -D- -o /dev/null http://127.0.0.1:3000/ \
+  -H 'Host: asset.company.com' \
+  -H 'X-Forwarded-Host: asset.company.com' \
+  -H 'X-Forwarded-Proto: https' \
+  -H 'X-Forwarded-Port: 443'
+```
+
+ผลที่ถูกต้อง:
+
+```text
+location: https://asset.company.com/th
+```
+
+ถ้าใช้ Nginx ตามคู่มือนี้ ให้ตรวจ:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+curl -sS -D- -o /dev/null http://127.0.0.1:8080/
+```
+
+และตรวจว่า Cloudflare Tunnel service ชี้ไป Nginx:
+
+```yaml
+service: http://127.0.0.1:8080
 ```
 
 ### Upload ไม่ได้
