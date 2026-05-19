@@ -16,13 +16,15 @@ Last verified: 2026-05-19
 |---|---|
 | Domain | `asset.company.com` |
 | App user | `assetapp` |
-| App path | `/opt/asset-system/app` |
-| Env file | `/etc/asset-system/asset-system.env` |
-| Upload path | `/var/lib/asset-system/uploads` |
+| App path | `/var/www/asset-system/app` |
+| Env file | `/var/www/asset-system/env/asset-system.env` |
+| Upload path | `/var/www/asset-system/uploads` |
 | Local app port | `3000` |
 | Cloudflare Tunnel name | `asset-system` |
 
 เปลี่ยนค่าเหล่านี้ให้ตรงกับ production จริงก่อนรันคำสั่ง
+
+หมายเหตุ: คู่มือนี้วางทุกอย่างไว้ใต้ `/var/www/asset-system` แต่แยกเป็น `app`, `env`, และ `uploads` เพื่อไม่ให้ code, secret, และไฟล์ข้อมูลปนกัน ยังไม่ได้ใช้ `/var/www/html` และไม่ได้ให้ Nginx/Apache serve directory นี้โดยตรง เพราะ traffic production จะเข้าผ่าน Cloudflare Tunnel ไปยัง Next.js service ที่ `127.0.0.1:3000`
 
 ---
 
@@ -85,12 +87,13 @@ npm -v
 ## 4. Create App User And Directories
 
 ```bash
-sudo useradd --system --create-home --home-dir /opt/asset-system --shell /bin/bash assetapp
-sudo mkdir -p /opt/asset-system/app
-sudo mkdir -p /etc/asset-system
-sudo mkdir -p /var/lib/asset-system/uploads
-sudo chown -R assetapp:assetapp /opt/asset-system /var/lib/asset-system
-sudo chmod 750 /etc/asset-system
+sudo useradd --system --create-home --home-dir /var/www/asset-system --shell /bin/bash assetapp
+sudo mkdir -p /var/www/asset-system/app
+sudo mkdir -p /var/www/asset-system/env
+sudo mkdir -p /var/www/asset-system/uploads
+sudo chown -R assetapp:assetapp /var/www/asset-system
+sudo chown root:assetapp /var/www/asset-system/env
+sudo chmod 750 /var/www/asset-system/env
 ```
 
 ---
@@ -100,8 +103,8 @@ sudo chmod 750 /etc/asset-system
 ถ้า repo เป็น private ให้ตั้ง deploy key หรือใช้ GitHub token ตาม policy องค์กรก่อน
 
 ```bash
-sudo -u assetapp git clone https://github.com/iEel/asset-system.git /opt/asset-system/app
-cd /opt/asset-system/app
+sudo -u assetapp git clone https://github.com/iEel/asset-system.git /var/www/asset-system/app
+cd /var/www/asset-system/app
 sudo -u assetapp git status
 ```
 
@@ -112,7 +115,7 @@ sudo -u assetapp git status
 สร้าง env file:
 
 ```bash
-sudo nano /etc/asset-system/asset-system.env
+sudo nano /var/www/asset-system/env/asset-system.env
 ```
 
 ตัวอย่าง:
@@ -129,7 +132,7 @@ AUTH_TRUST_HOST=true
 AUTH_SECRET=replace-with-openssl-rand-base64-32
 NEXTAUTH_SECRET=replace-with-same-value-as-auth-secret
 
-UPLOAD_DIR=/var/lib/asset-system/uploads
+UPLOAD_DIR=/var/www/asset-system/uploads
 
 DB_SERVER=192.168.110.106
 DB_INSTANCE=
@@ -160,8 +163,8 @@ openssl rand -base64 32
 ตั้ง permission:
 
 ```bash
-sudo chown root:assetapp /etc/asset-system/asset-system.env
-sudo chmod 640 /etc/asset-system/asset-system.env
+sudo chown root:assetapp /var/www/asset-system/env/asset-system.env
+sudo chmod 640 /var/www/asset-system/env/asset-system.env
 ```
 
 หมายเหตุสำคัญ:
@@ -178,15 +181,15 @@ sudo chmod 640 /etc/asset-system/asset-system.env
 ติดตั้ง dependencies และ generate Prisma Client:
 
 ```bash
-cd /opt/asset-system/app
+cd /var/www/asset-system/app
 sudo -u assetapp npm ci
-sudo -u assetapp bash -lc 'cd /opt/asset-system/app && set -a && . /etc/asset-system/asset-system.env && set +a && npx prisma generate'
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma generate'
 ```
 
 Build โดย source production env ภายใต้ user `assetapp`:
 
 ```bash
-sudo -u assetapp bash -lc 'cd /opt/asset-system/app && set -a && . /etc/asset-system/asset-system.env && set +a && npm run build'
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npm run build'
 ```
 
 โปรเจกต์นี้ใช้ Next.js standalone output ดังนั้นหลัง build ให้ copy static assets เข้า standalone runtime:
@@ -206,21 +209,21 @@ sudo -u assetapp cp -r .next/static .next/standalone/.next/
 ถ้าเป็น DB ใหม่:
 
 ```bash
-sudo -u assetapp bash -lc 'cd /opt/asset-system/app && set -a && . /etc/asset-system/asset-system.env && set +a && npx prisma db push'
-sudo -u assetapp bash -lc 'cd /opt/asset-system/app && set -a && . /etc/asset-system/asset-system.env && set +a && npx tsx prisma/seed.ts'
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma db push'
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx tsx prisma/seed.ts'
 ```
 
 ถ้าเป็น DB เดิมที่มีข้อมูลจริง:
 
 ```bash
-sudo -u assetapp bash -lc 'cd /opt/asset-system/app && set -a && . /etc/asset-system/asset-system.env && set +a && npx prisma db push'
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma db push'
 ```
 
 หมายเหตุ:
 
 - ปัจจุบัน repo นี้ใช้ `prisma db push` เป็นหลัก ยังไม่มี migration history production-grade
 - ห้ามรัน `npm run cleanup:test-data -- --apply` บน production
-- ถ้ามีข้อมูลจริงแล้ว ให้ backup SQL Server และ `/var/lib/asset-system/uploads` ก่อน deploy ทุกครั้ง
+- ถ้ามีข้อมูลจริงแล้ว ให้ backup SQL Server และ `/var/www/asset-system/uploads` ก่อน deploy ทุกครั้ง
 
 ---
 
@@ -229,7 +232,7 @@ sudo -u assetapp bash -lc 'cd /opt/asset-system/app && set -a && . /etc/asset-sy
 ลองรัน manual ก่อนทำ systemd:
 
 ```bash
-sudo -u assetapp bash -lc 'cd /opt/asset-system/app/.next/standalone && set -a && . /etc/asset-system/asset-system.env && set +a && node server.js'
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app/.next/standalone && set -a && . /var/www/asset-system/env/asset-system.env && set +a && node server.js'
 ```
 
 เปิด shell อีกอันแล้วทดสอบ:
@@ -262,8 +265,8 @@ Wants=network-online.target
 Type=simple
 User=assetapp
 Group=assetapp
-WorkingDirectory=/opt/asset-system/app/.next/standalone
-EnvironmentFile=/etc/asset-system/asset-system.env
+WorkingDirectory=/var/www/asset-system/app/.next/standalone
+EnvironmentFile=/var/www/asset-system/env/asset-system.env
 ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=5
@@ -468,16 +471,16 @@ https://asset.company.com
 ## 17. Updating To A New Version
 
 ```bash
-cd /opt/asset-system/app
+cd /var/www/asset-system/app
 sudo -u assetapp git pull origin master
 
 sudo -u assetapp npm ci
-sudo -u assetapp bash -lc 'cd /opt/asset-system/app && set -a && . /etc/asset-system/asset-system.env && set +a && npx prisma generate'
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma generate'
 
 # Run only after DB backup, especially when prisma/schema.prisma changed
-sudo -u assetapp bash -lc 'cd /opt/asset-system/app && set -a && . /etc/asset-system/asset-system.env && set +a && npx prisma db push'
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma db push'
 
-sudo -u assetapp bash -lc 'cd /opt/asset-system/app && set -a && . /etc/asset-system/asset-system.env && set +a && npm run build'
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npm run build'
 sudo -u assetapp mkdir -p .next/standalone/.next
 sudo -u assetapp cp -r public .next/standalone/
 sudo -u assetapp cp -r .next/static .next/standalone/.next/
@@ -496,22 +499,30 @@ curl -I http://127.0.0.1:3000/th/login
 
 ## 18. Backup And Restore
 
-ต้อง backup 2 ส่วน:
+ทุกอย่างอยู่ใต้ `/var/www/asset-system` แล้ว แต่เวลา backup ควรแยก code/config/data เพื่อ restore ได้ง่ายกว่า
+
+ต้อง backup 3 ส่วน:
 
 1. SQL Server database `asset_management`
-2. Upload directory `/var/lib/asset-system/uploads`
+2. Env file `/var/www/asset-system/env/asset-system.env`
+3. Upload directory `/var/www/asset-system/uploads`
 
-Backup uploads:
+Backup env + uploads:
 
 ```bash
-sudo tar -czf /backup/asset-system-uploads-$(date +%F).tar.gz /var/lib/asset-system/uploads
+sudo mkdir -p /backup
+sudo cp /var/www/asset-system/env/asset-system.env /backup/asset-system.env.$(date +%F)
+sudo tar -czf /backup/asset-system-uploads-$(date +%F).tar.gz /var/www/asset-system/uploads
 ```
 
-Restore uploads:
+Restore env + uploads:
 
 ```bash
+sudo cp /backup/asset-system.env.YYYY-MM-DD /var/www/asset-system/env/asset-system.env
 sudo tar -xzf /backup/asset-system-uploads-YYYY-MM-DD.tar.gz -C /
-sudo chown -R assetapp:assetapp /var/lib/asset-system/uploads
+sudo chown root:assetapp /var/www/asset-system/env/asset-system.env
+sudo chmod 640 /var/www/asset-system/env/asset-system.env
+sudo chown -R assetapp:assetapp /var/www/asset-system/uploads
 ```
 
 SQL Server backup ให้ใช้ SQL Server Management Studio, maintenance plan, หรือ `sqlcmd` ตาม policy องค์กร
@@ -531,7 +542,7 @@ sudo crontab -u assetapp -e
 เพิ่ม:
 
 ```cron
-0 2 * * * cd /opt/asset-system/app && set -a && . /etc/asset-system/asset-system.env && set +a && /usr/bin/node scripts/ldap-sync.mjs >> /var/log/asset-system-ldap-sync.log 2>&1
+0 2 * * * cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && /usr/bin/node scripts/ldap-sync.mjs >> /var/log/asset-system-ldap-sync.log 2>&1
 ```
 
 ถ้าให้ script sync ผ่าน public domain ให้ `AUTH_URL=https://asset.company.com`
@@ -586,7 +597,7 @@ curl -I http://127.0.0.1:3000/th/login
 
 ```bash
 sudo systemctl cat asset-system
-sudo cat /etc/asset-system/asset-system.env
+sudo cat /var/www/asset-system/env/asset-system.env
 ```
 
 ค่าที่ควรถูก:
@@ -602,9 +613,9 @@ AUTH_TRUST_HOST=true
 ตรวจ path และ permission:
 
 ```bash
-grep UPLOAD_DIR /etc/asset-system/asset-system.env
-sudo ls -ld /var/lib/asset-system/uploads
-sudo chown -R assetapp:assetapp /var/lib/asset-system/uploads
+grep UPLOAD_DIR /var/www/asset-system/env/asset-system.env
+sudo ls -ld /var/www/asset-system/uploads
+sudo chown -R assetapp:assetapp /var/www/asset-system/uploads
 ```
 
 ### Prisma ต่อ SQL Server ไม่ได้
