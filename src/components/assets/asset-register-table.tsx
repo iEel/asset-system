@@ -51,6 +51,7 @@ type AssetRegisterTableProps = {
     statusId: string
     conditionId: string
     ownershipType: string
+    dataQuality: "" | "responsibility" | "serial" | "photo"
     page: number
     pageSize: number
     sort: string

@@ -364,6 +364,7 @@ function AssetFilters({
             </option>
           ))}
         </FilterSelect>
+        {filters.dataQuality ? <input type="hidden" name="dataQuality" value={filters.dataQuality} /> : null}
         <input type="hidden" name="sort" value={filters.sort} />
         <input type="hidden" name="direction" value={filters.direction} />
         <button

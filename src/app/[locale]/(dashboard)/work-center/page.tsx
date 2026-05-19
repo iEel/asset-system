@@ -1,5 +1,6 @@
 import Link from "next/link"
 import type React from "react"
+import type { Prisma } from "@prisma/client"
 import { getTranslations } from "next-intl/server"
 import {
   AlertTriangle,
@@ -19,10 +20,21 @@ import { assetMissingResponsibilityWhere, hasAssetResponsibility } from "@/lib/a
 import type { ApprovalInboxItem } from "@/lib/approval-inbox"
 import { getApprovalInboxAccess, getApprovalInboxSnapshot } from "@/lib/approval-inbox-query"
 import { buildWorkCenterMetricKeys, calculateWorkCenterUrgentCount, type WorkCenterMetricKey } from "@/lib/work-center-metrics"
+import {
+  buildDataQualityFixGroups,
+  buildWorkCenterHref,
+  buildWorkCenterUserScope,
+  getWorkCenterItemLimit,
+  parseWorkCenterParams,
+  type WorkCenterPanel,
+  type WorkCenterParams,
+  type WorkCenterUserScope,
+} from "@/lib/work-center-view"
 import { formatDateTime } from "@/lib/utils"
 
 type WorkCenterPageProps = {
   params: Promise<{ locale: string }>
+  searchParams: Promise<{ view?: string | string[]; panel?: string | string[] }>
 }
 
 type WorkCenterMetric = {
@@ -42,14 +54,124 @@ const startOfToday = () => {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate())
 }
 
-export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
+export default async function WorkCenterPage({ params, searchParams }: WorkCenterPageProps) {
   const { locale } = await params
+  const workCenterParams = parseWorkCenterParams(await searchParams)
   const user = await requirePagePermission(locale, "dashboard", "view")
 
   const t = await getTranslations("workCenter")
   const tCommon = await getTranslations("common")
   const today = startOfToday()
   const approvalInboxAccess = getApprovalInboxAccess(user)
+  const employeeProfile = user.employeeId
+    ? await prisma.employee.findUnique({ where: { id: user.employeeId }, select: { departmentId: true } })
+    : null
+  const userScope = buildWorkCenterUserScope({
+    employeeId: user.employeeId,
+    departmentId: employeeProfile?.departmentId,
+  })
+  const isMineView = workCenterParams.view === "mine"
+  const approvalItemLimit = getWorkCenterItemLimit("approvals", workCenterParams.panel)
+  const assetItemLimit = getWorkCenterItemLimit("assets", workCenterParams.panel)
+  const maintenanceItemLimit = getWorkCenterItemLimit("maintenance", workCenterParams.panel)
+  const auditItemLimit = getWorkCenterItemLimit("audit", workCenterParams.panel)
+  const disposalItemLimit = getWorkCenterItemLimit("disposal", workCenterParams.panel)
+  const missingResponsibilityWhere = applyAssetWorkCenterScope(
+    { AND: [{ isActive: true }, assetMissingResponsibilityWhere] },
+    isMineView,
+    userScope,
+  )
+  const missingSerialWhere = applyAssetWorkCenterScope(
+    { isActive: true, OR: [{ serialNumber: null }, { serialNumber: "" }] },
+    isMineView,
+    userScope,
+  )
+  const missingPhotoWhere = applyAssetWorkCenterScope(
+    {
+      isActive: true,
+      ownershipType: { not: "software_license" },
+      attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } },
+    },
+    isMineView,
+    userScope,
+  )
+  const assetIssueWhere = applyAssetWorkCenterScope(
+    {
+      isActive: true,
+      OR: [
+        assetMissingResponsibilityWhere,
+        { serialNumber: null },
+        { serialNumber: "" },
+        {
+          AND: [
+            { ownershipType: { not: "software_license" } },
+            { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
+          ],
+        },
+      ],
+    },
+    isMineView,
+    userScope,
+  )
+  const overdueMaintenanceWhere = applyMaintenanceWorkCenterScope(
+    { isActive: true, repairStatus: { in: openMaintenanceStatuses }, dueDate: { lt: today } },
+    isMineView,
+    userScope,
+  )
+  const waitingMaintenanceWhere = applyMaintenanceWorkCenterScope(
+    { isActive: true, repairStatus: { in: waitingMaintenanceStatuses } },
+    isMineView,
+    userScope,
+  )
+  const completedMaintenanceWhere = applyMaintenanceWorkCenterScope(
+    { isActive: true, repairStatus: "completed" },
+    isMineView,
+    userScope,
+  )
+  const maintenanceItemWhere = applyMaintenanceWorkCenterScope(
+    {
+      isActive: true,
+      repairStatus: { in: openMaintenanceStatuses },
+      OR: [{ dueDate: { lt: today } }, { repairStatus: { in: waitingMaintenanceStatuses } }, { repairStatus: "completed" }],
+    },
+    isMineView,
+    userScope,
+  )
+  const pendingAuditFindingWhere = applyAuditFindingWorkCenterScope(
+    { reviewStatus: "pending" },
+    isMineView,
+    userScope,
+  )
+  const openAuditActionWhere = applyAuditFindingWorkCenterScope(
+    { actionStatus: { in: ["planned", "in_progress"] } },
+    isMineView,
+    userScope,
+  )
+  const auditItemWhere = applyAuditFindingWorkCenterScope(
+    { OR: [{ reviewStatus: "pending" }, { actionStatus: { in: ["planned", "in_progress"] } }] },
+    isMineView,
+    userScope,
+  )
+  const pendingAuditItemsWhere = applyAuditItemWorkCenterScope(
+    { auditStatus: "pending", auditRound: { isActive: true, status: { not: "closed" } } },
+    isMineView,
+    userScope,
+  )
+  const pendingDisposalWhere = applyDisposalWorkCenterScope(
+    { isActive: true, requestStatus: "pending" },
+    isMineView,
+    userScope,
+  )
+  const approvedDisposalWhere = applyDisposalWorkCenterScope(
+    { isActive: true, requestStatus: "approved" },
+    isMineView,
+    userScope,
+  )
+  const disposalItemWhere = applyDisposalWorkCenterScope(
+    { isActive: true, requestStatus: { in: ["pending", "approved"] } },
+    isMineView,
+    userScope,
+  )
 
   const [
     missingCustodian,
@@ -69,47 +191,20 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
     auditItems,
     disposalItems,
   ] = await Promise.all([
-    prisma.asset.count({ where: { AND: [{ isActive: true }, assetMissingResponsibilityWhere] } }),
-    prisma.asset.count({ where: { isActive: true, OR: [{ serialNumber: null }, { serialNumber: "" }] } }),
-    prisma.asset.count({
-      where: {
-        isActive: true,
-        ownershipType: { not: "software_license" },
-        attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } },
-      },
-    }),
-    prisma.maintenanceTicket.count({
-      where: { isActive: true, repairStatus: { in: openMaintenanceStatuses }, dueDate: { lt: today } },
-    }),
-    prisma.maintenanceTicket.count({
-      where: { isActive: true, repairStatus: { in: waitingMaintenanceStatuses } },
-    }),
-    prisma.maintenanceTicket.count({
-      where: { isActive: true, repairStatus: "completed" },
-    }),
-    prisma.auditFinding.count({ where: { reviewStatus: "pending" } }),
-    prisma.auditFinding.count({ where: { actionStatus: { in: ["planned", "in_progress"] } } }),
-    prisma.auditItem.count({
-      where: { auditStatus: "pending", auditRound: { isActive: true, status: { not: "closed" } } },
-    }),
-    prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "pending" } }),
-    prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "approved" } }),
+    prisma.asset.count({ where: missingResponsibilityWhere }),
+    prisma.asset.count({ where: missingSerialWhere }),
+    prisma.asset.count({ where: missingPhotoWhere }),
+    prisma.maintenanceTicket.count({ where: overdueMaintenanceWhere }),
+    prisma.maintenanceTicket.count({ where: waitingMaintenanceWhere }),
+    prisma.maintenanceTicket.count({ where: completedMaintenanceWhere }),
+    prisma.auditFinding.count({ where: pendingAuditFindingWhere }),
+    prisma.auditFinding.count({ where: openAuditActionWhere }),
+    prisma.auditItem.count({ where: pendingAuditItemsWhere }),
+    prisma.disposalRequest.count({ where: pendingDisposalWhere }),
+    prisma.disposalRequest.count({ where: approvedDisposalWhere }),
     approvalInboxAccess.canAnyApproval ? getApprovalInboxSnapshot(user, locale) : Promise.resolve(null),
     prisma.asset.findMany({
-      where: {
-        isActive: true,
-        OR: [
-          assetMissingResponsibilityWhere,
-          { serialNumber: null },
-          { serialNumber: "" },
-          {
-            AND: [
-              { ownershipType: { not: "software_license" } },
-              { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
-            ],
-          },
-        ],
-      },
+      where: assetIssueWhere,
       select: {
         id: true,
         assetTag: true,
@@ -126,28 +221,28 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
         },
       },
       orderBy: { updatedAt: "desc" },
-      take: 6,
+      take: assetItemLimit,
     }),
     prisma.maintenanceTicket.findMany({
-      where: { isActive: true, repairStatus: { in: openMaintenanceStatuses }, OR: [{ dueDate: { lt: today } }, { repairStatus: { in: waitingMaintenanceStatuses } }, { repairStatus: "completed" }] },
+      where: maintenanceItemWhere,
       include: { asset: { select: { assetTag: true, name: true } } },
       orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
-      take: 6,
+      take: maintenanceItemLimit,
     }),
     prisma.auditFinding.findMany({
-      where: { OR: [{ reviewStatus: "pending" }, { actionStatus: { in: ["planned", "in_progress"] } }] },
+      where: auditItemWhere,
       include: {
         auditRound: { select: { id: true, auditNo: true, name: true } },
         asset: { select: { id: true, assetTag: true, name: true } },
       },
       orderBy: { reportedAt: "desc" },
-      take: 6,
+      take: auditItemLimit,
     }),
     prisma.disposalRequest.findMany({
-      where: { isActive: true, requestStatus: { in: ["pending", "approved"] } },
+      where: disposalItemWhere,
       include: { asset: { select: { assetTag: true, name: true } } },
       orderBy: { requestDate: "asc" },
-      take: 6,
+      take: disposalItemLimit,
     }),
   ])
 
@@ -290,6 +385,11 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
     approvedDisposals,
   })
   const followUpCount = metrics.reduce((sum, metric) => sum + metric.value, 0)
+  const dataQualityGroups = buildDataQualityFixGroups(locale, workCenterParams, {
+    missingResponsibility: missingCustodian,
+    missingSerial,
+    missingPhoto,
+  })
 
   return (
     <div className="space-y-6">
@@ -304,6 +404,28 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
         </div>
       </div>
 
+      <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="inline-flex rounded-md border border-border bg-background p-1">
+          <WorkCenterViewLink
+            href={buildWorkCenterHref(locale, workCenterParams, { view: "all", panel: workCenterParams.panel })}
+            active={workCenterParams.view === "all"}
+          >
+            {t("allWork")}
+          </WorkCenterViewLink>
+          <WorkCenterViewLink
+            href={buildWorkCenterHref(locale, workCenterParams, { view: "mine", panel: workCenterParams.panel })}
+            active={workCenterParams.view === "mine"}
+          >
+            {t("myWork")}
+          </WorkCenterViewLink>
+        </div>
+        {isMineView && !userScope.enabled ? (
+          <p className="text-xs text-warning">{t("myWorkUnavailable")}</p>
+        ) : (
+          <p className="text-xs text-muted-foreground">{isMineView ? t("myWorkDetail") : t("allWorkDetail")}</p>
+        )}
+      </div>
+
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
           <MetricCard key={metric.key} metric={metric} />
@@ -312,18 +434,57 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {approvalInboxVisible ? (
-          <FollowUpPanel title={t("approvalInboxTitle")} subtitle={t("approvalInboxSubtitle")} href={`/${locale}/admin/approvals`} viewAllLabel={tCommon("view")}>
+          <FollowUpPanel
+            title={t("approvalInboxTitle")}
+            subtitle={t("approvalInboxSubtitle")}
+            href={`/${locale}/admin/approvals`}
+            locale={locale}
+            panel="approvals"
+            currentParams={workCenterParams}
+            viewAllLabel={tCommon("view")}
+            showMoreLabel={t("showInWorkCenter")}
+            collapseLabel={t("collapseList")}
+          >
             {!approvalInboxSnapshot || approvalInboxSnapshot.items.length === 0 ? (
               <EmptyState label={t("noApprovalInboxIssues")} />
             ) : (
-              approvalInboxSnapshot.items.slice(0, 6).map((item) => (
+              approvalInboxSnapshot.items.slice(0, approvalItemLimit).map((item) => (
                 <ApprovalFollowUpItem key={item.id} item={item} />
               ))
             )}
           </FollowUpPanel>
         ) : null}
 
-        <FollowUpPanel title={t("assetDataTitle")} subtitle={t("assetDataSubtitle")} href={`/${locale}/assets`} viewAllLabel={tCommon("view")}>
+        <FollowUpPanel
+          title={t("assetDataTitle")}
+          subtitle={t("assetDataSubtitle")}
+          href={`/${locale}/assets`}
+          locale={locale}
+          panel="assets"
+          currentParams={workCenterParams}
+          viewAllLabel={tCommon("view")}
+          showMoreLabel={t("showInWorkCenter")}
+          collapseLabel={t("collapseList")}
+        >
+          <DataQualityFixGroups
+            groups={dataQualityGroups}
+            labels={{
+              title: t("bulkFixTitle"),
+              subtitle: t("bulkFixSubtitle"),
+              openFilteredAssets: t("openFilteredAssets"),
+              showInWorkCenter: t("showInWorkCenter"),
+              issueLabels: {
+                responsibility: t("dataQuality_responsibility"),
+                serial: t("dataQuality_serial"),
+                photo: t("dataQuality_photo"),
+              },
+              issueDetails: {
+                responsibility: t("dataQuality_responsibilityDetail"),
+                serial: t("dataQuality_serialDetail"),
+                photo: t("dataQuality_photoDetail"),
+              },
+            }}
+          />
           {assetIssues.length === 0 ? (
             <EmptyState label={t("noAssetDataIssues")} />
           ) : (
@@ -346,7 +507,17 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
           )}
         </FollowUpPanel>
 
-        <FollowUpPanel title={t("maintenanceTitle")} subtitle={t("maintenanceSubtitle")} href={`/${locale}/maintenance?overdue=yes`} viewAllLabel={tCommon("view")}>
+        <FollowUpPanel
+          title={t("maintenanceTitle")}
+          subtitle={t("maintenanceSubtitle")}
+          href={`/${locale}/maintenance?overdue=yes`}
+          locale={locale}
+          panel="maintenance"
+          currentParams={workCenterParams}
+          viewAllLabel={tCommon("view")}
+          showMoreLabel={t("showInWorkCenter")}
+          collapseLabel={t("collapseList")}
+        >
           {visibleMaintenanceItems.length === 0 ? (
             <EmptyState label={t("noMaintenanceIssues")} />
           ) : (
@@ -362,7 +533,17 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
           )}
         </FollowUpPanel>
 
-        <FollowUpPanel title={t("auditTitle")} subtitle={t("auditSubtitle")} href={`/${locale}/audit/findings?status=pending`} viewAllLabel={tCommon("view")}>
+        <FollowUpPanel
+          title={t("auditTitle")}
+          subtitle={t("auditSubtitle")}
+          href={`/${locale}/audit/findings?status=pending`}
+          locale={locale}
+          panel="audit"
+          currentParams={workCenterParams}
+          viewAllLabel={tCommon("view")}
+          showMoreLabel={t("showInWorkCenter")}
+          collapseLabel={t("collapseList")}
+        >
           {visibleAuditItems.length === 0 ? (
             <EmptyState label={t("noAuditIssues")} />
           ) : (
@@ -378,7 +559,17 @@ export default async function WorkCenterPage({ params }: WorkCenterPageProps) {
           )}
         </FollowUpPanel>
 
-        <FollowUpPanel title={t("disposalTitle")} subtitle={t("disposalSubtitle")} href={`/${locale}/disposal?status=pending`} viewAllLabel={tCommon("view")}>
+        <FollowUpPanel
+          title={t("disposalTitle")}
+          subtitle={t("disposalSubtitle")}
+          href={`/${locale}/disposal?status=pending`}
+          locale={locale}
+          panel="disposal"
+          currentParams={workCenterParams}
+          viewAllLabel={tCommon("view")}
+          showMoreLabel={t("showInWorkCenter")}
+          collapseLabel={t("collapseList")}
+        >
           {visibleDisposalItems.length === 0 ? (
             <EmptyState label={t("noDisposalIssues")} />
           ) : (
@@ -425,33 +616,114 @@ function SummaryPill({ label, value, tone }: { label: string; value: number; ton
   )
 }
 
+function WorkCenterViewLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className={`rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+        active ? "bg-primary text-white" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+      }`}
+    >
+      {children}
+    </Link>
+  )
+}
+
 function FollowUpPanel({
   title,
   subtitle,
   href,
+  locale,
+  panel,
+  currentParams,
   viewAllLabel,
+  showMoreLabel,
+  collapseLabel,
   children,
 }: {
   title: string
   subtitle: string
   href: string
+  locale: string
+  panel: WorkCenterPanel
+  currentParams: WorkCenterParams
   viewAllLabel: string
+  showMoreLabel: string
+  collapseLabel: string
   children: React.ReactNode
 }) {
+  const isExpanded = currentParams.panel === panel
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+    <section className={`rounded-lg border bg-surface p-4 shadow-sm ${isExpanded ? "border-primary/40 ring-1 ring-primary/20" : "border-border"}`}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <h2 className="font-semibold text-foreground">{title}</h2>
           <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
         </div>
-        <Link href={href} className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary hover:underline">
-          {viewAllLabel}
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
+        <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center">
+          <Link
+            href={buildWorkCenterHref(locale, currentParams, { panel: isExpanded ? "overview" : panel })}
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          >
+            {isExpanded ? collapseLabel : showMoreLabel}
+          </Link>
+          <Link href={href} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary hover:underline">
+            {viewAllLabel}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       </div>
       <div className="space-y-2">{children}</div>
     </section>
+  )
+}
+
+function DataQualityFixGroups({
+  groups,
+  labels,
+}: {
+  groups: ReturnType<typeof buildDataQualityFixGroups>
+  labels: {
+    title: string
+    subtitle: string
+    openFilteredAssets: string
+    showInWorkCenter: string
+    issueLabels: Record<ReturnType<typeof buildDataQualityFixGroups>[number]["key"], string>
+    issueDetails: Record<ReturnType<typeof buildDataQualityFixGroups>[number]["key"], string>
+  }
+}) {
+  if (groups.length === 0) return null
+
+  return (
+    <div className="mb-3 rounded-md border border-dashed border-border bg-background p-3">
+      <div className="mb-2">
+        <div className="text-sm font-semibold text-foreground">{labels.title}</div>
+        <div className="text-xs text-muted-foreground">{labels.subtitle}</div>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {groups.map((group) => (
+          <div key={group.key} className="rounded-md border border-border bg-surface p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">{labels.issueLabels[group.key]}</p>
+                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{labels.issueDetails[group.key]}</p>
+              </div>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                {group.count.toLocaleString("th-TH")}
+              </span>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link href={group.assetsHref} className="text-xs font-medium text-primary hover:underline">
+                {labels.openFilteredAssets}
+              </Link>
+              <Link href={group.workCenterHref} className="text-xs font-medium text-muted-foreground hover:text-primary hover:underline">
+                {labels.showInWorkCenter}
+              </Link>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -492,6 +764,92 @@ function EmptyState({ label }: { label: string }) {
       {label}
     </div>
   )
+}
+
+function applyAssetWorkCenterScope(
+  where: Prisma.AssetWhereInput,
+  active: boolean,
+  scope: WorkCenterUserScope,
+): Prisma.AssetWhereInput {
+  return applyWorkCenterScope(where, active, buildAssetScopeWhere(scope))
+}
+
+function applyMaintenanceWorkCenterScope(
+  where: Prisma.MaintenanceTicketWhereInput,
+  active: boolean,
+  scope: WorkCenterUserScope,
+): Prisma.MaintenanceTicketWhereInput {
+  const scopeWhere = getScopedWhere<Prisma.MaintenanceTicketWhereInput>(scope, ({ employeeId, departmentId }) => ({
+    OR: [
+      ...(employeeId ? [{ reportedById: employeeId }, { assignedToId: employeeId }, { inspectedById: employeeId }, { asset: { custodianId: employeeId } }] : []),
+      ...(departmentId ? [{ asset: { departmentId } }] : []),
+    ],
+  }))
+  return applyWorkCenterScope(where, active, scopeWhere)
+}
+
+function applyAuditFindingWorkCenterScope(
+  where: Prisma.AuditFindingWhereInput,
+  active: boolean,
+  scope: WorkCenterUserScope,
+): Prisma.AuditFindingWhereInput {
+  const scopeWhere = getScopedWhere<Prisma.AuditFindingWhereInput>(scope, ({ employeeId, departmentId }) => ({
+    OR: [
+      ...(employeeId ? [{ actionOwnerId: employeeId }, { asset: { custodianId: employeeId } }] : []),
+      ...(departmentId ? [{ asset: { departmentId } }] : []),
+    ],
+  }))
+  return applyWorkCenterScope(where, active, scopeWhere)
+}
+
+function applyAuditItemWorkCenterScope(
+  where: Prisma.AuditItemWhereInput,
+  active: boolean,
+  scope: WorkCenterUserScope,
+): Prisma.AuditItemWhereInput {
+  const scopeWhere = getScopedWhere<Prisma.AuditItemWhereInput>(scope, ({ employeeId, departmentId }) => ({
+    OR: [
+      ...(employeeId ? [{ asset: { custodianId: employeeId } }] : []),
+      ...(departmentId ? [{ asset: { departmentId } }] : []),
+    ],
+  }))
+  return applyWorkCenterScope(where, active, scopeWhere)
+}
+
+function applyDisposalWorkCenterScope(
+  where: Prisma.DisposalRequestWhereInput,
+  active: boolean,
+  scope: WorkCenterUserScope,
+): Prisma.DisposalRequestWhereInput {
+  const scopeWhere = getScopedWhere<Prisma.DisposalRequestWhereInput>(scope, ({ employeeId, departmentId }) => ({
+    OR: [
+      ...(employeeId ? [{ requestedById: employeeId }, { approverId: employeeId }, { executedById: employeeId }, { asset: { custodianId: employeeId } }] : []),
+      ...(departmentId ? [{ asset: { departmentId } }] : []),
+    ],
+  }))
+  return applyWorkCenterScope(where, active, scopeWhere)
+}
+
+function buildAssetScopeWhere(scope: WorkCenterUserScope): Prisma.AssetWhereInput {
+  return getScopedWhere<Prisma.AssetWhereInput>(scope, ({ employeeId, departmentId }) => ({
+    OR: [
+      ...(employeeId ? [{ custodianId: employeeId }] : []),
+      ...(departmentId ? [{ departmentId }] : []),
+    ],
+  }))
+}
+
+function getScopedWhere<T extends { OR?: unknown; id?: unknown }>(
+  scope: WorkCenterUserScope,
+  build: (scope: { employeeId: string | null; departmentId: string | null }) => T,
+): T {
+  if (!scope.enabled) return { id: "__work_center_no_user_scope__" } as T
+  return build(scope)
+}
+
+function applyWorkCenterScope<T>(where: T, active: boolean, scopeWhere: T): T {
+  if (!active) return where
+  return { AND: [where, scopeWhere] } as T
 }
 
 function toneClass(tone: WorkCenterMetric["tone"]) {

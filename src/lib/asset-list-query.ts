@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client"
-import { assetOwnershipTypes } from "@/lib/asset-ownership"
+import { assetMissingResponsibilityWhere, assetOwnershipTypes } from "@/lib/asset-ownership"
+import { normalizeAssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 
 export type AssetListParams = {
   search?: string
@@ -9,6 +10,7 @@ export type AssetListParams = {
   statusId?: string
   conditionId?: string
   ownershipType?: string
+  dataQuality?: string
   page?: string | number
   pageSize?: string | number
   sort?: string
@@ -27,6 +29,7 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
   const sort = String(getValue("sort") ?? "createdAt")
   const direction = getValue("direction") === "asc" ? "asc" : "desc"
   const ownershipType = String(getValue("ownershipType") ?? "").trim()
+  const dataQuality = normalizeAssetDataQualityFilter(getValue("dataQuality"))
 
   return {
     search: String(getValue("search") ?? "").trim(),
@@ -36,6 +39,7 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
     statusId: String(getValue("statusId") ?? "").trim(),
     conditionId: String(getValue("conditionId") ?? "").trim(),
     ownershipType: assetOwnershipTypes.includes(ownershipType as (typeof assetOwnershipTypes)[number]) ? ownershipType : "",
+    dataQuality,
     page,
     pageSize,
     sort: sortableFields.has(sort) ? sort : "createdAt",
@@ -44,7 +48,7 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
 }
 
 export function buildAssetWhere(filters: ReturnType<typeof parseAssetListParams>): Prisma.AssetWhereInput {
-  return {
+  const where: Prisma.AssetWhereInput = {
     isActive: true,
     ...(filters.companyId ? { companyId: filters.companyId } : {}),
     ...(filters.branchId ? { branchId: filters.branchId } : {}),
@@ -69,6 +73,13 @@ export function buildAssetWhere(filters: ReturnType<typeof parseAssetListParams>
         }
       : {}),
   }
+
+  const dataQualityWhere = buildAssetDataQualityWhere(filters.dataQuality)
+  if (dataQualityWhere) {
+    where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), dataQualityWhere]
+  }
+
+  return where
 }
 
 export function buildAssetOrderBy(filters: ReturnType<typeof parseAssetListParams>): Prisma.AssetOrderByWithRelationInput {
@@ -82,11 +93,23 @@ export function buildAssetQueryString(
   const next = { ...filters, ...overrides }
   const params = new URLSearchParams()
 
-  for (const key of ["search", "companyId", "branchId", "categoryId", "statusId", "conditionId", "ownershipType", "sort", "direction"] as const) {
+  for (const key of ["search", "companyId", "branchId", "categoryId", "statusId", "conditionId", "ownershipType", "dataQuality", "sort", "direction"] as const) {
     if (next[key]) params.set(key, String(next[key]))
   }
 
   params.set("page", String(next.page))
   params.set("pageSize", String(next.pageSize))
   return params.toString()
+}
+
+function buildAssetDataQualityWhere(dataQuality: ReturnType<typeof normalizeAssetDataQualityFilter>): Prisma.AssetWhereInput | null {
+  if (dataQuality === "responsibility") return assetMissingResponsibilityWhere
+  if (dataQuality === "serial") return { OR: [{ serialNumber: null }, { serialNumber: "" }] }
+  if (dataQuality === "photo") {
+    return {
+      ownershipType: { not: "software_license" },
+      attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } },
+    }
+  }
+  return null
 }
