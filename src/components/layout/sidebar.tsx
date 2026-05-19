@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Package,
   ClipboardCheck,
+  FileCheck2,
   BarChart3,
   Database,
   Settings,
@@ -137,6 +138,7 @@ export function Sidebar({
       children: [
         { labelKey: "userManagement", href: `/${locale}/admin/users`, icon: <Users size={18} /> },
         { labelKey: "rolePermission", href: `/${locale}/admin/roles`, icon: <Settings size={18} /> },
+        { labelKey: "approvalInbox", href: `/${locale}/admin/approvals`, icon: <FileCheck2 size={18} /> },
         { labelKey: "dataQuality", href: `/${locale}/admin/data-quality`, icon: <ShieldAlert size={18} /> },
         { labelKey: "systemLog", href: `/${locale}/admin/logs`, icon: <History size={18} /> },
         { labelKey: "systemSetting", href: `/${locale}/admin/settings`, icon: <Settings size={18} /> },
