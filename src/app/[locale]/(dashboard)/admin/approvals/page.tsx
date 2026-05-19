@@ -2,7 +2,7 @@ import Link from "next/link"
 import type React from "react"
 import { notFound, redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ClipboardCheck, FileCheck2, ShieldCheck, Trash2, Wrench } from "lucide-react"
+import { ClipboardCheck, FileCheck2, History, ShieldCheck, Trash2, Wrench } from "lucide-react"
 import { getSessionUser } from "@/lib/auth-utils"
 import type { ApprovalInboxItem } from "@/lib/approval-inbox"
 import { getApprovalAgeStatus, sortApprovalInboxItemsByAge } from "@/lib/approval-aging"
@@ -43,12 +43,21 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
           <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <Link
-          href={`/${locale}/admin/settings`}
-          className="inline-flex h-10 w-fit items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-        >
-          {t("openPolicySettings")}
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/${locale}/admin/approvals/history`}
+            className="inline-flex h-10 w-fit items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            <History className="h-4 w-4" />
+            {t("openDecisionHistory")}
+          </Link>
+          <Link
+            href={`/${locale}/admin/settings`}
+            className="inline-flex h-10 w-fit items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            {t("openPolicySettings")}
+          </Link>
+        </div>
       </div>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
