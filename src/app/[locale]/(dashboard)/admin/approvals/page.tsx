@@ -2,12 +2,14 @@ import Link from "next/link"
 import type React from "react"
 import { notFound, redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ClipboardCheck, FileCheck2, History, ShieldCheck, Trash2, Wrench } from "lucide-react"
+import { AlertTriangle, CheckCircle2, ClipboardCheck, FileCheck2, History, ShieldCheck, Trash2, Users, Wrench } from "lucide-react"
 import { getSessionUser } from "@/lib/auth-utils"
 import type { ApprovalInboxItem } from "@/lib/approval-inbox"
 import { getApprovalAgeStatus, sortApprovalInboxItemsByAge } from "@/lib/approval-aging"
 import { approvalInboxFilters, filterApprovalInboxItems, parseApprovalInboxFilter, type ApprovalInboxFilter } from "@/lib/approval-inbox-filter"
 import { getApprovalInboxSnapshot } from "@/lib/approval-inbox-query"
+import { buildApprovalPermissionMatrix, type ApprovalPermissionMatrixItem } from "@/lib/approval-permission-matrix"
+import { prisma } from "@/lib/db"
 import { formatDateTime } from "@/lib/utils"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 
@@ -25,8 +27,12 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
   const snapshot = await getApprovalInboxSnapshot(user, locale)
   if (!snapshot.access.canAnyApproval) notFound()
 
-  const t = await getTranslations("approvalInboxPage")
+  const [t, approverUsers] = await Promise.all([
+    getTranslations("approvalInboxPage"),
+    getApprovalPermissionMatrixUsers(),
+  ])
   const { access, policy, items, summary } = snapshot
+  const approverMatrix = buildApprovalPermissionMatrix(approverUsers, policy.minApprovers)
   const sortedItems = sortApprovalInboxItemsByAge(items, policy.slaDays)
   const activeFilter = parseApprovalInboxFilter(query.module)
   const filteredItems = filterApprovalInboxItems(sortedItems, activeFilter)
@@ -88,6 +94,41 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
               <div className="font-semibold text-foreground">{t("slaDays", { days: policy.slaDays })}</div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="font-semibold text-foreground">{t("approverMatrixTitle")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("approverMatrixDescription", { min: policy.minApprovers })}</p>
+          </div>
+          <Link
+            href={`/${locale}/admin/roles`}
+            className="inline-flex h-9 w-fit items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            <Users className="h-4 w-4" />
+            {t("manageRoles")}
+          </Link>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+          {approverMatrix.map((item) => (
+            <ApproverMatrixCard
+              key={item.key}
+              item={item}
+              labels={{
+                workflow: t(`matrixWorkflow_${item.key}`),
+                approverCount: (count) => t("approverCount", { count }),
+                permissionKey: t("permissionKey"),
+                roles: t("roles"),
+                approvers: t("approvers"),
+                noRoles: t("noRoles"),
+                noApprovers: t("noApprovers"),
+                moreApprovers: (count) => t("moreApprovers", { count }),
+                status: t(`matrixStatus_${item.status}`),
+              }}
+            />
+          ))}
         </div>
       </section>
 
@@ -257,6 +298,71 @@ function PolicyBadge({
   )
 }
 
+function ApproverMatrixCard({
+  item,
+  labels,
+}: {
+  item: ApprovalPermissionMatrixItem
+  labels: {
+    workflow: string
+    approverCount: (count: number) => string
+    permissionKey: string
+    roles: string
+    approvers: string
+    noRoles: string
+    noApprovers: string
+    moreApprovers: (count: number) => string
+    status: string
+  }
+}) {
+  const visibleApprovers = item.approverLabels.slice(0, 4)
+  const hiddenApproverCount = item.approverLabels.length - visibleApprovers.length
+
+  return (
+    <div className={`rounded-lg border p-4 ${matrixCardClass(item.status)}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-foreground">{labels.workflow}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{labels.approverCount(item.approverCount)}</p>
+        </div>
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${matrixStatusClass(item.status)}`}>
+          {matrixStatusIcon(item.status)}
+          {labels.status}
+        </span>
+      </div>
+      <div className="mt-4 space-y-3 text-sm">
+        <div>
+          <div className="text-xs font-medium text-muted-foreground">{labels.permissionKey}</div>
+          <div className="mt-1 font-mono text-xs text-foreground">{item.permissionKey}</div>
+        </div>
+        <div>
+          <div className="text-xs font-medium text-muted-foreground">{labels.roles}</div>
+          <div className="mt-1 text-foreground">{item.roleLabels.length > 0 ? item.roleLabels.join(", ") : labels.noRoles}</div>
+        </div>
+        <div>
+          <div className="text-xs font-medium text-muted-foreground">{labels.approvers}</div>
+          {visibleApprovers.length === 0 ? (
+            <div className="mt-1 text-danger">{labels.noApprovers}</div>
+          ) : (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {visibleApprovers.map((approver) => (
+                <span key={approver} className="rounded-full bg-background px-2 py-1 text-xs font-medium text-foreground">
+                  {approver}
+                </span>
+              ))}
+              {hiddenApproverCount > 0 ? (
+                <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+                  {labels.moreApprovers(hiddenApproverCount)}
+                </span>
+              ) : null}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function kindIcon(kind: ApprovalInboxItem["kind"]): React.ReactNode {
   if (kind === "disposal_review") return <Trash2 className="h-4 w-4" />
   if (kind === "maintenance_close") return <Wrench className="h-4 w-4" />
@@ -289,4 +395,65 @@ function summaryClass(tone: "danger" | "warning" | "success" | "muted") {
   if (tone === "warning") return "border-warning/30 bg-warning/5 text-warning"
   if (tone === "success") return "border-success/30 bg-success/5 text-success"
   return "border-border bg-surface text-muted-foreground"
+}
+
+function matrixCardClass(status: ApprovalPermissionMatrixItem["status"]) {
+  if (status === "missing") return "border-danger/30 bg-danger/5"
+  if (status === "thin") return "border-warning/30 bg-warning/5"
+  return "border-success/30 bg-success/5"
+}
+
+function matrixStatusClass(status: ApprovalPermissionMatrixItem["status"]) {
+  if (status === "missing") return "bg-danger/10 text-danger"
+  if (status === "thin") return "bg-warning/10 text-warning"
+  return "bg-success/10 text-success"
+}
+
+function matrixStatusIcon(status: ApprovalPermissionMatrixItem["status"]) {
+  if (status === "ready") return <CheckCircle2 className="h-3 w-3" />
+  return <AlertTriangle className="h-3 w-3" />
+}
+
+async function getApprovalPermissionMatrixUsers() {
+  const users = await prisma.user.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      userRoles: {
+        select: {
+          role: {
+            select: {
+              name: true,
+              displayName: true,
+              displayNameTh: true,
+              isActive: true,
+              rolePermissions: {
+                select: {
+                  permission: { select: { module: true, action: true } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: { displayName: "asc" },
+  })
+
+  return users.map((user) => {
+    const activeRoles = user.userRoles.map((userRole) => userRole.role).filter((role) => role.isActive)
+    const permissionKeys = new Set(
+      activeRoles.flatMap((role) => role.rolePermissions.map((rolePermission) => `${rolePermission.permission.module}:${rolePermission.permission.action}`))
+    )
+
+    return {
+      id: user.id,
+      label: `${user.displayName} (${user.username})`,
+      roleKeys: activeRoles.map((role) => role.name),
+      roleLabels: activeRoles.map((role) => role.displayNameTh ?? role.displayName),
+      permissionKeys: Array.from(permissionKeys),
+    }
+  })
 }
