@@ -1,35 +1,33 @@
 import { prisma } from "@/lib/db"
-import {
-  isSyntheticRecordId,
-  normalizeLogModule,
-  parseLogJson,
-  type SystemLogRecordLabels,
-} from "@/lib/system-log-presenter"
+import { type SystemLogRecordLabels } from "@/lib/system-log-presenter"
+import { collectSystemLogRecordLabelRefs, getSystemLogRecordLabelIds, type SystemLogRowForLabels } from "@/lib/system-log-record-label-refs"
 
-export type SystemLogRowForLabels = {
-  recordId: string | null
-  action: string
-  module: string
-  oldValue: string | null
-  newValue: string | null
-}
+export type { SystemLogRowForLabels }
 
 export async function buildSystemLogRecordLabels(logs: SystemLogRowForLabels[]): Promise<SystemLogRecordLabels> {
-  const idsByModule = new Map<string, Set<string>>()
-  for (const log of logs) {
-    if (log.recordId && !isSyntheticRecordId(log.recordId)) {
-      if (log.module === "audit") {
-        addRecordId(idsByModule, "auditRound", log.recordId)
-        addRecordId(idsByModule, "auditFinding", log.recordId)
-        addRecordId(idsByModule, "auditItem", log.recordId)
-      } else {
-        addRecordId(idsByModule, normalizeLogModule(log.module, log), log.recordId)
-      }
-    }
-    addReferencedValueIds(idsByModule, log)
-  }
+  const idsByModule = collectSystemLogRecordLabelRefs(logs)
+  const ids = (module: string) => getSystemLogRecordLabelIds(idsByModule, module)
+  const assetIds = ids("asset")
+  const maintenanceIds = ids("maintenance")
+  const disposalIds = ids("disposal")
+  const auditRoundIds = ids("auditRound")
+  const auditFindingIds = ids("auditFinding")
+  const auditItemIds = ids("auditItem")
+  const companyIds = ids("company")
+  const branchIds = ids("branch")
+  const departmentIds = ids("department")
+  const locationIds = ids("location")
+  const categoryIds = ids("category")
+  const brandIds = ids("brand")
+  const supplierIds = ids("supplier")
+  const employeeIds = ids("employee")
+  const userIds = ids("user")
+  const roleIds = ids("role")
+  const modelIds = ids("model")
+  const purchaseDocumentIds = ids("purchaseDocument")
+  const statusIds = ids("status")
+  const conditionIds = ids("condition")
 
-  const ids = (module: string) => Array.from(idsByModule.get(module) ?? [])
   const [
     assets,
     maintenanceTickets,
@@ -52,26 +50,26 @@ export async function buildSystemLogRecordLabels(logs: SystemLogRowForLabels[]):
     statuses,
     conditions,
   ] = await Promise.all([
-    prisma.asset.findMany({ where: { id: { in: ids("asset") } }, select: { id: true, assetTag: true, name: true } }),
-    prisma.maintenanceTicket.findMany({ where: { id: { in: ids("maintenance") } }, select: { id: true, repairNo: true, asset: { select: { assetTag: true } } } }),
-    prisma.disposalRequest.findMany({ where: { id: { in: ids("disposal") } }, select: { id: true, disposalNo: true, asset: { select: { assetTag: true } } } }),
-    prisma.auditRound.findMany({ where: { id: { in: ids("auditRound") } }, select: { id: true, auditNo: true, name: true } }),
-    prisma.auditFinding.findMany({ where: { id: { in: ids("auditFinding") } }, select: { id: true, findingType: true, asset: { select: { assetTag: true } }, auditRound: { select: { auditNo: true } } } }),
-    prisma.auditItem.findMany({ where: { id: { in: ids("auditItem") } }, select: { id: true, asset: { select: { assetTag: true } }, auditRound: { select: { auditNo: true } } } }),
-    prisma.company.findMany({ where: { id: { in: ids("company") } }, select: { id: true, code: true, nameTh: true } }),
-    prisma.branch.findMany({ where: { id: { in: ids("branch") } }, select: { id: true, code: true, name: true } }),
-    prisma.department.findMany({ where: { id: { in: ids("department") } }, select: { id: true, code: true, name: true } }),
-    prisma.location.findMany({ where: { id: { in: ids("location") } }, select: { id: true, code: true, name: true } }),
-    prisma.assetCategory.findMany({ where: { id: { in: ids("category") } }, select: { id: true, code: true, name: true } }),
-    prisma.assetBrand.findMany({ where: { id: { in: ids("brand") } }, select: { id: true, name: true } }),
-    prisma.supplier.findMany({ where: { id: { in: ids("supplier") } }, select: { id: true, code: true, name: true } }),
-    prisma.employee.findMany({ where: { id: { in: ids("employee") } }, select: { id: true, code: true, fullNameTh: true } }),
-    prisma.user.findMany({ where: { id: { in: ids("user") } }, select: { id: true, username: true, displayName: true } }),
-    prisma.role.findMany({ where: { id: { in: ids("role") } }, select: { id: true, displayName: true, name: true } }),
-    prisma.assetModel.findMany({ where: { id: { in: ids("model") } }, select: { id: true, name: true, brand: { select: { name: true } } } }),
-    prisma.purchaseDocument.findMany({ where: { id: { in: ids("purchaseDocument") } }, select: { id: true, documentType: true, documentNo: true } }),
-    prisma.assetStatus.findMany({ where: { id: { in: ids("status") } }, select: { id: true, nameTh: true, name: true } }),
-    prisma.assetCondition.findMany({ where: { id: { in: ids("condition") } }, select: { id: true, nameTh: true, name: true } }),
+    findManyWhenIds(assetIds, () => prisma.asset.findMany({ where: { id: { in: assetIds } }, select: { id: true, assetTag: true, name: true } })),
+    findManyWhenIds(maintenanceIds, () => prisma.maintenanceTicket.findMany({ where: { id: { in: maintenanceIds } }, select: { id: true, repairNo: true, asset: { select: { assetTag: true } } } })),
+    findManyWhenIds(disposalIds, () => prisma.disposalRequest.findMany({ where: { id: { in: disposalIds } }, select: { id: true, disposalNo: true, asset: { select: { assetTag: true } } } })),
+    findManyWhenIds(auditRoundIds, () => prisma.auditRound.findMany({ where: { id: { in: auditRoundIds } }, select: { id: true, auditNo: true, name: true } })),
+    findManyWhenIds(auditFindingIds, () => prisma.auditFinding.findMany({ where: { id: { in: auditFindingIds } }, select: { id: true, findingType: true, asset: { select: { assetTag: true } }, auditRound: { select: { auditNo: true } } } })),
+    findManyWhenIds(auditItemIds, () => prisma.auditItem.findMany({ where: { id: { in: auditItemIds } }, select: { id: true, asset: { select: { assetTag: true } }, auditRound: { select: { auditNo: true } } } })),
+    findManyWhenIds(companyIds, () => prisma.company.findMany({ where: { id: { in: companyIds } }, select: { id: true, code: true, nameTh: true } })),
+    findManyWhenIds(branchIds, () => prisma.branch.findMany({ where: { id: { in: branchIds } }, select: { id: true, code: true, name: true } })),
+    findManyWhenIds(departmentIds, () => prisma.department.findMany({ where: { id: { in: departmentIds } }, select: { id: true, code: true, name: true } })),
+    findManyWhenIds(locationIds, () => prisma.location.findMany({ where: { id: { in: locationIds } }, select: { id: true, code: true, name: true } })),
+    findManyWhenIds(categoryIds, () => prisma.assetCategory.findMany({ where: { id: { in: categoryIds } }, select: { id: true, code: true, name: true } })),
+    findManyWhenIds(brandIds, () => prisma.assetBrand.findMany({ where: { id: { in: brandIds } }, select: { id: true, name: true } })),
+    findManyWhenIds(supplierIds, () => prisma.supplier.findMany({ where: { id: { in: supplierIds } }, select: { id: true, code: true, name: true } })),
+    findManyWhenIds(employeeIds, () => prisma.employee.findMany({ where: { id: { in: employeeIds } }, select: { id: true, code: true, fullNameTh: true } })),
+    findManyWhenIds(userIds, () => prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, username: true, displayName: true } })),
+    findManyWhenIds(roleIds, () => prisma.role.findMany({ where: { id: { in: roleIds } }, select: { id: true, displayName: true, name: true } })),
+    findManyWhenIds(modelIds, () => prisma.assetModel.findMany({ where: { id: { in: modelIds } }, select: { id: true, name: true, brand: { select: { name: true } } } })),
+    findManyWhenIds(purchaseDocumentIds, () => prisma.purchaseDocument.findMany({ where: { id: { in: purchaseDocumentIds } }, select: { id: true, documentType: true, documentNo: true } })),
+    findManyWhenIds(statusIds, () => prisma.assetStatus.findMany({ where: { id: { in: statusIds } }, select: { id: true, nameTh: true, name: true } })),
+    findManyWhenIds(conditionIds, () => prisma.assetCondition.findMany({ where: { id: { in: conditionIds } }, select: { id: true, nameTh: true, name: true } })),
   ])
 
   return {
@@ -98,40 +96,6 @@ export async function buildSystemLogRecordLabels(logs: SystemLogRowForLabels[]):
   }
 }
 
-function addRecordId(idsByModule: Map<string, Set<string>>, module: string, id: string) {
-  if (!idsByModule.has(module)) idsByModule.set(module, new Set())
-  idsByModule.get(module)?.add(id)
-}
-
-function addReferencedValueIds(idsByModule: Map<string, Set<string>>, log: SystemLogRowForLabels) {
-  const values = [parseLogJson(log.oldValue), parseLogJson(log.newValue)].filter((value): value is Record<string, unknown> => Boolean(value))
-  for (const value of values) {
-    addStringReference(idsByModule, "location", value.currentLocationId)
-    addStringReference(idsByModule, "location", value.locationId)
-    addStringReference(idsByModule, "location", value.nextLocationId)
-    addStringReference(idsByModule, "employee", value.custodianId)
-    addStringReference(idsByModule, "employee", value.returnByEmployeeId)
-    addStringReference(idsByModule, "employee", value.receiveByEmployeeId)
-    addStringReference(idsByModule, "department", value.departmentId)
-    addStringReference(idsByModule, "asset", value.assetId)
-    addStringReference(idsByModule, "asset", value.parentAssetId)
-    addStringReference(idsByModule, "company", value.companyId)
-    addStringReference(idsByModule, "branch", value.branchId)
-    addStringReference(idsByModule, "category", value.categoryId)
-    addStringReference(idsByModule, "brand", value.brandId)
-    addStringReference(idsByModule, "model", value.modelId)
-    addStringReference(idsByModule, "supplier", value.supplierId)
-    addStringReference(idsByModule, "location", value.homeLocationId)
-    addStringReference(idsByModule, "status", value.statusId)
-    addStringReference(idsByModule, "status", value.nextStatusId)
-    addStringReference(idsByModule, "condition", value.conditionId)
-    addStringReference(idsByModule, "condition", value.conditionBefore)
-    addStringReference(idsByModule, "condition", value.conditionAfter)
-    addStringReference(idsByModule, "role", value.roleId)
-    addStringReference(idsByModule, "role", value.ldap_default_role)
-  }
-}
-
-function addStringReference(idsByModule: Map<string, Set<string>>, module: string, value: unknown) {
-  if (typeof value === "string" && value.trim()) addRecordId(idsByModule, module, value)
+function findManyWhenIds<T>(ids: string[], query: () => Promise<T[]>) {
+  return ids.length > 0 ? query() : Promise.resolve([] as T[])
 }
