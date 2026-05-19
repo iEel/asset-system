@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { assetLabelLayouts, assetLabelSettingKeys, assetLabelTapeSizes, assetLabelTemplateTokens } from "@/lib/asset-label-template"
+import { assetQrPublicBaseUrlKey, normalizePublicQrBaseUrl } from "@/lib/asset-qr"
 import {
   checkinDocumentTemplateKey,
   checkoutDocumentTemplateKey,
@@ -71,6 +72,14 @@ export const systemSettingsUpdateSchema = z.object({
       context.addIssue({
         code: "custom",
         message: "Default asset label tape size must be 12, 18, 24, or custom",
+        path: ["settings", index, "value"],
+      })
+    }
+
+    if (setting.key === assetQrPublicBaseUrlKey && setting.value && !normalizePublicQrBaseUrl(setting.value)) {
+      context.addIssue({
+        code: "custom",
+        message: "Public QR base URL must be a valid http or https URL",
         path: ["settings", index, "value"],
       })
     }

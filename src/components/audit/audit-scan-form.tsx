@@ -7,6 +7,7 @@ import { AlertTriangle, Camera, CheckCircle2, ImagePlus, Info, Keyboard, Loader2
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
+import { extractAssetLookupCandidatesFromScanValue } from "@/lib/asset-qr"
 import { normalizeAssetOwnershipType, requiresCustodian } from "@/lib/asset-ownership"
 
 type Option = { id: string; label: string }
@@ -244,7 +245,7 @@ export function AuditScanForm({
   }
 
   async function selectScannedAsset(rawValue: string, source: "manual" | "qr") {
-    const normalizedValues = normalizeScanValue(rawValue)
+    const normalizedValues = extractAssetLookupCandidatesFromScanValue(rawValue)
     const matchedItem = normalizedValues.map((value) => assetLookup.get(value)).find(Boolean)
     if (!matchedItem) {
       const foundAsset = await findOutOfScopeAsset(rawValue)
@@ -288,7 +289,7 @@ export function AuditScanForm({
   }
 
   async function findOutOfScopeAsset(rawValue: string) {
-    const candidates = normalizeScanValue(rawValue)
+    const candidates = extractAssetLookupCandidatesFromScanValue(rawValue)
     for (const candidate of candidates) {
       if (candidate.length < 2) continue
       const response = await fetch(`/api/search?q=${encodeURIComponent(candidate)}`)
@@ -868,23 +869,6 @@ function buildAssetLookup(items: AuditScanItem[]) {
     lookup.set(item.label.toLowerCase(), item)
   }
   return lookup
-}
-
-function normalizeScanValue(value: string) {
-  const trimmed = value.trim()
-  const candidates = [trimmed]
-  try {
-    const url = new URL(trimmed)
-    const segments = url.pathname.split("/").filter(Boolean)
-    const assetIndex = segments.findIndex((segment) => segment === "assets")
-    if (assetIndex >= 0 && segments[assetIndex + 1]) candidates.push(segments[assetIndex + 1])
-    if (segments.length > 0) candidates.push(segments[segments.length - 1])
-  } catch {
-    const parts = trimmed.split(/[/?#]/).filter(Boolean)
-    if (parts.length > 0) candidates.push(parts[parts.length - 1])
-  }
-
-  return Array.from(new Set(candidates.map((candidate) => candidate.trim().toLowerCase()).filter(Boolean)))
 }
 
 function OptionList({ emptyLabel, options }: { emptyLabel?: string; options: Option[] }) {

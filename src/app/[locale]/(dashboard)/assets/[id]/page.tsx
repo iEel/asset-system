@@ -37,6 +37,7 @@ import { MobileActionBar } from "@/components/ui/mobile-action-bar"
 import { ActivityDrawer } from "@/components/ui/activity-drawer"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
+import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -81,111 +82,117 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const tBrandModel = await getTranslations("brandModel")
   const tMaintenance = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
-  const asset = await prisma.asset.findFirst({
-    where: { id, isActive: true },
-    include: {
-      category: { select: { code: true, name: true } },
-      brand: { select: { name: true } },
-      model: { select: { id: true, name: true, specs: true } },
-      company: { select: { code: true, nameTh: true } },
-      branch: { select: { code: true, name: true } },
-      department: { select: { code: true, name: true } },
-      custodian: { select: { code: true, fullNameTh: true, email: true } },
-      homeLocation: { select: { code: true, name: true } },
-      currentLocation: { select: { code: true, name: true } },
-      status: { select: { name: true, nameTh: true, colorCode: true } },
-      condition: { select: { name: true, nameTh: true, colorCode: true } },
-      supplier: { select: { code: true, name: true } },
-      movements: {
-        orderBy: { performedAt: "desc" },
-        take: 20,
-      },
-      checkouts: {
-        orderBy: { checkoutDate: "desc" },
-        include: {
-          custodian: { select: { code: true, fullNameTh: true } },
-          checkin: {
-            include: {
-              returnByEmployee: { select: { code: true, fullNameTh: true } },
-              receiveByEmployee: { select: { code: true, fullNameTh: true } },
+  const [asset, qrBaseUrlSetting] = await Promise.all([
+    prisma.asset.findFirst({
+      where: { id, isActive: true },
+      include: {
+        category: { select: { code: true, name: true } },
+        brand: { select: { name: true } },
+        model: { select: { id: true, name: true, specs: true } },
+        company: { select: { code: true, nameTh: true } },
+        branch: { select: { code: true, name: true } },
+        department: { select: { code: true, name: true } },
+        custodian: { select: { code: true, fullNameTh: true, email: true } },
+        homeLocation: { select: { code: true, name: true } },
+        currentLocation: { select: { code: true, name: true } },
+        status: { select: { name: true, nameTh: true, colorCode: true } },
+        condition: { select: { name: true, nameTh: true, colorCode: true } },
+        supplier: { select: { code: true, name: true } },
+        movements: {
+          orderBy: { performedAt: "desc" },
+          take: 20,
+        },
+        checkouts: {
+          orderBy: { checkoutDate: "desc" },
+          include: {
+            custodian: { select: { code: true, fullNameTh: true } },
+            checkin: {
+              include: {
+                returnByEmployee: { select: { code: true, fullNameTh: true } },
+                receiveByEmployee: { select: { code: true, fullNameTh: true } },
+              },
             },
           },
         },
-      },
-      attachments: {
-        where: { isActive: true },
-        orderBy: { uploadedAt: "desc" },
-      },
-      purchaseDocumentLinks: {
-        orderBy: { linkedAt: "desc" },
-        include: {
-          purchaseDocument: {
-            include: {
-              supplier: { select: { code: true, name: true } },
+        attachments: {
+          where: { isActive: true },
+          orderBy: { uploadedAt: "desc" },
+        },
+        purchaseDocumentLinks: {
+          orderBy: { linkedAt: "desc" },
+          include: {
+            purchaseDocument: {
+              include: {
+                supplier: { select: { code: true, name: true } },
+              },
             },
           },
         },
-      },
-      parentComponents: {
-        orderBy: { installedAt: "desc" },
-        include: {
-          componentAsset: {
-            select: { id: true, assetTag: true, name: true, serialNumber: true },
+        parentComponents: {
+          orderBy: { installedAt: "desc" },
+          include: {
+            componentAsset: {
+              select: { id: true, assetTag: true, name: true, serialNumber: true },
+            },
+          },
+        },
+        installedInLinks: {
+          where: { status: "installed", removedAt: null },
+          orderBy: { installedAt: "desc" },
+          include: {
+            parentAsset: {
+              select: { id: true, assetTag: true, name: true, serialNumber: true },
+            },
+            componentAsset: {
+              select: { id: true, assetTag: true, name: true, serialNumber: true },
+            },
+          },
+        },
+        maintenanceTickets: {
+          where: { isActive: true },
+          orderBy: { reportedDate: "desc" },
+          take: 10,
+          include: {
+            reportedBy: { select: { code: true, fullNameTh: true } },
+          },
+        },
+        auditItems: {
+          orderBy: [{ lastScanAt: "desc" }, { createdAt: "desc" }],
+          take: 10,
+          include: {
+            auditRound: { select: { id: true, auditNo: true, name: true } },
+          },
+        },
+        auditFindings: {
+          orderBy: { reportedAt: "desc" },
+          take: 20,
+          include: {
+            auditRound: { select: { auditNo: true, name: true } },
+          },
+        },
+        disposalRequests: {
+          where: { isActive: true },
+          orderBy: { requestDate: "desc" },
+          take: 20,
+        },
+        assignedLicenses: {
+          where: { isActive: true },
+          orderBy: { assetTag: "asc" },
+          select: {
+            id: true,
+            assetTag: true,
+            name: true,
+            licenseTotalSeats: true,
+            licenseUsedSeats: true,
           },
         },
       },
-      installedInLinks: {
-        where: { status: "installed", removedAt: null },
-        orderBy: { installedAt: "desc" },
-        include: {
-          parentAsset: {
-            select: { id: true, assetTag: true, name: true, serialNumber: true },
-          },
-          componentAsset: {
-            select: { id: true, assetTag: true, name: true, serialNumber: true },
-          },
-        },
-      },
-      maintenanceTickets: {
-        where: { isActive: true },
-        orderBy: { reportedDate: "desc" },
-        take: 10,
-        include: {
-          reportedBy: { select: { code: true, fullNameTh: true } },
-        },
-      },
-      auditItems: {
-        orderBy: [{ lastScanAt: "desc" }, { createdAt: "desc" }],
-        take: 10,
-        include: {
-          auditRound: { select: { id: true, auditNo: true, name: true } },
-        },
-      },
-      auditFindings: {
-        orderBy: { reportedAt: "desc" },
-        take: 20,
-        include: {
-          auditRound: { select: { auditNo: true, name: true } },
-        },
-      },
-      disposalRequests: {
-        where: { isActive: true },
-        orderBy: { requestDate: "desc" },
-        take: 20,
-      },
-      assignedLicenses: {
-        where: { isActive: true },
-        orderBy: { assetTag: "asc" },
-        select: {
-          id: true,
-          assetTag: true,
-          name: true,
-          licenseTotalSeats: true,
-          licenseUsedSeats: true,
-        },
-      },
-    },
-  })
+    }),
+    prisma.systemSetting.findUnique({
+      where: { key: assetQrPublicBaseUrlKey },
+      select: { value: true },
+    }),
+  ])
 
   if (!asset) notFound()
 
@@ -631,7 +638,11 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
     from: movement.from ?? null,
     to: movement.to ?? null,
   }))
-  const qrValue = `${process.env.AUTH_URL ?? ""}${detailPath}`
+  const qrValue = buildAssetQrValue({
+    assetId: asset.id,
+    publicBaseUrl: qrBaseUrlSetting?.value,
+    fallbackBaseUrl: process.env.AUTH_URL,
+  })
   const sectionLinks = [
     { id: "overview", label: t("detailSections.overview") },
     ...(asset.model && (modelSpecs.items.length > 0 || modelSpecs.notes)

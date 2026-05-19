@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { assetLabelSettingKeys, parseAssetLabelTemplates } from "@/lib/asset-label-template"
+import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
 import { AssetLabelPrint } from "@/components/assets/asset-label-print"
 
 type AssetLabelsPageProps = {
@@ -32,7 +33,7 @@ export default async function AssetLabelsPage({ params, searchParams }: AssetLab
       },
     }),
     prisma.systemSetting.findMany({
-      where: { key: { in: [...assetLabelSettingKeys] } },
+      where: { key: { in: [...assetLabelSettingKeys, assetQrPublicBaseUrlKey] } },
       select: { key: true, value: true },
     }),
   ])
@@ -41,6 +42,7 @@ export default async function AssetLabelsPage({ params, searchParams }: AssetLab
 
   const assetMap = new Map(assets.map((asset) => [asset.id, asset]))
   const orderedAssets = ids.map((id) => assetMap.get(id)).filter((asset) => asset != null)
+  const settingValues = Object.fromEntries(labelSettings.map((setting) => [setting.key, setting.value]))
 
   return (
     <AssetLabelPrint
@@ -55,11 +57,15 @@ export default async function AssetLabelsPage({ params, searchParams }: AssetLab
           company: asset.company.code,
           branch: asset.branch.code,
           location: `${asset.currentLocation.code} - ${asset.currentLocation.name}`,
-          qrValue: `${process.env.AUTH_URL ?? ""}${detailPath}`,
+          qrValue: buildAssetQrValue({
+            assetId: asset.id,
+            publicBaseUrl: settingValues[assetQrPublicBaseUrlKey],
+            fallbackBaseUrl: process.env.AUTH_URL,
+          }),
         }
       })}
       backHref={`/${locale}/assets`}
-      labelTemplates={parseAssetLabelTemplates(Object.fromEntries(labelSettings.map((setting) => [setting.key, setting.value])))}
+      labelTemplates={parseAssetLabelTemplates(settingValues)}
       translations={{
         title: t("printLabelsTitle"),
         preview: t("printLabelsPreview"),

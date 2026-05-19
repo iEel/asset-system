@@ -8,6 +8,6 @@ export const config = {
     "/",
     "/(th|en)/:path*",
     // Skip api routes, static files, images
-    "/((?!api|_next|_vercel|.*\\..*).*)",
+    "/((?!api|q|_next|_vercel|.*\\..*).*)",
   ],
 }

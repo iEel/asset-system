@@ -17,6 +17,7 @@ import {
   type AssetLabelTapeSize,
   type AssetLabelTemplates,
 } from "@/lib/asset-label-template"
+import { assetQrPublicBaseUrlKey, buildAssetQrValue, normalizePublicQrBaseUrl } from "@/lib/asset-qr"
 import {
   assetTagCategoryPrefixesKey,
   assetTagFormatTemplateKey,
@@ -112,6 +113,11 @@ type SystemSettingsFormProps = {
     invalidFormatTemplate: string
     labelPrintTemplate: string
     labelPrintTemplateDescription: string
+    publicQrBaseUrl: string
+    publicQrBaseUrlDescription: string
+    publicQrBaseUrlPlaceholder: string
+    publicQrPreview: string
+    publicQrResolverPath: string
     defaultTapeSize: string
     tape12mmTemplate: string
     tape18mmTemplate: string
@@ -135,6 +141,7 @@ type SystemSettingsFormProps = {
     labelTemplateTokens: string
     invalidLabelTemplate: string
     invalidLabelSize: string
+    invalidPublicQrBaseUrl: string
     operationDocumentNumbers: string
     operationDocumentNumbersDescription: string
     checkoutDocumentTemplate: string
@@ -322,6 +329,7 @@ const friendlySettingKeys = new Set([
   "default_currency",
   assetTagCategoryPrefixesKey,
   assetTagFormatTemplateKey,
+  assetQrPublicBaseUrlKey,
   ...assetLabelSettingKeys,
   ...operationDocumentSettingKeys,
   ...notificationRuleSettingKeys,
@@ -422,6 +430,12 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
   const templateTokens = Array.from(formatTemplate.matchAll(/\{([A-Za-z0-9]+)\}/g)).map((match) => match[1])
   const hasInvalidTemplate =
     !formatTemplate.includes("{running}") || templateTokens.some((token) => !assetTagFormatTokens.includes(token))
+  const publicQrBaseUrl = getValue(assetQrPublicBaseUrlKey)
+  const hasInvalidPublicQrBaseUrl = Boolean(publicQrBaseUrl) && !normalizePublicQrBaseUrl(publicQrBaseUrl)
+  const publicQrPreviewValue = buildAssetQrValue({
+    assetId: "sample-asset-id",
+    publicBaseUrl: publicQrBaseUrl,
+  })
   const labelTemplateKeys = assetLabelSettingKeys.filter((key) => key.endsWith("_template"))
   const hasInvalidLabelTemplate = labelTemplateKeys.some((key) => {
     const tokens = Array.from(getValue(key).matchAll(/\{([A-Za-z0-9]+)\}/g)).map((match) => match[1])
@@ -551,6 +565,10 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     }
     if (hasInvalidTemplate) {
       toast.error(labels.invalidFormatTemplate)
+      return
+    }
+    if (hasInvalidPublicQrBaseUrl) {
+      toast.error(labels.invalidPublicQrBaseUrl)
       return
     }
     if (hasInvalidLabelTemplate) {
@@ -779,6 +797,26 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.labelPrintTemplate} description={labels.labelPrintTemplateDescription} />
         <div className="space-y-4 px-4 py-4">
+          <div className="grid gap-4 rounded-md border border-border bg-muted/20 p-3 xl:grid-cols-[minmax(0,1fr)_minmax(260px,360px)]">
+            <div className="space-y-2">
+              <Field label={labels.publicQrBaseUrl} htmlFor="asset-qr-public-base-url">
+                <input
+                  id="asset-qr-public-base-url"
+                  value={publicQrBaseUrl}
+                  placeholder={labels.publicQrBaseUrlPlaceholder}
+                  onChange={(event) => setValue(assetQrPublicBaseUrlKey, event.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+              <p className="text-sm text-muted-foreground">{labels.publicQrBaseUrlDescription}</p>
+              {hasInvalidPublicQrBaseUrl ? <ValidationMessage message={labels.invalidPublicQrBaseUrl} /> : null}
+            </div>
+            <div className="rounded-md border border-border bg-background p-3">
+              <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{labels.publicQrPreview}</div>
+              <div className="mt-2 break-all font-mono text-xs text-foreground">{publicQrPreviewValue}</div>
+              <div className="mt-2 text-xs text-muted-foreground">{labels.publicQrResolverPath}: /q/a/{"{assetId}"}</div>
+            </div>
+          </div>
           <div className="grid gap-4 md:grid-cols-3">
             <Field label={labels.defaultTapeSize} htmlFor="asset-label-default-tape-size">
               <select
@@ -817,7 +855,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
           </div>
           {hasInvalidLabelTemplate ? <ValidationMessage message={labels.invalidLabelTemplate} /> : null}
           {hasInvalidLabelSize ? <ValidationMessage message={labels.invalidLabelSize} /> : null}
-          <LabelPreviewPanel labels={labels} templates={labelTemplates} />
+          <LabelPreviewPanel labels={labels} templates={labelTemplates} qrValue={publicQrPreviewValue} />
           <div className="space-y-2">
             <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{labels.labelTemplateTokens}</div>
             <div className="flex flex-wrap gap-2">
@@ -1761,7 +1799,15 @@ function LabelTemplatePanel({
   )
 }
 
-function LabelPreviewPanel({ labels, templates }: { labels: SystemSettingsFormProps["labels"]; templates: AssetLabelTemplates }) {
+function LabelPreviewPanel({
+  labels,
+  templates,
+  qrValue,
+}: {
+  labels: SystemSettingsFormProps["labels"]
+  templates: AssetLabelTemplates
+  qrValue: string
+}) {
   const tapeSize = templates.defaultTapeSize
   const config = templates.tapes[tapeSize]
   const values = {
@@ -1781,7 +1827,7 @@ function LabelPreviewPanel({ labels, templates }: { labels: SystemSettingsFormPr
   const gapPx = config.gapMm * 4
   const qr = (
     <div className="shrink-0 rounded-sm border border-slate-300 bg-white p-1">
-      <QRCodeSVG value="AST-HQ-COM-0001" size={Math.min(config.qrSize, Math.max(28, heightPx - marginPx * 2 - 6))} level="M" includeMargin={false} />
+      <QRCodeSVG value={qrValue} size={Math.min(config.qrSize, Math.max(28, heightPx - marginPx * 2 - 6))} level="M" includeMargin={false} />
     </div>
   )
   const text = (

@@ -1,4 +1,5 @@
 import { assetLabelSettingKeys } from "@/lib/asset-label-template"
+import { assetQrPublicBaseUrlKey } from "@/lib/asset-qr"
 import { assetDataQualityRulesKey, defaultAssetDataQualityRules } from "@/lib/data-quality-rules"
 import {
   workflowApprovalAuditCloseRequiredKey,
@@ -126,6 +127,7 @@ export const systemSettingDefaults = [
   { key: "ldap_sync_default_department_code", value: "", description: "Department code เริ่มต้นสำหรับ employee ที่ sync จาก LDAP" },
   { key: "ldap_sync_deactivate_missing", value: "false", description: "ปิดใช้งาน employee ที่ไม่พบใน LDAP sync result" },
   { key: "asset_label_default_tape_size", value: "18", description: "ขนาดเทปเริ่มต้นสำหรับพิมพ์ Asset Label: 12, 18, 24 หรือ custom" },
+  { key: assetQrPublicBaseUrlKey, value: "", description: "Public base URL ถาวรสำหรับ QR Code ที่พิมพ์บน Label เช่น https://asset.company.com" },
   { key: "asset_label_12_width_mm", value: "60", description: "ความกว้าง label สำหรับเทป 12mm หน่วยมิลลิเมตร" },
   { key: "asset_label_12_height_mm", value: "12", description: "ความสูง label สำหรับเทป 12mm หน่วยมิลลิเมตร" },
   { key: "asset_label_12_qr_size", value: "34", description: "ขนาด QR Code สำหรับเทป 12mm หน่วย px" },

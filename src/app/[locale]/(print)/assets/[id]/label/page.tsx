@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { assetLabelSettingKeys, parseAssetLabelTemplates } from "@/lib/asset-label-template"
+import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
 import { AssetLabelPrint } from "@/components/assets/asset-label-print"
 
 type AssetLabelPageProps = {
@@ -27,7 +28,7 @@ export default async function AssetLabelPage({ params }: AssetLabelPageProps) {
       },
     }),
     prisma.systemSetting.findMany({
-      where: { key: { in: [...assetLabelSettingKeys] } },
+      where: { key: { in: [...assetLabelSettingKeys, assetQrPublicBaseUrlKey] } },
       select: { key: true, value: true },
     }),
   ])
@@ -35,7 +36,12 @@ export default async function AssetLabelPage({ params }: AssetLabelPageProps) {
   if (!asset) notFound()
 
   const detailPath = `/${locale}/assets/${asset.id}`
-  const qrValue = `${process.env.AUTH_URL ?? ""}${detailPath}`
+  const settingValues = Object.fromEntries(labelSettings.map((setting) => [setting.key, setting.value]))
+  const qrValue = buildAssetQrValue({
+    assetId: asset.id,
+    publicBaseUrl: settingValues[assetQrPublicBaseUrlKey],
+    fallbackBaseUrl: process.env.AUTH_URL,
+  })
 
   return (
     <AssetLabelPrint
@@ -52,7 +58,7 @@ export default async function AssetLabelPage({ params }: AssetLabelPageProps) {
         },
       ]}
       backHref={detailPath}
-      labelTemplates={parseAssetLabelTemplates(Object.fromEntries(labelSettings.map((setting) => [setting.key, setting.value])))}
+      labelTemplates={parseAssetLabelTemplates(settingValues)}
       translations={{
         title: t("printLabelTitle"),
         preview: t("printLabelPreview"),
