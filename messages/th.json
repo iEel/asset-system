@@ -51,6 +51,8 @@
     "subtitle": "สรุปอัตโนมัติจากงานที่ต้องติดตาม",
     "empty": "ยังไม่มีงานค้างที่ต้องแจ้งเตือน",
     "openWorkCenter": "เปิดศูนย์งานค้าง",
+    "approvalInbox": "งานรออนุมัติ",
+    "approvalInboxDetail": "รายการรวมจากตัดจำหน่าย ซ่อมบำรุง และตรวจนับ",
     "overdueMaintenance": "ซ่อมเกินกำหนด",
     "overdueMaintenanceDetail": "ใบซ่อมที่เลยกำหนด SLA",
     "pendingAuditFindings": "Finding รอตรวจ",

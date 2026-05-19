@@ -51,6 +51,8 @@
     "subtitle": "Automatically summarized from follow-up work",
     "empty": "No follow-up work to notify",
     "openWorkCenter": "Open Work Center",
+    "approvalInbox": "Approval Inbox",
+    "approvalInboxDetail": "Central queue across disposal, maintenance, and audit approvals",
     "overdueMaintenance": "Overdue repairs",
     "overdueMaintenanceDetail": "Tickets past their SLA due date",
     "pendingAuditFindings": "Findings pending review",
