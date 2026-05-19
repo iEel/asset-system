@@ -9,7 +9,7 @@ import { getApprovalAgeStatus, sortApprovalInboxItemsByAge } from "@/lib/approva
 import { approvalInboxFilters, filterApprovalInboxItems, parseApprovalInboxFilter, type ApprovalInboxFilter } from "@/lib/approval-inbox-filter"
 import { getApprovalInboxSnapshot } from "@/lib/approval-inbox-query"
 import { buildApprovalPermissionMatrix, type ApprovalPermissionMatrixItem } from "@/lib/approval-permission-matrix"
-import { prisma } from "@/lib/db"
+import { getApprovalPermissionMatrixUsers } from "@/lib/approval-permission-matrix-query"
 import { formatDateTime } from "@/lib/utils"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 
@@ -412,48 +412,4 @@ function matrixStatusClass(status: ApprovalPermissionMatrixItem["status"]) {
 function matrixStatusIcon(status: ApprovalPermissionMatrixItem["status"]) {
   if (status === "ready") return <CheckCircle2 className="h-3 w-3" />
   return <AlertTriangle className="h-3 w-3" />
-}
-
-async function getApprovalPermissionMatrixUsers() {
-  const users = await prisma.user.findMany({
-    where: { isActive: true },
-    select: {
-      id: true,
-      username: true,
-      displayName: true,
-      userRoles: {
-        select: {
-          role: {
-            select: {
-              name: true,
-              displayName: true,
-              displayNameTh: true,
-              isActive: true,
-              rolePermissions: {
-                select: {
-                  permission: { select: { module: true, action: true } },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    orderBy: { displayName: "asc" },
-  })
-
-  return users.map((user) => {
-    const activeRoles = user.userRoles.map((userRole) => userRole.role).filter((role) => role.isActive)
-    const permissionKeys = new Set(
-      activeRoles.flatMap((role) => role.rolePermissions.map((rolePermission) => `${rolePermission.permission.module}:${rolePermission.permission.action}`))
-    )
-
-    return {
-      id: user.id,
-      label: `${user.displayName} (${user.username})`,
-      roleKeys: activeRoles.map((role) => role.name),
-      roleLabels: activeRoles.map((role) => role.displayNameTh ?? role.displayName),
-      permissionKeys: Array.from(permissionKeys),
-    }
-  })
 }

@@ -32,6 +32,7 @@ import {
   Truck,
   History,
   Inbox,
+  Rocket,
   X,
 } from "lucide-react"
 import { useState } from "react"
@@ -140,6 +141,7 @@ export function Sidebar({
         { labelKey: "rolePermission", href: `/${locale}/admin/roles`, icon: <Settings size={18} /> },
         { labelKey: "approvalInbox", href: `/${locale}/admin/approvals`, icon: <FileCheck2 size={18} /> },
         { labelKey: "dataQuality", href: `/${locale}/admin/data-quality`, icon: <ShieldAlert size={18} /> },
+        { labelKey: "productionReadiness", href: `/${locale}/admin/readiness`, icon: <Rocket size={18} /> },
         { labelKey: "systemLog", href: `/${locale}/admin/logs`, icon: <History size={18} /> },
         { labelKey: "systemSetting", href: `/${locale}/admin/settings`, icon: <Settings size={18} /> },
       ],
