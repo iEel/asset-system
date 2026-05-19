@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server"
 import { ClipboardCheck, FileCheck2, ShieldCheck, Trash2, Wrench } from "lucide-react"
 import { getSessionUser } from "@/lib/auth-utils"
 import type { ApprovalInboxItem } from "@/lib/approval-inbox"
+import { getApprovalAgeStatus, sortApprovalInboxItemsByAge } from "@/lib/approval-aging"
 import { approvalInboxFilters, filterApprovalInboxItems, parseApprovalInboxFilter, type ApprovalInboxFilter } from "@/lib/approval-inbox-filter"
 import { getApprovalInboxSnapshot } from "@/lib/approval-inbox-query"
 import { formatDateTime } from "@/lib/utils"
@@ -26,8 +27,9 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
 
   const t = await getTranslations("approvalInboxPage")
   const { access, policy, items, summary } = snapshot
+  const sortedItems = sortApprovalInboxItemsByAge(items, policy.slaDays)
   const activeFilter = parseApprovalInboxFilter(query.module)
-  const filteredItems = filterApprovalInboxItems(items, activeFilter)
+  const filteredItems = filterApprovalInboxItems(sortedItems, activeFilter)
   const filterOptions: Array<{ key: ApprovalInboxFilter; label: string; count: number }> = approvalInboxFilters.map((filter) => ({
     key: filter,
     label: t(`filter_${filter}`),
@@ -62,7 +64,7 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
             <h2 className="font-semibold text-foreground">{t("policyTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("policyDescription")}</p>
           </div>
-          <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
             <PolicyBadge label={t("policyDisposal")} enabled={policy.disposalRequired && access.canApproveDisposal} enabledLabel={t("enabled")} disabledLabel={t("disabled")} />
             <PolicyBadge label={t("policyMaintenance")} enabled={policy.maintenanceCloseRequired && access.canCloseMaintenance} enabledLabel={t("enabled")} disabledLabel={t("disabled")} />
             <PolicyBadge label={t("policyAuditClose")} enabled={policy.auditCloseRequired && access.canApproveAudit} enabledLabel={t("enabled")} disabledLabel={t("disabled")} />
@@ -71,6 +73,10 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
               <div className="font-semibold text-foreground">
                 {policy.minApprovers} / {policy.segregationRequired ? t("sodOn") : t("sodOff")}
               </div>
+            </div>
+            <div className="rounded-md border border-border bg-background px-3 py-2">
+              <div className="text-xs text-muted-foreground">{t("approvalSla")}</div>
+              <div className="font-semibold text-foreground">{t("slaDays", { days: policy.slaDays })}</div>
             </div>
           </div>
         </div>
@@ -108,7 +114,18 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
         ) : (
           <div className="divide-y divide-border">
             {filteredItems.map((item) => (
-              <ApprovalInboxRow key={item.id} item={item} locale={locale} labels={{ requestedBy: t("requestedBy"), requestedAt: t("requestedAt") }} />
+              <ApprovalInboxRow
+                key={item.id}
+                item={item}
+                locale={locale}
+                slaDays={policy.slaDays}
+                labels={{
+                  requestedBy: t("requestedBy"),
+                  requestedAt: t("requestedAt"),
+                  waitingDays: (days) => t("waitingDays", { days }),
+                  overdueDays: (days) => t("overdueDays", { days }),
+                }}
+              />
             ))}
           </div>
         )}
@@ -146,12 +163,20 @@ function FilterChip({
 function ApprovalInboxRow({
   item,
   locale,
+  slaDays,
   labels,
 }: {
   item: ApprovalInboxItem
   locale: string
-  labels: { requestedBy: string; requestedAt: string }
+  slaDays: number
+  labels: {
+    requestedBy: string
+    requestedAt: string
+    waitingDays: (days: number) => string
+    overdueDays: (days: number) => string
+  }
 }) {
+  const ageStatus = getApprovalAgeStatus(item.requestedAt, new Date(), slaDays)
   return (
     <Link href={item.href} className="block p-5 transition-colors hover:bg-accent">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -160,6 +185,9 @@ function ApprovalInboxRow({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${pillClass(item.tone)}`}>{moduleLabel(item.module, locale)}</span>
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${ageStatus.isOverdue ? "bg-danger/10 text-danger" : "bg-muted text-muted-foreground"}`}>
+                {ageStatus.isOverdue ? labels.overdueDays(ageStatus.daysOverdue) : labels.waitingDays(ageStatus.ageDays)}
+              </span>
               <h3 className="font-semibold text-foreground">{item.title}</h3>
             </div>
             <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.description}</p>

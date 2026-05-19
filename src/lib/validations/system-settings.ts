@@ -9,7 +9,7 @@ import {
   notificationRuleSettingKeys,
 } from "@/lib/system-setting-defaults"
 import { validateOperationDocumentTemplate } from "@/lib/operation-document-number"
-import { workflowApprovalMinApproversKey, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
+import { workflowApprovalMinApproversKey, workflowApprovalSettingKeys, workflowApprovalSlaDaysKey } from "@/lib/workflow-approval"
 
 const assetTagFormatTokens = new Set([
   "companyCode",
@@ -40,7 +40,7 @@ const assetLabelLayoutKeys = new Set<string>(assetLabelTapeSizes.map((size) => `
 const operationDocumentTemplateKeys = new Set<string>([checkoutDocumentTemplateKey, checkinDocumentTemplateKey])
 const notificationRuleKeys = new Set<string>(notificationRuleSettingKeys)
 const workflowApprovalBooleanKeys = new Set<string>(
-  workflowApprovalSettingKeys.filter((key) => key !== workflowApprovalMinApproversKey)
+  workflowApprovalSettingKeys.filter((key) => key !== workflowApprovalMinApproversKey && key !== workflowApprovalSlaDaysKey)
 )
 
 export const systemSettingsUpdateSchema = z.object({
@@ -192,6 +192,17 @@ export const systemSettingsUpdateSchema = z.object({
         context.addIssue({
           code: "custom",
           message: "Workflow approval minimum approvers must be an integer between 1 and 5",
+          path: ["settings", index, "value"],
+        })
+      }
+    }
+
+    if (setting.key === workflowApprovalSlaDaysKey) {
+      const days = Number(setting.value)
+      if (!Number.isInteger(days) || days < 1 || days > 90) {
+        context.addIssue({
+          code: "custom",
+          message: "Workflow approval SLA days must be an integer between 1 and 90",
           path: ["settings", index, "value"],
         })
       }

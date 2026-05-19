@@ -7,6 +7,7 @@ import {
   workflowApprovalMaintenanceCloseRequiredKey,
   workflowApprovalMinApproversKey,
   workflowApprovalSegregationRequiredKey,
+  workflowApprovalSlaDaysKey,
   workflowApprovalSettingKeys,
 } from "@/lib/workflow-approval"
 
@@ -104,6 +105,7 @@ export const systemSettingDefaults = [
   { key: workflowApprovalMaintenanceCloseRequiredKey, value: "false", description: "บังคับใช้การอนุมัติก่อนปิดงานซ่อมบำรุง" },
   { key: workflowApprovalMinApproversKey, value: "1", description: "จำนวนผู้อนุมัติขั้นต่ำสำหรับ workflow approval" },
   { key: workflowApprovalSegregationRequiredKey, value: "true", description: "บังคับใช้ Segregation of Duties ไม่ให้ผู้ทำรายการอนุมัติรายการของตนเอง" },
+  { key: workflowApprovalSlaDaysKey, value: "3", description: "จำนวนวันที่งานอนุมัติสามารถค้างได้ก่อนขึ้นเตือนเกิน SLA" },
   { key: "ldap_enabled", value: "false", description: "เปิดใช้งาน AD/LDAP login" },
   { key: "ldap_url", value: "", description: "LDAP URL เช่น ldap://dc.company.local:389 หรือ ldaps://dc.company.local:636" },
   { key: "ldap_base_dn", value: "", description: "Base DN สำหรับค้นหา user เช่น DC=company,DC=local" },

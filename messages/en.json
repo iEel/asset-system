@@ -1693,6 +1693,8 @@
     "enabled": "Enabled",
     "disabled": "Disabled",
     "minApprovers": "Minimum Approvers",
+    "approvalSla": "Approval SLA",
+    "slaDays": "{days} days",
     "sodOn": "Segregation enforced",
     "sodOff": "SOD not enforced",
     "queueTitle": "Decision Queue",
@@ -1707,7 +1709,9 @@
     "emptyFilterTitle": "No items in this category",
     "emptyFilterDescription": "Choose another category or return to all items.",
     "requestedBy": "Requested By",
-    "requestedAt": "Requested At"
+    "requestedAt": "Requested At",
+    "waitingDays": "Waiting {days} days",
+    "overdueDays": "{days} days overdue"
   },
   "systemLogPage": {
     "title": "System Log",
@@ -2089,10 +2093,12 @@
     "workflowApprovalSegregationRequired": "Enforce requester/approver separation",
     "workflowApprovalMinApprovers": "Minimum approvers",
     "workflowApprovalMinApproversHelp": "Allowed range is 1-5 approvers. This is the shared baseline for future approval workflows.",
+    "workflowApprovalSlaDays": "Approval SLA (days)",
+    "workflowApprovalSlaDaysHelp": "Approval Inbox items older than this many days are marked overdue and sorted first.",
     "workflowApprovalFoundationNote": "These settings are the shared approval policy foundation. Audit Segregation of Duties is already enforced, and other workflows can gradually read the same policy.",
     "workflowApprovalSodOn": "SOD on",
     "workflowApprovalSodOff": "SOD off",
-    "invalidWorkflowApproval": "Approval toggles must be true/false and minimum approvers must be an integer between 1-5",
+    "invalidWorkflowApproval": "Approval toggles must be true/false, minimum approvers must be 1-5, and SLA days must be 1-90",
     "ldapSettings": "AD/LDAP Settings",
     "ldapSettingsDescription": "Configure directory login. Values saved here always take precedence over .env; .env is only a startup fallback when the database has no setting yet.",
     "ldapEnabled": "Enable LDAP Login",

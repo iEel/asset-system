@@ -43,6 +43,7 @@ import {
   workflowApprovalMaintenanceCloseRequiredKey,
   workflowApprovalMinApproversKey,
   workflowApprovalSegregationRequiredKey,
+  workflowApprovalSlaDaysKey,
   workflowApprovalSettingKeys,
 } from "@/lib/workflow-approval"
 
@@ -182,6 +183,8 @@ type SystemSettingsFormProps = {
     workflowApprovalSegregationRequired: string
     workflowApprovalMinApprovers: string
     workflowApprovalMinApproversHelp: string
+    workflowApprovalSlaDays: string
+    workflowApprovalSlaDaysHelp: string
     workflowApprovalFoundationNote: string
     workflowApprovalSodOn: string
     workflowApprovalSodOff: string
@@ -478,13 +481,17 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     const days = Number(getValue(key))
     return !Number.isInteger(days) || days < 0 || days > 365
   })
-  const workflowApprovalToggleKeys = workflowApprovalSettingKeys.filter((key) => key !== workflowApprovalMinApproversKey)
+  const workflowApprovalToggleKeys = workflowApprovalSettingKeys.filter((key) => key !== workflowApprovalMinApproversKey && key !== workflowApprovalSlaDaysKey)
   const workflowApprovalMinApprovers = Number(getValue(workflowApprovalMinApproversKey))
+  const workflowApprovalSlaDays = Number(getValue(workflowApprovalSlaDaysKey))
   const hasInvalidWorkflowApproval =
     workflowApprovalToggleKeys.some((key) => getValue(key) !== "true" && getValue(key) !== "false") ||
     !Number.isInteger(workflowApprovalMinApprovers) ||
     workflowApprovalMinApprovers < 1 ||
-    workflowApprovalMinApprovers > 5
+    workflowApprovalMinApprovers > 5 ||
+    !Number.isInteger(workflowApprovalSlaDays) ||
+    workflowApprovalSlaDays < 1 ||
+    workflowApprovalSlaDays > 90
   const syncSchedule = getValue("ldap_sync_schedule")
   const selectedSyncSchedulePreset = !customScheduleSelected && ldapSchedulePresets.some((preset) => preset.value === syncSchedule)
     ? syncSchedule
@@ -533,7 +540,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     },
     {
       label: labels.overviewApproval,
-      value: `${workflowApprovalPolicy.minApprovers} / ${workflowApprovalPolicy.segregationRequired ? labels.workflowApprovalSodOn : labels.workflowApprovalSodOff}`,
+      value: `${workflowApprovalPolicy.minApprovers} / SLA ${workflowApprovalPolicy.slaDays}d / ${workflowApprovalPolicy.segregationRequired ? labels.workflowApprovalSodOn : labels.workflowApprovalSodOff}`,
       tone: "amber",
     },
     {
@@ -1136,8 +1143,20 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
                 className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
               />
             </Field>
+            <Field label={labels.workflowApprovalSlaDays} htmlFor="workflow-approval-sla-days">
+              <input
+                id="workflow-approval-sla-days"
+                type="number"
+                min={1}
+                max={90}
+                value={getValue(workflowApprovalSlaDaysKey)}
+                onChange={(event) => setValue(workflowApprovalSlaDaysKey, event.target.value)}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </Field>
           </div>
           <p className="text-sm text-muted-foreground">{labels.workflowApprovalMinApproversHelp}</p>
+          <p className="text-sm text-muted-foreground">{labels.workflowApprovalSlaDaysHelp}</p>
           {hasInvalidWorkflowApproval ? <ValidationMessage message={labels.invalidWorkflowApproval} /> : null}
         </div>
       </div>

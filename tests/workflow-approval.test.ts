@@ -9,6 +9,7 @@ import {
   workflowApprovalMaintenanceCloseRequiredKey,
   workflowApprovalMinApproversKey,
   workflowApprovalSegregationRequiredKey,
+  workflowApprovalSlaDaysKey,
 } from "../src/lib/workflow-approval.ts"
 
 test("uses safe workflow approval defaults when settings are missing", () => {
@@ -23,6 +24,7 @@ test("parses workflow approval booleans and minimum approver count", () => {
       [workflowApprovalMaintenanceCloseRequiredKey, "true"],
       [workflowApprovalMinApproversKey, "3"],
       [workflowApprovalSegregationRequiredKey, "false"],
+      [workflowApprovalSlaDaysKey, "5"],
     ])
   )
 
@@ -32,5 +34,12 @@ test("parses workflow approval booleans and minimum approver count", () => {
     maintenanceCloseRequired: true,
     minApprovers: 3,
     segregationRequired: false,
+    slaDays: 5,
   })
+})
+
+test("falls back to default workflow approval SLA when days are invalid", () => {
+  const policy = parseWorkflowApprovalPolicy(new Map([[workflowApprovalSlaDaysKey, "0"]]))
+
+  assert.equal(policy.slaDays, workflowApprovalDefaults.slaDays)
 })

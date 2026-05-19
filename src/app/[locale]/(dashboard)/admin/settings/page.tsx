@@ -169,6 +169,8 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           workflowApprovalSegregationRequired: t("workflowApprovalSegregationRequired"),
           workflowApprovalMinApprovers: t("workflowApprovalMinApprovers"),
           workflowApprovalMinApproversHelp: t("workflowApprovalMinApproversHelp"),
+          workflowApprovalSlaDays: t("workflowApprovalSlaDays"),
+          workflowApprovalSlaDaysHelp: t("workflowApprovalSlaDaysHelp"),
           workflowApprovalFoundationNote: t("workflowApprovalFoundationNote"),
           workflowApprovalSodOn: t("workflowApprovalSodOn"),
           workflowApprovalSodOff: t("workflowApprovalSodOff"),

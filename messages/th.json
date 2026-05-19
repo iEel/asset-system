@@ -1693,6 +1693,8 @@
     "enabled": "เปิด",
     "disabled": "ปิด",
     "minApprovers": "ผู้อนุมัติขั้นต่ำ",
+    "approvalSla": "SLA งานรออนุมัติ",
+    "slaDays": "{days} วัน",
     "sodOn": "บังคับแยกผู้ทำรายการ/ผู้อนุมัติ",
     "sodOff": "ไม่บังคับ SOD",
     "queueTitle": "คิวงานที่ต้องตัดสินใจ",
@@ -1707,7 +1709,9 @@
     "emptyFilterTitle": "ไม่มีรายการในหมวดนี้",
     "emptyFilterDescription": "ลองเลือกหมวดอื่นหรือกลับไปดูทั้งหมด",
     "requestedBy": "ผู้ทำรายการ",
-    "requestedAt": "วันที่ส่งเรื่อง"
+    "requestedAt": "วันที่ส่งเรื่อง",
+    "waitingDays": "รอ {days} วัน",
+    "overdueDays": "เกิน SLA {days} วัน"
   },
   "systemLogPage": {
     "title": "ประวัติระบบ",
@@ -2089,10 +2093,12 @@
     "workflowApprovalSegregationRequired": "บังคับแยกผู้ทำรายการ/ผู้อนุมัติ",
     "workflowApprovalMinApprovers": "จำนวนผู้อนุมัติขั้นต่ำ",
     "workflowApprovalMinApproversHelp": "ใส่ได้ตั้งแต่ 1-5 คน ค่านี้เป็นฐานกลางให้ workflow approval ในอนาคตใช้อ้างอิงร่วมกัน",
+    "workflowApprovalSlaDays": "SLA งานรออนุมัติ (วัน)",
+    "workflowApprovalSlaDaysHelp": "รายการใน Approval Inbox ที่ค้างเกินจำนวนวันนี้จะแสดงเป็นเกิน SLA และถูกเรียงขึ้นก่อน",
     "workflowApprovalFoundationNote": "ค่าชุดนี้เป็นฐานกลางของ workflow approval; ระบบตรวจนับเริ่มบังคับ Segregation of Duties แล้ว และ workflow อื่นจะค่อย ๆ เชื่อมมาใช้ policy ชุดเดียวกัน",
     "workflowApprovalSodOn": "SOD เปิด",
     "workflowApprovalSodOff": "SOD ปิด",
-    "invalidWorkflowApproval": "ค่าการอนุมัติต้องเป็น true/false และจำนวนผู้อนุมัติต้องเป็นเลขจำนวนเต็มระหว่าง 1-5",
+    "invalidWorkflowApproval": "ค่าการอนุมัติต้องเป็น true/false, จำนวนผู้อนุมัติต้องเป็นเลขจำนวนเต็ม 1-5 และ SLA ต้องเป็น 1-90 วัน",
     "ldapSettings": "ตั้งค่า AD/LDAP",
     "ldapSettingsDescription": "ตั้งค่าการเข้าสู่ระบบด้วย directory กลาง โดยค่าหน้านี้จะถูกใช้ก่อน .env เสมอ ส่วน .env ใช้เป็นค่า fallback ตอนเริ่มระบบหรือกรณียังไม่มีค่าในฐานข้อมูล",
     "ldapEnabled": "เปิดใช้งาน LDAP Login",

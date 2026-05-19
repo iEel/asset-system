@@ -3,6 +3,7 @@ export const workflowApprovalAuditCloseRequiredKey = "workflow_approval_audit_cl
 export const workflowApprovalMaintenanceCloseRequiredKey = "workflow_approval_maintenance_close_required"
 export const workflowApprovalMinApproversKey = "workflow_approval_min_approvers"
 export const workflowApprovalSegregationRequiredKey = "workflow_approval_segregation_required"
+export const workflowApprovalSlaDaysKey = "workflow_approval_sla_days"
 
 export const workflowApprovalSettingKeys = [
   workflowApprovalDisposalRequiredKey,
@@ -10,6 +11,7 @@ export const workflowApprovalSettingKeys = [
   workflowApprovalMaintenanceCloseRequiredKey,
   workflowApprovalMinApproversKey,
   workflowApprovalSegregationRequiredKey,
+  workflowApprovalSlaDaysKey,
 ] as const
 
 export type WorkflowApprovalPolicy = {
@@ -18,6 +20,7 @@ export type WorkflowApprovalPolicy = {
   maintenanceCloseRequired: boolean
   minApprovers: number
   segregationRequired: boolean
+  slaDays: number
 }
 
 export const workflowApprovalDefaults: WorkflowApprovalPolicy = {
@@ -26,6 +29,7 @@ export const workflowApprovalDefaults: WorkflowApprovalPolicy = {
   maintenanceCloseRequired: false,
   minApprovers: 1,
   segregationRequired: true,
+  slaDays: 3,
 }
 
 type WorkflowApprovalSetting = { key: string; value: string } | readonly [string, string]
@@ -55,6 +59,12 @@ function readMinApprovers(values: Map<string, string>) {
   return count
 }
 
+function readSlaDays(values: Map<string, string>) {
+  const days = Number(values.get(workflowApprovalSlaDaysKey))
+  if (!Number.isInteger(days) || days < 1 || days > 90) return workflowApprovalDefaults.slaDays
+  return days
+}
+
 export function parseWorkflowApprovalPolicy(settings: Iterable<WorkflowApprovalSetting>): WorkflowApprovalPolicy {
   const values = settingsToMap(settings)
   return {
@@ -79,5 +89,6 @@ export function parseWorkflowApprovalPolicy(settings: Iterable<WorkflowApprovalS
       workflowApprovalSegregationRequiredKey,
       workflowApprovalDefaults.segregationRequired
     ),
+    slaDays: readSlaDays(values),
   }
 }
