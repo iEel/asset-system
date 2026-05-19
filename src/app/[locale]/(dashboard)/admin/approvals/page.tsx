@@ -3,10 +3,9 @@ import type React from "react"
 import { notFound, redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { ClipboardCheck, FileCheck2, ShieldCheck, Trash2, Wrench } from "lucide-react"
-import { prisma } from "@/lib/db"
-import { getSessionUser, hasPermission } from "@/lib/auth-utils"
-import { buildApprovalInboxItems, summarizeApprovalInbox, type ApprovalInboxItem } from "@/lib/approval-inbox"
-import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
+import { getSessionUser } from "@/lib/auth-utils"
+import type { ApprovalInboxItem } from "@/lib/approval-inbox"
+import { getApprovalInboxSnapshot } from "@/lib/approval-inbox-query"
 import { formatDateTime } from "@/lib/utils"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 
@@ -14,100 +13,16 @@ type ApprovalInboxPageProps = {
   params: Promise<{ locale: string }>
 }
 
-type ReadyAuditRound = {
-  id: string
-  auditNo: string
-  name: string
-  createdBy: string
-  updatedAt: Date
-}
-
 export default async function ApprovalInboxPage({ params }: ApprovalInboxPageProps) {
   const { locale } = await params
   const user = await getSessionUser()
   if (!user) redirect(`/${locale}/login`)
 
-  const canApproveDisposal = hasPermission(user, "disposal", "approve")
-  const canCloseMaintenance = hasPermission(user, "maintenance", "edit")
-  const canApproveAudit = hasPermission(user, "audit", "approve")
-  if (!canApproveDisposal && !canCloseMaintenance && !canApproveAudit) notFound()
+  const snapshot = await getApprovalInboxSnapshot(user, locale)
+  if (!snapshot.access.canAnyApproval) notFound()
 
   const t = await getTranslations("approvalInboxPage")
-  const settings = await prisma.systemSetting.findMany({
-    where: { key: { in: [...workflowApprovalSettingKeys] } },
-    select: { key: true, value: true },
-  })
-  const policy = parseWorkflowApprovalPolicy(settings)
-
-  const [disposalRequests, maintenanceTickets, auditFindings, auditRoundsReadyToClose] = await Promise.all([
-    canApproveDisposal && policy.disposalRequired
-      ? prisma.disposalRequest.findMany({
-          where: { isActive: true, requestStatus: "pending" },
-          include: {
-            asset: { select: { assetTag: true, name: true } },
-            requestedBy: { select: { code: true, fullNameTh: true } },
-          },
-          orderBy: { requestDate: "asc" },
-          take: 50,
-        })
-      : Promise.resolve([]),
-    canCloseMaintenance && policy.maintenanceCloseRequired
-      ? prisma.maintenanceTicket.findMany({
-          where: { isActive: true, repairStatus: "completed" },
-          include: {
-            asset: { select: { assetTag: true, name: true } },
-            reportedBy: { select: { code: true, fullNameTh: true } },
-          },
-          orderBy: { updatedAt: "asc" },
-          take: 50,
-        })
-      : Promise.resolve([]),
-    canApproveAudit
-      ? prisma.auditFinding.findMany({
-          where: { reviewStatus: "pending", reportedBy: { not: user.id } },
-          include: {
-            auditRound: { select: { auditNo: true } },
-            asset: { select: { assetTag: true } },
-          },
-          orderBy: { reportedAt: "asc" },
-          take: 50,
-        })
-      : Promise.resolve([]),
-    canApproveAudit && policy.auditCloseRequired
-      ? getAuditRoundsReadyToClose(user.id)
-      : Promise.resolve([]),
-  ])
-
-  const items = buildApprovalInboxItems({
-    locale,
-    policy,
-    disposalRequests: disposalRequests.map((request) => ({
-      id: request.id,
-      disposalNo: request.disposalNo,
-      assetTag: request.asset.assetTag,
-      assetName: request.asset.name,
-      requestedBy: `${request.requestedBy.code} - ${request.requestedBy.fullNameTh}`,
-      requestDate: request.requestDate,
-    })),
-    maintenanceTickets: maintenanceTickets.map((ticket) => ({
-      id: ticket.id,
-      repairNo: ticket.repairNo,
-      assetTag: ticket.asset.assetTag,
-      assetName: ticket.asset.name,
-      reportedBy: `${ticket.reportedBy.code} - ${ticket.reportedBy.fullNameTh}`,
-      updatedAt: ticket.updatedAt,
-    })),
-    auditFindings: auditFindings.map((finding) => ({
-      id: finding.id,
-      auditNo: finding.auditRound.auditNo,
-      findingType: finding.findingType,
-      assetTag: finding.asset?.assetTag ?? null,
-      reportedBy: finding.reportedBy,
-      reportedAt: finding.reportedAt,
-    })),
-    auditRoundsReadyToClose,
-  })
-  const summary = summarizeApprovalInbox(items)
+  const { access, policy, items, summary } = snapshot
 
   return (
     <div className="space-y-6">
@@ -138,9 +53,9 @@ export default async function ApprovalInboxPage({ params }: ApprovalInboxPagePro
             <p className="mt-1 text-sm text-muted-foreground">{t("policyDescription")}</p>
           </div>
           <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <PolicyBadge label={t("policyDisposal")} enabled={policy.disposalRequired && canApproveDisposal} enabledLabel={t("enabled")} disabledLabel={t("disabled")} />
-            <PolicyBadge label={t("policyMaintenance")} enabled={policy.maintenanceCloseRequired && canCloseMaintenance} enabledLabel={t("enabled")} disabledLabel={t("disabled")} />
-            <PolicyBadge label={t("policyAuditClose")} enabled={policy.auditCloseRequired && canApproveAudit} enabledLabel={t("enabled")} disabledLabel={t("disabled")} />
+            <PolicyBadge label={t("policyDisposal")} enabled={policy.disposalRequired && access.canApproveDisposal} enabledLabel={t("enabled")} disabledLabel={t("disabled")} />
+            <PolicyBadge label={t("policyMaintenance")} enabled={policy.maintenanceCloseRequired && access.canCloseMaintenance} enabledLabel={t("enabled")} disabledLabel={t("disabled")} />
+            <PolicyBadge label={t("policyAuditClose")} enabled={policy.auditCloseRequired && access.canApproveAudit} enabledLabel={t("enabled")} disabledLabel={t("disabled")} />
             <div className="rounded-md border border-border bg-background px-3 py-2">
               <div className="text-xs text-muted-foreground">{t("minApprovers")}</div>
               <div className="font-semibold text-foreground">
@@ -174,42 +89,6 @@ export default async function ApprovalInboxPage({ params }: ApprovalInboxPagePro
       </section>
     </div>
   )
-}
-
-async function getAuditRoundsReadyToClose(currentUserId: string): Promise<ReadyAuditRound[]> {
-  const rounds = await prisma.auditRound.findMany({
-    where: { isActive: true, status: { not: "closed" }, createdBy: { not: currentUserId } },
-    select: { id: true, auditNo: true, name: true, createdBy: true, updatedAt: true },
-    orderBy: { updatedAt: "desc" },
-    take: 100,
-  })
-  const roundIds = rounds.map((round) => round.id)
-  if (roundIds.length === 0) return []
-
-  const [pendingItems, pendingFindings, openActions] = await Promise.all([
-    prisma.auditItem.groupBy({
-      by: ["auditRoundId"],
-      where: { auditRoundId: { in: roundIds }, auditStatus: "pending" },
-      _count: { _all: true },
-    }),
-    prisma.auditFinding.groupBy({
-      by: ["auditRoundId"],
-      where: { auditRoundId: { in: roundIds }, reviewStatus: "pending" },
-      _count: { _all: true },
-    }),
-    prisma.auditFinding.groupBy({
-      by: ["auditRoundId"],
-      where: { auditRoundId: { in: roundIds }, actionStatus: { in: ["planned", "in_progress", "done"] } },
-      _count: { _all: true },
-    }),
-  ])
-
-  const blockedRoundIds = new Set<string>()
-  for (const row of [...pendingItems, ...pendingFindings, ...openActions]) {
-    if (row._count._all > 0) blockedRoundIds.add(row.auditRoundId)
-  }
-
-  return rounds.filter((round) => !blockedRoundIds.has(round.id))
 }
 
 function ApprovalInboxRow({

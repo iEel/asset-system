@@ -22,7 +22,6 @@ export function buildNotificationSummaryItems(
   locale: string,
   counts: NotificationSummaryCounts
 ): NotificationSummaryItem[] {
-  const approvalCovered = counts.approvalInbox > 0
   const notificationItems = [
     {
       key: "approvalInbox",
@@ -38,7 +37,7 @@ export function buildNotificationSummaryItems(
     },
     {
       key: "pendingAuditFindings",
-      count: approvalCovered ? 0 : counts.pendingAuditFindings,
+      count: counts.pendingAuditFindings,
       href: `/${locale}/audit/findings?status=pending`,
       tone: "warning",
     },
@@ -56,7 +55,7 @@ export function buildNotificationSummaryItems(
     },
     {
       key: "pendingDisposals",
-      count: approvalCovered ? 0 : counts.pendingDisposals,
+      count: counts.pendingDisposals,
       href: `/${locale}/disposal?status=pending`,
       tone: "danger",
     },

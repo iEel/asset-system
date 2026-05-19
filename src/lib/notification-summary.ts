@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { hasPermission, type SessionUser } from "@/lib/auth-utils"
 import { buildNotificationSummaryItems } from "@/lib/notification-summary-items"
+import { getApprovalInboxCounts } from "@/lib/approval-inbox-query"
 import {
   notificationAuditActionDueSoonDaysKey,
   notificationLicenseExpiryDaysKey,
@@ -8,7 +9,6 @@ import {
   notificationRuleSettingKeys,
   notificationWarrantyExpiryDaysKey,
 } from "@/lib/system-setting-defaults"
-import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
 
 const openMaintenanceStatuses = ["open", "reported", "accepted", "in_progress", "waiting_parts", "waiting_vendor", "completed"]
 const openAuditActionStatuses = ["planned", "in_progress"]
@@ -21,9 +21,9 @@ const defaultNotificationRuleDays = {
 
 export async function getNotificationSummary(user: SessionUser, locale: string) {
   const today = startOfToday(new Date())
-  const [rules, approvalPolicy] = await Promise.all([
+  const [rules, approvalInboxCounts] = await Promise.all([
     getNotificationRuleSettings(),
-    getWorkflowApprovalPolicy(),
+    getApprovalInboxCounts(user),
   ])
 
   const canMaintenance = hasPermission(user, "maintenance", "view")
@@ -31,15 +31,8 @@ export async function getNotificationSummary(user: SessionUser, locale: string) 
   const canDisposal = hasPermission(user, "disposal", "view")
   const canCheckout = hasPermission(user, "checkout", "view") || hasPermission(user, "asset", "view")
   const canAsset = hasPermission(user, "asset", "view")
-  const canApproveDisposal = hasPermission(user, "disposal", "approve")
-  const canCloseMaintenance = hasPermission(user, "maintenance", "edit")
-  const canApproveAudit = hasPermission(user, "audit", "approve")
 
   const [
-    approvalDisposals,
-    approvalMaintenanceClosures,
-    approvalAuditFindings,
-    approvalAuditRoundsReady,
     overdueMaintenance,
     pendingAuditFindings,
     openAuditActions,
@@ -50,24 +43,14 @@ export async function getNotificationSummary(user: SessionUser, locale: string) 
     warrantyExpiringSoon,
     licenseExpiringSoon,
   ] = await Promise.all([
-    canApproveDisposal && approvalPolicy.disposalRequired
-      ? prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "pending" } })
-      : Promise.resolve(0),
-    canCloseMaintenance && approvalPolicy.maintenanceCloseRequired
-      ? prisma.maintenanceTicket.count({ where: { isActive: true, repairStatus: "completed" } })
-      : Promise.resolve(0),
-    canApproveAudit
-      ? prisma.auditFinding.count({ where: { reviewStatus: "pending", reportedBy: { not: user.id } } })
-      : Promise.resolve(0),
-    canApproveAudit && approvalPolicy.auditCloseRequired
-      ? getReadyAuditRoundCloseCount(user.id)
-      : Promise.resolve(0),
     canMaintenance
       ? prisma.maintenanceTicket.count({
           where: { isActive: true, dueDate: { lt: today }, repairStatus: { in: openMaintenanceStatuses } },
         })
       : Promise.resolve(0),
-    canAudit && !canApproveAudit ? prisma.auditFinding.count({ where: { reviewStatus: "pending" } }) : Promise.resolve(0),
+    canAudit && approvalInboxCounts.audit === 0
+      ? prisma.auditFinding.count({ where: { reviewStatus: "pending" } })
+      : Promise.resolve(0),
     canAudit
       ? prisma.auditFinding.count({
           where: {
@@ -87,7 +70,7 @@ export async function getNotificationSummary(user: SessionUser, locale: string) 
           },
         })
       : Promise.resolve(0),
-    canDisposal && !(canApproveDisposal && approvalPolicy.disposalRequired)
+    canDisposal && approvalInboxCounts.disposal === 0
       ? prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "pending" } })
       : Promise.resolve(0),
     canDisposal ? prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "approved" } }) : Promise.resolve(0),
@@ -117,7 +100,7 @@ export async function getNotificationSummary(user: SessionUser, locale: string) 
   ])
 
   const items = buildNotificationSummaryItems(locale, {
-    approvalInbox: approvalDisposals + approvalMaintenanceClosures + approvalAuditFindings + approvalAuditRoundsReady,
+    approvalInbox: approvalInboxCounts.total,
     overdueMaintenance,
     pendingAuditFindings,
     openAuditActions,
@@ -134,48 +117,6 @@ export async function getNotificationSummary(user: SessionUser, locale: string) 
     items,
     generatedAt: new Date().toISOString(),
   }
-}
-
-async function getWorkflowApprovalPolicy() {
-  const savedSettings = await prisma.systemSetting.findMany({
-    where: { key: { in: [...workflowApprovalSettingKeys] } },
-    select: { key: true, value: true },
-  })
-  return parseWorkflowApprovalPolicy(savedSettings)
-}
-
-async function getReadyAuditRoundCloseCount(currentUserId: string) {
-  const rounds = await prisma.auditRound.findMany({
-    where: { isActive: true, status: { not: "closed" }, createdBy: { not: currentUserId } },
-    select: { id: true },
-  })
-  const roundIds = rounds.map((round) => round.id)
-  if (roundIds.length === 0) return 0
-
-  const [pendingItems, pendingFindings, openActions] = await Promise.all([
-    prisma.auditItem.groupBy({
-      by: ["auditRoundId"],
-      where: { auditRoundId: { in: roundIds }, auditStatus: "pending" },
-      _count: { _all: true },
-    }),
-    prisma.auditFinding.groupBy({
-      by: ["auditRoundId"],
-      where: { auditRoundId: { in: roundIds }, reviewStatus: "pending" },
-      _count: { _all: true },
-    }),
-    prisma.auditFinding.groupBy({
-      by: ["auditRoundId"],
-      where: { auditRoundId: { in: roundIds }, actionStatus: { in: ["planned", "in_progress", "done"] } },
-      _count: { _all: true },
-    }),
-  ])
-
-  const blockedRoundIds = new Set<string>()
-  for (const row of [...pendingItems, ...pendingFindings, ...openActions]) {
-    if (row._count._all > 0) blockedRoundIds.add(row.auditRoundId)
-  }
-
-  return rounds.filter((round) => !blockedRoundIds.has(round.id)).length
 }
 
 function startOfToday(now: Date) {

@@ -3,14 +3,14 @@ import test from "node:test"
 
 import { buildNotificationSummaryItems } from "../src/lib/notification-summary-items.ts"
 
-test("adds approval inbox notification and suppresses duplicated approval detail items", () => {
+test("adds approval inbox notification when approval detail counts are already suppressed", () => {
   const items = buildNotificationSummaryItems("th", {
     approvalInbox: 4,
     overdueMaintenance: 1,
-    pendingAuditFindings: 3,
+    pendingAuditFindings: 0,
     openAuditActions: 0,
     auditActionsDueSoon: 0,
-    pendingDisposals: 2,
+    pendingDisposals: 0,
     approvedDisposals: 0,
     returnsDueSoon: 0,
     warrantyExpiringSoon: 0,
