@@ -4,6 +4,7 @@ import {
   assetTagFormatTemplateKey,
   defaultAssetTagFormatTemplate,
 } from "@/lib/system-setting-defaults"
+import { getNextAssetTagRunningNumber } from "@/lib/asset-tag-sequence"
 
 function parseCategoryPrefixes(value?: string | null) {
   if (!value) return {}
@@ -45,6 +46,15 @@ function renderSequencePrefix(template: string | null | undefined, tokens: Recor
     ? safeTemplate
     : defaultAssetTagFormatTemplate
   return renderAssetTagTemplate(templateWithRunning.slice(0, templateWithRunning.indexOf("{running}")), tokens)
+}
+
+function renderSequenceSuffix(template: string | null | undefined, tokens: Record<string, string>) {
+  const safeTemplate = template?.trim() || defaultAssetTagFormatTemplate
+  const templateWithRunning = safeTemplate.includes("{running}")
+    ? safeTemplate
+    : defaultAssetTagFormatTemplate
+  const runningEndIndex = templateWithRunning.indexOf("{running}") + "{running}".length
+  return renderAssetTagTemplate(templateWithRunning.slice(runningEndIndex), tokens)
 }
 
 export async function generateAssetTag({
@@ -99,17 +109,26 @@ export async function generateAssetTag({
     day: String(now.getDate()).padStart(2, "0"),
   }
   const sequencePrefix = renderSequencePrefix(formatSetting?.value, baseTokens)
-  const count = await prisma.asset.count({
+  const sequenceSuffix = renderSequenceSuffix(formatSetting?.value, baseTokens)
+  const existingAssets = await prisma.asset.findMany({
     where: {
       assetTag: { startsWith: sequencePrefix },
     },
+    select: { assetTag: true },
+  })
+  let nextRunning = getNextAssetTagRunningNumber({
+    existingAssetTags: existingAssets.map((asset) => asset.assetTag),
+    sequencePrefix,
+    sequenceSuffix,
+    runningDigits: digits,
   })
 
   for (let offset = 1; offset <= 100; offset += 1) {
-    const running = String(count + offset).padStart(digits, "0")
+    const running = String(nextRunning).padStart(digits, "0")
     const assetTag = renderAssetTagTemplate(formatSetting?.value, { ...baseTokens, running })
     const existing = await prisma.asset.findUnique({ where: { assetTag }, select: { id: true } })
     if (!existing) return assetTag
+    nextRunning += 1
   }
 
   throw new Error("Unable to generate unique asset tag")
