@@ -10,6 +10,8 @@ import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type Asse
 import { assetMissingResponsibilityWhere, assetOwnershipTypes, hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { buildCostInsights, type CostExposureAsset } from "@/lib/cost-insights"
 import { buildDepreciationSummary, type DepreciableAsset } from "@/lib/asset-depreciation"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { MetricCard } from "@/components/ui/metric-card"
 
 type ReportsPageProps = {
   params: Promise<{ locale: string }>
@@ -294,21 +296,17 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Metric label={t("totalAssets")} value={totalAssets.toLocaleString("th-TH")} />
-        <Metric label={t("totalValue")} value={formatCurrency(totalValue._sum.purchasePrice ? Number(totalValue._sum.purchasePrice) : 0)} />
-        <Metric label={t("reportsReady")} value={reportCount.toLocaleString("th-TH")} />
+        <MetricCard label={t("totalAssets")} value={totalAssets.toLocaleString("th-TH")} />
+        <MetricCard label={t("totalValue")} value={formatCurrency(totalValue._sum.purchasePrice ? Number(totalValue._sum.purchasePrice) : 0)} />
+        <MetricCard label={t("reportsReady")} value={reportCount.toLocaleString("th-TH")} />
       </div>
 
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-        <div className="mb-4">
-          <h2 className="text-base font-semibold text-foreground">{t("costInsightTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("costInsightHelp")}</p>
-        </div>
+      <ContentPanel title={t("costInsightTitle")} description={t("costInsightHelp")}>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <Metric label={t("costTotalRepair")} value={formatCurrency(costInsights.totalRepairCost)} compact />
-          <Metric label={t("costRepairRatio")} value={formatPercent(costInsights.repairToPurchaseRatio)} compact />
-          <Metric label={t("costMissingPrice")} value={costInsights.missingPurchasePriceCount.toLocaleString("th-TH")} compact />
-          <Metric label={t("costHighValueAssets")} value={costInsights.highValueAssetCount.toLocaleString("th-TH")} compact />
+          <MetricCard label={t("costTotalRepair")} value={formatCurrency(costInsights.totalRepairCost)} compact />
+          <MetricCard label={t("costRepairRatio")} value={formatPercent(costInsights.repairToPurchaseRatio)} compact />
+          <MetricCard label={t("costMissingPrice")} value={costInsights.missingPurchasePriceCount.toLocaleString("th-TH")} compact />
+          <MetricCard label={t("costHighValueAssets")} value={costInsights.highValueAssetCount.toLocaleString("th-TH")} compact />
         </div>
         <CostExposureTable
           title={t("costHighRepairRisk")}
@@ -323,19 +321,15 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             empty: t("costNoRepairRisk"),
           }}
         />
-      </section>
+      </ContentPanel>
 
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-        <div className="mb-4">
-          <h2 className="text-base font-semibold text-foreground">{t("accountingInsightTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("accountingInsightHelp")}</p>
-        </div>
+      <ContentPanel title={t("accountingInsightTitle")} description={t("accountingInsightHelp")}>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <Metric label={t("accountingAcquisitionCost")} value={formatCurrency(depreciationSummary.totalAcquisitionCost)} compact />
-          <Metric label={t("accountingAccumulatedDepreciation")} value={formatCurrency(depreciationSummary.totalAccumulatedDepreciation)} compact />
-          <Metric label={t("accountingNetBookValue")} value={formatCurrency(depreciationSummary.totalNetBookValue)} compact />
-          <Metric label={t("accountingFullyDepreciated")} value={depreciationSummary.fullyDepreciatedCount.toLocaleString("th-TH")} compact />
-          <Metric label={t("accountingMissingInfo")} value={depreciationSummary.missingAccountingInfoCount.toLocaleString("th-TH")} compact />
+          <MetricCard label={t("accountingAcquisitionCost")} value={formatCurrency(depreciationSummary.totalAcquisitionCost)} compact />
+          <MetricCard label={t("accountingAccumulatedDepreciation")} value={formatCurrency(depreciationSummary.totalAccumulatedDepreciation)} compact />
+          <MetricCard label={t("accountingNetBookValue")} value={formatCurrency(depreciationSummary.totalNetBookValue)} compact />
+          <MetricCard label={t("accountingFullyDepreciated")} value={depreciationSummary.fullyDepreciatedCount.toLocaleString("th-TH")} compact />
+          <MetricCard label={t("accountingMissingInfo")} value={depreciationSummary.missingAccountingInfoCount.toLocaleString("th-TH")} compact />
         </div>
         <DepreciationTable
           title={t("accountingTopBookValueAssets")}
@@ -351,7 +345,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             empty: t("accountingNoAssets"),
           }}
         />
-      </section>
+      </ContentPanel>
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
         <div className="mb-4">
@@ -443,10 +437,10 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
         <h2 className="mb-4 text-base font-semibold text-foreground">{t("dataQuality")}</h2>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          <Metric label={t("missingCustodian")} value={missingCustodian.toLocaleString("th-TH")} compact />
-          <Metric label={t("missingSerial")} value={missingSerial.toLocaleString("th-TH")} compact />
-          <Metric label={t("missingPhoto")} value={missingPhoto.toLocaleString("th-TH")} compact />
-          <Metric label={t("warrantyExpiring")} value={warrantyExpiring.toLocaleString("th-TH")} compact />
+          <MetricCard label={t("missingCustodian")} value={missingCustodian.toLocaleString("th-TH")} compact />
+          <MetricCard label={t("missingSerial")} value={missingSerial.toLocaleString("th-TH")} compact />
+          <MetricCard label={t("missingPhoto")} value={missingPhoto.toLocaleString("th-TH")} compact />
+          <MetricCard label={t("warrantyExpiring")} value={warrantyExpiring.toLocaleString("th-TH")} compact />
         </div>
       </section>
 
@@ -629,15 +623,6 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           ))}
         </div>
       </section>
-    </div>
-  )
-}
-
-function Metric({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
-  return (
-    <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-      <div className="text-sm text-muted-foreground">{label}</div>
-      <div className={`mt-2 font-bold text-foreground ${compact ? "text-xl" : "text-2xl"}`}>{value}</div>
     </div>
   )
 }
