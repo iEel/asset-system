@@ -228,8 +228,8 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                   return (
                     <ClickableTableRow
                       key={employee.id}
-                      href={`/${locale}/master-data/employees/${employee.id}/edit`}
-                      label={`${tCommon("edit")}: ${employee.code}`}
+                      href={`/${locale}/master-data/employees/${employee.id}`}
+                      label={`${tCommon("view")}: ${employee.code}`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{employee.code}</td>
                       <td className="min-w-56 px-4 py-3 text-foreground">
