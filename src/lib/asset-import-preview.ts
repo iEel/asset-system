@@ -1,7 +1,13 @@
 import ExcelJS from "exceljs"
 import { prisma } from "@/lib/db"
-import { assetImportColumns } from "@/lib/asset-excel"
 import { assetOwnershipTypes, defaultAssetOwnershipType } from "@/lib/asset-ownership"
+import {
+  buildAssetImportColumnMapping,
+  buildTemplateAssetImportColumnMapping,
+  hasRecognizedAssetImportHeaders,
+  readAssetImportRowByMapping,
+  type AssetImportColumnMapping,
+} from "@/lib/asset-import-mapping"
 
 export type AssetImportPreviewRow = {
   rowNumber: number
@@ -20,6 +26,7 @@ export type AssetImportPreviewSummary = {
 export type AssetImportPreviewResult = {
   summary: AssetImportPreviewSummary
   rows: AssetImportPreviewRow[]
+  mapping: AssetImportColumnMapping[]
 }
 
 export type AssetImportReferences = {
@@ -160,11 +167,18 @@ export async function parseAssetImportWorkbook(buffer: ArrayBuffer, references: 
   const seenAssetTags = new Set<string>()
   const seenSerialNumbers = new Set<string>()
   const rows: AssetImportPreviewRow[] = []
+  const headerRow = worksheet.getRow(1)
+  const headerColumnCount = Math.max(worksheet.columnCount, headerRow.cellCount)
+  const detectedMapping = buildAssetImportColumnMapping(
+    Array.from({ length: headerColumnCount }, (_, index) => headerRow.getCell(index + 1).value as string | number | null)
+  )
+  const hasHeaderRow = hasRecognizedAssetImportHeaders(detectedMapping)
+  const mapping = hasHeaderRow ? detectedMapping : buildTemplateAssetImportColumnMapping()
 
   worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return
+    if (hasHeaderRow && rowNumber === 1) return
 
-    const values = readImportRow(row)
+    const values = readAssetImportRowByMapping(row, mapping)
     if (isEmptyRow(values)) return
 
     const errors: string[] = []
@@ -296,30 +310,8 @@ export async function parseAssetImportWorkbook(buffer: ArrayBuffer, references: 
       errorRows: rows.length - readyRows,
     },
     rows,
+    mapping,
   } satisfies AssetImportPreviewResult
-}
-
-function readImportRow(row: ExcelJS.Row) {
-  return Object.fromEntries(
-    assetImportColumns.map((column, index) => [column.key, normalizeCell(row.getCell(index + 1).value)])
-  ) as Record<string, string | number | null>
-}
-
-function normalizeCell(value: ExcelJS.CellValue) {
-  if (value == null) return null
-  if (value instanceof Date) return value.toISOString().slice(0, 10)
-  if (typeof value === "object") {
-    if ("text" in value && value.text) return String(value.text).trim()
-    if ("result" in value && value.result != null) return normalizeCell(value.result)
-    if ("richText" in value && Array.isArray(value.richText)) {
-      return value.richText.map((part) => part.text).join("").trim()
-    }
-    return String(value).trim()
-  }
-  if (typeof value === "string") return value.trim()
-  if (typeof value === "number") return value
-  if (typeof value === "boolean") return value ? "true" : "false"
-  return String(value).trim()
 }
 
 function isEmptyRow(values: Record<string, string | number | null>) {

@@ -72,6 +72,11 @@ export default async function AssetImportExportPage({ params }: AssetImportExpor
           issueSummaryTitle: t("importIssueSummaryTitle"),
           issueSummaryHelp: t("importIssueSummaryHelp"),
           affectedRows: t("affectedRows"),
+          mappingTitle: t("importMappingTitle"),
+          mappingHelp: t("importMappingHelp"),
+          mappingMatched: t("importMappingMatched"),
+          mappingMissing: t("importMappingMissing"),
+          sourceColumn: t("importSourceColumn"),
         }}
       />
 

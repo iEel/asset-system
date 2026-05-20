@@ -9,6 +9,7 @@ import {
   summarizeAssetImportPreviewIssues,
   type AssetImportWizardStep,
 } from "@/lib/asset-import-wizard"
+import type { AssetImportColumnMapping } from "@/lib/asset-import-mapping"
 
 type PreviewRow = {
   rowNumber: number
@@ -24,6 +25,7 @@ type PreviewResult = {
     errorRows: number
   }
   rows: PreviewRow[]
+  mapping?: AssetImportColumnMapping[]
 }
 
 type AssetImportPreviewPanelProps = {
@@ -54,6 +56,11 @@ type AssetImportPreviewPanelProps = {
     issueSummaryTitle: string
     issueSummaryHelp: string
     affectedRows: string
+    mappingTitle: string
+    mappingHelp: string
+    mappingMatched: string
+    mappingMissing: string
+    sourceColumn: string
   }
 }
 
@@ -74,6 +81,8 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
     hasSuccess: Boolean(success),
   })
   const issueSummary = preview ? summarizeAssetImportPreviewIssues(preview.rows) : []
+  const mappedColumns = preview?.mapping?.filter((column) => column.sourceColumn != null) ?? []
+  const missingColumns = preview?.mapping?.filter((column) => column.sourceColumn == null) ?? []
 
   async function handleFile(file?: File) {
     if (!file) {
@@ -191,6 +200,33 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
             <div className="truncate text-muted-foreground">
               {selectedFile.name} · {formatFileSize(selectedFile.size)}
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {preview?.mapping ? (
+        <div className="mt-4 rounded-md border border-primary/20 bg-primary/5 px-3 py-3 text-sm">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="font-semibold text-foreground">{labels.mappingTitle}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{labels.mappingHelp}</div>
+            </div>
+            <div className="shrink-0 text-xs font-medium text-primary">
+              {mappedColumns.length} {labels.mappingMatched} · {missingColumns.length} {labels.mappingMissing}
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {mappedColumns.slice(0, 12).map((column) => (
+              <span
+                key={column.key}
+                className="rounded-full border border-primary/20 bg-surface px-2.5 py-1 text-xs text-foreground"
+                title={`${column.label}: ${column.sourceHeader ?? `${labels.sourceColumn} ${column.sourceColumn}`}`}
+              >
+                {column.label}
+                {" -> "}
+                {column.sourceHeader ?? `${labels.sourceColumn} ${column.sourceColumn}`}
+              </span>
+            ))}
           </div>
         </div>
       ) : null}
