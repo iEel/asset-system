@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { getTranslations } from "next-intl/server"
-import { ArrowDown, ArrowUp, Edit } from "lucide-react"
+import { ArrowDown, ArrowUp, Download, Edit, FileSpreadsheet } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { CategoryDeleteButton } from "@/components/master-data/category-delete-button"
@@ -108,6 +108,29 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
         createHref={`/${locale}/master-data/categories/new`}
         createLabel={tCommon("create")}
       />
+
+      <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">{t("categoryTools")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("categoryToolsHelp")}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/api/categories/export"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            <Download className="h-4 w-4" />
+            {t("downloadCategoryExport")}
+          </Link>
+          <Link
+            href="/api/categories/import-template"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            {t("downloadCategoryTemplate")}
+          </Link>
+        </div>
+      </div>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <SummaryTile
