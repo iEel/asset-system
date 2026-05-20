@@ -925,7 +925,10 @@
     "photoChecklistEmpty": "No photo checklist for this category yet",
     "photoChecklistItem": "Photo checklist item",
     "addPhotoChecklist": "Add photo item",
-    "removePhotoChecklist": "Remove photo item"
+    "removePhotoChecklist": "Remove photo item",
+    "duplicateItem": "Duplicate",
+    "moveUp": "Move up",
+    "moveDown": "Move down"
   },
   "brandModel": {
     "title": "Brands / Models",

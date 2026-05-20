@@ -3,21 +3,16 @@
 import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, Plus, Save, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowLeft, ArrowUp, Copy, Loader2, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
+import {
+  duplicateCategoryCustomField,
+  moveArrayItem,
+  type CategoryCustomFieldDraft,
+} from "@/lib/category-form-arrays"
 
-type CustomFieldDefinitionValue = {
-  id?: string
-  fieldName: string
-  fieldLabel: string
-  fieldLabelTh?: string | null
-  fieldType: "text" | "number" | "date" | "select" | "boolean"
-  options?: string | null
-  isRequired: boolean
-  sortOrder: number
-  isActive: boolean
-}
+type CustomFieldDefinitionValue = CategoryCustomFieldDraft
 
 type CategoryFormValues = {
   id?: string
@@ -187,6 +182,9 @@ export function CategoryForm({ category }: { category?: CategoryFormValues }) {
               date: t("fieldTypeDate"),
               select: t("fieldTypeSelect"),
               boolean: t("fieldTypeBoolean"),
+              duplicate: t("duplicateItem"),
+              moveUp: t("moveUp"),
+              moveDown: t("moveDown"),
             }}
             onChange={setCustomFields}
           />
@@ -214,6 +212,9 @@ export function CategoryForm({ category }: { category?: CategoryFormValues }) {
               item: t("photoChecklistItem"),
               empty: t("photoChecklistEmpty"),
               remove: t("removePhotoChecklist"),
+              duplicate: t("duplicateItem"),
+              moveUp: t("moveUp"),
+              moveDown: t("moveDown"),
             }}
             onChange={setPhotoChecklist}
           />
@@ -280,6 +281,9 @@ function CustomFieldTemplateEditor({
     date: string
     select: string
     boolean: string
+    duplicate: string
+    moveUp: string
+    moveDown: string
   }
   onChange: (fields: CustomFieldDefinitionValue[]) => void
 }) {
@@ -289,6 +293,16 @@ function CustomFieldTemplateEditor({
 
   function removeField(index: number) {
     onChange(fields.filter((_, itemIndex) => itemIndex !== index))
+  }
+
+  function duplicateField(index: number) {
+    const field = fields[index]
+    if (!field) return
+    onChange([...fields.slice(0, index + 1), duplicateCategoryCustomField(field), ...fields.slice(index + 1)])
+  }
+
+  function moveField(index: number, direction: -1 | 1) {
+    onChange(moveArrayItem(fields, index, index + direction))
   }
 
   if (fields.length === 0) {
@@ -364,7 +378,7 @@ function CustomFieldTemplateEditor({
             )}
           </div>
 
-          <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
+          <div className="mt-4 flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
             <label className="inline-flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -375,14 +389,42 @@ function CustomFieldTemplateEditor({
               {labels.required}
             </label>
 
-            <button
-              type="button"
-              onClick={() => removeField(index)}
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
-            >
-              <Trash2 className="h-4 w-4" />
-              {labels.remove}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => moveField(index, -1)}
+                disabled={index === 0}
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ArrowUp className="h-4 w-4" />
+                {labels.moveUp}
+              </button>
+              <button
+                type="button"
+                onClick={() => moveField(index, 1)}
+                disabled={index === fields.length - 1}
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ArrowDown className="h-4 w-4" />
+                {labels.moveDown}
+              </button>
+              <button
+                type="button"
+                onClick={() => duplicateField(index)}
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent"
+              >
+                <Copy className="h-4 w-4" />
+                {labels.duplicate}
+              </button>
+              <button
+                type="button"
+                onClick={() => removeField(index)}
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
+              >
+                <Trash2 className="h-4 w-4" />
+                {labels.remove}
+              </button>
+            </div>
           </div>
         </div>
       ))}
@@ -420,6 +462,9 @@ function PhotoChecklistEditor({
     item: string
     empty: string
     remove: string
+    duplicate: string
+    moveUp: string
+    moveDown: string
   }
   onChange: (items: string[]) => void
 }) {
@@ -429,6 +474,16 @@ function PhotoChecklistEditor({
 
   function removeItem(index: number) {
     onChange(items.filter((_, itemIndex) => itemIndex !== index))
+  }
+
+  function duplicateItem(index: number) {
+    const item = items[index]
+    if (item == null) return
+    onChange([...items.slice(0, index + 1), item, ...items.slice(index + 1)])
+  }
+
+  function moveItem(index: number, direction: -1 | 1) {
+    onChange(moveArrayItem(items, index, index + direction))
   }
 
   if (items.length === 0) {
@@ -442,7 +497,7 @@ function PhotoChecklistEditor({
   return (
     <div className="space-y-2">
       {items.map((item, index) => (
-        <div key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_2.5rem]">
+        <div key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_repeat(4,2.5rem)]">
           <input
             value={item}
             onChange={(event) => updateItem(index, event.target.value)}
@@ -450,6 +505,35 @@ function PhotoChecklistEditor({
             placeholder={labels.item}
             className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
+          <button
+            type="button"
+            onClick={() => moveItem(index, -1)}
+            disabled={index === 0}
+            aria-label={labels.moveUp}
+            title={labels.moveUp}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ArrowUp className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => moveItem(index, 1)}
+            disabled={index === items.length - 1}
+            aria-label={labels.moveDown}
+            title={labels.moveDown}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ArrowDown className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => duplicateItem(index)}
+            aria-label={labels.duplicate}
+            title={labels.duplicate}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent"
+          >
+            <Copy className="h-4 w-4" />
+          </button>
           <button
             type="button"
             onClick={() => removeItem(index)}

@@ -925,7 +925,10 @@
     "photoChecklistEmpty": "ยังไม่มี checklist รูปสำหรับหมวดหมู่นี้",
     "photoChecklistItem": "รายการรูปที่ต้องการ",
     "addPhotoChecklist": "เพิ่มรายการรูป",
-    "removePhotoChecklist": "ลบรายการรูป"
+    "removePhotoChecklist": "ลบรายการรูป",
+    "duplicateItem": "ทำซ้ำ",
+    "moveUp": "เลื่อนขึ้น",
+    "moveDown": "เลื่อนลง"
   },
   "brandModel": {
     "title": "ยี่ห้อ/รุ่น",
