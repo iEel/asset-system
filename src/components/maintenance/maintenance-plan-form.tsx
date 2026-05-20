@@ -79,11 +79,11 @@ export function MaintenancePlanForm({
   }
 
   return (
-    <details className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-      <summary className="flex cursor-pointer list-none items-center gap-2 text-base font-semibold text-foreground">
+    <section className="rounded-lg border border-primary/30 bg-primary/5 p-4 shadow-sm">
+      <div className="flex items-center gap-2 text-base font-semibold text-foreground">
         <CalendarClock className="h-5 w-5 text-primary" />
         {t("pmCreateTitle")}
-      </summary>
+      </div>
       <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <SearchableSelect label={t("asset")} value={values.assetId} required options={assets} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assetId", value)} />
         <Field label={t("pmPlanTitle")} required>
@@ -130,8 +130,8 @@ export function MaintenancePlanForm({
             className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </Field>
-        <SearchableSelect label={t("assignedTo")} value={values.assignedToId} options={employees} placeholder={t("unassigned")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assignedToId", value)} />
-        <SearchableSelect label={t("vendor")} value={values.vendorId} options={suppliers} placeholder={t("selectVendor")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("vendorId", value)} />
+        <SearchableSelect label={t("pmInternalResponsible")} value={values.assignedToId} options={employees} placeholder={t("unassigned")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assignedToId", value)} />
+        <SearchableSelect label={t("pmExternalProvider")} value={values.vendorId} options={suppliers} placeholder={t("pmNoExternalProvider")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("vendorId", value)} />
         <div className="md:col-span-2 xl:col-span-3">
           <Field label={t("pmNotes")}>
             <textarea
@@ -154,7 +154,7 @@ export function MaintenancePlanForm({
           </button>
         </div>
       </form>
-    </details>
+    </section>
   )
 }
 

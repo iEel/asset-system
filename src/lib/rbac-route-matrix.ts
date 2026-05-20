@@ -122,6 +122,11 @@ export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
     ],
   },
   {
+    filePath: "src/app/api/maintenance-plans/[id]/generate-ticket/route.ts",
+    label: "Generate PM ticket from plan",
+    checks: [{ module: "maintenance", action: "create" }],
+  },
+  {
     filePath: "src/app/api/maintenance-tickets/route.ts",
     label: "Maintenance tickets",
     checks: [

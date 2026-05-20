@@ -2,6 +2,16 @@ export const maintenancePlanFrequencies = ["monthly", "quarterly", "yearly", "cu
 
 export type MaintenancePlanFrequency = (typeof maintenancePlanFrequencies)[number]
 export type MaintenancePlanDueState = "overdue" | "due_soon" | "upcoming"
+export type PreventiveMaintenanceTicketPlan = {
+  planNo: string
+  title: string
+  frequency: MaintenancePlanFrequency | string
+  intervalDays?: number | null
+  nextDueDate: Date | string
+  assignedToId?: string | null
+  vendorId?: string | null
+  notes?: string | null
+}
 
 export type MaintenancePlanSummaryInput = {
   isActive: boolean
@@ -59,6 +69,38 @@ export function summarizeMaintenancePlans(plans: MaintenancePlanSummaryInput[], 
   }
 
   return summary
+}
+
+export function buildPreventiveMaintenanceTicketProblem(plan: Pick<PreventiveMaintenanceTicketPlan, "planNo" | "title" | "notes">) {
+  const title = `[PM] ${plan.planNo} - ${plan.title}`
+  const notes = plan.notes?.trim()
+  return notes ? `${title}\n\n${notes}` : title
+}
+
+export function buildPreventiveMaintenanceTicketDraft(
+  plan: PreventiveMaintenanceTicketPlan,
+  fallbackReportedById?: string | null
+) {
+  const frequency = normalizeMaintenancePlanFrequency(plan.frequency)
+  const assignedToId = plan.assignedToId ?? null
+  const vendorId = plan.vendorId ?? null
+  const reportedById = assignedToId ?? fallbackReportedById ?? null
+
+  return {
+    problem: buildPreventiveMaintenanceTicketProblem(plan),
+    reportedById,
+    assignedToId,
+    dueDate: new Date(plan.nextDueDate),
+    repairType: vendorId ? "vendor" as const : "internal" as const,
+    vendorId,
+    nextDueDate: calculateNextMaintenanceDueDate(plan.nextDueDate, frequency, plan.intervalDays),
+  }
+}
+
+function normalizeMaintenancePlanFrequency(frequency: string): MaintenancePlanFrequency {
+  return maintenancePlanFrequencies.includes(frequency as MaintenancePlanFrequency)
+    ? frequency as MaintenancePlanFrequency
+    : "custom"
 }
 
 function startOfDay(value: Date | string) {

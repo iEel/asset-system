@@ -521,7 +521,6 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const latestAuditItem = asset.auditItems[0]
   const checklistMissingLabels = getMissingPhotoChecklistLabels(photoChecklist, assetAttachments)
   const hasPurchaseDocuments = purchaseDocuments.length > 0 || legacyPurchaseDocuments.length > 0
-  const detailPath = `/${locale}/assets/${asset.id}`
   const encodedAssetId = encodeURIComponent(asset.id)
   const editHref = `/${locale}/assets/${asset.id}/edit`
   const dataHealthItems = ownershipType === "software_license"
@@ -1222,7 +1221,16 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
                             {ticket.repairNo}
                           </Link>
                         </td>
-                        <td className="min-w-72 px-4 py-3 text-muted-foreground">{ticket.problem}</td>
+                        <td className="min-w-72 px-4 py-3 text-muted-foreground">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {isPreventiveMaintenanceTicket(ticket.problem) ? (
+                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                                {t("maintenancePmBadge")}
+                              </span>
+                            ) : null}
+                            <span>{ticket.problem}</span>
+                          </div>
+                        </td>
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                           {ticket.reportedBy.code} - {ticket.reportedBy.fullNameTh}
                         </td>
@@ -2131,7 +2139,7 @@ function buildMaintenanceTimelineItems(
 ): MovementTimelineItem[] {
   return tickets.map((ticket) => ({
     id: `maintenance-${ticket.id}`,
-    title: t("timelineMaintenanceTicket"),
+    title: isPreventiveMaintenanceTicket(ticket.problem) ? t("timelinePmTicket") : t("timelineMaintenanceTicket"),
     summary: `${ticket.repairNo}: ${ticket.problem}`,
     category: "maintenance",
     tone: (ticket.repairStatus === "closed" ? "success" : "warning") as MovementTone,
@@ -2145,6 +2153,10 @@ function buildMaintenanceTimelineItems(
       { label: t("repairStatus"), value: ticket.repairStatus },
     ]),
   }))
+}
+
+function isPreventiveMaintenanceTicket(problem: string) {
+  return problem.trim().startsWith("[PM]")
 }
 
 function buildAuditTimelineItems(
@@ -2236,5 +2248,6 @@ const knownMovementTypeKeys = new Set([
   "installed_in_parent",
   "removed_from_parent",
   "maintenance_create",
+  "maintenance_pm_create",
   "audit_correction",
 ])
