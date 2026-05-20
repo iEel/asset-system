@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Printer } from "lucide-react"
+import { ArrowLeft, Loader2, Printer } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import {
   defaultAssetLabelTemplates,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/asset-label-template"
 
 export type AssetLabelPrintItem = {
+  id: string
   assetTag: string
   name: string
   serialNumber?: string | null
@@ -37,6 +38,11 @@ type AssetLabelPrintProps = {
     tape18mm: string
     tape24mm: string
     tapeCustom: string
+    printReason: string
+    printReasonPlaceholder: string
+    recordingPrint: string
+    printRecorded: string
+    printRecordFailed: string
     scanHint: string
     assetTag: string
     assetName: string
@@ -54,9 +60,41 @@ export function AssetLabelPrint({
   translations,
 }: AssetLabelPrintProps) {
   const [tapeSize, setTapeSize] = useState<AssetLabelTapeSize>(labelTemplates.defaultTapeSize)
+  const [printReason, setPrintReason] = useState("")
+  const [recordingPrint, setRecordingPrint] = useState(false)
+  const [recordedBatchId, setRecordedBatchId] = useState<string | null>(null)
+  const [recordError, setRecordError] = useState<string | null>(null)
   const config = labelTemplates.tapes[tapeSize]
   const itemCountText = useMemo(() => `${assets.length} ${translations.assetTag}`, [assets.length, translations.assetTag])
   const labelHeight = config.heightMm
+  const assetIds = useMemo(() => assets.map((asset) => asset.id), [assets])
+
+  async function handlePrint() {
+    if (recordingPrint || assetIds.length === 0) return
+
+    setRecordingPrint(true)
+    setRecordError(null)
+    setRecordedBatchId(null)
+    try {
+      const response = await fetch("/api/assets/label-prints", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assetIds,
+          tapeSize,
+          reason: printReason.trim() || null,
+        }),
+      })
+      const payload = (await response.json().catch(() => null)) as { batchId?: string } | null
+      if (!response.ok) throw new Error("Unable to record label print")
+      setRecordedBatchId(payload?.batchId ?? "recorded")
+      window.print()
+    } catch {
+      setRecordError(translations.printRecordFailed)
+    } finally {
+      setRecordingPrint(false)
+    }
+  }
 
   return (
     <main className="min-h-screen bg-background text-foreground print:bg-white">
@@ -117,6 +155,17 @@ export function AssetLabelPrint({
             {translations.back}
           </Link>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <label className="flex h-10 min-w-[240px] items-center gap-2 rounded-md border border-border bg-background px-3 text-sm">
+              <span className="shrink-0 font-medium text-muted-foreground">{translations.printReason}</span>
+              <input
+                type="text"
+                value={printReason}
+                onChange={(event) => setPrintReason(event.target.value)}
+                placeholder={translations.printReasonPlaceholder}
+                maxLength={500}
+                className="min-w-0 bg-transparent outline-none placeholder:text-muted-foreground"
+              />
+            </label>
             <label className="flex h-10 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm">
               <span className="font-medium text-muted-foreground">{translations.tapeSize}</span>
               <select
@@ -139,14 +188,24 @@ export function AssetLabelPrint({
             </label>
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={handlePrint}
+              disabled={recordingPrint}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
             >
-              <Printer className="h-4 w-4" />
-              {translations.print}
+              {recordingPrint ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+              {recordingPrint ? translations.recordingPrint : translations.print}
             </button>
           </div>
         </div>
+        {recordError || recordedBatchId ? (
+          <div className="mx-auto max-w-5xl px-6 pb-4 text-sm">
+            {recordError ? (
+              <p className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-danger">{recordError}</p>
+            ) : (
+              <p className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-success">{translations.printRecorded}</p>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <section className="asset-label-title mx-auto max-w-5xl px-6 py-6">

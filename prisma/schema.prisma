@@ -301,9 +301,43 @@ model Asset {
   auditItems            AuditItem[]
   auditFindings         AuditFinding[]
   auditScanHistory      AuditScanHistory[]
+  labelPrints           AssetLabelPrint[]
 
   @@map("assets")
   @@index([licenseAssignedAssetId])
+}
+
+model AssetLabelPrintBatch {
+  id         String   @id @default(uuid())
+  tapeSize   String   @db.NVarChar(20)
+  assetCount Int
+  reason     String?  @db.NVarChar(500)
+  printedBy  String   @db.NVarChar(100)
+  printedAt  DateTime @default(now())
+  userAgent  String?  @db.NVarChar(500)
+
+  items AssetLabelPrint[]
+
+  @@index([printedAt])
+  @@index([printedBy])
+  @@map("asset_label_print_batches")
+}
+
+model AssetLabelPrint {
+  id        String               @id @default(uuid())
+  batchId   String
+  batch     AssetLabelPrintBatch @relation(fields: [batchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assetId   String
+  asset     Asset                @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assetTag  String               @db.NVarChar(50)
+  tapeSize  String               @db.NVarChar(20)
+  reason    String?              @db.NVarChar(500)
+  printedBy String               @db.NVarChar(100)
+  printedAt DateTime             @default(now())
+
+  @@index([assetId, printedAt])
+  @@index([batchId])
+  @@map("asset_label_prints")
 }
 
 model AssetComponent {

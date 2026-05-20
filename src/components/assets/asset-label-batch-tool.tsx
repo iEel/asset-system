@@ -80,7 +80,7 @@ export function AssetLabelBatchTool({ locale, labels }: AssetLabelBatchToolProps
     async function loadRecentAssets() {
       setQueueLoading(true)
       try {
-        const response = await fetch("/api/assets?page=1&pageSize=20&sort=createdAt&direction=desc", {
+        const response = await fetch(`/api/assets/label-prints?mode=unprinted&pageSize=20&locale=${locale}`, {
           signal: controller.signal,
         })
         const payload = (await response.json().catch(() => null)) as { data?: AssetApiRow[] } | null

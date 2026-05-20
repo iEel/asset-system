@@ -47,9 +47,8 @@ export default async function AssetLabelsPage({ params, searchParams }: AssetLab
   return (
     <AssetLabelPrint
       assets={orderedAssets.map((asset) => {
-        const detailPath = `/${locale}/assets/${asset.id}`
-
         return {
+          id: asset.id,
           assetTag: asset.assetTag,
           name: asset.name,
           serialNumber: asset.serialNumber,
@@ -76,6 +75,11 @@ export default async function AssetLabelsPage({ params, searchParams }: AssetLab
         tape18mm: t("labelTape18mm"),
         tape24mm: t("labelTape24mm"),
         tapeCustom: t("labelTapeCustom"),
+        printReason: t("labelPrintReason"),
+        printReasonPlaceholder: t("labelPrintReasonPlaceholder"),
+        recordingPrint: t("recordingLabelPrint"),
+        printRecorded: t("labelPrintRecorded"),
+        printRecordFailed: t("labelPrintRecordFailed"),
         scanHint: t("scanToOpenDetail"),
         assetTag: t("assetTag"),
         assetName: t("assetName"),
