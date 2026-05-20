@@ -138,6 +138,11 @@ NEXTAUTH_SECRET=replace-with-same-value-as-auth-secret
 UPLOAD_DIR=/var/www/asset-system/uploads
 
 MAINTENANCE_PM_GENERATION_TOKEN=replace-with-long-random-token
+NOTIFICATION_DIGEST_TOKEN=replace-with-long-random-token
+NOTIFICATION_DIGEST_WEBHOOK_URL=
+
+BACKUP_STATUS=unknown
+BACKUP_LAST_RUN_AT=
 
 DB_SERVER=192.168.110.106
 DB_INSTANCE=alpha
@@ -190,8 +195,11 @@ sudo chmod 640 /var/www/asset-system/env/asset-system.env
 - ถ้าใช้ named instance เหมือนเครื่อง dev ปัจจุบัน ให้ใส่ `DB_INSTANCE=alpha`; runtime จะไม่ใช้ `DB_PORT` เมื่อมี `DB_INSTANCE`
 - ถ้าใช้ static TCP port ใน production ให้ปล่อย `DB_INSTANCE=` ว่าง แล้วใช้ `DB_PORT=1433`; ในกรณีนี้ให้เปลี่ยน `DATABASE_URL` เป็นรูปแบบ `sqlserver://192.168.110.106:1433;database=asset_management;...`
 - ถ้า `LDAP_AUTO_PROVISION=true`, `LDAP_DEFAULT_ROLE` ต้องเป็น role ที่มีอยู่จริง เช่น `employee`, `viewer`, หรือ role ที่สร้างเองในหน้า Roles; ค่า `asset_user` จะใช้ได้เฉพาะเมื่อสร้าง role นี้แล้ว
-- `UPLOAD_DIR` ควรเป็น absolute path เพื่อไม่ผูกกับ `.next/standalone`
+- `UPLOAD_DIR` ควรเป็น absolute path เพื่อไม่ผูกกับ `.next/standalone` และ user `assetapp` ต้องอ่าน/เขียนได้ เพราะหน้า Storage Governance จะ scan ไฟล์จริงใน directory นี้
 - `MAINTENANCE_PM_GENERATION_TOKEN` และ `LDAP_SYNC_TOKEN` ใช้สำหรับ systemd scheduler heartbeat ควรเป็น random token ยาว ๆ และไม่ซ้ำกับ secret อื่น
+- `NOTIFICATION_DIGEST_TOKEN` ใช้สำหรับรัน daily notification digest ผ่าน script/API แยกจาก scheduler heartbeat
+- `NOTIFICATION_DIGEST_WEBHOOK_URL` เป็น optional generic webhook สำหรับส่ง digest ออกช่องทางภายนอก เช่น gateway ของ Teams/LINE; ถ้าเว้นว่าง ระบบยังสร้าง in-app notification ได้ตามปกติ
+- `BACKUP_STATUS` และ `BACKUP_LAST_RUN_AT` เป็น optional readiness signal สำหรับหน้า `/th/admin/readiness` เท่านั้น ไม่ได้ทำ backup ให้เอง ถ้ายังไม่มีระบบรายงานสถานะ backup ให้ปล่อย `unknown`/ว่างไว้
 
 ---
 
@@ -327,6 +335,8 @@ curl -I http://127.0.0.1:3000/th/login
 MAINTENANCE_PM_GENERATION_TOKEN=replace-with-long-random-token
 LDAP_SYNC_TOKEN=replace-with-long-random-token
 ```
+
+หมายเหตุ: heartbeat นี้ดูแล PM auto-generation และ LDAP Sync ตาม schedule ที่ตั้งจากหน้าเว็บ ส่วน Notification Digest ใช้ script/timer แยกตามหัวข้อ 22 เพื่อไม่ให้การส่งแจ้งเตือนภายนอกผูกกับรอบ PM/LDAP โดยตรง
 
 สร้าง oneshot service:
 
@@ -755,6 +765,15 @@ sudo chown -R assetapp:assetapp /var/www/asset-system/uploads
 
 SQL Server backup ให้ใช้ SQL Server Management Studio, maintenance plan, หรือ `sqlcmd` ตาม policy องค์กร
 
+ถ้ามี backup job ที่ตรวจสถานะได้ ให้สะท้อนสถานะลง env เพื่อให้หน้า `/th/admin/readiness` เห็นภาพรวม production ชัดขึ้น:
+
+```env
+BACKUP_STATUS=success
+BACKUP_LAST_RUN_AT=2026-05-20T01:00:00.000Z
+```
+
+ค่าที่รองรับสำหรับ `BACKUP_STATUS` คือ `success`, `failed`, `missing`, หรือ `unknown` ถ้าแก้ env file หลัง service รันอยู่ ให้ restart `asset-system.service` เพื่อให้ process อ่านค่าใหม่
+
 ---
 
 ## 21. LDAP Sync Scheduling From The Web UI
@@ -766,6 +785,7 @@ LDAP Sync ใช้ scheduler heartbeat เดียวกับ PM แล้ว
 - `LDAP_SYNC_TOKEN` ใน `/var/www/asset-system/env/asset-system.env`
 - `asset-system-scheduler.timer` enabled ตามหัวข้อ 11
 - หน้า `/th/admin/settings` แท็บ `LDAP Sync` ตั้ง `เปิดใช้ Sync`, `โหมด Sync = Scheduled`, และ `รอบเวลา Sync`
+- ตั้งค่า `Max scheduled deactivations per run` ในแท็บ `LDAP Sync` เพื่อจำกัดจำนวนพนักงานที่ scheduled sync จะปิดใช้งานต่อรอบ ถ้ารอบอัตโนมัติพบพนักงานที่หายจาก AD เกิน threshold นี้ ระบบจะ block รอบนั้นเพื่อให้ตรวจ manual ก่อน
 
 ถ้าต้องการทดสอบเฉพาะ LDAP scheduled endpoint:
 
@@ -776,7 +796,84 @@ sudo -u assetapp bash -lc 'set -a && . /var/www/asset-system/env/asset-system.en
 
 ---
 
-## 22. Production Checklist
+## 22. Optional Notification Digest Scheduling
+
+Notification Digest เป็นงานสรุปแจ้งเตือนรายวัน เช่น งานอนุมัติค้าง, งานซ่อม, audit follow-up หรือรายการที่ต้องติดตาม ระบบสร้าง in-app notification ได้ และถ้าตั้ง `NOTIFICATION_DIGEST_WEBHOOK_URL` จะพยายามส่งออก generic webhook เพิ่มด้วย
+
+สิ่งที่ต้องมีใน env:
+
+```env
+NOTIFICATION_DIGEST_TOKEN=replace-with-long-random-token
+NOTIFICATION_DIGEST_WEBHOOK_URL=
+```
+
+ทดสอบแบบ dry-run ผ่าน local app:
+
+```bash
+cd /var/www/asset-system/app
+sudo -u assetapp bash -lc 'set -a && . /var/www/asset-system/env/asset-system.env && set +a && AUTH_URL=http://127.0.0.1:3000 NEXTAUTH_URL=http://127.0.0.1:3000 npm run notifications:digest -- --dry-run'
+```
+
+ถ้าต้องการให้รันอัตโนมัติทุกวัน ให้ใช้ systemd timer แยกจาก scheduler heartbeat:
+
+```bash
+sudo nano /etc/systemd/system/asset-system-notification-digest.service
+```
+
+ใส่:
+
+```ini
+[Unit]
+Description=Send Asset System notification digest
+Wants=network-online.target asset-system.service
+After=network-online.target asset-system.service
+
+[Service]
+Type=oneshot
+User=assetapp
+Group=assetapp
+WorkingDirectory=/var/www/asset-system/app
+EnvironmentFile=/var/www/asset-system/env/asset-system.env
+Environment=AUTH_URL=http://127.0.0.1:3000
+Environment=NEXTAUTH_URL=http://127.0.0.1:3000
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/npm run notifications:digest
+```
+
+สร้าง timer ตัวอย่างให้ส่งทุกวัน 07:30:
+
+```bash
+sudo nano /etc/systemd/system/asset-system-notification-digest.timer
+```
+
+ใส่:
+
+```ini
+[Unit]
+Description=Send Asset System notification digest daily
+
+[Timer]
+OnCalendar=*-*-* 07:30:00
+Persistent=true
+Unit=asset-system-notification-digest.service
+
+[Install]
+WantedBy=timers.target
+```
+
+เปิดใช้งานและตรวจสอบ:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now asset-system-notification-digest.timer
+sudo systemctl start asset-system-notification-digest.service
+sudo journalctl -u asset-system-notification-digest.service -n 80 --no-pager
+systemctl list-timers asset-system-notification-digest.timer
+```
+
+---
+
+## 23. Production Checklist
 
 ก่อน Go Live:
 
@@ -786,6 +883,9 @@ sudo -u assetapp bash -lc 'set -a && . /var/www/asset-system/env/asset-system.en
 - [ ] `UPLOAD_DIR` เป็น absolute path และมี backup
 - [ ] `MAINTENANCE_PM_GENERATION_TOKEN` เป็น random token จริง
 - [ ] `LDAP_SYNC_TOKEN` เป็น random token จริงถ้าเปิด LDAP scheduled sync
+- [ ] `NOTIFICATION_DIGEST_TOKEN` เป็น random token จริง เพื่อให้ Notification Digest พร้อมใช้งานและหน้า `/th/admin/readiness` ผ่านครบ 3 scheduler tokens
+- [ ] `NOTIFICATION_DIGEST_WEBHOOK_URL` ตั้งค่าแล้วถ้าต้องการส่ง digest ออกช่องทางภายนอก
+- [ ] `BACKUP_STATUS` และ `BACKUP_LAST_RUN_AT` ตั้งตามระบบ backup หรือปล่อยเป็น `unknown` อย่างตั้งใจ
 - [ ] SQL Server connection ใช้ production user ที่สิทธิ์เหมาะสม
 - [ ] SQL Server มี backup schedule
 - [ ] `npm run build` ผ่านบน Ubuntu
@@ -797,13 +897,16 @@ sudo -u assetapp bash -lc 'set -a && . /var/www/asset-system/env/asset-system.en
 - [ ] Public QR Base URL ตั้งเป็น `https://asset.company.com`
 - [ ] ทดสอบ `npm run scheduler:heartbeat` ผ่าน local app URL แล้ว
 - [ ] ตั้ง PM/LDAP schedule ที่หน้า `/th/admin/settings` แล้ว
+- [ ] ตั้ง `Max scheduled deactivations per run` สำหรับ LDAP scheduled sync แล้ว
+- [ ] เปิด `/th/admin/readiness` แล้วไม่มี blocker สำคัญก่อน Go Live
+- [ ] เปิด `/th/admin/storage` แล้ว filesystem dry-run ของ `UPLOAD_DIR` ไม่มี orphan/missing file ที่ต้องจัดการก่อน Go Live
 - [ ] ไม่เปิด inbound port `3000` หรือ `8080` ออก Internet
 - [ ] ไม่รัน cleanup test-data บน production
 - [ ] ทดสอบ login, asset create, upload, QR scan, export Excel/PDF
 
 ---
 
-## 23. Common Troubleshooting
+## 24. Common Troubleshooting
 
 ### เข้า domain แล้วเจอ Cloudflare 1016
 
@@ -910,7 +1013,11 @@ service: http://127.0.0.1:8080
 grep UPLOAD_DIR /var/www/asset-system/env/asset-system.env
 sudo ls -ld /var/www/asset-system/uploads
 sudo chown -R assetapp:assetapp /var/www/asset-system/uploads
+sudo -u assetapp test -r /var/www/asset-system/uploads
+sudo -u assetapp test -w /var/www/asset-system/uploads
 ```
+
+ถ้าหน้า `/th/admin/storage` แสดง orphan/missing files ให้ตรวจว่าค่า `UPLOAD_DIR` ใน env ชี้ path เดียวกับที่แอปใช้จริง และไฟล์แนบเก่าถูก restore มาครบ
 
 ### Prisma ต่อ SQL Server ไม่ได้
 
