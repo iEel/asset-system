@@ -1,7 +1,6 @@
 import Link from "next/link"
 import { getTranslations } from "next-intl/server"
-import { Edit } from "lucide-react"
-import type { Prisma } from "@prisma/client"
+import { ArrowDown, ArrowUp, Edit } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { CategoryDeleteButton } from "@/components/master-data/category-delete-button"
@@ -9,16 +8,35 @@ import {
   ActiveBadge,
   ColumnHeader,
   MasterDataHeader,
-  MasterDataPagination,
-  MasterDataSearch,
-  SortableColumnHeader,
 } from "@/components/master-data/master-data-layout"
-import { buildCategoryOrderBy, parseCategoryListParams } from "@/lib/category-list-query"
+import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
+import { assetTagCategoryPrefixesKey } from "@/lib/system-setting-defaults"
+import { paginationRange } from "@/lib/master-data-query"
+import {
+  buildCategoryOrderBy,
+  buildCategoryQueryString,
+  buildCategoryWhere,
+  parseCategoryListParams,
+  parseCategoryPrefixMap,
+  type CategoryListState,
+  type CategorySort,
+} from "@/lib/category-list-query"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type CategoriesPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string; page?: string; pageSize?: string; sort?: string; direction?: string }>
+  searchParams: Promise<{
+    search?: string
+    page?: string
+    pageSize?: string
+    sort?: string
+    direction?: string
+    assetUsage?: string
+    modelStatus?: string
+    customFieldStatus?: string
+    checklistStatus?: string
+    prefixStatus?: string
+  }>
 }
 
 export default async function CategoriesPage({ params, searchParams }: CategoriesPageProps) {
@@ -30,18 +48,21 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
   const tCommon = await getTranslations("common")
   const listState = parseCategoryListParams(rawSearchParams)
   const searchText = listState.search
-  const where: Prisma.AssetCategoryWhereInput = {
-    isActive: true,
-    ...(searchText
-      ? {
-          OR: [
-            { code: { contains: searchText } },
-            { name: { contains: searchText } },
-            { description: { contains: searchText } },
-          ],
-        }
-      : {}),
-  }
+  const [photoChecklistSettings, prefixSetting] = await Promise.all([
+    prisma.systemSetting.findMany({
+      where: { key: { startsWith: categoryPhotoChecklistKey("") } },
+      select: { key: true, value: true },
+    }),
+    prisma.systemSetting.findUnique({
+      where: { key: assetTagCategoryPrefixesKey },
+      select: { value: true },
+    }),
+  ])
+  const categoryIdsWithChecklist = photoChecklistSettings
+    .filter((setting) => parsePhotoChecklist(setting.value).length > 0)
+    .map((setting) => setting.key.replace(categoryPhotoChecklistKey(""), ""))
+  const categoryIdsWithPrefix = Object.keys(parseCategoryPrefixMap(prefixSetting?.value))
+  const where = buildCategoryWhere(listState, { categoryIdsWithChecklist, categoryIdsWithPrefix })
 
   const [categories, total] = await Promise.all([
     prisma.assetCategory.findMany({
@@ -72,29 +93,100 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
         createLabel={tCommon("create")}
       />
 
-      <MasterDataSearch
-        action={basePath}
-        defaultValue={searchText}
-        placeholder={tCommon("search")}
-        submitLabel={tCommon("search")}
-        hiddenInputs={{
-          pageSize: listState.pageSize,
-          sort: listState.sort,
-          direction: listState.direction,
-        }}
-      />
+      <div className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(5,minmax(150px,1fr))_auto]" action={basePath}>
+          <input type="hidden" name="page" value="1" />
+          <input type="hidden" name="pageSize" value={listState.pageSize} />
+          <input type="hidden" name="sort" value={listState.sort} />
+          <input type="hidden" name="direction" value={listState.direction} />
+          <label className="space-y-1 text-sm font-medium text-foreground">
+            <span>{tCommon("search")}</span>
+            <input
+              type="search"
+              name="search"
+              defaultValue={searchText}
+              placeholder={t("searchPlaceholder")}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </label>
+          <FilterSelect
+            label={t("assetUsageFilter")}
+            name="assetUsage"
+            defaultValue={listState.assetUsage}
+            options={[
+              { value: "all", label: tCommon("all") },
+              { value: "withAssets", label: t("withAssets") },
+              { value: "withoutAssets", label: t("withoutAssets") },
+            ]}
+          />
+          <FilterSelect
+            label={t("modelStatusFilter")}
+            name="modelStatus"
+            defaultValue={listState.modelStatus}
+            options={[
+              { value: "all", label: tCommon("all") },
+              { value: "withModels", label: t("withModels") },
+              { value: "withoutModels", label: t("withoutModels") },
+            ]}
+          />
+          <FilterSelect
+            label={t("customFieldStatusFilter")}
+            name="customFieldStatus"
+            defaultValue={listState.customFieldStatus}
+            options={[
+              { value: "all", label: tCommon("all") },
+              { value: "withCustomFields", label: t("withCustomFields") },
+              { value: "withoutCustomFields", label: t("withoutCustomFields") },
+            ]}
+          />
+          <FilterSelect
+            label={t("checklistStatusFilter")}
+            name="checklistStatus"
+            defaultValue={listState.checklistStatus}
+            options={[
+              { value: "all", label: tCommon("all") },
+              { value: "withChecklist", label: t("withChecklist") },
+              { value: "withoutChecklist", label: t("withoutChecklist") },
+            ]}
+          />
+          <FilterSelect
+            label={t("prefixStatusFilter")}
+            name="prefixStatus"
+            defaultValue={listState.prefixStatus}
+            options={[
+              { value: "all", label: tCommon("all") },
+              { value: "withPrefix", label: t("withPrefix") },
+              { value: "withoutPrefix", label: t("withoutPrefix") },
+            ]}
+          />
+          <div className="flex items-end gap-2">
+            <button
+              type="submit"
+              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+            >
+              {tCommon("filter")}
+            </button>
+            <Link
+              href={basePath}
+              className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+            >
+              {t("clearFilters")}
+            </Link>
+          </div>
+        </form>
+      </div>
 
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">
               <tr>
-                <SortableColumnHeader field="code" current={listState} basePath={basePath}>{t("code")}</SortableColumnHeader>
-                <SortableColumnHeader field="name" current={listState} basePath={basePath}>{t("name")}</SortableColumnHeader>
+                <CategorySortableColumnHeader field="code" current={listState} basePath={basePath}>{t("code")}</CategorySortableColumnHeader>
+                <CategorySortableColumnHeader field="name" current={listState} basePath={basePath}>{t("name")}</CategorySortableColumnHeader>
                 <ColumnHeader>{t("description")}</ColumnHeader>
-                <SortableColumnHeader field="models" current={listState} basePath={basePath}>{t("models")}</SortableColumnHeader>
-                <SortableColumnHeader field="assets" current={listState} basePath={basePath}>{t("assets")}</SortableColumnHeader>
-                <SortableColumnHeader field="customFields" current={listState} basePath={basePath}>{t("customFieldsShort")}</SortableColumnHeader>
+                <CategorySortableColumnHeader field="models" current={listState} basePath={basePath}>{t("models")}</CategorySortableColumnHeader>
+                <CategorySortableColumnHeader field="assets" current={listState} basePath={basePath}>{t("assets")}</CategorySortableColumnHeader>
+                <CategorySortableColumnHeader field="customFields" current={listState} basePath={basePath}>{t("customFieldsShort")}</CategorySortableColumnHeader>
                 <ColumnHeader>{tCommon("status")}</ColumnHeader>
                 <ColumnHeader align="right">{tCommon("actions")}</ColumnHeader>
               </tr>
@@ -148,7 +240,7 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
             </tbody>
           </table>
         </div>
-        <MasterDataPagination
+        <CategoryPagination
           current={listState}
           total={total}
           basePath={basePath}
@@ -162,5 +254,129 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
         />
       </div>
     </div>
+  )
+}
+
+function CategorySortableColumnHeader({
+  children,
+  field,
+  current,
+  basePath,
+  align = "left",
+}: {
+  children: React.ReactNode
+  field: CategorySort
+  current: CategoryListState
+  basePath: string
+  align?: "left" | "right"
+}) {
+  const active = current.sort === field
+  const nextDirection = active && current.direction === "asc" ? "desc" : "asc"
+  const href = `${basePath}?${buildCategoryQueryString(current, { sort: field, direction: nextDirection, page: 1 })}`
+
+  return (
+    <th scope="col" className={`px-4 py-3 text-xs font-semibold uppercase tracking-normal text-muted-foreground ${align === "right" ? "text-right" : "text-left"}`}>
+      <Link href={href} className={`inline-flex items-center gap-1 hover:text-primary ${align === "right" ? "justify-end" : ""}`}>
+        {children}
+        {active ? (
+          current.direction === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+        ) : null}
+      </Link>
+    </th>
+  )
+}
+
+function CategoryPagination({
+  current,
+  total,
+  basePath,
+  labels,
+}: {
+  current: CategoryListState
+  total: number
+  basePath: string
+  labels: {
+    rowsPerPage: string
+    page: string
+    of: string
+    previous: string
+    next: string
+  }
+}) {
+  const { start, end, totalPages } = paginationRange(current.page, current.pageSize, total)
+  const safePage = Math.min(current.page, totalPages)
+  const previousPage = Math.max(1, safePage - 1)
+  const nextPage = Math.min(totalPages, safePage + 1)
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-border px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        {start}-{end} {labels.of} {total}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span>{labels.rowsPerPage}</span>
+        {[25, 50, 100].map((pageSize) => (
+          <Link
+            key={pageSize}
+            href={`${basePath}?${buildCategoryQueryString(current, { pageSize, page: 1 })}`}
+            className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md border px-2 transition-colors ${
+              current.pageSize === pageSize ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface hover:bg-accent"
+            }`}
+          >
+            {pageSize}
+          </Link>
+        ))}
+        <span className="px-2">
+          {labels.page} {safePage} {labels.of} {totalPages}
+        </span>
+        <Link
+          href={`${basePath}?${buildCategoryQueryString(current, { page: previousPage })}`}
+          aria-disabled={safePage <= 1}
+          className={`inline-flex h-8 items-center rounded-md border border-border px-3 transition-colors ${
+            safePage <= 1 ? "pointer-events-none opacity-50" : "hover:bg-accent"
+          }`}
+        >
+          {labels.previous}
+        </Link>
+        <Link
+          href={`${basePath}?${buildCategoryQueryString(current, { page: nextPage })}`}
+          aria-disabled={safePage >= totalPages}
+          className={`inline-flex h-8 items-center rounded-md border border-border px-3 transition-colors ${
+            safePage >= totalPages ? "pointer-events-none opacity-50" : "hover:bg-accent"
+          }`}
+        >
+          {labels.next}
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+function FilterSelect({
+  label,
+  name,
+  defaultValue,
+  options,
+}: {
+  label: string
+  name: string
+  defaultValue: string
+  options: Array<{ value: string; label: string }>
+}) {
+  return (
+    <label className="space-y-1 text-sm font-medium text-foreground">
+      <span>{label}</span>
+      <select
+        name={name}
+        defaultValue={defaultValue}
+        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
