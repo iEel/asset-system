@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import {
@@ -198,14 +198,15 @@ export function AuditScanForm({
     }
   }, [])
 
-  useEffect(() => {
-    refreshOfflineQueue()
-  }, [roundId])
-
-  function refreshOfflineQueue() {
+  const refreshOfflineQueue = useCallback(() => {
     if (typeof window === "undefined") return
     setOfflineQueue(loadQueuedAuditScans(window.localStorage, roundId))
-  }
+  }, [roundId])
+
+  useEffect(() => {
+    const timer = window.setTimeout(refreshOfflineQueue, 0)
+    return () => window.clearTimeout(timer)
+  }, [refreshOfflineQueue])
 
   async function startScanner() {
     if (!isCameraAccessSupported()) {

@@ -315,10 +315,10 @@ function buildFilterHref(
   param: "module" | "decision",
   value: ApprovalDecisionModuleFilter | ApprovalDecisionFilter
 ) {
-  const module = param === "module" ? value : activeModule
+  const moduleFilterValue = param === "module" ? value : activeModule
   const decision = param === "decision" ? value : activeDecision
   const query = new URLSearchParams()
-  if (module !== "all") query.set("module", module)
+  if (moduleFilterValue !== "all") query.set("module", moduleFilterValue)
   if (decision !== "all") query.set("decision", decision)
   const queryString = query.toString()
   return `/${locale}/admin/approvals/history${queryString ? `?${queryString}` : ""}`

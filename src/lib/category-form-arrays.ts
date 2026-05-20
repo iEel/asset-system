@@ -19,7 +19,8 @@ export function moveArrayItem<TItem>(items: TItem[], fromIndex: number, toIndex:
 }
 
 export function duplicateCategoryCustomField(field: CategoryCustomFieldDraft): CategoryCustomFieldDraft {
-  const { id: _id, ...fieldWithoutId } = field
+  const { id, ...fieldWithoutId } = field
+  void id
   return {
     ...fieldWithoutId,
     fieldName: buildCopyFieldName(field.fieldName),

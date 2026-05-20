@@ -52,13 +52,13 @@ export function buildApprovalDecisionLogItems(
   return logs
     .map((log) => {
       const decision = getApprovalDecision(log)
-      const module = getApprovalDecisionModule(log)
-      if (!decision || !module) return null
+      const decisionModule = getApprovalDecisionModule(log)
+      if (!decision || !decisionModule) return null
 
       const presentation = buildSystemLogPresentation(log, labels, locale, t)
       return {
         id: log.id,
-        module,
+        module: decisionModule,
         decision,
         createdAt: log.createdAt,
         actorLabel: presentation.userLabel,

@@ -73,7 +73,10 @@ Production uses `/var/www/asset-system/env/asset-system.env`; see `DEPLOYMENT_UB
 | `npm run build` | Production build |
 | `npm run start` | Start built app using `WEB_PORT` |
 | `npm run lint` | ESLint |
+| `npm test` | Run all Node test files under `tests/` |
+| `npm run verify` | Run lint, all tests, and production build in one command |
 | `npm run ldap:sync` | External/manual LDAP sync runner |
+| `npm run pm:generate-due` | Generate due preventive-maintenance tickets through the scheduler endpoint |
 | `npm run cleanup:test-data` | Guarded trial asset cleanup CLI; dry-run by default |
 
 ## Verification
@@ -85,10 +88,16 @@ node --test tests\asset-depreciation.test.ts
 node --test tests\design-system.test.ts
 ```
 
-Before deployment or a larger release, run:
+For the full local regression suite:
 
 ```powershell
-npm run build
+npm test
+```
+
+Before deployment, larger releases, or handoff commits, run:
+
+```powershell
+npm run verify
 ```
 
 ## Key Modules
