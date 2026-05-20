@@ -23,6 +23,18 @@ test("marks core production readiness checks as pass when settings and coverage 
     approverMatrix: readyApprovers,
     activeAdminUsers: 2,
     activeUserCount: 8,
+    deployment: {
+      nodeEnv: "production",
+      authUrl: "https://asset.company.com",
+      nextAuthUrl: "https://asset.company.com",
+      authSecret: "abcdefghijklmnopqrstuvwxyz1234567890",
+      nextAuthSecret: "abcdefghijklmnopqrstuvwxyz1234567890",
+      uploadDir: "/var/www/asset-system/uploads",
+      databaseUrl: "sqlserver://192.168.1.10;database=asset_management;user=asset_app;password=secret",
+      dbServer: "192.168.1.10",
+      dbUser: "asset_app",
+      dbPassword: "secret",
+    },
     masterDataCounts: {
       companies: 1,
       branches: 2,
@@ -34,7 +46,7 @@ test("marks core production readiness checks as pass when settings and coverage 
     },
   })
 
-  assert.deepEqual(checks.map((check) => check.status), ["pass", "pass", "pass", "pass", "pass"])
+  assert.deepEqual(checks.map((check) => check.status), ["pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass"])
 })
 
 test("surfaces risky production readiness states", () => {
@@ -51,6 +63,18 @@ test("surfaces risky production readiness states", () => {
     ],
     activeAdminUsers: 1,
     activeUserCount: 3,
+    deployment: {
+      nodeEnv: "development",
+      authUrl: "https://asset.company.com:3000",
+      nextAuthUrl: "https://asset.company.com",
+      authSecret: "replace-with-openssl-rand-base64-32",
+      nextAuthSecret: "replace-with-same-value-as-auth-secret",
+      uploadDir: "",
+      databaseUrl: "sqlserver://server;database=asset_management;user=asset_app;password=replace-with-db-password",
+      dbServer: "",
+      dbUser: "asset_app",
+      dbPassword: "",
+    },
     masterDataCounts: {
       companies: 1,
       branches: 0,
@@ -67,4 +91,8 @@ test("surfaces risky production readiness states", () => {
   assert.equal(checks.find((check) => check.key === "notificationRules")?.status, "fail")
   assert.equal(checks.find((check) => check.key === "adminCoverage")?.status, "warning")
   assert.equal(checks.find((check) => check.key === "masterData")?.status, "warning")
+  assert.equal(checks.find((check) => check.key === "appBaseUrl")?.status, "warning")
+  assert.equal(checks.find((check) => check.key === "authSecret")?.status, "fail")
+  assert.equal(checks.find((check) => check.key === "uploadDir")?.status, "fail")
+  assert.equal(checks.find((check) => check.key === "databaseConfig")?.status, "fail")
 })

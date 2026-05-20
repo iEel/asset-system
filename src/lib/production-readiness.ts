@@ -5,6 +5,10 @@ export type ProductionReadinessCheckKey =
   | "notificationRules"
   | "adminCoverage"
   | "masterData"
+  | "appBaseUrl"
+  | "authSecret"
+  | "uploadDir"
+  | "databaseConfig"
 
 export type ProductionReadinessApproverSummary = {
   key: string
@@ -27,7 +31,21 @@ export type ProductionReadinessInput = {
   approverMatrix: readonly ProductionReadinessApproverSummary[]
   activeAdminUsers: number
   activeUserCount: number
+  deployment?: ProductionReadinessDeploymentInput
   masterDataCounts: ProductionReadinessMasterDataCounts
+}
+
+export type ProductionReadinessDeploymentInput = {
+  nodeEnv?: string
+  authUrl?: string
+  nextAuthUrl?: string
+  authSecret?: string
+  nextAuthSecret?: string
+  uploadDir?: string
+  databaseUrl?: string
+  dbServer?: string
+  dbUser?: string
+  dbPassword?: string
 }
 
 export type ProductionReadinessCheck = {
@@ -92,6 +110,30 @@ export function buildProductionReadinessChecks(input: ProductionReadinessInput):
       value: `${readyMasterDataCount}/${masterDataKeys.length}`,
       href: "/admin/data-quality",
     },
+    {
+      key: "appBaseUrl",
+      status: getAppBaseUrlStatus(input.deployment),
+      value: getAppBaseUrlValue(input.deployment),
+      href: "/admin/readiness",
+    },
+    {
+      key: "authSecret",
+      status: getAuthSecretStatus(input.deployment),
+      value: getSecretValue(input.deployment),
+      href: "/admin/readiness",
+    },
+    {
+      key: "uploadDir",
+      status: getUploadDirStatus(input.deployment?.uploadDir),
+      value: input.deployment?.uploadDir?.trim() || "-",
+      href: "/admin/readiness",
+    },
+    {
+      key: "databaseConfig",
+      status: getDatabaseConfigStatus(input.deployment),
+      value: getDatabaseConfigValue(input.deployment),
+      href: "/admin/readiness",
+    },
   ]
 }
 
@@ -120,6 +162,79 @@ function getPublicQrStatus(value: string): ProductionReadinessStatus {
   } catch {
     return "fail"
   }
+}
+
+function getAppBaseUrlStatus(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessStatus {
+  const authUrl = parseUrl(deployment?.authUrl)
+  const nextAuthUrl = parseUrl(deployment?.nextAuthUrl)
+  if (!authUrl && !nextAuthUrl) return "fail"
+  if ((deployment?.authUrl && !authUrl) || (deployment?.nextAuthUrl && !nextAuthUrl)) return "fail"
+
+  const urls = [authUrl, nextAuthUrl].filter((url): url is URL => Boolean(url))
+  if (urls.some((url) => url.protocol !== "https:")) return "warning"
+  if (urls.some((url) => url.port && url.port !== "443")) return "warning"
+  if (urls.some((url) => isPrivateOrLocalHost(url.hostname))) return "warning"
+  if (authUrl && nextAuthUrl && authUrl.origin !== nextAuthUrl.origin) return "warning"
+  if (deployment?.nodeEnv !== "production") return "warning"
+  return "pass"
+}
+
+function getAuthSecretStatus(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessStatus {
+  const authSecret = deployment?.authSecret?.trim() ?? ""
+  const nextAuthSecret = deployment?.nextAuthSecret?.trim() ?? ""
+  if (!authSecret || !nextAuthSecret) return "fail"
+  if (isPlaceholderSecret(authSecret) || isPlaceholderSecret(nextAuthSecret)) return "fail"
+  if (authSecret !== nextAuthSecret) return "fail"
+  if (authSecret.length < 32) return "warning"
+  return "pass"
+}
+
+function getUploadDirStatus(value: string | undefined): ProductionReadinessStatus {
+  const uploadDir = value?.trim() ?? ""
+  if (!uploadDir) return "fail"
+  return isAbsolutePath(uploadDir) ? "pass" : "warning"
+}
+
+function getDatabaseConfigStatus(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessStatus {
+  const databaseUrl = deployment?.databaseUrl?.trim() ?? ""
+  const required = [deployment?.dbServer, deployment?.dbUser, deployment?.dbPassword].every((value) => Boolean(value?.trim()))
+  if (!databaseUrl || !required) return "fail"
+  if (/replace-with|changeme/i.test(databaseUrl) || /replace-with|changeme/i.test(deployment?.dbPassword ?? "")) return "fail"
+  return "pass"
+}
+
+function getAppBaseUrlValue(deployment?: ProductionReadinessDeploymentInput) {
+  const authUrl = deployment?.authUrl?.trim() || "-"
+  const nextAuthUrl = deployment?.nextAuthUrl?.trim() || "-"
+  return `AUTH_URL=${authUrl} / NEXTAUTH_URL=${nextAuthUrl}`
+}
+
+function getSecretValue(deployment?: ProductionReadinessDeploymentInput) {
+  const authSecretReady = getAuthSecretStatus(deployment) === "pass"
+  return authSecretReady ? "configured" : "needs review"
+}
+
+function getDatabaseConfigValue(deployment?: ProductionReadinessDeploymentInput) {
+  const configured = [deployment?.databaseUrl, deployment?.dbServer, deployment?.dbUser, deployment?.dbPassword].filter((value) => Boolean(value?.trim())).length
+  return `${configured}/4 configured`
+}
+
+function parseUrl(value: string | undefined) {
+  const raw = value?.trim()
+  if (!raw) return null
+  try {
+    return new URL(raw)
+  } catch {
+    return null
+  }
+}
+
+function isPlaceholderSecret(value: string) {
+  return /replace-with|same-value|changeme|secret/i.test(value)
+}
+
+function isAbsolutePath(value: string) {
+  return /^[A-Za-z]:[\\/]/.test(value) || value.startsWith("/")
 }
 
 function isPrivateOrLocalHost(hostname: string) {

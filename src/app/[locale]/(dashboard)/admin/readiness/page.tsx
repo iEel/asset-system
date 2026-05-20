@@ -36,6 +36,18 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
     approverMatrix,
     activeAdminUsers: approverUsers.filter((user) => user.roleKeys.includes("system_admin")).length,
     activeUserCount: approverUsers.length,
+    deployment: {
+      nodeEnv: process.env.NODE_ENV,
+      authUrl: process.env.AUTH_URL,
+      nextAuthUrl: process.env.NEXTAUTH_URL,
+      authSecret: process.env.AUTH_SECRET,
+      nextAuthSecret: process.env.NEXTAUTH_SECRET,
+      uploadDir: process.env.UPLOAD_DIR,
+      databaseUrl: process.env.DATABASE_URL,
+      dbServer: process.env.DB_SERVER,
+      dbUser: process.env.DB_USER,
+      dbPassword: process.env.DB_PASSWORD,
+    },
     masterDataCounts,
   })
   const summary = summarizeProductionReadiness(checks)

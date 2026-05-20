@@ -2119,7 +2119,19 @@
     "check_adminCoverage_action": "จัดการผู้ใช้",
     "check_masterData_title": "Master data baseline",
     "check_masterData_description": "ตรวจว่ามีบริษัท สาขา แผนก พื้นที่ หมวดหมู่ สถานะ และสภาพทรัพย์สินขั้นต่ำ",
-    "check_masterData_action": "ดูคุณภาพข้อมูล"
+    "check_masterData_action": "ดูคุณภาพข้อมูล",
+    "check_appBaseUrl_title": "Production App URL",
+    "check_appBaseUrl_description": "ตรวจ AUTH_URL/NEXTAUTH_URL ว่าเป็น HTTPS domain เดียวกัน และไม่มี port production ติดมากับ URL",
+    "check_appBaseUrl_action": "ดูค่าติดตั้ง",
+    "check_authSecret_title": "Auth secret",
+    "check_authSecret_description": "ตรวจว่า AUTH_SECRET/NEXTAUTH_SECRET ถูกตั้งจริง ตรงกัน และไม่ใช่ค่า placeholder",
+    "check_authSecret_action": "ดูค่าติดตั้ง",
+    "check_uploadDir_title": "Upload directory",
+    "check_uploadDir_description": "ตรวจ UPLOAD_DIR ว่าเป็น path ถาวรแบบ absolute สำหรับไฟล์แนบและรูปทรัพย์สิน",
+    "check_uploadDir_action": "ดูค่าติดตั้ง",
+    "check_databaseConfig_title": "Database connection",
+    "check_databaseConfig_description": "ตรวจค่า DB_SERVER, DB_USER, DB_PASSWORD และ DATABASE_URL ว่าพร้อมใช้งานและไม่ใช่ค่า placeholder",
+    "check_databaseConfig_action": "ดูค่าติดตั้ง"
   },
   "systemLogPage": {
     "title": "ประวัติระบบ",

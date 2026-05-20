@@ -2119,7 +2119,19 @@
     "check_adminCoverage_action": "Manage Users",
     "check_masterData_title": "Master data baseline",
     "check_masterData_description": "Checks minimum company, branch, department, location, category, status, and condition data exists.",
-    "check_masterData_action": "Open Data Quality"
+    "check_masterData_action": "Open Data Quality",
+    "check_appBaseUrl_title": "Production App URL",
+    "check_appBaseUrl_description": "Checks AUTH_URL/NEXTAUTH_URL use the same HTTPS domain without a production port in the URL.",
+    "check_appBaseUrl_action": "Review Deploy Config",
+    "check_authSecret_title": "Auth secret",
+    "check_authSecret_description": "Checks AUTH_SECRET/NEXTAUTH_SECRET are set, match, and are not placeholder values.",
+    "check_authSecret_action": "Review Deploy Config",
+    "check_uploadDir_title": "Upload directory",
+    "check_uploadDir_description": "Checks UPLOAD_DIR is a stable absolute path for attachments and asset photos.",
+    "check_uploadDir_action": "Review Deploy Config",
+    "check_databaseConfig_title": "Database connection",
+    "check_databaseConfig_description": "Checks DB_SERVER, DB_USER, DB_PASSWORD, and DATABASE_URL are configured and not placeholders.",
+    "check_databaseConfig_action": "Review Deploy Config"
   },
   "systemLogPage": {
     "title": "System Log",
