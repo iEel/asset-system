@@ -1591,6 +1591,13 @@
     "dropAuditPhotoHint": "or click to choose from this device",
     "dropAuditPhotoSelected": "Ready to upload with this scan",
     "queuedPhotos": "{count} photos queued",
+    "offlineQueueTitle": "{count} scan results waiting to sync",
+    "offlineQueueHelp": "These results were stored on this device after a failed submission. Retry when the connection is back.",
+    "offlineRetry": "Retry Queue",
+    "offlineQueuedTitle": "Saved to Offline Queue",
+    "offlineQueued": "Audit scan saved to the offline queue",
+    "offlineQueuedWithoutPhotos": "Audit scan saved to the offline queue, but queued photos cannot be preserved after a page reload.",
+    "offlineRetrySuccess": "Synced {count} offline scan results",
     "unlabeledPhoto": "No photo type / angle",
     "removeQueuedPhoto": "Remove queued photo",
     "auditPhotoUploadFailed": "Audit photo upload failed"

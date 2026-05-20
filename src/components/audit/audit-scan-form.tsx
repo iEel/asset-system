@@ -3,12 +3,32 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, Camera, CheckCircle2, ImagePlus, Info, Keyboard, Loader2, ScanLine, Save, X } from "lucide-react"
+import {
+  AlertTriangle,
+  Camera,
+  CheckCircle2,
+  ImagePlus,
+  Info,
+  Keyboard,
+  Loader2,
+  RefreshCcw,
+  Save,
+  ScanLine,
+  WifiOff,
+  X,
+} from "lucide-react"
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 import { extractAssetLookupCandidatesFromScanValue } from "@/lib/asset-qr"
 import { normalizeAssetOwnershipType, requiresCustodian } from "@/lib/asset-ownership"
+import {
+  addQueuedAuditScan,
+  loadQueuedAuditScans,
+  removeQueuedAuditScan,
+  type AuditOfflineScanPayload,
+  type QueuedAuditScan,
+} from "@/lib/audit-offline-queue"
 
 type Option = { id: string; label: string }
 type AuditScanItem = {
@@ -106,6 +126,7 @@ export function AuditScanForm({
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null)
   const [outOfScopeAsset, setOutOfScopeAsset] = useState<OutOfScopeAsset | null>(null)
   const [applyCorrections, setApplyCorrections] = useState(false)
+  const [offlineQueue, setOfflineQueue] = useState<QueuedAuditScan[]>([])
   const qrReaderRef = useRef<Html5QrcodeInstance | null>(null)
   const lastDecodedRef = useRef<{ value: string; at: number } | null>(null)
   const [values, setValues] = useState({
@@ -176,6 +197,15 @@ export function AuditScanForm({
       void scanner.stop().then(() => scanner.clear()).catch(() => scanner.clear())
     }
   }, [])
+
+  useEffect(() => {
+    refreshOfflineQueue()
+  }, [roundId])
+
+  function refreshOfflineQueue() {
+    if (typeof window === "undefined") return
+    setOfflineQueue(loadQueuedAuditScans(window.localStorage, roundId))
+  }
 
   async function startScanner() {
     if (!isCameraAccessSupported()) {
@@ -355,18 +385,25 @@ export function AuditScanForm({
   async function submitAuditScan(actualValues: ReturnType<typeof getActualValues>, quickMatched: boolean) {
     if (!selectedItem) return
     setSaving(true)
+    const requestPayload: AuditOfflineScanPayload = {
+      assetId: values.assetId,
+      ...emptyToNull(actualValues),
+      scanSource,
+      applyCorrections: !quickMatched && applyCorrections && correctionMismatchCount > 0,
+      remark: values.remark || null,
+    }
     try {
-      const response = await fetch(`/api/audit-rounds/${roundId}/scan`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assetId: values.assetId,
-          ...emptyToNull(actualValues),
-          scanSource,
-          applyCorrections: !quickMatched && applyCorrections && correctionMismatchCount > 0,
-          remark: values.remark,
-        }),
-      })
+      let response: Response
+      try {
+        response = await fetch(`/api/audit-rounds/${roundId}/scan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestPayload),
+        })
+      } catch {
+        queueOfflineScan(requestPayload, selectedItem.label)
+        return
+      }
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
       for (const photo of queuedAuditPhotos) {
@@ -402,6 +439,67 @@ export function AuditScanForm({
       setScanSource("manual")
       router.refresh()
     } catch (error) {
+      toast.error(error instanceof Error ? error.message : tCommon("error"))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function queueOfflineScan(payload: AuditOfflineScanPayload, label: string) {
+    if (typeof window === "undefined") return
+    addQueuedAuditScan(window.localStorage, roundId, payload)
+    refreshOfflineQueue()
+    setScanFeedback({
+      status: "mismatch",
+      title: t("offlineQueuedTitle"),
+      description: label,
+    })
+    toast.warning(queuedAuditPhotos.length > 0 ? t("offlineQueuedWithoutPhotos") : t("offlineQueued"))
+    setValues({
+      assetId: "",
+      actualLocationId: "",
+      actualCustodianId: "",
+      actualDepartmentId: "",
+      actualConditionId: "",
+      remark: "",
+    })
+    setQueuedAuditPhotos([])
+    setAuditPhotoLabel("")
+    setApplyCorrections(false)
+    setShowDetailedFields(false)
+    setScanSource("manual")
+  }
+
+  async function retryOfflineQueue() {
+    if (typeof window === "undefined" || offlineQueue.length === 0) return
+    setSaving(true)
+    let savedCount = 0
+    try {
+      for (const queued of offlineQueue) {
+        const response = await fetch(`/api/audit-rounds/${roundId}/scan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            assetId: queued.assetId,
+            actualLocationId: queued.actualLocationId,
+            actualCustodianId: queued.actualCustodianId,
+            actualDepartmentId: queued.actualDepartmentId,
+            actualConditionId: queued.actualConditionId,
+            scanSource: queued.scanSource,
+            applyCorrections: queued.applyCorrections,
+            remark: queued.remark,
+          }),
+        })
+        const payload = await response.json().catch(() => null)
+        if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+        removeQueuedAuditScan(window.localStorage, roundId, queued.id)
+        savedCount += 1
+      }
+      refreshOfflineQueue()
+      toast.success(t("offlineRetrySuccess", { count: savedCount }))
+      router.refresh()
+    } catch (error) {
+      refreshOfflineQueue()
       toast.error(error instanceof Error ? error.message : tCommon("error"))
     } finally {
       setSaving(false)
@@ -463,6 +561,29 @@ export function AuditScanForm({
           pendingLabel={t("pendingQueue")}
         />
       </div>
+
+      {offlineQueue.length > 0 ? (
+        <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 p-3 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-3">
+              <WifiOff className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
+              <div>
+                <div className="text-sm font-semibold text-foreground">{t("offlineQueueTitle", { count: offlineQueue.length })}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{t("offlineQueueHelp")}</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={retryOfflineQueue}
+              disabled={saving}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-medium text-white transition-colors hover:bg-warning/90 disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+              {t("offlineRetry")}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
@@ -857,8 +978,10 @@ function getActualValues(
   }
 }
 
-function emptyToNull(values: Record<string, string>) {
-  return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, value.trim() === "" ? null : value]))
+function emptyToNull<T extends Record<string, string>>(values: T): { [K in keyof T]: string | null } {
+  return Object.fromEntries(
+    Object.entries(values).map(([key, value]) => [key, value.trim() === "" ? null : value])
+  ) as { [K in keyof T]: string | null }
 }
 
 function buildAssetLookup(items: AuditScanItem[]) {

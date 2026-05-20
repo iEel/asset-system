@@ -1591,6 +1591,13 @@
     "dropAuditPhotoHint": "หรือคลิกเพื่อเลือกรูปจากมือถือ",
     "dropAuditPhotoSelected": "พร้อมอัปโหลดพร้อมผลตรวจนับ",
     "queuedPhotos": "รูปที่รออัปโหลด {count} รูป",
+    "offlineQueueTitle": "มีผลสแกนรอส่ง {count} รายการ",
+    "offlineQueueHelp": "รายการนี้ถูกเก็บไว้ในเครื่องนี้เมื่อส่งข้อมูลไม่สำเร็จ สามารถกดส่งซ้ำเมื่อกลับมาออนไลน์",
+    "offlineRetry": "ส่งคิวอีกครั้ง",
+    "offlineQueuedTitle": "เก็บไว้ในคิว Offline แล้ว",
+    "offlineQueued": "เก็บผลสแกนไว้ในคิว Offline แล้ว",
+    "offlineQueuedWithoutPhotos": "เก็บผลสแกนไว้ในคิว Offline แล้ว แต่รูปในคิวไม่สามารถเก็บข้ามการโหลดหน้าได้",
+    "offlineRetrySuccess": "ส่งคิว Offline สำเร็จ {count} รายการ",
     "unlabeledPhoto": "ไม่ระบุประเภท/มุมรูป",
     "removeQueuedPhoto": "ลบรูปออกจากคิว",
     "auditPhotoUploadFailed": "อัปโหลดรูปตรวจนับไม่สำเร็จ"
