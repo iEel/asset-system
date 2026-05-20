@@ -7,11 +7,13 @@ export function MasterDataHeader({
   subtitle,
   createHref,
   createLabel,
+  actions,
 }: {
   title: string
   subtitle: string
   createHref: string
   createLabel: string
+  actions?: React.ReactNode
 }) {
   return (
     <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -19,13 +21,16 @@ export function MasterDataHeader({
         <h1 className="text-2xl font-bold text-foreground">{title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
       </div>
-      <Link
-        href={createHref}
-        className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
-      >
-        <Plus className="h-4 w-4" />
-        {createLabel}
-      </Link>
+      <div className="flex flex-wrap gap-2">
+        {actions}
+        <Link
+          href={createHref}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4" />
+          {createLabel}
+        </Link>
+      </div>
     </div>
   )
 }

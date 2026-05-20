@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { locationSchema } from "@/lib/validations/location"
+import { getLocationDeleteBlockReason, wouldCreateLocationCycle } from "@/lib/location-list-query"
 
 type LocationRouteContext = {
   params: Promise<{ id: string }>
@@ -65,6 +66,20 @@ export async function PUT(request: NextRequest, context: LocationRouteContext) {
       return NextResponse.json({ error: "Location not found" }, { status: 404 })
     }
 
+    if (input.parentId) {
+      const locations = await prisma.location.findMany({
+        where: { isActive: true },
+        select: {
+          id: true,
+          parentId: true,
+        },
+      })
+
+      if (wouldCreateLocationCycle({ locationId: id, nextParentId: input.parentId, locations })) {
+        return NextResponse.json({ error: "Location hierarchy cannot contain a cycle" }, { status: 400 })
+      }
+    }
+
     const location = await prisma.location.update({
       where: { id },
       data: {
@@ -96,10 +111,25 @@ export async function DELETE(_request: NextRequest, context: LocationRouteContex
     const { id } = await context.params
     const existing = await prisma.location.findFirst({
       where: { id, isActive: true },
+      include: {
+        _count: {
+          select: {
+            currentAssets: { where: { isActive: true } },
+            homeAssets: { where: { isActive: true } },
+            children: { where: { isActive: true } },
+            auditRounds: true,
+          },
+        },
+      },
     })
 
     if (!existing) {
       return NextResponse.json({ error: "Location not found" }, { status: 404 })
+    }
+
+    const blockReason = getLocationDeleteBlockReason(existing._count)
+    if (blockReason) {
+      return NextResponse.json({ error: blockReason }, { status: 409 })
     }
 
     const location = await prisma.location.update({
