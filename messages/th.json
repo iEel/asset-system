@@ -872,6 +872,7 @@
     "description": "รายละเอียด",
     "models": "จำนวนรุ่น",
     "assets": "จำนวนทรัพย์สิน",
+    "customFieldsShort": "ข้อมูลเพิ่ม",
     "customFieldTemplate": "Template รายละเอียดเฉพาะทรัพย์สิน",
     "customFieldTemplateHelp": "กำหนดช่องข้อมูลที่จะขึ้นอัตโนมัติในหน้าเพิ่มทรัพย์สินเมื่อเลือกหมวดหมู่นี้",
     "customFieldTemplateEmpty": "ยังไม่มีช่องข้อมูลใน template",

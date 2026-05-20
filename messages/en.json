@@ -872,6 +872,7 @@
     "description": "Description",
     "models": "Models",
     "assets": "Assets",
+    "customFieldsShort": "Extra Fields",
     "customFieldTemplate": "Asset Detail Template",
     "customFieldTemplateHelp": "Define fields that appear automatically on the asset form when this category is selected.",
     "customFieldTemplateEmpty": "No template fields yet",
