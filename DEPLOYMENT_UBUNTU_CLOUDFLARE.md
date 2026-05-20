@@ -137,6 +137,10 @@ NEXTAUTH_SECRET=replace-with-same-value-as-auth-secret
 
 UPLOAD_DIR=/var/www/asset-system/uploads
 
+# Optional PDF Thai font override. Leave blank to use bundled Noto Sans Thai fonts from public/fonts.
+PDF_THAI_FONT_REGULAR=
+PDF_THAI_FONT_BOLD=
+
 MAINTENANCE_PM_GENERATION_TOKEN=replace-with-long-random-token
 NOTIFICATION_DIGEST_TOKEN=replace-with-long-random-token
 NOTIFICATION_DIGEST_WEBHOOK_URL=
@@ -196,6 +200,9 @@ sudo chmod 640 /var/www/asset-system/env/asset-system.env
 - ถ้าใช้ static TCP port ใน production ให้ปล่อย `DB_INSTANCE=` ว่าง แล้วใช้ `DB_PORT=1433`; ในกรณีนี้ให้เปลี่ยน `DATABASE_URL` เป็นรูปแบบ `sqlserver://192.168.110.106:1433;database=asset_management;...`
 - ถ้า `LDAP_AUTO_PROVISION=true`, `LDAP_DEFAULT_ROLE` ต้องเป็น role ที่มีอยู่จริง เช่น `employee`, `viewer`, หรือ role ที่สร้างเองในหน้า Roles; ค่า `asset_user` จะใช้ได้เฉพาะเมื่อสร้าง role นี้แล้ว
 - `UPLOAD_DIR` ควรเป็น absolute path เพื่อไม่ผูกกับ `.next/standalone` และ user `assetapp` ต้องอ่าน/เขียนได้ เพราะหน้า Storage Governance จะ scan ไฟล์จริงใน directory นี้
+- PDF ภาษาไทยจะหา font ตามลำดับ: `PDF_THAI_FONT_REGULAR`, bundled `public/fonts/NotoSansThai-*.ttf`, bundled `public/fonts/Sarabun-*.ttf`, Ubuntu Noto fonts ถ้ามีติดตั้งไว้, Windows Tahoma, แล้วค่อย fallback เป็น Helvetica
+- Repo นี้ bundle `NotoSansThai-Regular.ttf` และ `NotoSansThai-Bold.ttf` ไว้ใน `public/fonts` แล้ว ภายใต้ SIL Open Font License ใน `public/fonts/OFL.txt`; หลัง build ต้อง copy `public` เข้า `.next/standalone/` ตามหัวข้อ 7 เพื่อให้ runtime เห็น font
+- ถ้าองค์กรมี font ไทยมาตรฐาน ให้ตั้ง `PDF_THAI_FONT_REGULAR` และ `PDF_THAI_FONT_BOLD` เป็น absolute path ของ `.ttf` บน server
 - `MAINTENANCE_PM_GENERATION_TOKEN` และ `LDAP_SYNC_TOKEN` ใช้สำหรับ systemd scheduler heartbeat ควรเป็น random token ยาว ๆ และไม่ซ้ำกับ secret อื่น
 - `NOTIFICATION_DIGEST_TOKEN` ใช้สำหรับรัน daily notification digest ผ่าน script/API แยกจาก scheduler heartbeat
 - `NOTIFICATION_DIGEST_WEBHOOK_URL` เป็น optional generic webhook สำหรับส่ง digest ออกช่องทางภายนอก เช่น gateway ของ Teams/LINE; ถ้าเว้นว่าง ระบบยังสร้าง in-app notification ได้ตามปกติ
@@ -881,6 +888,7 @@ systemctl list-timers asset-system-notification-digest.timer
 - [ ] `AUTH_URL` และ `NEXTAUTH_URL` เป็น `https://asset.company.com`
 - [ ] `AUTH_TRUST_HOST=true`
 - [ ] `UPLOAD_DIR` เป็น absolute path และมี backup
+- [ ] ตรวจว่า `.next/standalone/public/fonts/NotoSansThai-Regular.ttf` และ `NotoSansThai-Bold.ttf` ถูก copy ไปพร้อม standalone แล้ว หรือกำหนด `PDF_THAI_FONT_REGULAR`/`PDF_THAI_FONT_BOLD` เป็น font ไทยอื่น
 - [ ] `MAINTENANCE_PM_GENERATION_TOKEN` เป็น random token จริง
 - [ ] `LDAP_SYNC_TOKEN` เป็น random token จริงถ้าเปิด LDAP scheduled sync
 - [ ] `NOTIFICATION_DIGEST_TOKEN` เป็น random token จริง เพื่อให้ Notification Digest พร้อมใช้งานและหน้า `/th/admin/readiness` ผ่านครบ 3 scheduler tokens
@@ -1037,7 +1045,29 @@ DB_PORT=1433
 
 ### PDF ภาษาไทยบน Ubuntu แสดงผลไม่ถูก
 
-โค้ด PDF ปัจจุบัน register Tahoma เฉพาะเมื่อรันบน Windows ถ้าต้องใช้ PDF ภาษาไทยบน Ubuntu แบบสมบูรณ์ ควรเพิ่ม font Thai เช่น Noto Sans Thai เข้าโปรเจกต์และ register ใน PDF renderer ในรอบพัฒนาแยกต่างหาก
+ตรวจว่า bundled font ถูก copy ไปกับ standalone runtime:
+
+```bash
+ls -l /var/www/asset-system/app/.next/standalone/public/fonts/NotoSansThai-Regular.ttf
+ls -l /var/www/asset-system/app/.next/standalone/public/fonts/NotoSansThai-Bold.ttf
+```
+
+ถ้าไม่พบ ให้ copy `public` เข้า standalone ใหม่ตามหัวข้อ 7 แล้ว restart service:
+
+```bash
+cd /var/www/asset-system/app
+sudo -u assetapp cp -r public .next/standalone/
+sudo systemctl restart asset-system
+```
+
+ถ้าองค์กรใช้ font ไทยชุดอื่น หรือไม่ต้องการใช้ bundled font ให้ตั้งค่า env เป็น absolute path:
+
+```env
+PDF_THAI_FONT_REGULAR=/usr/share/fonts/truetype/custom/YourThaiFont-Regular.ttf
+PDF_THAI_FONT_BOLD=/usr/share/fonts/truetype/custom/YourThaiFont-Bold.ttf
+```
+
+หลังแก้ไขให้ทดสอบ export PDF จากหน้า Audit Findings หรือ Audit Round อีกครั้ง
 
 ---
 

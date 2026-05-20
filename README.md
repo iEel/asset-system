@@ -55,6 +55,8 @@ NEXTAUTH_SECRET=replace-with-same-value
 AUTH_URL=http://localhost:3000
 NEXTAUTH_URL=http://localhost:3000
 UPLOAD_DIR=./uploads
+PDF_THAI_FONT_REGULAR=
+PDF_THAI_FONT_BOLD=
 
 DB_SERVER=192.168.110.106
 DB_INSTANCE=alpha
@@ -64,6 +66,8 @@ DATABASE_URL="sqlserver://..."
 ```
 
 Production uses `/var/www/asset-system/env/asset-system.env`; see `DEPLOYMENT_UBUNTU_CLOUDFLARE.md`.
+
+PDF exports bundle Noto Sans Thai Regular/Bold under `public/fonts` with `public/fonts/OFL.txt`. Leave `PDF_THAI_FONT_*` blank unless production must use a different Thai font.
 
 ## Scripts
 

@@ -1,19 +1,16 @@
-import { existsSync } from "fs"
-import { join } from "path"
 import { Document, Font, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer"
+import { resolvePdfFont } from "@/lib/pdf-font"
 import { formatDateTime } from "@/lib/utils"
 
-const windowsRoot = process.env.SystemRoot || process.env.WINDIR
-const tahomaFont = windowsRoot ? join(windowsRoot, "Fonts", "tahoma.ttf") : ""
-const tahomaBoldFont = windowsRoot ? join(windowsRoot, "Fonts", "tahomabd.ttf") : ""
-const fontFamily = existsSync(tahomaFont) ? "Tahoma" : "Helvetica"
+const pdfFont = resolvePdfFont()
+const fontFamily = pdfFont.family
 
-if (fontFamily === "Tahoma") {
+if (pdfFont.shouldRegister && pdfFont.regularPath) {
   Font.register({
-    family: "Tahoma",
+    family: pdfFont.family,
     fonts: [
-      { src: tahomaFont, fontWeight: "normal" },
-      { src: tahomaBoldFont, fontWeight: "bold" },
+      { src: pdfFont.regularPath, fontWeight: "normal" },
+      { src: pdfFont.boldPath ?? pdfFont.regularPath, fontWeight: "bold" },
     ],
   })
 }
