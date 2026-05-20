@@ -11,6 +11,9 @@ import { AssetImportPreviewPanel } from "@/components/assets/asset-import-previe
 import { AssetRegisterTable, type AssetRegisterRow } from "@/components/assets/asset-register-table"
 import { MasterDataHeader } from "@/components/master-data/master-data-layout"
 import { assetOwnershipTypes, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
+import { FilterPanel } from "@/components/ui/filter-panel"
+import { ActionButton } from "@/components/ui/action-button"
+import { getFieldControlClasses } from "@/lib/design-system"
 
 type AssetsPageProps = {
   params: Promise<{ locale: string }>
@@ -322,7 +325,7 @@ function AssetFilters({
     : branches
 
   return (
-    <div className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
+    <FilterPanel className="mb-4">
       <form className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6" action={`/${locale}/assets`}>
         <label className="md:col-span-2">
           <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{labels.search}</span>
@@ -330,7 +333,7 @@ function AssetFilters({
             type="search"
             name="search"
             defaultValue={filters.search}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className={getFieldControlClasses()}
           />
         </label>
         <FilterSelect name="companyId" label={labels.company} defaultValue={filters.companyId}>
@@ -393,14 +396,11 @@ function AssetFilters({
         {filters.dataQuality ? <input type="hidden" name="dataQuality" value={filters.dataQuality} /> : null}
         <input type="hidden" name="sort" value={filters.sort} />
         <input type="hidden" name="direction" value={filters.direction} />
-        <button
-          type="submit"
-          className="h-10 self-end rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
-        >
+        <ActionButton type="submit" variant="primary" className="self-end">
           {labels.filter}
-        </button>
+        </ActionButton>
       </form>
-    </div>
+    </FilterPanel>
   )
 }
 
@@ -421,7 +421,7 @@ function FilterSelect({
       <select
         name={name}
         defaultValue={defaultValue}
-        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+        className={getFieldControlClasses()}
       >
         {children}
       </select>

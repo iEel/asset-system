@@ -1,6 +1,10 @@
 export const uiTones = ["neutral", "info", "success", "warning", "danger", "muted"] as const
+export const uiButtonVariants = ["primary", "secondary", "danger", "ghost"] as const
+export const uiButtonSizes = ["sm", "md"] as const
 
 export type UiTone = (typeof uiTones)[number]
+export type UiButtonVariant = (typeof uiButtonVariants)[number]
+export type UiButtonSize = (typeof uiButtonSizes)[number]
 
 const metricToneClasses: Record<UiTone, { container: string; value: string }> = {
   neutral: { container: "border-border bg-surface", value: "text-foreground" },
@@ -17,4 +21,23 @@ export function normalizeUiTone(value: unknown): UiTone {
 
 export function getMetricCardToneClasses(tone: UiTone = "neutral") {
   return metricToneClasses[tone]
+}
+
+export function getPanelClasses() {
+  return "rounded-lg border border-border bg-surface shadow-sm"
+}
+
+export function getFieldControlClasses() {
+  return "h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+}
+
+export function getActionButtonClasses(variant: UiButtonVariant = "secondary", size: UiButtonSize = "md") {
+  const sizeClass = size === "sm" ? "h-8 px-3 text-xs" : "h-10 px-4 text-sm"
+  const variantClass = {
+    primary: "bg-primary text-white hover:bg-primary/90",
+    secondary: "border border-border bg-surface text-foreground hover:bg-accent",
+    danger: "bg-danger text-white hover:bg-danger/90",
+    ghost: "text-foreground hover:bg-accent",
+  }[variant]
+  return `inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${sizeClass} ${variantClass}`
 }

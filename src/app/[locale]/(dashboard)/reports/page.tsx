@@ -12,6 +12,9 @@ import { buildCostInsights, type CostExposureAsset } from "@/lib/cost-insights"
 import { buildDepreciationSummary, depreciationPolicySettingKey, parseDepreciationPolicySetting, type DepreciableAsset } from "@/lib/asset-depreciation"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { MetricCard } from "@/components/ui/metric-card"
+import { FilterPanel } from "@/components/ui/filter-panel"
+import { ActionButton } from "@/components/ui/action-button"
+import { getActionButtonClasses, getFieldControlClasses } from "@/lib/design-system"
 
 type ReportsPageProps = {
   params: Promise<{ locale: string }>
@@ -352,11 +355,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         />
       </ContentPanel>
 
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-        <div className="mb-4">
-          <h2 className="text-base font-semibold text-foreground">{t("filterTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("filterHelp")}</p>
-        </div>
+      <FilterPanel title={t("filterTitle")} description={t("filterHelp")} className="p-5">
         <form action={`/${locale}/reports`} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           <label>
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("search")}</span>
@@ -365,7 +364,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
               name="search"
               defaultValue={filters.search}
               placeholder={t("searchPlaceholder")}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className={getFieldControlClasses()}
             />
           </label>
           <ReportSelect name="companyId" label={t("company")} value={filters.companyId} options={filterCompanies.map((company) => ({ value: company.id, label: `${company.code} - ${company.nameTh}` }))} allLabel={t("all")} />
@@ -375,15 +374,15 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           <ReportSelect name="conditionId" label={t("condition")} value={filters.conditionId} options={filterConditions.map((condition) => ({ value: condition.id, label: condition.nameTh }))} allLabel={t("all")} />
           <ReportSelect name="ownershipType" label={tAsset("ownershipType")} value={filters.ownershipType} options={assetOwnershipTypes.map((type) => ({ value: type, label: tAsset(`ownershipType_${type}`) }))} allLabel={t("all")} />
           <div className="flex flex-wrap gap-2 self-end md:col-span-2 xl:col-span-3">
-            <button type="submit" className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90">
+            <ActionButton type="submit" variant="primary">
               {t("applyFilters")}
-            </button>
-            <Link href={`/${locale}/reports`} className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent">
+            </ActionButton>
+            <Link href={`/${locale}/reports`} className={getActionButtonClasses("secondary")}>
               {t("clearFilters")}
             </Link>
           </div>
         </form>
-      </section>
+      </FilterPanel>
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
         <div className="mb-4">
@@ -776,7 +775,7 @@ function ReportSelect({
       <select
         name={name}
         defaultValue={value}
-        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+        className={getFieldControlClasses()}
       >
         <option value="">{allLabel}</option>
         {options.map((option) => (
