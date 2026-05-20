@@ -9,6 +9,7 @@ import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type AssetListParams } from "@/lib/asset-list-query"
 import { assetMissingResponsibilityWhere, assetOwnershipTypes, hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { buildCostInsights, type CostExposureAsset } from "@/lib/cost-insights"
+import { buildDepreciationSummary, type DepreciableAsset } from "@/lib/asset-depreciation"
 
 type ReportsPageProps = {
   params: Promise<{ locale: string }>
@@ -133,7 +134,15 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     prisma.asset.count({ where: { AND: [assetWhere, { movements: { none: { performedAt: { gte: daysAgo(180) } } } }] } }),
     prisma.asset.findMany({
       where: assetWhere,
-      select: { id: true, assetTag: true, name: true, purchasePrice: true },
+      select: {
+        id: true,
+        assetTag: true,
+        name: true,
+        ownershipType: true,
+        purchasePrice: true,
+        purchaseDate: true,
+        category: { select: { code: true, name: true } },
+      },
     }),
     prisma.maintenanceTicket.groupBy({
       by: ["assetId"],
@@ -175,6 +184,17 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         repairCount: repairGroup?._count._all ?? 0,
       }
     })
+  )
+  const depreciationSummary = buildDepreciationSummary(
+    costAssets.map((asset) => ({
+      id: asset.id,
+      label: `${asset.assetTag} - ${asset.name}`,
+      categoryCode: asset.category.code,
+      categoryName: asset.category.name,
+      ownershipType: asset.ownershipType,
+      purchasePrice: asset.purchasePrice == null ? null : Number(asset.purchasePrice),
+      purchaseDate: asset.purchaseDate,
+    }))
   )
   const savedFilterUrl = `/${locale}/reports?${exportQuery}`
   const recurringReports = [
@@ -301,6 +321,34 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             ratio: t("costRepairRatioShort"),
             repairCount: t("costRepairCount"),
             empty: t("costNoRepairRisk"),
+          }}
+        />
+      </section>
+
+      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-foreground">{t("accountingInsightTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("accountingInsightHelp")}</p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <Metric label={t("accountingAcquisitionCost")} value={formatCurrency(depreciationSummary.totalAcquisitionCost)} compact />
+          <Metric label={t("accountingAccumulatedDepreciation")} value={formatCurrency(depreciationSummary.totalAccumulatedDepreciation)} compact />
+          <Metric label={t("accountingNetBookValue")} value={formatCurrency(depreciationSummary.totalNetBookValue)} compact />
+          <Metric label={t("accountingFullyDepreciated")} value={depreciationSummary.fullyDepreciatedCount.toLocaleString("th-TH")} compact />
+          <Metric label={t("accountingMissingInfo")} value={depreciationSummary.missingAccountingInfoCount.toLocaleString("th-TH")} compact />
+        </div>
+        <DepreciationTable
+          title={t("accountingTopBookValueAssets")}
+          rows={depreciationSummary.topNetBookValueAssets}
+          locale={locale}
+          labels={{
+            asset: t("assetName"),
+            bookValue: t("accountingBookValue"),
+            accumulated: t("accountingAccumulatedDepreciation"),
+            ratio: t("accountingDepreciationRatio"),
+            usefulLife: t("accountingUsefulLife"),
+            ageMonths: t("accountingAgeMonths"),
+            empty: t("accountingNoAssets"),
           }}
         />
       </section>
@@ -641,6 +689,66 @@ function CostExposureTable({
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.purchasePrice)}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatPercent(asset.repairToPurchaseRatio)}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.repairCount.toLocaleString("th-TH")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DepreciationTable({
+  title,
+  rows,
+  locale,
+  labels,
+}: {
+  title: string
+  rows: DepreciableAsset[]
+  locale: string
+  labels: {
+    asset: string
+    bookValue: string
+    accumulated: string
+    ratio: string
+    usefulLife: string
+    ageMonths: string
+    empty: string
+  }
+}) {
+  return (
+    <div className="mt-4 overflow-hidden rounded-md border border-border bg-background">
+      <div className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">{title}</div>
+      {rows.length === 0 ? (
+        <div className="px-4 py-6 text-center text-sm text-muted-foreground">{labels.empty}</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-border text-sm">
+            <thead className="bg-muted/40">
+              <tr>
+                <PreviewHead>{labels.asset}</PreviewHead>
+                <PreviewHead>{labels.bookValue}</PreviewHead>
+                <PreviewHead>{labels.accumulated}</PreviewHead>
+                <PreviewHead>{labels.ratio}</PreviewHead>
+                <PreviewHead>{labels.usefulLife}</PreviewHead>
+                <PreviewHead>{labels.ageMonths}</PreviewHead>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map((asset) => (
+                <tr key={asset.id}>
+                  <td className="min-w-64 px-4 py-3 font-medium text-foreground">
+                    <Link href={`/${locale}/assets/${asset.id}`} className="text-primary hover:underline">
+                      {asset.label}
+                    </Link>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.netBookValue)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.accumulatedDepreciation)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatPercent(asset.depreciatedRatio)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.usefulLifeMonths.toLocaleString("th-TH")}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.ageMonths.toLocaleString("th-TH")}</td>
                 </tr>
               ))}
             </tbody>
