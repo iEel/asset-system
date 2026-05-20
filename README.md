@@ -77,6 +77,7 @@ Production uses `/var/www/asset-system/env/asset-system.env`; see `DEPLOYMENT_UB
 | `npm run verify` | Run lint, all tests, and production build in one command |
 | `npm run ldap:sync` | External/manual LDAP sync runner |
 | `npm run pm:generate-due` | Generate due preventive-maintenance tickets through the scheduler endpoint |
+| `npm run notifications:digest` | Deliver daily in-app notification digests through the scheduler endpoint |
 | `npm run cleanup:test-data` | Guarded trial asset cleanup CLI; dry-run by default |
 
 ## Verification

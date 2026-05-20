@@ -15,7 +15,7 @@ export default async function NotificationsPage({ params }: NotificationsPagePro
   const { locale } = await params
   const user = await requireAuth()
   const t = await getTranslations("notifications")
-  const [center, assignees] = await Promise.all([
+  const [center, assignees, deliveredNotifications] = await Promise.all([
     getNotificationCenter(user, locale),
     prisma.user.findMany({
       where: { isActive: true },
@@ -26,6 +26,11 @@ export default async function NotificationsPage({ params }: NotificationsPagePro
         employee: { select: { fullNameTh: true, fullNameEn: true } },
       },
       orderBy: { displayName: "asc" },
+    }),
+    prisma.notification.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 10,
     }),
   ])
 
@@ -102,6 +107,34 @@ export default async function NotificationsPage({ params }: NotificationsPagePro
           ))
         )}
       </section>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">{t("deliveredDigestTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("deliveredDigestSubtitle")}</p>
+        </div>
+        {deliveredNotifications.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border bg-surface p-6 text-sm text-muted-foreground">
+            {t("deliveredDigestEmpty")}
+          </div>
+        ) : (
+          deliveredNotifications.map((notification) => (
+            <article key={notification.id} className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+              <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold text-foreground">{notification.title}</h3>
+                    <span className={notificationToneClass(notification.type)}>{notification.type}</span>
+                    {notification.isRead ? <StatusBadge>{t("read")}</StatusBadge> : null}
+                  </div>
+                  <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">{notification.message}</p>
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground">{formatDate(notification.createdAt.toISOString(), locale)}</span>
+              </div>
+            </article>
+          ))
+        )}
+      </section>
     </div>
   )
 }
@@ -127,6 +160,13 @@ function StatusBadge({ children }: { children: ReactNode }) {
 function toneClass(tone: "danger" | "warning" | "primary") {
   if (tone === "danger") return "rounded-full bg-danger/10 px-2 py-0.5 text-xs font-semibold text-danger"
   if (tone === "warning") return "rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning"
+  return "rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary"
+}
+
+function notificationToneClass(tone: string) {
+  if (tone === "danger") return "rounded-full bg-danger/10 px-2 py-0.5 text-xs font-semibold text-danger"
+  if (tone === "warning") return "rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning"
+  if (tone === "success") return "rounded-full bg-success/10 px-2 py-0.5 text-xs font-semibold text-success"
   return "rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary"
 }
 

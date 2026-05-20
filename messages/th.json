@@ -87,7 +87,10 @@
     "warrantyExpiringSoon": "ประกันใกล้หมดอายุ",
     "warrantyExpiringSoonDetail": "ทรัพย์สินที่ประกันจะหมดตาม rule แจ้งเตือน",
     "licenseExpiringSoon": "License ใกล้หมดอายุ",
-    "licenseExpiringSoonDetail": "Software/License ที่ต้องต่ออายุหรือทบทวน"
+    "licenseExpiringSoonDetail": "Software/License ที่ต้องต่ออายุหรือทบทวน",
+    "deliveredDigestTitle": "Digest ที่ส่งแล้ว",
+    "deliveredDigestSubtitle": "รายการแจ้งเตือนที่ระบบส่งแบบสรุปรายวัน เพื่อให้ผู้ใช้ย้อนดูสิ่งที่ถูกแจ้งไปแล้วได้",
+    "deliveredDigestEmpty": "ยังไม่มี digest ที่ถูกส่งถึงผู้ใช้นี้"
   },
   "nav": {
     "dashboard": "แดชบอร์ด",

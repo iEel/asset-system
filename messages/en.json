@@ -87,7 +87,10 @@
     "warrantyExpiringSoon": "Warranty expiring soon",
     "warrantyExpiringSoonDetail": "Assets whose warranty ends within the notification rule",
     "licenseExpiringSoon": "License expiring soon",
-    "licenseExpiringSoonDetail": "Software/licenses that need renewal or review"
+    "licenseExpiringSoonDetail": "Software/licenses that need renewal or review",
+    "deliveredDigestTitle": "Delivered Digests",
+    "deliveredDigestSubtitle": "Daily digest notifications the system has delivered, so users can review what was already sent.",
+    "deliveredDigestEmpty": "No digest has been delivered to this user yet."
   },
   "nav": {
     "dashboard": "Dashboard",

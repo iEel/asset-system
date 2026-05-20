@@ -7,6 +7,8 @@ test("package exposes standard test and verification scripts", () => {
 
   assert.equal(packageJson.scripts.test, "node scripts/run-tests.mjs")
   assert.equal(packageJson.scripts.verify, "node scripts/verify.mjs")
+  assert.equal(packageJson.scripts["notifications:digest"], "node scripts/send-notification-digest.mjs")
   assert.equal(existsSync("scripts/run-tests.mjs"), true)
   assert.equal(existsSync("scripts/verify.mjs"), true)
+  assert.equal(existsSync("scripts/send-notification-digest.mjs"), true)
 })
