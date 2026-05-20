@@ -9,6 +9,7 @@ import {
   summarizeAssetImportPreviewIssues,
   type AssetImportWizardStep,
 } from "@/lib/asset-import-wizard"
+import type { AssetImportBatchStatus, AssetImportBatchSummary } from "@/lib/asset-import-batch"
 import type { AssetImportColumnMapping } from "@/lib/asset-import-mapping"
 
 type PreviewRow = {
@@ -26,6 +27,7 @@ type PreviewResult = {
   }
   rows: PreviewRow[]
   mapping?: AssetImportColumnMapping[]
+  batch?: AssetImportBatchSummary
 }
 
 type AssetImportPreviewPanelProps = {
@@ -61,6 +63,13 @@ type AssetImportPreviewPanelProps = {
     mappingMatched: string
     mappingMissing: string
     sourceColumn: string
+    importBatchTitle: string
+    importBatchHelp: string
+    importBatchId: string
+    importBatchStatusReady: string
+    importBatchStatusPartial: string
+    importBatchStatusBlocked: string
+    importBatchStatusEmpty: string
   }
 }
 
@@ -127,6 +136,9 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
     try {
       const formData = new FormData()
       formData.append("file", selectedFile)
+      if (preview.batch?.batchId) {
+        formData.append("batchId", preview.batch.batchId)
+      }
       const response = await fetch("/api/assets/import-confirm", {
         method: "POST",
         body: formData,
@@ -227,6 +239,31 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
                 {column.sourceHeader ?? `${labels.sourceColumn} ${column.sourceColumn}`}
               </span>
             ))}
+          </div>
+        </div>
+      ) : null}
+
+      {preview?.batch ? (
+        <div className="mt-4 rounded-md border border-info/30 bg-info/5 px-3 py-3 text-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="font-semibold text-foreground">{labels.importBatchTitle}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{labels.importBatchHelp}</div>
+            </div>
+            <span
+              className={[
+                "inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-semibold",
+                getBatchStatusClass(preview.batch.status),
+              ].join(" ")}
+            >
+              {formatBatchStatus(preview.batch.status, labels)}
+            </span>
+          </div>
+          <div className="mt-3 grid gap-2 md:grid-cols-4">
+            <SummaryPill label={labels.importBatchId} value={preview.batch.batchId} />
+            <SummaryPill label={labels.previewReady} value={preview.batch.readyRows.toLocaleString()} />
+            <SummaryPill label={labels.previewErrors} value={preview.batch.errorRows.toLocaleString()} />
+            <SummaryPill label={labels.mappingMatched} value={preview.batch.mappedColumns.toLocaleString()} />
           </div>
         </div>
       ) : null}
@@ -393,4 +430,29 @@ function SummaryItem({ label, value, tone }: { label: string; value: number; ton
       <div className="text-xs text-muted-foreground">{label}</div>
     </div>
   )
+}
+
+function SummaryPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border bg-surface px-3 py-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 truncate text-sm font-semibold text-foreground" title={value}>
+        {value}
+      </div>
+    </div>
+  )
+}
+
+function getBatchStatusClass(status: AssetImportBatchStatus) {
+  if (status === "ready") return "bg-success/10 text-success"
+  if (status === "partial") return "bg-warning/10 text-warning"
+  if (status === "blocked") return "bg-danger/10 text-danger"
+  return "bg-muted text-muted-foreground"
+}
+
+function formatBatchStatus(status: AssetImportBatchStatus, labels: AssetImportPreviewPanelProps["labels"]) {
+  if (status === "ready") return labels.importBatchStatusReady
+  if (status === "partial") return labels.importBatchStatusPartial
+  if (status === "blocked") return labels.importBatchStatusBlocked
+  return labels.importBatchStatusEmpty
 }

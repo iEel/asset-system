@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { getAssetImportReferences, parseAssetImportWorkbook } from "@/lib/asset-import-preview"
+import { createAssetImportBatchSummary } from "@/lib/asset-import-batch"
 
 const maxImportSize = 10 * 1024 * 1024
 
@@ -24,7 +25,14 @@ export async function POST(request: NextRequest) {
 
     const references = await getAssetImportReferences()
     const preview = await parseAssetImportWorkbook(await file.arrayBuffer(), references)
-    return NextResponse.json(preview)
+    return NextResponse.json({
+      ...preview,
+      batch: createAssetImportBatchSummary({
+        fileName: file.name,
+        fileSize: file.size,
+        preview,
+      }),
+    })
   } catch (error) {
     return errorResponse(error, 400)
   }

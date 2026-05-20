@@ -11,6 +11,7 @@ import {
   parseImportMoney,
   parseOptionalInteger,
 } from "@/lib/asset-import-preview"
+import { buildAssetImportBatchAuditValue, createAssetImportBatchSummary } from "@/lib/asset-import-batch"
 import { defaultAssetOwnershipType, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 
 const maxImportSize = 10 * 1024 * 1024
@@ -34,6 +35,15 @@ export async function POST(request: NextRequest) {
 
     const references = await getAssetImportReferences()
     const preview = await parseAssetImportWorkbook(await file.arrayBuffer(), references)
+    const requestedBatchId = normalizeFormText(formData.get("batchId"))
+    const batch = {
+      ...createAssetImportBatchSummary({
+        fileName: file.name,
+        fileSize: file.size,
+        preview,
+      }),
+      ...(requestedBatchId ? { batchId: requestedBatchId } : {}),
+    }
     const readyRows = preview.rows.filter((row) => row.status === "ready")
 
     if (readyRows.length === 0) {
@@ -94,7 +104,7 @@ export async function POST(request: NextRequest) {
             assetId: asset.id,
             movementType: "import",
             toValue: asset.currentLocationId,
-            reason: `Imported from ${file.name} row ${row.rowNumber}`,
+            reason: `Imported from batch ${batch.batchId} (${file.name} row ${row.rowNumber})`,
             referenceType: "asset_import",
             referenceId: asset.id,
             performedBy: user.id,
@@ -108,7 +118,7 @@ export async function POST(request: NextRequest) {
             action: "import",
             module: "asset",
             recordId: asset.id,
-            newValue: JSON.stringify({ ...input, assetTag, sourceRow: row.rowNumber, sourceFile: file.name }),
+            newValue: JSON.stringify({ ...input, assetTag, sourceRow: row.rowNumber, sourceFile: file.name, batchId: batch.batchId }),
             remark: "Asset imported from Excel",
           },
         })
@@ -117,10 +127,32 @@ export async function POST(request: NextRequest) {
       imported += 1
     }
 
+    const skipped = preview.summary.totalRows - imported
+    await prisma.systemLog.create({
+      data: {
+        userId: user.id,
+        action: "import_batch",
+        module: "asset",
+        recordId: batch.batchId,
+        newValue: JSON.stringify(
+          buildAssetImportBatchAuditValue({
+            batch,
+            imported,
+            skipped,
+            approvedBy: user.id,
+          })
+        ),
+        remark: "Asset import batch approved",
+      },
+    })
+
     return NextResponse.json({
+      batchId: batch.batchId,
       imported,
-      skipped: preview.summary.totalRows - imported,
+      skipped,
       totalRows: preview.summary.totalRows,
+      readyRows: preview.summary.readyRows,
+      errorRows: preview.summary.errorRows,
     })
   } catch (error) {
     return errorResponse(error, 400)
@@ -130,4 +162,10 @@ export async function POST(request: NextRequest) {
 function requiredResolved(value: string | null | undefined, field: string) {
   if (!value) throw new Error(`Missing resolved ${field}`)
   return value
+}
+
+function normalizeFormText(value: FormDataEntryValue | null) {
+  if (typeof value !== "string") return null
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : null
 }

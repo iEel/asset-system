@@ -229,6 +229,13 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           mappingMatched: t("importMappingMatched"),
           mappingMissing: t("importMappingMissing"),
           sourceColumn: t("importSourceColumn"),
+          importBatchTitle: t("importBatchTitle"),
+          importBatchHelp: t("importBatchHelp"),
+          importBatchId: t("importBatchId"),
+          importBatchStatusReady: t("importBatchStatusReady"),
+          importBatchStatusPartial: t("importBatchStatusPartial"),
+          importBatchStatusBlocked: t("importBatchStatusBlocked"),
+          importBatchStatusEmpty: t("importBatchStatusEmpty"),
         }}
       />
 
