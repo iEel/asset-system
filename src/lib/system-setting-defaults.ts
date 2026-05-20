@@ -35,6 +35,30 @@ export const notificationRuleSettingKeys = [
   notificationWarrantyExpiryDaysKey,
   notificationLicenseExpiryDaysKey,
 ] as const
+export const pmAutoGenerationEnabledKey = "pm_auto_generation_enabled"
+export const pmAutoGenerationModeKey = "pm_auto_generation_mode"
+export const pmAutoGenerationScheduleKey = "pm_auto_generation_schedule"
+export const pmAutoGenerationLastRunAtKey = "pm_auto_generation_last_run_at"
+export const pmAutoGenerationLastStatusKey = "pm_auto_generation_last_status"
+export const pmAutoGenerationLastErrorKey = "pm_auto_generation_last_error"
+export const pmAutoGenerationSettingKeys = [
+  pmAutoGenerationEnabledKey,
+  pmAutoGenerationModeKey,
+  pmAutoGenerationScheduleKey,
+] as const
+export const pmAutoGenerationStatusSettingKeys = [
+  pmAutoGenerationLastRunAtKey,
+  pmAutoGenerationLastStatusKey,
+  pmAutoGenerationLastErrorKey,
+] as const
+export const ldapSyncLastRunAtKey = "ldap_sync_last_run_at"
+export const ldapSyncLastStatusKey = "ldap_sync_last_status"
+export const ldapSyncLastErrorKey = "ldap_sync_last_error"
+export const ldapSyncStatusSettingKeys = [
+  ldapSyncLastRunAtKey,
+  ldapSyncLastStatusKey,
+  ldapSyncLastErrorKey,
+] as const
 export const ldapSettingKeys = [
   "ldap_enabled",
   "ldap_url",
@@ -106,6 +130,9 @@ export const systemSettingDefaults = [
   { key: "notification_audit_action_due_soon_days", value: "7", description: "จำนวนวันล่วงหน้าสำหรับแจ้งเตือน action plan จากการตรวจนับที่ใกล้ครบกำหนด" },
   { key: "notification_warranty_expiry_days", value: "30", description: "จำนวนวันล่วงหน้าสำหรับแจ้งเตือนประกันทรัพย์สินใกล้หมดอายุ" },
   { key: "notification_license_expiry_days", value: "30", description: "จำนวนวันล่วงหน้าสำหรับแจ้งเตือน Software/License ใกล้หมดอายุ" },
+  { key: pmAutoGenerationEnabledKey, value: "false", description: "เปิดใช้งานการสร้างใบงาน PM อัตโนมัติจากแผนที่ถึงกำหนด" },
+  { key: pmAutoGenerationModeKey, value: "manual", description: "โหมด PM auto-generation: manual หรือ scheduled" },
+  { key: pmAutoGenerationScheduleKey, value: "5 6 * * *", description: "Cron schedule สำหรับ PM auto-generation โดย systemd heartbeat จะอ้างอิงค่านี้" },
   { key: workflowApprovalDisposalRequiredKey, value: "true", description: "บังคับใช้ขั้นตอนอนุมัติก่อนตัดจำหน่ายทรัพย์สิน" },
   { key: workflowApprovalAuditCloseRequiredKey, value: "true", description: "บังคับใช้ผู้อนุมัติแยกจากผู้สร้างรอบ ก่อนปิดรอบตรวจนับ" },
   { key: workflowApprovalMaintenanceCloseRequiredKey, value: "false", description: "บังคับใช้การอนุมัติก่อนปิดงานซ่อมบำรุง" },

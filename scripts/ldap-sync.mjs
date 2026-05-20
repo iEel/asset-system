@@ -2,6 +2,7 @@ import "dotenv/config"
 
 const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? "http://localhost:3000"
 const token = process.env.LDAP_SYNC_TOKEN
+const action = process.argv.includes("--scheduled") ? "scheduled" : "apply"
 
 if (!token) {
   console.error("Missing LDAP_SYNC_TOKEN")
@@ -14,7 +15,7 @@ const response = await fetch(`${baseUrl.replace(/\/$/, "")}/api/admin/settings/l
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
   },
-  body: JSON.stringify({ action: "apply" }),
+  body: JSON.stringify({ action }),
 })
 
 const payload = await response.json().catch(() => null)

@@ -28,6 +28,7 @@ import {
   defaultCheckoutDocumentTemplate,
   defaultAssetTagFormatTemplate,
   ldapSettingKeys,
+  ldapSyncStatusSettingKeys,
   notificationAuditActionDueSoonDaysKey,
   notificationLicenseExpiryDaysKey,
   notificationReturnDueSoonDaysKey,
@@ -35,8 +36,14 @@ import {
   notificationWarrantyExpiryDaysKey,
   operationDocumentRunningDigitsKey,
   operationDocumentSettingKeys,
+  pmAutoGenerationEnabledKey,
+  pmAutoGenerationModeKey,
+  pmAutoGenerationScheduleKey,
+  pmAutoGenerationSettingKeys,
+  pmAutoGenerationStatusSettingKeys,
 } from "@/lib/system-setting-defaults"
 import { operationDocumentTemplateTokens, renderOperationDocumentTemplate, validateOperationDocumentTemplate } from "@/lib/operation-document-number"
+import { isSupportedCronExpression } from "@/lib/scheduled-job"
 import {
   parseWorkflowApprovalPolicy,
   workflowApprovalAuditCloseRequiredKey,
@@ -71,6 +78,7 @@ type SystemSettingsFormProps = {
     tabOrganization: string
     tabNotifications: string
     tabWorkflowApproval: string
+    tabAutomation: string
     tabLdapLogin: string
     tabLdapSync: string
     tabAdvanced: string
@@ -82,6 +90,7 @@ type SystemSettingsFormProps = {
     overviewOrganization: string
     overviewNotifications: string
     overviewApproval: string
+    overviewAutomation: string
     overviewLdapLogin: string
     overviewLdapSync: string
     overviewAdvanced: string
@@ -193,6 +202,23 @@ type SystemSettingsFormProps = {
     workflowApprovalSodOn: string
     workflowApprovalSodOff: string
     invalidWorkflowApproval: string
+    schedulerSettings: string
+    schedulerSettingsDescription: string
+    schedulerHeartbeatNote: string
+    invalidSchedulerSchedule: string
+    pmAutoGeneration: string
+    pmAutoGenerationDescription: string
+    pmAutoGenerationEnabled: string
+    pmAutoGenerationMode: string
+    pmAutoGenerationSchedule: string
+    pmAutoGenerationSchedulePreset: string
+    pmAutoGenerationCustomSchedule: string
+    pmAutoGenerationManual: string
+    pmAutoGenerationScheduled: string
+    pmAutoGenerationDaily605: string
+    pmAutoGenerationEvery6Hours: string
+    pmAutoGenerationWeekday605: string
+    pmAutoGenerationMonday605: string
     advancedSettings: string
     advancedSettingsDescription: string
     ldapSettings: string
@@ -294,6 +320,7 @@ type SettingsTabId =
   | "organization"
   | "notifications"
   | "workflow-approval"
+  | "automation"
   | "ldap-login"
   | "ldap-sync"
   | "advanced"
@@ -342,8 +369,19 @@ const friendlySettingKeys = new Set([
   ...operationDocumentSettingKeys,
   ...notificationRuleSettingKeys,
   ...workflowApprovalSettingKeys,
+  ...pmAutoGenerationSettingKeys,
+  ...pmAutoGenerationStatusSettingKeys,
   ...ldapSettingKeys,
+  ...ldapSyncStatusSettingKeys,
 ])
+
+const pmSchedulePresets = [
+  { value: "5 6 * * *", labelKey: "pmAutoGenerationDaily605" },
+  { value: "0 */6 * * *", labelKey: "pmAutoGenerationEvery6Hours" },
+  { value: "5 6 * * 1-5", labelKey: "pmAutoGenerationWeekday605" },
+  { value: "5 6 * * 1", labelKey: "pmAutoGenerationMonday605" },
+  { value: "custom", labelKey: "pmAutoGenerationCustomSchedule" },
+] as const
 
 const ldapSchedulePresets = [
   { value: "0 2 * * *", labelKey: "ldapSyncDaily2am" },
@@ -407,6 +445,10 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
   const [customScheduleSelected, setCustomScheduleSelected] = useState(() => {
     const savedSchedule = settings.find((setting) => setting.key === "ldap_sync_schedule")?.value ?? ""
     return !ldapSchedulePresets.some((preset) => preset.value === savedSchedule)
+  })
+  const [customPmScheduleSelected, setCustomPmScheduleSelected] = useState(() => {
+    const savedSchedule = settings.find((setting) => setting.key === pmAutoGenerationScheduleKey)?.value ?? ""
+    return !pmSchedulePresets.some((preset) => preset.value === savedSchedule)
   })
   const [prefixRows, setPrefixRows] = useState<PrefixRow[]>(() =>
     parsePrefixRows(settings.find((setting) => setting.key === assetTagCategoryPrefixesKey)?.value)
@@ -500,9 +542,14 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     workflowApprovalSlaDays < 1 ||
     workflowApprovalSlaDays > 90
   const syncSchedule = getValue("ldap_sync_schedule")
+  const pmSchedule = getValue(pmAutoGenerationScheduleKey)
   const selectedSyncSchedulePreset = !customScheduleSelected && ldapSchedulePresets.some((preset) => preset.value === syncSchedule)
     ? syncSchedule
     : "custom"
+  const selectedPmSchedulePreset = !customPmScheduleSelected && pmSchedulePresets.some((preset) => preset.value === pmSchedule)
+    ? pmSchedule
+    : "custom"
+  const hasInvalidSchedulerSchedule = !isSupportedCronExpression(syncSchedule) || !isSupportedCronExpression(pmSchedule)
   const tabs: Array<{ id: SettingsTabId; label: string }> = [
     { id: "asset-numbering", label: labels.tabAssetNumbering },
     { id: "label-template", label: labels.tabLabelTemplate },
@@ -510,6 +557,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     { id: "organization", label: labels.tabOrganization },
     { id: "notifications", label: labels.tabNotifications },
     { id: "workflow-approval", label: labels.tabWorkflowApproval },
+    { id: "automation", label: labels.tabAutomation },
     { id: "ldap-login", label: labels.tabLdapLogin },
     { id: "ldap-sync", label: labels.tabLdapSync },
     { id: "advanced", label: labels.tabAdvanced },
@@ -549,6 +597,11 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
       label: labels.overviewApproval,
       value: `${workflowApprovalPolicy.minApprovers} / SLA ${workflowApprovalPolicy.slaDays}d / ${workflowApprovalPolicy.segregationRequired ? labels.workflowApprovalSodOn : labels.workflowApprovalSodOff}`,
       tone: "amber",
+    },
+    {
+      label: labels.overviewAutomation,
+      value: getValue(pmAutoGenerationEnabledKey) === "true" ? `${labels.enabled} (${getValue(pmAutoGenerationModeKey) || "manual"})` : labels.disabled,
+      tone: getValue(pmAutoGenerationEnabledKey) === "true" ? "green" : "slate",
     },
     {
       label: labels.overviewLdapLogin,
@@ -603,6 +656,10 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     }
     if (hasInvalidWorkflowApproval) {
       toast.error(labels.invalidWorkflowApproval)
+      return
+    }
+    if (hasInvalidSchedulerSchedule) {
+      toast.error(labels.invalidSchedulerSchedule)
       return
     }
 
@@ -1178,6 +1235,70 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
           <p className="text-sm text-muted-foreground">{labels.workflowApprovalMinApproversHelp}</p>
           <p className="text-sm text-muted-foreground">{labels.workflowApprovalSlaDaysHelp}</p>
           {hasInvalidWorkflowApproval ? <ValidationMessage message={labels.invalidWorkflowApproval} /> : null}
+        </div>
+      </div>
+      ) : null}
+
+      {activeTab === "automation" ? (
+      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <SectionHeader title={labels.schedulerSettings} description={labels.schedulerSettingsDescription} />
+        <div className="space-y-4 px-4 py-4">
+          <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+            {labels.schedulerHeartbeatNote}
+          </p>
+          <WizardStep number={1} title={labels.pmAutoGeneration}>
+            <p className="mb-4 text-sm text-muted-foreground">{labels.pmAutoGenerationDescription}</p>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <ToggleField
+                label={labels.pmAutoGenerationEnabled}
+                checked={getValue(pmAutoGenerationEnabledKey) === "true"}
+                onChange={(checked) => setBooleanValue(pmAutoGenerationEnabledKey, checked)}
+              />
+              <Field label={labels.pmAutoGenerationMode} htmlFor="pm-auto-generation-mode">
+                <select
+                  id="pm-auto-generation-mode"
+                  value={getValue(pmAutoGenerationModeKey)}
+                  onChange={(event) => setValue(pmAutoGenerationModeKey, event.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                >
+                  <option value="manual">{labels.pmAutoGenerationManual}</option>
+                  <option value="scheduled">{labels.pmAutoGenerationScheduled}</option>
+                </select>
+              </Field>
+              <Field label={labels.pmAutoGenerationSchedulePreset} htmlFor="pm-auto-generation-schedule-preset">
+                <select
+                  id="pm-auto-generation-schedule-preset"
+                  value={selectedPmSchedulePreset}
+                  onChange={(event) => {
+                    const value = event.target.value
+                    setCustomPmScheduleSelected(value === "custom")
+                    if (value !== "custom") {
+                      setValue(pmAutoGenerationScheduleKey, value)
+                    }
+                  }}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                >
+                  {pmSchedulePresets.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {labels[preset.labelKey]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {selectedPmSchedulePreset === "custom" ? (
+                <Field label={labels.pmAutoGenerationCustomSchedule} htmlFor="pm-auto-generation-custom-schedule">
+                  <input
+                    id="pm-auto-generation-custom-schedule"
+                    value={pmSchedule}
+                    onChange={(event) => setValue(pmAutoGenerationScheduleKey, event.target.value)}
+                    placeholder="5 6 * * *"
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                </Field>
+              ) : null}
+            </div>
+          </WizardStep>
+          {hasInvalidSchedulerSchedule ? <ValidationMessage message={labels.invalidSchedulerSchedule} /> : null}
         </div>
       </div>
       ) : null}

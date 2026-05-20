@@ -191,7 +191,7 @@ sudo chmod 640 /var/www/asset-system/env/asset-system.env
 - ถ้าใช้ static TCP port ใน production ให้ปล่อย `DB_INSTANCE=` ว่าง แล้วใช้ `DB_PORT=1433`; ในกรณีนี้ให้เปลี่ยน `DATABASE_URL` เป็นรูปแบบ `sqlserver://192.168.110.106:1433;database=asset_management;...`
 - ถ้า `LDAP_AUTO_PROVISION=true`, `LDAP_DEFAULT_ROLE` ต้องเป็น role ที่มีอยู่จริง เช่น `employee`, `viewer`, หรือ role ที่สร้างเองในหน้า Roles; ค่า `asset_user` จะใช้ได้เฉพาะเมื่อสร้าง role นี้แล้ว
 - `UPLOAD_DIR` ควรเป็น absolute path เพื่อไม่ผูกกับ `.next/standalone`
-- `MAINTENANCE_PM_GENERATION_TOKEN` ใช้สำหรับ systemd timer ที่สร้างใบงาน PM อัตโนมัติ ควรเป็น random token ยาว ๆ และไม่ซ้ำกับ secret อื่น
+- `MAINTENANCE_PM_GENERATION_TOKEN` และ `LDAP_SYNC_TOKEN` ใช้สำหรับ systemd scheduler heartbeat ควรเป็น random token ยาว ๆ และไม่ซ้ำกับ secret อื่น
 
 ---
 
@@ -317,27 +317,28 @@ curl -I http://127.0.0.1:3000/th/login
 
 ---
 
-## 11. Configure PM Auto Generation With systemd Timer
+## 11. Configure Web-Controlled Scheduler Heartbeat With systemd Timer
 
-ระบบมี script `npm run pm:generate-due` สำหรับสร้างใบงาน Preventive Maintenance ที่ถึงกำหนดแล้ว แนะนำให้ใช้ `systemd timer` แทน `crontab` เพื่อให้ดูสถานะ/log ได้จาก systemd เหมือน service หลัก
+ระบบใช้ script `npm run scheduler:heartbeat` เป็นตัวปลุกงานอัตโนมัติกลาง โดยตัว timer ไม่ได้เป็นคนตัดสินเวลา PM/LDAP เองแล้ว แต่จะเรียกแอปทุก 5 นาที จากนั้นแอปอ่านค่าที่ตั้งในหน้าเว็บ `/th/admin/settings` เพื่อเช็คว่า PM auto-generation หรือ LDAP Sync ถึงรอบตาม `cron` ในฐานข้อมูลหรือยัง
 
-ก่อนตั้ง timer ให้แน่ใจว่า env มี token:
+ก่อนตั้ง timer ให้แน่ใจว่า env มี token ที่ต้องใช้:
 
 ```env
 MAINTENANCE_PM_GENERATION_TOKEN=replace-with-long-random-token
+LDAP_SYNC_TOKEN=replace-with-long-random-token
 ```
 
 สร้าง oneshot service:
 
 ```bash
-sudo nano /etc/systemd/system/asset-system-pm-generate.service
+sudo nano /etc/systemd/system/asset-system-scheduler.service
 ```
 
 ใส่:
 
 ```ini
 [Unit]
-Description=Generate due preventive maintenance tickets for Asset System
+Description=Run Asset System scheduler heartbeat
 Wants=network-online.target asset-system.service
 After=network-online.target asset-system.service
 
@@ -350,7 +351,7 @@ EnvironmentFile=/var/www/asset-system/env/asset-system.env
 Environment=AUTH_URL=http://127.0.0.1:3000
 Environment=NEXTAUTH_URL=http://127.0.0.1:3000
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
-ExecStart=/usr/bin/npm run pm:generate-due
+ExecStart=/usr/bin/npm run scheduler:heartbeat
 ```
 
 เหตุผลที่ override `AUTH_URL`/`NEXTAUTH_URL` เป็น `127.0.0.1:3000` เฉพาะ service นี้: job หลังบ้านจะเรียกแอปในเครื่องโดยตรง ไม่ต้องวนออก Cloudflare Tunnel แต่ web app หลักยังใช้ `https://asset.company.com` ตาม env production เดิม
@@ -358,19 +359,19 @@ ExecStart=/usr/bin/npm run pm:generate-due
 สร้าง timer:
 
 ```bash
-sudo nano /etc/systemd/system/asset-system-pm-generate.timer
+sudo nano /etc/systemd/system/asset-system-scheduler.timer
 ```
 
-ใส่ตัวอย่างให้รันทุกวัน 06:05:
+ใส่ตัวอย่างให้ heartbeat รันทุก 5 นาที:
 
 ```ini
 [Unit]
-Description=Run Asset System PM generation daily
+Description=Run Asset System scheduler heartbeat
 
 [Timer]
-OnCalendar=*-*-* 06:05:00
+OnCalendar=*:0/5
 Persistent=true
-Unit=asset-system-pm-generate.service
+Unit=asset-system-scheduler.service
 
 [Install]
 WantedBy=timers.target
@@ -380,29 +381,36 @@ WantedBy=timers.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now asset-system-pm-generate.timer
+sudo systemctl enable --now asset-system-scheduler.timer
 ```
 
-ทดสอบ dry-run ผ่าน endpoint ก่อน:
+ทดสอบ heartbeat ผ่าน local app:
 
 ```bash
 cd /var/www/asset-system/app
-sudo -u assetapp bash -lc 'set -a && . /var/www/asset-system/env/asset-system.env && set +a && AUTH_URL=http://127.0.0.1:3000 NEXTAUTH_URL=http://127.0.0.1:3000 npm run pm:generate-due -- --dry-run'
+sudo -u assetapp bash -lc 'set -a && . /var/www/asset-system/env/asset-system.env && set +a && AUTH_URL=http://127.0.0.1:3000 NEXTAUTH_URL=http://127.0.0.1:3000 npm run scheduler:heartbeat'
 ```
 
 ทดสอบ service จริงแบบ manual:
 
 ```bash
-sudo systemctl start asset-system-pm-generate.service
-sudo journalctl -u asset-system-pm-generate.service -n 80 --no-pager
+sudo systemctl start asset-system-scheduler.service
+sudo journalctl -u asset-system-scheduler.service -n 80 --no-pager
 ```
 
 ตรวจ timer:
 
 ```bash
-systemctl list-timers asset-system-pm-generate.timer
-sudo systemctl status asset-system-pm-generate.timer
+systemctl list-timers asset-system-scheduler.timer
+sudo systemctl status asset-system-scheduler.timer
 ```
+
+ตั้งเวลาจริงที่หน้าเว็บ:
+
+1. ไปที่ `/th/admin/settings`
+2. แท็บ `Automation`: เปิด `Preventive Maintenance อัตโนมัติ`, ตั้งโหมดเป็น `Scheduled`, เลือกรอบเวลา PM
+3. แท็บ `LDAP Sync`: เปิด Sync, ตั้งโหมดเป็น `Scheduled`, เลือกรอบเวลา Sync
+4. กดบันทึก แล้วรอ heartbeat รอบถัดไปหรือสั่ง `sudo systemctl start asset-system-scheduler.service`
 
 ถ้า service รายงาน `skippedMissingReporter` ให้กลับไปตั้งค่าแผน PM ในหน้า `/th/maintenance?view=pm` โดยเลือก `ผู้รับผิดชอบภายใน` ให้ครบ เพราะระบบต้องใช้เป็นผู้แจ้งงานของใบงาน PM ที่สร้างอัตโนมัติ
 
@@ -749,24 +757,22 @@ SQL Server backup ให้ใช้ SQL Server Management Studio, maintenance p
 
 ---
 
-## 21. LDAP Sync Scheduler Optional
+## 21. LDAP Sync Scheduling From The Web UI
 
-ถ้าเปิด LDAP sync แล้ว ต้องตั้ง `LDAP_SYNC_TOKEN` ใน env ก่อน
+LDAP Sync ใช้ scheduler heartbeat เดียวกับ PM แล้ว ไม่ต้องตั้ง crontab แยก
 
-ตัวอย่าง cron:
+สิ่งที่ต้องมี:
+
+- `LDAP_SYNC_TOKEN` ใน `/var/www/asset-system/env/asset-system.env`
+- `asset-system-scheduler.timer` enabled ตามหัวข้อ 11
+- หน้า `/th/admin/settings` แท็บ `LDAP Sync` ตั้ง `เปิดใช้ Sync`, `โหมด Sync = Scheduled`, และ `รอบเวลา Sync`
+
+ถ้าต้องการทดสอบเฉพาะ LDAP scheduled endpoint:
 
 ```bash
-sudo crontab -u assetapp -e
+cd /var/www/asset-system/app
+sudo -u assetapp bash -lc 'set -a && . /var/www/asset-system/env/asset-system.env && set +a && AUTH_URL=http://127.0.0.1:3000 NEXTAUTH_URL=http://127.0.0.1:3000 npm run ldap:sync:scheduled'
 ```
-
-เพิ่ม:
-
-```cron
-0 2 * * * cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && /usr/bin/node scripts/ldap-sync.mjs >> /var/log/asset-system-ldap-sync.log 2>&1
-```
-
-ถ้าให้ script sync ผ่าน public domain ให้ `AUTH_URL=https://asset.company.com`
-ถ้าให้ sync ผ่าน local app โดยไม่ออก Internet ให้ override ใน cron เป็น `AUTH_URL=http://127.0.0.1:3000`
 
 ---
 
@@ -779,16 +785,18 @@ sudo crontab -u assetapp -e
 - [ ] `AUTH_TRUST_HOST=true`
 - [ ] `UPLOAD_DIR` เป็น absolute path และมี backup
 - [ ] `MAINTENANCE_PM_GENERATION_TOKEN` เป็น random token จริง
+- [ ] `LDAP_SYNC_TOKEN` เป็น random token จริงถ้าเปิด LDAP scheduled sync
 - [ ] SQL Server connection ใช้ production user ที่สิทธิ์เหมาะสม
 - [ ] SQL Server มี backup schedule
 - [ ] `npm run build` ผ่านบน Ubuntu
 - [ ] `asset-system.service` restart แล้วใช้งานได้
-- [ ] `asset-system-pm-generate.timer` enabled และ `list-timers` แสดงเวลารันถัดไป
+- [ ] `asset-system-scheduler.timer` enabled และ `list-timers` แสดงเวลารันถัดไป
 - [ ] `nginx.service` proxy ไป `127.0.0.1:3000` ได้
 - [ ] `cloudflared.service` connected
 - [ ] Cloudflare DNS route ไป Tunnel ถูกต้อง และ Tunnel service ชี้ไป `http://127.0.0.1:8080`
 - [ ] Public QR Base URL ตั้งเป็น `https://asset.company.com`
-- [ ] ทดสอบ `npm run pm:generate-due -- --dry-run` ผ่าน local app URL แล้ว
+- [ ] ทดสอบ `npm run scheduler:heartbeat` ผ่าน local app URL แล้ว
+- [ ] ตั้ง PM/LDAP schedule ที่หน้า `/th/admin/settings` แล้ว
 - [ ] ไม่เปิด inbound port `3000` หรือ `8080` ออก Internet
 - [ ] ไม่รัน cleanup test-data บน production
 - [ ] ทดสอบ login, asset create, upload, QR scan, export Excel/PDF

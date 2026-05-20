@@ -8,8 +8,12 @@ import {
   operationDocumentRunningDigitsKey,
   assetTagFormatTemplateKey,
   notificationRuleSettingKeys,
+  pmAutoGenerationEnabledKey,
+  pmAutoGenerationModeKey,
+  pmAutoGenerationScheduleKey,
 } from "@/lib/system-setting-defaults"
 import { validateOperationDocumentTemplate } from "@/lib/operation-document-number"
+import { isSupportedCronExpression } from "@/lib/scheduled-job"
 import { workflowApprovalMinApproversKey, workflowApprovalSettingKeys, workflowApprovalSlaDaysKey } from "@/lib/workflow-approval"
 
 const assetTagFormatTokens = new Set([
@@ -40,6 +44,8 @@ const assetLabelSpacingKeys = new Set<string>([
 const assetLabelLayoutKeys = new Set<string>(assetLabelTapeSizes.map((size) => `asset_label_${size}_layout`))
 const operationDocumentTemplateKeys = new Set<string>([checkoutDocumentTemplateKey, checkinDocumentTemplateKey])
 const notificationRuleKeys = new Set<string>(notificationRuleSettingKeys)
+const schedulerModeKeys = new Set<string>(["ldap_sync_mode", pmAutoGenerationModeKey])
+const schedulerScheduleKeys = new Set<string>(["ldap_sync_schedule", pmAutoGenerationScheduleKey])
 const workflowApprovalBooleanKeys = new Set<string>(
   workflowApprovalSettingKeys.filter((key) => key !== workflowApprovalMinApproversKey && key !== workflowApprovalSlaDaysKey)
 )
@@ -177,6 +183,30 @@ export const systemSettingsUpdateSchema = z.object({
           path: ["settings", index, "value"],
         })
       }
+    }
+
+    if (setting.key === pmAutoGenerationEnabledKey && setting.value !== "true" && setting.value !== "false") {
+      context.addIssue({
+        code: "custom",
+        message: "PM auto-generation enabled must be true or false",
+        path: ["settings", index, "value"],
+      })
+    }
+
+    if (schedulerModeKeys.has(setting.key) && !["preview", "manual", "scheduled"].includes(setting.value)) {
+      context.addIssue({
+        code: "custom",
+        message: "Scheduler mode must be preview, manual, or scheduled",
+        path: ["settings", index, "value"],
+      })
+    }
+
+    if (schedulerScheduleKeys.has(setting.key) && !isSupportedCronExpression(setting.value)) {
+      context.addIssue({
+        code: "custom",
+        message: "Scheduler schedule must be a supported five-field cron expression",
+        path: ["settings", index, "value"],
+      })
     }
 
     if (setting.key === depreciationPolicySettingKey) {

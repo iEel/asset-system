@@ -76,7 +76,10 @@ Production uses `/var/www/asset-system/env/asset-system.env`; see `DEPLOYMENT_UB
 | `npm test` | Run all Node test files under `tests/` |
 | `npm run verify` | Run lint, all tests, and production build in one command |
 | `npm run ldap:sync` | External/manual LDAP sync runner |
+| `npm run ldap:sync:scheduled` | Run LDAP Sync only when the web-configured schedule is due |
 | `npm run pm:generate-due` | Generate due preventive-maintenance tickets through the scheduler endpoint |
+| `npm run pm:generate-due:scheduled` | Generate PM tickets only when the web-configured schedule is due |
+| `npm run scheduler:heartbeat` | Shared scheduler heartbeat for PM auto-generation and LDAP Sync |
 | `npm run notifications:digest` | Deliver daily in-app notification digests through the scheduler endpoint |
 | `npm run cleanup:test-data` | Guarded trial asset cleanup CLI; dry-run by default |
 

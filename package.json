@@ -10,7 +10,10 @@
     "test": "node scripts/run-tests.mjs",
     "verify": "node scripts/verify.mjs",
     "ldap:sync": "node scripts/ldap-sync.mjs",
+    "ldap:sync:scheduled": "node scripts/ldap-sync.mjs --scheduled",
     "pm:generate-due": "node scripts/generate-due-pm.mjs",
+    "pm:generate-due:scheduled": "node scripts/generate-due-pm.mjs --scheduled",
+    "scheduler:heartbeat": "node scripts/run-scheduled-jobs.mjs",
     "notifications:digest": "node scripts/send-notification-digest.mjs",
     "cleanup:test-data": "node scripts/cleanup-test-data.mjs"
   },
