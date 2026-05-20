@@ -2,7 +2,13 @@
 
 import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AlertCircle, CheckCircle2, Upload } from "lucide-react"
+import { AlertCircle, CheckCircle2, FileSpreadsheet, ListChecks, Upload } from "lucide-react"
+import {
+  assetImportWizardSteps,
+  getAssetImportWizardStep,
+  summarizeAssetImportPreviewIssues,
+  type AssetImportWizardStep,
+} from "@/lib/asset-import-wizard"
 
 type PreviewRow = {
   rowNumber: number
@@ -36,6 +42,18 @@ type AssetImportPreviewPanelProps = {
     fileRequired: string
     importSuccess: string
     importing: string
+    wizardTitle: string
+    wizardHelp: string
+    wizardStepTemplate: string
+    wizardStepUpload: string
+    wizardStepReview: string
+    wizardStepImport: string
+    wizardStepComplete: string
+    currentStep: string
+    selectedFile: string
+    issueSummaryTitle: string
+    issueSummaryHelp: string
+    affectedRows: string
   }
 }
 
@@ -48,6 +66,14 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
   const [success, setSuccess] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<PreviewResult | null>(null)
+  const wizardStep = getAssetImportWizardStep({
+    hasSelectedFile: Boolean(selectedFile),
+    hasPreview: Boolean(preview),
+    isLoading,
+    isImporting,
+    hasSuccess: Boolean(success),
+  })
+  const issueSummary = preview ? summarizeAssetImportPreviewIssues(preview.rows) : []
 
   async function handleFile(file?: File) {
     if (!file) {
@@ -115,7 +141,8 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
     <section className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-base font-semibold text-foreground">{labels.importPreview}</h2>
+          <h2 className="text-base font-semibold text-foreground">{labels.wizardTitle}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{labels.wizardHelp}</p>
           {preview && (
             <p className="mt-1 text-sm text-muted-foreground">
               {preview.summary.totalRows} {labels.previewRows} · {preview.summary.readyRows} {labels.previewReady} ·{" "}
@@ -143,6 +170,31 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
         </div>
       </div>
 
+      <div className="mt-4 grid gap-2 md:grid-cols-5">
+        {assetImportWizardSteps.map((step, index) => (
+          <WizardStep
+            key={step}
+            step={step}
+            currentStep={wizardStep}
+            index={index}
+            label={wizardStepLabel(step, labels)}
+            currentLabel={labels.currentStep}
+          />
+        ))}
+      </div>
+
+      {selectedFile ? (
+        <div className="mt-4 flex items-start gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+          <FileSpreadsheet className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <div className="min-w-0">
+            <div className="font-medium text-foreground">{labels.selectedFile}</div>
+            <div className="truncate text-muted-foreground">
+              {selectedFile.name} · {formatFileSize(selectedFile.size)}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {error && (
         <div className="mt-4 flex items-start gap-2 rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
           <AlertCircle className="mt-0.5 h-4 w-4 flex-none" />
@@ -164,6 +216,24 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
             <SummaryItem label={labels.previewReady} value={preview.summary.readyRows} tone="ready" />
             <SummaryItem label={labels.previewErrors} value={preview.summary.errorRows} tone="error" />
           </div>
+          {issueSummary.length > 0 ? (
+            <div className="border-t border-border bg-warning/5 px-4 py-3">
+              <div className="flex items-start gap-2">
+                <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                <div>
+                  <div className="text-sm font-semibold text-foreground">{labels.issueSummaryTitle}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">{labels.issueSummaryHelp}</div>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {issueSummary.map((issue) => (
+                  <span key={issue.message} className="rounded-full bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
+                    {issue.message} · {issue.count} {labels.affectedRows}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="max-h-80 overflow-auto">
             <table className="min-w-full divide-y divide-border text-sm">
               <thead className="bg-muted/40">
@@ -228,6 +298,55 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
       )}
     </section>
   )
+}
+
+function WizardStep({
+  step,
+  currentStep,
+  index,
+  label,
+  currentLabel,
+}: {
+  step: AssetImportWizardStep
+  currentStep: AssetImportWizardStep
+  index: number
+  label: string
+  currentLabel: string
+}) {
+  const currentIndex = assetImportWizardSteps.indexOf(currentStep)
+  const stepIndex = assetImportWizardSteps.indexOf(step)
+  const isDone = stepIndex < currentIndex
+  const isCurrent = step === currentStep
+
+  return (
+    <div
+      className={[
+        "rounded-md border px-3 py-2 text-sm",
+        isCurrent ? "border-primary bg-primary/5 text-primary" : isDone ? "border-success/30 bg-success/5 text-success" : "border-border bg-background text-muted-foreground",
+      ].join(" ")}
+    >
+      <div className="flex items-center gap-2">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs font-semibold">
+          {isDone ? <CheckCircle2 className="h-3.5 w-3.5" /> : index + 1}
+        </span>
+        <span className="font-medium">{label}</span>
+      </div>
+      {isCurrent ? <div className="mt-1 text-xs">{currentLabel}</div> : null}
+    </div>
+  )
+}
+
+function wizardStepLabel(step: AssetImportWizardStep, labels: AssetImportPreviewPanelProps["labels"]) {
+  if (step === "template") return labels.wizardStepTemplate
+  if (step === "upload") return labels.wizardStepUpload
+  if (step === "review") return labels.wizardStepReview
+  if (step === "import") return labels.wizardStepImport
+  return labels.wizardStepComplete
+}
+
+function formatFileSize(size: number) {
+  if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024)).toLocaleString()} KB`
+  return `${(size / 1024 / 1024).toFixed(1)} MB`
 }
 
 function SummaryItem({ label, value, tone }: { label: string; value: number; tone?: "ready" | "error" }) {

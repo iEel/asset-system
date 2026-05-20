@@ -60,6 +60,18 @@ export default async function AssetImportExportPage({ params }: AssetImportExpor
           fileRequired: t("fileRequired"),
           importSuccess: t("importSuccess"),
           importing: t("importing"),
+          wizardTitle: t("importWizardTitle"),
+          wizardHelp: t("importWizardHelp"),
+          wizardStepTemplate: t("importWizardStepTemplate"),
+          wizardStepUpload: t("importWizardStepUpload"),
+          wizardStepReview: t("importWizardStepReview"),
+          wizardStepImport: t("importWizardStepImport"),
+          wizardStepComplete: t("importWizardStepComplete"),
+          currentStep: t("importWizardCurrentStep"),
+          selectedFile: t("selectedImportFile"),
+          issueSummaryTitle: t("importIssueSummaryTitle"),
+          issueSummaryHelp: t("importIssueSummaryHelp"),
+          affectedRows: t("affectedRows"),
         }}
       />
 
