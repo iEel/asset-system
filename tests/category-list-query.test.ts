@@ -6,6 +6,7 @@ import {
   buildCategoryQueryString,
   buildCategoryWhere,
   buildCategoryHealthSummary,
+  buildCategoryDrilldownHrefs,
   parseCategoryListParams,
   parseCategoryPrefixMap,
 } from "../src/lib/category-list-query.ts"
@@ -128,5 +129,13 @@ test("summarizes category health gaps for review cards", () => {
     missingCustomFields: 1,
     missingChecklist: 1,
     missingPrefix: 1,
+  })
+})
+
+test("builds category drilldown links for related operational views", () => {
+  assert.deepEqual(buildCategoryDrilldownHrefs({ locale: "th", categoryId: "cat-1" }), {
+    assets: "/th/assets?categoryId=cat-1",
+    models: "/th/master-data/brands?modelCategoryId=cat-1&modelPage=1",
+    edit: "/th/master-data/categories/cat-1/edit",
   })
 })

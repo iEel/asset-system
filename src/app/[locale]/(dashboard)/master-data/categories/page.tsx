@@ -15,6 +15,7 @@ import { paginationRange } from "@/lib/master-data-query"
 import {
   buildCategoryOrderBy,
   buildCategoryHealthSummary,
+  buildCategoryDrilldownHrefs,
   buildCategoryQueryString,
   buildCategoryWhere,
   parseCategoryListParams,
@@ -244,43 +245,60 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
                   </td>
                 </tr>
               ) : (
-                categories.map((category) => (
-                  <ClickableTableRow
-                    key={category.id}
-                    href={`/${locale}/master-data/categories/${category.id}/edit`}
-                    label={`${tCommon("edit")}: ${category.code}`}
-                  >
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{category.code}</td>
-                    <td className="min-w-48 px-4 py-3 text-foreground">{category.name}</td>
-                    <td className="min-w-64 px-4 py-3 text-muted-foreground">
-                      {category.description || "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                      {category._count.models}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                      {category._count.assets}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                      {category._count.customFieldDefs}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <ActiveBadge label={tCommon("active")} />
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        <Link
-                          href={`/${locale}/master-data/categories/${category.id}/edit`}
-                          title={tCommon("edit")}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Link>
-                        <CategoryDeleteButton id={category.id} />
-                      </div>
-                    </td>
-                  </ClickableTableRow>
-                ))
+                categories.map((category) => {
+                  const drilldown = buildCategoryDrilldownHrefs({ locale, categoryId: category.id })
+                  return (
+                    <ClickableTableRow
+                      key={category.id}
+                      href={drilldown.edit}
+                      label={`${tCommon("edit")}: ${category.code}`}
+                    >
+                      <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{category.code}</td>
+                      <td className="min-w-48 px-4 py-3 text-foreground">{category.name}</td>
+                      <td className="min-w-64 px-4 py-3 text-muted-foreground">
+                        {category.description || "-"}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                        {category._count.models}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                        {category._count.assets}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                        {category._count.customFieldDefs}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <ActiveBadge label={tCommon("active")} />
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                        <div className="inline-flex items-center gap-1">
+                          <Link
+                            href={drilldown.assets}
+                            title={t("viewAssets")}
+                            className="inline-flex h-8 items-center justify-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                          >
+                            {t("viewAssets")}
+                          </Link>
+                          <Link
+                            href={drilldown.models}
+                            title={t("viewModels")}
+                            className="inline-flex h-8 items-center justify-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                          >
+                            {t("viewModels")}
+                          </Link>
+                          <Link
+                            href={drilldown.edit}
+                            title={tCommon("edit")}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Link>
+                          <CategoryDeleteButton id={category.id} />
+                        </div>
+                      </td>
+                    </ClickableTableRow>
+                  )
+                })
               )}
             </tbody>
           </table>

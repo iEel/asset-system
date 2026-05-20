@@ -153,6 +153,21 @@ export function buildCategoryHealthSummary(
   }
 }
 
+export function buildCategoryDrilldownHrefs({
+  locale,
+  categoryId,
+}: {
+  locale: string
+  categoryId: string
+}) {
+  const encodedCategoryId = encodeURIComponent(categoryId)
+  return {
+    assets: `/${locale}/assets?categoryId=${encodedCategoryId}`,
+    models: `/${locale}/master-data/brands?modelCategoryId=${encodedCategoryId}&modelPage=1`,
+    edit: `/${locale}/master-data/categories/${encodedCategoryId}/edit`,
+  }
+}
+
 export function buildCategoryOrderBy({
   sort,
   direction,
