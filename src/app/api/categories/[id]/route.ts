@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { categorySchema } from "@/lib/validations/category"
 import { saveCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
+import { getCategoryDeleteBlockReason } from "@/lib/category-delete-guard"
 
 type CategoryRouteContext = {
   params: Promise<{ id: string }>
@@ -48,10 +49,25 @@ export async function PUT(request: NextRequest, context: CategoryRouteContext) {
     const input = categorySchema.parse(await request.json())
     const existing = await prisma.assetCategory.findFirst({
       where: { id, isActive: true },
+      include: {
+        _count: {
+          select: {
+            assets: true,
+            models: true,
+          },
+        },
+      },
     })
 
     if (!existing) {
       return NextResponse.json({ error: "Category not found" }, { status: 404 })
+    }
+    const blockReason = getCategoryDeleteBlockReason({
+      assets: existing._count.assets,
+      models: existing._count.models,
+    })
+    if (blockReason) {
+      return NextResponse.json({ error: blockReason }, { status: 409 })
     }
 
     const category = await prisma.assetCategory.update({
