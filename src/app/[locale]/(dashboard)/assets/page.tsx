@@ -364,6 +364,8 @@ function AssetFilters({
             </option>
           ))}
         </FilterSelect>
+        {filters.custodianId ? <input type="hidden" name="custodianId" value={filters.custodianId} /> : null}
+        {filters.supplierId ? <input type="hidden" name="supplierId" value={filters.supplierId} /> : null}
         {filters.dataQuality ? <input type="hidden" name="dataQuality" value={filters.dataQuality} /> : null}
         <input type="hidden" name="sort" value={filters.sort} />
         <input type="hidden" name="direction" value={filters.direction} />

@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client"
-import { assetMissingResponsibilityWhere, assetOwnershipTypes } from "@/lib/asset-ownership"
-import { normalizeAssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
+import { normalizeAssetDataQualityFilter } from "./asset-data-quality-filter.ts"
+import { assetMissingResponsibilityWhere, assetOwnershipTypes } from "./asset-ownership.ts"
 
 export type AssetListParams = {
   search?: string
@@ -10,6 +10,8 @@ export type AssetListParams = {
   statusId?: string
   conditionId?: string
   ownershipType?: string
+  custodianId?: string
+  supplierId?: string
   dataQuality?: string
   page?: string | number
   pageSize?: string | number
@@ -39,6 +41,8 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
     statusId: String(getValue("statusId") ?? "").trim(),
     conditionId: String(getValue("conditionId") ?? "").trim(),
     ownershipType: assetOwnershipTypes.includes(ownershipType as (typeof assetOwnershipTypes)[number]) ? ownershipType : "",
+    custodianId: String(getValue("custodianId") ?? "").trim(),
+    supplierId: String(getValue("supplierId") ?? "").trim(),
     dataQuality,
     page,
     pageSize,
@@ -56,6 +60,8 @@ export function buildAssetWhere(filters: ReturnType<typeof parseAssetListParams>
     ...(filters.statusId ? { statusId: filters.statusId } : {}),
     ...(filters.conditionId ? { conditionId: filters.conditionId } : {}),
     ...(filters.ownershipType ? { ownershipType: filters.ownershipType } : {}),
+    ...(filters.custodianId ? { custodianId: filters.custodianId } : {}),
+    ...(filters.supplierId ? { supplierId: filters.supplierId } : {}),
     ...(filters.search
       ? {
           OR: [
@@ -93,7 +99,7 @@ export function buildAssetQueryString(
   const next = { ...filters, ...overrides }
   const params = new URLSearchParams()
 
-  for (const key of ["search", "companyId", "branchId", "categoryId", "statusId", "conditionId", "ownershipType", "dataQuality", "sort", "direction"] as const) {
+  for (const key of ["search", "companyId", "branchId", "categoryId", "statusId", "conditionId", "ownershipType", "custodianId", "supplierId", "dataQuality", "sort", "direction"] as const) {
     if (next[key]) params.set(key, String(next[key]))
   }
 

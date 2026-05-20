@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { employeeSchema } from "@/lib/validations/employee"
+import { getEmployeeDeleteBlockReason } from "@/lib/organization-master-query"
 
 type EmployeeRouteContext = {
   params: Promise<{ id: string }>
@@ -85,10 +86,35 @@ export async function DELETE(_request: NextRequest, context: EmployeeRouteContex
     const { id } = await context.params
     const existing = await prisma.employee.findFirst({
       where: { id, isActive: true },
+      include: {
+        _count: {
+          select: {
+            custodianAssets: { where: { isActive: true } },
+            subordinates: { where: { isActive: true } },
+            auditRounds: { where: { isActive: true } },
+          },
+        },
+      },
     })
 
     if (!existing) {
       return NextResponse.json({ error: "Employee not found" }, { status: 404 })
+    }
+
+    const [userAccounts, openCheckouts] = await Promise.all([
+      prisma.user.count({ where: { employeeId: id, isActive: true } }),
+      prisma.assetCheckout.count({ where: { custodianId: id, isReturned: false } }),
+    ])
+    const blockReason = getEmployeeDeleteBlockReason({
+      custodianAssets: existing._count.custodianAssets,
+      subordinates: existing._count.subordinates,
+      userAccounts,
+      openCheckouts,
+      auditRounds: existing._count.auditRounds,
+    })
+
+    if (blockReason) {
+      return NextResponse.json({ error: blockReason }, { status: 409 })
     }
 
     const employee = await prisma.employee.update({

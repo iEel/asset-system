@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { supplierSchema } from "@/lib/validations/supplier"
+import { getSupplierDeleteBlockReason } from "@/lib/organization-master-query"
 
 type SupplierRouteContext = {
   params: Promise<{ id: string }>
@@ -45,10 +46,29 @@ export async function PUT(request: NextRequest, context: SupplierRouteContext) {
     const input = supplierSchema.parse(await request.json())
     const existing = await prisma.supplier.findFirst({
       where: { id, isActive: true },
+      include: {
+        _count: {
+          select: {
+            assets: { where: { isActive: true } },
+            maintenanceTickets: { where: { isActive: true } },
+            purchaseDocuments: { where: { isActive: true } },
+          },
+        },
+      },
     })
 
     if (!existing) {
       return NextResponse.json({ error: "Supplier not found" }, { status: 404 })
+    }
+
+    const blockReason = getSupplierDeleteBlockReason({
+      assets: existing._count.assets,
+      maintenanceTickets: existing._count.maintenanceTickets,
+      purchaseDocuments: existing._count.purchaseDocuments,
+    })
+
+    if (blockReason) {
+      return NextResponse.json({ error: blockReason }, { status: 409 })
     }
 
     const supplier = await prisma.supplier.update({
