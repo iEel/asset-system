@@ -205,7 +205,7 @@ async function searchSuppliers(query: string, locale: string): Promise<SearchRes
     typeLabel: label("supplier", locale),
     title: `${supplier.code} - ${supplier.name}`,
     subtitle: supplier.contactPerson ?? supplier.email ?? supplier.phone ?? label("supplier", locale),
-    href: `/${locale}/master-data/suppliers/${supplier.id}/edit`,
+    href: `/${locale}/master-data/suppliers/${supplier.id}`,
     badge: { label: label("supplier", locale), colorCode: null },
     metadata: compactMetadata([
       [locale === "th" ? "ผู้ติดต่อ" : "Contact", supplier.contactPerson],

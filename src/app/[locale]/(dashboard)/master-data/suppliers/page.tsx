@@ -180,8 +180,8 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
                   return (
                     <ClickableTableRow
                       key={supplier.id}
-                      href={`/${locale}/master-data/suppliers/${supplier.id}/edit`}
-                      label={`${tCommon("edit")}: ${supplier.code}`}
+                      href={`/${locale}/master-data/suppliers/${supplier.id}`}
+                      label={`${tCommon("view")}: ${supplier.code}`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{supplier.code}</td>
                       <td className="min-w-56 px-4 py-3 text-foreground">
