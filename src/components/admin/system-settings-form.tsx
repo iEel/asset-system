@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { Loader2, PlugZap, Plus, Save, Trash2 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
@@ -266,7 +266,14 @@ type SystemSettingsFormProps = {
     ldapSyncAppliedCreated: string
     ldapSyncAppliedUpdated: string
     ldapSyncAppliedDeactivated: string
+    ldapSyncAppliedUsersDeactivated: string
     ldapSyncBlockers: string
+    ldapSyncDeactivateImpactTitle: string
+    ldapSyncDeactivateImpactDescription: string
+    ldapSyncDeactivateImpactAssets: string
+    ldapSyncDeactivateImpactUsers: string
+    ldapSyncOpenAssets: string
+    ldapSyncNoDeactivateImpact: string
     ldapSyncNoPreview: string
     ldapSyncPreviewSuccess: string
     ldapSyncApplySuccess: string
@@ -305,12 +312,28 @@ type LdapSyncPreview = {
   creates: LdapSyncChange[]
   updates: LdapSyncChange[]
   deactivates: LdapSyncChange[]
+  deactivationImpacts?: LdapDeactivationImpact[]
   blockers: string[]
   applied?: {
     created: number
     updated: number
     deactivated: number
+    deactivatedUsers?: number
   }
+}
+
+type LdapDeactivationImpact = {
+  employeeId: string
+  code: string
+  name: string
+  email: string | null
+  activeAssetCount: number
+  activeUserCount: number
+  assets: Array<{
+    id: string
+    assetTag: string
+    name: string
+  }>
 }
 
 type SettingsTabId =
@@ -432,6 +455,8 @@ function formatReviewValue(key: string, value: string | undefined) {
 
 export function SystemSettingsForm({ settings, categories, labels }: SystemSettingsFormProps) {
   const router = useRouter()
+  const params = useParams<{ locale?: string }>()
+  const locale = typeof params.locale === "string" ? params.locale : "th"
   const initialValues = Object.fromEntries(settings.map((setting) => [setting.key, setting.value]))
   const [activeTab, setActiveTab] = useState<SettingsTabId>("asset-numbering")
   const [saving, setSaving] = useState(false)
@@ -1587,7 +1612,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               {syncError}
             </div>
           ) : null}
-          <SyncPreviewPanel labels={labels} preview={syncPreview} />
+          <SyncPreviewPanel labels={labels} preview={syncPreview} locale={locale} />
           </WizardStep>
         </div>
       </div>
@@ -1744,13 +1769,18 @@ function ToggleField({
 function SyncPreviewPanel({
   labels,
   preview,
+  locale,
 }: {
   labels: SystemSettingsFormProps["labels"]
   preview: LdapSyncPreview | null
+  locale: string
 }) {
   if (!preview) {
     return <p className="text-sm text-muted-foreground">{labels.ldapSyncNoPreview}</p>
   }
+  const deactivationImpacts = (preview.deactivationImpacts ?? []).filter(
+    (impact) => impact.activeAssetCount > 0 || impact.activeUserCount > 0
+  )
 
   return (
     <div className="rounded-md border border-border bg-background p-4">
@@ -1764,12 +1794,13 @@ function SyncPreviewPanel({
       {preview.applied ? (
         <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-3">
           <div className="text-sm font-medium text-foreground">{labels.ldapSyncAppliedTitle}</div>
-          <div className="mt-2 grid gap-2 md:grid-cols-3">
-            <Metric label={labels.ldapSyncAppliedCreated} value={preview.applied.created} />
-            <Metric label={labels.ldapSyncAppliedUpdated} value={preview.applied.updated} />
-            <Metric label={labels.ldapSyncAppliedDeactivated} value={preview.applied.deactivated} />
-          </div>
+          <div className="mt-2 grid gap-2 md:grid-cols-4">
+          <Metric label={labels.ldapSyncAppliedCreated} value={preview.applied.created} />
+          <Metric label={labels.ldapSyncAppliedUpdated} value={preview.applied.updated} />
+          <Metric label={labels.ldapSyncAppliedDeactivated} value={preview.applied.deactivated} />
+          <Metric label={labels.ldapSyncAppliedUsersDeactivated} value={preview.applied.deactivatedUsers ?? 0} />
         </div>
+      </div>
       ) : null}
       {preview.blockers.length > 0 ? (
         <div className="mt-3 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
@@ -1779,6 +1810,54 @@ function SyncPreviewPanel({
               <li key={blocker}>{blocker}</li>
             ))}
           </ul>
+        </div>
+      ) : null}
+      {preview.deactivates.length > 0 ? (
+        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-3">
+          <div className="text-sm font-semibold text-amber-950">{labels.ldapSyncDeactivateImpactTitle}</div>
+          <p className="mt-1 text-sm text-amber-900">{labels.ldapSyncDeactivateImpactDescription}</p>
+          {deactivationImpacts.length > 0 ? (
+            <div className="mt-3 grid gap-3">
+              {deactivationImpacts.map((impact) => (
+                <div key={impact.employeeId} className="rounded-md border border-amber-200 bg-white px-3 py-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="text-sm font-semibold text-foreground">
+                        {impact.code} - {impact.name}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">{impact.email ?? "-"}</div>
+                    </div>
+                    <a
+                      href={`/${locale}/assets?custodianId=${encodeURIComponent(impact.employeeId)}&page=1`}
+                      className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+                    >
+                      {labels.ldapSyncOpenAssets}
+                    </a>
+                  </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <Metric label={labels.ldapSyncDeactivateImpactAssets} value={impact.activeAssetCount} />
+                    <Metric label={labels.ldapSyncDeactivateImpactUsers} value={impact.activeUserCount} />
+                  </div>
+                  {impact.assets.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {impact.assets.slice(0, 5).map((asset) => (
+                        <span key={asset.id} className="rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-foreground">
+                          {asset.assetTag} - {asset.name}
+                        </span>
+                      ))}
+                      {impact.assets.length > 5 ? (
+                        <span className="rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
+                          +{impact.assets.length - 5}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-amber-900">{labels.ldapSyncNoDeactivateImpact}</p>
+          )}
         </div>
       ) : null}
     </div>

@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/db"
 import { logAudit } from "@/lib/audit-log"
 import { searchLdapSyncUsers, type LdapConfigInput } from "@/lib/ldap-auth"
+import {
+  buildLdapDeactivationImpacts,
+  getActiveUserIdsForDeactivatedEmployees,
+  type LdapDeactivationImpact,
+} from "@/lib/ldap-sync-impact"
 import { ldapSettingKeys } from "@/lib/system-setting-defaults"
 
 type LdapSyncProfile = Awaited<ReturnType<typeof searchLdapSyncUsers>>[number]
@@ -10,6 +15,7 @@ export type LdapSyncPreview = {
   creates: LdapSyncChange[]
   updates: LdapSyncChange[]
   deactivates: LdapSyncChange[]
+  deactivationImpacts: LdapDeactivationImpact[]
   blockers: string[]
 }
 
@@ -25,6 +31,7 @@ export type LdapSyncApplyResult = LdapSyncPreview & {
     created: number
     updated: number
     deactivated: number
+    deactivatedUsers: number
   }
 }
 
@@ -45,6 +52,7 @@ export async function previewLdapSync(settings?: LdapConfigInput): Promise<LdapS
   const orgDefaults = await resolveOrgDefaults(resolvedSettings, orgLookup)
   const existingEmployees = await prisma.employee.findMany({
     select: {
+      id: true,
       code: true,
       fullNameTh: true,
       email: true,
@@ -59,6 +67,12 @@ export async function previewLdapSync(settings?: LdapConfigInput): Promise<LdapS
   const creates: LdapSyncChange[] = []
   const updates: LdapSyncChange[] = []
   const deactivates: LdapSyncChange[] = []
+  const deactivationEmployees: Array<{
+    id: string
+    code: string
+    fullNameTh: string
+    email: string | null
+  }> = []
 
   for (const profile of profiles) {
     const existing = existingByCode.get(profile.code)
@@ -87,6 +101,12 @@ export async function previewLdapSync(settings?: LdapConfigInput): Promise<LdapS
   for (const employee of existingEmployees) {
     if (!employee.isActive) continue
     if (!profilesByCode.has(employee.code)) {
+      deactivationEmployees.push({
+        id: employee.id,
+        code: employee.code,
+        fullNameTh: employee.fullNameTh,
+        email: employee.email,
+      })
       deactivates.push({
         code: employee.code,
         name: employee.fullNameTh,
@@ -95,12 +115,14 @@ export async function previewLdapSync(settings?: LdapConfigInput): Promise<LdapS
       })
     }
   }
+  const deactivationImpacts = await loadDeactivationImpacts(deactivationEmployees)
 
   return {
     total: profiles.length,
     creates,
     updates,
     deactivates,
+    deactivationImpacts,
     blockers,
   }
 }
@@ -111,7 +133,7 @@ export async function applyLdapSync(userId?: string, settings?: LdapConfigInput)
   if (preview.blockers.length > 0) {
     return {
       ...preview,
-      applied: { created: 0, updated: 0, deactivated: 0 },
+      applied: { created: 0, updated: 0, deactivated: 0, deactivatedUsers: 0 },
     }
   }
 
@@ -130,6 +152,7 @@ export async function applyLdapSync(userId?: string, settings?: LdapConfigInput)
   let created = 0
   let updated = 0
   let deactivated = 0
+  let deactivatedUsers = 0
 
   await runInBatches(
     profiles.filter((profile) => createCodes.has(profile.code)),
@@ -189,6 +212,7 @@ export async function applyLdapSync(userId?: string, settings?: LdapConfigInput)
   )
 
   if (resolvedSettings.ldap_sync_deactivate_missing === "true") {
+    const deactivateEmployeeIds = preview.deactivationImpacts.map((impact) => impact.employeeId)
     await runInBatches(
       preview.deactivates.filter((employee) => deactivateCodes.has(employee.code) && !profilesByCode.has(employee.code)),
       async (employee) => {
@@ -203,6 +227,23 @@ export async function applyLdapSync(userId?: string, settings?: LdapConfigInput)
         deactivated += 1
       }
     )
+    if (deactivateEmployeeIds.length > 0) {
+      const linkedUsers = await prisma.user.findMany({
+        where: { employeeId: { in: deactivateEmployeeIds } },
+        select: { id: true, employeeId: true, username: true, isActive: true },
+      })
+      const userIdsToDeactivate = getActiveUserIdsForDeactivatedEmployees({
+        employeeIds: deactivateEmployeeIds,
+        users: linkedUsers,
+      })
+      if (userIdsToDeactivate.length > 0) {
+        const result = await prisma.user.updateMany({
+          where: { id: { in: userIdsToDeactivate } },
+          data: { isActive: false },
+        })
+        deactivatedUsers = result.count
+      }
+    }
   }
 
   const result = {
@@ -211,6 +252,7 @@ export async function applyLdapSync(userId?: string, settings?: LdapConfigInput)
       created,
       updated,
       deactivated,
+      deactivatedUsers,
     },
   }
 
@@ -347,4 +389,28 @@ async function runInBatches<T>(items: T[], action: (item: T) => Promise<void>, b
   for (let index = 0; index < items.length; index += batchSize) {
     await Promise.all(items.slice(index, index + batchSize).map((item) => action(item)))
   }
+}
+
+async function loadDeactivationImpacts(employees: Array<{
+  id: string
+  code: string
+  fullNameTh: string
+  email: string | null
+}>) {
+  const employeeIds = employees.map((employee) => employee.id)
+  if (employeeIds.length === 0) return []
+
+  const [assets, users] = await Promise.all([
+    prisma.asset.findMany({
+      where: { isActive: true, custodianId: { in: employeeIds } },
+      select: { id: true, assetTag: true, name: true, custodianId: true },
+      orderBy: { assetTag: "asc" },
+    }),
+    prisma.user.findMany({
+      where: { employeeId: { in: employeeIds } },
+      select: { id: true, employeeId: true, username: true, isActive: true },
+    }),
+  ])
+
+  return buildLdapDeactivationImpacts({ employees, assets, users })
 }
