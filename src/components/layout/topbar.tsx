@@ -158,9 +158,16 @@ export function Topbar({
               </div>
               <div className="border-t border-border p-2">
                 <Link
-                  href={`/${locale}/work-center`}
+                  href={`/${locale}/notifications`}
                   onClick={() => setNotificationOpen(false)}
                   className="block rounded-md px-3 py-2 text-center text-sm font-medium text-primary hover:bg-accent"
+                >
+                  {tNotifications("openNotificationCenter")}
+                </Link>
+                <Link
+                  href={`/${locale}/work-center`}
+                  onClick={() => setNotificationOpen(false)}
+                  className="block rounded-md px-3 py-2 text-center text-sm font-medium text-muted-foreground hover:bg-accent"
                 >
                   {tNotifications("openWorkCenter")}
                 </Link>

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { hasPermission, type SessionUser } from "@/lib/auth-utils"
 import { buildNotificationSummaryItems } from "@/lib/notification-summary-items"
+import { buildActiveNotificationSummary, mergeNotificationItemsWithStates } from "@/lib/notification-center"
 import { getApprovalInboxCounts } from "@/lib/approval-inbox-query"
 import {
   notificationAuditActionDueSoonDaysKey,
@@ -20,6 +21,16 @@ const defaultNotificationRuleDays = {
 } as const
 
 export async function getNotificationSummary(user: SessionUser, locale: string) {
+  const center = await getNotificationCenter(user, locale)
+  const active = buildActiveNotificationSummary(center.items)
+  return {
+    total: active.total,
+    items: active.items,
+    generatedAt: center.generatedAt,
+  }
+}
+
+export async function getNotificationCenter(user: SessionUser, locale: string) {
   const today = startOfToday(new Date())
   const [rules, approvalInboxCounts] = await Promise.all([
     getNotificationRuleSettings(),
@@ -111,10 +122,27 @@ export async function getNotificationSummary(user: SessionUser, locale: string) 
     warrantyExpiringSoon,
     licenseExpiringSoon,
   })
+  const states = items.length > 0
+    ? await prisma.notificationUserState.findMany({
+        where: {
+          userId: user.id,
+          key: { in: items.map((item) => item.key) },
+        },
+        select: {
+          key: true,
+          isRead: true,
+          lastCount: true,
+          snoozedUntil: true,
+          assignedToUserId: true,
+        },
+      })
+    : []
+  const centerItems = mergeNotificationItemsWithStates(items, states)
 
   return {
-    total: items.reduce((sum, item) => sum + item.count, 0),
-    items,
+    total: centerItems.reduce((sum, item) => sum + item.count, 0),
+    activeTotal: buildActiveNotificationSummary(centerItems).total,
+    items: centerItems,
     generatedAt: new Date().toISOString(),
   }
 }

@@ -889,3 +889,20 @@ model Notification {
 
   @@map("notifications")
 }
+
+model NotificationUserState {
+  id               String    @id @default(uuid())
+  userId           String    @db.NVarChar(100)
+  key              String    @db.NVarChar(100)
+  isRead           Boolean   @default(false)
+  lastCount        Int       @default(0)
+  snoozedUntil     DateTime?
+  assignedToUserId String?   @db.NVarChar(100)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([userId, key])
+  @@index([userId])
+  @@index([assignedToUserId])
+  @@map("notification_user_states")
+}
