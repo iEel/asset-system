@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { companySchema } from "@/lib/validations/company"
+import { getCompanyDeleteBlockReason } from "@/lib/organization-master-query"
 
 type CompanyRouteContext = {
   params: Promise<{ id: string }>
@@ -78,10 +79,26 @@ export async function DELETE(_request: NextRequest, context: CompanyRouteContext
     const { id } = await context.params
     const existing = await prisma.company.findFirst({
       where: { id, isActive: true },
+      include: {
+        _count: {
+          select: {
+            branches: { where: { isActive: true } },
+            departments: { where: { isActive: true } },
+            employees: { where: { isActive: true } },
+            assets: { where: { isActive: true } },
+            auditRounds: { where: { isActive: true } },
+          },
+        },
+      },
     })
 
     if (!existing) {
       return NextResponse.json({ error: "Company not found" }, { status: 404 })
+    }
+
+    const blockReason = getCompanyDeleteBlockReason(existing._count)
+    if (blockReason) {
+      return NextResponse.json({ error: blockReason }, { status: 409 })
     }
 
     const company = await prisma.company.update({

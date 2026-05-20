@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { branchSchema } from "@/lib/validations/branch"
+import { getBranchDeleteBlockReason } from "@/lib/organization-master-query"
 
 type BranchRouteContext = {
   params: Promise<{ id: string }>
@@ -103,10 +104,25 @@ export async function DELETE(_request: NextRequest, context: BranchRouteContext)
     const { id } = await context.params
     const existing = await prisma.branch.findFirst({
       where: { id, isActive: true },
+      include: {
+        _count: {
+          select: {
+            locations: { where: { isActive: true } },
+            employees: { where: { isActive: true } },
+            assets: { where: { isActive: true } },
+            auditRounds: { where: { isActive: true } },
+          },
+        },
+      },
     })
 
     if (!existing) {
       return NextResponse.json({ error: "Branch not found" }, { status: 404 })
+    }
+
+    const blockReason = getBranchDeleteBlockReason(existing._count)
+    if (blockReason) {
+      return NextResponse.json({ error: blockReason }, { status: 409 })
     }
 
     const branch = await prisma.branch.update({
