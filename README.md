@@ -22,6 +22,7 @@ Enterprise asset management system for asset registration, custody, QR/label wor
 - Auth.js / NextAuth credentials auth with RBAC
 - next-intl Thai/English routes
 - Excel/PDF exports, QR/barcode scanning, file uploads
+- PWA manifest and install icons for mobile Add to Home Screen
 
 ## Local Development
 
