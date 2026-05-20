@@ -1,8 +1,10 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { readdirSync, readFileSync, statSync } from "node:fs"
+import { join } from "node:path"
 import test from "node:test"
 
 import {
+  classifyApiRouteProtection,
   rbacRoutePermissionMatrix,
   summarizeRbacRouteMatrix,
   validateRbacRouteSource,
@@ -43,3 +45,32 @@ test("critical API routes still contain their RBAC checks", () => {
 
   assert.deepEqual(failures, [])
 })
+
+test("every API route has an explicit protection inventory classification", () => {
+  const routeFiles = collectApiRouteFiles("src/app/api")
+  const classifications = routeFiles.map((filePath) =>
+    classifyApiRouteProtection(filePath, readFileSync(filePath, "utf8"), rbacRoutePermissionMatrix)
+  )
+  const unclassified = classifications
+    .filter((classification) => classification.status === "unclassified")
+    .map((classification) => classification.filePath)
+
+  assert.deepEqual(unclassified, [])
+  assert.ok(classifications.some((classification) => classification.status === "public_exception"))
+  assert.ok(classifications.some((classification) => classification.status === "matrix"))
+  assert.ok(classifications.some((classification) => classification.status === "protected"))
+})
+
+function collectApiRouteFiles(directory: string): string[] {
+  const files: string[] = []
+  for (const entry of readdirSync(directory)) {
+    const fullPath = join(directory, entry)
+    const stat = statSync(fullPath)
+    if (stat.isDirectory()) {
+      files.push(...collectApiRouteFiles(fullPath))
+    } else if (entry === "route.ts") {
+      files.push(fullPath.replace(/\\/g, "/"))
+    }
+  }
+  return files.sort((left, right) => left.localeCompare(right))
+}

@@ -11,6 +11,26 @@ export type RbacRouteMatrixEntry = {
   customAuthSnippet?: string
 }
 
+export type ApiRouteProtectionStatus = "matrix" | "protected" | "custom_auth" | "public_exception" | "unclassified"
+
+export type ApiRouteInventoryException = {
+  filePath: string
+  reason: string
+}
+
+export const publicApiRouteExceptions: ApiRouteInventoryException[] = [
+  {
+    filePath: "src/app/api/auth/[...nextauth]/route.ts",
+    reason: "Auth.js callback/session endpoints must remain public entrypoints before application RBAC is available.",
+  },
+]
+
+export const customAuthApiRouteSnippets = [
+  "isSchedulerAuthorized(",
+  "requireAttachmentPermission(",
+  "hasPermission(",
+] as const
+
 export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
   {
     filePath: "src/app/api/admin/settings/route.ts",
@@ -200,4 +220,34 @@ export function validateRbacRouteSource(entry: RbacRouteMatrixEntry, source: str
   }
 
   return failures
+}
+
+export function classifyApiRouteProtection(
+  filePath: string,
+  source: string,
+  matrixEntries: RbacRouteMatrixEntry[] = rbacRoutePermissionMatrix
+) {
+  const normalizedPath = normalizeRoutePath(filePath)
+  if (matrixEntries.some((entry) => normalizeRoutePath(entry.filePath) === normalizedPath)) {
+    return { filePath: normalizedPath, status: "matrix" as const, reason: "Covered by RBAC route matrix" }
+  }
+
+  const publicException = publicApiRouteExceptions.find((entry) => normalizeRoutePath(entry.filePath) === normalizedPath)
+  if (publicException) {
+    return { filePath: normalizedPath, status: "public_exception" as const, reason: publicException.reason }
+  }
+
+  if (customAuthApiRouteSnippets.some((snippet) => source.includes(snippet))) {
+    return { filePath: normalizedPath, status: "custom_auth" as const, reason: "Uses custom permission or scheduler authorization" }
+  }
+
+  if (source.includes("requireAuth(")) {
+    return { filePath: normalizedPath, status: "protected" as const, reason: "Requires authenticated session" }
+  }
+
+  return { filePath: normalizedPath, status: "unclassified" as const, reason: "No RBAC matrix, auth guard, or documented public exception" }
+}
+
+function normalizeRoutePath(filePath: string) {
+  return filePath.replace(/\\/g, "/")
 }
