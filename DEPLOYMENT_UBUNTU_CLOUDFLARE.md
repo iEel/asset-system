@@ -1,6 +1,6 @@
 # Deployment Guide: Ubuntu Server + Cloudflare Tunnel
 
-Last verified: 2026-05-19
+Last verified: 2026-05-20
 
 คู่มือนี้ออกแบบสำหรับโปรเจกต์ Asset Management System นี้โดยตรง:
 
@@ -137,6 +137,8 @@ NEXTAUTH_SECRET=replace-with-same-value-as-auth-secret
 
 UPLOAD_DIR=/var/www/asset-system/uploads
 
+MAINTENANCE_PM_GENERATION_TOKEN=replace-with-long-random-token
+
 DB_SERVER=192.168.110.106
 DB_INSTANCE=alpha
 DB_PORT=1433
@@ -189,6 +191,7 @@ sudo chmod 640 /var/www/asset-system/env/asset-system.env
 - ถ้าใช้ static TCP port ใน production ให้ปล่อย `DB_INSTANCE=` ว่าง แล้วใช้ `DB_PORT=1433`; ในกรณีนี้ให้เปลี่ยน `DATABASE_URL` เป็นรูปแบบ `sqlserver://192.168.110.106:1433;database=asset_management;...`
 - ถ้า `LDAP_AUTO_PROVISION=true`, `LDAP_DEFAULT_ROLE` ต้องเป็น role ที่มีอยู่จริง เช่น `employee`, `viewer`, หรือ role ที่สร้างเองในหน้า Roles; ค่า `asset_user` จะใช้ได้เฉพาะเมื่อสร้าง role นี้แล้ว
 - `UPLOAD_DIR` ควรเป็น absolute path เพื่อไม่ผูกกับ `.next/standalone`
+- `MAINTENANCE_PM_GENERATION_TOKEN` ใช้สำหรับ systemd timer ที่สร้างใบงาน PM อัตโนมัติ ควรเป็น random token ยาว ๆ และไม่ซ้ำกับ secret อื่น
 
 ---
 
@@ -314,7 +317,98 @@ curl -I http://127.0.0.1:3000/th/login
 
 ---
 
-## 11. Install And Configure Nginx Reverse Proxy
+## 11. Configure PM Auto Generation With systemd Timer
+
+ระบบมี script `npm run pm:generate-due` สำหรับสร้างใบงาน Preventive Maintenance ที่ถึงกำหนดแล้ว แนะนำให้ใช้ `systemd timer` แทน `crontab` เพื่อให้ดูสถานะ/log ได้จาก systemd เหมือน service หลัก
+
+ก่อนตั้ง timer ให้แน่ใจว่า env มี token:
+
+```env
+MAINTENANCE_PM_GENERATION_TOKEN=replace-with-long-random-token
+```
+
+สร้าง oneshot service:
+
+```bash
+sudo nano /etc/systemd/system/asset-system-pm-generate.service
+```
+
+ใส่:
+
+```ini
+[Unit]
+Description=Generate due preventive maintenance tickets for Asset System
+Wants=network-online.target asset-system.service
+After=network-online.target asset-system.service
+
+[Service]
+Type=oneshot
+User=assetapp
+Group=assetapp
+WorkingDirectory=/var/www/asset-system/app
+EnvironmentFile=/var/www/asset-system/env/asset-system.env
+Environment=AUTH_URL=http://127.0.0.1:3000
+Environment=NEXTAUTH_URL=http://127.0.0.1:3000
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/npm run pm:generate-due
+```
+
+เหตุผลที่ override `AUTH_URL`/`NEXTAUTH_URL` เป็น `127.0.0.1:3000` เฉพาะ service นี้: job หลังบ้านจะเรียกแอปในเครื่องโดยตรง ไม่ต้องวนออก Cloudflare Tunnel แต่ web app หลักยังใช้ `https://asset.company.com` ตาม env production เดิม
+
+สร้าง timer:
+
+```bash
+sudo nano /etc/systemd/system/asset-system-pm-generate.timer
+```
+
+ใส่ตัวอย่างให้รันทุกวัน 06:05:
+
+```ini
+[Unit]
+Description=Run Asset System PM generation daily
+
+[Timer]
+OnCalendar=*-*-* 06:05:00
+Persistent=true
+Unit=asset-system-pm-generate.service
+
+[Install]
+WantedBy=timers.target
+```
+
+เปิดใช้งาน:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now asset-system-pm-generate.timer
+```
+
+ทดสอบ dry-run ผ่าน endpoint ก่อน:
+
+```bash
+cd /var/www/asset-system/app
+sudo -u assetapp bash -lc 'set -a && . /var/www/asset-system/env/asset-system.env && set +a && AUTH_URL=http://127.0.0.1:3000 NEXTAUTH_URL=http://127.0.0.1:3000 npm run pm:generate-due -- --dry-run'
+```
+
+ทดสอบ service จริงแบบ manual:
+
+```bash
+sudo systemctl start asset-system-pm-generate.service
+sudo journalctl -u asset-system-pm-generate.service -n 80 --no-pager
+```
+
+ตรวจ timer:
+
+```bash
+systemctl list-timers asset-system-pm-generate.timer
+sudo systemctl status asset-system-pm-generate.timer
+```
+
+ถ้า service รายงาน `skippedMissingReporter` ให้กลับไปตั้งค่าแผน PM ในหน้า `/th/maintenance?view=pm` โดยเลือก `ผู้รับผิดชอบภายใน` ให้ครบ เพราะระบบต้องใช้เป็นผู้แจ้งงานของใบงาน PM ที่สร้างอัตโนมัติ
+
+---
+
+## 12. Install And Configure Nginx Reverse Proxy
 
 ติดตั้ง Nginx:
 
@@ -408,7 +502,7 @@ proxy_busy_buffers_size 64k;
 
 ---
 
-## 12. Install cloudflared
+## 13. Install cloudflared
 
 ติดตั้งจาก Cloudflare APT repository:
 
@@ -423,7 +517,7 @@ cloudflared --version
 
 ---
 
-## 13. Create Cloudflare Tunnel
+## 14. Create Cloudflare Tunnel
 
 Login:
 
@@ -452,7 +546,7 @@ cloudflared tunnel route dns asset-system asset.company.com
 
 ---
 
-## 14. Configure cloudflared
+## 15. Configure cloudflared
 
 สร้าง config:
 
@@ -519,7 +613,7 @@ https://asset.company.com/th/login
 
 ---
 
-## 15. Run cloudflared As A Service
+## 16. Run cloudflared As A Service
 
 ติดตั้ง service โดยระบุ config path ชัดเจน:
 
@@ -553,7 +647,7 @@ cloudflared tunnel info asset-system
 
 ---
 
-## 16. Configure Public QR Base URL
+## 17. Configure Public QR Base URL
 
 หลัง domain ใช้งานได้แล้ว ให้เข้า:
 
@@ -575,7 +669,7 @@ https://asset.company.com
 
 ---
 
-## 17. Optional: Protect With Cloudflare Access
+## 18. Optional: Protect With Cloudflare Access
 
 ถ้าระบบใช้เฉพาะภายในองค์กร แนะนำเปิด Cloudflare Access หน้า hostname นี้:
 
@@ -592,7 +686,7 @@ https://asset.company.com
 
 ---
 
-## 18. Updating To A New Version
+## 19. Updating To A New Version
 
 ```bash
 cd /var/www/asset-system/app
@@ -623,7 +717,7 @@ curl -I http://127.0.0.1:8080/th/login
 
 ---
 
-## 19. Backup And Restore
+## 20. Backup And Restore
 
 ทุกอย่างอยู่ใต้ `/var/www/asset-system` แล้ว แต่เวลา backup ควรแยก code/config/data เพื่อ restore ได้ง่ายกว่า
 
@@ -655,7 +749,7 @@ SQL Server backup ให้ใช้ SQL Server Management Studio, maintenance p
 
 ---
 
-## 20. LDAP Sync Scheduler Optional
+## 21. LDAP Sync Scheduler Optional
 
 ถ้าเปิด LDAP sync แล้ว ต้องตั้ง `LDAP_SYNC_TOKEN` ใน env ก่อน
 
@@ -676,7 +770,7 @@ sudo crontab -u assetapp -e
 
 ---
 
-## 21. Production Checklist
+## 22. Production Checklist
 
 ก่อน Go Live:
 
@@ -684,21 +778,24 @@ sudo crontab -u assetapp -e
 - [ ] `AUTH_URL` และ `NEXTAUTH_URL` เป็น `https://asset.company.com`
 - [ ] `AUTH_TRUST_HOST=true`
 - [ ] `UPLOAD_DIR` เป็น absolute path และมี backup
+- [ ] `MAINTENANCE_PM_GENERATION_TOKEN` เป็น random token จริง
 - [ ] SQL Server connection ใช้ production user ที่สิทธิ์เหมาะสม
 - [ ] SQL Server มี backup schedule
 - [ ] `npm run build` ผ่านบน Ubuntu
 - [ ] `asset-system.service` restart แล้วใช้งานได้
+- [ ] `asset-system-pm-generate.timer` enabled และ `list-timers` แสดงเวลารันถัดไป
 - [ ] `nginx.service` proxy ไป `127.0.0.1:3000` ได้
 - [ ] `cloudflared.service` connected
 - [ ] Cloudflare DNS route ไป Tunnel ถูกต้อง และ Tunnel service ชี้ไป `http://127.0.0.1:8080`
 - [ ] Public QR Base URL ตั้งเป็น `https://asset.company.com`
+- [ ] ทดสอบ `npm run pm:generate-due -- --dry-run` ผ่าน local app URL แล้ว
 - [ ] ไม่เปิด inbound port `3000` หรือ `8080` ออก Internet
 - [ ] ไม่รัน cleanup test-data บน production
 - [ ] ทดสอบ login, asset create, upload, QR scan, export Excel/PDF
 
 ---
 
-## 22. Common Troubleshooting
+## 23. Common Troubleshooting
 
 ### เข้า domain แล้วเจอ Cloudflare 1016
 
