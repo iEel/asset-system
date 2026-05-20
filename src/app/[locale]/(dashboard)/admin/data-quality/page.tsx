@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { assetMissingResponsibilityWhere } from "@/lib/asset-ownership"
 import { assetDataQualityRulesKey, parseAssetDataQualityRules, type AssetDataQualityRule } from "@/lib/data-quality-rules"
+import { buildDataQualityRuleHref } from "@/lib/data-quality-drilldown"
 import { DataQualityRuleForm } from "@/components/admin/data-quality-rule-form"
 
 type DataQualityPageProps = {
@@ -57,7 +58,7 @@ export default async function DataQualityPage({ params }: DataQualityPageProps) 
             label={t(`rules.${rule.key}.label`)}
             description={t(`rules.${rule.key}.description`)}
             viewLabel={tCommon("view")}
-            href={ruleHref(locale, rule.key)}
+            href={buildDataQualityRuleHref(locale, rule.key)}
           />
         ))}
       </section>
@@ -169,9 +170,4 @@ function summaryClass(tone: "primary" | "danger" | "success" | "muted") {
   if (tone === "danger") return "border-danger/30 bg-danger/5 text-danger"
   if (tone === "success") return "border-success/30 bg-success/5 text-success"
   return "border-border bg-surface text-muted-foreground"
-}
-
-function ruleHref(locale: string, key: string) {
-  if (key === "warrantyExpiring") return `/${locale}/reports`
-  return `/${locale}/assets`
 }

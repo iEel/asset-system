@@ -8,6 +8,7 @@ import { Columns3, Download, Edit, Eye, FileDown, FileSpreadsheet, ImageIcon, Lo
 import { toast } from "sonner"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
+import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
 import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
@@ -53,7 +54,7 @@ type AssetRegisterTableProps = {
     ownershipType: string
     custodianId: string
     supplierId: string
-    dataQuality: "" | "responsibility" | "serial" | "photo"
+    dataQuality: "" | AssetDataQualityFilter
     page: number
     pageSize: number
     sort: string

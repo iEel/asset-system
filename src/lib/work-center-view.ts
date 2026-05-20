@@ -17,6 +17,8 @@ export type WorkCenterUserScope = {
   departmentId: string | null
 }
 
+type WorkCenterDataQualityFixKey = Extract<AssetDataQualityFilter, "responsibility" | "serial" | "photo">
+
 type WorkCenterParamInput = {
   view?: string | string[]
   panel?: string | string[]
@@ -70,7 +72,7 @@ export function buildDataQualityFixGroups(
     missingPhoto: number
   },
 ) {
-  const definitions: { key: AssetDataQualityFilter; count: number }[] = [
+  const definitions: { key: WorkCenterDataQualityFixKey; count: number }[] = [
     { key: "responsibility", count: counts.missingResponsibility },
     { key: "serial", count: counts.missingSerial },
     { key: "photo", count: counts.missingPhoto },

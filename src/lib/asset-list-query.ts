@@ -117,5 +117,25 @@ function buildAssetDataQualityWhere(dataQuality: ReturnType<typeof normalizeAsse
       attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } },
     }
   }
+  if (dataQuality === "department") return { departmentId: null }
+  if (dataQuality === "purchase") {
+    return {
+      OR: [
+        { purchaseDate: null },
+        { purchasePrice: null },
+        { supplierId: null },
+        { poNumber: null },
+        { poNumber: "" },
+        { invoiceNumber: null },
+        { invoiceNumber: "" },
+      ],
+    }
+  }
+  if (dataQuality === "warranty") {
+    const now = new Date()
+    const warrantyThreshold = new Date(now)
+    warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
+    return { warrantyEndDate: { gte: now, lte: warrantyThreshold } }
+  }
   return null
 }

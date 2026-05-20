@@ -48,3 +48,44 @@ test("builds exact asset filters and preserves them in query strings", () => {
     "search=printer&custodianId=employee-1&supplierId=supplier-1&sort=createdAt&direction=desc&page=3&pageSize=25"
   )
 })
+
+test("builds data quality drilldown filters for department and purchase gaps", () => {
+  const departmentFilters = parseAssetListParams({ dataQuality: "department" })
+  assert.deepEqual(buildAssetWhere(departmentFilters), {
+    isActive: true,
+    AND: [{ departmentId: null }],
+  })
+
+  const purchaseFilters = parseAssetListParams({ dataQuality: "purchase" })
+  assert.deepEqual(buildAssetWhere(purchaseFilters), {
+    isActive: true,
+    AND: [
+      {
+        OR: [
+          { purchaseDate: null },
+          { purchasePrice: null },
+          { supplierId: null },
+          { poNumber: null },
+          { poNumber: "" },
+          { invoiceNumber: null },
+          { invoiceNumber: "" },
+        ],
+      },
+    ],
+  })
+})
+
+test("builds warranty data quality drilldown for assets expiring within 30 days", () => {
+  const filters = parseAssetListParams({ dataQuality: "warranty" })
+  const where = buildAssetWhere(filters)
+  const [warrantyRule] = Array.isArray(where.AND) ? where.AND : []
+
+  assert.equal(where.isActive, true)
+  assert.ok(warrantyRule && "warrantyEndDate" in warrantyRule)
+
+  const warrantyEndDate = warrantyRule.warrantyEndDate as { gte: Date; lte: Date }
+  assert.ok(warrantyEndDate.gte instanceof Date)
+  assert.ok(warrantyEndDate.lte instanceof Date)
+  assert.ok(warrantyEndDate.lte.getTime() > warrantyEndDate.gte.getTime())
+  assert.ok(warrantyEndDate.lte.getTime() - warrantyEndDate.gte.getTime() <= 31 * 24 * 60 * 60 * 1000)
+})
