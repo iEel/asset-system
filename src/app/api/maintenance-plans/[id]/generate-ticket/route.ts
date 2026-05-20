@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server"
-import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { buildPreventiveMaintenanceTicketDraft } from "@/lib/preventive-maintenance"
+import {
+  generatePreventiveMaintenanceTicketForPlan,
+  preventiveMaintenanceGenerationPlanInclude,
+} from "@/lib/preventive-maintenance-ticket-generator"
 
 type MaintenancePlanGenerateTicketContext = {
   params: Promise<{ id: string }>
@@ -18,64 +20,27 @@ export async function POST(_request: Request, context: MaintenancePlanGenerateTi
     const { id } = await context.params
     const plan = await prisma.maintenancePlan.findFirst({
       where: { id, isActive: true },
-      include: {
-        asset: { select: { id: true, assetTag: true, name: true } },
-      },
+      include: preventiveMaintenanceGenerationPlanInclude,
     })
     if (!plan) return NextResponse.json({ error: "Maintenance plan not found" }, { status: 404 })
 
-    const draft = buildPreventiveMaintenanceTicketDraft(plan, user.employeeId)
-    const reportedById = draft.reportedById
-    if (!reportedById) {
+    const result = await generatePreventiveMaintenanceTicketForPlan({
+      plan,
+      generatedByUserId: user.id,
+      fallbackReportedById: user.employeeId,
+    })
+    if (result.status === "missing_reporter") {
       return NextResponse.json(
         { error: "Select an internal responsible person before generating a PM ticket" },
         { status: 400 },
       )
     }
-
-    const generatedAt = new Date()
-    const result = await prisma.$transaction(async (tx) => {
-      const repairNo = await generateRepairNo(tx)
-      const ticket = await tx.maintenanceTicket.create({
-        data: {
-          repairNo,
-          assetId: plan.assetId,
-          problem: draft.problem,
-          reportedById,
-          reportedDate: generatedAt,
-          assignedToId: draft.assignedToId,
-          dueDate: draft.dueDate,
-          repairType: draft.repairType,
-          vendorId: draft.vendorId,
-          repairStatus: "reported",
-          createdBy: user.id,
-          updatedBy: user.id,
-        },
-      })
-
-      const updatedPlan = await tx.maintenancePlan.update({
-        where: { id: plan.id },
-        data: {
-          lastGeneratedAt: generatedAt,
-          nextDueDate: draft.nextDueDate,
-          updatedBy: user.id,
-        },
-      })
-
-      await tx.assetMovement.create({
-        data: {
-          assetId: plan.assetId,
-          movementType: "maintenance_pm_create",
-          reason: draft.problem,
-          referenceType: "maintenance",
-          referenceId: ticket.id,
-          performedBy: user.id,
-          remark: `${plan.planNo} - ${plan.title}`,
-        },
-      })
-
-      return { ticket, plan: updatedPlan }
-    })
+    if (result.status === "duplicate") {
+      return NextResponse.json(
+        { error: "A PM ticket for this plan is already open", ticket: result.ticket },
+        { status: 409 },
+      )
+    }
 
     await logAudit({
       userId: user.id,
@@ -96,21 +61,4 @@ export async function POST(_request: Request, context: MaintenancePlanGenerateTi
   } catch (error) {
     return errorResponse(error, 400)
   }
-}
-
-async function generateRepairNo(tx: Prisma.TransactionClient) {
-  const now = new Date()
-  const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
-  const count = await tx.maintenanceTicket.count({
-    where: {
-      createdAt: {
-        gte: start,
-        lt: end,
-      },
-    },
-  })
-
-  return `MT-${datePart}-${String(count + 1).padStart(4, "0")}`
 }

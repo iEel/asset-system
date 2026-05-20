@@ -2,7 +2,9 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  buildPreventiveMaintenanceDuplicateTicketWhere,
   buildPreventiveMaintenanceTicketDraft,
+  isPreventiveMaintenancePlanDue,
   buildPreventiveMaintenanceTicketProblem,
 } from "../src/lib/preventive-maintenance.ts"
 
@@ -59,4 +61,28 @@ test("builds an external PM ticket draft using the current user as reporter", ()
   assert.equal(draft.assignedToId, null)
   assert.equal(draft.repairType, "vendor")
   assert.equal(draft.vendorId, "vendor-1")
+})
+
+test("detects plans that are due for automatic PM ticket generation", () => {
+  const now = new Date("2026-05-20T12:00:00.000Z")
+
+  assert.equal(isPreventiveMaintenancePlanDue({ isActive: true, nextDueDate: "2026-05-19" }, now), true)
+  assert.equal(isPreventiveMaintenancePlanDue({ isActive: true, nextDueDate: "2026-05-20" }, now), true)
+  assert.equal(isPreventiveMaintenancePlanDue({ isActive: true, nextDueDate: "2026-05-21" }, now), false)
+  assert.equal(isPreventiveMaintenancePlanDue({ isActive: false, nextDueDate: "2026-05-19" }, now), false)
+})
+
+test("builds a duplicate guard for open PM tickets of the same plan", () => {
+  assert.deepEqual(
+    buildPreventiveMaintenanceDuplicateTicketWhere({
+      planNo: "PM-20260520-0001",
+      assetId: "asset-1",
+    }),
+    {
+      assetId: "asset-1",
+      isActive: true,
+      repairStatus: { not: "closed" },
+      problem: { startsWith: "[PM] PM-20260520-0001 -" },
+    },
+  )
 })

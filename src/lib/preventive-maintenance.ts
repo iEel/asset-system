@@ -18,6 +18,16 @@ export type MaintenancePlanSummaryInput = {
   nextDueDate: Date | string
 }
 
+export type PreventiveMaintenanceGenerationPlanInput = {
+  isActive: boolean
+  nextDueDate: Date | string
+}
+
+export type PreventiveMaintenanceDuplicatePlanInput = {
+  planNo: string
+  assetId: string
+}
+
 export function getMaintenancePlanIntervalDays(frequency: MaintenancePlanFrequency, intervalDays?: number | null) {
   if (frequency === "monthly") return 30
   if (frequency === "quarterly") return 90
@@ -71,8 +81,26 @@ export function summarizeMaintenancePlans(plans: MaintenancePlanSummaryInput[], 
   return summary
 }
 
+export function isPreventiveMaintenancePlanDue(plan: PreventiveMaintenanceGenerationPlanInput, now = new Date()) {
+  if (!plan.isActive) return false
+  return startOfDay(plan.nextDueDate).getTime() <= startOfDay(now).getTime()
+}
+
+export function buildPreventiveMaintenanceTicketPrefix(planNo: string) {
+  return `[PM] ${planNo} -`
+}
+
+export function buildPreventiveMaintenanceDuplicateTicketWhere(plan: PreventiveMaintenanceDuplicatePlanInput) {
+  return {
+    assetId: plan.assetId,
+    isActive: true,
+    repairStatus: { not: "closed" },
+    problem: { startsWith: buildPreventiveMaintenanceTicketPrefix(plan.planNo) },
+  }
+}
+
 export function buildPreventiveMaintenanceTicketProblem(plan: Pick<PreventiveMaintenanceTicketPlan, "planNo" | "title" | "notes">) {
-  const title = `[PM] ${plan.planNo} - ${plan.title}`
+  const title = `${buildPreventiveMaintenanceTicketPrefix(plan.planNo)} ${plan.title}`
   const notes = plan.notes?.trim()
   return notes ? `${title}\n\n${notes}` : title
 }

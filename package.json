@@ -8,6 +8,7 @@
     "start": "node scripts/next-with-env-port.mjs start",
     "lint": "eslint",
     "ldap:sync": "node scripts/ldap-sync.mjs",
+    "pm:generate-due": "node scripts/generate-due-pm.mjs",
     "cleanup:test-data": "node scripts/cleanup-test-data.mjs"
   },
   "dependencies": {
