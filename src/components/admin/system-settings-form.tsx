@@ -43,6 +43,12 @@ import {
   pmAutoGenerationStatusSettingKeys,
 } from "@/lib/system-setting-defaults"
 import { operationDocumentTemplateTokens, renderOperationDocumentTemplate, validateOperationDocumentTemplate } from "@/lib/operation-document-number"
+import {
+  getPmAutomationSettingsForUiMode,
+  getPmAutomationUiMode,
+  shouldShowPmAutomationSchedule,
+  type PmAutomationUiMode,
+} from "@/lib/pm-automation-settings"
 import { isSupportedCronExpression } from "@/lib/scheduled-job"
 import {
   parseWorkflowApprovalPolicy,
@@ -213,8 +219,12 @@ type SystemSettingsFormProps = {
     pmAutoGenerationSchedule: string
     pmAutoGenerationSchedulePreset: string
     pmAutoGenerationCustomSchedule: string
+    pmAutoGenerationOff: string
+    pmAutoGenerationOffDescription: string
     pmAutoGenerationManual: string
+    pmAutoGenerationManualDescription: string
     pmAutoGenerationScheduled: string
+    pmAutoGenerationScheduledDescription: string
     pmAutoGenerationDaily605: string
     pmAutoGenerationEvery6Hours: string
     pmAutoGenerationWeekday605: string
@@ -490,6 +500,14 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
   const getValue = (key: string) => values[key] ?? ""
   const setValue = (key: string, value: string) => setValues((current) => ({ ...current, [key]: value }))
   const setBooleanValue = (key: string, checked: boolean) => setValue(key, checked ? "true" : "false")
+  const setPmAutomationUiMode = (mode: PmAutomationUiMode) => {
+    const next = getPmAutomationSettingsForUiMode(mode)
+    setValues((current) => ({
+      ...current,
+      [pmAutoGenerationEnabledKey]: next.enabled,
+      [pmAutoGenerationModeKey]: next.mode,
+    }))
+  }
   const effectiveValues: Record<string, string> = {
     ...values,
     [assetTagCategoryPrefixesKey]: serializePrefixRows(prefixRows),
@@ -568,13 +586,45 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     workflowApprovalSlaDays > 90
   const syncSchedule = getValue("ldap_sync_schedule")
   const pmSchedule = getValue(pmAutoGenerationScheduleKey)
+  const pmAutomationUiMode = getPmAutomationUiMode({
+    enabled: getValue(pmAutoGenerationEnabledKey),
+    mode: getValue(pmAutoGenerationModeKey),
+  })
+  const showPmAutomationSchedule = shouldShowPmAutomationSchedule(pmAutomationUiMode)
   const selectedSyncSchedulePreset = !customScheduleSelected && ldapSchedulePresets.some((preset) => preset.value === syncSchedule)
     ? syncSchedule
     : "custom"
   const selectedPmSchedulePreset = !customPmScheduleSelected && pmSchedulePresets.some((preset) => preset.value === pmSchedule)
     ? pmSchedule
     : "custom"
-  const hasInvalidSchedulerSchedule = !isSupportedCronExpression(syncSchedule) || !isSupportedCronExpression(pmSchedule)
+  const selectedPmSchedulePresetItem = pmSchedulePresets.find((preset) => preset.value === selectedPmSchedulePreset)
+  const selectedPmScheduleLabel = selectedPmSchedulePreset === "custom"
+    ? pmSchedule || labels.pmAutoGenerationCustomSchedule
+    : selectedPmSchedulePresetItem
+      ? labels[selectedPmSchedulePresetItem.labelKey]
+      : labels.pmAutoGenerationCustomSchedule
+  const pmAutomationOptions: Array<{
+    value: PmAutomationUiMode
+    label: string
+    description: string
+  }> = [
+    {
+      value: "off",
+      label: labels.pmAutoGenerationOff,
+      description: labels.pmAutoGenerationOffDescription,
+    },
+    {
+      value: "manual",
+      label: labels.pmAutoGenerationManual,
+      description: labels.pmAutoGenerationManualDescription,
+    },
+    {
+      value: "scheduled",
+      label: labels.pmAutoGenerationScheduled,
+      description: labels.pmAutoGenerationScheduledDescription,
+    },
+  ]
+  const hasInvalidSchedulerSchedule = !isSupportedCronExpression(syncSchedule) || (showPmAutomationSchedule && !isSupportedCronExpression(pmSchedule))
   const tabs: Array<{ id: SettingsTabId; label: string }> = [
     { id: "asset-numbering", label: labels.tabAssetNumbering },
     { id: "label-template", label: labels.tabLabelTemplate },
@@ -625,8 +675,12 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     },
     {
       label: labels.overviewAutomation,
-      value: getValue(pmAutoGenerationEnabledKey) === "true" ? `${labels.enabled} (${getValue(pmAutoGenerationModeKey) || "manual"})` : labels.disabled,
-      tone: getValue(pmAutoGenerationEnabledKey) === "true" ? "green" : "slate",
+      value: pmAutomationUiMode === "scheduled"
+        ? `${labels.pmAutoGenerationScheduled} (${selectedPmScheduleLabel})`
+        : pmAutomationUiMode === "manual"
+          ? labels.pmAutoGenerationManual
+          : labels.disabled,
+      tone: pmAutomationUiMode === "scheduled" ? "green" : pmAutomationUiMode === "manual" ? "blue" : "slate",
     },
     {
       label: labels.overviewLdapLogin,
@@ -1271,58 +1325,74 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
           <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
             {labels.schedulerHeartbeatNote}
           </p>
-          <WizardStep number={1} title={labels.pmAutoGeneration}>
-            <p className="mb-4 text-sm text-muted-foreground">{labels.pmAutoGenerationDescription}</p>
-            <div className="grid gap-4 lg:grid-cols-2">
-              <ToggleField
-                label={labels.pmAutoGenerationEnabled}
-                checked={getValue(pmAutoGenerationEnabledKey) === "true"}
-                onChange={(checked) => setBooleanValue(pmAutoGenerationEnabledKey, checked)}
-              />
-              <Field label={labels.pmAutoGenerationMode} htmlFor="pm-auto-generation-mode">
-                <select
-                  id="pm-auto-generation-mode"
-                  value={getValue(pmAutoGenerationModeKey)}
-                  onChange={(event) => setValue(pmAutoGenerationModeKey, event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                >
-                  <option value="manual">{labels.pmAutoGenerationManual}</option>
-                  <option value="scheduled">{labels.pmAutoGenerationScheduled}</option>
-                </select>
-              </Field>
-              <Field label={labels.pmAutoGenerationSchedulePreset} htmlFor="pm-auto-generation-schedule-preset">
-                <select
-                  id="pm-auto-generation-schedule-preset"
-                  value={selectedPmSchedulePreset}
-                  onChange={(event) => {
-                    const value = event.target.value
-                    setCustomPmScheduleSelected(value === "custom")
-                    if (value !== "custom") {
-                      setValue(pmAutoGenerationScheduleKey, value)
-                    }
-                  }}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                >
-                  {pmSchedulePresets.map((preset) => (
-                    <option key={preset.value} value={preset.value}>
-                      {labels[preset.labelKey]}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              {selectedPmSchedulePreset === "custom" ? (
-                <Field label={labels.pmAutoGenerationCustomSchedule} htmlFor="pm-auto-generation-custom-schedule">
-                  <input
-                    id="pm-auto-generation-custom-schedule"
-                    value={pmSchedule}
-                    onChange={(event) => setValue(pmAutoGenerationScheduleKey, event.target.value)}
-                    placeholder="5 6 * * *"
-                    className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                  />
-                </Field>
-              ) : null}
+          <div className="rounded-md border border-border bg-background p-4">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-base font-semibold text-foreground">{labels.pmAutoGeneration}</h3>
+              <p className="text-sm text-muted-foreground">{labels.pmAutoGenerationDescription}</p>
             </div>
-          </WizardStep>
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+              {pmAutomationOptions.map((option) => {
+                const isActive = pmAutomationUiMode === option.value
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={isActive}
+                    onClick={() => setPmAutomationUiMode(option.value)}
+                    className={`min-h-24 rounded-md border px-4 py-3 text-left transition-colors ${
+                      isActive
+                        ? "border-primary bg-primary/10 text-primary shadow-sm"
+                        : "border-border bg-muted/20 text-foreground hover:border-primary/40 hover:bg-accent"
+                    }`}
+                  >
+                    <span className="block text-sm font-semibold">{option.label}</span>
+                    <span className={`mt-2 block text-xs leading-5 ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+                      {option.description}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            {showPmAutomationSchedule ? (
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <Field label={labels.pmAutoGenerationSchedulePreset} htmlFor="pm-auto-generation-schedule-preset">
+                  <select
+                    id="pm-auto-generation-schedule-preset"
+                    value={selectedPmSchedulePreset}
+                    onChange={(event) => {
+                      const value = event.target.value
+                      setCustomPmScheduleSelected(value === "custom")
+                      if (value !== "custom") {
+                        setValue(pmAutoGenerationScheduleKey, value)
+                      }
+                    }}
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  >
+                    {pmSchedulePresets.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {labels[preset.labelKey]}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                {selectedPmSchedulePreset === "custom" ? (
+                  <Field label={labels.pmAutoGenerationCustomSchedule} htmlFor="pm-auto-generation-custom-schedule">
+                    <input
+                      id="pm-auto-generation-custom-schedule"
+                      value={pmSchedule}
+                      onChange={(event) => setValue(pmAutoGenerationScheduleKey, event.target.value)}
+                      placeholder="5 6 * * *"
+                      className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    />
+                  </Field>
+                ) : null}
+              </div>
+            ) : (
+              <p className="mt-4 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                {pmAutomationUiMode === "off" ? labels.pmAutoGenerationOffDescription : labels.pmAutoGenerationManualDescription}
+              </p>
+            )}
+          </div>
           {hasInvalidSchedulerSchedule ? <ValidationMessage message={labels.invalidSchedulerSchedule} /> : null}
         </div>
       </div>
