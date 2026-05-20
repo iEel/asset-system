@@ -1,4 +1,5 @@
 import { assetLabelSettingKeys } from "@/lib/asset-label-template"
+import { defaultDepreciationPolicy, depreciationPolicySettingKey } from "@/lib/asset-depreciation"
 import { assetQrPublicBaseUrlKey } from "@/lib/asset-qr"
 import { assetDataQualityRulesKey, defaultAssetDataQualityRules } from "@/lib/data-quality-rules"
 import {
@@ -91,6 +92,11 @@ export const systemSettingDefaults = [
   },
   { key: "company_name", value: "บริษัท ตัวอย่าง จำกัด", description: "ชื่อบริษัทหลัก" },
   { key: "default_currency", value: "THB", description: "สกุลเงินเริ่มต้น" },
+  {
+    key: depreciationPolicySettingKey,
+    value: JSON.stringify(defaultDepreciationPolicy, null, 2),
+    description: "JSON policy สำหรับค่าเสื่อม เช่น อายุใช้งานต่อหมวดหมู่และมูลค่าคงเหลือ",
+  },
   {
     key: assetDataQualityRulesKey,
     value: JSON.stringify(defaultAssetDataQualityRules),

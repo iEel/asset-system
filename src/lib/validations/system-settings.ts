@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { assetLabelLayouts, assetLabelSettingKeys, assetLabelTapeSizes, assetLabelTemplateTokens } from "@/lib/asset-label-template"
+import { depreciationPolicySettingKey, parseDepreciationPolicySetting } from "@/lib/asset-depreciation"
 import { assetQrPublicBaseUrlKey, normalizePublicQrBaseUrl } from "@/lib/asset-qr"
 import {
   checkinDocumentTemplateKey,
@@ -173,6 +174,17 @@ export const systemSettingsUpdateSchema = z.object({
         context.addIssue({
           code: "custom",
           message: "Notification rule days must be an integer between 0 and 365",
+          path: ["settings", index, "value"],
+        })
+      }
+    }
+
+    if (setting.key === depreciationPolicySettingKey) {
+      const policy = parseDepreciationPolicySetting(setting.value)
+      if (!policy.isValid) {
+        context.addIssue({
+          code: "custom",
+          message: "Depreciation policy must be valid JSON with useful life 1-600 months and residual rate 0-0.9",
           path: ["settings", index, "value"],
         })
       }

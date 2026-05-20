@@ -9,7 +9,7 @@ import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type AssetListParams } from "@/lib/asset-list-query"
 import { assetMissingResponsibilityWhere, assetOwnershipTypes, hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { buildCostInsights, type CostExposureAsset } from "@/lib/cost-insights"
-import { buildDepreciationSummary, type DepreciableAsset } from "@/lib/asset-depreciation"
+import { buildDepreciationSummary, depreciationPolicySettingKey, parseDepreciationPolicySetting, type DepreciableAsset } from "@/lib/asset-depreciation"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { MetricCard } from "@/components/ui/metric-card"
 
@@ -61,6 +61,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     idleAssetsCount,
     costAssets,
     costRepairGroups,
+    depreciationPolicySetting,
   ] = await Promise.all([
     prisma.asset.count({ where: assetWhere }),
     prisma.asset.aggregate({ where: assetWhere, _sum: { purchasePrice: true } }),
@@ -152,6 +153,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       _count: { _all: true },
       _sum: { repairCost: true },
     }),
+    prisma.systemSetting.findUnique({ where: { key: depreciationPolicySettingKey }, select: { value: true } }),
   ])
   const [custodianOptions, locationOptions, repairAssets] = await Promise.all([
     prisma.employee.findMany({ where: { id: { in: byCustodian.map((item) => item.custodianId).filter((id): id is string => Boolean(id)) } }, select: { id: true, code: true, fullNameTh: true } }),
@@ -196,7 +198,9 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       ownershipType: asset.ownershipType,
       purchasePrice: asset.purchasePrice == null ? null : Number(asset.purchasePrice),
       purchaseDate: asset.purchaseDate,
-    }))
+    })),
+    new Date(),
+    { policy: parseDepreciationPolicySetting(depreciationPolicySetting?.value).policy }
   )
   const savedFilterUrl = `/${locale}/reports?${exportQuery}`
   const recurringReports = [
@@ -324,8 +328,9 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       </ContentPanel>
 
       <ContentPanel title={t("accountingInsightTitle")} description={t("accountingInsightHelp")}>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
           <MetricCard label={t("accountingAcquisitionCost")} value={formatCurrency(depreciationSummary.totalAcquisitionCost)} compact />
+          <MetricCard label={t("accountingResidualValue")} value={formatCurrency(depreciationSummary.totalResidualValue)} compact />
           <MetricCard label={t("accountingAccumulatedDepreciation")} value={formatCurrency(depreciationSummary.totalAccumulatedDepreciation)} compact />
           <MetricCard label={t("accountingNetBookValue")} value={formatCurrency(depreciationSummary.totalNetBookValue)} compact />
           <MetricCard label={t("accountingFullyDepreciated")} value={depreciationSummary.fullyDepreciatedCount.toLocaleString("th-TH")} compact />

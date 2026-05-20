@@ -17,6 +17,7 @@ import {
   type AssetLabelTapeSize,
   type AssetLabelTemplates,
 } from "@/lib/asset-label-template"
+import { depreciationPolicySettingKey, parseDepreciationPolicySetting } from "@/lib/asset-depreciation"
 import { assetQrPublicBaseUrlKey, buildAssetQrValue, normalizePublicQrBaseUrl } from "@/lib/asset-qr"
 import {
   assetTagCategoryPrefixesKey,
@@ -167,6 +168,9 @@ type SystemSettingsFormProps = {
     organizationDefaultsDescription: string
     companyName: string
     defaultCurrency: string
+    accountingDepreciationPolicy: string
+    accountingDepreciationPolicyDescription: string
+    invalidAccountingDepreciationPolicy: string
     notificationRules: string
     notificationRulesDescription: string
     returnDueSoonDays: string
@@ -330,6 +334,7 @@ const friendlySettingKeys = new Set([
   "asset_tag_running_digits",
   "company_name",
   "default_currency",
+  depreciationPolicySettingKey,
   assetTagCategoryPrefixesKey,
   assetTagFormatTemplateKey,
   assetQrPublicBaseUrlKey,
@@ -481,6 +486,8 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     const days = Number(getValue(key))
     return !Number.isInteger(days) || days < 0 || days > 365
   })
+  const depreciationPolicyParse = parseDepreciationPolicySetting(getValue(depreciationPolicySettingKey))
+  const hasInvalidDepreciationPolicy = !depreciationPolicyParse.isValid
   const workflowApprovalToggleKeys = workflowApprovalSettingKeys.filter((key) => key !== workflowApprovalMinApproversKey && key !== workflowApprovalSlaDaysKey)
   const workflowApprovalMinApprovers = Number(getValue(workflowApprovalMinApproversKey))
   const workflowApprovalSlaDays = Number(getValue(workflowApprovalSlaDaysKey))
@@ -1044,6 +1051,19 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
           </Field>
+          <div className="md:col-span-2">
+            <Field label={labels.accountingDepreciationPolicy} htmlFor="accounting-depreciation-policy">
+              <textarea
+                id="accounting-depreciation-policy"
+                value={getValue(depreciationPolicySettingKey)}
+                onChange={(event) => setValue(depreciationPolicySettingKey, event.target.value)}
+                rows={10}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </Field>
+            <p className="mt-2 text-sm text-muted-foreground">{labels.accountingDepreciationPolicyDescription}</p>
+            {hasInvalidDepreciationPolicy ? <ValidationMessage message={labels.invalidAccountingDepreciationPolicy} /> : null}
+          </div>
         </div>
       </div>
       ) : null}

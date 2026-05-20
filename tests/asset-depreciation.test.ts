@@ -1,7 +1,12 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { buildDepreciationSummary, inferUsefulLifeMonths } from "../src/lib/asset-depreciation.ts"
+import {
+  buildDepreciationSummary,
+  inferUsefulLifeMonths,
+  parseDepreciationPolicySetting,
+  resolveDepreciationPolicyForAsset,
+} from "../src/lib/asset-depreciation.ts"
 
 test("calculates straight-line depreciation and net book value", () => {
   const summary = buildDepreciationSummary(
@@ -73,4 +78,56 @@ test("uses shorter useful life for software and computer components", () => {
   assert.equal(inferUsefulLifeMonths({ categoryCode: "License", categoryName: "ลิขสิทธิ์", ownershipType: "software_license" }), 36)
   assert.equal(inferUsefulLifeMonths({ categoryCode: "Computer Component", categoryName: "RAM", ownershipType: "component" }), 36)
   assert.equal(inferUsefulLifeMonths({ categoryCode: "CCTV", categoryName: "ระบบกล้องวงจรปิด", ownershipType: "shared" }), 60)
+})
+
+test("applies configured depreciation policy by category and residual value", () => {
+  const policyResult = parseDepreciationPolicySetting(
+    JSON.stringify({
+      defaultUsefulLifeMonths: 72,
+      defaultResidualRate: 0.1,
+      rules: [{ match: "CCTV", usefulLifeMonths: 84, residualRate: 0.2 }],
+    })
+  )
+
+  assert.equal(policyResult.isValid, true)
+  assert.deepEqual(resolveDepreciationPolicyForAsset({ categoryCode: "CCTV", categoryName: "ระบบกล้องวงจรปิด", ownershipType: "shared" }, policyResult.policy), {
+    usefulLifeMonths: 84,
+    residualRate: 0.2,
+  })
+
+  const summary = buildDepreciationSummary(
+    [
+      {
+        id: "asset-1",
+        label: "SNI-CCTV-24-0001 - Camera",
+        categoryCode: "CCTV",
+        categoryName: "ระบบกล้องวงจรปิด",
+        ownershipType: "shared",
+        purchasePrice: 84000,
+        purchaseDate: new Date("2024-05-20T00:00:00.000Z"),
+      },
+    ],
+    new Date("2026-05-20T00:00:00.000Z"),
+    { policy: policyResult.policy }
+  )
+
+  assert.equal(summary.depreciableAssets[0].usefulLifeMonths, 84)
+  assert.equal(summary.depreciableAssets[0].residualValue, 16800)
+  assert.equal(summary.depreciableAssets[0].depreciableCost, 67200)
+  assert.equal(summary.depreciableAssets[0].accumulatedDepreciation, 19200)
+  assert.equal(summary.totalResidualValue, 16800)
+  assert.equal(summary.totalDepreciableCost, 67200)
+})
+
+test("rejects malformed depreciation policy settings", () => {
+  const policyResult = parseDepreciationPolicySetting(
+    JSON.stringify({
+      defaultUsefulLifeMonths: 0,
+      defaultResidualRate: 1,
+      rules: [{ match: "", usefulLifeMonths: 0, residualRate: -1 }],
+    })
+  )
+
+  assert.equal(policyResult.isValid, false)
+  assert.ok(policyResult.errors.length >= 3)
 })

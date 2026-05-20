@@ -5,7 +5,7 @@ import { createWorkbook, styleWorksheetHeader, workbookResponse } from "@/lib/as
 import { errorResponse } from "@/lib/api-response"
 import { buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
 import { assetMissingResponsibilityWhere, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
-import { buildDepreciationSummary } from "@/lib/asset-depreciation"
+import { buildDepreciationSummary, depreciationPolicySettingKey, parseDepreciationPolicySetting } from "@/lib/asset-depreciation"
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const filters = parseAssetListParams(request.nextUrl.searchParams)
     const assetWhere = buildAssetWhere(filters)
 
-    const [totalAssets, totalValue, byStatus, byCategory, byCompany, byBranch, byDepartment, byOwnership, licenseSummary, dataQuality, depreciationAssets] = await Promise.all([
+    const [totalAssets, totalValue, byStatus, byCategory, byCompany, byBranch, byDepartment, byOwnership, licenseSummary, dataQuality, depreciationAssets, depreciationPolicySetting] = await Promise.all([
       prisma.asset.count({ where: assetWhere }),
       prisma.asset.aggregate({ where: assetWhere, _sum: { purchasePrice: true } }),
       prisma.asset.groupBy({ by: ["statusId"], where: assetWhere, _count: { _all: true } }),
@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
           category: { select: { code: true, name: true } },
         },
       }),
+      prisma.systemSetting.findUnique({ where: { key: depreciationPolicySettingKey }, select: { value: true } }),
     ])
 
     const [statuses, categories, companies, branches, departments] = await Promise.all([
@@ -64,7 +65,9 @@ export async function GET(request: NextRequest) {
         ownershipType: asset.ownershipType,
         purchasePrice: asset.purchasePrice == null ? null : Number(asset.purchasePrice),
         purchaseDate: asset.purchaseDate,
-      }))
+      })),
+      new Date(),
+      { policy: parseDepreciationPolicySetting(depreciationPolicySetting?.value).policy }
     )
 
     const workbook = createWorkbook()
@@ -81,6 +84,8 @@ export async function GET(request: NextRequest) {
       { metric: "License Used Seats", value: Number(licenseSummary._sum.licenseUsedSeats ?? 0) },
       { metric: "Accumulated Depreciation", value: depreciationSummary.totalAccumulatedDepreciation },
       { metric: "Net Book Value", value: depreciationSummary.totalNetBookValue },
+      { metric: "Residual Value", value: depreciationSummary.totalResidualValue },
+      { metric: "Depreciable Cost", value: depreciationSummary.totalDepreciableCost },
       { metric: "Fully Depreciated Assets", value: depreciationSummary.fullyDepreciatedCount },
       { metric: "Missing Accounting Info", value: depreciationSummary.missingAccountingInfoCount },
       { metric: "Missing Responsibility", value: dataQuality.missingCustodian },
@@ -132,6 +137,9 @@ function addDepreciationSheet(workbook: ReturnType<typeof createWorkbook>, rows:
     { header: "Purchase Price", key: "purchasePrice", width: 16 },
     { header: "Purchase Date", key: "purchaseDate", width: 16 },
     { header: "Useful Life Months", key: "usefulLifeMonths", width: 18 },
+    { header: "Residual Rate", key: "residualRate", width: 16 },
+    { header: "Residual Value", key: "residualValue", width: 18 },
+    { header: "Depreciable Cost", key: "depreciableCost", width: 18 },
     { header: "Age Months", key: "ageMonths", width: 14 },
     { header: "Accumulated Depreciation", key: "accumulatedDepreciation", width: 24 },
     { header: "Net Book Value", key: "netBookValue", width: 18 },
@@ -144,6 +152,9 @@ function addDepreciationSheet(workbook: ReturnType<typeof createWorkbook>, rows:
       purchasePrice: asset.purchasePrice,
       purchaseDate: asset.purchaseDate,
       usefulLifeMonths: asset.usefulLifeMonths,
+      residualRate: asset.residualRate,
+      residualValue: asset.residualValue,
+      depreciableCost: asset.depreciableCost,
       ageMonths: asset.ageMonths,
       accumulatedDepreciation: asset.accumulatedDepreciation,
       netBookValue: asset.netBookValue,
@@ -153,6 +164,9 @@ function addDepreciationSheet(workbook: ReturnType<typeof createWorkbook>, rows:
   )
   sheet.getColumn("purchasePrice").numFmt = "#,##0.00"
   sheet.getColumn("purchaseDate").numFmt = "yyyy-mm-dd"
+  sheet.getColumn("residualRate").numFmt = "0.0%"
+  sheet.getColumn("residualValue").numFmt = "#,##0.00"
+  sheet.getColumn("depreciableCost").numFmt = "#,##0.00"
   sheet.getColumn("accumulatedDepreciation").numFmt = "#,##0.00"
   sheet.getColumn("netBookValue").numFmt = "#,##0.00"
   sheet.getColumn("depreciatedRatio").numFmt = "0.0%"
