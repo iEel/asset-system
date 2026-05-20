@@ -5,6 +5,7 @@ import {
   buildCategoryOrderBy,
   buildCategoryQueryString,
   buildCategoryWhere,
+  buildCategoryHealthSummary,
   parseCategoryListParams,
   parseCategoryPrefixMap,
 } from "../src/lib/category-list-query.ts"
@@ -106,4 +107,26 @@ test("builds category query strings while preserving active filters", () => {
     buildCategoryQueryString(current, { sort: "code", direction: "asc", page: 1 }),
     "search=computer&page=1&pageSize=50&sort=code&direction=asc&assetUsage=withAssets&modelStatus=all&customFieldStatus=all&checklistStatus=withoutChecklist&prefixStatus=all"
   )
+})
+
+test("summarizes category health gaps for review cards", () => {
+  const summary = buildCategoryHealthSummary(
+    [
+      { id: "cat-a", _count: { assets: 4, models: 2, customFieldDefs: 1 } },
+      { id: "cat-b", _count: { assets: 0, models: 0, customFieldDefs: 0 } },
+    ],
+    {
+      categoryIdsWithChecklist: ["cat-a"],
+      categoryIdsWithPrefix: ["cat-a"],
+    }
+  )
+
+  assert.deepEqual(summary, {
+    total: 2,
+    used: 1,
+    missingModels: 1,
+    missingCustomFields: 1,
+    missingChecklist: 1,
+    missingPrefix: 1,
+  })
 })

@@ -14,6 +14,7 @@ import { assetTagCategoryPrefixesKey } from "@/lib/system-setting-defaults"
 import { paginationRange } from "@/lib/master-data-query"
 import {
   buildCategoryOrderBy,
+  buildCategoryHealthSummary,
   buildCategoryQueryString,
   buildCategoryWhere,
   parseCategoryListParams,
@@ -64,7 +65,7 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
   const categoryIdsWithPrefix = Object.keys(parseCategoryPrefixMap(prefixSetting?.value))
   const where = buildCategoryWhere(listState, { categoryIdsWithChecklist, categoryIdsWithPrefix })
 
-  const [categories, total] = await Promise.all([
+  const [categories, total, summaryCategories] = await Promise.all([
     prisma.assetCategory.findMany({
       where,
       include: {
@@ -81,11 +82,25 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
       take: listState.pageSize,
     }),
     prisma.assetCategory.count({ where }),
+    prisma.assetCategory.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        _count: {
+          select: {
+            assets: true,
+            models: true,
+            customFieldDefs: true,
+          },
+        },
+      },
+    }),
   ])
   const basePath = `/${locale}/master-data/categories`
+  const healthSummary = buildCategoryHealthSummary(summaryCategories, { categoryIdsWithChecklist, categoryIdsWithPrefix })
 
   return (
-    <div>
+    <div className="space-y-4">
       <MasterDataHeader
         title={t("title")}
         subtitle={t("subtitle")}
@@ -93,7 +108,37 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
         createLabel={tCommon("create")}
       />
 
-      <div className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <SummaryTile
+          label={t("summaryTotal")}
+          value={healthSummary.total}
+          detail={t("summaryUsed", { count: healthSummary.used })}
+          href={basePath}
+        />
+        <SummaryTile
+          label={t("summaryMissingModels")}
+          value={healthSummary.missingModels}
+          detail={t("summaryMissingModelsHelp")}
+          href={`${basePath}?${buildCategoryQueryString(listState, { modelStatus: "withoutModels", page: 1 })}`}
+          tone={healthSummary.missingModels > 0 ? "warning" : "neutral"}
+        />
+        <SummaryTile
+          label={t("summaryMissingChecklist")}
+          value={healthSummary.missingChecklist}
+          detail={t("summaryMissingChecklistHelp")}
+          href={`${basePath}?${buildCategoryQueryString(listState, { checklistStatus: "withoutChecklist", page: 1 })}`}
+          tone={healthSummary.missingChecklist > 0 ? "warning" : "neutral"}
+        />
+        <SummaryTile
+          label={t("summaryMissingPrefix")}
+          value={healthSummary.missingPrefix}
+          detail={t("summaryMissingPrefixHelp")}
+          href={`${basePath}?${buildCategoryQueryString(listState, { prefixStatus: "withoutPrefix", page: 1 })}`}
+          tone={healthSummary.missingPrefix > 0 ? "warning" : "neutral"}
+        />
+      </div>
+
+      <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
         <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(5,minmax(150px,1fr))_auto]" action={basePath}>
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="pageSize" value={listState.pageSize} />
@@ -254,6 +299,33 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
         />
       </div>
     </div>
+  )
+}
+
+function SummaryTile({
+  label,
+  value,
+  detail,
+  href,
+  tone = "neutral",
+}: {
+  label: string
+  value: number
+  detail: string
+  href: string
+  tone?: "neutral" | "warning"
+}) {
+  return (
+    <Link
+      href={href}
+      className={`rounded-lg border bg-surface p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 ${
+        tone === "warning" ? "border-warning/40" : "border-border"
+      }`}
+    >
+      <div className="text-sm font-medium text-muted-foreground">{label}</div>
+      <div className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString()}</div>
+      <div className="mt-1 text-sm text-muted-foreground">{detail}</div>
+    </Link>
   )
 }
 

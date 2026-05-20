@@ -40,6 +40,15 @@ export type CategoryListState = {
   prefixStatus: CategoryPrefixStatusFilter
 }
 
+export type CategoryHealthSummaryItem = {
+  id: string
+  _count: {
+    assets: number
+    models: number
+    customFieldDefs: number
+  }
+}
+
 export function parseCategoryListParams(input: CategoryListParams): CategoryListState {
   const sortValue = firstValue(input.sort)
   const directionValue = firstValue(input.direction)
@@ -120,6 +129,28 @@ export function buildCategoryQueryString(current: CategoryListState, next: Parti
   params.set("checklistStatus", merged.checklistStatus)
   params.set("prefixStatus", merged.prefixStatus)
   return params.toString()
+}
+
+export function buildCategoryHealthSummary(
+  categories: CategoryHealthSummaryItem[],
+  {
+    categoryIdsWithChecklist = [],
+    categoryIdsWithPrefix = [],
+  }: {
+    categoryIdsWithChecklist?: string[]
+    categoryIdsWithPrefix?: string[]
+  } = {}
+) {
+  const checklistIds = new Set(categoryIdsWithChecklist)
+  const prefixIds = new Set(categoryIdsWithPrefix)
+  return {
+    total: categories.length,
+    used: categories.filter((category) => category._count.assets > 0).length,
+    missingModels: categories.filter((category) => category._count.models === 0).length,
+    missingCustomFields: categories.filter((category) => category._count.customFieldDefs === 0).length,
+    missingChecklist: categories.filter((category) => !checklistIds.has(category.id)).length,
+    missingPrefix: categories.filter((category) => !prefixIds.has(category.id)).length,
+  }
 }
 
 export function buildCategoryOrderBy({
