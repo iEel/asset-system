@@ -27,6 +27,14 @@ export function getPanelClasses() {
   return "rounded-lg border border-border bg-surface shadow-sm"
 }
 
+export function getTableShellClasses() {
+  return "overflow-hidden rounded-md border border-border"
+}
+
+export function getEmptyStateClasses() {
+  return "rounded-md border border-border bg-background px-4 py-6 text-center text-sm text-muted-foreground"
+}
+
 export function getFieldControlClasses() {
   return "h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
 }

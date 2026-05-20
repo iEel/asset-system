@@ -237,6 +237,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           ldapSyncDefaultBranchCode: t("ldapSyncDefaultBranchCode"),
           ldapSyncDefaultDepartmentCode: t("ldapSyncDefaultDepartmentCode"),
           ldapSyncDeactivateMissing: t("ldapSyncDeactivateMissing"),
+          ldapSyncMaxScheduledDeactivations: t("ldapSyncMaxScheduledDeactivations"),
           ldapSyncPreview: t("ldapSyncPreview"),
           ldapSyncApply: t("ldapSyncApply"),
           ldapSyncPreviewTitle: t("ldapSyncPreviewTitle"),

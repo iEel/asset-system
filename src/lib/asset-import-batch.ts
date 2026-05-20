@@ -19,6 +19,19 @@ export type AssetImportBatchAuditValue = AssetImportBatchSummary & {
   imported: number
   skipped: number
   approvedBy: string
+  rollbackPlan?: AssetImportRollbackPlan
+}
+
+export type AssetImportRollbackPlan = {
+  batchId: string
+  reversible: boolean
+  assetCount: number
+  actions: Array<{
+    action: "deactivate_imported_asset"
+    assetId: string
+    assetTag: string
+    name: string
+  }>
 }
 
 export function createAssetImportBatchSummary({
@@ -62,17 +75,40 @@ export function buildAssetImportBatchAuditValue({
   imported,
   skipped,
   approvedBy,
+  rollbackPlan,
 }: {
   batch: AssetImportBatchSummary
   imported: number
   skipped: number
   approvedBy: string
+  rollbackPlan?: AssetImportRollbackPlan
 }): AssetImportBatchAuditValue {
   return {
     ...batch,
     imported,
     skipped,
     approvedBy,
+    ...(rollbackPlan ? { rollbackPlan } : {}),
+  }
+}
+
+export function buildAssetImportRollbackPlan({
+  batchId,
+  assets,
+}: {
+  batchId: string
+  assets: Array<{ id: string; assetTag: string; name: string }>
+}): AssetImportRollbackPlan {
+  return {
+    batchId,
+    reversible: assets.length > 0,
+    assetCount: assets.length,
+    actions: assets.map((asset) => ({
+      action: "deactivate_imported_asset",
+      assetId: asset.id,
+      assetTag: asset.assetTag,
+      name: asset.name,
+    })),
   }
 }
 

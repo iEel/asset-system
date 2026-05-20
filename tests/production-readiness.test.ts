@@ -34,6 +34,12 @@ test("marks core production readiness checks as pass when settings and coverage 
       dbServer: "192.168.1.10",
       dbUser: "asset_app",
       dbPassword: "secret",
+      maintenancePmGenerationToken: "pm-token",
+      ldapSyncToken: "ldap-token",
+      notificationDigestToken: "digest-token",
+      schedulerLastRunStatuses: ["success", "success"],
+      backupStatus: "success",
+      backupLastRunAt: "2026-05-20T01:00:00.000Z",
     },
     masterDataCounts: {
       companies: 1,
@@ -46,7 +52,7 @@ test("marks core production readiness checks as pass when settings and coverage 
     },
   })
 
-  assert.deepEqual(checks.map((check) => check.status), ["pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass"])
+  assert.deepEqual(checks.map((check) => check.status), ["pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass"])
 })
 
 test("surfaces risky production readiness states", () => {
@@ -74,6 +80,12 @@ test("surfaces risky production readiness states", () => {
       dbServer: "",
       dbUser: "asset_app",
       dbPassword: "",
+      maintenancePmGenerationToken: "",
+      ldapSyncToken: "",
+      notificationDigestToken: "",
+      schedulerLastRunStatuses: ["failed", "success"],
+      backupStatus: "missing",
+      backupLastRunAt: "",
     },
     masterDataCounts: {
       companies: 1,
@@ -95,4 +107,7 @@ test("surfaces risky production readiness states", () => {
   assert.equal(checks.find((check) => check.key === "authSecret")?.status, "fail")
   assert.equal(checks.find((check) => check.key === "uploadDir")?.status, "fail")
   assert.equal(checks.find((check) => check.key === "databaseConfig")?.status, "fail")
+  assert.equal(checks.find((check) => check.key === "schedulerTokens")?.status, "fail")
+  assert.equal(checks.find((check) => check.key === "schedulerRuns")?.status, "fail")
+  assert.equal(checks.find((check) => check.key === "backupStatus")?.status, "fail")
 })

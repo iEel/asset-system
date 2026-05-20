@@ -6,6 +6,7 @@ import {
   getActiveUserIdsForDeactivatedEmployees,
   type LdapDeactivationImpact,
 } from "@/lib/ldap-sync-impact"
+import { evaluateLdapDeactivationSafety, ldapSyncMaxScheduledDeactivationsKey } from "@/lib/ldap-sync-safety"
 import { ldapSettingKeys } from "@/lib/system-setting-defaults"
 
 type LdapSyncProfile = Awaited<ReturnType<typeof searchLdapSyncUsers>>[number]
@@ -127,7 +128,11 @@ export async function previewLdapSync(settings?: LdapConfigInput): Promise<LdapS
   }
 }
 
-export async function applyLdapSync(userId?: string, settings?: LdapConfigInput): Promise<LdapSyncApplyResult> {
+export async function applyLdapSync(
+  userId?: string,
+  settings?: LdapConfigInput,
+  options: { source?: "manual" | "scheduled" } = {}
+): Promise<LdapSyncApplyResult> {
   const resolvedSettings = settings ?? await loadLdapSettings()
   const preview = await previewLdapSync(resolvedSettings)
   if (preview.blockers.length > 0) {
@@ -139,6 +144,16 @@ export async function applyLdapSync(userId?: string, settings?: LdapConfigInput)
 
   if (resolvedSettings.ldap_sync_enabled !== "true") {
     throw new Error("LDAP sync is not enabled")
+  }
+
+  const deactivationSafety = evaluateLdapDeactivationSafety({
+    isScheduled: options.source === "scheduled",
+    deactivateMissingEnabled: resolvedSettings.ldap_sync_deactivate_missing === "true",
+    deactivationCount: preview.deactivates.length,
+    maxScheduledDeactivations: resolvedSettings[ldapSyncMaxScheduledDeactivationsKey],
+  })
+  if (deactivationSafety.status === "blocked") {
+    throw new Error(deactivationSafety.reason)
   }
 
   const orgLookup = await loadOrgLookup()

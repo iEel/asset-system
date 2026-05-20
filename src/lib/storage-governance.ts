@@ -1,9 +1,31 @@
+import { readdir, stat } from "node:fs/promises"
+import path from "node:path"
+
 export type StorageGovernanceAttachmentInput = {
   module: string
   filePath: string | null
   fileSize: number
   isActive: boolean
 }
+
+export type StorageGovernanceFileInput = {
+  relativePath: string
+  sizeBytes: number
+  modifiedAt?: Date | string | null
+}
+
+export type StorageGovernanceDryRunAction =
+  | {
+      action: "archive_orphan_file"
+      relativePath: string
+      sizeBytes: number
+    }
+  | {
+      action: "review_missing_db_file"
+      filePath: string
+      module: string
+      expectedSizeBytes: number
+    }
 
 export type StorageGovernanceOptions = {
   largeFileThresholdBytes?: number
@@ -45,6 +67,58 @@ export function summarizeStorageGovernance(
   }
 }
 
+export function buildStorageGovernanceDryRun({
+  attachments,
+  files,
+}: {
+  attachments: StorageGovernanceAttachmentInput[]
+  files: StorageGovernanceFileInput[]
+}) {
+  const activeAttachmentByPath = new Map(
+    attachments
+      .filter((attachment) => attachment.isActive)
+      .map((attachment) => [normalizeStoragePath(attachment.filePath), attachment] as const)
+      .filter(([normalizedPath]) => Boolean(normalizedPath))
+  )
+  const fileByPath = new Map(files.map((file) => [normalizeStoragePath(file.relativePath), file] as const))
+
+  const matchedFiles = files.filter((file) => activeAttachmentByPath.has(normalizeStoragePath(file.relativePath)))
+  const missingFiles = attachments
+    .filter((attachment) => attachment.isActive)
+    .filter((attachment) => {
+      const normalizedPath = normalizeStoragePath(attachment.filePath)
+      return normalizedPath ? !fileByPath.has(normalizedPath) : false
+    })
+  const orphanFiles = files.filter((file) => !activeAttachmentByPath.has(normalizeStoragePath(file.relativePath)))
+  const actions: StorageGovernanceDryRunAction[] = [
+    ...missingFiles.map((attachment) => ({
+      action: "review_missing_db_file" as const,
+      filePath: attachment.filePath ?? "",
+      module: attachment.module,
+      expectedSizeBytes: attachment.fileSize,
+    })),
+    ...orphanFiles.map((file) => ({
+      action: "archive_orphan_file" as const,
+      relativePath: file.relativePath,
+      sizeBytes: file.sizeBytes,
+    })),
+  ]
+
+  return {
+    matchedFiles,
+    missingFiles,
+    orphanFiles,
+    actions,
+  }
+}
+
+export async function scanUploadDirectory(uploadDir: string): Promise<StorageGovernanceFileInput[]> {
+  const root = path.resolve(uploadDir)
+  const files: StorageGovernanceFileInput[] = []
+  await walkUploadDirectory(root, root, files)
+  return files.sort((left, right) => left.relativePath.localeCompare(right.relativePath))
+}
+
 export function formatStorageSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
@@ -55,4 +129,30 @@ export function formatStorageSize(bytes: number) {
 function normalizeStoragePath(path: string | null) {
   const normalized = path?.trim().replace(/\\/g, "/").toLowerCase()
   return normalized && normalized.length > 0 ? normalized : null
+}
+
+async function walkUploadDirectory(root: string, currentDirectory: string, files: StorageGovernanceFileInput[]) {
+  let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }>
+  try {
+    entries = await readdir(currentDirectory, { withFileTypes: true })
+  } catch {
+    return
+  }
+
+  for (const entry of entries) {
+    const absolutePath = path.join(currentDirectory, entry.name)
+    if (entry.isDirectory()) {
+      await walkUploadDirectory(root, absolutePath, files)
+      continue
+    }
+    if (!entry.isFile()) continue
+
+    const info = await stat(absolutePath).catch(() => null)
+    if (!info) continue
+    files.push({
+      relativePath: path.relative(root, absolutePath).replace(/\\/g, "/"),
+      sizeBytes: info.size,
+      modifiedAt: info.mtime,
+    })
+  }
 }

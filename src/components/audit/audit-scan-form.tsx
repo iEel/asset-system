@@ -23,10 +23,14 @@ import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 import { extractAssetLookupCandidatesFromScanValue } from "@/lib/asset-qr"
 import { normalizeAssetOwnershipType, requiresCustodian } from "@/lib/asset-ownership"
 import {
-  addQueuedAuditScan,
-  loadQueuedAuditScans,
-  removeQueuedAuditScan,
+  addQueuedAuditScanAsync,
+  createAuditOfflineIndexedDbStorage,
+  loadQueuedAuditScansAsync,
+  markQueuedAuditScanSyncFailed,
+  removeQueuedAuditScanAsync,
+  type AuditOfflinePhoto,
   type AuditOfflineScanPayload,
+  type AuditOfflineQueueStorage,
   type QueuedAuditScan,
 } from "@/lib/audit-offline-queue"
 
@@ -128,6 +132,7 @@ export function AuditScanForm({
   const [applyCorrections, setApplyCorrections] = useState(false)
   const [offlineQueue, setOfflineQueue] = useState<QueuedAuditScan[]>([])
   const qrReaderRef = useRef<Html5QrcodeInstance | null>(null)
+  const offlineStorageRef = useRef<AuditOfflineQueueStorage | null>(null)
   const lastDecodedRef = useRef<{ value: string; at: number } | null>(null)
   const [values, setValues] = useState({
     assetId: "",
@@ -198,15 +203,23 @@ export function AuditScanForm({
     }
   }, [])
 
-  const refreshOfflineQueue = useCallback(() => {
+  const refreshOfflineQueue = useCallback(async () => {
     if (typeof window === "undefined") return
-    setOfflineQueue(loadQueuedAuditScans(window.localStorage, roundId))
+    const storage = getAuditOfflineStorage()
+    setOfflineQueue(await loadQueuedAuditScansAsync(storage, roundId))
   }, [roundId])
 
   useEffect(() => {
-    const timer = window.setTimeout(refreshOfflineQueue, 0)
+    const timer = window.setTimeout(() => void refreshOfflineQueue(), 0)
     return () => window.clearTimeout(timer)
   }, [refreshOfflineQueue])
+
+  function getAuditOfflineStorage() {
+    if (!offlineStorageRef.current) {
+      offlineStorageRef.current = createAuditOfflineIndexedDbStorage(window.localStorage)
+    }
+    return offlineStorageRef.current
+  }
 
   async function startScanner() {
     if (!isCameraAccessSupported()) {
@@ -402,7 +415,7 @@ export function AuditScanForm({
           body: JSON.stringify(requestPayload),
         })
       } catch {
-        queueOfflineScan(requestPayload, selectedItem.label)
+        await queueOfflineScan(requestPayload, selectedItem.label)
         return
       }
       const payload = await response.json().catch(() => null)
@@ -446,16 +459,18 @@ export function AuditScanForm({
     }
   }
 
-  function queueOfflineScan(payload: AuditOfflineScanPayload, label: string) {
+  async function queueOfflineScan(payload: AuditOfflineScanPayload, label: string) {
     if (typeof window === "undefined") return
-    addQueuedAuditScan(window.localStorage, roundId, payload)
-    refreshOfflineQueue()
+    await addQueuedAuditScanAsync(getAuditOfflineStorage(), roundId, payload, {
+      photos: queuedAuditPhotos.map(toAuditOfflinePhoto),
+    })
+    await refreshOfflineQueue()
     setScanFeedback({
       status: "mismatch",
       title: t("offlineQueuedTitle"),
       description: label,
     })
-    toast.warning(queuedAuditPhotos.length > 0 ? t("offlineQueuedWithoutPhotos") : t("offlineQueued"))
+    toast.warning(queuedAuditPhotos.length > 0 ? t("offlineQueuedWithPhotos") : t("offlineQueued"))
     setValues({
       assetId: "",
       actualLocationId: "",
@@ -493,14 +508,22 @@ export function AuditScanForm({
         })
         const payload = await response.json().catch(() => null)
         if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
-        removeQueuedAuditScan(window.localStorage, roundId, queued.id)
+        for (const photo of queued.photos ?? []) {
+          await uploadAuditPhoto(queued.assetId, new File([photo.blob], photo.fileName, { type: photo.fileType }), photo.label)
+        }
+        await removeQueuedAuditScanAsync(getAuditOfflineStorage(), roundId, queued.id)
         savedCount += 1
       }
-      refreshOfflineQueue()
+      await refreshOfflineQueue()
       toast.success(t("offlineRetrySuccess", { count: savedCount }))
       router.refresh()
     } catch (error) {
-      refreshOfflineQueue()
+      const message = error instanceof Error ? error.message : tCommon("error")
+      const failed = offlineQueue[savedCount]
+      if (failed) {
+        await markQueuedAuditScanSyncFailed(getAuditOfflineStorage(), roundId, failed.id, message).catch(() => undefined)
+      }
+      await refreshOfflineQueue()
       toast.error(error instanceof Error ? error.message : tCommon("error"))
     } finally {
       setSaving(false)
@@ -960,6 +983,17 @@ function getResponsiveQrBox(viewfinderWidth: number, viewfinderHeight: number) {
 
 function isCameraAccessSupported() {
   return typeof navigator !== "undefined" && "mediaDevices" in navigator && "getUserMedia" in navigator.mediaDevices
+}
+
+function toAuditOfflinePhoto(photo: QueuedAuditPhoto): AuditOfflinePhoto {
+  return {
+    id: photo.id,
+    label: photo.label,
+    fileName: photo.file.name,
+    fileType: photo.file.type || "application/octet-stream",
+    fileSize: photo.file.size,
+    blob: photo.file,
+  }
 }
 
 function getActualValues(

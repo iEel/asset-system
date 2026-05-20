@@ -265,6 +265,7 @@ type SystemSettingsFormProps = {
     ldapSyncDefaultBranchCode: string
     ldapSyncDefaultDepartmentCode: string
     ldapSyncDeactivateMissing: string
+    ldapSyncMaxScheduledDeactivations: string
     ldapSyncPreview: string
     ldapSyncApply: string
     ldapSyncPreviewTitle: string
@@ -1562,6 +1563,16 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
                   <option value="manual">Manual</option>
                   <option value="scheduled">Scheduled</option>
                 </select>
+              </Field>
+              <Field label={labels.ldapSyncMaxScheduledDeactivations} htmlFor="ldap-sync-max-scheduled-deactivations">
+                <input
+                  id="ldap-sync-max-scheduled-deactivations"
+                  type="number"
+                  min={0}
+                  value={getValue("ldap_sync_max_scheduled_deactivations")}
+                  onChange={(event) => setValue("ldap_sync_max_scheduled_deactivations", event.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
               </Field>
               <Field label={labels.ldapSyncBaseDn} htmlFor="ldap-sync-base-dn">
                 <input

@@ -49,7 +49,8 @@ export type LdapConfigInput = Partial<Record<
   | "ldap_sync_default_company_code"
   | "ldap_sync_default_branch_code"
   | "ldap_sync_default_department_code"
-  | "ldap_sync_deactivate_missing",
+  | "ldap_sync_deactivate_missing"
+  | "ldap_sync_max_scheduled_deactivations",
   string
 >>
 

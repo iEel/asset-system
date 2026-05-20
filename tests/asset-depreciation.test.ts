@@ -3,6 +3,7 @@ import test from "node:test"
 
 import {
   buildDepreciationSummary,
+  buildDepreciationPeriodSnapshot,
   inferUsefulLifeMonths,
   parseDepreciationPolicySetting,
   resolveDepreciationPolicyForAsset,
@@ -130,4 +131,30 @@ test("rejects malformed depreciation policy settings", () => {
 
   assert.equal(policyResult.isValid, false)
   assert.ok(policyResult.errors.length >= 3)
+})
+
+test("builds depreciation period snapshot for accounting close", () => {
+  const snapshot = buildDepreciationPeriodSnapshot({
+    period: "2026-05",
+    generatedAt: new Date("2026-05-20T12:00:00.000Z"),
+    summary: buildDepreciationSummary(
+      [
+        {
+          id: "asset-1",
+          label: "SNI-EQU-24-0001 - Notebook",
+          categoryCode: "Computer",
+          categoryName: "Computer",
+          ownershipType: "personal",
+          purchasePrice: 120000,
+          purchaseDate: new Date("2024-05-20T00:00:00.000Z"),
+        },
+      ],
+      new Date("2026-05-20T00:00:00.000Z")
+    ),
+  })
+
+  assert.equal(snapshot.period, "2026-05")
+  assert.equal(snapshot.lockState, "draft")
+  assert.equal(snapshot.assetCount, 1)
+  assert.equal(snapshot.totals.netBookValue, 72000)
 })

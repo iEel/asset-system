@@ -7,6 +7,11 @@ import {
   resolveDigestTone,
   type NotificationDigestLocale,
 } from "@/lib/notification-digest-format"
+import {
+  buildNotificationWebhookPayload,
+  deliverNotificationWebhook,
+  resolveNotificationDeliveryConfig,
+} from "@/lib/notification-delivery"
 
 export { buildDailyDigestMessage, buildDailyDigestReferenceId, resolveDigestTone, type NotificationDigestLocale }
 
@@ -14,6 +19,8 @@ export type NotificationDigestResult = {
   referenceId: string
   scannedUsers: number
   delivered: number
+  deliveredExternal: number
+  failedExternal: number
   skippedEmpty: number
   skippedDuplicate: number
   dryRun: boolean
@@ -71,8 +78,11 @@ export async function deliverDailyNotificationDigest({
   })
 
   let delivered = 0
+  let deliveredExternal = 0
+  let failedExternal = 0
   let skippedEmpty = 0
   let skippedDuplicate = 0
+  const deliveryConfig = resolveNotificationDeliveryConfig()
 
   for (const dbUser of users) {
     const user = toSessionUser(dbUser)
@@ -97,16 +107,37 @@ export async function deliverDailyNotificationDigest({
     }
 
     if (!dryRun) {
+      const title = locale === "th" ? "สรุปงานติดตามประจำวัน" : "Daily follow-up digest"
+      const message = buildDailyDigestMessage(locale, activeItems)
+      const type = resolveDigestTone(activeItems)
       await prisma.notification.create({
         data: {
           userId: user.id,
-          title: locale === "th" ? "สรุปงานติดตามประจำวัน" : "Daily follow-up digest",
-          message: buildDailyDigestMessage(locale, activeItems),
-          type: resolveDigestTone(activeItems),
+          title,
+          message,
+          type,
           module: "notification_digest",
           referenceId,
         },
       })
+      if (deliveryConfig.enabled && deliveryConfig.webhookUrl) {
+        try {
+          await deliverNotificationWebhook({
+            webhookUrl: deliveryConfig.webhookUrl,
+            payload: buildNotificationWebhookPayload({
+              title,
+              message,
+              type,
+              module: "notification_digest",
+              referenceId,
+              user: dbUser,
+            }),
+          })
+          deliveredExternal += 1
+        } catch {
+          failedExternal += 1
+        }
+      }
     }
     delivered += 1
   }
@@ -115,6 +146,8 @@ export async function deliverDailyNotificationDigest({
     referenceId,
     scannedUsers: users.length,
     delivered,
+    deliveredExternal,
+    failedExternal,
     skippedEmpty,
     skippedDuplicate,
     dryRun,

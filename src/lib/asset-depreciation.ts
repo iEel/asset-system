@@ -57,6 +57,28 @@ export type DepreciationSummary = {
   topNetBookValueAssets: DepreciableAsset[]
 }
 
+export type DepreciationPeriodSnapshot = {
+  period: string
+  generatedAt: string
+  lockState: "draft" | "locked"
+  assetCount: number
+  totals: {
+    acquisitionCost: number
+    residualValue: number
+    depreciableCost: number
+    accumulatedDepreciation: number
+    netBookValue: number
+  }
+  assets: Array<{
+    id: string
+    label: string
+    purchasePrice: number
+    accumulatedDepreciation: number
+    netBookValue: number
+    status: DepreciationStatus
+  }>
+}
+
 export const defaultDepreciationPolicy: DepreciationPolicy = {
   defaultUsefulLifeMonths: 60,
   defaultResidualRate: 0,
@@ -102,6 +124,40 @@ export function buildDepreciationSummary(
     topNetBookValueAssets: [...depreciableAssets]
       .sort((left, right) => right.netBookValue - left.netBookValue || right.purchasePrice - left.purchasePrice)
       .slice(0, maxTopAssets),
+  }
+}
+
+export function buildDepreciationPeriodSnapshot({
+  period,
+  summary,
+  generatedAt = new Date(),
+  lockState = "draft",
+}: {
+  period: string
+  summary: DepreciationSummary
+  generatedAt?: Date
+  lockState?: "draft" | "locked"
+}): DepreciationPeriodSnapshot {
+  return {
+    period,
+    generatedAt: generatedAt.toISOString(),
+    lockState,
+    assetCount: summary.depreciableAssets.length,
+    totals: {
+      acquisitionCost: summary.totalAcquisitionCost,
+      residualValue: summary.totalResidualValue,
+      depreciableCost: summary.totalDepreciableCost,
+      accumulatedDepreciation: summary.totalAccumulatedDepreciation,
+      netBookValue: summary.totalNetBookValue,
+    },
+    assets: summary.depreciableAssets.map((asset) => ({
+      id: asset.id,
+      label: asset.label,
+      purchasePrice: asset.purchasePrice,
+      accumulatedDepreciation: asset.accumulatedDepreciation,
+      netBookValue: asset.netBookValue,
+      status: asset.status,
+    })),
   }
 }
 

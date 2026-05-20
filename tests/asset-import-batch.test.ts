@@ -4,6 +4,7 @@ import test from "node:test"
 import {
   buildAssetImportBatchAuditValue,
   buildAssetImportBatchId,
+  buildAssetImportRollbackPlan,
   createAssetImportBatchSummary,
 } from "../src/lib/asset-import-batch.ts"
 
@@ -54,4 +55,25 @@ test("builds batch audit value with import result", () => {
     skipped: 0,
     approvedBy: "user-1",
   })
+})
+
+test("builds rollback plan for imported assets in a batch", () => {
+  assert.deepEqual(
+    buildAssetImportRollbackPlan({
+      batchId: "IMPORT-1",
+      assets: [
+        { id: "asset-1", assetTag: "SNI-EQU-26-0001", name: "Notebook" },
+        { id: "asset-2", assetTag: "SNI-EQU-26-0002", name: "Monitor" },
+      ],
+    }),
+    {
+      batchId: "IMPORT-1",
+      reversible: true,
+      assetCount: 2,
+      actions: [
+        { action: "deactivate_imported_asset", assetId: "asset-1", assetTag: "SNI-EQU-26-0001", name: "Notebook" },
+        { action: "deactivate_imported_asset", assetId: "asset-2", assetTag: "SNI-EQU-26-0002", name: "Monitor" },
+      ],
+    }
+  )
 })

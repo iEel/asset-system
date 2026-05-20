@@ -1,7 +1,10 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { summarizeStorageGovernance } from "../src/lib/storage-governance.ts"
+import {
+  buildStorageGovernanceDryRun,
+  summarizeStorageGovernance,
+} from "../src/lib/storage-governance.ts"
 
 test("summarizes active attachment storage by module and flags governance risks", () => {
   const summary = summarizeStorageGovernance(
@@ -25,4 +28,24 @@ test("summarizes active attachment storage by module and flags governance risks"
     { module: "maintenance", count: 1, totalBytes: 3_000 },
     { module: "audit_finding", count: 1, totalBytes: 1_000 },
   ])
+})
+
+test("builds dry-run storage governance actions from database and filesystem differences", () => {
+  const dryRun = buildStorageGovernanceDryRun({
+    attachments: [
+      { module: "asset", filePath: "uploads/a.jpg", fileSize: 2_000, isActive: true },
+      { module: "maintenance", filePath: "uploads/missing.pdf", fileSize: 5_000, isActive: true },
+      { module: "asset", filePath: "uploads/inactive.jpg", fileSize: 1_000, isActive: false },
+    ],
+    files: [
+      { relativePath: "uploads/a.jpg", sizeBytes: 2_000 },
+      { relativePath: "uploads/orphan.tmp", sizeBytes: 99 },
+      { relativePath: "uploads/inactive.jpg", sizeBytes: 1_000 },
+    ],
+  })
+
+  assert.equal(dryRun.matchedFiles.length, 1)
+  assert.deepEqual(dryRun.missingFiles.map((item) => item.filePath), ["uploads/missing.pdf"])
+  assert.deepEqual(dryRun.orphanFiles.map((item) => item.relativePath), ["uploads/orphan.tmp", "uploads/inactive.jpg"])
+  assert.deepEqual(dryRun.actions.map((item) => item.action), ["review_missing_db_file", "archive_orphan_file", "archive_orphan_file"])
 })

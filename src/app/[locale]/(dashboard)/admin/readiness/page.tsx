@@ -7,7 +7,11 @@ import { buildApprovalPermissionMatrix } from "@/lib/approval-permission-matrix"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { buildProductionReadinessChecks, summarizeProductionReadiness, type ProductionReadinessCheck } from "@/lib/production-readiness"
-import { systemSettingDefaults } from "@/lib/system-setting-defaults"
+import {
+  ldapSyncLastStatusKey,
+  pmAutoGenerationLastStatusKey,
+  systemSettingDefaults,
+} from "@/lib/system-setting-defaults"
 import { parseWorkflowApprovalPolicy } from "@/lib/workflow-approval"
 
 type ProductionReadinessPageProps = {
@@ -47,6 +51,15 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
       dbServer: process.env.DB_SERVER,
       dbUser: process.env.DB_USER,
       dbPassword: process.env.DB_PASSWORD,
+      maintenancePmGenerationToken: process.env.MAINTENANCE_PM_GENERATION_TOKEN,
+      ldapSyncToken: process.env.LDAP_SYNC_TOKEN,
+      notificationDigestToken: process.env.NOTIFICATION_DIGEST_TOKEN,
+      schedulerLastRunStatuses: [
+        settings.get(pmAutoGenerationLastStatusKey) ?? "",
+        settings.get(ldapSyncLastStatusKey) ?? "",
+      ].filter(Boolean),
+      backupStatus: process.env.BACKUP_STATUS,
+      backupLastRunAt: process.env.BACKUP_LAST_RUN_AT,
     },
     masterDataCounts,
   })

@@ -11,7 +11,7 @@ import {
   parseImportMoney,
   parseOptionalInteger,
 } from "@/lib/asset-import-preview"
-import { buildAssetImportBatchAuditValue, createAssetImportBatchSummary } from "@/lib/asset-import-batch"
+import { buildAssetImportBatchAuditValue, buildAssetImportRollbackPlan, createAssetImportBatchSummary } from "@/lib/asset-import-batch"
 import { defaultAssetOwnershipType, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 
 const maxImportSize = 10 * 1024 * 1024
@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     let imported = 0
+    const importedAssets: Array<{ id: string; assetTag: string; name: string }> = []
     for (const row of readyRows) {
       const input = {
         assetTag: nullableText(row.values.assetTag),
@@ -122,6 +123,8 @@ export async function POST(request: NextRequest) {
             remark: "Asset imported from Excel",
           },
         })
+
+        importedAssets.push({ id: asset.id, assetTag: asset.assetTag, name: asset.name })
       })
 
       imported += 1
@@ -140,6 +143,10 @@ export async function POST(request: NextRequest) {
             imported,
             skipped,
             approvedBy: user.id,
+            rollbackPlan: buildAssetImportRollbackPlan({
+              batchId: batch.batchId,
+              assets: importedAssets,
+            }),
           })
         ),
         remark: "Asset import batch approved",

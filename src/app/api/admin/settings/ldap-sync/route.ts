@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      const result = await applyLdapSync("system:ldap", settings)
+      const result = await applyLdapSync("system:ldap", settings, { source: "scheduled" })
       await updateScheduledJobRunState({
         keys: ldapSchedulerStatusKeys,
         status: "success",

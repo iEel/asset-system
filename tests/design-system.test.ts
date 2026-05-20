@@ -3,9 +3,11 @@ import test from "node:test"
 
 import {
   getActionButtonClasses,
+  getEmptyStateClasses,
   getFieldControlClasses,
   getMetricCardToneClasses,
   getPanelClasses,
+  getTableShellClasses,
   normalizeUiTone,
 } from "../src/lib/design-system.ts"
 
@@ -25,4 +27,6 @@ test("returns shared panel, form control, and action button classes", () => {
   assert.match(getFieldControlClasses(), /focus:border-primary/)
   assert.match(getActionButtonClasses("primary"), /bg-primary/)
   assert.match(getActionButtonClasses("secondary", "sm"), /h-8/)
+  assert.match(getTableShellClasses(), /overflow-hidden/)
+  assert.match(getEmptyStateClasses(), /text-center/)
 })

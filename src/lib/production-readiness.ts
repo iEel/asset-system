@@ -9,6 +9,9 @@ export type ProductionReadinessCheckKey =
   | "authSecret"
   | "uploadDir"
   | "databaseConfig"
+  | "schedulerTokens"
+  | "schedulerRuns"
+  | "backupStatus"
 
 export type ProductionReadinessApproverSummary = {
   key: string
@@ -46,6 +49,12 @@ export type ProductionReadinessDeploymentInput = {
   dbServer?: string
   dbUser?: string
   dbPassword?: string
+  maintenancePmGenerationToken?: string
+  ldapSyncToken?: string
+  notificationDigestToken?: string
+  schedulerLastRunStatuses?: string[]
+  backupStatus?: string
+  backupLastRunAt?: string
 }
 
 export type ProductionReadinessCheck = {
@@ -134,6 +143,24 @@ export function buildProductionReadinessChecks(input: ProductionReadinessInput):
       value: getDatabaseConfigValue(input.deployment),
       href: "/admin/readiness",
     },
+    {
+      key: "schedulerTokens",
+      status: getSchedulerTokensStatus(input.deployment),
+      value: getSchedulerTokensValue(input.deployment),
+      href: "/admin/readiness",
+    },
+    {
+      key: "schedulerRuns",
+      status: getSchedulerRunsStatus(input.deployment),
+      value: getSchedulerRunsValue(input.deployment),
+      href: "/admin/settings",
+    },
+    {
+      key: "backupStatus",
+      status: getBackupStatus(input.deployment),
+      value: getBackupValue(input.deployment),
+      href: "/admin/readiness",
+    },
   ]
 }
 
@@ -219,6 +246,53 @@ function getDatabaseConfigValue(deployment?: ProductionReadinessDeploymentInput)
   return `${configured}/4 configured`
 }
 
+function getSchedulerTokensStatus(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessStatus {
+  const tokens = [
+    deployment?.maintenancePmGenerationToken,
+    deployment?.ldapSyncToken,
+    deployment?.notificationDigestToken,
+  ]
+  const configured = tokens.filter((token) => isConfiguredSecret(token)).length
+  if (configured === tokens.length) return "pass"
+  if (configured > 0) return "warning"
+  return "fail"
+}
+
+function getSchedulerTokensValue(deployment?: ProductionReadinessDeploymentInput) {
+  const configured = [
+    deployment?.maintenancePmGenerationToken,
+    deployment?.ldapSyncToken,
+    deployment?.notificationDigestToken,
+  ].filter((token) => isConfiguredSecret(token)).length
+  return `${configured}/3 configured`
+}
+
+function getSchedulerRunsStatus(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessStatus {
+  const statuses = deployment?.schedulerLastRunStatuses ?? []
+  if (statuses.some((status) => status === "failed")) return "fail"
+  if (statuses.some((status) => status === "success")) return "pass"
+  return "warning"
+}
+
+function getSchedulerRunsValue(deployment?: ProductionReadinessDeploymentInput) {
+  const statuses = deployment?.schedulerLastRunStatuses ?? []
+  if (statuses.length === 0) return "no runs yet"
+  return statuses.join(", ")
+}
+
+function getBackupStatus(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessStatus {
+  const status = deployment?.backupStatus?.trim().toLowerCase() ?? ""
+  if (status === "success" && deployment?.backupLastRunAt?.trim()) return "pass"
+  if (status === "missing" || status === "failed") return "fail"
+  return "warning"
+}
+
+function getBackupValue(deployment?: ProductionReadinessDeploymentInput) {
+  const status = deployment?.backupStatus?.trim() || "unknown"
+  const lastRunAt = deployment?.backupLastRunAt?.trim() || "-"
+  return `${status} / ${lastRunAt}`
+}
+
 function parseUrl(value: string | undefined) {
   const raw = value?.trim()
   if (!raw) return null
@@ -231,6 +305,11 @@ function parseUrl(value: string | undefined) {
 
 function isPlaceholderSecret(value: string) {
   return /replace-with|same-value|changeme|secret/i.test(value)
+}
+
+function isConfiguredSecret(value: string | undefined) {
+  const secret = value?.trim() ?? ""
+  return Boolean(secret) && !isPlaceholderSecret(secret)
 }
 
 function isAbsolutePath(value: string) {
