@@ -54,7 +54,7 @@ export function AssetLabelBatchTool({ locale, labels }: AssetLabelBatchToolProps
     const timeout = window.setTimeout(async () => {
       setLoading(true)
       try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(trimmedQuery)}&locale=${locale}`, {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(trimmedQuery)}&locale=${locale}&scope=asset`, {
           signal: controller.signal,
         })
         const payload = (await response.json().catch(() => null)) as { results?: SearchResult[] } | null

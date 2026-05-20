@@ -3,25 +3,29 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Loader2, MapPin, PackageSearch, Search, UserRound, X } from "lucide-react"
+import {
+  ArchiveX,
+  Building2,
+  ClipboardCheck,
+  Loader2,
+  MapPinned,
+  PackageSearch,
+  Search,
+  Store,
+  UserRound,
+  Wrench,
+  X,
+} from "lucide-react"
 
 type GlobalSearchResult = {
   id: string
-  type: "asset"
+  type: "asset" | "employee" | "supplier" | "company" | "branch" | "location" | "maintenance" | "audit" | "disposal"
+  typeLabel: string
   title: string
   subtitle: string
   href: string
-  assetTag: string
-  serialNumber: string | null
-  status: {
-    label: string
-    colorCode: string | null
-  }
-  meta: {
-    custodian: string | null
-    location: string
-    category: string
-  }
+  badge: { label: string; colorCode: string | null }
+  metadata: Array<{ label: string; value: string }>
 }
 
 export function GlobalSearch() {
@@ -177,7 +181,7 @@ export function GlobalSearch() {
 
                 return (
                   <button
-                    key={result.id}
+                    key={`${result.type}-${result.id}`}
                     type="button"
                     onMouseEnter={() => setSelectedIndex(index)}
                     onClick={() => openResult(result)}
@@ -187,35 +191,35 @@ export function GlobalSearch() {
                     ].join(" ")}
                   >
                     <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                      <PackageSearch className="h-4 w-4" />
+                      {getResultIcon(result.type)}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
                         <span className="truncate font-medium text-foreground">{result.title}</span>
+                        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                          {result.typeLabel}
+                        </span>
                         <span
-                          className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium"
+                          className={[
+                            "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+                            result.badge.label === result.typeLabel ? "hidden" : "",
+                          ].join(" ")}
                           style={
-                            result.status.colorCode
-                              ? { backgroundColor: `${result.status.colorCode}1A`, color: result.status.colorCode }
+                            result.badge.colorCode
+                              ? { backgroundColor: `${result.badge.colorCode}1A`, color: result.badge.colorCode }
                               : undefined
                           }
                         >
-                          {result.status.label}
+                          {result.badge.label}
                         </span>
                       </span>
                       <span className="mt-0.5 block truncate text-sm text-foreground">{result.subtitle}</span>
                       <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        {result.serialNumber ? <span>{t("serial")}: {result.serialNumber}</span> : null}
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {result.meta.location}
-                        </span>
-                        {result.meta.custodian ? (
-                          <span className="inline-flex items-center gap-1">
-                            <UserRound className="h-3 w-3" />
-                            {result.meta.custodian}
+                        {result.metadata.slice(0, 3).map((item) => (
+                          <span key={`${result.id}-${item.label}`} className="truncate">
+                            {item.label}: {item.value}
                           </span>
-                        ) : null}
+                        ))}
                       </span>
                     </span>
                   </button>
@@ -230,4 +234,15 @@ export function GlobalSearch() {
       ) : null}
     </div>
   )
+}
+
+function getResultIcon(type: GlobalSearchResult["type"]) {
+  if (type === "employee") return <UserRound className="h-4 w-4" />
+  if (type === "supplier") return <Store className="h-4 w-4" />
+  if (type === "company" || type === "branch") return <Building2 className="h-4 w-4" />
+  if (type === "location") return <MapPinned className="h-4 w-4" />
+  if (type === "maintenance") return <Wrench className="h-4 w-4" />
+  if (type === "audit") return <ClipboardCheck className="h-4 w-4" />
+  if (type === "disposal") return <ArchiveX className="h-4 w-4" />
+  return <PackageSearch className="h-4 w-4" />
 }
