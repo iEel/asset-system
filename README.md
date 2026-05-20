@@ -1,36 +1,114 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Asset Management System
 
-## Getting Started
+Enterprise asset management system for asset registration, custody, QR/label workflows, audit rounds, maintenance, disposal, reporting, RBAC, LDAP integration, and deployment behind Cloudflare Tunnel.
 
-First, run the development server:
+## Quick Links
 
-```bash
+| Document | Purpose |
+|---|---|
+| `DEVELOPER_HANDOFF.md` | Current implementation status, feature index, schema notes, and developer handoff details |
+| `DEPLOYMENT_UBUNTU_CLOUDFLARE.md` | Step-by-step Ubuntu + Nginx + Cloudflare Tunnel production deployment guide |
+| `AGENTS.md` | Local coding-agent rule: read Next.js 16 docs in `node_modules/next/dist/docs/` before changing Next.js routes/pages |
+| `System Requirement (2).md` | Original business/system requirement reference |
+| `Enterprise Web UI UX Requirements.md` | UI/UX requirements and enterprise design guidance |
+| `Tech Stack.md` | Stack decision reference |
+| `Implementation Plan.md` | Original staged implementation plan |
+
+## Stack
+
+- Next.js 16.2.4 App Router with standalone output
+- React 19, TypeScript 5, Tailwind CSS 4
+- SQL Server via Prisma 7 and `@prisma/adapter-mssql`
+- Auth.js / NextAuth credentials auth with RBAC
+- next-intl Thai/English routes
+- Excel/PDF exports, QR/barcode scanning, file uploads
+
+## Local Development
+
+```powershell
+npm install
+npx prisma generate
+npx prisma db push
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app uses `WEB_PORT` from `.env` through `scripts/next-with-env-port.mjs`. Default local URL:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+http://localhost:3000/th/login
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Default seeded admin account:
 
-## Learn More
+```text
+admin / admin123
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Environment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Create `.env` locally. Important keys:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```env
+WEB_PORT=3000
+AUTH_SECRET=replace-with-random-secret
+NEXTAUTH_SECRET=replace-with-same-value
+AUTH_URL=http://localhost:3000
+NEXTAUTH_URL=http://localhost:3000
+UPLOAD_DIR=./uploads
 
-## Deploy on Vercel
+DB_SERVER=192.168.110.106
+DB_INSTANCE=alpha
+DB_PORT=1433
+DB_TLS_SERVER_NAME=WIN-I284TKLAMMD
+DATABASE_URL="sqlserver://..."
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Production uses `/var/www/asset-system/env/asset-system.env`; see `DEPLOYMENT_UBUNTU_CLOUDFLARE.md`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Scripts
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start local Next.js development server using `WEB_PORT` |
+| `npm run build` | Production build |
+| `npm run start` | Start built app using `WEB_PORT` |
+| `npm run lint` | ESLint |
+| `npm run ldap:sync` | External/manual LDAP sync runner |
+| `npm run cleanup:test-data` | Guarded trial asset cleanup CLI; dry-run by default |
+
+## Verification
+
+Focused tests can be run with Node's test runner:
+
+```powershell
+node --test tests\asset-depreciation.test.ts
+node --test tests\design-system.test.ts
+```
+
+Before deployment or a larger release, run:
+
+```powershell
+npm run build
+```
+
+## Key Modules
+
+- Asset register: `/th/assets`
+- Asset create/edit: `/th/assets/new`
+- Scan/search and label tools: `/th/asset-management`
+- Audit rounds and scan: `/th/audit/rounds`
+- Maintenance: `/th/maintenance`
+- Disposal: `/th/disposal`
+- Reports: `/th/reports`
+- Admin settings, logs, RBAC, readiness, storage: `/th/admin`
+- Work Center: `/th/work-center`
+
+## Deployment
+
+Production deployment is documented in `DEPLOYMENT_UBUNTU_CLOUDFLARE.md`. The recommended layout keeps everything under `/var/www/asset-system` while separating:
+
+- `/var/www/asset-system/app`
+- `/var/www/asset-system/env`
+- `/var/www/asset-system/uploads`
+
+The public route should go through Cloudflare Tunnel to Nginx, then Nginx proxies to the local Next.js standalone server.
