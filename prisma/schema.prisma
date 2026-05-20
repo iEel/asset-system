@@ -108,6 +108,7 @@ model Employee {
   reportedMaintenanceTickets  MaintenanceTicket[] @relation("MaintenanceReportedBy")
   assignedMaintenanceTickets  MaintenanceTicket[] @relation("MaintenanceAssignedTo")
   inspectedMaintenanceTickets MaintenanceTicket[] @relation("MaintenanceInspectedBy")
+  assignedMaintenancePlans     MaintenancePlan[]   @relation("MaintenancePlanAssignedTo")
   assignedAuditFindings       AuditFinding[]      @relation("AuditFindingActionOwner")
   requestedDisposals          DisposalRequest[]   @relation("DisposalRequestedBy")
   approvedDisposals           DisposalRequest[]   @relation("DisposalApprover")
@@ -292,6 +293,7 @@ model Asset {
   movements             AssetMovement[]
   checkouts             AssetCheckout[]
   checkins              AssetCheckin[]
+  maintenancePlans      MaintenancePlan[]
   maintenanceTickets    MaintenanceTicket[]
   disposalRequests      DisposalRequest[]
   attachments           Attachment[]
@@ -650,6 +652,30 @@ model AuditScanHistory {
 // Maintenance / Repair
 // ============================================================
 
+model MaintenancePlan {
+  id              String    @id @default(uuid())
+  planNo          String    @unique @db.NVarChar(50)
+  assetId         String
+  asset           Asset     @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  title           String    @db.NVarChar(200)
+  frequency       String    @default("monthly") @db.NVarChar(30)
+  intervalDays    Int       @default(30)
+  nextDueDate     DateTime
+  lastGeneratedAt DateTime?
+  assignedToId    String?
+  assignedTo      Employee? @relation("MaintenancePlanAssignedTo", fields: [assignedToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vendorId        String?
+  vendor          Supplier? @relation(fields: [vendorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  notes           String?   @db.NVarChar(Max)
+  createdBy       String    @db.NVarChar(100)
+  updatedBy       String?   @db.NVarChar(100)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  isActive        Boolean   @default(true)
+
+  @@map("maintenance_plans")
+}
+
 model MaintenanceTicket {
   id            String    @id @default(uuid())
   repairNo      String    @unique @db.NVarChar(50)
@@ -742,6 +768,7 @@ model Supplier {
   updatedBy     String?  @db.NVarChar(100)
 
   assets             Asset[]
+  maintenancePlans   MaintenancePlan[]
   maintenanceTickets MaintenanceTicket[]
   purchaseDocuments  PurchaseDocument[]
 

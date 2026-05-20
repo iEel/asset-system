@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { maintenancePlanFrequencies } from "@/lib/preventive-maintenance"
 import { optionalText } from "@/lib/validations/shared"
 
 const optionalDate = z.preprocess(
@@ -40,6 +41,24 @@ export const maintenanceTicketSchema = z
   })
 
 export type MaintenanceTicketInput = z.infer<typeof maintenanceTicketSchema>
+
+const optionalIntervalDays = z.preprocess(
+  (value) => (value === "" || value == null ? undefined : value),
+  z.coerce.number().int().min(1).max(3650).optional()
+)
+
+export const maintenancePlanSchema = z.object({
+  assetId: z.string().trim().min(1),
+  title: z.string().trim().min(1).max(200),
+  frequency: z.enum(maintenancePlanFrequencies),
+  intervalDays: optionalIntervalDays,
+  nextDueDate: z.coerce.date(),
+  assignedToId: optionalText,
+  vendorId: optionalText,
+  notes: optionalText,
+})
+
+export type MaintenancePlanInput = z.infer<typeof maintenancePlanSchema>
 
 export const maintenanceTicketCloseSchema = z.object({
   laborCost: optionalDecimal,

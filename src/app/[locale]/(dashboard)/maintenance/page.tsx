@@ -1,21 +1,23 @@
 import Link from "next/link"
 import type React from "react"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, CheckCircle2, Clock, Download, Hourglass, Wrench } from "lucide-react"
+import { AlertTriangle, CalendarClock, CheckCircle2, Clock, Download, Hourglass, Wrench } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { getMaintenanceOptions } from "@/lib/maintenance-options"
 import { buildMaintenanceQueryString, buildMaintenanceWhere, parseMaintenanceListParams } from "@/lib/maintenance-query"
-import { formatCurrency, formatDateTime } from "@/lib/utils"
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { MaintenanceTicketForm } from "@/components/maintenance/maintenance-ticket-form"
+import { MaintenancePlanForm } from "@/components/maintenance/maintenance-plan-form"
 import { MaintenanceTicketCloseButton } from "@/components/maintenance/maintenance-ticket-close-button"
 import { MaintenanceTicketStatusButton } from "@/components/maintenance/maintenance-ticket-status-button"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceClosed, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { getMaintenancePlanDueState, summarizeMaintenancePlans } from "@/lib/preventive-maintenance"
 
 type MaintenancePageProps = {
   params: Promise<{ locale: string }>
@@ -36,7 +38,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
   const evidenceTicketIds = await getMaintenanceAttachmentTicketIds()
 
   const today = startOfToday(new Date())
-  const [tickets, options, summary] = await Promise.all([
+  const [tickets, options, summary, maintenancePlans] = await Promise.all([
     prisma.maintenanceTicket.findMany({
       where: buildMaintenanceWhere(listFilters, evidenceTicketIds),
       include: {
@@ -51,9 +53,11 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
     }),
     canCreate || canEdit ? getMaintenanceOptions() : Promise.resolve(null),
     getMaintenanceSummary(today),
+    getPreventiveMaintenancePlans(),
   ])
   const statuses = options?.statuses ?? []
   const statusLabels = getStatusLabels(t)
+  const planSummary = summarizeMaintenancePlans(maintenancePlans, today)
 
   return (
     <div className="space-y-6">
@@ -70,6 +74,63 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
           initialAssetId={filters.assetId}
         />
       ) : null}
+
+      <section className="space-y-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">{t("pmTitle")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("pmSubtitle")}</p>
+          </div>
+          <StatusBadge label={`${planSummary.total} ${t("pmSummaryTotal")}`} tone="info" />
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <MaintenanceMetric label={t("pmSummaryOverdue")} value={planSummary.overdue} detail={t("pmSummaryOverdueDetail")} tone="danger" icon={<AlertTriangle className="h-5 w-5" />} />
+          <MaintenanceMetric label={t("pmSummaryDueSoon")} value={planSummary.dueSoon} detail={t("pmSummaryDueSoonDetail")} tone="warning" icon={<CalendarClock className="h-5 w-5" />} />
+          <MaintenanceMetric label={t("pmSummaryUpcoming")} value={planSummary.upcoming} detail={t("pmSummaryUpcomingDetail")} tone="primary" icon={<Clock className="h-5 w-5" />} />
+        </div>
+        {canCreate && options ? (
+          <MaintenancePlanForm
+            assets={options.assets}
+            employees={options.employees}
+            suppliers={options.suppliers}
+            initialAssetId={filters.assetId}
+          />
+        ) : null}
+        <div className="overflow-hidden rounded-md border border-border">
+          {maintenancePlans.length === 0 ? (
+            <div className="p-4">
+              <ActionEmptyState title={t("pmEmptyTitle")} description={t("pmEmptyHelp")} />
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {maintenancePlans.slice(0, 8).map((plan) => {
+                const dueState = getMaintenancePlanDueState(plan.nextDueDate, today)
+                const dueTone = dueState === "overdue" ? "danger" : dueState === "due_soon" ? "warning" : "primary"
+                return (
+                  <div key={plan.id} className="grid gap-3 bg-background px-4 py-3 md:grid-cols-[minmax(220px,1fr)_minmax(180px,220px)_minmax(140px,180px)] md:items-center">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-foreground">{plan.title}</div>
+                      <div className="mt-1 truncate text-xs text-muted-foreground">
+                        {plan.planNo} · {plan.asset.assetTag} - {plan.asset.name}
+                      </div>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      <div>{t("pmNextDueDate")}: {formatDate(plan.nextDueDate)}</div>
+                      <div className="mt-1">
+                        {t("assignedTo")}: {plan.assignedTo ? `${plan.assignedTo.code} - ${plan.assignedTo.fullNameTh}` : t("unassigned")}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                      <StatusBadge label={t(`pmDueState.${dueState}`)} tone={dueTone} size="xs" />
+                      <StatusBadge label={t(`pmFrequencies.${plan.frequency}`)} tone="muted" size="xs" />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </section>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <MaintenanceMetric
@@ -375,6 +436,19 @@ async function getMaintenanceSummary(today: Date) {
     prisma.maintenanceTicket.count({ where: { isActive: true, repairStatus: "completed" } }),
   ])
   return { openWork, overdue, waiting, completedPendingClose }
+}
+
+async function getPreventiveMaintenancePlans() {
+  return prisma.maintenancePlan.findMany({
+    where: { isActive: true },
+    include: {
+      asset: { select: { assetTag: true, name: true } },
+      assignedTo: { select: { code: true, fullNameTh: true } },
+      vendor: { select: { code: true, name: true } },
+    },
+    orderBy: { nextDueDate: "asc" },
+    take: 20,
+  })
 }
 
 function startOfToday(now: Date) {
