@@ -2,6 +2,7 @@ import { z } from "zod"
 import { assetLabelLayouts, assetLabelSettingKeys, assetLabelTapeSizes, assetLabelTemplateTokens } from "@/lib/asset-label-template"
 import { depreciationPolicySettingKey, parseDepreciationPolicySetting } from "@/lib/asset-depreciation"
 import { assetQrPublicBaseUrlKey, normalizePublicQrBaseUrl } from "@/lib/asset-qr"
+import { isValidRetentionDays, retentionPolicySettingKeys } from "@/lib/retention-policy"
 import {
   checkinDocumentTemplateKey,
   checkoutDocumentTemplateKey,
@@ -44,6 +45,7 @@ const assetLabelSpacingKeys = new Set<string>([
 const assetLabelLayoutKeys = new Set<string>(assetLabelTapeSizes.map((size) => `asset_label_${size}_layout`))
 const operationDocumentTemplateKeys = new Set<string>([checkoutDocumentTemplateKey, checkinDocumentTemplateKey])
 const notificationRuleKeys = new Set<string>(notificationRuleSettingKeys)
+const retentionPolicyKeys = new Set<string>(retentionPolicySettingKeys)
 const schedulerModeKeys = new Set<string>(["ldap_sync_mode", pmAutoGenerationModeKey])
 const schedulerScheduleKeys = new Set<string>(["ldap_sync_schedule", pmAutoGenerationScheduleKey])
 const workflowApprovalBooleanKeys = new Set<string>(
@@ -183,6 +185,14 @@ export const systemSettingsUpdateSchema = z.object({
           path: ["settings", index, "value"],
         })
       }
+    }
+
+    if (retentionPolicyKeys.has(setting.key) && !isValidRetentionDays(setting.value)) {
+      context.addIssue({
+        code: "custom",
+        message: "Retention policy days must be an integer between 1 and 3650",
+        path: ["settings", index, "value"],
+      })
     }
 
     if (setting.key === pmAutoGenerationEnabledKey && setting.value !== "true" && setting.value !== "false") {

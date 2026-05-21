@@ -147,6 +147,7 @@ NOTIFICATION_DIGEST_WEBHOOK_URL=
 
 BACKUP_STATUS=unknown
 BACKUP_LAST_RUN_AT=
+BACKUP_LAST_RESTORE_TEST_AT=
 
 DB_SERVER=192.168.110.106
 DB_INSTANCE=alpha
@@ -206,7 +207,7 @@ sudo chmod 640 /var/www/asset-system/env/asset-system.env
 - `MAINTENANCE_PM_GENERATION_TOKEN` และ `LDAP_SYNC_TOKEN` ใช้สำหรับ systemd scheduler heartbeat ควรเป็น random token ยาว ๆ และไม่ซ้ำกับ secret อื่น
 - `NOTIFICATION_DIGEST_TOKEN` ใช้สำหรับรัน daily notification digest ผ่าน script/API แยกจาก scheduler heartbeat
 - `NOTIFICATION_DIGEST_WEBHOOK_URL` เป็น optional generic webhook สำหรับส่ง digest ออกช่องทางภายนอก เช่น gateway ของ Teams/LINE; ถ้าเว้นว่าง ระบบยังสร้าง in-app notification ได้ตามปกติ
-- `BACKUP_STATUS` และ `BACKUP_LAST_RUN_AT` เป็น optional readiness signal สำหรับหน้า `/th/admin/readiness` เท่านั้น ไม่ได้ทำ backup ให้เอง ถ้ายังไม่มีระบบรายงานสถานะ backup ให้ปล่อย `unknown`/ว่างไว้
+- `BACKUP_STATUS`, `BACKUP_LAST_RUN_AT`, และ `BACKUP_LAST_RESTORE_TEST_AT` เป็น optional readiness signal สำหรับหน้า `/th/admin/readiness` เท่านั้น ไม่ได้ทำ backup/restore ให้เอง ถ้ายังไม่มีระบบรายงานสถานะ backup ให้ปล่อย `unknown`/ว่างไว้ และวางแผนทดสอบ restore ก่อนเปิดใช้งานจริง
 
 ---
 
@@ -777,9 +778,10 @@ SQL Server backup ให้ใช้ SQL Server Management Studio, maintenance p
 ```env
 BACKUP_STATUS=success
 BACKUP_LAST_RUN_AT=2026-05-20T01:00:00.000Z
+BACKUP_LAST_RESTORE_TEST_AT=2026-05-21T01:00:00.000Z
 ```
 
-ค่าที่รองรับสำหรับ `BACKUP_STATUS` คือ `success`, `failed`, `missing`, หรือ `unknown` ถ้าแก้ env file หลัง service รันอยู่ ให้ restart `asset-system.service` เพื่อให้ process อ่านค่าใหม่
+ค่าที่รองรับสำหรับ `BACKUP_STATUS` คือ `success`, `failed`, `missing`, หรือ `unknown`; `BACKUP_LAST_RESTORE_TEST_AT` ควรเป็น ISO timestamp ของวันที่ทดสอบ restore ล่าสุด ถ้าแก้ env file หลัง service รันอยู่ ให้ restart `asset-system.service` เพื่อให้ process อ่านค่าใหม่
 
 ---
 
@@ -893,7 +895,7 @@ systemctl list-timers asset-system-notification-digest.timer
 - [ ] `LDAP_SYNC_TOKEN` เป็น random token จริงถ้าเปิด LDAP scheduled sync
 - [ ] `NOTIFICATION_DIGEST_TOKEN` เป็น random token จริง เพื่อให้ Notification Digest พร้อมใช้งานและหน้า `/th/admin/readiness` ผ่านครบ 3 scheduler tokens
 - [ ] `NOTIFICATION_DIGEST_WEBHOOK_URL` ตั้งค่าแล้วถ้าต้องการส่ง digest ออกช่องทางภายนอก
-- [ ] `BACKUP_STATUS` และ `BACKUP_LAST_RUN_AT` ตั้งตามระบบ backup หรือปล่อยเป็น `unknown` อย่างตั้งใจ
+- [ ] `BACKUP_STATUS`, `BACKUP_LAST_RUN_AT`, และ `BACKUP_LAST_RESTORE_TEST_AT` ตั้งตามระบบ backup/restore drill หรือปล่อยเป็น `unknown`/ว่างอย่างตั้งใจ
 - [ ] SQL Server connection ใช้ production user ที่สิทธิ์เหมาะสม
 - [ ] SQL Server มี backup schedule
 - [ ] `npm run build` ผ่านบน Ubuntu

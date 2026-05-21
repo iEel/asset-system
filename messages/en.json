@@ -2249,6 +2249,12 @@
     "check_backupStatus_title": "Backup status",
     "check_backupStatus_description": "Checks the latest backup status from environment values before go-live.",
     "check_backupStatus_action": "Review Deploy Config",
+    "check_backupRestoreDrill_title": "Latest restore drill",
+    "check_backupRestoreDrill_description": "Checks that a backup restore test has been recorded through BACKUP_LAST_RESTORE_TEST_AT.",
+    "check_backupRestoreDrill_action": "Review Deploy Config",
+    "check_retentionPolicy_title": "Retention policy",
+    "check_retentionPolicy_description": "Checks attachment, Audit Trail, and orphan-file retention days are valid 1-3650 day values.",
+    "check_retentionPolicy_action": "Open Settings",
     "check_pwaAssets_title": "PWA assets",
     "check_pwaAssets_description": "Checks manifest, icons, service worker, and offline fallback files before users install the app on mobile.",
     "check_pwaAssets_action": "Review Deploy Config"

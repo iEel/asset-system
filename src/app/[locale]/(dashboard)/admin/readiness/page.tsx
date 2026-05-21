@@ -62,6 +62,7 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
       ].filter(Boolean),
       backupStatus: process.env.BACKUP_STATUS,
       backupLastRunAt: process.env.BACKUP_LAST_RUN_AT,
+      backupLastRestoreTestAt: process.env.BACKUP_LAST_RESTORE_TEST_AT,
       pwaAssets: getPwaAssetReadiness(),
     },
     masterDataCounts,

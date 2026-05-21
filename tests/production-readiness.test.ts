@@ -9,6 +9,9 @@ const baseSettings = new Map([
   ["notification_audit_action_due_soon_days", "7"],
   ["notification_warranty_expiry_days", "30"],
   ["notification_license_expiry_days", "30"],
+  ["retention_attachment_days", "1095"],
+  ["retention_audit_log_days", "2555"],
+  ["retention_orphan_file_days", "90"],
 ])
 
 const readyApprovers = [
@@ -40,6 +43,7 @@ test("marks core production readiness checks as pass when settings and coverage 
       schedulerLastRunStatuses: ["success", "success"],
       backupStatus: "success",
       backupLastRunAt: "2026-05-20T01:00:00.000Z",
+      backupLastRestoreTestAt: "2026-05-21T01:00:00.000Z",
       pwaAssets: {
         available: 8,
         total: 8,
@@ -56,7 +60,9 @@ test("marks core production readiness checks as pass when settings and coverage 
     },
   })
 
-  assert.deepEqual(checks.map((check) => check.status), ["pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass"])
+  assert.deepEqual(checks.map((check) => check.status), ["pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass"])
+  assert.equal(checks.find((check) => check.key === "backupRestoreDrill")?.value, "2026-05-21T01:00:00.000Z")
+  assert.equal(checks.find((check) => check.key === "retentionPolicy")?.value, "3/3 configured")
   assert.equal(checks.find((check) => check.key === "pwaAssets")?.value, "8/8 assets")
 })
 
@@ -66,6 +72,7 @@ test("surfaces risky production readiness states", () => {
       ...baseSettings,
       ["asset_qr_public_base_url", "http://localhost:3000"],
       ["notification_license_expiry_days", "500"],
+      ["retention_orphan_file_days", "0"],
     ]),
     approverMatrix: [
       { key: "disposal", status: "missing", approverCount: 0 },
@@ -91,6 +98,7 @@ test("surfaces risky production readiness states", () => {
       schedulerLastRunStatuses: ["failed", "success"],
       backupStatus: "missing",
       backupLastRunAt: "",
+      backupLastRestoreTestAt: "",
       pwaAssets: {
         available: 3,
         total: 8,
@@ -119,5 +127,7 @@ test("surfaces risky production readiness states", () => {
   assert.equal(checks.find((check) => check.key === "schedulerTokens")?.status, "fail")
   assert.equal(checks.find((check) => check.key === "schedulerRuns")?.status, "fail")
   assert.equal(checks.find((check) => check.key === "backupStatus")?.status, "fail")
+  assert.equal(checks.find((check) => check.key === "backupRestoreDrill")?.status, "warning")
+  assert.equal(checks.find((check) => check.key === "retentionPolicy")?.status, "fail")
   assert.equal(checks.find((check) => check.key === "pwaAssets")?.status, "warning")
 })

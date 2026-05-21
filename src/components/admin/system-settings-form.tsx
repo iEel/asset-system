@@ -41,6 +41,7 @@ import {
   pmAutoGenerationScheduleKey,
   pmAutoGenerationSettingKeys,
   pmAutoGenerationStatusSettingKeys,
+  retentionPolicySettingKeys,
 } from "@/lib/system-setting-defaults"
 import { operationDocumentTemplateTokens, renderOperationDocumentTemplate, validateOperationDocumentTemplate } from "@/lib/operation-document-number"
 import {
@@ -402,6 +403,7 @@ const friendlySettingKeys = new Set([
   ...assetLabelSettingKeys,
   ...operationDocumentSettingKeys,
   ...notificationRuleSettingKeys,
+  ...retentionPolicySettingKeys,
   ...workflowApprovalSettingKeys,
   ...pmAutoGenerationSettingKeys,
   ...pmAutoGenerationStatusSettingKeys,

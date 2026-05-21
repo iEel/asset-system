@@ -1,3 +1,5 @@
+import { summarizeRetentionPolicy } from "./retention-policy.ts"
+
 export type ProductionReadinessStatus = "pass" | "warning" | "fail"
 export type ProductionReadinessCheckKey =
   | "publicQrBaseUrl"
@@ -12,6 +14,8 @@ export type ProductionReadinessCheckKey =
   | "schedulerTokens"
   | "schedulerRuns"
   | "backupStatus"
+  | "backupRestoreDrill"
+  | "retentionPolicy"
   | "pwaAssets"
 
 export type ProductionReadinessApproverSummary = {
@@ -56,6 +60,7 @@ export type ProductionReadinessDeploymentInput = {
   schedulerLastRunStatuses?: string[]
   backupStatus?: string
   backupLastRunAt?: string
+  backupLastRestoreTestAt?: string
   pwaAssets?: {
     available: number
     total: number
@@ -92,6 +97,7 @@ export function buildProductionReadinessChecks(input: ProductionReadinessInput):
   const missingApprovers = input.approverMatrix.filter((item) => item.status === "missing").length
   const thinApprovers = input.approverMatrix.filter((item) => item.status === "thin").length
   const readyMasterDataCount = masterDataKeys.filter((key) => input.masterDataCounts[key] > 0).length
+  const retentionPolicy = summarizeRetentionPolicy(input.settings)
 
   return [
     {
@@ -165,6 +171,18 @@ export function buildProductionReadinessChecks(input: ProductionReadinessInput):
       status: getBackupStatus(input.deployment),
       value: getBackupValue(input.deployment),
       href: "/admin/readiness",
+    },
+    {
+      key: "backupRestoreDrill",
+      status: getBackupRestoreDrillStatus(input.deployment),
+      value: getBackupRestoreDrillValue(input.deployment),
+      href: "/admin/readiness",
+    },
+    {
+      key: "retentionPolicy",
+      status: retentionPolicy.invalidKeys.length > 0 ? "fail" : "pass",
+      value: `${retentionPolicy.configured}/${retentionPolicy.total} configured`,
+      href: "/admin/settings",
     },
     {
       key: "pwaAssets",
@@ -302,6 +320,16 @@ function getBackupValue(deployment?: ProductionReadinessDeploymentInput) {
   const status = deployment?.backupStatus?.trim() || "unknown"
   const lastRunAt = deployment?.backupLastRunAt?.trim() || "-"
   return `${status} / ${lastRunAt}`
+}
+
+function getBackupRestoreDrillStatus(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessStatus {
+  const lastRestoreTestAt = deployment?.backupLastRestoreTestAt?.trim() ?? ""
+  if (!lastRestoreTestAt) return "warning"
+  return Number.isNaN(Date.parse(lastRestoreTestAt)) ? "fail" : "pass"
+}
+
+function getBackupRestoreDrillValue(deployment?: ProductionReadinessDeploymentInput) {
+  return deployment?.backupLastRestoreTestAt?.trim() || "-"
 }
 
 function getPwaAssetsStatus(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessStatus {

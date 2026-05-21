@@ -2249,6 +2249,12 @@
     "check_backupStatus_title": "Backup status",
     "check_backupStatus_description": "ตรวจสถานะ backup ล่าสุดจาก environment เพื่อเตือนก่อนเปิดใช้งานจริง",
     "check_backupStatus_action": "ดูค่าติดตั้ง",
+    "check_backupRestoreDrill_title": "Restore drill ล่าสุด",
+    "check_backupRestoreDrill_description": "ตรวจว่าเคยทดสอบ restore จาก backup แล้ว โดยอ่านจาก BACKUP_LAST_RESTORE_TEST_AT",
+    "check_backupRestoreDrill_action": "ดูค่าติดตั้ง",
+    "check_retentionPolicy_title": "Retention policy",
+    "check_retentionPolicy_description": "ตรวจจำนวนวันเก็บไฟล์แนบ Audit Trail และไฟล์ orphan ว่าตั้งเป็นเลข 1-3650 วัน",
+    "check_retentionPolicy_action": "แก้ที่ตั้งค่า",
     "check_pwaAssets_title": "PWA assets",
     "check_pwaAssets_description": "ตรวจ manifest, icon, service worker และ offline fallback ว่ามีครบก่อนให้ผู้ใช้ติดตั้งลงมือถือ",
     "check_pwaAssets_action": "ดูค่าติดตั้ง"

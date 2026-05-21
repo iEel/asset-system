@@ -4,6 +4,12 @@ import { assetQrPublicBaseUrlKey } from "@/lib/asset-qr"
 import { assetDataQualityRulesKey, defaultAssetDataQualityRules } from "@/lib/data-quality-rules"
 import { defaultLdapSyncMaxScheduledDeactivations, ldapSyncMaxScheduledDeactivationsKey } from "@/lib/ldap-sync-safety"
 import {
+  retentionAttachmentDaysKey,
+  retentionAuditLogDaysKey,
+  retentionOrphanFileDaysKey,
+  retentionPolicySettingKeys,
+} from "@/lib/retention-policy"
+import {
   workflowApprovalAuditCloseRequiredKey,
   workflowApprovalDisposalRequiredKey,
   workflowApprovalMaintenanceCloseRequiredKey,
@@ -132,6 +138,9 @@ export const systemSettingDefaults = [
   { key: "notification_audit_action_due_soon_days", value: "7", description: "จำนวนวันล่วงหน้าสำหรับแจ้งเตือน action plan จากการตรวจนับที่ใกล้ครบกำหนด" },
   { key: "notification_warranty_expiry_days", value: "30", description: "จำนวนวันล่วงหน้าสำหรับแจ้งเตือนประกันทรัพย์สินใกล้หมดอายุ" },
   { key: "notification_license_expiry_days", value: "30", description: "จำนวนวันล่วงหน้าสำหรับแจ้งเตือน Software/License ใกล้หมดอายุ" },
+  { key: retentionAttachmentDaysKey, value: "1095", description: "จำนวนวันที่เก็บไฟล์แนบ/รูปหลักฐานก่อนพิจารณา archive" },
+  { key: retentionAuditLogDaysKey, value: "2555", description: "จำนวนวันที่เก็บ Audit Trail ก่อนพิจารณา archive ตามนโยบายองค์กร" },
+  { key: retentionOrphanFileDaysKey, value: "90", description: "จำนวนวันที่เก็บไฟล์ orphan จาก storage governance ก่อนพิจารณา archive/delete" },
   { key: pmAutoGenerationEnabledKey, value: "false", description: "เปิดใช้งานการสร้างใบงาน PM อัตโนมัติจากแผนที่ถึงกำหนด" },
   { key: pmAutoGenerationModeKey, value: "manual", description: "โหมด PM auto-generation: manual หรือ scheduled" },
   { key: pmAutoGenerationScheduleKey, value: "5 6 * * *", description: "Cron schedule สำหรับ PM auto-generation โดย systemd heartbeat จะอ้างอิงค่านี้" },
@@ -211,3 +220,4 @@ export const systemSettingDefaults = [
 export const knownSystemSettingKeys = new Set(systemSettingDefaults.map((setting) => setting.key))
 export { assetLabelSettingKeys }
 export { workflowApprovalSettingKeys }
+export { retentionPolicySettingKeys }
