@@ -131,6 +131,7 @@ export function AuditScanForm({
   const [outOfScopeAsset, setOutOfScopeAsset] = useState<OutOfScopeAsset | null>(null)
   const [applyCorrections, setApplyCorrections] = useState(false)
   const [offlineQueue, setOfflineQueue] = useState<QueuedAuditScan[]>([])
+  const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine))
   const qrReaderRef = useRef<Html5QrcodeInstance | null>(null)
   const offlineStorageRef = useRef<AuditOfflineQueueStorage | null>(null)
   const lastDecodedRef = useRef<{ value: string; at: number } | null>(null)
@@ -170,6 +171,15 @@ export function AuditScanForm({
   const selectedAuditPhotoChecklist = selectedItem?.photoChecklist ?? []
   const effectiveAuditPhotoLabel =
     selectedAuditPhotoChecklist.find((item) => item === auditPhotoLabel) ?? selectedAuditPhotoChecklist[0] ?? ""
+  const failedOfflineQueueCount = offlineQueue.filter((item) => item.syncStatus === "failed" || Boolean(item.lastSyncError)).length
+  const queuedOfflinePhotoCount = offlineQueue.reduce((total, item) => total + (item.photos?.length ?? 0), 0)
+  const lastOfflineQueueError = [...offlineQueue].reverse().find((item) => item.lastSyncError)?.lastSyncError ?? ""
+  const offlineQueueHelp =
+    !online
+      ? t("offlineQueueOfflineHelp")
+      : failedOfflineQueueCount > 0
+        ? t("offlineQueueFailedHelp", { count: failedOfflineQueueCount })
+        : t("offlineQueueHelp")
 
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -212,6 +222,20 @@ export function AuditScanForm({
   useEffect(() => {
     const timer = window.setTimeout(() => void refreshOfflineQueue(), 0)
     return () => window.clearTimeout(timer)
+  }, [refreshOfflineQueue])
+
+  useEffect(() => {
+    function updateNetworkState() {
+      setOnline(navigator.onLine)
+      if (navigator.onLine) void refreshOfflineQueue()
+    }
+
+    window.addEventListener("online", updateNetworkState)
+    window.addEventListener("offline", updateNetworkState)
+    return () => {
+      window.removeEventListener("online", updateNetworkState)
+      window.removeEventListener("offline", updateNetworkState)
+    }
   }, [refreshOfflineQueue])
 
   function getAuditOfflineStorage() {
@@ -587,19 +611,36 @@ export function AuditScanForm({
       </div>
 
       {offlineQueue.length > 0 ? (
-        <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 p-3 shadow-sm">
+        <div className={`mb-4 rounded-lg border p-3 shadow-sm ${online ? "border-warning/30 bg-warning/10" : "border-danger/30 bg-danger/10"}`}>
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex items-start gap-3">
-              <WifiOff className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
-              <div>
-                <div className="text-sm font-semibold text-foreground">{t("offlineQueueTitle", { count: offlineQueue.length })}</div>
-                <div className="mt-1 text-xs text-muted-foreground">{t("offlineQueueHelp")}</div>
+              <WifiOff className={`mt-0.5 h-5 w-5 shrink-0 ${online ? "text-warning" : "text-danger"}`} />
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="text-sm font-semibold text-foreground">{t("offlineQueueTitle", { count: offlineQueue.length })}</div>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${online ? "bg-success/10 text-success" : "bg-danger/10 text-danger"}`}>
+                    {online ? t("networkOnline") : t("networkOffline")}
+                  </span>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">{offlineQueueHelp}</div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {t("offlineQueueDetails", {
+                    photos: queuedOfflinePhotoCount,
+                    failed: failedOfflineQueueCount,
+                  })}
+                </div>
+                {lastOfflineQueueError ? (
+                  <div className="mt-2 break-words rounded-md border border-danger/30 bg-danger/10 px-2 py-1 text-xs text-danger">
+                    {t("offlineQueueLastError", { error: lastOfflineQueueError })}
+                  </div>
+                ) : null}
               </div>
             </div>
             <button
               type="button"
               onClick={retryOfflineQueue}
-              disabled={saving}
+              disabled={saving || !online}
+              title={online ? t("offlineRetry") : t("networkOffline")}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-medium text-white transition-colors hover:bg-warning/90 disabled:opacity-50"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
