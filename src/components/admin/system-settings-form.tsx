@@ -50,7 +50,14 @@ import {
   shouldShowPmAutomationSchedule,
   type PmAutomationUiMode,
 } from "@/lib/pm-automation-settings"
+import {
+  isValidRetentionDays,
+  retentionAttachmentDaysKey,
+  retentionAuditLogDaysKey,
+  retentionOrphanFileDaysKey,
+} from "@/lib/retention-policy"
 import { isSupportedCronExpression } from "@/lib/scheduled-job"
+import { getSettingsTabOrder, type SettingsTabId } from "@/lib/settings-information-architecture"
 import {
   parseWorkflowApprovalPolicy,
   workflowApprovalAuditCloseRequiredKey,
@@ -86,6 +93,7 @@ type SystemSettingsFormProps = {
     tabNotifications: string
     tabWorkflowApproval: string
     tabAutomation: string
+    tabGovernance: string
     tabLdapLogin: string
     tabLdapSync: string
     tabAdvanced: string
@@ -98,6 +106,7 @@ type SystemSettingsFormProps = {
     overviewNotifications: string
     overviewApproval: string
     overviewAutomation: string
+    overviewGovernance: string
     overviewLdapLogin: string
     overviewLdapSync: string
     overviewAdvanced: string
@@ -230,6 +239,16 @@ type SystemSettingsFormProps = {
     pmAutoGenerationEvery6Hours: string
     pmAutoGenerationWeekday605: string
     pmAutoGenerationMonday605: string
+    governanceSettings: string
+    governanceSettingsDescription: string
+    retentionPolicy: string
+    retentionPolicyDescription: string
+    retentionAttachmentDays: string
+    retentionAuditLogDays: string
+    retentionOrphanFileDays: string
+    retentionDaysHelp: string
+    openStorageGovernance: string
+    invalidRetentionPolicy: string
     advancedSettings: string
     advancedSettingsDescription: string
     ldapSettings: string
@@ -347,18 +366,6 @@ type LdapDeactivationImpact = {
     name: string
   }>
 }
-
-type SettingsTabId =
-  | "asset-numbering"
-  | "label-template"
-  | "documents"
-  | "organization"
-  | "notifications"
-  | "workflow-approval"
-  | "automation"
-  | "ldap-login"
-  | "ldap-sync"
-  | "advanced"
 
 const assetTagFormatTokens = [
   "companyCode",
@@ -574,6 +581,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     const days = Number(getValue(key))
     return !Number.isInteger(days) || days < 0 || days > 365
   })
+  const hasInvalidRetentionPolicy = retentionPolicySettingKeys.some((key) => !isValidRetentionDays(getValue(key)))
   const depreciationPolicyParse = parseDepreciationPolicySetting(getValue(depreciationPolicySettingKey))
   const hasInvalidDepreciationPolicy = !depreciationPolicyParse.isValid
   const workflowApprovalToggleKeys = workflowApprovalSettingKeys.filter((key) => key !== workflowApprovalMinApproversKey && key !== workflowApprovalSlaDaysKey)
@@ -628,18 +636,20 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     },
   ]
   const hasInvalidSchedulerSchedule = !isSupportedCronExpression(syncSchedule) || (showPmAutomationSchedule && !isSupportedCronExpression(pmSchedule))
-  const tabs: Array<{ id: SettingsTabId; label: string }> = [
-    { id: "asset-numbering", label: labels.tabAssetNumbering },
-    { id: "label-template", label: labels.tabLabelTemplate },
-    { id: "documents", label: labels.tabDocuments },
-    { id: "organization", label: labels.tabOrganization },
-    { id: "notifications", label: labels.tabNotifications },
-    { id: "workflow-approval", label: labels.tabWorkflowApproval },
-    { id: "automation", label: labels.tabAutomation },
-    { id: "ldap-login", label: labels.tabLdapLogin },
-    { id: "ldap-sync", label: labels.tabLdapSync },
-    { id: "advanced", label: labels.tabAdvanced },
-  ]
+  const tabLabels: Record<SettingsTabId, string> = {
+    "asset-numbering": labels.tabAssetNumbering,
+    "label-template": labels.tabLabelTemplate,
+    documents: labels.tabDocuments,
+    organization: labels.tabOrganization,
+    notifications: labels.tabNotifications,
+    "workflow-approval": labels.tabWorkflowApproval,
+    automation: labels.tabAutomation,
+    governance: labels.tabGovernance,
+    "ldap-login": labels.tabLdapLogin,
+    "ldap-sync": labels.tabLdapSync,
+    advanced: labels.tabAdvanced,
+  }
+  const tabs = getSettingsTabOrder().map((id) => ({ id, label: tabLabels[id] }))
   const overviewCards = [
     {
       label: labels.overviewAssetTag,
@@ -684,6 +694,11 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
           ? labels.pmAutoGenerationManual
           : labels.disabled,
       tone: pmAutomationUiMode === "scheduled" ? "green" : pmAutomationUiMode === "manual" ? "blue" : "slate",
+    },
+    {
+      label: labels.overviewGovernance,
+      value: `${getValue(retentionAttachmentDaysKey) || "-"}d / ${getValue(retentionAuditLogDaysKey) || "-"}d / ${getValue(retentionOrphanFileDaysKey) || "-"}d`,
+      tone: hasInvalidRetentionPolicy ? "rose" : "green",
     },
     {
       label: labels.overviewLdapLogin,
@@ -734,6 +749,10 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
     }
     if (hasInvalidNotificationRule) {
       toast.error(labels.invalidNotificationRule)
+      return
+    }
+    if (hasInvalidRetentionPolicy) {
+      toast.error(labels.invalidRetentionPolicy)
       return
     }
     if (hasInvalidWorkflowApproval) {
@@ -1397,6 +1416,65 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
             )}
           </div>
           {hasInvalidSchedulerSchedule ? <ValidationMessage message={labels.invalidSchedulerSchedule} /> : null}
+        </div>
+      </div>
+      ) : null}
+
+      {activeTab === "governance" ? (
+      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <SectionHeader title={labels.governanceSettings} description={labels.governanceSettingsDescription} />
+        <div className="space-y-4 px-4 py-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="text-base font-semibold text-foreground">{labels.retentionPolicy}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{labels.retentionPolicyDescription}</p>
+            </div>
+            <a
+              href={`/${locale}/admin/storage`}
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:w-fit"
+            >
+              {labels.openStorageGovernance}
+            </a>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Field label={labels.retentionAttachmentDays} htmlFor="retention-attachment-days">
+              <input
+                id="retention-attachment-days"
+                type="number"
+                min={1}
+                max={3650}
+                value={getValue(retentionAttachmentDaysKey)}
+                onChange={(event) => setValue(retentionAttachmentDaysKey, event.target.value)}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </Field>
+            <Field label={labels.retentionAuditLogDays} htmlFor="retention-audit-log-days">
+              <input
+                id="retention-audit-log-days"
+                type="number"
+                min={1}
+                max={3650}
+                value={getValue(retentionAuditLogDaysKey)}
+                onChange={(event) => setValue(retentionAuditLogDaysKey, event.target.value)}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </Field>
+            <Field label={labels.retentionOrphanFileDays} htmlFor="retention-orphan-file-days">
+              <input
+                id="retention-orphan-file-days"
+                type="number"
+                min={1}
+                max={3650}
+                value={getValue(retentionOrphanFileDaysKey)}
+                onChange={(event) => setValue(retentionOrphanFileDaysKey, event.target.value)}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </Field>
+          </div>
+          <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+            {labels.retentionDaysHelp}
+          </p>
+          {hasInvalidRetentionPolicy ? <ValidationMessage message={labels.invalidRetentionPolicy} /> : null}
         </div>
       </div>
       ) : null}
