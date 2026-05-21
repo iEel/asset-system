@@ -16,6 +16,7 @@ import {
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { GlobalSearch } from "@/components/layout/global-search"
+import { PwaInstallPrompt } from "@/components/pwa/pwa-install-prompt"
 
 type NotificationItem = {
   key: string
@@ -104,6 +105,8 @@ export function Topbar({
           <ScanLine className="h-4 w-4" />
           <span className="hidden xl:inline">{tAssetTools("globalScanShortcut")}</span>
         </Link>
+
+        <PwaInstallPrompt />
 
         {/* Notifications */}
         <div className="relative shrink-0">

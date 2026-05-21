@@ -92,6 +92,14 @@
     "deliveredDigestSubtitle": "รายการแจ้งเตือนที่ระบบส่งแบบสรุปรายวัน เพื่อให้ผู้ใช้ย้อนดูสิ่งที่ถูกแจ้งไปแล้วได้",
     "deliveredDigestEmpty": "ยังไม่มี digest ที่ถูกส่งถึงผู้ใช้นี้"
   },
+  "pwaInstall": {
+    "title": "ติดตั้ง Asset System",
+    "install": "ติดตั้งแอป",
+    "installed": "ติดตั้งแล้ว",
+    "iosTitle": "เพิ่มลงหน้าจอหลัก",
+    "iosHint": "บน iPhone/iPad ให้ใช้เมนู Share ของ Safari เพื่อเพิ่ม Asset System ลงหน้าจอหลัก",
+    "iosSteps": "แตะ Share แล้วเลือก Add to Home Screen"
+  },
   "nav": {
     "dashboard": "แดชบอร์ด",
     "workCenter": "ศูนย์งานค้าง",
