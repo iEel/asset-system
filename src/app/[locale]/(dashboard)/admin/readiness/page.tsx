@@ -9,6 +9,7 @@ import { buildApprovalPermissionMatrix } from "@/lib/approval-permission-matrix"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { buildProductionReadinessChecks, summarizeProductionReadiness, type ProductionReadinessCheck } from "@/lib/production-readiness"
+import { getResponsiveActionRowClasses, getSafeActionLinkClasses } from "@/lib/design-system"
 import {
   ldapSyncLastStatusKey,
   pmAutoGenerationLastStatusKey,
@@ -182,13 +183,16 @@ function ReadinessCheckCard({
           <div className="text-xs font-medium text-muted-foreground">{labels.value}</div>
           <div className="mt-1 break-all font-mono text-xs text-foreground">{check.value}</div>
         </div>
-        <Link
-          href={`/${locale}${check.href}`}
-          className="inline-flex h-9 w-fit items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent"
-        >
-          {labels.action}
-          <ArrowRight className="h-4 w-4" />
-        </Link>
+        <div className={getResponsiveActionRowClasses()}>
+          <Link
+            href={`/${locale}${check.href}`}
+            className={getSafeActionLinkClasses("secondary")}
+            aria-label={`${labels.action}: ${labels.title}`}
+          >
+            {labels.action}
+            <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+          </Link>
+        </div>
       </div>
     </article>
   )

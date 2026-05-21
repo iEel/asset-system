@@ -3,6 +3,8 @@ import test from "node:test"
 
 import {
   getActionButtonClasses,
+  getResponsiveActionRowClasses,
+  getSafeActionLinkClasses,
   getEmptyStateClasses,
   getFieldControlClasses,
   getMetricCardToneClasses,
@@ -27,6 +29,9 @@ test("returns shared panel, form control, and action button classes", () => {
   assert.match(getFieldControlClasses(), /focus:border-primary/)
   assert.match(getActionButtonClasses("primary"), /bg-primary/)
   assert.match(getActionButtonClasses("secondary", "sm"), /h-8/)
+  assert.match(getSafeActionLinkClasses("primary"), /min-h-11/)
+  assert.match(getSafeActionLinkClasses("secondary"), /focus-visible:ring-2/)
+  assert.match(getResponsiveActionRowClasses(), /flex-col/)
   assert.match(getTableShellClasses(), /overflow-hidden/)
   assert.match(getEmptyStateClasses(), /text-center/)
 })

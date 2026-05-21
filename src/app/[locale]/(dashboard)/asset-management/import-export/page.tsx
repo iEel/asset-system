@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { buildAssetImportHistory, type AssetImportHistoryItem } from "@/lib/asset-import-history"
 import { AssetImportPreviewPanel } from "@/components/assets/asset-import-preview-panel"
+import { getResponsiveActionRowClasses, getSafeActionLinkClasses } from "@/lib/design-system"
 import { formatDateTime } from "@/lib/utils"
 
 type AssetImportExportPageProps = {
@@ -115,9 +116,11 @@ export default async function AssetImportExportPage({ params }: AssetImportExpor
         }}
       />
 
-      <Link href={`/${locale}/assets`} className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent">
-        {tCommon("back")}
-      </Link>
+      <div className={getResponsiveActionRowClasses()}>
+        <Link href={`/${locale}/assets`} className={getSafeActionLinkClasses("secondary")}>
+          {tCommon("back")}
+        </Link>
+      </div>
     </div>
   )
 }
@@ -238,7 +241,7 @@ function ActionLink({
   description: string
 }) {
   return (
-    <a href={href} className="rounded-lg border border-border bg-surface p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5">
+    <a href={href} className="rounded-lg border border-border bg-surface p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
       <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
         {icon}
       </span>

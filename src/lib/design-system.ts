@@ -49,3 +49,17 @@ export function getActionButtonClasses(variant: UiButtonVariant = "secondary", s
   }[variant]
   return `inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${sizeClass} ${variantClass}`
 }
+
+export function getSafeActionLinkClasses(variant: Extract<UiButtonVariant, "primary" | "secondary" | "ghost"> = "secondary") {
+  const variantClass = {
+    primary: "bg-primary text-white hover:bg-primary/90",
+    secondary: "border border-border bg-surface text-foreground hover:bg-accent",
+    ghost: "text-foreground hover:bg-accent",
+  }[variant]
+
+  return `inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-center text-sm font-medium leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:w-fit ${variantClass}`
+}
+
+export function getResponsiveActionRowClasses() {
+  return "flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
+}
