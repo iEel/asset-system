@@ -1,6 +1,6 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
-import { getTranslations } from "next-intl/server"
+import { getMessages, getTranslations } from "next-intl/server"
 import {
   Package,
   Monitor,
@@ -19,6 +19,8 @@ import { getSessionUser } from "@/lib/auth-utils"
 import { getApprovalInboxAccess, getApprovalInboxCounts, type ApprovalInboxCounts } from "@/lib/approval-inbox-query"
 import { buildDashboardActionCardKeys, type DashboardActionCardKey } from "@/lib/dashboard-action-cards"
 import { prisma } from "@/lib/db"
+import { buildSystemLogRecordLabels } from "@/lib/system-log-record-labels"
+import { buildSystemLogPresentation, type SystemLogPresentation } from "@/lib/system-log-presenter"
 import { cn } from "@/lib/utils"
 
 type DashboardPageProps = {
@@ -50,7 +52,11 @@ const actionCardIconClass: Record<DashboardActionTone, string> = {
 
 export default async function DashboardPage({ params }: DashboardPageProps) {
   const { locale } = await params
-  const t = await getTranslations("dashboard")
+  const [t, messages] = await Promise.all([getTranslations("dashboard"), getMessages()])
+  const systemLogMessages = messages.systemLogPage && typeof messages.systemLogPage === "object"
+    ? messages.systemLogPage as Record<string, string>
+    : {}
+  const translateSystemLog = (key: string) => systemLogMessages[key.replaceAll(".", "_")] ?? key
   const warrantyThreshold = new Date()
   warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
   const today = new Date()
@@ -222,7 +228,8 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       tone: "danger" as const,
     },
   ]
-  const readableLogs = recentLogs.map((log) => formatDashboardLog(log, locale, t))
+  const recentLogLabels = await buildSystemLogRecordLabels(recentLogs)
+  const readableLogs = recentLogs.map((log) => formatDashboardLog(buildSystemLogPresentation(log, recentLogLabels, locale, translateSystemLog), t))
 
   return (
     <div>
@@ -342,18 +349,6 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   )
 }
 
-type DashboardLog = {
-  id: string
-  module: string
-  action: string
-  recordId: string | null
-  newValue: string | null
-  oldValue: string | null
-  remark: string | null
-  createdAt: Date
-  user: { displayName: string | null; username: string } | null
-}
-
 type ReadableDashboardLog = {
   id: string
   title: string
@@ -432,103 +427,15 @@ function getMonthRange(now: Date) {
   return { previousStart, currentStart, nextStart }
 }
 
-function formatDashboardLog(log: DashboardLog, locale: string, t: DashboardTranslator): ReadableDashboardLog {
-  const userLabel = log.user?.displayName ?? log.user?.username ?? t("systemUser")
-  const moduleLabel = getDashboardModuleLabel(log.module, t)
-  const actionLabel = getDashboardActionLabel(log.action, t)
-  const recordLabel = getLogRecordLabel(log)
-  const href = getLogHref(log, locale)
+function formatDashboardLog(log: SystemLogPresentation, t: DashboardTranslator): ReadableDashboardLog {
+  const userLabel = log.userLabel === "-" ? t("systemUser") : log.userLabel
+  const recordLabel = log.recordLabel !== "-" ? log.recordLabel : null
 
   return {
     id: log.id,
-    title: recordLabel ? t("activityTitleWithRecord", { action: actionLabel, module: moduleLabel, record: recordLabel }) : t("activityTitle", { action: actionLabel, module: moduleLabel }),
+    title: recordLabel ? t("activityTitleWithRecord", { action: log.actionLabel, module: log.moduleLabel, record: recordLabel }) : t("activityTitle", { action: log.actionLabel, module: log.moduleLabel }),
     detail: log.remark || t("activityDetail", { user: userLabel }),
     meta: new Date(log.createdAt).toLocaleString("th-TH"),
-    href,
+    href: log.href,
   }
-}
-
-function getDashboardModuleLabel(module: string, t: DashboardTranslator) {
-  const labels: Record<string, string> = {
-    asset: t("module_asset"),
-    maintenance: t("module_maintenance"),
-    disposal: t("module_disposal"),
-    audit: t("module_audit"),
-    employee: t("module_employee"),
-    role: t("module_role"),
-    user: t("module_user"),
-    setting: t("module_setting"),
-    company: t("module_company"),
-    branch: t("module_branch"),
-    department: t("module_department"),
-    location: t("module_location"),
-    category: t("module_category"),
-    brand: t("module_brand"),
-    supplier: t("module_supplier"),
-    purchase_document: t("module_purchaseDocument"),
-  }
-  return labels[module] ?? module
-}
-
-function getDashboardActionLabel(action: string, t: DashboardTranslator) {
-  const labels: Record<string, string> = {
-    create: t("action_create"),
-    update: t("action_update"),
-    delete: t("action_delete"),
-    login: t("action_login"),
-    checkout: t("action_checkout"),
-    checkin: t("action_checkin"),
-    transfer: t("action_transfer"),
-    approve: t("action_approve"),
-    reject: t("action_reject"),
-    close: t("action_close"),
-    upload: t("action_upload"),
-  }
-  return labels[action] ?? action.replaceAll("_", " ")
-}
-
-function getLogRecordLabel(log: DashboardLog) {
-  const values = [parseLogJson(log.newValue), parseLogJson(log.oldValue)].filter((value): value is Record<string, unknown> => Boolean(value))
-  for (const value of values) {
-    const label = getFirstString(value, ["assetTag", "repairNo", "disposalNo", "auditNo", "documentNo", "code", "nameTh", "name", "title", "username", "email"])
-    if (label) return label
-  }
-  return log.recordId
-}
-
-function parseLogJson(value?: string | null) {
-  if (!value) return null
-  try {
-    const parsed = JSON.parse(value) as unknown
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null
-  } catch {
-    return null
-  }
-}
-
-function getFirstString(record: Record<string, unknown>, keys: string[]) {
-  for (const key of keys) {
-    const value = record[key]
-    if (typeof value === "string" && value.trim()) return value
-  }
-  return null
-}
-
-function getLogHref(log: DashboardLog, locale: string) {
-  if (log.module === "asset" && log.recordId) return `/${locale}/assets/${log.recordId}`
-  if (log.module === "maintenance" && log.recordId) return `/${locale}/maintenance/${log.recordId}`
-  if (log.module === "disposal" && log.recordId) return `/${locale}/disposal/${log.recordId}`
-  if (log.module === "audit") return `/${locale}/audit/findings`
-  if (log.module === "employee") return `/${locale}/master-data/employees`
-  if (log.module === "role") return `/${locale}/admin/roles`
-  if (log.module === "user") return `/${locale}/admin/users`
-  if (log.module === "setting") return `/${locale}/admin/settings`
-  if (log.module === "company") return `/${locale}/master-data/companies`
-  if (log.module === "branch") return `/${locale}/master-data/branches`
-  if (log.module === "department") return `/${locale}/master-data/departments`
-  if (log.module === "location") return `/${locale}/master-data/locations`
-  if (log.module === "category") return `/${locale}/master-data/categories`
-  if (log.module === "brand") return `/${locale}/master-data/brands`
-  if (log.module === "supplier") return `/${locale}/master-data/suppliers`
-  return null
 }

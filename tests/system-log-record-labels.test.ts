@@ -43,3 +43,21 @@ test("collects ambiguous audit record ids across audit round, item, and finding 
   assert.equal(refs.get("auditFinding")?.has("audit-record"), true)
   assert.equal(refs.get("auditItem")?.has("audit-record"), true)
 })
+
+test("collects legacy brand attachment uploads as model record labels", () => {
+  const refs = collectSystemLogRecordLabelRefs([
+    {
+      recordId: "model-1",
+      action: "upload",
+      module: "brand",
+      oldValue: null,
+      newValue: JSON.stringify({
+        attachmentId: "df011eeb-398a-44b3-a5db-78ecc18b6e82",
+        originalName: "front-view.jpg",
+      }),
+    },
+  ])
+
+  assert.equal(refs.get("model")?.has("model-1"), true)
+  assert.equal(refs.has("brand"), false)
+})

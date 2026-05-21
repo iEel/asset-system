@@ -69,7 +69,7 @@ export async function POST(request: NextRequest, context: ModelAttachmentRouteCo
     await logAudit({
       userId: user.id,
       action: "upload",
-      module: "brand",
+      module: "asset_model",
       recordId: model.id,
       newValue: {
         attachmentId: attachment.id,

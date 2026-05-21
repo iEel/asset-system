@@ -11,19 +11,29 @@ const t = (key: string) => {
   const labels: Record<string, string> = {
     "action.update": "แก้ไข",
     "action.checkin": "รับคืน",
+    "action.upload": "อัปโหลด",
+    "action.deliver_notification_digest": "ส่งสรุปแจ้งเตือน",
     "module.setting": "ตั้งค่าระบบ",
     "module.asset": "ทรัพย์สิน",
+    "module.brand": "ยี่ห้อ/รุ่น",
+    "module.notification": "การแจ้งเตือน",
     "record.system_settings": "การตั้งค่าระบบ",
+    "record.notification_digest": "สรุปแจ้งเตือน",
     "field.ldap_enabled": "เปิดใช้งาน LDAP",
     "field.ldap_url": "LDAP URL",
     "field.returnBy": "ผู้ส่งคืน",
     "field.receiveBy": "ผู้รับคืน",
     "field.nextLocationId": "พื้นที่รับคืน",
+    "field.originalName": "ชื่อไฟล์",
+    "field.fileSize": "ขนาดไฟล์",
+    "field.delivered": "ส่งในระบบ",
     "value.true": "เปิด",
     "value.false": "ปิด",
+    "value.items": "รายการ",
     "summary.from": "จาก",
     "summary.to": "ไปยัง",
     "summary.changedTo": "เป็น",
+    "summary.skipped": "ข้าม",
   }
   return labels[key] ?? key
 }
@@ -31,6 +41,7 @@ const t = (key: string) => {
 const labels: SystemLogRecordLabels = {
   asset: new Map([["asset-1", "Sonic-COM-05-0001 - Notebook Lenovo E14 Gen 7"]]),
   location: new Map([["loc-warehouse", "คลัง IT ชั้น 2"]]),
+  model: new Map([["model-1", "Yealink - T31P"]]),
 }
 
 test("summarizes setting updates with changed fields and before/after values", () => {
@@ -82,4 +93,56 @@ test("summarizes asset check-in with sender and destination labels", () => {
     { field: "ผู้รับคืน", before: "-", after: "IT Admin" },
     { field: "พื้นที่รับคืน", before: "-", after: "คลัง IT ชั้น 2" },
   ])
+})
+
+test("uses model labels for legacy brand attachment upload records", () => {
+  const attachmentId = "df011eeb-398a-44b3-a5db-78ecc18b6e82"
+  const log: SystemLogPresenterInput = {
+    id: "log-3",
+    action: "upload",
+    module: "brand",
+    recordId: "model-1",
+    oldValue: null,
+    newValue: JSON.stringify({
+      attachmentId,
+      originalName: "front-view.jpg",
+      fileSize: 128000,
+    }),
+    remark: null,
+    createdAt: new Date("2026-05-19T16:33:08.000Z"),
+    user: { username: "admin", displayName: "System Administrator" },
+  }
+
+  const result = buildSystemLogPresentation(log, labels, "th", t)
+
+  assert.equal(result.moduleKey, "model")
+  assert.equal(result.recordLabel, "Yealink - T31P")
+  assert.match(result.summary, /Yealink - T31P/)
+  assert.doesNotMatch(result.summary, new RegExp(attachmentId))
+})
+
+test("formats notification digest records without exposing raw reference ids", () => {
+  const log: SystemLogPresenterInput = {
+    id: "log-4",
+    action: "deliver_notification_digest",
+    module: "notification",
+    recordId: "notification-digest:2026-05-21",
+    oldValue: null,
+    newValue: JSON.stringify({
+      referenceId: "notification-digest:2026-05-21",
+      delivered: 3,
+      skippedEmpty: 1,
+    }),
+    remark: "scheduler",
+    createdAt: new Date("2026-05-21T00:30:12.000Z"),
+    user: null,
+  }
+
+  const result = buildSystemLogPresentation(log, labels, "th", t)
+
+  assert.equal(result.recordLabel, "สรุปแจ้งเตือน 2026-05-21")
+  assert.equal(result.summary, "ส่งในระบบ 3 รายการ, ข้าม 1 รายการ")
+  assert.equal(result.remark, null)
+  assert.deepEqual(result.changes, [])
+  assert.doesNotMatch(result.summary, /notification-digest/)
 })

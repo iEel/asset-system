@@ -101,6 +101,7 @@ const IGNORED_CHANGE_FIELDS = new Set([
   "createdBy",
   "updatedBy",
   "uploadedBy",
+  "referenceId",
   "attachmentId",
   "checkoutId",
   "checkinId",
@@ -132,20 +133,27 @@ export function buildSystemLogPresentation(
     summary: buildSummary(log, recordLabel, actionLabel, moduleLabel, changes, labels, t),
     changes,
     href: getLogHref(log, locale, moduleKey),
-    remark: log.remark,
+    remark: getLogRemark(log),
   }
 }
 
-export function normalizeLogModule(module: string, log: Pick<SystemLogPresenterInput, "oldValue" | "newValue">) {
+export function normalizeLogModule(module: string, log: Pick<SystemLogPresenterInput, "oldValue" | "newValue"> & { action?: string }) {
   if (module === "audit") {
     const values = [parseLogJson(log.newValue), parseLogJson(log.oldValue)].filter(Boolean) as Record<string, unknown>[]
     if (values.some((value) => "auditRoundId" in value && "auditItemId" in value)) return "auditFinding"
     if (values.some((value) => "auditStatus" in value || "auditResult" in value)) return "auditItem"
     return "auditRound"
   }
+  if (module === "brand" && isBrandModelAttachmentLog(log)) return "model"
   if (module === "purchase_document") return "purchaseDocument"
   if (module === "asset_model") return "model"
   return module
+}
+
+function isBrandModelAttachmentLog(log: Pick<SystemLogPresenterInput, "oldValue" | "newValue"> & { action?: string }) {
+  if (log.action !== "upload" && log.action !== "delete_attachment") return false
+  const values = [parseLogJson(log.newValue), parseLogJson(log.oldValue)].filter(Boolean) as Record<string, unknown>[]
+  return values.some((value) => "attachmentId" in value || "originalName" in value || "filePath" in value)
 }
 
 export function parseLogJson(value?: string | null): Record<string, unknown> | null {
@@ -168,6 +176,9 @@ export function isSyntheticRecordId(value: string) {
 }
 
 function getRecordLabel(log: SystemLogPresenterInput, moduleKey: string, labels: SystemLogRecordLabels, t: Translate) {
+  if (log.recordId?.startsWith("notification-digest:")) {
+    return formatNotificationDigestRecordLabel(log.recordId, t)
+  }
   if (log.recordId && isSyntheticRecordId(log.recordId)) {
     return translateWithFallback(t, `record.${log.recordId}`, log.recordId)
   }
@@ -178,6 +189,12 @@ function getRecordLabel(log: SystemLogPresenterInput, moduleKey: string, labels:
   return getLogRecordLabel(log) ?? "-"
 }
 
+function formatNotificationDigestRecordLabel(recordId: string, t: Translate) {
+  const date = recordId.replace("notification-digest:", "")
+  const label = translateWithFallback(t, "record.notification_digest", "Notification digest")
+  return `${label} ${date}`
+}
+
 function getResolvedRecordLabel(labels: SystemLogRecordLabels, moduleKey: string, recordId: string) {
   if (moduleKey === "auditRound" || moduleKey === "auditFinding" || moduleKey === "auditItem") {
     return labels.auditFinding?.get(recordId) ?? labels.auditItem?.get(recordId) ?? labels.auditRound?.get(recordId) ?? null
@@ -186,6 +203,8 @@ function getResolvedRecordLabel(labels: SystemLogRecordLabels, moduleKey: string
 }
 
 function getChanges(log: SystemLogPresenterInput, labels: SystemLogRecordLabels, t: Translate): SystemLogChange[] {
+  if (isNotificationDigestLog(log)) return []
+
   const oldValue = parseLogJson(log.oldValue)
   const newValue = parseLogJson(log.newValue)
   if (!oldValue && !newValue) return []
@@ -235,6 +254,8 @@ function buildSummary(
   labels: SystemLogRecordLabels,
   t: Translate
 ) {
+  if (isNotificationDigestLog(log)) return formatNotificationDigestSummary(log, t)
+
   const newValue = parseLogJson(log.newValue)
   if (log.action === "checkin") {
     const returnBy = formatValue(newValue?.returnByEmployeeId ?? newValue?.returnBy, "returnByEmployeeId", labels, t)
@@ -249,6 +270,35 @@ function buildSummary(
     return `${actionLabel}${recordLabel}: ${changes.map((change) => `${change.field} ${translateWithFallback(t, "summary.from", "from")} ${change.before} ${translateWithFallback(t, "summary.changedTo", "to")} ${change.after}`).join(", ")}`
   }
   return `${actionLabel}${moduleLabel} ${recordLabel}`
+}
+
+function isNotificationDigestLog(log: Pick<SystemLogPresenterInput, "action" | "module" | "recordId">) {
+  return log.module === "notification" && (log.recordId?.startsWith("notification-digest:") || log.action.endsWith("notification_digest"))
+}
+
+function getLogRemark(log: SystemLogPresenterInput) {
+  if (isNotificationDigestLog(log) && (log.remark === "scheduler" || log.remark === "manual")) return null
+  return log.remark
+}
+
+function formatNotificationDigestSummary(log: Pick<SystemLogPresenterInput, "newValue">, t: Translate) {
+  const newValue = parseLogJson(log.newValue)
+  const delivered = getNumberValue(newValue?.delivered)
+  const skipped = getNumberValue(newValue?.skippedEmpty) + getNumberValue(newValue?.skippedDuplicate)
+  const failedExternal = getNumberValue(newValue?.failedExternal)
+  const itemLabel = translateWithFallback(t, "value.items", "items")
+  const parts = [
+    `${translateWithFallback(t, "field.delivered", "Delivered")} ${delivered} ${itemLabel}`,
+    `${translateWithFallback(t, "summary.skipped", "Skipped")} ${skipped} ${itemLabel}`,
+  ]
+  if (failedExternal > 0) {
+    parts.push(`${translateWithFallback(t, "field.failedExternal", "External delivery failed")} ${failedExternal} ${itemLabel}`)
+  }
+  return parts.join(", ")
+}
+
+function getNumberValue(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0
 }
 
 function formatCheckoutDestination(newValue: Record<string, unknown> | null, labels: SystemLogRecordLabels, t: Translate) {
