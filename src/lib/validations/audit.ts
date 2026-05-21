@@ -23,6 +23,7 @@ export const auditRoundSchema = z
     scopeCustodianId: optionalText,
     scopeStatusId: optionalText,
     scopeConditionId: optionalText,
+    includeClosedAssets: z.coerce.boolean().default(false),
     riskPreset: z.enum(auditRiskPresets).default("all"),
     sampleRate: z.coerce.number().int().min(1).max(100).default(100),
     startDate: z.coerce.date(),

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { isClosedAuditStatusName } from "@/lib/audit-round-scope"
 
 export async function getAuditRoundOptions() {
   const [companies, branches, departments, locations, categories, employees, statuses, conditions] = await Promise.all([
@@ -51,7 +52,11 @@ export async function getAuditRoundOptions() {
     locations: locations.map((location) => ({ id: location.id, label: `${location.code} - ${location.name}` })),
     categories: categories.map((category) => ({ id: category.id, label: `${category.code} - ${category.name}` })),
     employees: employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` })),
-    statuses: statuses.map((status) => ({ id: status.id, label: status.nameTh || status.name })),
+    statuses: statuses.map((status) => ({
+      id: status.id,
+      label: status.nameTh || status.name,
+      isClosed: isClosedAuditStatusName(status.name, status.nameTh),
+    })),
     conditions: conditions.map((condition) => ({ id: condition.id, label: condition.nameTh || condition.name })),
   }
 }

@@ -1461,6 +1461,8 @@
     "scopeCustodian": "Custodian",
     "scopeStatus": "Asset Status",
     "scopeCondition": "Asset Condition",
+    "includeClosedAssets": "Include disposed/retired assets",
+    "includeClosedAssetsHelp": "By default, All assets excludes Disposed and Retired statuses. Enable this only for accounting closeout or historical evidence audits.",
     "riskSampling": "Risk Group and Sampling",
     "riskSamplingHelp": "Combine this with the scope below to generate audit rounds from assets that need attention first, and reduce item count when the scope is large.",
     "riskPreset": "Risk group",

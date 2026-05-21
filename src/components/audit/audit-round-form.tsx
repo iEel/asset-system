@@ -5,8 +5,9 @@ import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { ClipboardList, Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
+import { filterAuditStatusOptions } from "@/lib/audit-round-scope"
 
-type Option = { id: string; label: string }
+type Option = { id: string; label: string; isClosed?: boolean }
 
 type AuditRoundOptions = {
   companies: Option[]
@@ -48,16 +49,27 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
     scopeCustodianId: "",
     scopeStatusId: "",
     scopeConditionId: "",
+    includeClosedAssets: false,
     riskPreset: "all",
     sampleRate: "100",
     startDate: new Date().toISOString().slice(0, 10),
     endDate: new Date().toISOString().slice(0, 10),
     status: "draft",
   })
+  const statusOptions = filterAuditStatusOptions(options.statuses, values.includeClosedAssets)
 
-  function setField(field: string, value: string) {
+  function setField(field: string, value: string | boolean) {
     setPreview(null)
     setValues((current) => ({ ...current, [field]: value }))
+  }
+
+  function setIncludeClosedAssets(checked: boolean) {
+    setPreview(null)
+    setValues((current) => ({
+      ...current,
+      includeClosedAssets: checked,
+      scopeStatusId: checked || !isClosedStatusId(options.statuses, current.scopeStatusId) ? current.scopeStatusId : "",
+    }))
   }
 
   async function handlePreview() {
@@ -209,11 +221,23 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
             <OptionList emptyLabel={t("all")} options={options.employees} />
           </Select>
           <Select label={t("scopeStatus")} value={values.scopeStatusId} onChange={(value) => setField("scopeStatusId", value)}>
-            <OptionList emptyLabel={t("all")} options={options.statuses} />
+            <OptionList emptyLabel={t("all")} options={statusOptions} />
           </Select>
           <Select label={t("scopeCondition")} value={values.scopeConditionId} onChange={(value) => setField("scopeConditionId", value)}>
             <OptionList emptyLabel={t("all")} options={options.conditions} />
           </Select>
+          <label className="md:col-span-2 flex items-start gap-3 rounded-md border border-warning/30 bg-warning/5 p-3">
+            <input
+              type="checkbox"
+              checked={values.includeClosedAssets}
+              onChange={(event) => setIncludeClosedAssets(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+            />
+            <span>
+              <span className="block text-sm font-medium text-foreground">{t("includeClosedAssets")}</span>
+              <span className="mt-1 block text-xs text-muted-foreground">{t("includeClosedAssetsHelp")}</span>
+            </span>
+          </label>
           <div className="md:col-span-2 flex justify-end">
             <button type="submit" disabled={saving || previewing} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -226,6 +250,10 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   )
 }
 
+function isClosedStatusId(statuses: Option[], statusId: string) {
+  return Boolean(statusId) && statuses.some((status) => status.id === statusId && status.isClosed)
+}
+
 function PreviewMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-border bg-surface px-3 py-2">
@@ -235,8 +263,10 @@ function PreviewMetric({ label, value }: { label: string; value: string }) {
   )
 }
 
-function emptyToNull(values: Record<string, string>) {
-  return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, value.trim() === "" ? null : value]))
+function emptyToNull(values: Record<string, string | boolean>) {
+  return Object.fromEntries(
+    Object.entries(values).map(([key, value]) => [key, typeof value === "string" && value.trim() === "" ? null : value])
+  )
 }
 
 function OptionList({ emptyLabel, options }: { emptyLabel: string; options: Option[] }) {
