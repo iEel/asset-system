@@ -34,7 +34,9 @@
     "yes": "ใช่",
     "no": "ไม่",
     "searchSelectPlaceholder": "พิมพ์เพื่อค้นหา...",
-    "searchSelectNoResults": "ไม่พบรายการที่ตรงกับคำค้น"
+    "searchSelectNoResults": "ไม่พบรายการที่ตรงกับคำค้น",
+    "imageOptimizing": "กำลังปรับขนาดรูป...",
+    "imageOptimizationHint": "รูปขนาดใหญ่จะถูกบีบอัดแบบรักษาความคมชัด และไม่ลดด้านยาวต่ำกว่า 1,800px"
   },
   "globalSearch": {
     "label": "ค้นหาทั่วระบบ",

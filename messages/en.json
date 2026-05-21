@@ -34,7 +34,9 @@
     "yes": "Yes",
     "no": "No",
     "searchSelectPlaceholder": "Type to search...",
-    "searchSelectNoResults": "No matching options"
+    "searchSelectNoResults": "No matching options",
+    "imageOptimizing": "Optimizing image...",
+    "imageOptimizationHint": "Large photos are compressed with a sharpness guard and never reduced below a 1,800px long edge."
   },
   "globalSearch": {
     "label": "Search globally",

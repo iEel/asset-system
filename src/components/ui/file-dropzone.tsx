@@ -1,7 +1,9 @@
 "use client"
 
 import { useId, useState } from "react"
+import { useTranslations } from "next-intl"
 import { Upload } from "lucide-react"
+import { optimizeEvidenceImageFile } from "@/lib/evidence-image-optimization"
 
 export function FileDropzone({
   file,
@@ -12,6 +14,7 @@ export function FileDropzone({
   title,
   hint,
   browseLabel,
+  optimizeImages = true,
 }: {
   file: File | null
   onFileChange: (file: File | null) => void
@@ -21,18 +24,43 @@ export function FileDropzone({
   title: string
   hint: string
   browseLabel: string
+  optimizeImages?: boolean
 }) {
   const inputId = useId()
+  const tCommon = useTranslations("common")
   const [dragging, setDragging] = useState(false)
+  const [optimizing, setOptimizing] = useState(false)
+  const isDisabled = disabled || optimizing
+  const showImageOptimizationHint = optimizeImages && (accept?.includes("image") ?? true)
+
+  async function handleSelectedFile(nextFile: File | null) {
+    if (!nextFile) {
+      onFileChange(null)
+      return
+    }
+
+    if (!optimizeImages || !nextFile.type.startsWith("image/")) {
+      onFileChange(nextFile)
+      return
+    }
+
+    setOptimizing(true)
+    try {
+      const result = await optimizeEvidenceImageFile(nextFile)
+      onFileChange(result.file)
+    } finally {
+      setOptimizing(false)
+    }
+  }
 
   function handleDrop(event: React.DragEvent<HTMLLabelElement>) {
     event.preventDefault()
     setDragging(false)
-    if (disabled) return
+    if (isDisabled) return
 
     const droppedFile = event.dataTransfer.files?.[0]
     if (droppedFile) {
-      onFileChange(droppedFile)
+      void handleSelectedFile(droppedFile)
     }
   }
 
@@ -55,7 +83,7 @@ export function FileDropzone({
       className={[
         "block cursor-pointer rounded-md border border-dashed p-4 text-center transition-colors",
         dragging ? "border-primary bg-primary/5" : "border-border bg-surface hover:bg-accent",
-        disabled ? "pointer-events-none opacity-60" : "",
+        isDisabled ? "pointer-events-none opacity-60" : "",
       ].join(" ")}
     >
       <input
@@ -63,10 +91,10 @@ export function FileDropzone({
         type="file"
         accept={accept}
         capture={capture}
-        disabled={disabled}
+        disabled={isDisabled}
         className="sr-only"
         onChange={(event) => {
-          onFileChange(event.target.files?.[0] ?? null)
+          void handleSelectedFile(event.target.files?.[0] ?? null)
           event.currentTarget.value = ""
         }}
       />
@@ -74,7 +102,10 @@ export function FileDropzone({
         <Upload className="h-5 w-5" />
       </span>
       <span className="mt-3 block text-sm font-medium text-foreground">{file ? file.name : title}</span>
-      <span className="mt-1 block text-xs text-muted-foreground">{file ? hint : browseLabel}</span>
+      <span className="mt-1 block text-xs text-muted-foreground">{optimizing ? tCommon("imageOptimizing") : file ? hint : browseLabel}</span>
+      {showImageOptimizationHint ? (
+        <span className="mt-1 block text-[11px] leading-4 text-muted-foreground">{tCommon("imageOptimizationHint")}</span>
+      ) : null}
     </label>
   )
 }
