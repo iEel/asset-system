@@ -12,6 +12,7 @@ export type ProductionReadinessCheckKey =
   | "schedulerTokens"
   | "schedulerRuns"
   | "backupStatus"
+  | "pwaAssets"
 
 export type ProductionReadinessApproverSummary = {
   key: string
@@ -55,6 +56,10 @@ export type ProductionReadinessDeploymentInput = {
   schedulerLastRunStatuses?: string[]
   backupStatus?: string
   backupLastRunAt?: string
+  pwaAssets?: {
+    available: number
+    total: number
+  }
 }
 
 export type ProductionReadinessCheck = {
@@ -159,6 +164,12 @@ export function buildProductionReadinessChecks(input: ProductionReadinessInput):
       key: "backupStatus",
       status: getBackupStatus(input.deployment),
       value: getBackupValue(input.deployment),
+      href: "/admin/readiness",
+    },
+    {
+      key: "pwaAssets",
+      status: getPwaAssetsStatus(input.deployment),
+      value: getPwaAssetsValue(input.deployment),
       href: "/admin/readiness",
     },
   ]
@@ -291,6 +302,20 @@ function getBackupValue(deployment?: ProductionReadinessDeploymentInput) {
   const status = deployment?.backupStatus?.trim() || "unknown"
   const lastRunAt = deployment?.backupLastRunAt?.trim() || "-"
   return `${status} / ${lastRunAt}`
+}
+
+function getPwaAssetsStatus(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessStatus {
+  const total = deployment?.pwaAssets?.total ?? 0
+  const available = deployment?.pwaAssets?.available ?? 0
+  if (total <= 0 || available <= 0) return "fail"
+  if (available < total) return "warning"
+  return "pass"
+}
+
+function getPwaAssetsValue(deployment?: ProductionReadinessDeploymentInput) {
+  const total = deployment?.pwaAssets?.total ?? 0
+  const available = deployment?.pwaAssets?.available ?? 0
+  return `${available}/${total} assets`
 }
 
 function parseUrl(value: string | undefined) {

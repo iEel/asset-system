@@ -2231,7 +2231,10 @@
     "check_schedulerRuns_action": "ดูตั้งค่างานอัตโนมัติ",
     "check_backupStatus_title": "Backup status",
     "check_backupStatus_description": "ตรวจสถานะ backup ล่าสุดจาก environment เพื่อเตือนก่อนเปิดใช้งานจริง",
-    "check_backupStatus_action": "ดูค่าติดตั้ง"
+    "check_backupStatus_action": "ดูค่าติดตั้ง",
+    "check_pwaAssets_title": "PWA assets",
+    "check_pwaAssets_description": "ตรวจ manifest, icon, service worker และ offline fallback ว่ามีครบก่อนให้ผู้ใช้ติดตั้งลงมือถือ",
+    "check_pwaAssets_action": "ดูค่าติดตั้ง"
   },
   "storagePage": {
     "title": "พื้นที่จัดเก็บไฟล์",

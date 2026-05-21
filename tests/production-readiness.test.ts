@@ -40,6 +40,10 @@ test("marks core production readiness checks as pass when settings and coverage 
       schedulerLastRunStatuses: ["success", "success"],
       backupStatus: "success",
       backupLastRunAt: "2026-05-20T01:00:00.000Z",
+      pwaAssets: {
+        available: 8,
+        total: 8,
+      },
     },
     masterDataCounts: {
       companies: 1,
@@ -52,7 +56,8 @@ test("marks core production readiness checks as pass when settings and coverage 
     },
   })
 
-  assert.deepEqual(checks.map((check) => check.status), ["pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass"])
+  assert.deepEqual(checks.map((check) => check.status), ["pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass"])
+  assert.equal(checks.find((check) => check.key === "pwaAssets")?.value, "8/8 assets")
 })
 
 test("surfaces risky production readiness states", () => {
@@ -86,6 +91,10 @@ test("surfaces risky production readiness states", () => {
       schedulerLastRunStatuses: ["failed", "success"],
       backupStatus: "missing",
       backupLastRunAt: "",
+      pwaAssets: {
+        available: 3,
+        total: 8,
+      },
     },
     masterDataCounts: {
       companies: 1,
@@ -110,4 +119,5 @@ test("surfaces risky production readiness states", () => {
   assert.equal(checks.find((check) => check.key === "schedulerTokens")?.status, "fail")
   assert.equal(checks.find((check) => check.key === "schedulerRuns")?.status, "fail")
   assert.equal(checks.find((check) => check.key === "backupStatus")?.status, "fail")
+  assert.equal(checks.find((check) => check.key === "pwaAssets")?.status, "warning")
 })

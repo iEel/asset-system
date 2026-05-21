@@ -2231,7 +2231,10 @@
     "check_schedulerRuns_action": "Open Automation Settings",
     "check_backupStatus_title": "Backup status",
     "check_backupStatus_description": "Checks the latest backup status from environment values before go-live.",
-    "check_backupStatus_action": "Review Deploy Config"
+    "check_backupStatus_action": "Review Deploy Config",
+    "check_pwaAssets_title": "PWA assets",
+    "check_pwaAssets_description": "Checks manifest, icons, service worker, and offline fallback files before users install the app on mobile.",
+    "check_pwaAssets_action": "Review Deploy Config"
   },
   "storagePage": {
     "title": "File Storage",

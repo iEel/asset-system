@@ -1,4 +1,6 @@
 import Link from "next/link"
+import { existsSync } from "node:fs"
+import { join } from "node:path"
 import type React from "react"
 import { AlertTriangle, ArrowRight, CheckCircle2, Database, Rocket, ShieldCheck, XCircle } from "lucide-react"
 import { getTranslations } from "next-intl/server"
@@ -60,6 +62,7 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
       ].filter(Boolean),
       backupStatus: process.env.BACKUP_STATUS,
       backupLastRunAt: process.env.BACKUP_LAST_RUN_AT,
+      pwaAssets: getPwaAssetReadiness(),
     },
     masterDataCounts,
   })
@@ -207,6 +210,26 @@ function mergeSettings(savedSettings: Array<{ key: string; value: string }>) {
   const settings = new Map(systemSettingDefaults.map((setting) => [setting.key, setting.value]))
   for (const setting of savedSettings) settings.set(setting.key, setting.value)
   return settings
+}
+
+function getPwaAssetReadiness() {
+  const root = process.cwd()
+  const requiredFileChecks = [
+    existsSync(join(root, "src", "app", "manifest.ts")),
+    existsSync(join(root, "src", "app", "favicon.ico")),
+    existsSync(join(root, "src", "app", "icon.png")),
+    existsSync(join(root, "src", "app", "apple-icon.png")),
+    existsSync(join(root, "public", "sw.js")),
+    existsSync(join(root, "public", "offline.html")),
+    existsSync(join(root, "public", "icons", "icon-192.png")),
+    existsSync(join(root, "public", "icons", "icon-512.png")),
+    existsSync(join(root, "public", "icons", "maskable-192.png")),
+    existsSync(join(root, "public", "icons", "maskable-512.png")),
+  ]
+  return {
+    available: requiredFileChecks.filter(Boolean).length,
+    total: requiredFileChecks.length,
+  }
 }
 
 function statusIcon(status: ProductionReadinessCheck["status"]) {
