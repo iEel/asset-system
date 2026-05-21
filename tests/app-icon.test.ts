@@ -46,3 +46,18 @@ test("PWA manifest and install icons are available", async () => {
     assert.ok(statSync(path).size > 10_000)
   }
 })
+
+test("PWA manifest exposes mobile shortcuts for common field work", async () => {
+  const { default: manifest } = await import("../src/app/manifest.ts")
+  const result = manifest()
+
+  assert.deepEqual(
+    result.shortcuts?.map((shortcut) => [shortcut.name, shortcut.url]),
+    [
+      ["สแกน / ค้นหาทรัพย์สิน", "/th/asset-management/scan"],
+      ["เพิ่มทรัพย์สิน", "/th/assets/new"],
+      ["ศูนย์งานค้าง", "/th/work-center"],
+      ["สแกนตรวจนับ", "/th/audit/rounds"],
+    ],
+  )
+})
