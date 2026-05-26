@@ -63,19 +63,19 @@ export function SearchableSelect({
   }
 
   return (
-    <div className="block" ref={containerRef}>
+    <div className="block min-w-0 max-w-full" ref={containerRef}>
       {label ? (
         <span className="mb-1.5 block text-sm font-medium text-foreground">
           {label}
           {required && <span className="ml-1 text-danger">*</span>}
         </span>
       ) : null}
-      <div className="relative">
+      <div className="relative min-w-0 max-w-full">
         <button
           type="button"
           disabled={disabled}
           onClick={() => setOpen((current) => !current)}
-          className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-border bg-background px-3 text-left text-sm outline-none transition-colors hover:bg-accent focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+          className="flex min-h-11 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-background px-3 text-left text-sm outline-none transition-colors hover:bg-accent focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground sm:h-10 sm:min-h-0"
           aria-haspopup="listbox"
           aria-expanded={open}
         >
@@ -101,7 +101,7 @@ export function SearchableSelect({
           </span>
         </button>
         {open && !disabled && (
-          <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border border-border bg-surface shadow-lg">
+          <div className="absolute z-50 mt-1 w-full max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border border-border bg-surface shadow-lg">
             <div className="flex items-center gap-2 border-b border-border px-3 py-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <input
@@ -131,7 +131,7 @@ export function SearchableSelect({
                     role="option"
                     aria-selected={option.id === value}
                     onClick={() => selectValue(option.id)}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex min-h-11 w-full min-w-0 items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Check className={option.id === value ? "h-4 w-4 text-primary" : "h-4 w-4 text-transparent"} />
                     <span className="min-w-0 truncate">{option.label}</span>

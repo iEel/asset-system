@@ -413,9 +413,9 @@ export function AssetBatchForm({
 
   return (
     <div className="mx-auto max-w-6xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">{t("batchCreateTitle")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("batchCreateSubtitle")}</p>
+      <div className="mb-6 min-w-0">
+        <h1 className="break-words text-2xl font-bold text-foreground">{t("batchCreateTitle")}</h1>
+        <p className="mt-1 break-words text-sm text-muted-foreground">{t("batchCreateSubtitle")}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -554,8 +554,8 @@ export function AssetBatchForm({
         </Section>
 
         <Section title={t("batchRows")}>
-          <div className="md:col-span-2 flex flex-wrap items-end gap-3">
-            <div>
+          <div className="md:col-span-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="min-w-0 flex-1">
               <div className="text-sm font-medium text-foreground">{t("batchCurrentCount", { count: rows.length })}</div>
               <p className="mt-1 text-xs text-muted-foreground">{t("batchRowHelp")}</p>
             </div>
@@ -563,7 +563,7 @@ export function AssetBatchForm({
               type="button"
               onClick={handleAddRow}
               disabled={rows.length >= 100}
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
               <Plus className="h-4 w-4" />
               {t("batchAddRow")}
@@ -572,7 +572,7 @@ export function AssetBatchForm({
               type="button"
               onClick={handleCheckDuplicates}
               disabled={checkingDuplicates || hasClientDuplicates}
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
               {checkingDuplicates ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {checkingDuplicates ? t("batchCheckDuplicatesRunning") : t("batchCheckDuplicates")}
@@ -601,7 +601,41 @@ export function AssetBatchForm({
             </div>
           ) : null}
 
-          <div className="md:col-span-2 overflow-x-auto rounded-md border border-border">
+          <div className="grid gap-3 md:hidden">
+            {rows.map((row, index) => (
+              <div key={row.clientId} className="rounded-md border border-border bg-background p-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-foreground">{t("batchRowNo")} {index + 1}</div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveRow(row.clientId)}
+                    disabled={rows.length <= 2}
+                    title={t("batchRemoveRow")}
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only">{t("batchRemoveRow")}</span>
+                  </button>
+                </div>
+                <div className="grid gap-3">
+                  <Field label={t("batchSerialNumber")}>
+                    <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
+                    <p className="mt-1 text-[11px] text-muted-foreground">{t("batchPasteSerialHint")}</p>
+                  </Field>
+                  <Field label={t("batchAssetTag")}>
+                    <input value={row.assetTag} onChange={(event) => setRowField(row.clientId, "assetTag", event.target.value)} placeholder={t("autoTagHint")} aria-label={t("batchAssetTagHelp")} className={inputClassName} />
+                    <p className="mt-1 text-[11px] text-muted-foreground">{t("batchAssetTagHelp")}</p>
+                  </Field>
+                  <SearchableSelect label={t("batchCustodian")} value={row.custodianId} options={filteredEmployees} placeholder={t("selectCustodian")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "custodianId", value)} />
+                  <Field label={t("batchRemark")}>
+                    <input value={row.remark} onChange={(event) => setRowField(row.clientId, "remark", event.target.value)} className={inputClassName} />
+                  </Field>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-md border border-border md:col-span-2 md:block">
             <table className="min-w-[900px] w-full text-sm">
               <thead className="bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
                 <tr>
@@ -653,13 +687,13 @@ export function AssetBatchForm({
         </Section>
 
         {reviewing ? (
-          <section className="rounded-lg border border-primary/30 bg-primary/5 p-5 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
+          <section className="rounded-lg border border-primary/30 bg-primary/5 p-4 shadow-sm sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+              <div className="min-w-0">
                 <h2 className="text-lg font-semibold text-foreground">{t("batchReviewTitle")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{t("batchReviewDescription")}</p>
               </div>
-              <button type="button" onClick={() => setReviewing(false)} className="inline-flex h-9 items-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent">
+              <button type="button" onClick={() => setReviewing(false)} className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent sm:w-auto">
                 {t("batchReviewBack")}
               </button>
             </div>
@@ -668,7 +702,7 @@ export function AssetBatchForm({
               <SummaryItem label={t("batchReviewSharedFixedAssetCode")} value={common.fixedAssetCode || "-"} />
               <SummaryItem label={t("batchCurrentCount", { count: rows.length })} value={String(rows.length)} />
             </div>
-            <div className="mt-4 max-h-80 overflow-auto rounded-md border border-border bg-background">
+            <div className="mt-4 max-h-80 max-w-full overflow-auto rounded-md border border-border bg-background">
               <table className="w-full min-w-[760px] text-sm">
                 <thead className="bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
                   <tr>
@@ -702,18 +736,18 @@ export function AssetBatchForm({
           <div className="rounded-md border border-success/30 bg-success/10 p-4">
             <h2 className="text-lg font-semibold text-foreground">{t("batchCreatedTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("batchCreatedDescription", { count: createdBatch.created })}</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link href={`/${locale}/assets`} className="inline-flex h-10 items-center rounded-md border border-border px-3 text-sm font-medium hover:bg-accent">
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Link href={`/${locale}/assets`} className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border px-3 text-sm font-medium hover:bg-accent sm:w-auto">
                 {t("batchGoToRegister")}
               </Link>
-              <Link href={`/${locale}/asset-management/labels?assetIds=${createdBatch.assetIds.join(",")}`} className="inline-flex h-10 items-center rounded-md bg-primary px-3 text-sm font-medium text-white hover:bg-primary/90">
+              <Link href={`/${locale}/asset-management/labels?assetIds=${createdBatch.assetIds.join(",")}`} className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-white hover:bg-primary/90 sm:w-auto">
                 {t("batchPrintLabels")}
               </Link>
-              <button type="button" onClick={() => void handleCopyAssetTags()} className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium hover:bg-accent">
+              <button type="button" onClick={() => void handleCopyAssetTags()} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium hover:bg-accent sm:w-auto">
                 <Copy className="h-4 w-4" />
                 {t("batchCopyAssetTags")}
               </button>
-              <button type="button" onClick={handleDownloadReceiptCsv} className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium hover:bg-accent">
+              <button type="button" onClick={handleDownloadReceiptCsv} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium hover:bg-accent sm:w-auto">
                 <Download className="h-4 w-4" />
                 {t("batchDownloadReceiptCsv")}
               </button>
@@ -743,7 +777,7 @@ export function AssetBatchForm({
         ) : null}
 
         <div className="flex justify-end">
-          <button type="submit" disabled={saving || hasClientDuplicates} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+          <button type="submit" disabled={saving || hasClientDuplicates} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {reviewing ? t("batchReviewConfirm") : t("batchSubmit")}
           </button>
@@ -768,8 +802,8 @@ function isDuplicateCheckResult(result: DuplicateCheckResult | { error?: string 
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-      <h2 className="mb-4 text-lg font-semibold text-foreground">{title}</h2>
+    <section className="min-w-0 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
+      <h2 className="mb-4 break-words text-lg font-semibold text-foreground">{title}</h2>
       <div className="grid gap-4 md:grid-cols-2">{children}</div>
     </section>
   )
@@ -818,4 +852,4 @@ function SelectField({
   )
 }
 
-const inputClassName = "h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+const inputClassName = "min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0"

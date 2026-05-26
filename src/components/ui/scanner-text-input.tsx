@@ -154,8 +154,8 @@ export function ScannerTextInput({
   const showScannerPanel = scannerRunning || scannerLoading || Boolean(cameraErrorText)
 
   return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
+    <div className="min-w-0 max-w-full space-y-2">
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
         <input
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -171,7 +171,7 @@ export function ScannerTextInput({
           type="button"
           disabled={disabled}
           onClick={handleToggleScanner}
-          className="inline-flex h-10 shrink-0 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
           title={scannerRunning || scannerLoading ? labels.stop : labels.start}
         >
           {scannerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
@@ -180,16 +180,16 @@ export function ScannerTextInput({
       </div>
 
       {showScannerPanel && (
-        <div className="rounded-md border border-border bg-surface p-3">
+        <div className="min-w-0 max-w-full rounded-md border border-border bg-surface p-3">
           <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-medium text-foreground">{labels.title}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{labels.help}</p>
+              <p className="mt-1 break-words text-xs text-muted-foreground">{labels.help}</p>
             </div>
             <button
               type="button"
               onClick={() => void stopScanner()}
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               title={labels.stop}
             >
               <X className="h-4 w-4" />
@@ -213,7 +213,7 @@ export function ScannerTextInput({
             </label>
           )}
 
-          <div id={readerId} className="min-h-56 overflow-hidden rounded-md border border-border bg-background" />
+          <div id={readerId} className="aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-background sm:min-h-56" />
           {scannerRunning && <p className="mt-2 text-xs text-muted-foreground">{labels.scanning}</p>}
           {cameraErrorText && <p className="mt-2 text-xs font-medium text-danger">{cameraErrorText}</p>}
         </div>
@@ -241,7 +241,7 @@ function getSerialCodeFormats(formats: typeof Html5QrcodeSupportedFormats): Html
 
 function getResponsiveQrBox(viewfinderWidth: number, viewfinderHeight: number) {
   const minEdge = Math.min(viewfinderWidth, viewfinderHeight)
-  const size = Math.max(180, Math.min(320, Math.floor(minEdge * 0.75)))
+  const size = Math.max(140, Math.min(320, minEdge - 24, Math.floor(minEdge * 0.82)))
   return { width: size, height: size }
 }
 

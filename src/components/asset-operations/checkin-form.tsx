@@ -187,10 +187,10 @@ export function CheckinForm({
   return (
     <div className="mx-auto max-w-5xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+        <h1 className="break-words text-2xl font-bold text-foreground">{t("title")}</h1>
       </div>
-      <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-        <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-5 md:grid-cols-2">
+      <section className="min-w-0 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
+        <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
           {initialCheckout ? (
             <div className="md:col-span-2">
               <FormContextBanner label={t("asset")} value={initialCheckout.label} />
@@ -220,7 +220,7 @@ export function CheckinForm({
                     <div className="mt-1 text-xs text-muted-foreground">{t("noActiveCheckoutsDescription")}</div>
                   </div>
                 </div>
-                <Link href={`/${locale}/asset-management/checkout`} className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent">
+                <Link href={`/${locale}/asset-management/checkout`} className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:w-auto">
                   {t("goToCheckout")}
                 </Link>
               </div>
@@ -339,7 +339,7 @@ export function CheckinForm({
                       <div className="font-medium text-foreground">{photo.label}</div>
                       <div className="truncate text-xs text-muted-foreground">{photo.file.name}</div>
                     </div>
-                    <button type="button" onClick={() => setPhotosAfter((current) => current.filter((item) => item.id !== photo.id))} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                    <button type="button" onClick={() => setPhotosAfter((current) => current.filter((item) => item.id !== photo.id))} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">{t("removePhoto")}</span>
                     </button>
@@ -407,7 +407,7 @@ export function CheckinForm({
           </div>
 
           <div className="md:col-span-2 flex justify-end">
-            <button type="submit" disabled={saving} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50">
+            <button type="submit" disabled={saving} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {tCommon("save")}
             </button>
@@ -435,7 +435,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
 function Select({ label, value, required, disabled, onChange, children }: { label: string; value: string; required?: boolean; disabled?: boolean; onChange: (value: string) => void; children: React.ReactNode }) {
   return (
     <Field label={label} required={required}>
-      <select value={value} required={required} disabled={disabled} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">
+      <select value={value} required={required} disabled={disabled} onChange={(event) => onChange(event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground sm:h-10 sm:min-h-0">
         {children}
       </select>
     </Field>
@@ -446,7 +446,7 @@ function ReadOnly({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
       <div className="text-xs uppercase text-muted-foreground">{label}</div>
-      <div className="mt-1 truncate font-medium text-foreground" title={value}>{value}</div>
+      <div className="mt-1 break-words font-medium text-foreground" title={value}>{value}</div>
     </div>
   )
 }

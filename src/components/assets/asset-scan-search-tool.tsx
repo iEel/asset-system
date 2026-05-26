@@ -86,12 +86,12 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{labels.title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{labels.subtitle}</p>
+      <div className="min-w-0">
+        <h1 className="break-words text-2xl font-bold text-foreground">{labels.title}</h1>
+        <p className="mt-1 break-words text-sm text-muted-foreground">{labels.subtitle}</p>
       </div>
 
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="min-w-0 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.queryLabel}</span>
           <ScannerTextInput
@@ -109,7 +109,7 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
           <button
             type="button"
             onClick={() => openAsset(directAssetHref)}
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:w-auto"
           >
             <PackageSearch className="h-4 w-4" />
             {labels.openAsset}
@@ -136,14 +136,14 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
                 key={result.id}
                 type="button"
                 onClick={() => openAsset(result.href)}
-                className="flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
+                className="flex w-full min-w-0 gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
               >
                 <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
                   <Search className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-foreground">{result.title}</span>
+                    <span className="min-w-0 break-words font-semibold text-foreground">{result.title}</span>
                     <span
                       className="rounded-full px-2 py-0.5 text-xs font-medium"
                       style={result.status.colorCode ? { backgroundColor: `${result.status.colorCode}1A`, color: result.status.colorCode } : undefined}
@@ -151,7 +151,7 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
                       {result.status.label}
                     </span>
                   </span>
-                  <span className="mt-1 block text-sm text-foreground">{result.subtitle}</span>
+                  <span className="mt-1 block break-words text-sm text-foreground">{result.subtitle}</span>
                   <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     {result.serialNumber ? <span>{labels.serial}: {result.serialNumber}</span> : null}
                     <span className="inline-flex items-center gap-1">

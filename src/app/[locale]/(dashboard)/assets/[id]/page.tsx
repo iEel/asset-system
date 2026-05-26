@@ -697,7 +697,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   return (
     <div className="space-y-6 pb-24 md:pb-0">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
+        <div className="min-w-0">
           <div className="mb-2">
             <Breadcrumbs
               items={[
@@ -706,8 +706,8 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
               ]}
             />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">{asset.assetTag}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{asset.name}</p>
+          <h1 className="break-words text-2xl font-bold text-foreground">{asset.assetTag}</h1>
+          <p className="mt-1 break-words text-sm text-muted-foreground">{asset.name}</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <ActivityDrawer
@@ -718,14 +718,14 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           />
           <Link
             href={`/${locale}/assets/${asset.id}/label`}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:h-10 sm:min-h-0"
           >
             <Printer className="h-4 w-4" />
             {t("printLabel")}
           </Link>
           <Link
             href={`/${locale}/assets/${asset.id}/edit`}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0"
           >
             <Edit className="h-4 w-4" />
             {tCommon("edit")}
@@ -747,7 +747,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             <a
               key={section.id}
               href={`#${section.id}`}
-              className="inline-flex h-9 shrink-0 items-center rounded-md border border-border bg-surface px-3 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="inline-flex min-h-11 shrink-0 items-center rounded-md border border-border bg-surface px-3 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary md:h-9 md:min-h-0"
             >
               {section.label}
             </a>
@@ -1594,7 +1594,7 @@ function QuickAction({
 }) {
   if (disabled) {
     return (
-      <span className="inline-flex h-10 cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-muted/50 px-3 text-sm font-medium text-muted-foreground opacity-70">
+      <span className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-muted/50 px-3 text-center text-sm font-medium leading-tight text-muted-foreground opacity-70 md:h-10 md:min-h-0">
         {icon}
         {label}
       </span>
@@ -1602,7 +1602,7 @@ function QuickAction({
   }
 
   return (
-    <Link href={href} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary">
+    <Link href={href} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-center text-sm font-medium leading-tight text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary md:h-10 md:min-h-0">
       {icon}
       {label}
     </Link>

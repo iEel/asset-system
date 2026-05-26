@@ -77,10 +77,10 @@ export function TransferForm({
   return (
     <div className="mx-auto max-w-5xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+        <h1 className="break-words text-2xl font-bold text-foreground">{t("title")}</h1>
       </div>
-      <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
+      <section className="min-w-0 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
           {initialAsset ? (
             <div className="md:col-span-2">
               <FormContextBanner label={t("asset")} value={initialAsset.label} />
@@ -101,7 +101,7 @@ export function TransferForm({
             </Field>
           </div>
           <div className="md:col-span-2 flex justify-end">
-            <button type="submit" disabled={saving} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50">
+            <button type="submit" disabled={saving} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {tCommon("save")}
             </button>

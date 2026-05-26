@@ -670,14 +670,14 @@ export function AssetForm({
 
   return (
     <div className="mx-auto max-w-6xl">
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="break-words text-2xl font-bold text-foreground">{title}</h1>
+          <p className="mt-1 break-words text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         <Link
           href={backHref}
-          className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:w-auto"
         >
           <ArrowLeft className="h-4 w-4" />
           {tCommon("back")}
@@ -1268,14 +1268,14 @@ export function AssetForm({
           </label>
         </Section>
 
-        <div className="flex justify-end gap-3">
-          <Link href={backHref} className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+          <Link href={backHref} className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:w-auto">
             {tCommon("cancel")}
           </Link>
           <button
             type="submit"
             disabled={saving || duplicateState.checking || duplicateState.assetTagExists || duplicateState.serialNumberExists}
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {tCommon("save")}
@@ -1288,9 +1288,9 @@ export function AssetForm({
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-      <h2 className="mb-5 text-lg font-semibold text-foreground">{title}</h2>
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">{children}</div>
+    <section className="min-w-0 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
+      <h2 className="mb-4 break-words text-lg font-semibold text-foreground sm:mb-5">{title}</h2>
+      <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">{children}</div>
     </section>
   )
 }
@@ -1326,7 +1326,7 @@ function SelectField({
         value={value}
         required={required}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+        className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0"
       >
         {children}
       </select>

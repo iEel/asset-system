@@ -641,7 +641,7 @@ export function AuditScanForm({
               onClick={retryOfflineQueue}
               disabled={saving || !online}
               title={online ? t("offlineRetry") : t("networkOffline")}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-medium text-white transition-colors hover:bg-warning/90 disabled:opacity-50"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-medium text-white transition-colors hover:bg-warning/90 disabled:opacity-50 md:w-auto"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
               {t("offlineRetry")}
@@ -690,11 +690,11 @@ export function AuditScanForm({
                   className="h-12 w-full rounded-md border border-border bg-surface px-3 text-base outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
               </Field>
-              <div className="grid grid-cols-2 gap-2 sm:flex">
+              <div className="grid gap-2 sm:grid-cols-2 md:flex">
                 <button
                   type="button"
                   onClick={() => void selectScannedAsset(scanText, "manual")}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+                  className="inline-flex h-12 min-w-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
                 >
                   <Keyboard className="h-4 w-4" />
                   {t("useCode")}
@@ -703,7 +703,7 @@ export function AuditScanForm({
                   type="button"
                   onClick={scannerRunning ? stopScanner : startScanner}
                   disabled={scannerLoading}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                  className="inline-flex h-12 min-w-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
                 >
                   {scannerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : scannerRunning ? <X className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
                   {scannerRunning ? t("stopCamera") : t("startCamera")}
@@ -725,7 +725,7 @@ export function AuditScanForm({
             <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
               <div
                 id="audit-qr-reader"
-                className={`min-h-[18rem] overflow-hidden rounded-md border border-border bg-surface sm:min-h-[22rem] ${scannerRunning ? "block" : "hidden"}`}
+                className={`aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-surface sm:min-h-[22rem] ${scannerRunning ? "block" : "hidden"}`}
               />
               <div className="rounded-md border border-border bg-surface p-3 text-sm text-muted-foreground">
                 <div className="flex items-start gap-2">
@@ -1018,7 +1018,7 @@ function ScanFeedbackCard({ feedback }: { feedback: ScanFeedback }) {
 
 function getResponsiveQrBox(viewfinderWidth: number, viewfinderHeight: number) {
   const shortestSide = Math.min(viewfinderWidth, viewfinderHeight)
-  const size = Math.max(180, Math.min(320, Math.floor(shortestSide * 0.72)))
+  const size = Math.max(140, Math.min(320, shortestSide - 24, Math.floor(shortestSide * 0.82)))
   return { width: size, height: size }
 }
 
@@ -1085,7 +1085,7 @@ function OptionList({ emptyLabel, options }: { emptyLabel?: string; options: Opt
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
-    <label className="block">
+    <label className="block w-full min-w-0">
       <span className="mb-1.5 flex items-center gap-1 text-sm font-medium text-foreground">
         <ScanLine className="h-3.5 w-3.5 text-muted-foreground" />
         {label}
