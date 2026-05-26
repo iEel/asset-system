@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { generateAssetTags } from "@/lib/asset-tag"
 import {
+  type AssetBatchCreateItem,
   buildAssetBatchCreateItems,
   buildAssetBatchDuplicateMessage,
   findDuplicateBatchValues,
@@ -72,7 +73,14 @@ export async function POST(request: Request) {
       common: input.common,
       rows: input.rows,
       generatedAssetTags,
-    }).map((asset) => assetSchema.parse(asset))
+    }).map((asset) => {
+      const parsed = assetSchema.parse(asset)
+      return {
+        ...parsed,
+        assetTag: asset.assetTag,
+        currentLocationId: asset.currentLocationId,
+      } satisfies AssetBatchCreateItem
+    })
 
     const createdAssets = await prisma.$transaction(async (tx) => {
       const assets: Array<{ id: string; assetTag: string; name: string }> = []

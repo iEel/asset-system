@@ -7,6 +7,11 @@ type CreatedAssetSummary = {
   name: string
 }
 
+export type AssetBatchCreateItem = AssetInput & {
+  assetTag: string
+  currentLocationId: string
+}
+
 function nullableText(value?: string | null) {
   const normalized = value?.trim() ?? ""
   return normalized.length > 0 ? normalized : null
@@ -50,7 +55,7 @@ export function buildAssetBatchCreateItems({
   common: AssetBatchCreateInput["common"]
   rows: AssetBatchCreateInput["rows"]
   generatedAssetTags: string[]
-}): AssetInput[] {
+}): AssetBatchCreateItem[] {
   let generatedIndex = 0
 
   return rows.map((row) => {

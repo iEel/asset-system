@@ -15,6 +15,7 @@ type SearchResult = {
 
 type AssetLabelBatchToolProps = {
   locale: string
+  preselectedAssets?: SearchResult[]
   labels: {
     title: string
     subtitle: string
@@ -36,11 +37,11 @@ type AssetLabelBatchToolProps = {
   }
 }
 
-export function AssetLabelBatchTool({ locale, labels }: AssetLabelBatchToolProps) {
+export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [] }: AssetLabelBatchToolProps) {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
   const [recentAssets, setRecentAssets] = useState<SearchResult[]>([])
-  const [selected, setSelected] = useState<SearchResult[]>([])
+  const [selected, setSelected] = useState<SearchResult[]>(() => preselectedAssets)
   const [loading, setLoading] = useState(false)
   const [queueLoading, setQueueLoading] = useState(false)
   const trimmedQuery = query.trim()

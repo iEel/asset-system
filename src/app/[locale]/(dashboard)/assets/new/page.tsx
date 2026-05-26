@@ -1,6 +1,6 @@
 import { requirePagePermission } from "@/lib/page-auth"
 import { getAssetFormOptions } from "@/lib/asset-form-options"
-import { AssetForm } from "@/components/assets/asset-form"
+import { AssetCreateWorkspace } from "@/components/assets/asset-create-workspace"
 
 type NewAssetPageProps = {
   params: Promise<{ locale: string }>
@@ -12,5 +12,5 @@ export default async function NewAssetPage({ params }: NewAssetPageProps) {
 
   const options = await getAssetFormOptions()
 
-  return <AssetForm {...options} />
+  return <AssetCreateWorkspace {...options} />
 }
