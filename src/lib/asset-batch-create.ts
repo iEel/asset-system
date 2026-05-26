@@ -144,6 +144,19 @@ export function summarizeAssetBatchCreateResult(assets: CreatedAssetSummary[]) {
   }
 }
 
+function csvCell(value: string) {
+  return /[",\r\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value
+}
+
+export function buildAssetBatchReceiptCsv(assets: CreatedAssetSummary[]) {
+  const rows = [
+    ["Asset Tag", "Asset Name", "Asset ID"],
+    ...assets.map((asset) => [asset.assetTag, asset.name, asset.id]),
+  ]
+
+  return rows.map((row) => row.map(csvCell).join(",")).join("\r\n")
+}
+
 export function buildAssetBatchDuplicateMessage({
   duplicateBatchSerials,
   duplicateBatchAssetTags,

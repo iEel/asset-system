@@ -674,7 +674,7 @@ git push origin master
 - Modify: `tests/asset-batch-create.test.ts`
 - Modify: `DEVELOPER_HANDOFF.md`
 
-- [ ] **Step 1: Add failing CSV receipt test**
+- [x] **Step 1: Add failing CSV receipt test**
 
 Append to `tests/asset-batch-create.test.ts`:
 
@@ -692,7 +692,7 @@ test("buildAssetBatchReceiptCsv exports created assets as CSV", () => {
 })
 ```
 
-- [ ] **Step 2: Implement CSV helper**
+- [x] **Step 2: Implement CSV helper**
 
 Add to `src/lib/asset-batch-create.ts`:
 
@@ -710,7 +710,7 @@ export function buildAssetBatchReceiptCsv(assets: CreatedAssetSummary[]) {
 }
 ```
 
-- [ ] **Step 3: Add receipt translations**
+- [x] **Step 3: Add receipt translations**
 
 Thai:
 
@@ -730,7 +730,7 @@ English:
 "batchCopyAssetTagsSuccess": "Asset tags copied"
 ```
 
-- [ ] **Step 4: Render receipt actions in `AssetBatchForm`**
+- [x] **Step 4: Render receipt actions in `AssetBatchForm`**
 
 Update import:
 
@@ -788,7 +788,7 @@ Inside the current `createdBatch` panel, add buttons and table:
 </div>
 ```
 
-- [ ] **Step 5: Run tests and lint**
+- [x] **Step 5: Run tests and lint**
 
 ```powershell
 node --test --test-isolation=none tests\asset-batch-create.test.ts

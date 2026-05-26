@@ -3,14 +3,14 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
-import { Loader2, Plus, Save, Trash2 } from "lucide-react"
+import { Copy, Download, Loader2, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { AssetForm } from "@/components/assets/asset-form"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { defaultAssetOwnershipType, normalizeAssetOwnershipType, assetOwnershipTypes } from "@/lib/asset-ownership"
-import { buildAssetBatchPreviewRows, createAssetBatchRows, findDuplicateBatchValues, parseBatchSerialPaste, type AssetBatchEditableRow } from "@/lib/asset-batch-create"
+import { buildAssetBatchPreviewRows, buildAssetBatchReceiptCsv, createAssetBatchRows, findDuplicateBatchValues, parseBatchSerialPaste, type AssetBatchEditableRow } from "@/lib/asset-batch-create"
 
 type AssetBatchFormProps = React.ComponentProps<typeof AssetForm>
 
@@ -355,6 +355,23 @@ export function AssetBatchForm({
     clearDuplicateCheck()
   }
 
+  function handleDownloadReceiptCsv() {
+    if (!createdBatch) return
+    const blob = new Blob([`\ufeff${buildAssetBatchReceiptCsv(createdBatch.assets)}`], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `asset-batch-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  async function handleCopyAssetTags() {
+    if (!createdBatch) return
+    await navigator.clipboard.writeText(createdBatch.assets.map((asset) => asset.assetTag).join("\n"))
+    toast.success(t("batchCopyAssetTagsSuccess"))
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (hasClientDuplicates) {
@@ -692,6 +709,35 @@ export function AssetBatchForm({
               <Link href={`/${locale}/asset-management/labels?assetIds=${createdBatch.assetIds.join(",")}`} className="inline-flex h-10 items-center rounded-md bg-primary px-3 text-sm font-medium text-white hover:bg-primary/90">
                 {t("batchPrintLabels")}
               </Link>
+              <button type="button" onClick={() => void handleCopyAssetTags()} className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium hover:bg-accent">
+                <Copy className="h-4 w-4" />
+                {t("batchCopyAssetTags")}
+              </button>
+              <button type="button" onClick={handleDownloadReceiptCsv} className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium hover:bg-accent">
+                <Download className="h-4 w-4" />
+                {t("batchDownloadReceiptCsv")}
+              </button>
+            </div>
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold text-foreground">{t("batchReceiptAssets")}</h3>
+              <div className="mt-2 overflow-auto rounded-md border border-border bg-background">
+                <table className="w-full min-w-[640px] text-sm">
+                  <thead className="bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2">{t("assetTag")}</th>
+                      <th className="px-3 py-2">{t("assetName")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {createdBatch.assets.map((asset) => (
+                      <tr key={asset.id} className="border-t border-border">
+                        <td className="px-3 py-2 font-medium text-foreground">{asset.assetTag}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{asset.name}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         ) : null}

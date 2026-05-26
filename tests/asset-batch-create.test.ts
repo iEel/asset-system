@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  buildAssetBatchReceiptCsv,
   buildAssetBatchPreviewRows,
   buildAssetBatchDuplicateCheckSummary,
   buildAssetBatchDuplicateMessage,
@@ -250,4 +251,14 @@ test("parseBatchSerialPaste reads the first column from tab-separated rows", () 
 
 test("parseBatchSerialPaste removes empty rows and caps the result", () => {
   assert.deepEqual(parseBatchSerialPaste("SN-001\n\nSN-002\nSN-003", 2), ["SN-001", "SN-002"])
+})
+
+test("buildAssetBatchReceiptCsv exports created assets as CSV", () => {
+  assert.equal(
+    buildAssetBatchReceiptCsv([
+      { id: "asset-1", assetTag: "SNI-COM-26-0001", name: "Desktop Dell" },
+      { id: "asset-2", assetTag: "SNI-COM-26-0002", name: "Desktop HP" },
+    ]),
+    "Asset Tag,Asset Name,Asset ID\r\nSNI-COM-26-0001,Desktop Dell,asset-1\r\nSNI-COM-26-0002,Desktop HP,asset-2"
+  )
 })
