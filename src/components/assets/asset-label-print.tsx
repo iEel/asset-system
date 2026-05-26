@@ -129,6 +129,30 @@ export function AssetLabelPrint({
           print-color-adjust: exact;
         }
 
+        .asset-label-sheet {
+          --asset-label-preview-scale: 1.2;
+        }
+
+        .asset-label-preview-frame {
+          width: calc(${config.widthMm}mm * var(--asset-label-preview-scale));
+          height: calc(${labelHeight}mm * var(--asset-label-preview-scale));
+          flex: none;
+          overflow: hidden;
+        }
+
+        .asset-label-preview-inner {
+          width: ${config.widthMm}mm;
+          height: ${labelHeight}mm;
+          transform: scale(var(--asset-label-preview-scale));
+          transform-origin: top left;
+        }
+
+        @media (min-width: 640px) {
+          .asset-label-sheet {
+            --asset-label-preview-scale: 1.45;
+          }
+        }
+
         @media print {
           body {
             background: #ffffff !important;
@@ -149,6 +173,26 @@ export function AssetLabelPrint({
             margin: 0 !important;
             padding: 0 !important;
             gap: 0 !important;
+            overflow: visible !important;
+          }
+
+          .asset-label-preview-list {
+            display: block !important;
+            width: auto !important;
+            min-width: 0 !important;
+            gap: 0 !important;
+          }
+
+          .asset-label-preview-frame {
+            width: auto !important;
+            height: auto !important;
+            overflow: visible !important;
+          }
+
+          .asset-label-preview-inner {
+            width: auto !important;
+            height: auto !important;
+            transform: none !important;
           }
 
           .asset-label-item {
@@ -166,16 +210,16 @@ export function AssetLabelPrint({
       `}</style>
 
       <div className="asset-label-toolbar border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-6 py-4 md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-3 py-4 sm:px-6 md:flex-row md:items-center md:justify-between">
           <Link
             href={backHref}
-            className="inline-flex h-10 items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary"
+            className="inline-flex min-h-11 items-center gap-2 rounded-md text-sm font-medium text-muted-foreground outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface sm:min-h-10"
           >
             <ArrowLeft className="h-4 w-4" />
             {translations.back}
           </Link>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <label className="flex h-10 min-w-[240px] items-center gap-2 rounded-md border border-border bg-background px-3 text-sm">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+            <label className="flex min-h-11 w-full min-w-0 flex-wrap items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm sm:h-10 sm:min-w-[240px] sm:flex-nowrap sm:py-0">
               <span className="shrink-0 font-medium text-muted-foreground">{translations.printReason}</span>
               <input
                 type="text"
@@ -183,15 +227,15 @@ export function AssetLabelPrint({
                 onChange={(event) => setPrintReason(event.target.value)}
                 placeholder={translations.printReasonPlaceholder}
                 maxLength={500}
-                className="min-w-0 bg-transparent outline-none placeholder:text-muted-foreground"
+                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
               />
             </label>
-            <label className="flex h-10 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm">
-              <span className="font-medium text-muted-foreground">{translations.tapeSize}</span>
+            <label className="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm sm:h-10 sm:w-auto">
+              <span className="shrink-0 font-medium text-muted-foreground">{translations.tapeSize}</span>
               <select
                 value={tapeSize}
                 onChange={(event) => setTapeSize(event.target.value as AssetLabelTapeSize)}
-                className="bg-transparent font-medium outline-none"
+                className="min-w-0 flex-1 bg-transparent font-medium outline-none sm:flex-none"
               >
                 {assetLabelTapeSizes.map((size) => (
                   <option key={size} value={size}>
@@ -210,14 +254,14 @@ export function AssetLabelPrint({
               type="button"
               onClick={handlePrint}
               disabled={recordingPrint}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-10 sm:w-auto"
             >
               {recordingPrint ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
               {recordingPrint ? translations.recordingPrint : translations.print}
             </button>
           </div>
         </div>
-        <div className="mx-auto flex max-w-5xl flex-col gap-2 px-6 pb-4">
+        <div className="mx-auto flex max-w-5xl flex-col gap-2 px-3 pb-4 sm:px-6">
           <p className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <span>{printerTapeGuidance}</span>
@@ -242,7 +286,7 @@ export function AssetLabelPrint({
           </div>
         </div>
         {recordError || recordedBatchId ? (
-          <div className="mx-auto max-w-5xl px-6 pb-4 text-sm">
+          <div className="mx-auto max-w-5xl px-3 pb-4 text-sm sm:px-6">
             {recordError ? (
               <p className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-danger">{recordError}</p>
             ) : (
@@ -252,18 +296,24 @@ export function AssetLabelPrint({
         ) : null}
       </div>
 
-      <section className="asset-label-title mx-auto max-w-5xl px-6 py-6">
+      <section className="asset-label-title mx-auto max-w-5xl px-3 py-5 sm:px-6 sm:py-6">
         <h1 className="text-2xl font-bold">{translations.title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {translations.preview} · {itemCountText}
         </p>
       </section>
 
-      <section className="asset-label-preview flex min-h-[calc(100vh-160px)] items-start justify-center px-6 pb-10">
-        <div className="asset-label-sheet flex max-w-full flex-col gap-3 rounded-md bg-white p-4 text-slate-950 shadow-sm">
-          {assets.map((asset) => (
-            <AssetLabelItem key={asset.assetTag} asset={asset} config={config} scanHint={translations.scanHint} />
-          ))}
+      <section className="asset-label-preview flex min-h-[calc(100vh-160px)] max-w-full items-start justify-center overflow-hidden px-3 pb-10 sm:px-6">
+        <div className="asset-label-sheet w-full max-w-full overflow-x-auto overscroll-x-contain rounded-md bg-white p-3 text-slate-950 shadow-sm sm:w-fit sm:p-4">
+          <div className="asset-label-preview-list flex w-max min-w-full flex-col items-center gap-3">
+            {assets.map((asset) => (
+              <div key={asset.assetTag} className="asset-label-preview-frame">
+                <div className="asset-label-preview-inner">
+                  <AssetLabelItem asset={asset} config={config} scanHint={translations.scanHint} />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     </main>

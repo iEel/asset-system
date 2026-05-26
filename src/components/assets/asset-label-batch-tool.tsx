@@ -122,14 +122,14 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [] }: 
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div className="mx-auto max-w-6xl space-y-5 overflow-x-hidden">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">{labels.title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{labels.subtitle}</p>
+        <h1 className="break-words text-2xl font-bold text-foreground">{labels.title}</h1>
+        <p className="mt-1 break-words text-sm text-muted-foreground">{labels.subtitle}</p>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.searchLabel}</span>
             <div className="relative">
@@ -162,7 +162,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [] }: 
                     type="button"
                     disabled={selectedIds.has(asset.id)}
                     onClick={() => addAsset(asset)}
-                    className="flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex min-h-11 w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
                       <Plus className="h-4 w-4" />
@@ -175,10 +175,10 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [] }: 
           </div>
         </section>
 
-        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <section className="min-w-0 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
           <div className="mb-5 rounded-md border border-border bg-background">
-            <div className="flex items-start justify-between gap-3 border-b border-border px-3 py-3">
-              <div>
+            <div className="flex flex-col gap-3 border-b border-border px-3 py-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
                 <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
                   <Clock3 className="h-4 w-4 text-primary" />
                   {labels.recentQueueTitle}
@@ -189,7 +189,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [] }: 
                 type="button"
                 disabled={recentAssets.length === 0}
                 onClick={addRecentAssets}
-                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-1 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 <Plus className="h-3.5 w-3.5" />
                 {labels.addAllRecent}
@@ -211,7 +211,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [] }: 
                       type="button"
                       disabled={selectedIds.has(asset.id)}
                       onClick={() => addAsset(asset)}
-                      className="flex w-full items-start gap-2 px-3 py-2 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex min-h-11 w-full items-start gap-2 px-3 py-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Plus className="mt-1 h-3.5 w-3.5 shrink-0 text-primary" />
                       <AssetLabelSearchResult asset={asset} serialLabel={labels.serial} compact />
@@ -222,8 +222,8 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [] }: 
             </div>
           </div>
 
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
               <h2 className="text-base font-semibold text-foreground">{labels.selectedTitle}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{selected.length} {labels.selectedCount}</p>
             </div>
@@ -231,7 +231,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [] }: 
               type="button"
               disabled={selected.length === 0}
               onClick={printLabels}
-              className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
               <Printer className="h-4 w-4" />
               {labels.print}
@@ -245,13 +245,14 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [] }: 
           ) : (
             <div className="space-y-2">
               {selected.map((asset) => (
-                <div key={asset.id} className="flex items-start gap-3 rounded-md border border-border bg-background px-3 py-2">
+                <div key={asset.id} className="flex min-w-0 items-start gap-3 rounded-md border border-border bg-background px-3 py-2">
                   <AssetLabelSearchResult asset={asset} serialLabel={labels.serial} compact />
                   <button
                     type="button"
                     onClick={() => removeAsset(asset.id)}
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-danger hover:text-danger"
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-danger hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 sm:h-8 sm:w-8"
                     title={labels.remove}
+                    aria-label={labels.remove}
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -324,7 +325,7 @@ function AssetLabelSearchResult({
   return (
     <span className="min-w-0 flex-1">
       <span className="flex flex-wrap items-center gap-2">
-        <span className="font-semibold text-foreground">{asset.title}</span>
+        <span className="break-all font-semibold text-foreground">{asset.title}</span>
         {!compact ? (
           <span
             className="rounded-full px-2 py-0.5 text-xs font-medium"
@@ -334,12 +335,12 @@ function AssetLabelSearchResult({
           </span>
         ) : null}
       </span>
-      <span className="mt-1 block text-sm text-foreground">{asset.subtitle}</span>
+      <span className="mt-1 block break-words text-sm text-foreground">{asset.subtitle}</span>
       <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-        {asset.serialNumber ? <span>{serialLabel}: {asset.serialNumber}</span> : null}
-        <span className="inline-flex items-center gap-1">
+        {asset.serialNumber ? <span className="break-all">{serialLabel}: {asset.serialNumber}</span> : null}
+        <span className="inline-flex min-w-0 items-center gap-1">
           <MapPin className="h-3 w-3" />
-          {asset.meta.location}
+          <span className="break-words">{asset.meta.location}</span>
         </span>
       </span>
     </span>
