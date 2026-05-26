@@ -13,6 +13,7 @@ import { DisposalRequestForm } from "@/components/disposal/disposal-request-form
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 
 type DisposalPageProps = {
   params: Promise<{ locale: string }>
@@ -123,16 +124,16 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
           </label>
-          <div className="flex gap-2 self-end">
+          <div className="flex flex-col gap-2 self-end sm:flex-row">
             <button
               type="submit"
-              className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+              className="min-h-11 w-full rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0 sm:w-auto"
             >
               {t("filter")}
             </button>
             <Link
               href={`/${locale}/disposal`}
-              className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
             >
               {t("clearFilters")}
             </Link>
@@ -149,14 +150,82 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
           {canExport ? (
             <a
               href={`/api/disposal-requests/export${exportQuery ? `?${exportQuery}` : ""}`}
-              className="inline-flex h-9 w-fit items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-fit"
             >
               <Download className="h-4 w-4" />
               {t("exportRequests")}
             </a>
           ) : null}
         </div>
-        <div className="overflow-x-auto">
+        <div className={`${getMobileCardListClasses()} p-3`}>
+          {requests.length === 0 ? (
+            <ActionEmptyState
+              icon={<Trash2 className="h-6 w-6" />}
+              title={t("emptyTitle")}
+              description={t("emptyHelp")}
+              actionHref={`/${locale}/disposal`}
+              actionLabel={t("clearFilters")}
+            />
+          ) : (
+            requests.map((request) => (
+              <article key={request.id} className="min-w-0 rounded-md border border-border bg-background p-3">
+                <div className="flex min-w-0 flex-col gap-2">
+                  <Link href={`/${locale}/disposal/${request.id}`} className="break-words text-sm font-semibold text-foreground hover:text-primary">
+                    {request.disposalNo}
+                  </Link>
+                  <div>
+                    <div className="break-words text-sm font-medium text-foreground">{request.asset.assetTag}</div>
+                    <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{request.asset.name}</div>
+                  </div>
+                  <p className="break-words text-sm text-muted-foreground">{request.reason}</p>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <DisposalStatusBadge status={request.requestStatus} labels={{
+                    pending: t("statuses.pending"),
+                    approved: t("statuses.approved"),
+                    disposed: t("statuses.disposed"),
+                    rejected: t("statuses.rejected"),
+                  }} />
+                  <StatusBadge label={t(`types.${request.disposalType}`)} tone="muted" size="xs" />
+                </div>
+                <div className="mt-3 grid gap-2 text-sm">
+                  <MobileDisposalField label={t("requestedBy")} value={`${request.requestedBy.code} - ${request.requestedBy.fullNameTh}`} />
+                  <MobileDisposalField label={t("approver")} value={request.approver ? `${request.approver.code} - ${request.approver.fullNameTh}` : "-"} />
+                  <MobileDisposalField
+                    label={t("value")}
+                    value={
+                      request.saleValue != null
+                        ? formatCurrency(Number(request.saleValue))
+                        : request.salvageValue != null
+                          ? formatCurrency(Number(request.salvageValue))
+                          : "-"
+                    }
+                  />
+                  <MobileDisposalField label={t("requestDate")} value={formatDateTime(request.requestDate)} />
+                </div>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                  <Link
+                    href={`/${locale}/disposal/${request.id}`}
+                    className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+                  >
+                    {tCommon("view")}
+                  </Link>
+                  {canApprove && request.requestStatus === "pending" && statuses.length > 0 ? (
+                    <DisposalDecisionButton
+                      requestId={request.id}
+                      disposalNo={request.disposalNo}
+                      disposalType={request.disposalType}
+                      statuses={statuses}
+                      defaultSaleValue={request.saleValue != null ? String(request.saleValue) : undefined}
+                      defaultSalvageValue={request.salvageValue != null ? String(request.salvageValue) : undefined}
+                    />
+                  ) : null}
+                </div>
+              </article>
+            ))
+          )}
+        </div>
+        <div className={`${getDesktopTableOnlyClasses()} overflow-x-auto`}>
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">
               <tr>
@@ -260,4 +329,13 @@ function DisposalStatusBadge({
   labels: { pending: string; approved: string; disposed: string; rejected: string }
 }) {
   return <StatusBadge label={labels[status as keyof typeof labels] ?? status} status={status} size="xs" />
+}
+
+function MobileDisposalField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-md bg-muted/30 px-3 py-2">
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div className="mt-1 break-words text-sm text-foreground">{value}</div>
+    </div>
+  )
 }

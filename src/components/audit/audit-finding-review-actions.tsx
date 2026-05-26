@@ -61,7 +61,7 @@ export function AuditFindingReviewActions({
   }
 
   return (
-    <div className="flex flex-wrap justify-end gap-1">
+    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
       {reviewStatus === "pending" ? (
         reviewBlocked ? (
           <div className="max-w-56 rounded-md border border-warning/30 bg-warning/10 px-2 py-1 text-left text-xs font-medium text-warning">
@@ -74,7 +74,7 @@ export function AuditFindingReviewActions({
             onClick={() => review("approve")}
             disabled={reviewing !== null}
             title={t("approve")}
-            className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs font-medium text-success transition-colors hover:bg-success/10 disabled:opacity-50"
+            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-success transition-colors hover:bg-success/10 disabled:opacity-50 sm:h-8 sm:min-h-0"
           >
             {reviewing === "approve" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
             {t("approve")}
@@ -84,7 +84,7 @@ export function AuditFindingReviewActions({
             onClick={() => review("reject")}
             disabled={reviewing !== null}
             title={t("reject")}
-            className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs font-medium text-danger transition-colors hover:bg-danger/10 disabled:opacity-50"
+            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-danger transition-colors hover:bg-danger/10 disabled:opacity-50 sm:h-8 sm:min-h-0"
           >
             {reviewing === "reject" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
             {t("reject")}
@@ -95,7 +95,7 @@ export function AuditFindingReviewActions({
       <button
         type="button"
         onClick={() => setPlanOpen(true)}
-        className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent"
+        className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
       >
         <CalendarClock className="h-3.5 w-3.5" />
         {t("actionPlan")}
@@ -104,7 +104,7 @@ export function AuditFindingReviewActions({
         <button
           type="button"
           onClick={() => setCloseOpen(true)}
-          className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent"
+          className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
         >
           <FileUp className="h-3.5 w-3.5" />
           {t("closeFinding")}
@@ -235,11 +235,11 @@ function ActionPlanModal({
             ))}
           </select>
         </label>
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="h-10 rounded-md border border-border px-4 text-sm font-medium">
+        <div className="flex flex-col justify-end gap-2 sm:flex-row">
+          <button type="button" onClick={onClose} className="min-h-11 rounded-md border border-border px-4 text-sm font-medium sm:h-10 sm:min-h-0">
             {tCommon("cancel")}
           </button>
-          <button type="submit" disabled={saving} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white disabled:opacity-50">
+          <button type="submit" disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white disabled:opacity-50 sm:h-10 sm:min-h-0">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
             {tCommon("save")}
           </button>
@@ -326,11 +326,11 @@ function CloseFindingModal({ findingId, evidenceCount, onClose }: { findingId: s
             className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </label>
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="h-10 rounded-md border border-border px-4 text-sm font-medium">
+        <div className="flex flex-col justify-end gap-2 sm:flex-row">
+          <button type="button" onClick={onClose} className="min-h-11 rounded-md border border-border px-4 text-sm font-medium sm:h-10 sm:min-h-0">
             {tCommon("cancel")}
           </button>
-          <button type="button" onClick={closeFinding} disabled={saving || uploadedCount === 0} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white disabled:opacity-50">
+          <button type="button" onClick={closeFinding} disabled={saving || uploadedCount === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white disabled:opacity-50 sm:h-10 sm:min-h-0">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
             {t("closeFinding")}
           </button>
@@ -343,8 +343,8 @@ function CloseFindingModal({ findingId, evidenceCount, onClose }: { findingId: s
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   const tCommon = useTranslations("common")
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <section className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center sm:p-4">
+      <section className="max-h-[calc(100vh-1.5rem)] w-full max-w-2xl overflow-hidden rounded-lg border border-border bg-surface shadow-lg sm:max-h-[90vh]">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2 className="text-base font-semibold text-foreground">{title}</h2>
           <button type="button" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-accent" aria-label={tCommon("close")}>

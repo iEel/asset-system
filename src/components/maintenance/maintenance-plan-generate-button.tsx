@@ -35,7 +35,7 @@ export function MaintenancePlanGenerateButton({ planId }: { planId: string }) {
       type="button"
       onClick={handleClick}
       disabled={saving}
-      className="inline-flex h-8 items-center justify-center gap-2 rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:h-8 sm:min-h-0"
     >
       {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wrench className="h-3.5 w-3.5" />}
       {t("pmGenerateTicket")}

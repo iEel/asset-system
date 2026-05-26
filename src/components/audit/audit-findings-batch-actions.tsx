@@ -64,11 +64,11 @@ export function AuditFindingsBatchActions({ findings }: { findings: BatchFinding
           <h2 className="text-base font-semibold text-foreground">{t("batchReview")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("batchReviewHelp")}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
           <button
             type="button"
             onClick={toggleAll}
-            className="inline-flex h-9 items-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-auto"
           >
             {t("selectAllPending")}
           </button>
@@ -76,7 +76,7 @@ export function AuditFindingsBatchActions({ findings }: { findings: BatchFinding
             type="button"
             onClick={() => void reviewSelected("approve")}
             disabled={selectedCount === 0 || reviewing !== null}
-            className="inline-flex h-9 items-center gap-2 rounded-md bg-success px-3 text-sm font-medium text-white transition-colors hover:bg-success/90 disabled:opacity-50"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-success px-3 text-sm font-medium text-white transition-colors hover:bg-success/90 disabled:opacity-50 sm:h-9 sm:min-h-0 sm:w-auto"
           >
             {reviewing === "approve" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
             {t("approveSelected")}
@@ -85,7 +85,7 @@ export function AuditFindingsBatchActions({ findings }: { findings: BatchFinding
             type="button"
             onClick={() => void reviewSelected("reject")}
             disabled={selectedCount === 0 || reviewing !== null}
-            className="inline-flex h-9 items-center gap-2 rounded-md bg-danger px-3 text-sm font-medium text-white transition-colors hover:bg-danger/90 disabled:opacity-50"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-danger px-3 text-sm font-medium text-white transition-colors hover:bg-danger/90 disabled:opacity-50 sm:h-9 sm:min-h-0 sm:w-auto"
           >
             {reviewing === "reject" ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
             {t("rejectSelected")}
@@ -106,8 +106,8 @@ export function AuditFindingsBatchActions({ findings }: { findings: BatchFinding
                 className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
               />
               <span className="min-w-0">
-                <span className="block truncate font-medium text-foreground">{finding.label}</span>
-                <span className="mt-1 block truncate text-xs text-muted-foreground">{finding.detail}</span>
+                <span className="block break-words font-medium text-foreground">{finding.label}</span>
+                <span className="mt-1 block break-words text-xs text-muted-foreground">{finding.detail}</span>
               </span>
             </label>
           ))}

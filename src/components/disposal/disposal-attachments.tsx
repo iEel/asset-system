@@ -60,7 +60,7 @@ export function DisposalAttachments({ requestId, attachments }: { requestId: str
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
       <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
         <FileText className="h-5 w-5 text-primary" />
         {t("requestEvidence")}
@@ -95,11 +95,11 @@ export function DisposalAttachments({ requestId, attachments }: { requestId: str
                 </div>
               </div>
               <div className="mt-3 flex gap-2">
-                <a href={`/api/attachments/${attachment.id}`} className="inline-flex h-8 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent">
+                <a href={`/api/attachments/${attachment.id}`} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0">
                   <Download className="h-3.5 w-3.5" />
                   {t("download")}
                 </a>
-                <button type="button" onClick={() => handleDelete(attachment.id)} disabled={deletingId === attachment.id} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 disabled:opacity-50" title={tCommon("delete")}>
+                <button type="button" onClick={() => handleDelete(attachment.id)} disabled={deletingId === attachment.id} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 disabled:opacity-50 sm:h-8 sm:min-h-0 sm:w-8 sm:min-w-0" title={tCommon("delete")}>
                   {deletingId === attachment.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                 </button>
               </div>

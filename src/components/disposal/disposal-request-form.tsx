@@ -93,7 +93,7 @@ export function DisposalRequestForm({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
       <div className="mb-5">
         <h2 className="text-base font-semibold text-foreground">{t("createTitle")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t("createSubtitle")}</p>
@@ -170,11 +170,11 @@ export function DisposalRequestForm({
             </div>
           ) : null}
         </div>
-        <div className="md:col-span-2 flex justify-end">
+        <div className="flex justify-end md:col-span-2">
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {tCommon("save")}

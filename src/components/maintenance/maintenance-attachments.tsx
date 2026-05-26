@@ -172,7 +172,7 @@ export function MaintenanceAttachments({
                   <button
                     type="button"
                     onClick={() => setPreview(attachment)}
-                    className="inline-flex h-8 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent"
+                    className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
                   >
                     <Eye className="h-3.5 w-3.5" />
                     {t("preview")}
@@ -180,7 +180,7 @@ export function MaintenanceAttachments({
                 ) : null}
                 <a
                   href={`/api/attachments/${attachment.id}`}
-                  className="inline-flex h-8 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent"
+                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
                 >
                   <Download className="h-3.5 w-3.5" />
                   {t("download")}
@@ -189,7 +189,7 @@ export function MaintenanceAttachments({
                   type="button"
                   onClick={() => handleDelete(attachment.id)}
                   disabled={deletingId === attachment.id}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 disabled:opacity-50"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 disabled:opacity-50 sm:h-8 sm:min-h-0 sm:w-8 sm:min-w-0"
                   title={tCommon("delete")}
                 >
                   {deletingId === attachment.id ? (
@@ -207,8 +207,8 @@ export function MaintenanceAttachments({
       )}
 
       {preview ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <section className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-3 sm:items-center sm:p-4">
+          <section className="flex max-h-[calc(100vh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-lg sm:max-h-[92vh]">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="min-w-0">
                 <h3 className="truncate text-sm font-semibold text-foreground">{getMaintenanceAttachmentDisplayName(preview.originalName)}</h3>
@@ -216,10 +216,10 @@ export function MaintenanceAttachments({
                   {preview.fileType} · {formatFileSize(preview.fileSize)}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <a
                   href={`/api/attachments/${preview.id}`}
-                  className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-3 text-xs font-medium transition-colors hover:bg-accent"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
                 >
                   <Download className="h-3.5 w-3.5" />
                   {t("download")}
@@ -227,7 +227,7 @@ export function MaintenanceAttachments({
                 <button
                   type="button"
                   onClick={() => setPreview(null)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border transition-colors hover:bg-accent"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-border transition-colors hover:bg-accent sm:h-8 sm:min-h-0 sm:w-8 sm:min-w-0"
                   aria-label={tCommon("close")}
                 >
                   <X className="h-4 w-4" />

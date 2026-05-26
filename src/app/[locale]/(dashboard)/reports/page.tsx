@@ -373,11 +373,11 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           <ReportSelect name="statusId" label={t("status")} value={filters.statusId} options={filterStatuses.map((status) => ({ value: status.id, label: status.nameTh }))} allLabel={t("all")} />
           <ReportSelect name="conditionId" label={t("condition")} value={filters.conditionId} options={filterConditions.map((condition) => ({ value: condition.id, label: condition.nameTh }))} allLabel={t("all")} />
           <ReportSelect name="ownershipType" label={tAsset("ownershipType")} value={filters.ownershipType} options={assetOwnershipTypes.map((type) => ({ value: type, label: tAsset(`ownershipType_${type}`) }))} allLabel={t("all")} />
-          <div className="flex flex-wrap gap-2 self-end md:col-span-2 xl:col-span-3">
-            <ActionButton type="submit" variant="primary">
+          <div className="flex min-w-0 flex-col gap-2 self-end sm:flex-row sm:flex-wrap md:col-span-2 xl:col-span-3">
+            <ActionButton type="submit" variant="primary" className="min-h-11 w-full sm:h-10 sm:min-h-0 sm:w-auto">
               {t("applyFilters")}
             </ActionButton>
-            <Link href={`/${locale}/reports`} className={getActionButtonClasses("secondary")}>
+            <Link href={`/${locale}/reports`} className={`${getActionButtonClasses("secondary")} min-h-11 w-full sm:h-10 sm:min-h-0 sm:w-auto`}>
               {t("clearFilters")}
             </Link>
           </div>
@@ -408,7 +408,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           <div className="rounded-md border border-border bg-background p-4">
             <div className="text-sm font-semibold text-foreground">{t("currentFilterPreset")}</div>
             <p className="mt-1 text-sm text-muted-foreground">{t("currentFilterPresetHelp")}</p>
-            <Link href={savedFilterUrl} className="mt-4 inline-flex h-9 items-center rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90">
+            <Link href={savedFilterUrl} className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-9 sm:min-h-0 sm:w-auto">
               {t("openSavedFilter")}
             </Link>
           </div>
@@ -423,7 +423,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
                   <span className="rounded-full bg-info/10 px-2 py-1 text-xs font-medium text-info">{report.cadence}</span>
                 </div>
                 {report.allowed ? (
-                  <Link href={report.href} className="mt-4 inline-flex h-8 items-center gap-1 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent">
+                  <Link href={report.href} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0 sm:w-auto">
                     <Download className="h-3.5 w-3.5" />
                     {t("runNow")}
                   </Link>
@@ -454,7 +454,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             <h2 className="text-base font-semibold text-foreground">{t("dataQualityActionTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("dataQualityActionHelp")}</p>
           </div>
-          <Link href={`/${locale}/admin/data-quality`} className="inline-flex h-9 w-fit items-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent">
+          <Link href={`/${locale}/admin/data-quality`} className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-fit">
             {t("openDataQualityRules")}
           </Link>
         </div>
@@ -489,11 +489,11 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
                         ))}
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Link href={`/${locale}/assets/${asset.id}`} className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent">
+                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
+                      <Link href={`/${locale}/assets/${asset.id}`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0">
                         {t("openAsset")}
                       </Link>
-                      <Link href={primaryFixHref} className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary/90">
+                      <Link href={primaryFixHref} className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary/90 sm:h-8 sm:min-h-0">
                         {t("fixData")}
                       </Link>
                     </div>
@@ -513,7 +513,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           </div>
           <span className="text-xs font-medium text-muted-foreground">{t("previewCount", { count: previewAssets.length })}</span>
         </div>
-        <div className="overflow-x-auto">
+        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">
               <tr>
@@ -605,12 +605,12 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
                 {category.reports.map((report) => (
                   <div key={report.label} className="flex flex-col gap-2 rounded-md border border-border bg-surface px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
                     <span className="text-sm font-medium text-foreground">{report.label}</span>
-                    <div className="flex flex-wrap gap-2">
-                      <Link href={report.viewHref} className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-3 text-xs font-medium transition-colors hover:bg-accent">
+                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
+                      <Link href={report.viewHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-background px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0">
                         {t("openReport")}
                       </Link>
                       {report.exportHref && report.exportAllowed ? (
-                        <Link href={report.exportHref} className="inline-flex h-8 items-center justify-center gap-1 rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary/90">
+                        <Link href={report.exportHref} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary/90 sm:h-8 sm:min-h-0">
                           <Download className="h-3.5 w-3.5" />
                           {report.exportLabel}
                         </Link>
@@ -655,7 +655,7 @@ function CostExposureTable({
       {rows.length === 0 ? (
         <div className="px-4 py-6 text-center text-sm text-muted-foreground">{labels.empty}</div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">
               <tr>
@@ -713,7 +713,7 @@ function DepreciationTable({
       {rows.length === 0 ? (
         <div className="px-4 py-6 text-center text-sm text-muted-foreground">{labels.empty}</div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">
               <tr>

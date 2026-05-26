@@ -21,6 +21,7 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import { getMaintenancePlanDueState, summarizeMaintenancePlans } from "@/lib/preventive-maintenance"
 import { hasPrismaModelDelegate } from "@/lib/prisma-client-cache"
 import { buildMaintenanceViewHref, normalizeMaintenancePageView, type MaintenancePageView } from "@/lib/maintenance-view"
+import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 
 type MaintenancePageProps = {
   params: Promise<{ locale: string }>
@@ -209,16 +210,16 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                   className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
               </label>
-              <div className="flex min-w-0 flex-wrap gap-2 self-end md:col-span-2 xl:col-span-4">
+              <div className="flex min-w-0 flex-col gap-2 self-end sm:flex-row sm:flex-wrap md:col-span-2 xl:col-span-4">
                 <button
                   type="submit"
-                  className="h-10 min-w-24 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+                  className="min-h-11 w-full rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0 sm:w-auto sm:min-w-24"
                 >
                   {t("filter")}
                 </button>
                 <Link
                   href={buildMaintenanceViewHref(locale, "tickets", filters.assetId)}
-                  className="inline-flex h-10 min-w-24 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+                  className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto sm:min-w-24"
                 >
                   {t("clearFilters")}
                 </Link>
@@ -255,14 +256,93 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
               {canExport ? (
                 <a
                   href={`/api/maintenance-tickets/export${exportQuery ? `?${exportQuery}` : ""}`}
-                  className="inline-flex h-9 w-fit items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-fit"
                 >
                   <Download className="h-4 w-4" />
                   {t("exportTickets")}
                 </a>
               ) : null}
             </div>
-            <div className="overflow-x-auto">
+            <div className={`${getMobileCardListClasses()} p-3`}>
+              {tickets.length === 0 ? (
+                <ActionEmptyState
+                  icon={<Wrench className="h-6 w-6" />}
+                  title={t("emptyTitle")}
+                  description={t("emptyHelp")}
+                  actionHref={buildMaintenanceViewHref(locale, "tickets", filters.assetId)}
+                  actionLabel={t("clearFilters")}
+                />
+              ) : (
+                tickets.map((ticket) => (
+                  <article key={ticket.id} className="min-w-0 rounded-md border border-border bg-background p-3">
+                    <div className="flex min-w-0 flex-col gap-2">
+                      <Link href={`/${locale}/maintenance/${ticket.id}`} className="break-words text-sm font-semibold text-foreground hover:text-primary">
+                        {ticket.repairNo}
+                      </Link>
+                      <div>
+                        <div className="break-words text-sm font-medium text-foreground">{ticket.asset.assetTag}</div>
+                        <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{ticket.asset.name}</div>
+                      </div>
+                      <p className="break-words text-sm text-muted-foreground">{ticket.problem}</p>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, statusLabels)} tone={getMaintenanceStatusTone(ticket.repairStatus)} size="xs" />
+                      {isMaintenanceOverdue(ticket.repairStatus, ticket.dueDate) ? (
+                        <StatusBadge label={t("overdue")} tone="danger" size="xs" />
+                      ) : null}
+                    </div>
+                    <div className="mt-3 grid gap-2 text-sm">
+                      <MobileMaintenanceField label={t("reportedBy")} value={`${ticket.reportedBy.code} - ${ticket.reportedBy.fullNameTh}`} />
+                      <MobileMaintenanceField label={t("assignedTo")} value={ticket.assignedTo ? `${ticket.assignedTo.code} - ${ticket.assignedTo.fullNameTh}` : "-"} />
+                      <MobileMaintenanceField
+                        label={t("repairType")}
+                        value={ticket.repairType === "vendor" ? `${t("vendorRepair")}${ticket.vendor ? `: ${ticket.vendor.name}` : ""}` : t("internalRepair")}
+                      />
+                      <MobileMaintenanceField label={t("dueDate")} value={ticket.dueDate ? formatDateTime(ticket.dueDate) : "-"} />
+                    </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <Link
+                        href={`/${locale}/maintenance/${ticket.id}`}
+                        className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+                      >
+                        {tCommon("view")}
+                      </Link>
+                      <Link
+                        href={`/${locale}/maintenance/${ticket.id}/print`}
+                        className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+                      >
+                        {t("printRepair")}
+                      </Link>
+                    </div>
+                    {canEdit && !isMaintenanceClosed(ticket.repairStatus) && options ? (
+                      <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                        <MaintenanceTicketStatusButton
+                          ticketId={ticket.id}
+                          repairNo={ticket.repairNo}
+                          currentStatus={ticket.repairStatus}
+                          assignedToId={ticket.assignedToId}
+                          dueDate={ticket.dueDate}
+                          employees={options.employees}
+                        />
+                        <MaintenanceTicketCloseButton
+                          ticketId={ticket.id}
+                          repairNo={ticket.repairNo}
+                          statuses={statuses}
+                          defaultLaborCost={ticket.laborCost?.toString()}
+                          defaultPartsCost={ticket.partsCost?.toString()}
+                          defaultRepairCost={ticket.repairCost?.toString()}
+                          defaultQuotationNo={ticket.quotationNo}
+                          defaultInvoiceNo={ticket.invoiceNo}
+                          defaultWarrantyClaim={ticket.warrantyClaim}
+                          employees={options.employees}
+                        />
+                      </div>
+                    ) : null}
+                  </article>
+                ))
+              )}
+            </div>
+            <div className={`${getDesktopTableOnlyClasses()} overflow-x-auto`}>
               <table className="min-w-full divide-y divide-border text-sm">
                 <thead className="bg-muted/40">
                   <tr>
@@ -416,7 +496,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                   const dueState = getMaintenancePlanDueState(plan.nextDueDate, today)
                   const dueTone = dueState === "overdue" ? "danger" : dueState === "due_soon" ? "warning" : "primary"
                   return (
-                    <div key={plan.id} className="grid gap-3 bg-background px-4 py-3 md:grid-cols-[minmax(220px,1fr)_minmax(220px,260px)_minmax(180px,220px)] md:items-center">
+                    <div key={plan.id} className="grid min-w-0 gap-3 bg-background px-4 py-3 md:grid-cols-[minmax(220px,1fr)_minmax(220px,260px)_minmax(180px,220px)] md:items-center">
                       <div className="min-w-0">
                         <div className="text-sm font-semibold text-foreground">{plan.title}</div>
                         <div className="mt-1 truncate text-xs text-muted-foreground">
@@ -432,7 +512,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                           {t("pmExternalProvider")}: {plan.vendor ? `${plan.vendor.code} - ${plan.vendor.name}` : t("pmNoExternalProvider")}
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center md:justify-end">
                         <StatusBadge label={t(`pmDueState.${dueState}`)} tone={dueTone} size="xs" />
                         <StatusBadge label={t(`pmFrequencies.${plan.frequency}`)} tone="muted" size="xs" />
                         {canCreate ? <MaintenancePlanGenerateButton planId={plan.id} /> : null}
@@ -595,6 +675,15 @@ function MaintenanceMetric({
       </div>
       <div className="mt-3 text-3xl font-bold text-foreground">{value}</div>
       <div className="mt-1 text-xs text-muted-foreground">{detail}</div>
+    </div>
+  )
+}
+
+function MobileMaintenanceField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-md bg-muted/30 px-3 py-2">
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div className="mt-1 break-words text-sm text-foreground">{value}</div>
     </div>
   )
 }

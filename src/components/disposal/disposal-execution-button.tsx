@@ -86,15 +86,15 @@ export function DisposalExecutionButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0 sm:w-auto"
       >
         <Truck className="h-4 w-4" />
         {t("executeDisposal")}
       </button>
 
       {open ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <section className="w-full max-w-2xl rounded-lg border border-border bg-surface shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center sm:p-4">
+          <section className="max-h-[calc(100vh-1.5rem)] w-full max-w-2xl overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <div>
                 <h2 className="text-base font-semibold text-foreground">{t("executionTitle")}</h2>
@@ -104,7 +104,7 @@ export function DisposalExecutionButton({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 p-5 md:grid-cols-2">
+            <form onSubmit={handleSubmit} className="grid max-h-[calc(100vh-7rem)] grid-cols-1 gap-5 overflow-y-auto p-4 sm:p-5 md:grid-cols-2">
               <Field label={t("executionDate")} required>
                 <input type="date" value={values.executionDate} required onChange={(event) => setField("executionDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
               </Field>
@@ -133,9 +133,9 @@ export function DisposalExecutionButton({
                   <textarea value={values.executionRemark} rows={4} maxLength={4000} onChange={(event) => setField("executionRemark", event.target.value)} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
                 </Field>
               </div>
-              <div className="md:col-span-2 flex justify-end gap-2">
-                <button type="button" onClick={() => setOpen(false)} className="inline-flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-accent">{tCommon("cancel")}</button>
-                <button type="submit" disabled={saving} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50">
+              <div className="flex flex-col justify-end gap-2 sm:flex-row md:col-span-2">
+                <button type="button" onClick={() => setOpen(false)} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0">{tCommon("cancel")}</button>
+                <button type="submit" disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:h-10 sm:min-h-0">
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                   {t("saveExecution")}
                 </button>

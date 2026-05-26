@@ -12,6 +12,7 @@ import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
 import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 
 export type AssetRegisterRow = {
   id: string
@@ -275,18 +276,18 @@ export function AssetRegisterTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+    <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
       <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
         <div className="text-sm text-muted-foreground">
           {fromRow}-{toRow} {labels.of} {total}
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <details className="relative">
-            <summary className="inline-flex h-9 cursor-pointer list-none items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium hover:bg-accent">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+          <details className="relative min-w-0">
+            <summary className="inline-flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium hover:bg-accent sm:h-9 sm:min-h-0 sm:w-auto">
               <Columns3 className="h-4 w-4" />
               {labels.columns}
             </summary>
-            <div className="absolute right-0 z-10 mt-2 w-56 rounded-md border border-border bg-surface p-2 shadow-lg">
+            <div className="absolute left-0 z-10 mt-2 w-[calc(100vw-3rem)] max-w-64 rounded-md border border-border bg-surface p-2 shadow-lg sm:left-auto sm:right-0 sm:w-56">
               {columnOrder.map((column) => (
                 <label key={column} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent">
                   <input
@@ -303,7 +304,7 @@ export function AssetRegisterTable({
           <button
             type="button"
             onClick={() => downloadFile(`/api/assets/export?${buildAssetQueryString(filters)}`)}
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-auto"
           >
             <FileDown className="h-4 w-4" />
             {labels.exportFiltered}
@@ -311,7 +312,7 @@ export function AssetRegisterTable({
           <button
             type="button"
             onClick={() => downloadFile("/api/assets/import-template")}
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-auto"
           >
             <FileSpreadsheet className="h-4 w-4" />
             {labels.downloadTemplate}
@@ -326,11 +327,11 @@ export function AssetRegisterTable({
               {selectedAssets.length} {labels.selectedCount}
             </div>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
             <button
               type="button"
               onClick={printSelectedLabels}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-9 sm:min-h-0 sm:w-auto"
             >
               <Printer className="h-4 w-4" />
               {labels.printSelectedLabels}
@@ -338,7 +339,7 @@ export function AssetRegisterTable({
             <button
               type="button"
               onClick={() => setBulkUpdateOpen(true)}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-auto"
             >
               <Edit className="h-4 w-4" />
               {labels.bulkUpdate}
@@ -346,7 +347,7 @@ export function AssetRegisterTable({
             <button
               type="button"
               onClick={exportSelected}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-auto"
             >
               <Download className="h-4 w-4" />
               {labels.exportSelected}
@@ -354,7 +355,7 @@ export function AssetRegisterTable({
             <button
               type="button"
               onClick={clearSelection}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-auto"
             >
               <X className="h-4 w-4" />
               {labels.clearSelection}
@@ -363,7 +364,81 @@ export function AssetRegisterTable({
         </div>
       ) : null}
 
-      <div className="overflow-x-auto">
+      <div className={`${getMobileCardListClasses()} p-3`}>
+        {assets.length === 0 ? (
+          <div className="rounded-md border border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
+            {labels.noData}
+          </div>
+        ) : (
+          assets.map((asset) => (
+            <article key={asset.id} className="min-w-0 rounded-md border border-border bg-background p-3">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(asset.id)}
+                  onChange={() => toggleAsset(asset.id)}
+                  aria-label={asset.assetTag}
+                  className="mt-1 h-5 w-5 shrink-0 rounded border-border text-primary"
+                />
+                <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">
+                  {asset.photo && previewableAssetPhotoTypes.has(asset.photo.fileType) ? (
+                    <Image
+                      src={`/api/attachments/${asset.photo.id}?inline=1`}
+                      alt={asset.photo.alt}
+                      fill
+                      unoptimized
+                      className="object-contain p-1"
+                      sizes="56px"
+                    />
+                  ) : (
+                    <ImageIcon className="h-5 w-5" aria-hidden="true" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <Link href={`/${locale}/assets/${asset.id}`} className="block break-words text-sm font-semibold text-foreground hover:text-primary">
+                    {asset.assetTag}
+                  </Link>
+                  <p className="mt-1 line-clamp-2 text-sm text-foreground">{asset.name}</p>
+                  {asset.serialNumber ? <p className="mt-1 break-words text-xs text-muted-foreground">{asset.serialNumber}</p> : null}
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <OwnershipTypePill value={asset.ownershipType.value} label={asset.ownershipType.label} />
+                <StatusPill label={asset.status.label} color={asset.status.color} />
+                <StatusPill label={asset.condition.label} color={asset.condition.color} />
+              </div>
+              <dl className="mt-3 grid gap-2 text-sm">
+                <MobileAssetField label={labels.category} value={asset.category} />
+                <MobileAssetField label={labels.company} value={asset.companyBranch} />
+                <MobileAssetField label={labels.currentLocation} value={asset.currentLocation} />
+                <MobileAssetField label={labels.custodian} value={asset.custodian || "-"} />
+                <MobileAssetField label={labels.purchasePrice} value={formatCurrency(asset.purchasePrice)} />
+              </dl>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Link
+                  href={`/${locale}/assets/${asset.id}`}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+                >
+                  <Eye className="h-4 w-4" />
+                  {labels.detail}
+                </Link>
+                <Link
+                  href={`/${locale}/assets/${asset.id}/edit`}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+                >
+                  <Edit className="h-4 w-4" />
+                  {labels.edit}
+                </Link>
+              </div>
+              <div className="mt-2 flex justify-end">
+                <AssetDeleteButton id={asset.id} />
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+
+      <div className={`${getDesktopTableOnlyClasses()} overflow-x-auto`}>
         <table className="min-w-full divide-y divide-border text-sm">
           <thead className="bg-muted/40">
             <tr>
@@ -503,7 +578,7 @@ export function AssetRegisterTable({
         <div>
           {fromRow}-{toRow} {labels.of} {total}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <PaginationLink href={buildHref({ page: Math.max(1, filters.page - 1) })} disabled={filters.page <= 1}>
             {labels.previous}
           </PaginationLink>
@@ -517,8 +592,8 @@ export function AssetRegisterTable({
       </div>
 
       {bulkUpdateOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-xl rounded-lg border border-border bg-surface shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center sm:p-4">
+          <div className="max-h-[calc(100vh-2rem)] w-full max-w-xl overflow-y-auto rounded-lg border border-border bg-surface shadow-xl">
             <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">{labels.bulkUpdateTitle}</h2>
@@ -654,6 +729,15 @@ function PaginationLink({
     <Link href={href} className="inline-flex h-9 items-center rounded-md border border-border px-3 hover:bg-accent">
       {children}
     </Link>
+  )
+}
+
+function MobileAssetField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-md bg-muted/30 px-3 py-2">
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="mt-1 break-words text-sm text-foreground">{value}</dd>
+    </div>
   )
 }
 

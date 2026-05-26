@@ -98,10 +98,10 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
           <h1 className="text-2xl font-bold text-foreground">{ticket.repairNo}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{ticket.asset.assetTag} - {ticket.asset.name}</p>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
           <Link
             href={`/${locale}/maintenance/${ticket.id}/print`}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
           >
             <Printer className="h-4 w-4" />
             {t("printRepair")}
@@ -242,7 +242,7 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
               <Info label={t("custodian")} value={ticket.asset.custodian ? `${ticket.asset.custodian.code} - ${ticket.asset.custodian.fullNameTh}` : null} />
               <Link
                 href={`/${locale}/assets/${ticket.asset.id}`}
-                className="inline-flex h-9 w-full items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0"
               >
                 {t("openAsset")}
               </Link>

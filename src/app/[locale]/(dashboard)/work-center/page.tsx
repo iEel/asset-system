@@ -398,14 +398,14 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
           <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:flex">
+        <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
           <SummaryPill label={t("urgent")} value={urgentCount} tone="danger" />
           <SummaryPill label={t("allFollowUps")} value={followUpCount} tone="primary" />
         </div>
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="inline-flex rounded-md border border-border bg-background p-1">
+        <div className="grid grid-cols-2 rounded-md border border-border bg-background p-1 sm:inline-flex">
           <WorkCenterViewLink
             href={buildWorkCenterHref(locale, workCenterParams, { view: "all", panel: workCenterParams.panel })}
             active={workCenterParams.view === "all"}
@@ -620,7 +620,7 @@ function WorkCenterViewLink({ href, active, children }: { href: string; active: 
   return (
     <Link
       href={href}
-      className={`rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+      className={`inline-flex min-h-11 items-center justify-center rounded px-3 py-1.5 text-center text-sm font-medium transition-colors sm:min-h-0 ${
         active ? "bg-primary text-white" : "text-muted-foreground hover:bg-accent hover:text-foreground"
       }`}
     >
@@ -654,20 +654,20 @@ function FollowUpPanel({
 }) {
   const isExpanded = currentParams.panel === panel
   return (
-    <section className={`rounded-lg border bg-surface p-4 shadow-sm ${isExpanded ? "border-primary/40 ring-1 ring-primary/20" : "border-border"}`}>
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
+    <section className={`min-w-0 rounded-lg border bg-surface p-4 shadow-sm ${isExpanded ? "border-primary/40 ring-1 ring-primary/20" : "border-border"}`}>
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h2 className="font-semibold text-foreground">{title}</h2>
           <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-col gap-2 sm:shrink-0 sm:flex-row sm:items-center">
           <Link
             href={buildWorkCenterHref(locale, currentParams, { panel: isExpanded ? "overview" : panel })}
-            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-primary/20 px-3 text-xs font-medium text-primary hover:bg-primary/5 sm:min-h-0 sm:border-0 sm:px-0 sm:hover:bg-transparent sm:hover:underline"
           >
             {isExpanded ? collapseLabel : showMoreLabel}
           </Link>
-          <Link href={href} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary hover:underline">
+          <Link href={href} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-border px-3 text-xs font-medium text-muted-foreground hover:text-primary sm:min-h-0 sm:border-0 sm:px-0 sm:hover:underline">
             {viewAllLabel}
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
@@ -712,11 +712,11 @@ function DataQualityFixGroups({
                 {group.count.toLocaleString("th-TH")}
               </span>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Link href={group.assetsHref} className="text-xs font-medium text-primary hover:underline">
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Link href={group.assetsHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-primary/20 px-3 text-center text-xs font-medium text-primary hover:bg-primary/5 sm:min-h-0 sm:border-0 sm:px-0 sm:hover:bg-transparent sm:hover:underline">
                 {labels.openFilteredAssets}
               </Link>
-              <Link href={group.workCenterHref} className="text-xs font-medium text-muted-foreground hover:text-primary hover:underline">
+              <Link href={group.workCenterHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-3 text-center text-xs font-medium text-muted-foreground hover:text-primary sm:min-h-0 sm:border-0 sm:px-0 sm:hover:underline">
                 {labels.showInWorkCenter}
               </Link>
             </div>

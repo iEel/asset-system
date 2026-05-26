@@ -839,8 +839,8 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="rounded-lg border border-border bg-surface p-2 shadow-sm">
-        <div className="flex gap-2 overflow-x-auto">
+      <div className="min-w-0 rounded-lg border border-border bg-surface p-2 shadow-sm">
+        <div className="flex max-w-full gap-2 overflow-x-auto overscroll-x-contain">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id
             return (
@@ -848,7 +848,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`h-10 whitespace-nowrap rounded-md px-3 text-sm font-medium transition-colors ${
+                className={`min-h-11 whitespace-nowrap rounded-md px-3 text-sm font-medium transition-colors sm:h-10 sm:min-h-0 ${
                   isActive ? "bg-primary text-white" : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
                 aria-pressed={isActive}
@@ -917,7 +917,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
                       [assetTagFormatTemplateKey]: `${current[assetTagFormatTemplateKey] ?? defaultAssetTagFormatTemplate}{${token}}`,
                     }))
                   }
-                  className="inline-flex h-8 items-center rounded-md border border-border px-2 font-mono text-xs text-foreground transition-colors hover:bg-accent"
+                  className="inline-flex min-h-11 items-center rounded-md border border-border px-2 font-mono text-xs text-foreground transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
                 >
                   {`{${token}}`}
                 </button>
@@ -1103,7 +1103,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
       {activeTab === "asset-numbering" ? (
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.categoryPrefixes} description={labels.categoryPrefixesDescription} />
-        <div className="overflow-x-auto">
+        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">
               <tr>
@@ -1180,7 +1180,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
           <button
             type="button"
             onClick={() => setPrefixRows((current) => [...current, { categoryId: "", prefix: "" }])}
-            className="inline-flex h-10 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
           >
             <Plus className="h-4 w-4" />
             {labels.addPrefix}
@@ -1543,7 +1543,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               type="button"
               onClick={handleLdapTest}
               disabled={testingLdap}
-              className="mt-4 inline-flex h-10 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
             >
               {testingLdap ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlugZap className="h-4 w-4" />}
               {labels.testLdapConnection}
@@ -1753,7 +1753,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               type="button"
               onClick={() => handleLdapSync("preview")}
               disabled={syncingLdap !== null}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
             >
               {syncingLdap === "preview" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {labels.ldapSyncPreview}
@@ -1762,7 +1762,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
               type="button"
               onClick={() => handleLdapSync("apply")}
               disabled={syncingLdap !== null || !syncPreview}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
             >
               {syncingLdap === "apply" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {labels.ldapSyncApply}
@@ -1791,7 +1791,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
             </div>
           </summary>
           <SectionHeader title={labels.advancedSettings} description={labels.advancedSettingsDescription} />
-          <div className="overflow-x-auto">
+          <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
             <table className="min-w-full divide-y divide-border text-sm">
               <thead className="bg-muted/40">
                 <tr>
@@ -1823,7 +1823,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
       {changedCount > 0 ? (
         <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
           <SectionHeader title={labels.changeReview} description={labels.changeReviewDescription} />
-          <div className="overflow-x-auto">
+          <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
             <table className="min-w-full divide-y divide-border text-sm">
               <thead className="bg-muted/40">
                 <tr>
@@ -1861,7 +1861,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
           <button
             type="submit"
             disabled={saving || changedCount === 0}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {labels.save}
@@ -2092,7 +2092,7 @@ function LabelTemplatePanel({
             setValue(`${prefix}_secondary_template`, preset.lines[1])
             setValue(`${prefix}_tertiary_template`, preset.lines[2])
           }}
-          className="inline-flex h-8 items-center justify-center rounded-md border border-border px-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+          className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-2 text-xs font-medium text-foreground transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
         >
           {labels.labelPreset}
         </button>
@@ -2244,7 +2244,7 @@ function LabelPreviewPanel({
   return (
     <div className="rounded-md border border-border bg-muted/20 p-3">
       <div className="text-sm font-semibold text-foreground">{labels.labelPreview}</div>
-      <div className="mt-3 overflow-x-auto">
+      <div className="mt-3 w-full max-w-full overflow-x-auto overscroll-x-contain">
         <div
           className="overflow-hidden rounded border border-slate-300 bg-white text-slate-950 shadow-sm"
           style={{ width: widthPx, height: heightPx, padding: marginPx }}

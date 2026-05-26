@@ -95,15 +95,15 @@ export function MaintenanceTicketCloseButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent"
+        className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
       >
         <CheckCircle2 className="h-3.5 w-3.5" />
         {t("closeTicket")}
       </button>
 
       {open ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <section className="w-full max-w-2xl rounded-lg border border-border bg-surface shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center sm:p-4">
+          <section className="max-h-[calc(100vh-1.5rem)] w-full max-w-2xl overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <div>
                 <h2 className="text-base font-semibold text-foreground">{t("closeTitle")}</h2>
@@ -118,7 +118,7 @@ export function MaintenanceTicketCloseButton({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="max-h-[78vh] overflow-y-auto p-5">
+            <form onSubmit={handleSubmit} className="max-h-[calc(100vh-7rem)] overflow-y-auto p-4 sm:p-5">
               <div className="mb-5 rounded-md border border-warning/30 bg-warning/5 p-3">
                 <h3 className="text-sm font-semibold text-foreground">{t("closeChecklistTitle")}</h3>
                 <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
@@ -241,18 +241,18 @@ export function MaintenanceTicketCloseButton({
                   />
                 </Field>
               </div>
-              <div className="md:col-span-2 flex justify-end gap-2">
+              <div className="flex flex-col justify-end gap-2 sm:flex-row md:col-span-2">
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="inline-flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-accent"
+                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0"
                 >
                   {tCommon("cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:h-10 sm:min-h-0"
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                   {t("closeTicket")}

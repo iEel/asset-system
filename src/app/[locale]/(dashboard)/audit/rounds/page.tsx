@@ -7,6 +7,7 @@ import { ColumnHeader, MasterDataHeader, MasterDataSearch } from "@/components/m
 import { formatDate } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
+import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 
 type AuditRoundsPageProps = {
   params: Promise<{ locale: string }>
@@ -213,8 +214,56 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
         submitLabel={tCommon("search")}
       />
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-        <div className="overflow-x-auto">
+      <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <div className={`${getMobileCardListClasses()} p-3`}>
+          {rounds.length === 0 ? (
+            <div className="rounded-md border border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
+              {tCommon("noData")}
+            </div>
+          ) : (
+            rounds.map((round) => {
+              const progress = progressByRoundId.get(round.id) ?? { pending: round._count.items, processed: 0 }
+
+              return (
+                <article key={round.id} className="min-w-0 rounded-md border border-border bg-background p-3">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link href={`/${locale}/audit/rounds/${round.id}`} className="break-words text-sm font-semibold text-foreground hover:text-primary">
+                        {round.auditNo}
+                      </Link>
+                      <p className="mt-1 line-clamp-2 text-sm text-foreground">{round.name}</p>
+                    </div>
+                    <AuditStatusBadge status={round.status} />
+                  </div>
+                  <div className="mt-3 grid gap-2 text-sm">
+                    <MobileAuditField label={t("scope")} value={formatScope(round)} />
+                    <MobileAuditField label={t("dateRange")} value={`${formatDate(round.startDate)} - ${formatDate(round.endDate)}`} />
+                    <MobileAuditField label={t("items")} value={String(round._count.items)} />
+                  </div>
+                  <div className="mt-3">
+                    <AuditProgressBar
+                      compact
+                      total={round._count.items}
+                      processed={progress.processed}
+                      pending={progress.pending}
+                      label={t("progress")}
+                      processedLabel={t("scanned")}
+                      pendingLabel={t("pending")}
+                    />
+                  </div>
+                  <Link
+                    href={`/${locale}/audit/rounds/${round.id}`}
+                    className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+                  >
+                    <Eye className="h-4 w-4" />
+                    {tCommon("view")}
+                  </Link>
+                </article>
+              )
+            })
+          )}
+        </div>
+        <div className={`${getDesktopTableOnlyClasses()} overflow-x-auto`}>
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">
               <tr>
@@ -303,6 +352,15 @@ function CoverageMetric({ label, value, tone = "neutral" }: { label: string; val
   )
 }
 
+function MobileAuditField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-md bg-muted/30 px-3 py-2">
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div className="mt-1 break-words text-sm text-foreground">{value}</div>
+    </div>
+  )
+}
+
 function CoverageGapList({
   title,
   help,
@@ -325,7 +383,28 @@ function CoverageGapList({
       {rows.length === 0 ? (
         <div className="rounded-md border border-border bg-surface px-3 py-4 text-sm text-muted-foreground">{emptyLabel}</div>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+        <div className="grid gap-2 sm:hidden">
+          {rows.map((row) => (
+            <div key={row.id} className="rounded-md border border-border bg-surface p-3">
+              <div className="break-words text-sm font-medium text-foreground">
+                {row.href ? (
+                  <Link href={row.href} className="text-primary hover:underline">
+                    {row.label}
+                  </Link>
+                ) : (
+                  row.label
+                )}
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                <MobileAuditField label={labels.missing} value={String(row.missing)} />
+                <MobileAuditField label={labels.total} value={String(row.total)} />
+                <MobileAuditField label={labels.rate} value={`${row.percent}%`} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden overflow-x-auto sm:block">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-muted-foreground">
@@ -355,6 +434,7 @@ function CoverageGapList({
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   )

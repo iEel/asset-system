@@ -102,12 +102,12 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
       />
 
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex min-w-0 flex-wrap gap-2">
           {["pending", "approved", "rejected", "exception", "all"].map((item) => (
             <Link
               key={item}
               href={`/${locale}/audit/findings?status=${item}`}
-              className={`inline-flex h-9 items-center rounded-md border px-3 text-sm transition-colors ${
+              className={`inline-flex min-h-11 items-center rounded-md border px-3 text-sm transition-colors sm:h-9 sm:min-h-0 ${
                 status === item ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-muted-foreground hover:bg-accent"
               }`}
             >
@@ -115,17 +115,17 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
             </Link>
           ))}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
           <a
             href={`/api/audit-findings/export?${exportParams.toString()}`}
-            className="inline-flex h-9 w-fit items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-fit"
           >
             <Download className="h-4 w-4" />
             {t("exportFindings")}
           </a>
           <a
             href={`/api/audit-findings/export-pdf?${exportParams.toString()}`}
-            className="inline-flex h-9 w-fit items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-fit"
           >
             <FileText className="h-4 w-4" />
             {t("exportFindingsPdf")}
@@ -166,7 +166,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                 <div className="mt-3 flex flex-col gap-2">
                   <Link
                     href={finding.asset ? `/${locale}/assets/${finding.asset.id}` : `/${locale}/audit/rounds/${finding.auditRound.id}`}
-                    className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium"
+                    className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium"
                   >
                     {tCommon("view")}
                   </Link>
@@ -187,7 +187,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                   {canCreateDisposal && finding.asset ? (
                     <Link
                       href={`/${locale}/disposal?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`}
-                      className="inline-flex h-10 items-center justify-center rounded-md border border-warning/40 bg-warning/5 px-3 text-sm font-medium text-warning"
+                      className="inline-flex min-h-11 items-center justify-center rounded-md border border-warning/40 bg-warning/5 px-3 text-sm font-medium text-warning"
                     >
                       {t("openDisposalRequest")}
                     </Link>

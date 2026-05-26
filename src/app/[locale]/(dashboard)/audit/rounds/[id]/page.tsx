@@ -16,6 +16,7 @@ import { MobileActionBar } from "@/components/ui/mobile-action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { isSameAuditActor } from "@/lib/audit-segregation"
+import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 
 type AuditRoundDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -134,38 +135,38 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
         </div>
         <div className="flex flex-col gap-2 sm:items-end">
           <StatusBadge label={round.status} status={round.status} />
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
             <a
               href={`/api/audit-rounds/${round.id}/export`}
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
             >
               <Download className="h-4 w-4" />
               {t("exportResult")}
             </a>
             <a
               href={`/api/audit-rounds/${round.id}/export-pdf`}
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
             >
               <FileText className="h-4 w-4" />
               {t("exportResultPdf")}
             </a>
             <a
               href={`/api/audit-rounds/${round.id}/variance-export`}
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
             >
               <Download className="h-4 w-4" />
               {t("exportVariance")}
             </a>
             <Link
               href={`/${locale}/audit/rounds/${round.id}/pending`}
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
             >
               <AlertTriangle className="h-4 w-4" />
               {t("pendingAssets")}
             </Link>
             <Link
               href={`/${locale}/audit/rounds/${round.id}/scan`}
-              className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0 sm:w-auto"
             >
               <ScanLine className="h-4 w-4" />
               {t("scan")}
@@ -245,11 +246,42 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-4 py-3">
           <h2 className="text-base font-semibold text-foreground">{t("expectedAssets")}</h2>
         </div>
-        <div className="overflow-x-auto">
+        <div className={`${getMobileCardListClasses()} p-3`}>
+          {round.items.length === 0 ? (
+            <ActionEmptyState
+              icon={<ScanLine className="h-6 w-6" />}
+              title={t("emptyAssetsTitle")}
+              description={t("emptyAssetsHelp")}
+              actionHref={`/${locale}/audit/rounds`}
+              actionLabel={tCommon("back")}
+            />
+          ) : (
+            round.items.map((item) => (
+              <article key={item.id} className="min-w-0 rounded-md border border-border bg-background p-3">
+                <Link href={`/${locale}/assets/${item.asset.id}`} className="break-words text-sm font-semibold text-foreground hover:text-primary">
+                  {item.asset.assetTag}
+                </Link>
+                <p className="mt-1 line-clamp-2 text-sm text-foreground">{item.asset.name}</p>
+                <div className="mt-3 grid gap-2 text-sm">
+                  <MobileAuditDetailField label={t("expectedLocation")} value={`${item.asset.currentLocation.code} - ${item.asset.currentLocation.name}`} />
+                  <MobileAuditDetailField
+                    label={t("expectedCustodian")}
+                    value={item.asset.custodian ? `${item.asset.custodian.code} - ${item.asset.custodian.fullNameTh}` : "-"}
+                  />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <StatusBadge label={item.auditStatus} status={item.auditStatus} size="xs" />
+                  <StatusBadge label={item.auditResult ?? "-"} status={item.auditResult ?? "pending"} size="xs" />
+                </div>
+              </article>
+            ))
+          )}
+        </div>
+        <div className={`${getDesktopTableOnlyClasses()} overflow-x-auto`}>
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">
               <tr>
@@ -307,6 +339,15 @@ function Metric({ label, value }: { label: string; value: number | string }) {
     <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
       <div className="text-sm text-muted-foreground">{label}</div>
       <div className="mt-2 text-2xl font-semibold text-foreground">{value}</div>
+    </div>
+  )
+}
+
+function MobileAuditDetailField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-md bg-muted/30 px-3 py-2">
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div className="mt-1 break-words text-sm text-foreground">{value}</div>
     </div>
   )
 }

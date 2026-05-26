@@ -167,13 +167,13 @@ function ReadinessCheckCard({
   }
 }) {
   return (
-    <article className={`rounded-lg border p-4 ${checkCardClass(check.status)}`}>
-      <div className="flex items-start justify-between gap-3">
+    <article className={`min-w-0 rounded-lg border p-4 ${checkCardClass(check.status)}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h3 className="font-semibold text-foreground">{labels.title}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{labels.description}</p>
         </div>
-        <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${statusPillClass(check.status)}`}>
+        <span className={`inline-flex w-fit shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${statusPillClass(check.status)}`}>
           {statusIcon(check.status)}
           {labels.status}
         </span>
