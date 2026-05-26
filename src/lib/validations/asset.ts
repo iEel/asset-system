@@ -1,6 +1,6 @@
 import { z } from "zod"
-import { assetOwnershipTypes, defaultAssetOwnershipType } from "@/lib/asset-ownership"
-import { optionalText } from "@/lib/validations/shared"
+import { assetOwnershipTypes, defaultAssetOwnershipType } from "../asset-ownership.ts"
+import { optionalText } from "./shared.ts"
 
 const optionalDate = z.preprocess(
   (value) => (typeof value === "string" && value.trim().length === 0 ? null : value),
@@ -17,8 +17,7 @@ const optionalNonNegativeInt = z.preprocess(
   z.coerce.number().int().nonnegative().nullable().optional()
 )
 
-export const assetSchema = z
-  .object({
+export const assetBaseSchema = z.object({
     assetTag: optionalText,
     name: z.string().trim().min(1).max(200),
     categoryId: z.string().trim().min(1),
@@ -49,6 +48,8 @@ export const assetSchema = z
     customFieldsJson: optionalText,
     isActive: z.boolean().default(true),
   })
+
+export const assetSchema = assetBaseSchema
   .superRefine((input, context) => {
     if (
       input.ownershipType === "software_license" &&
