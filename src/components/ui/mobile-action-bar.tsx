@@ -14,28 +14,29 @@ export function MobileActionBar({ actions }: { actions: MobileAction[] }) {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur md:hidden">
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid min-w-0 grid-cols-4 gap-2">
         {visibleActions.map((action) =>
           action.disabled ? (
             <span
               key={action.label}
-              className="inline-flex h-11 items-center justify-center gap-1 rounded-md border border-border bg-muted px-2 text-xs font-medium text-muted-foreground"
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-1 rounded-md border border-border bg-muted px-2 text-xs font-medium leading-tight text-muted-foreground"
+              aria-disabled="true"
             >
-              {action.icon}
-              <span className="truncate">{action.label}</span>
+              <span className="shrink-0">{action.icon}</span>
+              <span className="min-w-0 truncate">{action.label}</span>
             </span>
           ) : (
             <Link
               key={action.label}
               href={action.href}
-              className={`inline-flex h-11 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium transition-colors ${
+              className={`inline-flex h-11 min-w-0 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                 action.primary
                   ? "bg-primary text-white hover:bg-primary/90"
                   : "border border-border bg-background text-foreground hover:bg-accent"
               }`}
             >
-              {action.icon}
-              <span className="truncate">{action.label}</span>
+              <span className="shrink-0">{action.icon}</span>
+              <span className="min-w-0 truncate">{action.label}</span>
             </Link>
           ),
         )}

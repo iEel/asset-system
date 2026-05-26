@@ -125,7 +125,7 @@ export function GlobalSearch() {
   }
 
   return (
-    <div ref={containerRef} className="relative hidden lg:block">
+    <div ref={containerRef} className="relative hidden min-w-0 max-w-full lg:block">
       <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
       <input
         type="search"
@@ -134,7 +134,7 @@ export function GlobalSearch() {
         onFocus={() => setOpen(true)}
         onKeyDown={handleKeyDown}
         placeholder={t("placeholder")}
-        className="h-9 w-[min(28rem,36vw)] rounded-md border border-border bg-background pl-10 pr-10 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+        className="h-9 w-[min(28rem,36vw)] min-w-0 rounded-md border border-border bg-background pl-10 pr-10 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
         role="combobox"
         aria-label={t("label")}
         aria-expanded={showPanel}
@@ -186,7 +186,7 @@ export function GlobalSearch() {
                     onMouseEnter={() => setSelectedIndex(index)}
                     onClick={() => openResult(result)}
                     className={[
-                      "flex w-full gap-3 px-4 py-3 text-left transition-colors",
+                      "flex w-full min-w-0 gap-3 px-4 py-3 text-left transition-colors",
                       selected ? "bg-accent" : "hover:bg-accent/60",
                     ].join(" ")}
                   >
@@ -194,8 +194,8 @@ export function GlobalSearch() {
                       {getResultIcon(result.type)}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <span className="truncate font-medium text-foreground">{result.title}</span>
+                      <span className="flex min-w-0 flex-wrap items-center gap-2">
+                        <span className="min-w-0 truncate font-medium text-foreground">{result.title}</span>
                         <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                           {result.typeLabel}
                         </span>
@@ -216,7 +216,7 @@ export function GlobalSearch() {
                       <span className="mt-0.5 block truncate text-sm text-foreground">{result.subtitle}</span>
                       <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         {result.metadata.slice(0, 3).map((item) => (
-                          <span key={`${result.id}-${item.label}`} className="truncate">
+                          <span key={`${result.id}-${item.label}`} className="min-w-0 truncate">
                             {item.label}: {item.value}
                           </span>
                         ))}

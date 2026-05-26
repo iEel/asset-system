@@ -24,11 +24,23 @@ export function getMetricCardToneClasses(tone: UiTone = "neutral") {
 }
 
 export function getPanelClasses() {
-  return "rounded-lg border border-border bg-surface shadow-sm"
+  return "min-w-0 max-w-full rounded-lg border border-border bg-surface shadow-sm"
 }
 
 export function getTableShellClasses() {
   return "overflow-hidden rounded-md border border-border"
+}
+
+export function getResponsiveTableScrollClasses() {
+  return "w-full max-w-full overflow-x-auto overscroll-x-contain rounded-md border border-border"
+}
+
+export function getMobileCardListClasses() {
+  return "grid gap-3 md:hidden"
+}
+
+export function getDesktopTableOnlyClasses() {
+  return "hidden md:block"
 }
 
 export function getEmptyStateClasses() {
@@ -57,9 +69,17 @@ export function getSafeActionLinkClasses(variant: Extract<UiButtonVariant, "prim
     ghost: "text-foreground hover:bg-accent",
   }[variant]
 
-  return `inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-center text-sm font-medium leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:w-fit ${variantClass}`
+  return `inline-flex min-h-11 w-full min-w-0 max-w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-center text-sm font-medium leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:w-fit ${variantClass}`
 }
 
 export function getResponsiveActionRowClasses() {
-  return "flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
+  return "flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
+}
+
+export function getMobileSafeBottomPaddingClasses() {
+  return "pb-24 sm:pb-0"
+}
+
+export function getTouchIconButtonClasses() {
+  return "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 }

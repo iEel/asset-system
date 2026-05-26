@@ -67,7 +67,7 @@ export function PwaInstallPrompt() {
       <button
         type="button"
         onClick={installApp}
-        className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary sm:px-3"
+        className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-9 sm:min-h-0 sm:min-w-0 sm:px-3"
         aria-label={t("title")}
         title={t("title")}
       >
@@ -76,7 +76,7 @@ export function PwaInstallPrompt() {
       </button>
 
       {iosInstallHint && open ? (
-        <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-lg border border-border bg-surface p-4 text-sm shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-2 w-[calc(100vw-2rem)] max-w-[18rem] rounded-lg border border-border bg-surface p-4 text-sm shadow-lg">
           <div className="flex items-start gap-3">
             <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-primary">
               <Smartphone className="h-4 w-4" />

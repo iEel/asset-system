@@ -70,13 +70,13 @@ export function Topbar({
   }
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-surface px-3 shadow-sm sm:px-4">
+    <header className="flex h-16 max-w-full shrink-0 items-center justify-between gap-1 border-b border-border bg-surface px-3 shadow-sm sm:gap-2 sm:px-4">
       {/* Left side */}
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         {/* Mobile menu button */}
         <button
           onClick={onMobileMenuToggle}
-          className="rounded-md p-2 hover:bg-accent lg:hidden"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent lg:hidden"
           aria-label="Open menu"
         >
           <Menu size={20} />
@@ -85,8 +85,9 @@ export function Topbar({
         {/* Desktop sidebar toggle */}
         <button
           onClick={onToggleSidebar}
-          className="hidden rounded-md p-2 hover:bg-accent lg:block"
+          className="hidden min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent lg:inline-flex"
           title="Toggle sidebar"
+          aria-label="Toggle sidebar"
         >
           <PanelLeftClose size={20} />
         </button>
@@ -98,7 +99,7 @@ export function Topbar({
       <div className="flex min-w-0 items-center gap-1 sm:gap-2">
         <Link
           href={`/${locale}/asset-management/scan`}
-          className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary sm:px-3"
+          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-9 sm:min-h-0 sm:min-w-0 sm:px-3"
           title={tAssetTools("globalScanShortcut")}
           aria-label={tAssetTools("globalScanShortcut")}
         >
@@ -113,7 +114,7 @@ export function Topbar({
           <button
             type="button"
             onClick={() => setNotificationOpen(!notificationOpen)}
-            className="relative rounded-md p-2 hover:bg-accent"
+            className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             aria-label={tNotifications("title")}
             title={tNotifications("title")}
           >
@@ -125,7 +126,7 @@ export function Topbar({
             ) : null}
           </button>
           {notificationOpen ? (
-            <div className="absolute right-0 top-full z-50 mt-1 w-80 rounded-md border border-border bg-surface shadow-lg">
+            <div className="absolute right-0 top-full z-50 mt-1 w-[calc(100vw-2rem)] max-w-[20rem] rounded-md border border-border bg-surface shadow-lg">
               <div className="border-b border-border px-4 py-3">
                 <p className="text-sm font-semibold text-foreground">{tNotifications("title")}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{tNotifications("subtitle")}</p>
@@ -183,14 +184,14 @@ export function Topbar({
         <div className="relative shrink-0">
           <button
             onClick={() => setLangMenuOpen(!langMenuOpen)}
-            className="flex items-center gap-1 rounded-md px-2 py-2 text-sm hover:bg-accent"
+            className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             aria-label="Change language"
           >
             <Globe size={18} />
             <span className="hidden sm:inline">{locale === "th" ? "TH" : "EN"}</span>
           </button>
           {langMenuOpen && (
-            <div className="absolute right-0 top-full mt-1 w-32 rounded-md border border-border bg-surface py-1 shadow-lg z-50">
+            <div className="absolute right-0 top-full z-50 mt-1 w-32 rounded-md border border-border bg-surface py-1 shadow-lg">
               <button
                 onClick={() => switchLocale("th")}
                 className={cn(
@@ -217,7 +218,7 @@ export function Topbar({
         <div className="relative shrink-0">
           <button
             onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-accent sm:px-3"
+            className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md px-2 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:px-3"
             aria-label="User menu"
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-white">
@@ -227,7 +228,7 @@ export function Topbar({
             <ChevronDown size={16} className="hidden sm:block" />
           </button>
           {userMenuOpen && (
-            <div className="absolute right-0 top-full mt-1 w-48 rounded-md border border-border bg-surface py-1 shadow-lg z-50">
+            <div className="absolute right-0 top-full z-50 mt-1 w-[calc(100vw-2rem)] max-w-[12rem] rounded-md border border-border bg-surface py-1 shadow-lg">
               <div className="border-b border-border px-4 py-2">
                 <p className="text-sm font-medium">System Admin</p>
                 <p className="text-xs text-muted-foreground">admin@company.com</p>

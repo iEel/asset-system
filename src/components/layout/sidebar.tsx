@@ -158,7 +158,7 @@ export function Sidebar({
       )}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center border-b border-border px-4">
+      <div className="flex h-16 min-w-0 items-center border-b border-border px-4">
         <Package className="h-8 w-8 shrink-0 text-primary" />
         <span className={cn("ml-3 truncate text-lg font-semibold text-primary", collapsed && "lg:hidden")}>
           AMS
@@ -166,7 +166,7 @@ export function Sidebar({
         <button
           type="button"
           onClick={onMobileClose}
-          className="ml-auto rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-accent lg:hidden"
+          className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-sm text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 lg:hidden"
           aria-label="Close menu"
         >
           <X size={18} />
@@ -215,7 +215,7 @@ function SidebarItem({
         <button
           onClick={() => setOpen(!open)}
           className={cn(
-            "flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-accent",
+            "flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
             hasActiveChild && "text-primary",
             collapsed && "lg:justify-center lg:px-2"
           )}
@@ -250,7 +250,7 @@ function SidebarItem({
       href={item.href || "#"}
       onClick={onNavigate}
       className={cn(
-        "flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-accent",
+        "flex min-h-11 items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
         isActive
           ? "bg-primary/10 font-medium text-primary border-r-2 border-primary"
           : "text-muted-foreground",

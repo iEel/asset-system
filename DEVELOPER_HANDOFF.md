@@ -28,6 +28,7 @@ Long-form development history is preserved in `docs/99_CHANGELOG.md`.
 - Real environment files must stay outside Git. The repository ignores `.env*`; production uses an environment file managed on the server.
 - The system has production-oriented modules for RBAC, audit trail, readiness checks, backup status signals, scheduler heartbeat, LDAP sync safety threshold, PM ticket generation, storage governance, and guarded test-data cleanup.
 - QR label printing now uses configurable 12/18/24/custom tape profiles, warns before printing if the QR target is localhost/private/relative, and the `/q/a/{assetId}` resolver redirects through Public QR Base URL or forwarded proxy headers to avoid localhost redirects behind Nginx/Cloudflare.
+- Mobile Responsive QA is in progress. Phase 1 completed the responsive foundation for shared panels, action rows, dashboard shell, topbar/sidebar touch targets, global search containment, and mobile-safe topbar popovers. Baseline and after screenshots were captured for dashboard at `375/390/414/768px`; authenticated route QA should continue in later phases with a logged-in browser/session.
 - Before production release, complete the UAT checklist by role, production readiness checklist, security review, backup/restore test, and deployment verification.
 - Run `npm run verify` and `npm run build` before release or handoff.
 
@@ -46,6 +47,7 @@ Long-form development history is preserved in `docs/99_CHANGELOG.md`.
 | `docs/09_BACKUP_RESTORE_RUNBOOK.md` | Backup, restore, restore-test, and audit evidence runbook |
 | `docs/10_SECURITY_REVIEW.md` | Security review findings and recommendations |
 | `docs/99_CHANGELOG.md` | Historical implementation notes and feature chronology |
+| `docs/superpowers/plans/2026-05-27-mobile-responsive-qa.md` | Mobile responsive QA implementation plan and phase-by-phase commit/push protocol |
 
 ## Core Verification Commands
 
