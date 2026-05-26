@@ -1,6 +1,11 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
+import {
+  buildAssetBatchCreateItems,
+  findDuplicateBatchValues,
+  summarizeAssetBatchCreateResult,
+} from "../src/lib/asset-batch-create.ts"
 import { assetBatchCreateSchema } from "../src/lib/validations/asset-batch.ts"
 
 const validCommon = {
@@ -72,5 +77,65 @@ test("assetBatchCreateSchema caps a batch at 100 rows", () => {
         })),
       }),
     /Batch create supports up to 100 rows/
+  )
+})
+
+test("buildAssetBatchCreateItems overlays row values on common asset data", () => {
+  const items = buildAssetBatchCreateItems({
+    common: validCommon,
+    rows: [
+      {
+        clientId: "row-1",
+        serialNumber: "SN-001",
+        assetTag: "SNI-COM-26-0001",
+        custodianId: "emp-1",
+        currentLocationId: "location-desk-1",
+      },
+      {
+        clientId: "row-2",
+        serialNumber: "SN-002",
+        assetTag: "",
+        custodianId: "",
+        currentLocationId: "",
+        remark: "Keep in IT stock",
+      },
+    ],
+    generatedAssetTags: ["SNI-COM-26-0002"],
+  })
+
+  assert.equal(items[0].assetTag, "SNI-COM-26-0001")
+  assert.equal(items[0].serialNumber, "SN-001")
+  assert.equal(items[0].custodianId, "emp-1")
+  assert.equal(items[0].currentLocationId, "location-desk-1")
+  assert.equal(items[1].assetTag, "SNI-COM-26-0002")
+  assert.equal(items[1].currentLocationId, "location-store")
+  assert.equal(items[1].remark, "Keep in IT stock")
+})
+
+test("findDuplicateBatchValues returns normalized duplicate serials and asset tags", () => {
+  assert.deepEqual(
+    findDuplicateBatchValues([
+      { clientId: "row-1", serialNumber: "SN-001", assetTag: "TAG-001" },
+      { clientId: "row-2", serialNumber: "sn-001", assetTag: "tag-001" },
+      { clientId: "row-3", serialNumber: "SN-003", assetTag: "" },
+    ]),
+    { serialNumbers: ["sn-001"], assetTags: ["tag-001"] }
+  )
+})
+
+test("summarizeAssetBatchCreateResult returns ids and tags for next actions", () => {
+  assert.deepEqual(
+    summarizeAssetBatchCreateResult([
+      { id: "asset-1", assetTag: "TAG-001", name: "Desktop" },
+      { id: "asset-2", assetTag: "TAG-002", name: "Desktop" },
+    ]),
+    {
+      created: 2,
+      assets: [
+        { id: "asset-1", assetTag: "TAG-001", name: "Desktop" },
+        { id: "asset-2", assetTag: "TAG-002", name: "Desktop" },
+      ],
+      assetIds: ["asset-1", "asset-2"],
+    }
   )
 })
