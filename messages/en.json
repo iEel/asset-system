@@ -353,7 +353,7 @@
     "createModeSingle": "Single asset",
     "createModeBatch": "Batch create",
     "batchCreateTitle": "Batch Create Assets",
-    "batchCreateSubtitle": "Enter shared data once, then fill only row-specific legacy asset tags, serials, custodians, or locations.",
+    "batchCreateSubtitle": "Enter shared data once, then fill only row-specific legacy asset tags, serials, custodians, or remarks.",
     "editTitle": "Edit Asset",
     "detailTitle": "Asset Detail",
     "assetTag": "Asset Tag",
