@@ -23,6 +23,15 @@ export type AssetBatchEditableRow = {
   remark: string
 }
 
+export type AssetBatchPreviewRow = {
+  rowNo: number
+  serialNumber: string
+  assetTag: string
+  assetTagSource: "manual" | "auto"
+  custodianId: string
+  remark: string
+}
+
 function nullableText(value?: string | null) {
   const normalized = value?.trim() ?? ""
   return normalized.length > 0 ? normalized : null
@@ -102,6 +111,21 @@ export function createAssetBatchRows(count = defaultAssetBatchRowCount, idPrefix
     departmentId: "",
     remark: "",
   }))
+}
+
+export function buildAssetBatchPreviewRows(rows: AssetBatchEditableRow[]): AssetBatchPreviewRow[] {
+  return rows.map((row, index) => {
+    const assetTag = row.assetTag.trim()
+
+    return {
+      rowNo: index + 1,
+      serialNumber: row.serialNumber.trim(),
+      assetTag,
+      assetTagSource: assetTag ? "manual" : "auto",
+      custodianId: row.custodianId.trim(),
+      remark: row.remark.trim(),
+    }
+  })
 }
 
 export function summarizeAssetBatchCreateResult(assets: CreatedAssetSummary[]) {

@@ -10,7 +10,7 @@ import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { defaultAssetOwnershipType, normalizeAssetOwnershipType, assetOwnershipTypes } from "@/lib/asset-ownership"
-import { createAssetBatchRows, findDuplicateBatchValues, type AssetBatchEditableRow } from "@/lib/asset-batch-create"
+import { buildAssetBatchPreviewRows, createAssetBatchRows, findDuplicateBatchValues, type AssetBatchEditableRow } from "@/lib/asset-batch-create"
 
 type AssetBatchFormProps = React.ComponentProps<typeof AssetForm>
 
@@ -103,6 +103,7 @@ export function AssetBatchForm({
   const [rows, setRows] = useState<BatchRow[]>(() => createAssetBatchRows())
   const [selectedPurchaseDocumentIds, setSelectedPurchaseDocumentIds] = useState<string[]>([])
   const [nameManuallyEdited, setNameManuallyEdited] = useState(false)
+  const [reviewing, setReviewing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [createdBatch, setCreatedBatch] = useState<CreatedBatch | null>(null)
   const ownershipType = normalizeAssetOwnershipType(common.ownershipType)
@@ -134,6 +135,7 @@ export function AssetBatchForm({
       ),
     [rows]
   )
+  const previewRows = useMemo(() => buildAssetBatchPreviewRows(rows), [rows])
   const hasClientDuplicates = duplicateValues.serialNumbers.length > 0 || duplicateValues.assetTags.length > 0
   const scannerLabels = {
     start: t("scanSerialNumber"),
@@ -151,11 +153,13 @@ export function AssetBatchForm({
 
   function setCommonField<K extends keyof BatchCommonValues>(field: K, value: BatchCommonValues[K]) {
     setCreatedBatch(null)
+    setReviewing(false)
     setCommon((current) => ({ ...current, [field]: value }))
   }
 
   function setRowField<K extends keyof BatchRow>(clientId: string, field: K, value: BatchRow[K]) {
     setCreatedBatch(null)
+    setReviewing(false)
     setRows((current) => current.map((row) => (row.clientId === clientId ? { ...row, [field]: value } : row)))
   }
 
@@ -174,6 +178,7 @@ export function AssetBatchForm({
 
   function handleCategoryChange(categoryId: string) {
     setCreatedBatch(null)
+    setReviewing(false)
     setCommon((current) =>
       withSuggestedName({
         ...current,
@@ -185,6 +190,7 @@ export function AssetBatchForm({
 
   function handleBrandChange(brandId: string) {
     setCreatedBatch(null)
+    setReviewing(false)
     setCommon((current) => {
       const currentModel = models.find((model) => model.id === current.modelId)
       const modelStillMatches =
@@ -202,6 +208,7 @@ export function AssetBatchForm({
 
   function handleModelChange(modelId: string) {
     setCreatedBatch(null)
+    setReviewing(false)
     setCommon((current) =>
       withSuggestedName({
         ...current,
@@ -211,6 +218,7 @@ export function AssetBatchForm({
   }
 
   function handleCompanyChange(companyId: string) {
+    setReviewing(false)
     setCommon((current) => ({
       ...current,
       companyId,
@@ -224,6 +232,7 @@ export function AssetBatchForm({
   }
 
   function handleBranchChange(branchId: string) {
+    setReviewing(false)
     setCommon((current) => ({
       ...current,
       branchId,
@@ -240,6 +249,7 @@ export function AssetBatchForm({
       return [...current, createAssetBatchRows(1, `row-${Date.now()}-${current.length + 1}`)[0]]
     })
     setCreatedBatch(null)
+    setReviewing(false)
   }
 
   function handleRemoveRow(clientId: string) {
@@ -248,10 +258,12 @@ export function AssetBatchForm({
       return current.filter((row) => row.clientId !== clientId)
     })
     setCreatedBatch(null)
+    setReviewing(false)
   }
 
   function togglePurchaseDocument(id: string) {
     setCreatedBatch(null)
+    setReviewing(false)
     setSelectedPurchaseDocumentIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))
   }
 
@@ -263,6 +275,10 @@ export function AssetBatchForm({
     }
     if (isSoftwareLicense && !common.departmentId && !common.custodianId) {
       toast.error(t("licenseResponsibilityRequired"))
+      return
+    }
+    if (!reviewing) {
+      setReviewing(true)
       return
     }
 
@@ -281,6 +297,7 @@ export function AssetBatchForm({
       if (!response.ok) throw new Error(getErrorMessage(result) ?? tCommon("error"))
       if (!isCreatedBatch(result)) throw new Error(tCommon("error"))
       setCreatedBatch(result)
+      setReviewing(false)
       toast.success(t("batchSubmitSuccess", { count: result.created }))
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))
@@ -506,6 +523,52 @@ export function AssetBatchForm({
           </div>
         </Section>
 
+        {reviewing ? (
+          <section className="rounded-lg border border-primary/30 bg-primary/5 p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">{t("batchReviewTitle")}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{t("batchReviewDescription")}</p>
+              </div>
+              <button type="button" onClick={() => setReviewing(false)} className="inline-flex h-9 items-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent">
+                {t("batchReviewBack")}
+              </button>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <SummaryItem label={t("batchReviewSharedLocation")} value={locations.find((location) => location.id === common.currentLocationId)?.label ?? "-"} />
+              <SummaryItem label={t("batchReviewSharedFixedAssetCode")} value={common.fixedAssetCode || "-"} />
+              <SummaryItem label={t("batchCurrentCount", { count: rows.length })} value={String(rows.length)} />
+            </div>
+            <div className="mt-4 max-h-80 overflow-auto rounded-md border border-border bg-background">
+              <table className="w-full min-w-[760px] text-sm">
+                <thead className="bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2">{t("batchRowNo")}</th>
+                    <th className="px-3 py-2">{t("batchSerialNumber")}</th>
+                    <th className="px-3 py-2">{t("batchAssetTag")}</th>
+                    <th className="px-3 py-2">{t("batchCustodian")}</th>
+                    <th className="px-3 py-2">{t("batchRemark")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {previewRows.map((row) => (
+                    <tr key={row.rowNo} className="border-t border-border">
+                      <td className="px-3 py-2 font-medium">{row.rowNo}</td>
+                      <td className="px-3 py-2">{row.serialNumber || "-"}</td>
+                      <td className="px-3 py-2">
+                        <span className="font-medium text-foreground">{row.assetTag || t("batchReviewAutoAssetTag")}</span>
+                        {row.assetTagSource === "manual" ? <span className="ml-2 text-xs text-muted-foreground">{t("batchReviewManualAssetTag")}</span> : null}
+                      </td>
+                      <td className="px-3 py-2">{employees.find((employee) => employee.id === row.custodianId)?.label ?? "-"}</td>
+                      <td className="px-3 py-2">{row.remark || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
+
         {createdBatch ? (
           <div className="rounded-md border border-success/30 bg-success/10 p-4">
             <h2 className="text-lg font-semibold text-foreground">{t("batchCreatedTitle")}</h2>
@@ -524,7 +587,7 @@ export function AssetBatchForm({
         <div className="flex justify-end">
           <button type="submit" disabled={saving || hasClientDuplicates} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {t("batchSubmit")}
+            {reviewing ? t("batchReviewConfirm") : t("batchSubmit")}
           </button>
         </div>
       </form>
@@ -546,6 +609,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="mb-4 text-lg font-semibold text-foreground">{title}</h2>
       <div className="grid gap-4 md:grid-cols-2">{children}</div>
     </section>
+  )
+}
+
+function SummaryItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border bg-background p-3">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 text-sm font-semibold text-foreground">{value}</div>
+    </div>
   )
 }
 

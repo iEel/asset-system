@@ -39,7 +39,7 @@
 - Modify: `DEVELOPER_HANDOFF.md`
 - Modify: `messages/en.json`
 
-- [ ] **Step 1: Update `DEVELOPER_HANDOFF.md` latest batch-create text**
+- [x] **Step 1: Update `DEVELOPER_HANDOFF.md` latest batch-create text**
 
 Replace the current stale latest-update wording with:
 
@@ -53,7 +53,7 @@ Also replace the stale history wording with:
 Serial Number/เลขทรัพย์สินเดิม/ผู้ถือครอง/หมายเหตุรายแถว โดยใช้ที่ตั้งและรหัสบัญชี/FA จากข้อมูลร่วมของชุด
 ```
 
-- [ ] **Step 2: Fix the English batch subtitle**
+- [x] **Step 2: Fix the English batch subtitle**
 
 In `messages/en.json`, set the batch subtitle to:
 
@@ -61,7 +61,7 @@ In `messages/en.json`, set the batch subtitle to:
 "batchCreateSubtitle": "Enter shared data once, then fill only row-specific legacy asset tags, serials, custodians, or remarks."
 ```
 
-- [ ] **Step 3: Run quick documentation verification**
+- [x] **Step 3: Run quick documentation verification**
 
 Run:
 
@@ -71,7 +71,7 @@ rg -n "Location and FA/accounting code come from the common batch data|หมา
 
 Expected: the updated wording appears in `DEVELOPER_HANDOFF.md`.
 
-- [ ] **Step 4: Commit and push this task**
+- [x] **Step 4: Commit and push this task**
 
 ```powershell
 git add DEVELOPER_HANDOFF.md messages/en.json
@@ -91,7 +91,7 @@ git push origin master
 - Modify: `tests/asset-batch-create.test.ts`
 - Modify: `DEVELOPER_HANDOFF.md`
 
-- [ ] **Step 1: Add failing preview helper tests**
+- [x] **Step 1: Add failing preview helper tests**
 
 Append to `tests/asset-batch-create.test.ts`:
 
@@ -112,7 +112,7 @@ test("buildAssetBatchPreviewRows marks manual and auto-generated asset tag sourc
 })
 ```
 
-- [ ] **Step 2: Run the test and confirm it fails**
+- [x] **Step 2: Run the test and confirm it fails**
 
 Run:
 
@@ -122,7 +122,7 @@ node --test --test-isolation=none tests\asset-batch-create.test.ts
 
 Expected: FAIL because `buildAssetBatchPreviewRows` is not exported yet.
 
-- [ ] **Step 3: Implement the preview helper**
+- [x] **Step 3: Implement the preview helper**
 
 Add to `src/lib/asset-batch-create.ts`:
 
@@ -151,7 +151,7 @@ export function buildAssetBatchPreviewRows(rows: AssetBatchEditableRow[]): Asset
 }
 ```
 
-- [ ] **Step 4: Add review translations**
+- [x] **Step 4: Add review translations**
 
 Add these keys to `messages/th.json` under `"asset"`:
 
@@ -179,7 +179,7 @@ Add matching keys to `messages/en.json`:
 "batchReviewBack": "Back to edit"
 ```
 
-- [ ] **Step 5: Wire review mode into `AssetBatchForm`**
+- [x] **Step 5: Wire review mode into `AssetBatchForm`**
 
 In `src/components/assets/asset-batch-form.tsx`, update the import:
 
@@ -282,7 +282,7 @@ Change the submit button text:
 {reviewing ? t("batchReviewConfirm") : t("batchSubmit")}
 ```
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 Run:
 

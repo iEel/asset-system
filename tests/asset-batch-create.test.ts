@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  buildAssetBatchPreviewRows,
   buildAssetBatchDuplicateMessage,
   buildAssetBatchCreateItems,
   createAssetBatchRows,
@@ -193,5 +194,18 @@ test("buildAssetBatchDuplicateMessage explains duplicate fields clearly", () => 
       existingAssetTags: ["tag-010"],
     }),
     "พบข้อมูลซ้ำ: Serial Number ซ้ำในชุดนี้ sn-001; Serial Number ซ้ำกับข้อมูลเดิม sn-009; Asset Tag ซ้ำกับข้อมูลเดิม tag-010"
+  )
+})
+
+test("buildAssetBatchPreviewRows marks manual and auto-generated asset tag sources", () => {
+  assert.deepEqual(
+    buildAssetBatchPreviewRows([
+      { clientId: "row-1", serialNumber: "SN-001", assetTag: "SNI-EQU-16-0031", custodianId: "emp-1", remark: "" },
+      { clientId: "row-2", serialNumber: "", assetTag: "", custodianId: "", remark: "Keep spare" },
+    ]),
+    [
+      { rowNo: 1, serialNumber: "SN-001", assetTag: "SNI-EQU-16-0031", assetTagSource: "manual", custodianId: "emp-1", remark: "" },
+      { rowNo: 2, serialNumber: "", assetTag: "", assetTagSource: "auto", custodianId: "", remark: "Keep spare" },
+    ]
   )
 })
