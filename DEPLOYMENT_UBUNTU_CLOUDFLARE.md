@@ -889,6 +889,8 @@ systemctl list-timers asset-system-notification-digest.timer
 
 ## 23. Production Checklist
 
+ก่อนใช้งานจริง ให้ใช้ checklist กลางใน `docs/08_PRODUCTION_READINESS.md` คู่กับรายการด้านล่าง เพื่อให้ครอบคลุมทั้ง app, infrastructure, scheduler, backup/restore, และ UAT sign-off
+
 ก่อน Go Live:
 
 - [ ] `AUTH_SECRET` เป็น random secret จริง

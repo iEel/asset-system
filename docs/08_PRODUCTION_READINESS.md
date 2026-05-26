@@ -64,6 +64,21 @@ Use this checklist before go-live, before a production schema change, and before
 - [ ] Backup path is documented.
 - [ ] Rollback plan is documented and tested.
 
+## Deployment Documentation Coverage
+
+- [ ] Node.js version is documented.
+- [ ] Dependency installation command is documented.
+- [ ] `npx prisma generate` is documented.
+- [ ] Environment variables are documented with placeholders only.
+- [ ] SQL Server connection guidance is documented.
+- [ ] Upload directory setup and backup are documented.
+- [ ] Nginx and Cloudflare Tunnel routing are documented.
+- [ ] systemd app service is documented.
+- [ ] scheduler service/timer is documented.
+- [ ] Log inspection commands are documented.
+- [ ] Backup/restore runbook is linked.
+- [ ] Rollback/update steps are documented.
+
 ## Sign-Off
 
 | Area | Owner | Date | Evidence / Notes |
