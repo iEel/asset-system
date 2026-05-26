@@ -347,7 +347,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
       <section className="max-h-[calc(100vh-1.5rem)] w-full max-w-2xl overflow-hidden rounded-lg border border-border bg-surface shadow-lg sm:max-h-[90vh]">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2 className="text-base font-semibold text-foreground">{title}</h2>
-          <button type="button" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-accent" aria-label={tCommon("close")}>
+          <button type="button" onClick={onClose} className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-8 sm:w-8" aria-label={tCommon("close")}>
             <X className="h-4 w-4" />
           </button>
         </div>

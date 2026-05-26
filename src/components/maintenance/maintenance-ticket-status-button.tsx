@@ -89,7 +89,7 @@ export function MaintenanceTicketStatusButton({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-accent"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-8 sm:w-8"
                 aria-label={tCommon("close")}
               >
                 <X className="h-4 w-4" />

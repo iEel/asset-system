@@ -955,7 +955,7 @@ export function AuditScanForm({
                         <button
                           type="button"
                           onClick={() => removeQueuedAuditPhoto(photo.id)}
-                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-9 sm:w-9"
                           aria-label={t("removeQueuedPhoto")}
                         >
                           <X className="h-4 w-4" />

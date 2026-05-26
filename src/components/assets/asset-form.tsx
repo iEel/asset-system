@@ -1051,7 +1051,7 @@ export function AssetForm({
                       <button
                         type="button"
                         onClick={() => removePurchaseDocument(document.id)}
-                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10"
+                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 sm:h-8 sm:w-8"
                         aria-label={t("removePurchaseDocument")}
                         title={t("removePurchaseDocument")}
                       >
@@ -1185,7 +1185,7 @@ export function AssetForm({
                     <button
                       type="button"
                       onClick={() => removeAssetPhoto(photo.id)}
-                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10"
+                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 sm:h-8 sm:w-8"
                       aria-label={t("removeAssetPhoto")}
                       title={t("removeAssetPhoto")}
                     >
@@ -1379,20 +1379,20 @@ function CustomFieldRowsEditor({
                 value={row.key}
                 onChange={(event) => updateRow(row.id, "key", event.target.value)}
                 placeholder={labels.key}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0"
               />
               <input
                 value={row.value}
                 onChange={(event) => updateRow(row.id, "value", event.target.value)}
                 placeholder={labels.value}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0"
               />
               <button
                 type="button"
                 onClick={() => removeRow(row.id)}
                 aria-label={labels.remove}
                 title={labels.remove}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 sm:h-10 sm:w-10"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -1404,7 +1404,7 @@ function CustomFieldRowsEditor({
       <button
         type="button"
         onClick={() => onChange([...rows, createCustomFieldRow()])}
-        className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent"
+        className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-9 sm:min-h-0"
       >
         <Plus className="h-4 w-4" />
         {labels.add}

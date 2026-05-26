@@ -611,7 +611,7 @@ export function AssetBatchForm({
                     onClick={() => handleRemoveRow(row.clientId)}
                     disabled={rows.length <= 2}
                     title={t("batchRemoveRow")}
-                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 sm:h-10 sm:w-10"
                   >
                     <Trash2 className="h-4 w-4" />
                     <span className="sr-only">{t("batchRemoveRow")}</span>
@@ -673,7 +673,7 @@ export function AssetBatchForm({
                         onClick={() => handleRemoveRow(row.clientId)}
                         disabled={rows.length <= 2}
                         title={t("batchRemoveRow")}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <Trash2 className="h-4 w-4" />
                         <span className="sr-only">{t("batchRemoveRow")}</span>

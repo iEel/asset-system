@@ -48,11 +48,11 @@ export function getEmptyStateClasses() {
 }
 
 export function getFieldControlClasses() {
-  return "h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+  return "min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0"
 }
 
 export function getActionButtonClasses(variant: UiButtonVariant = "secondary", size: UiButtonSize = "md") {
-  const sizeClass = size === "sm" ? "h-8 px-3 text-xs" : "h-10 px-4 text-sm"
+  const sizeClass = size === "sm" ? "min-h-11 px-3 text-xs sm:h-8 sm:min-h-0" : "min-h-11 px-4 text-sm sm:h-10 sm:min-h-0"
   const variantClass = {
     primary: "bg-primary text-white hover:bg-primary/90",
     secondary: "border border-border bg-surface text-foreground hover:bg-accent",
