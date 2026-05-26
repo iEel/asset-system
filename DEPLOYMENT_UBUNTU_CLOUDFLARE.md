@@ -241,6 +241,8 @@ sudo -u assetapp cp -r .next/static .next/standalone/.next/
 
 ก่อนแตะ production database ให้ backup ก่อนทุกครั้ง
 
+> Production warning: `npx prisma db push` is suitable for local development and controlled test environments. For Production, use a reviewed migration process with a database backup, rollback plan, and versioned schema-change record. Do not change the Production schema without a verified backup and approval.
+
 ถ้าเป็น DB ใหม่:
 
 ```bash
@@ -257,6 +259,7 @@ sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/
 หมายเหตุ:
 
 - ปัจจุบัน repo นี้ใช้ `prisma db push` เป็นหลัก ยังไม่มี migration history production-grade
+- Production schema changes ต้องมี backup, change approval, rollback/restore plan, และหลักฐานการทดสอบก่อนรันกับข้อมูลจริง
 - ห้ามรัน `npm run cleanup:test-data -- --apply` บน production
 - ถ้ามีข้อมูลจริงแล้ว ให้ backup SQL Server และ `/var/www/asset-system/uploads` ก่อน deploy ทุกครั้ง
 

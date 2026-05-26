@@ -33,6 +33,8 @@ npx prisma db push
 npm run dev
 ```
 
+> Production warning: `npx prisma db push` is suitable for local development and controlled test environments. For Production, use a reviewed migration process with a database backup, rollback plan, and versioned schema-change record. Do not change the Production schema without a verified backup and approval.
+
 The app uses `WEB_PORT` from `.env` through `scripts/next-with-env-port.mjs`. Default local URL:
 
 ```text
