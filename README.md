@@ -39,11 +39,13 @@ The app uses `WEB_PORT` from `.env` through `scripts/next-with-env-port.mjs`. De
 http://localhost:3000/th/login
 ```
 
-Default seeded admin account:
+Initial admin account for local seed/testing only:
 
 ```text
-admin / admin123
+<INITIAL_ADMIN_USERNAME> / <CHANGE_ME>
 ```
+
+Create an initial admin account for local seed/testing only and immediately change the password before any shared or production use. Do not document real production admin credentials in this repository.
 
 ## Environment
 
@@ -51,18 +53,18 @@ Create `.env` locally. Important keys:
 
 ```env
 WEB_PORT=3000
-AUTH_SECRET=replace-with-random-secret
-NEXTAUTH_SECRET=replace-with-same-value
+AUTH_SECRET=<CHANGE_ME>
+NEXTAUTH_SECRET=<CHANGE_ME>
 AUTH_URL=http://localhost:3000
 NEXTAUTH_URL=http://localhost:3000
 UPLOAD_DIR=./uploads
 PDF_THAI_FONT_REGULAR=
 PDF_THAI_FONT_BOLD=
 
-DB_SERVER=192.168.110.106
-DB_INSTANCE=alpha
+DB_SERVER=<DB_SERVER>
+DB_INSTANCE=<DB_INSTANCE>
 DB_PORT=1433
-DB_TLS_SERVER_NAME=WIN-I284TKLAMMD
+DB_TLS_SERVER_NAME=<DB_TLS_SERVER_NAME>
 DATABASE_URL="sqlserver://..."
 ```
 

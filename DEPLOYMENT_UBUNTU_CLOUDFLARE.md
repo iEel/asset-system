@@ -44,10 +44,10 @@ Last verified: 2026-05-20
 ตรวจ network จาก Ubuntu ไป SQL Server:
 
 ```bash
-nc -vz 192.168.110.106 1433
+nc -vz <DB_SERVER> 1433
 ```
 
-ถ้า SQL Server ใช้ named instance เช่น `alpha` และไม่ได้ fix TCP port ไว้ อาจต้องเปิด SQL Browser UDP 1434 หรือแนะนำให้ตั้ง SQL Server instance เป็น static TCP port แล้วใช้ `DB_PORT` แทน `DB_INSTANCE` ใน production เพื่อให้ deploy บน Linux คาดเดาง่ายกว่า
+ถ้า SQL Server ใช้ named instance เช่น `<DB_INSTANCE>` และไม่ได้ fix TCP port ไว้ อาจต้องเปิด SQL Browser UDP 1434 หรือแนะนำให้ตั้ง SQL Server instance เป็น static TCP port แล้วใช้ `DB_PORT` แทน `DB_INSTANCE` ใน production เพื่อให้ deploy บน Linux คาดเดาง่ายกว่า
 
 ---
 
@@ -132,8 +132,8 @@ NEXT_PUBLIC_APP_NAME="Asset Management System"
 AUTH_URL=https://asset.company.com
 NEXTAUTH_URL=https://asset.company.com
 AUTH_TRUST_HOST=true
-AUTH_SECRET=replace-with-openssl-rand-base64-32
-NEXTAUTH_SECRET=replace-with-same-value-as-auth-secret
+AUTH_SECRET=<CHANGE_ME>
+NEXTAUTH_SECRET=<CHANGE_ME>
 
 UPLOAD_DIR=/var/www/asset-system/uploads
 
@@ -141,21 +141,21 @@ UPLOAD_DIR=/var/www/asset-system/uploads
 PDF_THAI_FONT_REGULAR=
 PDF_THAI_FONT_BOLD=
 
-MAINTENANCE_PM_GENERATION_TOKEN=replace-with-long-random-token
-NOTIFICATION_DIGEST_TOKEN=replace-with-long-random-token
+MAINTENANCE_PM_GENERATION_TOKEN=<CHANGE_ME>
+NOTIFICATION_DIGEST_TOKEN=<CHANGE_ME>
 NOTIFICATION_DIGEST_WEBHOOK_URL=
 
 BACKUP_STATUS=unknown
 BACKUP_LAST_RUN_AT=
 BACKUP_LAST_RESTORE_TEST_AT=
 
-DB_SERVER=192.168.110.106
-DB_INSTANCE=alpha
+DB_SERVER=<DB_SERVER>
+DB_INSTANCE=<DB_INSTANCE>
 DB_PORT=1433
-DB_TLS_SERVER_NAME=WIN-I284TKLAMMD
-DB_USER=asset_app_user
-DB_PASSWORD=replace-with-db-password
-DATABASE_URL="sqlserver://192.168.110.106;instanceName=alpha;database=asset_management;user=asset_app_user;password=replace-with-db-password;encrypt=true;trustServerCertificate=true"
+DB_TLS_SERVER_NAME=<DB_TLS_SERVER_NAME>
+DB_USER=<DB_USER>
+DB_PASSWORD=<DB_PASSWORD>
+DATABASE_URL="sqlserver://<DB_SERVER>;instanceName=<DB_INSTANCE>;port=1433;database=<DB_NAME>;user=<DB_USER>;password=<DB_PASSWORD>;encrypt=true;trustServerCertificate=true"
 
 LDAP_ENABLED=false
 LDAP_URL="ldap://dc.company.local:389"
@@ -175,7 +175,7 @@ LDAP_SYNC_BASE_DN=
 LDAP_SYNC_FILTER=(&(objectCategory=person)(objectClass=user)(employeeID=*)(company=*)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))
 LDAP_SYNC_MODE=preview
 LDAP_SYNC_SCHEDULE=0 2 * * *
-LDAP_SYNC_TOKEN=replace-with-long-random-token
+LDAP_SYNC_TOKEN=<CHANGE_ME>
 LDAP_TIMEOUT_MS=8000
 LDAP_CONNECT_TIMEOUT_MS=8000
 ```
@@ -197,8 +197,8 @@ sudo chmod 640 /var/www/asset-system/env/asset-system.env
 
 - Runtime ของระบบใช้ `DB_SERVER`, `DB_INSTANCE` หรือ `DB_PORT`, `DB_TLS_SERVER_NAME`, `DB_USER`, `DB_PASSWORD` เป็นค่าหลักในการต่อ SQL Server
 - `DATABASE_URL` ยังจำเป็น เพราะโค้ด parse ชื่อ database จาก `database=...`; ให้ชื่อ database ตรงกับ `DB_*` เสมอ
-- ถ้าใช้ named instance เหมือนเครื่อง dev ปัจจุบัน ให้ใส่ `DB_INSTANCE=alpha`; runtime จะไม่ใช้ `DB_PORT` เมื่อมี `DB_INSTANCE`
-- ถ้าใช้ static TCP port ใน production ให้ปล่อย `DB_INSTANCE=` ว่าง แล้วใช้ `DB_PORT=1433`; ในกรณีนี้ให้เปลี่ยน `DATABASE_URL` เป็นรูปแบบ `sqlserver://192.168.110.106:1433;database=asset_management;...`
+- ถ้าใช้ named instance เหมือนเครื่อง dev ปัจจุบัน ให้ใส่ `DB_INSTANCE=<DB_INSTANCE>`; runtime จะไม่ใช้ `DB_PORT` เมื่อมี `DB_INSTANCE`
+- ถ้าใช้ static TCP port ใน production ให้ปล่อย `DB_INSTANCE=` ว่าง แล้วใช้ `DB_PORT=1433`; ในกรณีนี้ให้เปลี่ยน `DATABASE_URL` เป็นรูปแบบ `sqlserver://<DB_SERVER>:1433;database=<DB_NAME>;...`
 - ถ้า `LDAP_AUTO_PROVISION=true`, `LDAP_DEFAULT_ROLE` ต้องเป็น role ที่มีอยู่จริง เช่น `employee`, `viewer`, หรือ role ที่สร้างเองในหน้า Roles; ค่า `asset_user` จะใช้ได้เฉพาะเมื่อสร้าง role นี้แล้ว
 - `UPLOAD_DIR` ควรเป็น absolute path เพื่อไม่ผูกกับ `.next/standalone` และ user `assetapp` ต้องอ่าน/เขียนได้ เพราะหน้า Storage Governance จะ scan ไฟล์จริงใน directory นี้
 - PDF ภาษาไทยจะหา font ตามลำดับ: `PDF_THAI_FONT_REGULAR`, bundled `public/fonts/NotoSansThai-*.ttf`, bundled `public/fonts/Sarabun-*.ttf`, Ubuntu Noto fonts ถ้ามีติดตั้งไว้, Windows Tahoma, แล้วค่อย fallback เป็น Helvetica
@@ -340,8 +340,8 @@ curl -I http://127.0.0.1:3000/th/login
 ก่อนตั้ง timer ให้แน่ใจว่า env มี token ที่ต้องใช้:
 
 ```env
-MAINTENANCE_PM_GENERATION_TOKEN=replace-with-long-random-token
-LDAP_SYNC_TOKEN=replace-with-long-random-token
+MAINTENANCE_PM_GENERATION_TOKEN=<CHANGE_ME>
+LDAP_SYNC_TOKEN=<CHANGE_ME>
 ```
 
 หมายเหตุ: heartbeat นี้ดูแล PM auto-generation และ LDAP Sync ตาม schedule ที่ตั้งจากหน้าเว็บ ส่วน Notification Digest ใช้ script/timer แยกตามหัวข้อ 22 เพื่อไม่ให้การส่งแจ้งเตือนภายนอกผูกกับรอบ PM/LDAP โดยตรง
@@ -749,7 +749,7 @@ curl -I http://127.0.0.1:8080/th/login
 
 ต้อง backup 3 ส่วน:
 
-1. SQL Server database `asset_management`
+1. SQL Server database `<DB_NAME>`
 2. Env file `/var/www/asset-system/env/asset-system.env`
 3. Upload directory `/var/www/asset-system/uploads`
 
@@ -812,7 +812,7 @@ Notification Digest เป็นงานสรุปแจ้งเตือน
 สิ่งที่ต้องมีใน env:
 
 ```env
-NOTIFICATION_DIGEST_TOKEN=replace-with-long-random-token
+NOTIFICATION_DIGEST_TOKEN=<CHANGE_ME>
 NOTIFICATION_DIGEST_WEBHOOK_URL=
 ```
 
@@ -1034,7 +1034,7 @@ sudo -u assetapp test -w /var/www/asset-system/uploads
 ตรวจ firewall/port:
 
 ```bash
-nc -vz 192.168.110.106 1433
+nc -vz <DB_SERVER> 1433
 journalctl -u asset-system -n 100 --no-pager
 ```
 
