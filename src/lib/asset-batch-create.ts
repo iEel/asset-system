@@ -156,3 +156,18 @@ export function buildAssetBatchDuplicateMessage({
 
   return parts.length > 0 ? `พบข้อมูลซ้ำ: ${parts.join("; ")}` : ""
 }
+
+export function buildAssetBatchDuplicateCheckSummary(input: {
+  duplicateBatchSerials: string[]
+  duplicateBatchAssetTags: string[]
+  existingSerials: string[]
+  existingAssetTags: string[]
+}) {
+  const message = buildAssetBatchDuplicateMessage(input)
+
+  return {
+    ok: message.length === 0,
+    message,
+    duplicateCount: input.duplicateBatchSerials.length + input.duplicateBatchAssetTags.length + input.existingSerials.length + input.existingAssetTags.length,
+  }
+}

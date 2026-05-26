@@ -52,6 +52,12 @@ type CreatedBatch = {
   assetIds: string[]
 }
 
+type DuplicateCheckResult = {
+  ok: boolean
+  message: string
+  duplicateCount: number
+}
+
 const emptyCommon: BatchCommonValues = {
   name: "",
   categoryId: "",
@@ -104,6 +110,9 @@ export function AssetBatchForm({
   const [selectedPurchaseDocumentIds, setSelectedPurchaseDocumentIds] = useState<string[]>([])
   const [nameManuallyEdited, setNameManuallyEdited] = useState(false)
   const [reviewing, setReviewing] = useState(false)
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false)
+  const [duplicateCheckMessage, setDuplicateCheckMessage] = useState("")
+  const [duplicateCheckStatus, setDuplicateCheckStatus] = useState<"clean" | "duplicate" | "error" | null>(null)
   const [saving, setSaving] = useState(false)
   const [createdBatch, setCreatedBatch] = useState<CreatedBatch | null>(null)
   const ownershipType = normalizeAssetOwnershipType(common.ownershipType)
@@ -154,13 +163,20 @@ export function AssetBatchForm({
   function setCommonField<K extends keyof BatchCommonValues>(field: K, value: BatchCommonValues[K]) {
     setCreatedBatch(null)
     setReviewing(false)
+    clearDuplicateCheck()
     setCommon((current) => ({ ...current, [field]: value }))
   }
 
   function setRowField<K extends keyof BatchRow>(clientId: string, field: K, value: BatchRow[K]) {
     setCreatedBatch(null)
     setReviewing(false)
+    clearDuplicateCheck()
     setRows((current) => current.map((row) => (row.clientId === clientId ? { ...row, [field]: value } : row)))
+  }
+
+  function clearDuplicateCheck() {
+    setDuplicateCheckMessage("")
+    setDuplicateCheckStatus(null)
   }
 
   function withSuggestedName(nextCommon: BatchCommonValues) {
@@ -179,6 +195,7 @@ export function AssetBatchForm({
   function handleCategoryChange(categoryId: string) {
     setCreatedBatch(null)
     setReviewing(false)
+    clearDuplicateCheck()
     setCommon((current) =>
       withSuggestedName({
         ...current,
@@ -191,6 +208,7 @@ export function AssetBatchForm({
   function handleBrandChange(brandId: string) {
     setCreatedBatch(null)
     setReviewing(false)
+    clearDuplicateCheck()
     setCommon((current) => {
       const currentModel = models.find((model) => model.id === current.modelId)
       const modelStillMatches =
@@ -209,6 +227,7 @@ export function AssetBatchForm({
   function handleModelChange(modelId: string) {
     setCreatedBatch(null)
     setReviewing(false)
+    clearDuplicateCheck()
     setCommon((current) =>
       withSuggestedName({
         ...current,
@@ -219,6 +238,7 @@ export function AssetBatchForm({
 
   function handleCompanyChange(companyId: string) {
     setReviewing(false)
+    clearDuplicateCheck()
     setCommon((current) => ({
       ...current,
       companyId,
@@ -233,6 +253,7 @@ export function AssetBatchForm({
 
   function handleBranchChange(branchId: string) {
     setReviewing(false)
+    clearDuplicateCheck()
     setCommon((current) => ({
       ...current,
       branchId,
@@ -250,6 +271,7 @@ export function AssetBatchForm({
     })
     setCreatedBatch(null)
     setReviewing(false)
+    clearDuplicateCheck()
   }
 
   function handleRemoveRow(clientId: string) {
@@ -259,12 +281,52 @@ export function AssetBatchForm({
     })
     setCreatedBatch(null)
     setReviewing(false)
+    clearDuplicateCheck()
   }
 
   function togglePurchaseDocument(id: string) {
     setCreatedBatch(null)
     setReviewing(false)
+    clearDuplicateCheck()
     setSelectedPurchaseDocumentIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))
+  }
+
+  async function handleCheckDuplicates() {
+    setCheckingDuplicates(true)
+    setDuplicateCheckMessage("")
+    setDuplicateCheckStatus(null)
+    try {
+      const response = await fetch("/api/assets/batch/check-duplicates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          common,
+          rows,
+          purchaseDocumentIds: selectedPurchaseDocumentIds,
+        }),
+      })
+      const result = (await response.json().catch(() => null)) as DuplicateCheckResult | { error?: string } | null
+      if (!response.ok) throw new Error(getErrorMessage(result) ?? tCommon("error"))
+
+      if (isDuplicateCheckResult(result) && result.ok) {
+        setDuplicateCheckMessage(t("batchCheckDuplicatesClean"))
+        setDuplicateCheckStatus("clean")
+        toast.success(t("batchCheckDuplicatesClean"))
+        return
+      }
+
+      const message = isDuplicateCheckResult(result) && result.message ? result.message : t("batchCheckDuplicatesFound")
+      setDuplicateCheckMessage(message)
+      setDuplicateCheckStatus("duplicate")
+      toast.error(message)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : tCommon("error")
+      setDuplicateCheckMessage(message)
+      setDuplicateCheckStatus("error")
+      toast.error(message)
+    } finally {
+      setCheckingDuplicates(false)
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -463,6 +525,15 @@ export function AssetBatchForm({
               <Plus className="h-4 w-4" />
               {t("batchAddRow")}
             </button>
+            <button
+              type="button"
+              onClick={handleCheckDuplicates}
+              disabled={checkingDuplicates || hasClientDuplicates}
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {checkingDuplicates ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {checkingDuplicates ? t("batchCheckDuplicatesRunning") : t("batchCheckDuplicates")}
+            </button>
           </div>
 
           {hasClientDuplicates ? (
@@ -470,6 +541,20 @@ export function AssetBatchForm({
               {t("duplicateWarning")}
               {duplicateValues.serialNumbers.length > 0 ? ` Serial: ${duplicateValues.serialNumbers.join(", ")}` : ""}
               {duplicateValues.assetTags.length > 0 ? ` Asset Tag: ${duplicateValues.assetTags.join(", ")}` : ""}
+            </div>
+          ) : null}
+
+          {duplicateCheckMessage ? (
+            <div
+              className={`md:col-span-2 rounded-md border p-3 text-sm ${
+                duplicateCheckStatus === "clean"
+                  ? "border-success/40 bg-success/10 text-success"
+                  : duplicateCheckStatus === "duplicate"
+                    ? "border-warning/40 bg-warning/10 text-warning"
+                    : "border-danger/40 bg-danger/10 text-danger"
+              }`}
+            >
+              {duplicateCheckMessage}
             </div>
           ) : null}
 
@@ -595,12 +680,17 @@ export function AssetBatchForm({
   )
 }
 
-function getErrorMessage(result: CreatedBatch | { error?: string } | null) {
-  return result && "error" in result ? result.error : null
+function getErrorMessage(result: unknown) {
+  if (!result || typeof result !== "object" || !("error" in result)) return null
+  return typeof result.error === "string" ? result.error : null
 }
 
 function isCreatedBatch(result: CreatedBatch | { error?: string } | null): result is CreatedBatch {
   return Boolean(result && "created" in result && Array.isArray(result.assetIds))
+}
+
+function isDuplicateCheckResult(result: DuplicateCheckResult | { error?: string } | null): result is DuplicateCheckResult {
+  return Boolean(result && "ok" in result && typeof result.ok === "boolean")
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

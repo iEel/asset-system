@@ -316,7 +316,7 @@ git push origin master
 - Modify: `tests/asset-batch-create.test.ts`
 - Modify: `DEVELOPER_HANDOFF.md`
 
-- [ ] **Step 1: Read the local Next.js route handler docs before adding the new route**
+- [x] **Step 1: Read the local Next.js route handler docs before adding the new route**
 
 Run:
 
@@ -326,7 +326,7 @@ Get-ChildItem node_modules\next\dist\docs -Recurse -Filter *.md | Select-String 
 
 Open the most relevant file and confirm route handler conventions for Next.js 16 in this repo.
 
-- [ ] **Step 2: Add failing duplicate summary tests**
+- [x] **Step 2: Add failing duplicate summary tests**
 
 Append to `tests/asset-batch-create.test.ts`:
 
@@ -362,7 +362,7 @@ test("buildAssetBatchDuplicateCheckSummary reports duplicate count and message",
 })
 ```
 
-- [ ] **Step 3: Implement the duplicate summary helper**
+- [x] **Step 3: Implement the duplicate summary helper**
 
 Add to `src/lib/asset-batch-create.ts`:
 
@@ -386,7 +386,7 @@ export function buildAssetBatchDuplicateCheckSummary(input: {
 }
 ```
 
-- [ ] **Step 4: Add the duplicate pre-check route**
+- [x] **Step 4: Add the duplicate pre-check route**
 
 Create `src/app/api/assets/batch/check-duplicates/route.ts`:
 
@@ -437,7 +437,7 @@ export async function POST(request: Request) {
 }
 ```
 
-- [ ] **Step 5: Add UI translations**
+- [x] **Step 5: Add UI translations**
 
 Add to both locale files:
 
@@ -457,7 +457,7 @@ English values:
 "batchCheckDuplicatesFound": "Duplicate data found. Please review before saving."
 ```
 
-- [ ] **Step 6: Wire the button into `AssetBatchForm`**
+- [x] **Step 6: Wire the button into `AssetBatchForm`**
 
 Add state:
 
@@ -516,7 +516,7 @@ Add a secondary button next to `เพิ่มแถว`:
 
 Render `duplicateCheckMessage` below the row toolbar.
 
-- [ ] **Step 7: Run tests and lint**
+- [x] **Step 7: Run tests and lint**
 
 ```powershell
 node --test --test-isolation=none tests\asset-batch-create.test.ts

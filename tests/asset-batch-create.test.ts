@@ -3,6 +3,7 @@ import test from "node:test"
 
 import {
   buildAssetBatchPreviewRows,
+  buildAssetBatchDuplicateCheckSummary,
   buildAssetBatchDuplicateMessage,
   buildAssetBatchCreateItems,
   createAssetBatchRows,
@@ -207,5 +208,33 @@ test("buildAssetBatchPreviewRows marks manual and auto-generated asset tag sourc
       { rowNo: 1, serialNumber: "SN-001", assetTag: "SNI-EQU-16-0031", assetTagSource: "manual", custodianId: "emp-1", remark: "" },
       { rowNo: 2, serialNumber: "", assetTag: "", assetTagSource: "auto", custodianId: "", remark: "Keep spare" },
     ]
+  )
+})
+
+test("buildAssetBatchDuplicateCheckSummary reports a clean duplicate pre-check", () => {
+  assert.deepEqual(
+    buildAssetBatchDuplicateCheckSummary({
+      duplicateBatchSerials: [],
+      duplicateBatchAssetTags: [],
+      existingSerials: [],
+      existingAssetTags: [],
+    }),
+    { ok: true, message: "", duplicateCount: 0 }
+  )
+})
+
+test("buildAssetBatchDuplicateCheckSummary reports duplicate count and message", () => {
+  assert.deepEqual(
+    buildAssetBatchDuplicateCheckSummary({
+      duplicateBatchSerials: ["sn-001"],
+      duplicateBatchAssetTags: ["tag-001"],
+      existingSerials: ["sn-009"],
+      existingAssetTags: [],
+    }),
+    {
+      ok: false,
+      message: "พบข้อมูลซ้ำ: Serial Number ซ้ำในชุดนี้ sn-001; Asset Tag ซ้ำในชุดนี้ tag-001; Serial Number ซ้ำกับข้อมูลเดิม sn-009",
+      duplicateCount: 3,
+    }
   )
 })
