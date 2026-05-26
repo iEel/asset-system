@@ -9,9 +9,6 @@ export const assetBatchRowSchema = z.object({
   serialNumber: optionalText,
   custodianId: optionalText,
   departmentId: optionalText,
-  homeLocationId: optionalText,
-  currentLocationId: optionalText,
-  fixedAssetCode: optionalText,
   remark: optionalText,
 })
 

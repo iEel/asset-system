@@ -4,7 +4,10 @@ import test from "node:test"
 import {
   buildAssetBatchDuplicateMessage,
   buildAssetBatchCreateItems,
+  createAssetBatchRows,
+  defaultAssetBatchRowCount,
   findDuplicateBatchValues,
+  normalizeAssetBatchRowCount,
   summarizeAssetBatchCreateResult,
 } from "../src/lib/asset-batch-create.ts"
 import { assetBatchCreateSchema } from "../src/lib/validations/asset-batch.ts"
@@ -90,7 +93,6 @@ test("buildAssetBatchCreateItems overlays row values on common asset data", () =
         serialNumber: "SN-001",
         assetTag: "SNI-COM-26-0001",
         custodianId: "emp-1",
-        currentLocationId: "location-desk-1",
       },
       {
         clientId: "row-2",
@@ -107,10 +109,51 @@ test("buildAssetBatchCreateItems overlays row values on common asset data", () =
   assert.equal(items[0].assetTag, "SNI-COM-26-0001")
   assert.equal(items[0].serialNumber, "SN-001")
   assert.equal(items[0].custodianId, "emp-1")
-  assert.equal(items[0].currentLocationId, "location-desk-1")
+  assert.equal(items[0].currentLocationId, "location-store")
   assert.equal(items[1].assetTag, "SNI-COM-26-0002")
   assert.equal(items[1].currentLocationId, "location-store")
   assert.equal(items[1].remark, "Keep in IT stock")
+})
+
+test("buildAssetBatchCreateItems always uses shared location and fixed asset code", () => {
+  const items = buildAssetBatchCreateItems({
+    common: { ...validCommon, fixedAssetCode: "FA-SHARED" },
+    rows: [
+      {
+        clientId: "row-1",
+        serialNumber: "SN-001",
+        assetTag: "SNI-COM-26-0001",
+        currentLocationId: "location-row-ignored",
+        fixedAssetCode: "FA-ROW-IGNORED",
+      },
+      {
+        clientId: "row-2",
+        serialNumber: "SN-002",
+        assetTag: "SNI-COM-26-0002",
+      },
+    ],
+    generatedAssetTags: [],
+  })
+
+  assert.equal(items[0].currentLocationId, "location-store")
+  assert.equal(items[0].fixedAssetCode, "FA-SHARED")
+  assert.equal(items[1].currentLocationId, "location-store")
+  assert.equal(items[1].fixedAssetCode, "FA-SHARED")
+})
+
+test("createAssetBatchRows starts with two editable rows and omits shared-only fields", () => {
+  assert.equal(defaultAssetBatchRowCount, 2)
+  assert.deepEqual(createAssetBatchRows(undefined, "qa-row"), [
+    { clientId: "qa-row-1", serialNumber: "", assetTag: "", custodianId: "", departmentId: "", remark: "" },
+    { clientId: "qa-row-2", serialNumber: "", assetTag: "", custodianId: "", departmentId: "", remark: "" },
+  ])
+})
+
+test("normalizeAssetBatchRowCount keeps batch row count in supported range", () => {
+  assert.equal(normalizeAssetBatchRowCount(1), 2)
+  assert.equal(normalizeAssetBatchRowCount(8), 8)
+  assert.equal(normalizeAssetBatchRowCount(101), 100)
+  assert.equal(normalizeAssetBatchRowCount(Number.NaN), defaultAssetBatchRowCount)
 })
 
 test("findDuplicateBatchValues returns normalized duplicate serials and asset tags", () => {

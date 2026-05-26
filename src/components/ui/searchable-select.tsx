@@ -64,10 +64,12 @@ export function SearchableSelect({
 
   return (
     <div className="block" ref={containerRef}>
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
+      {label ? (
+        <span className="mb-1.5 block text-sm font-medium text-foreground">
+          {label}
+          {required && <span className="ml-1 text-danger">*</span>}
+        </span>
+      ) : null}
       <div className="relative">
         <button
           type="button"

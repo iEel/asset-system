@@ -7,9 +7,20 @@ type CreatedAssetSummary = {
   name: string
 }
 
+export const defaultAssetBatchRowCount = 2
+
 export type AssetBatchCreateItem = AssetInput & {
   assetTag: string
   currentLocationId: string
+}
+
+export type AssetBatchEditableRow = {
+  clientId: string
+  assetTag: string
+  serialNumber: string
+  custodianId: string
+  departmentId: string
+  remark: string
 }
 
 function nullableText(value?: string | null) {
@@ -69,12 +80,28 @@ export function buildAssetBatchCreateItems({
       serialNumber: nullableText(row.serialNumber),
       custodianId: nullableText(row.custodianId) ?? common.custodianId ?? null,
       departmentId: nullableText(row.departmentId) ?? common.departmentId ?? null,
-      homeLocationId: nullableText(row.homeLocationId) ?? common.homeLocationId ?? null,
-      currentLocationId: nullableText(row.currentLocationId) ?? common.currentLocationId,
-      fixedAssetCode: nullableText(row.fixedAssetCode) ?? common.fixedAssetCode ?? null,
+      homeLocationId: common.homeLocationId ?? null,
+      currentLocationId: common.currentLocationId,
+      fixedAssetCode: common.fixedAssetCode ?? null,
       remark: nullableText(row.remark) ?? common.remark ?? null,
     }
   })
+}
+
+export function normalizeAssetBatchRowCount(count: number) {
+  if (!Number.isFinite(count)) return defaultAssetBatchRowCount
+  return Math.min(Math.max(Math.trunc(count), 2), 100)
+}
+
+export function createAssetBatchRows(count = defaultAssetBatchRowCount, idPrefix = `row-${Date.now()}`): AssetBatchEditableRow[] {
+  return Array.from({ length: normalizeAssetBatchRowCount(count) }, (_, index) => ({
+    clientId: `${idPrefix}-${index + 1}`,
+    serialNumber: "",
+    assetTag: "",
+    custodianId: "",
+    departmentId: "",
+    remark: "",
+  }))
 }
 
 export function summarizeAssetBatchCreateResult(assets: CreatedAssetSummary[]) {

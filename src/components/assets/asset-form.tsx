@@ -9,6 +9,7 @@ import Link from "next/link"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
+import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { assetOwnershipTypes, defaultAssetOwnershipType, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { formatFileSize } from "@/lib/uploads"
 
@@ -1331,20 +1332,6 @@ function SelectField({
       </select>
     </Field>
   )
-}
-
-function buildSuggestedAssetName(category?: Option, brand?: Option, model?: Option) {
-  const categoryName = getCompactLabel(category?.label)
-  const brandName = brand?.label?.trim() ?? ""
-  const modelName = model?.label?.trim() ?? ""
-  const modelStartsWithBrand =
-    Boolean(brandName) && Boolean(modelName) && modelName.toLocaleLowerCase().startsWith(brandName.toLocaleLowerCase())
-
-  return [categoryName, modelStartsWithBrand ? "" : brandName, modelName].filter(Boolean).join(" ")
-}
-
-function getCompactLabel(label?: string | null) {
-  return label?.split(" - ")[0]?.trim() ?? ""
 }
 
 function getRemainingLicenseSeats(total?: string | number | null, used?: string | number | null) {

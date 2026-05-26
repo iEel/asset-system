@@ -3,13 +3,14 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
-import { Loader2, Save } from "lucide-react"
+import { Loader2, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { AssetForm } from "@/components/assets/asset-form"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { defaultAssetOwnershipType, normalizeAssetOwnershipType, assetOwnershipTypes } from "@/lib/asset-ownership"
-import { findDuplicateBatchValues } from "@/lib/asset-batch-create"
+import { createAssetBatchRows, findDuplicateBatchValues, type AssetBatchEditableRow } from "@/lib/asset-batch-create"
 
 type AssetBatchFormProps = React.ComponentProps<typeof AssetForm>
 
@@ -43,16 +44,7 @@ type BatchCommonValues = {
   isActive: boolean
 }
 
-type BatchRow = {
-  clientId: string
-  assetTag: string
-  serialNumber: string
-  custodianId: string
-  departmentId: string
-  currentLocationId: string
-  fixedAssetCode: string
-  remark: string
-}
+type BatchRow = AssetBatchEditableRow
 
 type CreatedBatch = {
   created: number
@@ -108,9 +100,9 @@ export function AssetBatchForm({
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
   const [common, setCommon] = useState<BatchCommonValues>(emptyCommon)
-  const [quantity, setQuantity] = useState(10)
-  const [rows, setRows] = useState<BatchRow[]>(() => createBatchRows(10))
+  const [rows, setRows] = useState<BatchRow[]>(() => createAssetBatchRows())
   const [selectedPurchaseDocumentIds, setSelectedPurchaseDocumentIds] = useState<string[]>([])
+  const [nameManuallyEdited, setNameManuallyEdited] = useState(false)
   const [saving, setSaving] = useState(false)
   const [createdBatch, setCreatedBatch] = useState<CreatedBatch | null>(null)
   const ownershipType = normalizeAssetOwnershipType(common.ownershipType)
@@ -123,6 +115,13 @@ export function AssetBatchForm({
   const filteredLocations = locations.filter((location) => location.branchId === common.branchId)
   const filteredModels = models.filter(
     (model) => (!common.categoryId || model.categoryId === common.categoryId) && (!common.brandId || model.brandId === common.brandId)
+  )
+  const selectedCategory = categories.find((category) => category.id === common.categoryId)
+  const selectedBrand = brands.find((brand) => brand.id === common.brandId)
+  const selectedModel = models.find((model) => model.id === common.modelId)
+  const suggestedAssetName = useMemo(
+    () => buildSuggestedAssetName(selectedCategory, selectedBrand, selectedModel),
+    [selectedCategory, selectedBrand, selectedModel]
   )
   const duplicateValues = useMemo(
     () =>
@@ -160,6 +159,57 @@ export function AssetBatchForm({
     setRows((current) => current.map((row) => (row.clientId === clientId ? { ...row, [field]: value } : row)))
   }
 
+  function withSuggestedName(nextCommon: BatchCommonValues) {
+    if (nameManuallyEdited) return nextCommon
+    return { ...nextCommon, name: getSuggestedAssetName(nextCommon.categoryId, nextCommon.brandId, nextCommon.modelId) }
+  }
+
+  function getSuggestedAssetName(categoryId?: string | null, brandId?: string | null, modelId?: string | null) {
+    return buildSuggestedAssetName(
+      categories.find((category) => category.id === categoryId),
+      brands.find((brand) => brand.id === brandId),
+      models.find((model) => model.id === modelId)
+    )
+  }
+
+  function handleCategoryChange(categoryId: string) {
+    setCreatedBatch(null)
+    setCommon((current) =>
+      withSuggestedName({
+        ...current,
+        categoryId,
+        modelId: "",
+      })
+    )
+  }
+
+  function handleBrandChange(brandId: string) {
+    setCreatedBatch(null)
+    setCommon((current) => {
+      const currentModel = models.find((model) => model.id === current.modelId)
+      const modelStillMatches =
+        Boolean(currentModel) &&
+        (!current.categoryId || currentModel?.categoryId === current.categoryId) &&
+        (!brandId || currentModel?.brandId === brandId)
+
+      return withSuggestedName({
+        ...current,
+        brandId,
+        modelId: modelStillMatches ? current.modelId : "",
+      })
+    })
+  }
+
+  function handleModelChange(modelId: string) {
+    setCreatedBatch(null)
+    setCommon((current) =>
+      withSuggestedName({
+        ...current,
+        modelId,
+      })
+    )
+  }
+
   function handleCompanyChange(companyId: string) {
     setCommon((current) => ({
       ...current,
@@ -170,7 +220,7 @@ export function AssetBatchForm({
       homeLocationId: "",
       currentLocationId: "",
     }))
-    setRows((current) => current.map((row) => ({ ...row, custodianId: "", departmentId: "", currentLocationId: "" })))
+    setRows((current) => current.map((row) => ({ ...row, custodianId: "", departmentId: "" })))
   }
 
   function handleBranchChange(branchId: string) {
@@ -181,13 +231,22 @@ export function AssetBatchForm({
       homeLocationId: "",
       currentLocationId: "",
     }))
-    setRows((current) => current.map((row) => ({ ...row, custodianId: "", currentLocationId: "" })))
+    setRows((current) => current.map((row) => ({ ...row, custodianId: "" })))
   }
 
-  function handleGenerateRows() {
-    const safeQuantity = Math.min(Math.max(Number.isFinite(quantity) ? quantity : 10, 2), 100)
-    setQuantity(safeQuantity)
-    setRows(createBatchRows(safeQuantity))
+  function handleAddRow() {
+    setRows((current) => {
+      if (current.length >= 100) return current
+      return [...current, createAssetBatchRows(1, `row-${Date.now()}-${current.length + 1}`)[0]]
+    })
+    setCreatedBatch(null)
+  }
+
+  function handleRemoveRow(clientId: string) {
+    setRows((current) => {
+      if (current.length <= 2) return current
+      return current.filter((row) => row.clientId !== clientId)
+    })
     setCreatedBatch(null)
   }
 
@@ -240,17 +299,46 @@ export function AssetBatchForm({
       <form onSubmit={handleSubmit} className="space-y-5">
         <Section title={t("batchCommonData")}>
           <Field label={t("assetName")} required>
-            <input value={common.name} onChange={(event) => setCommonField("name", event.target.value)} required maxLength={200} className={inputClassName} />
+            <input
+              value={common.name}
+              onChange={(event) => {
+                setNameManuallyEdited(true)
+                setCommonField("name", event.target.value)
+              }}
+              required
+              maxLength={200}
+              className={inputClassName}
+            />
+            <p className="mt-1.5 text-xs text-muted-foreground">{t("assetNameHelp")}</p>
+            {suggestedAssetName && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="rounded-md bg-accent px-2.5 py-1 text-xs text-muted-foreground">
+                  {t("suggestedAssetName")}: <span className="font-medium text-foreground">{suggestedAssetName}</span>
+                </span>
+                {common.name !== suggestedAssetName && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNameManuallyEdited(false)
+                      setCommonField("name", suggestedAssetName)
+                    }}
+                    className="inline-flex h-8 items-center rounded-md border border-border px-2.5 text-xs font-medium transition-colors hover:bg-accent"
+                  >
+                    {t("useSuggestedName")}
+                  </button>
+                )}
+              </div>
+            )}
           </Field>
-          <SelectField label={t("category")} value={common.categoryId} required onChange={(value) => setCommonField("categoryId", value)}>
+          <SelectField label={t("category")} value={common.categoryId} required onChange={handleCategoryChange}>
             <option value="">{t("selectCategory")}</option>
             {categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
           </SelectField>
-          <SelectField label={t("brand")} value={common.brandId} onChange={(value) => setCommonField("brandId", value)}>
+          <SelectField label={t("brand")} value={common.brandId} onChange={handleBrandChange}>
             <option value="">{t("selectBrand")}</option>
             {brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.label}</option>)}
           </SelectField>
-          <SelectField label={t("model")} value={common.modelId} onChange={(value) => setCommonField("modelId", value)}>
+          <SelectField label={t("model")} value={common.modelId} onChange={handleModelChange}>
             <option value="">{t("selectModel")}</option>
             {filteredModels.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
           </SelectField>
@@ -345,13 +433,19 @@ export function AssetBatchForm({
 
         <Section title={t("batchRows")}>
           <div className="md:col-span-2 flex flex-wrap items-end gap-3">
-            <Field label={t("batchQuantity")}>
-              <input type="number" min={2} max={100} value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} className="h-10 w-32 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
-            </Field>
-            <button type="button" onClick={handleGenerateRows} className="inline-flex h-10 items-center rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent">
-              {t("batchGenerateRows")}
+            <div>
+              <div className="text-sm font-medium text-foreground">{t("batchCurrentCount", { count: rows.length })}</div>
+              <p className="mt-1 text-xs text-muted-foreground">{t("batchRowHelp")}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddRow}
+              disabled={rows.length >= 100}
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus className="h-4 w-4" />
+              {t("batchAddRow")}
             </button>
-            <p className="pb-2 text-xs text-muted-foreground">{t("batchRowHelp")}</p>
           </div>
 
           {hasClientDuplicates ? (
@@ -363,16 +457,17 @@ export function AssetBatchForm({
           ) : null}
 
           <div className="md:col-span-2 overflow-x-auto rounded-md border border-border">
-            <table className="min-w-[1180px] w-full text-sm">
+            <table className="min-w-[900px] w-full text-sm">
               <thead className="bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
                 <tr>
                   <th className="w-16 px-3 py-2">{t("batchRowNo")}</th>
                   <th className="w-56 px-3 py-2">{t("batchSerialNumber")}</th>
                   <th className="w-56 px-3 py-2">{t("batchAssetTag")}</th>
                   <th className="w-64 px-3 py-2">{t("batchCustodian")}</th>
-                  <th className="w-64 px-3 py-2">{t("batchLocation")}</th>
-                  <th className="w-44 px-3 py-2">{t("batchFixedAssetCode")}</th>
                   <th className="w-64 px-3 py-2">{t("batchRemark")}</th>
+                  <th className="w-16 px-3 py-2 text-right">
+                    <span className="sr-only">{t("batchRowActions")}</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -387,19 +482,22 @@ export function AssetBatchForm({
                       <p className="mt-1 text-[11px] text-muted-foreground">{t("batchAssetTagHelp")}</p>
                     </td>
                     <td className="px-3 py-3">
-                      <SearchableSelect label={t("batchCustodian")} value={row.custodianId} options={filteredEmployees} placeholder={t("selectCustodian")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "custodianId", value)} />
-                    </td>
-                    <td className="px-3 py-3">
-                      <select value={row.currentLocationId} onChange={(event) => setRowField(row.clientId, "currentLocationId", event.target.value)} className={inputClassName}>
-                        <option value="">{t("selectLocation")}</option>
-                        {filteredLocations.map((location) => <option key={location.id} value={location.id}>{location.label}</option>)}
-                      </select>
-                    </td>
-                    <td className="px-3 py-3">
-                      <input value={row.fixedAssetCode} onChange={(event) => setRowField(row.clientId, "fixedAssetCode", event.target.value)} className={inputClassName} />
+                      <SearchableSelect label="" value={row.custodianId} options={filteredEmployees} placeholder={t("selectCustodian")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "custodianId", value)} />
                     </td>
                     <td className="px-3 py-3">
                       <input value={row.remark} onChange={(event) => setRowField(row.clientId, "remark", event.target.value)} className={inputClassName} />
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveRow(row.clientId)}
+                        disabled={rows.length <= 2}
+                        title={t("batchRemoveRow")}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">{t("batchRemoveRow")}</span>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -432,19 +530,6 @@ export function AssetBatchForm({
       </form>
     </div>
   )
-}
-
-function createBatchRows(count: number): BatchRow[] {
-  return Array.from({ length: count }, (_, index) => ({
-    clientId: `row-${Date.now()}-${index + 1}`,
-    assetTag: "",
-    serialNumber: "",
-    custodianId: "",
-    departmentId: "",
-    currentLocationId: "",
-    fixedAssetCode: "",
-    remark: "",
-  }))
 }
 
 function getErrorMessage(result: CreatedBatch | { error?: string } | null) {
