@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  buildAssetBatchDuplicateMessage,
   buildAssetBatchCreateItems,
   findDuplicateBatchValues,
   summarizeAssetBatchCreateResult,
@@ -137,5 +138,17 @@ test("summarizeAssetBatchCreateResult returns ids and tags for next actions", ()
       ],
       assetIds: ["asset-1", "asset-2"],
     }
+  )
+})
+
+test("buildAssetBatchDuplicateMessage explains duplicate fields clearly", () => {
+  assert.equal(
+    buildAssetBatchDuplicateMessage({
+      duplicateBatchSerials: ["sn-001"],
+      duplicateBatchAssetTags: [],
+      existingSerials: ["sn-009"],
+      existingAssetTags: ["tag-010"],
+    }),
+    "พบข้อมูลซ้ำ: Serial Number ซ้ำในชุดนี้ sn-001; Serial Number ซ้ำกับข้อมูลเดิม sn-009; Asset Tag ซ้ำกับข้อมูลเดิม tag-010"
   )
 })

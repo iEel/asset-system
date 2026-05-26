@@ -79,3 +79,24 @@ export function summarizeAssetBatchCreateResult(assets: CreatedAssetSummary[]) {
     assetIds: assets.map((asset) => asset.id),
   }
 }
+
+export function buildAssetBatchDuplicateMessage({
+  duplicateBatchSerials,
+  duplicateBatchAssetTags,
+  existingSerials,
+  existingAssetTags,
+}: {
+  duplicateBatchSerials: string[]
+  duplicateBatchAssetTags: string[]
+  existingSerials: string[]
+  existingAssetTags: string[]
+}) {
+  const parts = [
+    duplicateBatchSerials.length ? `Serial Number ซ้ำในชุดนี้ ${duplicateBatchSerials.join(", ")}` : "",
+    duplicateBatchAssetTags.length ? `Asset Tag ซ้ำในชุดนี้ ${duplicateBatchAssetTags.join(", ")}` : "",
+    existingSerials.length ? `Serial Number ซ้ำกับข้อมูลเดิม ${existingSerials.join(", ")}` : "",
+    existingAssetTags.length ? `Asset Tag ซ้ำกับข้อมูลเดิม ${existingAssetTags.join(", ")}` : "",
+  ].filter(Boolean)
+
+  return parts.length > 0 ? `พบข้อมูลซ้ำ: ${parts.join("; ")}` : ""
+}
