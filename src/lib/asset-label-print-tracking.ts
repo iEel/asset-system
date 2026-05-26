@@ -23,9 +23,9 @@ export function normalizeLabelPrintAssetIds(assetIds: unknown, maxItems = 100) {
 
 export function normalizeLabelTapeSize(
   value: unknown,
-  fallback: NormalizedLabelTapeSize = "24"
+  fallback: NormalizedLabelTapeSize = "18"
 ): NormalizedLabelTapeSize {
-  const safeFallback = labelTapeSizes.includes(fallback) ? fallback : "24"
+  const safeFallback = labelTapeSizes.includes(fallback) ? fallback : "18"
   return labelTapeSizes.includes(value as NormalizedLabelTapeSize)
     ? value as NormalizedLabelTapeSize
     : safeFallback

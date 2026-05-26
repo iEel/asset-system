@@ -190,7 +190,7 @@ export const systemSettingDefaults = [
   { key: "asset_label_12_tertiary_template", value: "", description: "บรรทัดที่สามสำหรับเทป 12mm" },
   { key: "asset_label_18_width_mm", value: "70", description: "ความกว้าง label สำหรับเทป 18mm หน่วยมิลลิเมตร" },
   { key: "asset_label_18_height_mm", value: "18", description: "ความสูง label สำหรับเทป 18mm หน่วยมิลลิเมตร" },
-  { key: "asset_label_18_qr_size", value: "48", description: "ขนาด QR Code สำหรับเทป 18mm หน่วย px" },
+  { key: "asset_label_18_qr_size", value: "44", description: "ขนาด QR Code สำหรับเทป 18mm หน่วย px" },
   { key: "asset_label_18_margin_mm", value: "1.5", description: "ระยะขอบ label สำหรับเทป 18mm หน่วยมิลลิเมตร" },
   { key: "asset_label_18_gap_mm", value: "1.5", description: "ช่องว่างระหว่าง QR กับข้อความสำหรับเทป 18mm หน่วยมิลลิเมตร" },
   { key: "asset_label_18_layout", value: "qr-left", description: "รูปแบบ label สำหรับเทป 18mm" },

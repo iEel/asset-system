@@ -2,11 +2,14 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Loader2, Printer } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Info, Loader2, Printer } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
+import { isLikelyLocalAssetQrValue } from "@/lib/asset-qr"
 import {
-  defaultAssetLabelTemplates,
   assetLabelTapeSizes,
+  defaultAssetLabelTemplates,
+  formatAssetLabelPageSize,
+  getAssetLabelTapePrinterSize,
   renderAssetLabelTemplate,
   type AssetLabelTapeSize,
   type AssetLabelTemplates,
@@ -43,6 +46,9 @@ type AssetLabelPrintProps = {
     recordingPrint: string
     printRecorded: string
     printRecordFailed: string
+    printerTapeGuidance: string
+    qrPrintTarget: string
+    qrLocalWarning: string
     scanHint: string
     assetTag: string
     assetName: string
@@ -67,7 +73,12 @@ export function AssetLabelPrint({
   const config = labelTemplates.tapes[tapeSize]
   const itemCountText = useMemo(() => `${assets.length} ${translations.assetTag}`, [assets.length, translations.assetTag])
   const labelHeight = config.heightMm
+  const pageSize = formatAssetLabelPageSize(config)
+  const printerTapeSize = getAssetLabelTapePrinterSize(tapeSize)
+  const printerTapeGuidance = translations.printerTapeGuidance.replace("{tapeSize}", printerTapeSize)
   const assetIds = useMemo(() => assets.map((asset) => asset.id), [assets])
+  const qrPrintTarget = assets[0]?.qrValue ?? ""
+  const hasLocalQrTarget = useMemo(() => assets.some((asset) => isLikelyLocalAssetQrValue(asset.qrValue)), [assets])
 
   async function handlePrint() {
     if (recordingPrint || assetIds.length === 0) return
@@ -100,13 +111,22 @@ export function AssetLabelPrint({
     <main className="min-h-screen bg-background text-foreground print:bg-white">
       <style jsx global>{`
         @page {
-          size: ${config.widthMm}mm ${labelHeight}mm;
+          size: ${pageSize};
           margin: 0;
         }
 
         .asset-label-item {
           width: ${config.widthMm}mm;
           height: ${labelHeight}mm;
+          color: #000000;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        .asset-label-item * {
+          color: #000000 !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
 
         @media print {
@@ -176,11 +196,11 @@ export function AssetLabelPrint({
                 {assetLabelTapeSizes.map((size) => (
                   <option key={size} value={size}>
                     {size === "12"
-                      ? translations.tape12mm
+                      ? `${translations.tape12mm} / 0.47"`
                       : size === "18"
-                        ? translations.tape18mm
+                        ? `${translations.tape18mm} / 0.70"`
                         : size === "24"
-                          ? translations.tape24mm
+                          ? `${translations.tape24mm} / 0.94"`
                           : translations.tapeCustom}
                   </option>
                 ))}
@@ -195,6 +215,30 @@ export function AssetLabelPrint({
               {recordingPrint ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
               {recordingPrint ? translations.recordingPrint : translations.print}
             </button>
+          </div>
+        </div>
+        <div className="mx-auto flex max-w-5xl flex-col gap-2 px-6 pb-4">
+          <p className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <span>{printerTapeGuidance}</span>
+          </p>
+          <div
+            className={
+              hasLocalQrTarget
+                ? "flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm"
+                : "flex items-start gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm"
+            }
+          >
+            {hasLocalQrTarget ? (
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+            ) : (
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            )}
+            <div className="min-w-0">
+              <div className="font-medium text-foreground">{translations.qrPrintTarget}</div>
+              <div className="mt-1 break-all font-mono text-xs text-muted-foreground">{qrPrintTarget}</div>
+              {hasLocalQrTarget ? <div className="mt-1 text-xs font-medium text-warning">{translations.qrLocalWarning}</div> : null}
+            </div>
           </div>
         </div>
         {recordError || recordedBatchId ? (
@@ -248,15 +292,19 @@ function AssetLabelItem({
   const lines = config.lines.map((line) => renderAssetLabelTemplate(line, values).trim()).filter(Boolean)
 
   const isSmallTape = config.heightMm <= 12
-  const primaryClass = isSmallTape ? "truncate text-[10px] font-bold leading-none" : "truncate text-[13px] font-bold leading-tight"
-  const secondaryClass = isSmallTape ? "mt-[0.8mm] truncate text-[6px] leading-tight text-slate-600" : "mt-[0.8mm] truncate text-[7px] leading-tight text-slate-700"
+  const primaryClass = isSmallTape
+    ? "asset-label-text-line truncate text-[10px] font-black leading-[1.18] text-black"
+    : "asset-label-text-line truncate text-[13px] font-black leading-[1.18] text-black"
+  const secondaryClass = isSmallTape
+    ? "asset-label-text-line mt-[0.6mm] truncate text-[6.5px] font-black leading-[1.25] text-black"
+    : "asset-label-text-line mt-[0.7mm] truncate text-[7.5px] font-black leading-[1.25] text-black"
   const qr = (
     <div className="shrink-0 rounded-sm border border-slate-300 bg-white p-[0.8mm]">
       <QRCodeSVG value={asset.qrValue} size={config.qrSize} level="M" includeMargin={false} />
     </div>
   )
   const text = (
-    <div className="min-w-0">
+    <div className="min-w-0 text-black">
       <div className={primaryClass}>{lines[0] || asset.assetTag}</div>
       {lines.slice(1).map((line, index) => (
         <div key={`${asset.assetTag}-${index}-${line}`} className={secondaryClass}>

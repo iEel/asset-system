@@ -3,8 +3,10 @@ import test from "node:test"
 
 import {
   buildAssetQrPath,
+  buildAssetQrRedirectUrl,
   buildAssetQrValue,
   extractAssetLookupCandidatesFromScanValue,
+  isLikelyLocalAssetQrValue,
   normalizePublicQrBaseUrl,
 } from "../src/lib/asset-qr.ts"
 
@@ -30,6 +32,41 @@ test("falls back safely when public QR base URL is not configured", () => {
       fallbackBaseUrl: "http://localhost:3000/",
     }),
     "http://localhost:3000/q/a/asset-1"
+  )
+})
+
+test("detects QR values that should not be printed for production labels", () => {
+  assert.equal(isLikelyLocalAssetQrValue("http://localhost:3000/q/a/asset-1"), true)
+  assert.equal(isLikelyLocalAssetQrValue("http://127.0.0.1:3000/q/a/asset-1"), true)
+  assert.equal(isLikelyLocalAssetQrValue("http://192.168.1.10/q/a/asset-1"), true)
+  assert.equal(isLikelyLocalAssetQrValue("/q/a/asset-1"), true)
+  assert.equal(isLikelyLocalAssetQrValue("https://asset.soniclogistic.org/q/a/asset-1"), false)
+})
+
+test("builds QR resolver redirects from public or forwarded origins instead of localhost", () => {
+  assert.equal(
+    buildAssetQrRedirectUrl({
+      targetPath: "/th/assets/asset-1",
+      publicBaseUrl: "https://asset.soniclogistic.org",
+      requestUrl: "http://localhost:3000/q/a/asset-1",
+      forwardedHost: "asset.internal.local",
+      forwardedProto: "https",
+      host: "localhost:3000",
+      fallbackBaseUrl: "http://localhost:3000",
+    }),
+    "https://asset.soniclogistic.org/th/assets/asset-1"
+  )
+
+  assert.equal(
+    buildAssetQrRedirectUrl({
+      targetPath: "/th/assets/asset-1",
+      requestUrl: "http://localhost:3000/q/a/asset-1",
+      forwardedHost: "asset.soniclogistic.org",
+      forwardedProto: "https",
+      host: "localhost:3000",
+      fallbackBaseUrl: "http://localhost:3000",
+    }),
+    "https://asset.soniclogistic.org/th/assets/asset-1"
   )
 })
 

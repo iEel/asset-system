@@ -16,7 +16,7 @@ test("normalizes label print asset ids by trimming, deduping, and limiting", () 
 
 test("normalizes label tape size to supported values", () => {
   assert.equal(normalizeLabelTapeSize("12"), "12")
-  assert.equal(normalizeLabelTapeSize("unknown"), "24")
+  assert.equal(normalizeLabelTapeSize("unknown"), "18")
   assert.equal(normalizeLabelTapeSize(null, "18"), "18")
 })
 

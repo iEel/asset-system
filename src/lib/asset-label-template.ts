@@ -43,6 +43,14 @@ export type AssetLabelLayout = "qr-left" | "qr-top" | "text-only" | "qr-only"
 
 export const assetLabelTapeSizes = ["12", "18", "24", "custom"] as const
 export const assetLabelLayouts = ["qr-left", "qr-top", "text-only", "qr-only"] as const
+const cssPxPerMm = 96 / 25.4
+
+export const assetLabelTapePrinterSizes: Record<AssetLabelTapeSize, string> = {
+  "12": '12mm / 0.47"',
+  "18": '18mm / 0.70"',
+  "24": '24mm / 0.94"',
+  custom: "Custom",
+}
 
 export const assetLabelPresets: Record<
   AssetLabelTapeSize,
@@ -71,7 +79,7 @@ export const assetLabelPresets: Record<
     label: "18 mm",
     widthMm: 70,
     heightMm: 18,
-    qrSize: 48,
+    qrSize: 44,
     marginMm: 1.5,
     gapMm: 1.5,
     layout: "qr-left",
@@ -167,9 +175,25 @@ export function renderAssetLabelTemplate(template: string, values: AssetLabelTok
   return template.replace(/\{([A-Za-z0-9]+)\}/g, (_, token: keyof AssetLabelTokenValues) => values[token] ?? "")
 }
 
+export function getAssetLabelTapePrinterSize(size: AssetLabelTapeSize) {
+  return assetLabelTapePrinterSizes[size]
+}
+
+export function formatAssetLabelPageSize(config: Pick<AssetLabelTemplates["tapes"][AssetLabelTapeSize], "widthMm" | "heightMm">) {
+  return `${formatMm(config.widthMm)}mm ${formatMm(config.heightMm)}mm`
+}
+
+export function assetLabelQrSizeToMm(qrSizePx: number) {
+  return Math.round((qrSizePx / cssPxPerMm) * 100) / 100
+}
+
 function numberOrDefault(value: string | undefined, fallback: number) {
   const parsed = Number(value)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function formatMm(value: number) {
+  return Number.isInteger(value) ? String(value) : String(value)
 }
 
 function presetToTemplate(size: AssetLabelTapeSize): AssetLabelTemplates["tapes"][AssetLabelTapeSize] {
