@@ -750,6 +750,8 @@ curl -I http://127.0.0.1:8080/th/login
 
 ทุกอย่างอยู่ใต้ `/var/www/asset-system` แล้ว แต่เวลา backup ควรแยก code/config/data เพื่อ restore ได้ง่ายกว่า
 
+Operational backup and restore ownership is documented in `docs/09_BACKUP_RESTORE_RUNBOOK.md`. Use that runbook for restore approval, RTO/RPO placeholders, monthly restore tests, and audit evidence.
+
 ต้อง backup 3 ส่วน:
 
 1. SQL Server database `<DB_NAME>`
