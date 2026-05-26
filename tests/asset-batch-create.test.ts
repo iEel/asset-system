@@ -10,6 +10,7 @@ import {
   defaultAssetBatchRowCount,
   findDuplicateBatchValues,
   normalizeAssetBatchRowCount,
+  parseBatchSerialPaste,
   summarizeAssetBatchCreateResult,
 } from "../src/lib/asset-batch-create.ts"
 import { assetBatchCreateSchema } from "../src/lib/validations/asset-batch.ts"
@@ -237,4 +238,16 @@ test("buildAssetBatchDuplicateCheckSummary reports duplicate count and message",
       duplicateCount: 3,
     }
   )
+})
+
+test("parseBatchSerialPaste reads serials from Excel rows", () => {
+  assert.deepEqual(parseBatchSerialPaste("SN-001\r\nSN-002\r\nSN-003"), ["SN-001", "SN-002", "SN-003"])
+})
+
+test("parseBatchSerialPaste reads the first column from tab-separated rows", () => {
+  assert.deepEqual(parseBatchSerialPaste("SN-001\tDell\r\nSN-002\tHP"), ["SN-001", "SN-002"])
+})
+
+test("parseBatchSerialPaste removes empty rows and caps the result", () => {
+  assert.deepEqual(parseBatchSerialPaste("SN-001\n\nSN-002\nSN-003", 2), ["SN-001", "SN-002"])
 })

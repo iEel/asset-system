@@ -545,7 +545,7 @@ git push origin master
 - Modify: `tests/asset-batch-create.test.ts`
 - Modify: `DEVELOPER_HANDOFF.md`
 
-- [ ] **Step 1: Add failing paste parser tests**
+- [x] **Step 1: Add failing paste parser tests**
 
 Append to `tests/asset-batch-create.test.ts`:
 
@@ -565,7 +565,7 @@ test("parseBatchSerialPaste removes empty rows and caps the result", () => {
 })
 ```
 
-- [ ] **Step 2: Implement `parseBatchSerialPaste`**
+- [x] **Step 2: Implement `parseBatchSerialPaste`**
 
 Add to `src/lib/asset-batch-create.ts`:
 
@@ -579,7 +579,7 @@ export function parseBatchSerialPaste(text: string, maxRows = 100) {
 }
 ```
 
-- [ ] **Step 3: Add paste hint translations**
+- [x] **Step 3: Add paste hint translations**
 
 Thai:
 
@@ -593,7 +593,7 @@ English:
 "batchPasteSerialHint": "Paste serials from Excel; rows will be added automatically."
 ```
 
-- [ ] **Step 4: Wire paste handling into the serial input**
+- [x] **Step 4: Wire paste handling into the serial input**
 
 Update import:
 
@@ -645,7 +645,7 @@ Then update the serial cell:
 <p className="mt-1 text-[11px] text-muted-foreground">{t("batchPasteSerialHint")}</p>
 ```
 
-- [ ] **Step 5: Run tests and lint**
+- [x] **Step 5: Run tests and lint**
 
 ```powershell
 node --test --test-isolation=none tests\asset-batch-create.test.ts

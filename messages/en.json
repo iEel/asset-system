@@ -411,6 +411,7 @@
     "batchCheckDuplicatesRunning": "Checking...",
     "batchCheckDuplicatesClean": "No duplicate Serial Numbers or Asset Tags found.",
     "batchCheckDuplicatesFound": "Duplicate data found. Please review before saving.",
+    "batchPasteSerialHint": "Paste serials from Excel; rows will be added automatically.",
     "batchCreatedTitle": "Batch created",
     "batchCreatedDescription": "Created {count} assets",
     "batchGoToRegister": "Go to register",

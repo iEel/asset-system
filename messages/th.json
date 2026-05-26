@@ -411,6 +411,7 @@
     "batchCheckDuplicatesRunning": "กำลังตรวจสอบ...",
     "batchCheckDuplicatesClean": "ไม่พบ Serial Number หรือเลขทรัพย์สินที่ซ้ำ",
     "batchCheckDuplicatesFound": "พบข้อมูลซ้ำ กรุณาตรวจสอบรายการก่อนบันทึก",
+    "batchPasteSerialHint": "วาง Serial จาก Excel ได้ ระบบจะเพิ่มแถวให้อัตโนมัติ",
     "batchCreatedTitle": "สร้างทรัพย์สินเป็นชุดสำเร็จ",
     "batchCreatedDescription": "ระบบสร้างทรัพย์สิน {count} รายการแล้ว",
     "batchGoToRegister": "ไปหน้าทะเบียน",

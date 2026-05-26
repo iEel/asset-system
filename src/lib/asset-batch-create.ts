@@ -128,6 +128,14 @@ export function buildAssetBatchPreviewRows(rows: AssetBatchEditableRow[]): Asset
   })
 }
 
+export function parseBatchSerialPaste(text: string, maxRows = 100) {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.split("\t")[0]?.trim() ?? "")
+    .filter(Boolean)
+    .slice(0, maxRows)
+}
+
 export function summarizeAssetBatchCreateResult(assets: CreatedAssetSummary[]) {
   return {
     created: assets.length,

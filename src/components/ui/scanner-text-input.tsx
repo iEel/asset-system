@@ -31,6 +31,7 @@ type ScannerTextInputProps = {
   maxLength?: number
   placeholder?: string
   inputClassName?: string
+  onPaste?: React.ClipboardEventHandler<HTMLInputElement>
 }
 
 export function ScannerTextInput({
@@ -41,6 +42,7 @@ export function ScannerTextInput({
   maxLength,
   placeholder,
   inputClassName,
+  onPaste,
 }: ScannerTextInputProps) {
   const reactId = useId()
   const readerId = `scanner-reader-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}`
@@ -157,6 +159,7 @@ export function ScannerTextInput({
         <input
           value={value}
           onChange={(event) => onChange(event.target.value)}
+          onPaste={onPaste}
           maxLength={maxLength}
           placeholder={placeholder}
           className={

@@ -10,7 +10,7 @@ import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { defaultAssetOwnershipType, normalizeAssetOwnershipType, assetOwnershipTypes } from "@/lib/asset-ownership"
-import { buildAssetBatchPreviewRows, createAssetBatchRows, findDuplicateBatchValues, type AssetBatchEditableRow } from "@/lib/asset-batch-create"
+import { buildAssetBatchPreviewRows, createAssetBatchRows, findDuplicateBatchValues, parseBatchSerialPaste, type AssetBatchEditableRow } from "@/lib/asset-batch-create"
 
 type AssetBatchFormProps = React.ComponentProps<typeof AssetForm>
 
@@ -329,6 +329,32 @@ export function AssetBatchForm({
     }
   }
 
+  function handleSerialPaste(clientId: string, event: React.ClipboardEvent<HTMLInputElement>) {
+    const pastedSerials = parseBatchSerialPaste(event.clipboardData.getData("text"), 100)
+    if (pastedSerials.length <= 1) return
+
+    event.preventDefault()
+    setRows((current) => {
+      const startIndex = current.findIndex((row) => row.clientId === clientId)
+      if (startIndex < 0) return current
+
+      const next = [...current]
+      const requiredRows = Math.min(100, startIndex + pastedSerials.length)
+      while (next.length < requiredRows) {
+        next.push(createAssetBatchRows(1, `row-${Date.now()}-${next.length + 1}`)[0])
+      }
+
+      pastedSerials.slice(0, 100 - startIndex).forEach((serialNumber, offset) => {
+        next[startIndex + offset] = { ...next[startIndex + offset], serialNumber }
+      })
+
+      return next
+    })
+    setCreatedBatch(null)
+    setReviewing(false)
+    clearDuplicateCheck()
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (hasClientDuplicates) {
@@ -577,7 +603,8 @@ export function AssetBatchForm({
                   <tr key={row.clientId} className="border-t border-border align-top">
                     <td className="px-3 py-3 font-medium text-foreground">{index + 1}</td>
                     <td className="px-3 py-3">
-                      <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} labels={scannerLabels} maxLength={100} />
+                      <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
+                      <p className="mt-1 text-[11px] text-muted-foreground">{t("batchPasteSerialHint")}</p>
                     </td>
                     <td className="px-3 py-3">
                       <input value={row.assetTag} onChange={(event) => setRowField(row.clientId, "assetTag", event.target.value)} placeholder={t("autoTagHint")} aria-label={t("batchAssetTagHelp")} className={inputClassName} />
