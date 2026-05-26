@@ -4,7 +4,7 @@ import {
   assetTagFormatTemplateKey,
   defaultAssetTagFormatTemplate,
 } from "@/lib/system-setting-defaults"
-import { getNextAssetTagRunningNumber } from "@/lib/asset-tag-sequence"
+import { reserveAssetTagRunningNumbers } from "@/lib/asset-tag-sequence"
 
 function parseCategoryPrefixes(value?: string | null) {
   if (!value) return {}
@@ -66,6 +66,25 @@ export async function generateAssetTag({
   branchId: string
   categoryId: string
 }) {
+  const [assetTag] = await generateAssetTags({ companyId, branchId, categoryId, count: 1 })
+  return assetTag
+}
+
+export async function generateAssetTags({
+  companyId,
+  branchId,
+  categoryId,
+  count,
+  reservedAssetTags = [],
+}: {
+  companyId: string
+  branchId: string
+  categoryId: string
+  count: number
+  reservedAssetTags?: string[]
+}) {
+  if (count < 1 || count > 100) throw new Error("Asset tag batch size must be between 1 and 100")
+
   const [
     company,
     branch,
@@ -116,20 +135,13 @@ export async function generateAssetTag({
     },
     select: { assetTag: true },
   })
-  let nextRunning = getNextAssetTagRunningNumber({
+  const runningNumbers = reserveAssetTagRunningNumbers({
     existingAssetTags: existingAssets.map((asset) => asset.assetTag),
+    reservedAssetTags,
     sequencePrefix,
     sequenceSuffix,
     runningDigits: digits,
+    count,
   })
-
-  for (let offset = 1; offset <= 100; offset += 1) {
-    const running = String(nextRunning).padStart(digits, "0")
-    const assetTag = renderAssetTagTemplate(formatSetting?.value, { ...baseTokens, running })
-    const existing = await prisma.asset.findUnique({ where: { assetTag }, select: { id: true } })
-    if (!existing) return assetTag
-    nextRunning += 1
-  }
-
-  throw new Error("Unable to generate unique asset tag")
+  return runningNumbers.map((running) => renderAssetTagTemplate(formatSetting?.value, { ...baseTokens, running }))
 }

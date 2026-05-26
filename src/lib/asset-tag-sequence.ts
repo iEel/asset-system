@@ -24,3 +24,41 @@ export function getNextAssetTagRunningNumber({
 
   return maxRunning + 1
 }
+
+export function reserveAssetTagRunningNumbers({
+  existingAssetTags,
+  reservedAssetTags = [],
+  sequencePrefix,
+  sequenceSuffix = "",
+  runningDigits,
+  count,
+}: {
+  existingAssetTags: string[]
+  reservedAssetTags?: string[]
+  sequencePrefix: string
+  sequenceSuffix?: string
+  runningDigits: number
+  count: number
+}) {
+  const reserved: string[] = []
+  const knownAssetTags = [...existingAssetTags, ...reservedAssetTags]
+  const known = new Set(knownAssetTags)
+  let nextRunning = getNextAssetTagRunningNumber({
+    existingAssetTags: knownAssetTags,
+    sequencePrefix,
+    sequenceSuffix,
+    runningDigits,
+  })
+
+  while (reserved.length < count) {
+    const running = String(nextRunning).padStart(runningDigits, "0")
+    const assetTag = `${sequencePrefix}${running}${sequenceSuffix}`
+    if (!known.has(assetTag)) {
+      reserved.push(running)
+      known.add(assetTag)
+    }
+    nextRunning += 1
+  }
+
+  return reserved
+}
