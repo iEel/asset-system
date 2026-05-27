@@ -619,13 +619,13 @@ export function AssetBatchForm({
                   </button>
                 </div>
                 <div className="grid gap-3">
-                  <Field label={t("batchSerialNumber")}>
-                    <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
-                    <p className="mt-1 text-[11px] text-muted-foreground">{t("batchPasteSerialHint")}</p>
-                  </Field>
                   <Field label={t("batchAssetTag")}>
                     <input value={row.assetTag} onChange={(event) => setRowField(row.clientId, "assetTag", event.target.value)} placeholder={t("autoTagHint")} aria-label={t("batchAssetTagHelp")} className={inputClassName} />
                     <p className="mt-1 text-[11px] text-muted-foreground">{t("batchAssetTagHelp")}</p>
+                  </Field>
+                  <Field label={t("batchSerialNumber")}>
+                    <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
+                    <p className="mt-1 text-[11px] text-muted-foreground">{t("batchPasteSerialHint")}</p>
                   </Field>
                   <SearchableSelect label={t("batchCustodian")} value={row.custodianId} options={filteredEmployees} placeholder={t("selectCustodian")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "custodianId", value)} />
                   <Field label={t("batchRemark")}>
@@ -641,8 +641,8 @@ export function AssetBatchForm({
               <thead className="bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
                 <tr>
                   <th className="w-16 px-3 py-2">{t("batchRowNo")}</th>
-                  <th className="w-56 px-3 py-2">{t("batchSerialNumber")}</th>
                   <th className="w-56 px-3 py-2">{t("batchAssetTag")}</th>
+                  <th className="w-56 px-3 py-2">{t("batchSerialNumber")}</th>
                   <th className="w-64 px-3 py-2">{t("batchCustodian")}</th>
                   <th className="w-64 px-3 py-2">{t("batchRemark")}</th>
                   <th className="w-16 px-3 py-2 text-right">
@@ -655,12 +655,12 @@ export function AssetBatchForm({
                   <tr key={row.clientId} className="border-t border-border align-top">
                     <td className="px-3 py-3 font-medium text-foreground">{index + 1}</td>
                     <td className="px-3 py-3">
-                      <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
-                      <p className="mt-1 text-[11px] text-muted-foreground">{t("batchPasteSerialHint")}</p>
-                    </td>
-                    <td className="px-3 py-3">
                       <input value={row.assetTag} onChange={(event) => setRowField(row.clientId, "assetTag", event.target.value)} placeholder={t("autoTagHint")} aria-label={t("batchAssetTagHelp")} className={inputClassName} />
                       <p className="mt-1 text-[11px] text-muted-foreground">{t("batchAssetTagHelp")}</p>
+                    </td>
+                    <td className="px-3 py-3">
+                      <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
+                      <p className="mt-1 text-[11px] text-muted-foreground">{t("batchPasteSerialHint")}</p>
                     </td>
                     <td className="px-3 py-3">
                       <SearchableSelect label="" value={row.custodianId} options={filteredEmployees} placeholder={t("selectCustodian")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "custodianId", value)} />
@@ -708,8 +708,8 @@ export function AssetBatchForm({
                 <thead className="bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2">{t("batchRowNo")}</th>
-                    <th className="px-3 py-2">{t("batchSerialNumber")}</th>
                     <th className="px-3 py-2">{t("batchAssetTag")}</th>
+                    <th className="px-3 py-2">{t("batchSerialNumber")}</th>
                     <th className="px-3 py-2">{t("batchCustodian")}</th>
                     <th className="px-3 py-2">{t("batchRemark")}</th>
                   </tr>
@@ -718,11 +718,11 @@ export function AssetBatchForm({
                   {previewRows.map((row) => (
                     <tr key={row.rowNo} className="border-t border-border">
                       <td className="px-3 py-2 font-medium">{row.rowNo}</td>
-                      <td className="px-3 py-2">{row.serialNumber || "-"}</td>
                       <td className="px-3 py-2">
                         <span className="font-medium text-foreground">{row.assetTag || t("batchReviewAutoAssetTag")}</span>
                         {row.assetTagSource === "manual" ? <span className="ml-2 text-xs text-muted-foreground">{t("batchReviewManualAssetTag")}</span> : null}
                       </td>
+                      <td className="px-3 py-2">{row.serialNumber || "-"}</td>
                       <td className="px-3 py-2">{employees.find((employee) => employee.id === row.custodianId)?.label ?? "-"}</td>
                       <td className="px-3 py-2">{row.remark || "-"}</td>
                     </tr>

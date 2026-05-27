@@ -400,7 +400,7 @@
     "batchRemark": "Remark",
     "batchSubmit": "Save batch",
     "batchSubmitSuccess": "Created {count} assets",
-    "batchRowHelp": "Fill only Serial, legacy/custom Asset Tag, custodian, or per-asset remark. Location and accounting data come from the shared asset data.",
+    "batchRowHelp": "Fill only legacy/custom Asset Tag, Serial, custodian, or per-asset remark. Location and accounting data come from the shared asset data.",
     "batchReviewTitle": "Review before saving",
     "batchReviewDescription": "Review the shared data and row details before creating multiple assets.",
     "batchReviewSharedLocation": "Shared location",
