@@ -23,6 +23,11 @@ import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 import { extractAssetLookupCandidatesFromScanValue } from "@/lib/asset-qr"
 import { normalizeAssetOwnershipType, requiresCustodian } from "@/lib/asset-ownership"
 import {
+  environmentCameraId,
+  getFallbackCameraAfterEnvironmentFailure,
+  resolvePreferredCameraSelection,
+} from "@/lib/camera-selection"
+import {
   addQueuedAuditScanAsync,
   createAuditOfflineIndexedDbStorage,
   loadQueuedAuditScansAsync,
@@ -59,7 +64,7 @@ type AuditScanOptions = {
 
 type Html5QrcodeInstance = {
   start: (
-    cameraConfig: string | { facingMode: string },
+    cameraConfig: string | MediaTrackConstraints,
     config: {
       fps: number
       qrbox: (viewfinderWidth: number, viewfinderHeight: number) => { width: number; height: number }
@@ -245,7 +250,7 @@ export function AuditScanForm({
     return offlineStorageRef.current
   }
 
-  async function startScanner() {
+  async function startScanner(requestedCameraId = selectedCameraId) {
     if (!isCameraAccessSupported()) {
       setCameraReadiness("unavailable")
       setCameraErrorText(t("cameraUnsupported"))
@@ -266,27 +271,29 @@ export function AuditScanForm({
         return
       }
 
-      const preferredCamera =
-        availableCameras.find((camera) => camera.id === selectedCameraId) ??
-        availableCameras.find((camera) => /back|rear|environment/i.test(camera.label)) ??
-        availableCameras[0]
-      setSelectedCameraId(preferredCamera.id)
+      const cameraSelection = resolvePreferredCameraSelection(availableCameras, requestedCameraId)
+      setSelectedCameraId(cameraSelection.selectedCameraId)
 
       const scanner = new Html5Qrcode("audit-qr-reader") as unknown as Html5QrcodeInstance
       qrReaderRef.current = scanner
-      await scanner.start(
-        preferredCamera.id,
-        { fps: 10, qrbox: getResponsiveQrBox },
-        (decodedText) => {
-          const normalizedText = decodedText.trim()
-          const now = Date.now()
-          if (lastDecodedRef.current?.value === normalizedText && now - lastDecodedRef.current.at < 1500) return
-          lastDecodedRef.current = { value: normalizedText, at: now }
-          setLastDecodedText(decodedText)
-          void selectScannedAsset(decodedText, "qr")
-        },
-        () => {}
-      )
+      const scanConfig = { fps: 10, qrbox: getResponsiveQrBox }
+      const handleScanSuccess = (decodedText: string) => {
+        const normalizedText = decodedText.trim()
+        const now = Date.now()
+        if (lastDecodedRef.current?.value === normalizedText && now - lastDecodedRef.current.at < 1500) return
+        lastDecodedRef.current = { value: normalizedText, at: now }
+        setLastDecodedText(decodedText)
+        void selectScannedAsset(decodedText, "qr")
+      }
+
+      try {
+        await scanner.start(cameraSelection.cameraConfig, scanConfig, handleScanSuccess, () => {})
+      } catch (startError) {
+        const fallbackCamera = getFallbackCameraAfterEnvironmentFailure(cameraSelection, availableCameras)
+        if (!fallbackCamera) throw startError
+        setSelectedCameraId(fallbackCamera.id)
+        await scanner.start(fallbackCamera.id, scanConfig, handleScanSuccess, () => {})
+      }
       setScannerRunning(true)
     } catch (error) {
       const message = error instanceof Error ? error.message : t("cameraError")
@@ -310,6 +317,16 @@ export function AuditScanForm({
       qrReaderRef.current = null
       setScannerRunning(false)
     }
+  }
+
+  async function handleCameraChange(cameraId: string) {
+    setSelectedCameraId(cameraId)
+    if (!scannerRunning) return
+
+    await stopScanner()
+    window.setTimeout(() => {
+      void startScanner(cameraId)
+    }, 0)
   }
 
   async function selectScannedAsset(rawValue: string, source: "manual" | "qr") {
@@ -701,7 +718,7 @@ export function AuditScanForm({
                 </button>
                 <button
                   type="button"
-                  onClick={scannerRunning ? stopScanner : startScanner}
+                  onClick={() => void (scannerRunning ? stopScanner() : startScanner())}
                   disabled={scannerLoading}
                   className="inline-flex h-12 min-w-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
                 >
@@ -746,10 +763,11 @@ export function AuditScanForm({
                     <span className="mb-1.5 block text-xs font-medium text-foreground">{t("cameraDevice")}</span>
                     <select
                       value={selectedCameraId}
-                      disabled={scannerRunning || scannerLoading}
-                      onChange={(event) => setSelectedCameraId(event.target.value)}
-                      className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+                      disabled={scannerLoading}
+                      onChange={(event) => void handleCameraChange(event.target.value)}
+                      className="min-h-11 w-full rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60 sm:h-9 sm:min-h-0"
                     >
+                      <option value={environmentCameraId}>{t("cameraRear")}</option>
                       {cameras.map((camera, index) => (
                         <option key={camera.id} value={camera.id}>
                           {camera.label || t("cameraDeviceFallback", { index: index + 1 })}

@@ -3,6 +3,11 @@
 import { useEffect, useId, useRef, useState } from "react"
 import { Camera, Loader2, X } from "lucide-react"
 import { toast } from "sonner"
+import {
+  environmentCameraId,
+  getFallbackCameraAfterEnvironmentFailure,
+  resolvePreferredCameraSelection,
+} from "@/lib/camera-selection"
 import type {
   CameraDevice,
   Html5Qrcode,
@@ -19,6 +24,7 @@ type ScannerTextInputLabels = {
   cameraError: string
   cameraDevice: string
   cameraDeviceFallback: string
+  cameraRear: string
   scanning: string
   scanned: string
 }
@@ -59,7 +65,7 @@ export function ScannerTextInput({
     }
   }, [])
 
-  async function startScanner() {
+  async function startScanner(requestedCameraId = selectedCameraId) {
     if (!isCameraAccessSupported()) {
       setCameraErrorText(labels.cameraUnsupported)
       toast.error(labels.cameraUnsupported)
@@ -79,31 +85,31 @@ export function ScannerTextInput({
         return
       }
 
-      const preferredCamera =
-        availableCameras.find((camera) => camera.id === selectedCameraId) ??
-        availableCameras.find((camera) => /back|rear|environment/i.test(camera.label)) ??
-        availableCameras[0]
-
-      setSelectedCameraId(preferredCamera.id)
+      const cameraSelection = resolvePreferredCameraSelection(availableCameras, requestedCameraId)
+      setSelectedCameraId(cameraSelection.selectedCameraId)
       const scanner = new Html5Qrcode(readerId, {
         formatsToSupport: getSerialCodeFormats(Html5QrcodeSupportedFormats),
         useBarCodeDetectorIfSupported: true,
         verbose: false,
       })
       scannerRef.current = scanner
+      const scanConfig = { fps: 10, qrbox: getResponsiveQrBox, aspectRatio: 1.333 }
+      const handleScanSuccess = (decodedText: string) => {
+        const normalizedText = decodedText.trim()
+        if (!normalizedText) return
+        onChange(normalizedText)
+        toast.success(labels.scanned)
+        void stopScanner()
+      }
 
-      await scanner.start(
-        preferredCamera.id,
-        { fps: 10, qrbox: getResponsiveQrBox, aspectRatio: 1.333 },
-        (decodedText) => {
-          const normalizedText = decodedText.trim()
-          if (!normalizedText) return
-          onChange(normalizedText)
-          toast.success(labels.scanned)
-          void stopScanner()
-        },
-        () => {}
-      )
+      try {
+        await scanner.start(cameraSelection.cameraConfig, scanConfig, handleScanSuccess, () => {})
+      } catch (startError) {
+        const fallbackCamera = getFallbackCameraAfterEnvironmentFailure(cameraSelection, availableCameras)
+        if (!fallbackCamera) throw startError
+        setSelectedCameraId(fallbackCamera.id)
+        await scanner.start(fallbackCamera.id, scanConfig, handleScanSuccess, () => {})
+      }
       setScannerRunning(true)
     } catch (error) {
       const message = error instanceof Error ? error.message : labels.cameraError
@@ -147,7 +153,7 @@ export function ScannerTextInput({
 
     await stopScanner()
     window.setTimeout(() => {
-      void startScanner()
+      void startScanner(cameraId)
     }, 0)
   }
 
@@ -191,6 +197,7 @@ export function ScannerTextInput({
               onClick={() => void stopScanner()}
               className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-10 sm:w-10"
               title={labels.stop}
+              aria-label={labels.stop}
             >
               <X className="h-4 w-4" />
             </button>
@@ -202,8 +209,9 @@ export function ScannerTextInput({
               <select
                 value={selectedCameraId}
                 onChange={(event) => void handleCameraChange(event.target.value)}
-                className="mt-1 h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="mt-1 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-9 sm:min-h-0"
               >
+                <option value={environmentCameraId}>{labels.cameraRear}</option>
                 {cameras.map((camera, index) => (
                   <option key={camera.id} value={camera.id}>
                     {camera.label || `${labels.cameraDeviceFallback} ${index + 1}`}

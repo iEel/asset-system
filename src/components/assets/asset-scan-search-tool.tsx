@@ -38,6 +38,7 @@ type AssetScanSearchToolProps = {
       cameraError: string
       cameraDevice: string
       cameraDeviceFallback: string
+      cameraRear: string
       scanning: string
       scanned: string
     }

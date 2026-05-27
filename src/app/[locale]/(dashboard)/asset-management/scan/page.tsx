@@ -37,6 +37,7 @@ export default async function AssetScanPage({ params }: AssetScanPageProps) {
           cameraError: t("cameraError"),
           cameraDevice: t("cameraDevice"),
           cameraDeviceFallback: t("cameraDeviceFallback"),
+          cameraRear: t("cameraRear"),
           scanning: t("scanning"),
           scanned: t("scanned"),
         },

@@ -758,6 +758,7 @@ export function AssetForm({
                 cameraError: t("cameraError"),
                 cameraDevice: t("cameraDevice"),
                 cameraDeviceFallback: t("cameraDeviceFallback"),
+                cameraRear: t("cameraRear"),
                 scanning: t("serialScannerRunning"),
                 scanned: t("serialScanned"),
               }}
