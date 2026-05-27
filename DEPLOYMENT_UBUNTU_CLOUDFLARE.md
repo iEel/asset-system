@@ -715,33 +715,112 @@ https://asset.company.com
 
 ---
 
-## 19. Updating To A New Version
+## 19. Update Code To Latest
+
+Runbook นี้ใช้สำหรับอัปเดต production code ที่ `/var/www/asset-system/app` ให้ทัน `origin/master` โดยไม่ทับ local changes ที่มีอยู่บนเครื่อง production
+
+ข้อควรระวังสำคัญ:
+
+- ก่อนอัปเดตต้องตรวจ `git status`, commit ปัจจุบัน, และ local diff ทุกครั้ง
+- บนเครื่อง production นี้มี local modified เดิมที่ `package-lock.json`; ห้าม revert, ห้าม `git reset --hard`, และห้าม `git add package-lock.json` เว้นแต่มีคำสั่งชัดเจนให้จัดการไฟล์นี้
+- ถ้ามี local changes ชนกับไฟล์ที่เปลี่ยนจาก `origin/master` ให้หยุดและ review ก่อน ห้าม force pull
+
+เข้า directory app:
 
 ```bash
 cd /var/www/asset-system/app
-sudo -u assetapp git pull origin master
-
-sudo -u assetapp npm ci
-sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma generate'
-
-# Run only after DB backup, especially when prisma/schema.prisma changed
-sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma db push'
-
-sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npm run build'
-sudo -u assetapp mkdir -p .next/standalone/.next
-sudo -u assetapp cp -r public .next/standalone/
-sudo -u assetapp cp -r .next/static .next/standalone/.next/
-
-sudo systemctl restart asset-system
-sudo systemctl reload nginx
-sudo systemctl status asset-system
 ```
 
-ตรวจ:
+ตรวจสถานะก่อนอัปเดต:
 
 ```bash
+sudo -u assetapp git -c safe.directory=/var/www/asset-system/app status --short --branch
+sudo -u assetapp git -c safe.directory=/var/www/asset-system/app rev-parse --short HEAD
+sudo -u assetapp git -c safe.directory=/var/www/asset-system/app diff --name-status
+sudo -u assetapp git -c safe.directory=/var/www/asset-system/app diff -- package-lock.json
+```
+
+Fetch ล่าสุดจาก `origin`:
+
+```bash
+sudo -u assetapp git -c safe.directory=/var/www/asset-system/app fetch origin --prune
+```
+
+เทียบ `HEAD` กับ `origin/master`:
+
+```bash
+sudo -u assetapp git -c safe.directory=/var/www/asset-system/app rev-list --left-right --count HEAD...origin/master
+sudo -u assetapp git -c safe.directory=/var/www/asset-system/app log --oneline --decorate HEAD..origin/master
+sudo -u assetapp git -c safe.directory=/var/www/asset-system/app diff --name-only HEAD..origin/master
+```
+
+ผลจาก `rev-list --left-right --count` คือ `<ahead> <behind>`:
+
+- ถ้า `<behind>` เป็น `0` แปลว่าไม่มี commit ใหม่จาก `origin/master`; ไม่ต้อง pull/build/restart เว้นแต่ต้องการ rebuild ด้วยเหตุผลอื่น
+- ถ้า `<ahead>` ไม่เป็น `0` ให้หยุดและ review เพราะ production มี commit local ที่ยังไม่อยู่บน `origin/master`
+- ถ้า `<behind>` มากกว่า `0` และ local changes ไม่ชนกับรายการจาก `diff --name-only HEAD..origin/master` ให้ pull แบบ fast-forward เท่านั้น
+
+เก็บ commit ก่อน pull แล้ว pull:
+
+```bash
+OLD_HEAD=$(sudo -u assetapp git -c safe.directory=/var/www/asset-system/app rev-parse HEAD)
+sudo -u assetapp git -c safe.directory=/var/www/asset-system/app pull --ff-only origin master
+```
+
+หลัง pull ให้ตรวจว่าไฟล์สำคัญเปลี่ยนหรือไม่:
+
+```bash
+sudo -u assetapp git -c safe.directory=/var/www/asset-system/app diff --name-only "$OLD_HEAD"..HEAD -- package.json package-lock.json prisma/schema.prisma DEPLOYMENT_UBUNTU_CLOUDFLARE.md
+```
+
+ถ้า `package.json` หรือ `package-lock.json` ไม่อยู่ในผลลัพธ์ ให้ข้าม `npm ci` เพื่อไม่แตะ dependency tree โดยไม่จำเป็น ถ้ามีไฟล์ใดไฟล์หนึ่งเปลี่ยน ให้รัน:
+
+```bash
+sudo -u assetapp npm ci
+```
+
+ถ้า `prisma/schema.prisma` ไม่อยู่ในผลลัพธ์ ให้ข้าม Prisma/db schema update ถ้า schema เปลี่ยน ให้ backup database และขอ approval ก่อน แล้วค่อยรันคำสั่งที่จำเป็น:
+
+```bash
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma generate'
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma db push'
+```
+
+Build production:
+
+```bash
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npm run build'
+```
+
+Sync standalone assets:
+
+```bash
+sudo -u assetapp mkdir -p /var/www/asset-system/app/.next/standalone/.next
+sudo -u assetapp cp -r /var/www/asset-system/app/public /var/www/asset-system/app/.next/standalone/
+sudo -u assetapp cp -r /var/www/asset-system/app/.next/static /var/www/asset-system/app/.next/standalone/.next/
+```
+
+Restart/reload services:
+
+```bash
+systemctl restart asset-system.service
+systemctl reload nginx
+```
+
+Health check:
+
+```bash
+systemctl is-active asset-system.service
 curl -I http://127.0.0.1:3000/th/login
 curl -I http://127.0.0.1:8080/th/login
+systemctl list-timers asset-system-scheduler.timer asset-system-notification-digest.timer --no-pager
+```
+
+ตรวจ git สุดท้าย:
+
+```bash
+sudo -u assetapp git -c safe.directory=/var/www/asset-system/app status --short --branch
+sudo -u assetapp git -c safe.directory=/var/www/asset-system/app rev-list --left-right --count HEAD...origin/master
 ```
 
 ---
