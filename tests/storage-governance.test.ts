@@ -80,6 +80,20 @@ test("getStoragePathVariants returns deduped posix and Windows variants", () => 
   assert.deepEqual(getStoragePathVariants("photo.jpg"), ["photo.jpg"])
 })
 
+test("getStoragePathVariants includes upload-root absolute variants", () => {
+  const relativePath = "asset/2026/05/file.jpg"
+  const uploadRoot = path.join(os.tmpdir(), "asset-storage-root")
+  const absoluteNativePath = path.resolve(uploadRoot, relativePath)
+  const variants = getStoragePathVariants(relativePath, uploadRoot)
+
+  assert.ok(variants.includes(relativePath))
+  assert.ok(variants.includes("asset\\2026\\05\\file.jpg"))
+  assert.ok(variants.includes(absoluteNativePath))
+  assert.ok(variants.includes(absoluteNativePath.replace(/\\/g, "/")))
+  assert.ok(variants.includes(absoluteNativePath.replace(/\//g, "\\")))
+  assert.equal(new Set(variants).size, variants.length)
+})
+
 test("scanUploadDirectory excludes archive files", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "asset-storage-"))
   await mkdir(path.join(root, "assets"), { recursive: true })

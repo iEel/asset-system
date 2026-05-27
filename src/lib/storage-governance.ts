@@ -148,9 +148,17 @@ export function assertStorageRelativePath(relativePath: string): string {
   return normalizedPath
 }
 
-export function getStoragePathVariants(relativePath: string): string[] {
+export function getStoragePathVariants(relativePath: string, uploadRoot?: string): string[] {
   const normalizedPath = assertStorageRelativePath(relativePath)
-  return [...new Set([normalizedPath, normalizedPath.replace(/\//g, "\\")])]
+  const variants = [normalizedPath, normalizedPath.replace(/\//g, "\\")]
+
+  if (uploadRoot) {
+    const root = path.resolve(uploadRoot)
+    const absolutePath = path.resolve(root, normalizedPath)
+    variants.push(absolutePath, absolutePath.replace(/\\/g, "/"), absolutePath.replace(/\//g, "\\"))
+  }
+
+  return [...new Set(variants)]
 }
 
 export async function archiveOrphanUploadFile({

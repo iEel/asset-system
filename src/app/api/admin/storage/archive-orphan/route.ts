@@ -20,7 +20,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const input = body && typeof body === "object" ? body as { relativePath?: unknown } : {}
     const relativePath = assertStorageRelativePath(typeof input.relativePath === "string" ? input.relativePath : "")
-    const pathVariants = getStoragePathVariants(relativePath)
+    const uploadRoot = getUploadRoot()
+    const pathVariants = getStoragePathVariants(relativePath, uploadRoot)
 
     const activeAttachment = await prisma.attachment.findFirst({
       where: {
@@ -47,9 +48,11 @@ export async function POST(request: NextRequest) {
     }
 
     const archived = await archiveOrphanUploadFile({
-      uploadDir: getUploadRoot(),
+      uploadDir: uploadRoot,
       relativePath,
     })
+    const ipAddress = getRequestIpAddress(request)?.slice(0, 50)
+    const userAgent = request.headers.get("user-agent")?.slice(0, 500) ?? undefined
 
     await logAudit({
       userId: user.id,
@@ -58,8 +61,8 @@ export async function POST(request: NextRequest) {
       recordId: archived.sourceRelativePath.slice(0, 100),
       oldValue: { relativePath: archived.sourceRelativePath },
       newValue: { archiveRelativePath: archived.archiveRelativePath },
-      ipAddress: getRequestIpAddress(request),
-      userAgent: request.headers.get("user-agent") ?? undefined,
+      ipAddress,
+      userAgent,
     })
 
     return NextResponse.json({
