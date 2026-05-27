@@ -38,7 +38,7 @@ test("uses environment facing mode when mobile camera labels are blank", () => {
   ])
 
   assert.equal(selection.selectedCameraId, environmentCameraId)
-  assert.deepEqual(selection.cameraConfig, { facingMode: { ideal: "environment" } })
+  assert.deepEqual(selection.cameraConfig, { facingMode: { exact: "environment" } })
   assert.equal(selection.usesEnvironmentConstraint, true)
 })
 

@@ -50,7 +50,7 @@ export function getFallbackCameraAfterEnvironmentFailure(
 function buildEnvironmentSelection(): PreferredCameraSelection {
   return {
     selectedCameraId: environmentCameraId,
-    cameraConfig: { facingMode: { ideal: "environment" } },
+    cameraConfig: { facingMode: { exact: "environment" } },
     usesEnvironmentConstraint: true,
   }
 }

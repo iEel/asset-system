@@ -33,6 +33,7 @@ type ScannerTextInputProps = {
   value: string
   onChange: (value: string) => void
   labels: ScannerTextInputLabels
+  scanMode?: "asset-qr" | "serial-code"
   disabled?: boolean
   maxLength?: number
   placeholder?: string
@@ -44,6 +45,7 @@ export function ScannerTextInput({
   value,
   onChange,
   labels,
+  scanMode = "serial-code",
   disabled,
   maxLength,
   placeholder,
@@ -88,7 +90,7 @@ export function ScannerTextInput({
       const cameraSelection = resolvePreferredCameraSelection(availableCameras, requestedCameraId)
       setSelectedCameraId(cameraSelection.selectedCameraId)
       const scanner = new Html5Qrcode(readerId, {
-        formatsToSupport: getSerialCodeFormats(Html5QrcodeSupportedFormats),
+        formatsToSupport: getScannerCodeFormats(Html5QrcodeSupportedFormats, scanMode),
         useBarCodeDetectorIfSupported: true,
         verbose: false,
       })
@@ -230,7 +232,12 @@ export function ScannerTextInput({
   )
 }
 
-function getSerialCodeFormats(formats: typeof Html5QrcodeSupportedFormats): Html5QrcodeSupportedFormats[] {
+function getScannerCodeFormats(
+  formats: typeof Html5QrcodeSupportedFormats,
+  scanMode: NonNullable<ScannerTextInputProps["scanMode"]>
+): Html5QrcodeSupportedFormats[] {
+  if (scanMode === "asset-qr") return [formats.QR_CODE]
+
   return [
     formats.QR_CODE,
     formats.CODE_128,

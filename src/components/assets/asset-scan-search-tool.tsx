@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, MapPin, PackageSearch, Search } from "lucide-react"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
+import { buildDirectAssetHrefFromScanValue } from "@/lib/asset-scan-routing"
 
 type SearchResult = {
   id: string
@@ -51,7 +52,7 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const trimmedQuery = query.trim()
-  const directAssetHref = parseAssetHref(trimmedQuery, locale)
+  const directAssetHref = buildDirectAssetHrefFromScanValue(trimmedQuery, locale)
   const visibleResults = directAssetHref || trimmedQuery.length < 2 ? [] : results
 
   useEffect(() => {
@@ -100,6 +101,7 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
             onChange={setQuery}
             labels={labels.scanner}
             placeholder={labels.placeholder}
+            scanMode="asset-qr"
             inputClassName="h-11 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </label>
@@ -169,13 +171,4 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
       )}
     </div>
   )
-}
-
-function parseAssetHref(value: string, locale: string) {
-  const match = value.match(/\/assets\/([a-zA-Z0-9-]+)/)
-  if (match?.[1]) return `/${locale}/assets/${match[1]}`
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
-    return `/${locale}/assets/${value}`
-  }
-  return ""
 }
