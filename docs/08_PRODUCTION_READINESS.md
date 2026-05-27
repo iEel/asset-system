@@ -38,6 +38,12 @@ Use this checklist before go-live, before a production schema change, and before
 - [ ] Attachment preview/download works after restore.
 - [ ] Storage governance check has been reviewed for missing/orphan files.
 
+### Storage Governance Archive
+
+The Admin Storage Governance page can archive orphan files one at a time. Archive moves the file from `UPLOAD_DIR/<relativePath>` to `UPLOAD_DIR/.archive/YYYY-MM-DD/<relativePath>` and does not delete it. The API re-checks that no active `Attachment` row references the file before moving it, and writes a `storage_archive_orphan_file` audit log entry with the source and archive paths.
+
+To restore a file, move it from `.archive/YYYY-MM-DD/<relativePath>` back to `UPLOAD_DIR/<relativePath>`, then refresh the Storage Governance page.
+
 ## Application
 
 - [ ] `npm run verify` passes.
