@@ -40,6 +40,9 @@ test("marks core production readiness checks as pass when settings and coverage 
       maintenancePmGenerationToken: "pm-token",
       ldapSyncToken: "ldap-token",
       notificationDigestToken: "digest-token",
+      uploadScanCommand: "/usr/bin/clamscan",
+      uploadScanArgs: "--no-summary {file}",
+      uploadScanTimeoutMs: "30000",
       schedulerRunStatuses: [
         { name: "pm_generate_due", status: "success" },
         { name: "ldap_sync", status: "success" },
@@ -64,10 +67,11 @@ test("marks core production readiness checks as pass when settings and coverage 
     },
   })
 
-  assert.deepEqual(checks.map((check) => check.status), ["pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass"])
+  assert.deepEqual(checks.map((check) => check.status), ["pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass"])
   assert.equal(checks.find((check) => check.key === "backupRestoreDrill")?.value, "2026-05-21T01:00:00.000Z")
   assert.equal(checks.find((check) => check.key === "retentionPolicy")?.value, "3/3 configured")
   assert.equal(checks.find((check) => check.key === "pwaAssets")?.value, "8/8 assets")
+  assert.equal(checks.find((check) => check.key === "uploadScanner")?.value, "enabled: /usr/bin/clamscan (30000 ms)")
 })
 
 test("warns when notification digest scheduler status has not run yet", () => {
@@ -90,6 +94,9 @@ test("warns when notification digest scheduler status has not run yet", () => {
       maintenancePmGenerationToken: "pm-token",
       ldapSyncToken: "ldap-token",
       notificationDigestToken: "digest-token",
+      uploadScanCommand: "/usr/bin/clamscan",
+      uploadScanArgs: "--no-summary {file}",
+      uploadScanTimeoutMs: "30000",
       schedulerRunStatuses: [
         { name: "pm_generate_due", status: "success" },
         { name: "ldap_sync", status: "success" },
@@ -146,6 +153,9 @@ test("surfaces risky production readiness states", () => {
       maintenancePmGenerationToken: "",
       ldapSyncToken: "",
       notificationDigestToken: "",
+      uploadScanCommand: "",
+      uploadScanArgs: "",
+      uploadScanTimeoutMs: "0",
       schedulerRunStatuses: [
         { name: "pm_generate_due", status: "success" },
         { name: "ldap_sync", status: "failed" },
@@ -180,9 +190,62 @@ test("surfaces risky production readiness states", () => {
   assert.equal(checks.find((check) => check.key === "uploadDir")?.status, "fail")
   assert.equal(checks.find((check) => check.key === "databaseConfig")?.status, "fail")
   assert.equal(checks.find((check) => check.key === "schedulerTokens")?.status, "fail")
+  assert.equal(checks.find((check) => check.key === "uploadScanner")?.status, "warning")
+  assert.equal(checks.find((check) => check.key === "uploadScanner")?.value, "disabled")
   assert.equal(checks.find((check) => check.key === "schedulerRuns")?.status, "fail")
   assert.equal(checks.find((check) => check.key === "backupStatus")?.status, "fail")
   assert.equal(checks.find((check) => check.key === "backupRestoreDrill")?.status, "warning")
   assert.equal(checks.find((check) => check.key === "retentionPolicy")?.status, "fail")
   assert.equal(checks.find((check) => check.key === "pwaAssets")?.status, "warning")
+})
+
+test("fails upload scanner readiness when an enabled scanner has an invalid timeout", () => {
+  const checks = buildProductionReadinessChecks({
+    settings: baseSettings,
+    approverMatrix: readyApprovers,
+    activeAdminUsers: 2,
+    activeUserCount: 8,
+    deployment: {
+      nodeEnv: "production",
+      authUrl: "https://asset.company.com",
+      nextAuthUrl: "https://asset.company.com",
+      authSecret: "abcdefghijklmnopqrstuvwxyz1234567890",
+      nextAuthSecret: "abcdefghijklmnopqrstuvwxyz1234567890",
+      uploadDir: "/var/www/asset-system/uploads",
+      databaseUrl: "sqlserver://192.168.1.10;database=asset_management;user=asset_app;password=secret",
+      dbServer: "192.168.1.10",
+      dbUser: "asset_app",
+      dbPassword: "secret",
+      maintenancePmGenerationToken: "pm-token",
+      ldapSyncToken: "ldap-token",
+      notificationDigestToken: "digest-token",
+      uploadScanCommand: "/usr/bin/clamscan",
+      uploadScanArgs: "--no-summary {file}",
+      uploadScanTimeoutMs: "not-a-number",
+      schedulerRunStatuses: [
+        { name: "pm_generate_due", status: "success" },
+        { name: "ldap_sync", status: "success" },
+        { name: "notification_digest", status: "success" },
+      ],
+      backupStatus: "success",
+      backupLastRunAt: "2026-05-20T01:00:00.000Z",
+      backupLastRestoreTestAt: "2026-05-21T01:00:00.000Z",
+      pwaAssets: {
+        available: 8,
+        total: 8,
+      },
+    },
+    masterDataCounts: {
+      companies: 1,
+      branches: 2,
+      departments: 3,
+      locations: 4,
+      categories: 5,
+      statuses: 3,
+      conditions: 3,
+    },
+  })
+
+  assert.equal(checks.find((check) => check.key === "uploadScanner")?.status, "fail")
+  assert.equal(checks.find((check) => check.key === "uploadScanner")?.value, "invalid timeout")
 })

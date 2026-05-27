@@ -36,6 +36,8 @@ export async function GET(request: NextRequest, context: AttachmentRouteContext)
         "Content-Type": attachment.fileType,
         "Content-Length": String(attachment.fileSize),
         "Content-Disposition": `${disposition}; filename*=UTF-8''${encodedName}`,
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "private, no-store",
       },
     })
   } catch (error) {

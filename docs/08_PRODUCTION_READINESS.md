@@ -33,6 +33,8 @@ Use this checklist before go-live, before a production schema change, and before
 - [ ] Upload directory exists.
 - [ ] Upload directory is writable by the app service account.
 - [ ] Upload directory is included in backup.
+- [ ] Upload malware scanner is either intentionally disabled or configured with a working command, `{file}` argument template, and positive timeout.
+- [ ] `/admin/readiness` scanner status is reviewed after changing `UPLOAD_SCAN_COMMAND`, `UPLOAD_SCAN_ARGS`, or `UPLOAD_SCAN_TIMEOUT_MS`.
 - [ ] Attachment preview/download works after restore.
 - [ ] Storage governance check has been reviewed for missing/orphan files.
 
@@ -40,6 +42,7 @@ Use this checklist before go-live, before a production schema change, and before
 
 - [ ] `npm run verify` passes.
 - [ ] `npm run build` passes.
+- [ ] Browser security headers are present for app routes and `/sw.js`.
 - [ ] Public QR Base URL is configured before printing labels.
 - [ ] RBAC route matrix test passes.
 - [ ] UAT checklist is completed by role.

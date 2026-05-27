@@ -1,6 +1,6 @@
 # Security Review
 
-Last reviewed: 2026-05-26
+Last reviewed: 2026-05-27
 
 ## Scope
 
@@ -8,6 +8,7 @@ Last reviewed: 2026-05-26
 - Public route exceptions
 - File upload validation and attachment access
 - Path traversal protection for attachment download/preview
+- Browser security headers and service worker headers
 - Secrets, connection strings, and default credentials in committed docs
 - Database user privilege recommendations
 - Audit log coverage for sensitive actions
@@ -19,6 +20,7 @@ Last reviewed: 2026-05-26
 - Reviewed auth helper usage: `requireAuth`, `requirePermission`, `hasPermission`, scheduler token authorization, and attachment permission checks.
 - Reviewed upload helper `src/lib/uploads.ts`.
 - Reviewed attachment download route `src/app/api/attachments/[id]/route.ts`.
+- Reviewed global security header policy in `next.config.ts` / `src/lib/security-headers.ts`.
 - Ran focused RBAC route matrix test:
 
 ```powershell
@@ -35,7 +37,8 @@ Result: 3 tests passed.
 | Medium | Database | Setup docs still need a controlled production migration policy because `prisma db push` is used for Dev/Test flows. | Use backup, change approval, rollback/restore plan, and versioned schema-change record before Production schema changes. | Documented |
 | Medium | Asset lifecycle | Check-out now blocks Disposed, Retired, Pending Disposal, Under Maintenance, Lost, and Missing assets; normal transfer blocks Disposed, Retired, and Pending Disposal assets; maintenance close, disposal execution, generic asset edit, and status correction use tested lifecycle exception helpers. | Keep future status changes behind tested lifecycle policy helpers and preserve the controlled correction audit trail. | Implemented |
 | Low | Uploads | Upload helper validates file size, MIME type, allowed file extension, and file content signature; saved uploads can optionally run through a server-side scanner hook. | Keep all new upload routes on `validateUploadFile`, `validateUploadFileContent`, and scanner cleanup where files are persisted. | Hardened |
-| Low | Attachments | Attachment download/preview checks auth, module permission, active record, and safe upload path. | Keep attachment access through the central route rather than direct public file serving. | Accepted |
+| Low | Security headers | Global responses set MIME-sniffing, clickjacking, referrer, permissions-policy, and limited CSP headers; `/sw.js` has explicit JavaScript, no-store cache, and service-worker CSP headers. | Keep browser header policy centralized in `src/lib/security-headers.ts` and regression-tested before relaxing any directive. | Hardened |
+| Low | Attachments | Attachment download/preview checks auth, module permission, active record, safe upload path, `X-Content-Type-Options: nosniff`, and private no-store caching. | Keep attachment access through the central route rather than direct public file serving. | Hardened |
 | Low | Hard delete | Guarded test-data cleanup exists and requires explicit apply/confirmation/environment controls. | Keep hard delete limited to guarded cleanup tooling. | Accepted |
 
 ## Authentication And Authorization
@@ -52,10 +55,17 @@ Result: 3 tests passed.
 - Upload routes should call `validateUploadFile(file)` and `validateUploadFileContent(file)` before writing bytes.
 - Saved upload routes should call `scanWrittenUploadFile(filePath)` after writing bytes so optional scanner failures remove the just-written file.
 - `UPLOAD_SCAN_COMMAND` and optional `UPLOAD_SCAN_ARGS` can enable a ClamAV-compatible command-line scanner without changing application code.
+- `/admin/readiness` reports whether the upload scanner is enabled, disabled, or misconfigured.
 - File names are sanitized with `sanitizeFileName`.
 - Upload paths are rooted under `UPLOAD_DIR`.
 - Attachment download/preview calls `assertSafeUploadPath` before serving bytes.
 - Attachment download/preview checks module-level permission before returning content.
+
+## Browser Security Headers
+
+- Global responses set `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, and a `Permissions-Policy` that keeps camera access available for same-origin scanner workflows while disabling microphone, geolocation, payment, USB, and browsing topics.
+- Global CSP is intentionally limited to low-risk directives (`base-uri`, `form-action`, `frame-ancestors`, and `object-src`) so it hardens the app without breaking Next.js runtime scripts/styles.
+- `/sw.js` receives explicit `Content-Type`, no-store cache control, and a strict service-worker CSP.
 
 ## Secrets And Credentials
 
@@ -76,5 +86,6 @@ Sensitive data-changing workflows reviewed during previous implementation passes
 
 - Keep asset lifecycle policy tests aligned with any new operational status, correction workflow, or privileged exception workflow.
 - Keep upload-route regression tests covering oversize, disallowed MIME, spoofed-extension files, mismatched content signatures, and scanner hook wiring.
+- Keep `tests/security-headers.test.ts` aligned with any future header policy changes.
 - Add a scheduled security review checklist before major releases.
 - Keep the RBAC route matrix test in `npm run verify`.

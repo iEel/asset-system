@@ -1,4 +1,5 @@
 import { summarizeRetentionPolicy } from "./retention-policy.ts"
+import { getUploadScanReadiness } from "./upload-virus-scan.ts"
 
 export type ProductionReadinessStatus = "pass" | "warning" | "fail"
 export type ProductionReadinessCheckKey =
@@ -12,6 +13,7 @@ export type ProductionReadinessCheckKey =
   | "uploadDir"
   | "databaseConfig"
   | "schedulerTokens"
+  | "uploadScanner"
   | "schedulerRuns"
   | "backupStatus"
   | "backupRestoreDrill"
@@ -62,6 +64,9 @@ export type ProductionReadinessDeploymentInput = {
   maintenancePmGenerationToken?: string
   ldapSyncToken?: string
   notificationDigestToken?: string
+  uploadScanCommand?: string
+  uploadScanArgs?: string
+  uploadScanTimeoutMs?: string
   schedulerRunStatuses?: SchedulerRunReadinessInput[]
   backupStatus?: string
   backupLastRunAt?: string
@@ -103,6 +108,11 @@ export function buildProductionReadinessChecks(input: ProductionReadinessInput):
   const thinApprovers = input.approverMatrix.filter((item) => item.status === "thin").length
   const readyMasterDataCount = masterDataKeys.filter((key) => input.masterDataCounts[key] > 0).length
   const retentionPolicy = summarizeRetentionPolicy(input.settings)
+  const uploadScanner = getUploadScanReadiness({
+    command: input.deployment?.uploadScanCommand,
+    args: input.deployment?.uploadScanArgs,
+    timeoutMs: input.deployment?.uploadScanTimeoutMs,
+  })
 
   return [
     {
@@ -163,6 +173,12 @@ export function buildProductionReadinessChecks(input: ProductionReadinessInput):
       key: "schedulerTokens",
       status: getSchedulerTokensStatus(input.deployment),
       value: getSchedulerTokensValue(input.deployment),
+      href: "/admin/readiness",
+    },
+    {
+      key: "uploadScanner",
+      status: uploadScanner.status,
+      value: uploadScanner.value,
       href: "/admin/readiness",
     },
     {

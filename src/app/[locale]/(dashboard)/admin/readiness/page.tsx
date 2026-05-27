@@ -58,6 +58,9 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
       maintenancePmGenerationToken: process.env.MAINTENANCE_PM_GENERATION_TOKEN,
       ldapSyncToken: process.env.LDAP_SYNC_TOKEN,
       notificationDigestToken: process.env.NOTIFICATION_DIGEST_TOKEN,
+      uploadScanCommand: process.env.UPLOAD_SCAN_COMMAND,
+      uploadScanArgs: process.env.UPLOAD_SCAN_ARGS,
+      uploadScanTimeoutMs: process.env.UPLOAD_SCAN_TIMEOUT_MS,
       schedulerRunStatuses: [
         { name: "pm_generate_due", status: settings.get(pmAutoGenerationLastStatusKey) },
         { name: "ldap_sync", status: settings.get(ldapSyncLastStatusKey) },

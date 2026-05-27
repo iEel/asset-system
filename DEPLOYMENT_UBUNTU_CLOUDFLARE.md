@@ -206,7 +206,9 @@ sudo chmod 640 /var/www/asset-system/env/asset-system.env
 - `UPLOAD_DIR` ควรเป็น absolute path เพื่อไม่ผูกกับ `.next/standalone` และ user `assetapp` ต้องอ่าน/เขียนได้ เพราะหน้า Storage Governance จะ scan ไฟล์จริงใน directory นี้
 - `UPLOAD_SCAN_COMMAND` เป็น optional scanner hook สำหรับไฟล์ที่ระบบเขียนลง disk แล้ว เช่น `/usr/bin/clamscan`; ถ้าเว้นว่างระบบจะข้าม scan
 - `UPLOAD_SCAN_ARGS` เป็น optional argument template โดยใช้ `{file}` แทน path ไฟล์ เช่น `--no-summary {file}`; ถ้าเว้นว่างระบบจะส่ง path ไฟล์เป็น argument เดียว
+- หน้า `/th/admin/readiness` จะแสดง Upload malware scanner เป็น `Review` ถ้าเว้น `UPLOAD_SCAN_COMMAND` ว่าง, `Ready` ถ้าตั้ง command และ timeout ถูกต้อง, และ `Fix` ถ้า timeout ไม่ใช่เลขบวก
 - ถ้า scanner คืน error หรือพบ malware ระบบจะลบไฟล์ที่เพิ่งเขียนก่อนตอบ error กลับไปยังผู้ใช้
+- App กำหนด browser security headers จาก `next.config.ts` แล้ว รวมถึง `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, CSP ขั้นพื้นฐาน และ header เฉพาะ `/sw.js`; ถ้าตั้ง header ซ้ำที่ Nginx/Cloudflare ให้ระวังค่า override
 - PDF ภาษาไทยจะหา font ตามลำดับ: `PDF_THAI_FONT_REGULAR`, bundled `public/fonts/NotoSansThai-*.ttf`, bundled `public/fonts/Sarabun-*.ttf`, Ubuntu Noto fonts ถ้ามีติดตั้งไว้, Windows Tahoma, แล้วค่อย fallback เป็น Helvetica
 - Repo นี้ bundle `NotoSansThai-Regular.ttf` และ `NotoSansThai-Bold.ttf` ไว้ใน `public/fonts` แล้ว ภายใต้ SIL Open Font License ใน `public/fonts/OFL.txt`; หลัง build ต้อง copy `public` เข้า `.next/standalone/` ตามหัวข้อ 7 เพื่อให้ runtime เห็น font
 - ถ้าองค์กรมี font ไทยมาตรฐาน ให้ตั้ง `PDF_THAI_FONT_REGULAR` และ `PDF_THAI_FONT_BOLD` เป็น absolute path ของ `.ttf` บน server
@@ -986,7 +988,7 @@ systemctl list-timers asset-system-notification-digest.timer
 - [ ] `AUTH_URL` และ `NEXTAUTH_URL` เป็น `https://asset.company.com`
 - [ ] `AUTH_TRUST_HOST=true`
 - [ ] `UPLOAD_DIR` เป็น absolute path และมี backup
-- [ ] ถ้าองค์กรต้องการ malware scanning ให้ตั้ง `UPLOAD_SCAN_COMMAND` และทดสอบ upload ไฟล์จริงหนึ่งรอบ
+- [ ] ถ้าองค์กรต้องการ malware scanning ให้ตั้ง `UPLOAD_SCAN_COMMAND`, `UPLOAD_SCAN_ARGS`, `UPLOAD_SCAN_TIMEOUT_MS`, เปิด `/th/admin/readiness` ให้ scanner status ผ่าน, และทดสอบ upload ไฟล์จริงหนึ่งรอบ
 - [ ] ตรวจว่า `.next/standalone/public/fonts/NotoSansThai-Regular.ttf` และ `NotoSansThai-Bold.ttf` ถูก copy ไปพร้อม standalone แล้ว หรือกำหนด `PDF_THAI_FONT_REGULAR`/`PDF_THAI_FONT_BOLD` เป็น font ไทยอื่น
 - [ ] `MAINTENANCE_PM_GENERATION_TOKEN` เป็น random token จริง
 - [ ] `LDAP_SYNC_TOKEN` เป็น random token จริงถ้าเปิด LDAP scheduled sync
