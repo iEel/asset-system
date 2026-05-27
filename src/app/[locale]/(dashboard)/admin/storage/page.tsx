@@ -1,6 +1,7 @@
 import type React from "react"
 import { AlertTriangle, Database, FileArchive, FolderOpen, HardDrive } from "lucide-react"
 import { getTranslations } from "next-intl/server"
+import { hasPermission } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatDateTime } from "@/lib/utils"
@@ -23,7 +24,8 @@ const largeFileThresholdBytes = 10 * 1024 * 1024
 
 export default async function StorageGovernancePage({ params }: StoragePageProps) {
   const { locale } = await params
-  await requirePagePermission(locale, "setting", "view")
+  const user = await requirePagePermission(locale, "setting", "view")
+  const canArchiveStorageFiles = hasPermission(user, "setting", "edit")
   const t = await getTranslations("storagePage")
   const uploadRoot = getUploadRoot()
 
@@ -124,7 +126,7 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
                       {formatStorageSize(action.action === "archive_orphan_file" ? action.sizeBytes : action.expectedSizeBytes)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {action.action === "archive_orphan_file" ? (
+                      {action.action === "archive_orphan_file" && canArchiveStorageFiles ? (
                         <StorageArchiveButton relativePath={action.relativePath} />
                       ) : (
                         <span className="text-xs text-muted-foreground">{t("archiveUnavailable")}</span>

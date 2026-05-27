@@ -8,15 +8,21 @@ const buttonSource = () => readFileSync("src/components/admin/storage-archive-bu
 test("storage page uses the archive button only for orphan file actions", () => {
   const source = pageSource()
 
+  assert.match(source, /import \{ hasPermission \} from "@\/lib\/auth-utils"/)
   assert.match(source, /import \{ StorageArchiveButton \} from "@\/components\/admin\/storage-archive-button"/)
+  assert.match(source, /const user = await requirePagePermission\(locale, "setting", "view"\)/)
+  assert.match(source, /const canArchiveStorageFiles = hasPermission\(user, "setting", "edit"\)/)
   assert.match(source, /<th[^>]*>\{t\("action"\)\}<\/th>/)
   assert.ok(source.includes("<StorageArchiveButton relativePath={action.relativePath} />"))
 
   const buttonIndex = source.indexOf("<StorageArchiveButton relativePath={action.relativePath} />")
   const archiveConditionIndex = source.lastIndexOf('action.action === "archive_orphan_file"', buttonIndex)
+  const permissionConditionIndex = source.lastIndexOf("canArchiveStorageFiles", buttonIndex)
   const unavailableIndex = source.indexOf('t("archiveUnavailable")', buttonIndex)
 
   assert.ok(archiveConditionIndex >= 0)
+  assert.ok(permissionConditionIndex >= 0)
+  assert.ok(permissionConditionIndex > archiveConditionIndex)
   assert.ok(unavailableIndex > buttonIndex)
   assert.equal(source.match(/<StorageArchiveButton/g)?.length, 1)
 })
