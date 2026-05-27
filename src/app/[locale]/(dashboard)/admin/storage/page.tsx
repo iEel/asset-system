@@ -11,6 +11,8 @@ import {
   scanUploadDirectory,
   summarizeStorageGovernance,
 } from "@/lib/storage-governance"
+import { getUploadRoot } from "@/lib/uploads"
+import { StorageArchiveButton } from "@/components/admin/storage-archive-button"
 import { StatusBadge } from "@/components/ui/status-badge"
 
 type StoragePageProps = {
@@ -23,6 +25,7 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
   const { locale } = await params
   await requirePagePermission(locale, "setting", "view")
   const t = await getTranslations("storagePage")
+  const uploadRoot = getUploadRoot()
 
   const attachments = await prisma.attachment.findMany({
     select: {
@@ -39,8 +42,12 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
     orderBy: { uploadedAt: "desc" },
   })
   const summary = summarizeStorageGovernance(attachments, { largeFileThresholdBytes })
-  const filesystemFiles = await scanUploadDirectory(process.env.UPLOAD_DIR ?? "uploads")
-  const dryRun = buildStorageGovernanceDryRun({ attachments, files: filesystemFiles })
+  const filesystemFiles = await scanUploadDirectory(uploadRoot)
+  const dryRun = buildStorageGovernanceDryRun({
+    attachments,
+    files: filesystemFiles,
+    uploadRoot,
+  })
   const pathCounts = countActivePaths(attachments)
   const largeFiles = attachments
     .filter((attachment) => attachment.isActive && attachment.fileSize >= largeFileThresholdBytes)
@@ -92,12 +99,13 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("dryRunAction")}</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("file")}</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("size")}</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("action")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {dryRun.actions.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-muted-foreground">{t("emptyDryRunActions")}</td>
+                  <td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">{t("emptyDryRunActions")}</td>
                 </tr>
               ) : (
                 dryRun.actions.slice(0, 10).map((action, index) => (
@@ -114,6 +122,13 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
                     </td>
                     <td className="px-4 py-3 text-right text-muted-foreground">
                       {formatStorageSize(action.action === "archive_orphan_file" ? action.sizeBytes : action.expectedSizeBytes)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {action.action === "archive_orphan_file" ? (
+                        <StorageArchiveButton relativePath={action.relativePath} />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{t("archiveUnavailable")}</span>
+                      )}
                     </td>
                   </tr>
                 ))

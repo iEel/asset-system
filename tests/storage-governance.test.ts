@@ -58,6 +58,32 @@ test("builds dry-run storage governance actions from database and filesystem dif
   assert.deepEqual(dryRun.actions.map((item) => item.action), ["review_missing_db_file", "archive_orphan_file", "archive_orphan_file"])
 })
 
+test("matches active absolute attachment paths under the upload root to scanned relative files", () => {
+  const uploadRoot = path.join(os.tmpdir(), "asset-storage-root")
+  const dryRun = buildStorageGovernanceDryRun({
+    attachments: [
+      {
+        module: "asset",
+        filePath: path.join(uploadRoot, "asset", "2026", "05", "active.jpg"),
+        fileSize: 2_000,
+        isActive: true,
+      },
+    ],
+    files: [
+      {
+        relativePath: "asset/2026/05/active.jpg",
+        sizeBytes: 2_000,
+      },
+    ],
+    uploadRoot,
+  })
+
+  assert.deepEqual(dryRun.matchedFiles.map((file) => file.relativePath), ["asset/2026/05/active.jpg"])
+  assert.deepEqual(dryRun.missingFiles, [])
+  assert.deepEqual(dryRun.orphanFiles, [])
+  assert.deepEqual(dryRun.actions, [])
+})
+
 test("assertStorageRelativePath normalizes safe relative paths", () => {
   assert.equal(assertStorageRelativePath("assets\\photo.jpg"), "assets/photo.jpg")
   assert.equal(assertStorageRelativePath("assets/photo.jpg"), "assets/photo.jpg")

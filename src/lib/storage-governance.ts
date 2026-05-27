@@ -74,14 +74,16 @@ export function summarizeStorageGovernance(
 export function buildStorageGovernanceDryRun({
   attachments,
   files,
+  uploadRoot,
 }: {
   attachments: StorageGovernanceAttachmentInput[]
   files: StorageGovernanceFileInput[]
+  uploadRoot?: string
 }) {
   const activeAttachmentByPath = new Map(
     attachments
       .filter((attachment) => attachment.isActive)
-      .map((attachment) => [normalizeStoragePath(attachment.filePath), attachment] as const)
+      .map((attachment) => [normalizeStoragePathForDryRun(attachment.filePath, uploadRoot), attachment] as const)
       .filter(([normalizedPath]) => Boolean(normalizedPath))
   )
   const fileByPath = new Map(files.map((file) => [normalizeStoragePath(file.relativePath), file] as const))
@@ -90,7 +92,7 @@ export function buildStorageGovernanceDryRun({
   const missingFiles = attachments
     .filter((attachment) => attachment.isActive)
     .filter((attachment) => {
-      const normalizedPath = normalizeStoragePath(attachment.filePath)
+      const normalizedPath = normalizeStoragePathForDryRun(attachment.filePath, uploadRoot)
       return normalizedPath ? !fileByPath.has(normalizedPath) : false
     })
   const orphanFiles = files.filter((file) => !activeAttachmentByPath.has(normalizeStoragePath(file.relativePath)))
@@ -248,6 +250,26 @@ export function formatStorageSize(bytes: number) {
 function normalizeStoragePath(path: string | null) {
   const normalized = path?.trim().replace(/\\/g, "/").toLowerCase()
   return normalized && normalized.length > 0 ? normalized : null
+}
+
+function normalizeStoragePathForDryRun(filePath: string | null, uploadRoot?: string) {
+  const normalizedPath = normalizeStoragePath(filePath)
+  if (!normalizedPath || !uploadRoot) return normalizedPath
+
+  const trimmedPath = filePath?.trim()
+  if (!trimmedPath) return normalizedPath
+
+  const slashNormalizedPath = trimmedPath.replace(/\\/g, "/")
+  if (!path.isAbsolute(trimmedPath) && !path.posix.isAbsolute(slashNormalizedPath) && !path.win32.isAbsolute(trimmedPath)) {
+    return normalizedPath
+  }
+
+  const root = path.resolve(uploadRoot)
+  const absolutePath = path.resolve(trimmedPath)
+  if (!isPathInsideRoot(root, absolutePath)) return normalizedPath
+
+  const relativePath = path.relative(root, absolutePath).replace(/\\/g, "/")
+  return normalizeStoragePath(relativePath)
 }
 
 async function walkUploadDirectory(root: string, currentDirectory: string, files: StorageGovernanceFileInput[]) {
