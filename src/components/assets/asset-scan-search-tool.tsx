@@ -56,6 +56,11 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
   const visibleResults = directAssetHref || trimmedQuery.length < 2 ? [] : results
 
   useEffect(() => {
+    if (!directAssetHref) return
+    router.push(directAssetHref)
+  }, [directAssetHref, router])
+
+  useEffect(() => {
     if (directAssetHref || trimmedQuery.length < 2) return
 
     const controller = new AbortController()
