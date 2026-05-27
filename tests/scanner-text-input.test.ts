@@ -17,3 +17,10 @@ test("serial scanner keeps barcode-capable formats separate from asset QR mode",
   assert.match(source, /formats\.DATA_MATRIX/)
   assert.match(source, /return \{ fps: 10, qrbox: getResponsiveQrBox, aspectRatio: 1\.333 \}/)
 })
+
+test("scanner can trigger a scan success callback after stopping the camera", () => {
+  const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8")
+
+  assert.match(source, /onScanSuccess\?: \(value: string\) => void/)
+  assert.match(source, /stopScanner\(\)\.finally\(\(\) => \{[\s\S]+onScanSuccess\?\.\(normalizedText\)/)
+})

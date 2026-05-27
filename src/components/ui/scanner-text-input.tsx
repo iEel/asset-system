@@ -39,6 +39,7 @@ type ScannerTextInputProps = {
   placeholder?: string
   inputClassName?: string
   onPaste?: React.ClipboardEventHandler<HTMLInputElement>
+  onScanSuccess?: (value: string) => void
 }
 
 export function ScannerTextInput({
@@ -51,6 +52,7 @@ export function ScannerTextInput({
   placeholder,
   inputClassName,
   onPaste,
+  onScanSuccess,
 }: ScannerTextInputProps) {
   const reactId = useId()
   const readerId = `scanner-reader-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}`
@@ -101,7 +103,9 @@ export function ScannerTextInput({
         if (!normalizedText) return
         onChange(normalizedText)
         toast.success(labels.scanned)
-        void stopScanner()
+        void stopScanner().finally(() => {
+          onScanSuccess?.(normalizedText)
+        })
       }
 
       try {

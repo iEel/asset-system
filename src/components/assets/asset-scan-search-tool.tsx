@@ -91,6 +91,11 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
     router.push(href)
   }
 
+  function handleScannedValue(value: string) {
+    const href = buildDirectAssetHrefFromScanValue(value, locale)
+    if (href) router.push(href)
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-5">
       <div className="min-w-0">
@@ -107,6 +112,7 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
             labels={labels.scanner}
             placeholder={labels.placeholder}
             scanMode="asset-qr"
+            onScanSuccess={handleScannedValue}
             inputClassName="h-11 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </label>
