@@ -18,6 +18,7 @@ type ScheduledJobInput = {
   schedule?: string | null
   lastRunAt?: string | Date | null
   now?: Date
+  timezoneOffsetMinutes?: number
 }
 
 type CronField = {
@@ -35,60 +36,65 @@ const cronFields: CronField[] = [
   { min: 0, max: 7, value: (date) => date.getUTCDay(), normalize: (value) => (value === 7 ? 0 : value) },
 ]
 
+export const schedulerTimezone = "Asia/Bangkok"
+export const schedulerTimezoneOffsetMinutes = 7 * 60
+
 export function getScheduledJobDecision({
   enabled,
   mode,
   schedule,
   lastRunAt,
   now = new Date(),
+  timezoneOffsetMinutes = 0,
 }: ScheduledJobInput): ScheduledJobDecision {
   const expression = schedule?.trim() ?? ""
-  if (!enabled) return buildDecision(false, "disabled", null, findNextScheduledRunAt(expression, now))
-  if (mode !== "scheduled") return buildDecision(false, "mode_not_scheduled", null, findNextScheduledRunAt(expression, now))
+  if (!enabled) return buildDecision(false, "disabled", null, findNextScheduledRunAt(expression, now, 366, timezoneOffsetMinutes))
+  if (mode !== "scheduled") return buildDecision(false, "mode_not_scheduled", null, findNextScheduledRunAt(expression, now, 366, timezoneOffsetMinutes))
   if (!isSupportedCronExpression(expression)) return buildDecision(false, "invalid_schedule", null, null)
 
-  const dueRunAt = findLastScheduledRunAt(expression, now)
+  const dueRunAt = findLastScheduledRunAt(expression, now, 366, timezoneOffsetMinutes)
   const previousRunAt = toDate(lastRunAt)
   if (dueRunAt && (!previousRunAt || dueRunAt.getTime() > previousRunAt.getTime())) {
-    return buildDecision(true, "due", dueRunAt, findNextScheduledRunAt(expression, now))
+    return buildDecision(true, "due", dueRunAt, findNextScheduledRunAt(expression, now, 366, timezoneOffsetMinutes))
   }
 
-  return buildDecision(false, "not_due_yet", dueRunAt, findNextScheduledRunAt(expression, now))
+  return buildDecision(false, "not_due_yet", dueRunAt, findNextScheduledRunAt(expression, now, 366, timezoneOffsetMinutes))
 }
 
 export function isSupportedCronExpression(expression: string) {
   return parseCronExpression(expression) !== null
 }
 
-export function findLastScheduledRunAt(expression: string, now = new Date(), lookbackDays = 366) {
+export function findLastScheduledRunAt(expression: string, now = new Date(), lookbackDays = 366, timezoneOffsetMinutes = 0) {
   if (!isSupportedCronExpression(expression)) return null
   const cursor = floorToMinute(now)
   const maxMinutes = Math.max(1, lookbackDays * 24 * 60)
   for (let offset = 0; offset <= maxMinutes; offset += 1) {
     const candidate = new Date(cursor.getTime() - offset * 60_000)
-    if (cronMatchesDate(expression, candidate)) return candidate
+    if (cronMatchesDate(expression, candidate, timezoneOffsetMinutes)) return candidate
   }
   return null
 }
 
-export function findNextScheduledRunAt(expression: string, now = new Date(), lookaheadDays = 366) {
+export function findNextScheduledRunAt(expression: string, now = new Date(), lookaheadDays = 366, timezoneOffsetMinutes = 0) {
   if (!isSupportedCronExpression(expression)) return null
   const cursor = floorToMinute(new Date(now.getTime() + 60_000))
   const maxMinutes = Math.max(1, lookaheadDays * 24 * 60)
   for (let offset = 0; offset <= maxMinutes; offset += 1) {
     const candidate = new Date(cursor.getTime() + offset * 60_000)
-    if (cronMatchesDate(expression, candidate)) return candidate
+    if (cronMatchesDate(expression, candidate, timezoneOffsetMinutes)) return candidate
   }
   return null
 }
 
-export function cronMatchesDate(expression: string, date: Date) {
+export function cronMatchesDate(expression: string, date: Date, timezoneOffsetMinutes = 0) {
   const parts = parseCronExpression(expression)
   if (!parts) return false
+  const zonedDate = applyTimezoneOffset(date, timezoneOffsetMinutes)
 
   return parts.every((part, index) => {
     const field = cronFields[index]
-    const actual = field.normalize ? field.normalize(field.value(date)) : field.value(date)
+    const actual = field.normalize ? field.normalize(field.value(zonedDate)) : field.value(zonedDate)
     return fieldMatches(part, actual, field)
   })
 }
@@ -160,6 +166,11 @@ function toDate(value: string | Date | null | undefined) {
   if (!value) return null
   const date = value instanceof Date ? value : new Date(value)
   return Number.isNaN(date.getTime()) ? null : date
+}
+
+function applyTimezoneOffset(date: Date, timezoneOffsetMinutes: number) {
+  if (!Number.isFinite(timezoneOffsetMinutes) || timezoneOffsetMinutes === 0) return date
+  return new Date(date.getTime() + timezoneOffsetMinutes * 60_000)
 }
 
 function buildDecision(

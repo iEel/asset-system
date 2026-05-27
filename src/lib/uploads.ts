@@ -18,6 +18,23 @@ const allowedMimeTypes = new Set([
   "text/plain",
 ])
 
+const allowedUploadExtensions = new Set([
+  ".avif",
+  ".doc",
+  ".docx",
+  ".gif",
+  ".heic",
+  ".heif",
+  ".jpeg",
+  ".jpg",
+  ".pdf",
+  ".png",
+  ".txt",
+  ".webp",
+  ".xls",
+  ".xlsx",
+])
+
 export function getUploadRoot() {
   return path.resolve(/* turbopackIgnore: true */ process.cwd(), process.env.UPLOAD_DIR ?? "./uploads")
 }
@@ -48,6 +65,11 @@ export function validateUploadFile(file: File) {
 
   if (!allowedMimeTypes.has(file.type)) {
     throw new Error("File type is not allowed")
+  }
+
+  const extension = path.extname(file.name).toLowerCase()
+  if (!allowedUploadExtensions.has(extension)) {
+    throw new Error("File extension is not allowed")
   }
 }
 

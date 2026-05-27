@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { getAssetOperationStatusError } from "@/lib/asset-operation-policy"
 import { assetTransferSchema } from "@/lib/validations/asset-operations"
 
 type TransferContext = {
@@ -22,8 +23,13 @@ export async function POST(request: NextRequest, context: TransferContext) {
 
     const { id } = await context.params
     const input = assetTransferSchema.parse(await request.json())
-    const asset = await prisma.asset.findFirst({ where: { id, isActive: true } })
+    const asset = await prisma.asset.findFirst({
+      where: { id, isActive: true },
+      include: { status: { select: { name: true, nameTh: true } } },
+    })
     if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
+    const statusError = getAssetOperationStatusError("transfer", asset.status)
+    if (statusError) return NextResponse.json({ error: statusError }, { status: 400 })
 
     const activeCheckout = await prisma.assetCheckout.findFirst({
       where: { assetId: id, isReturned: false },

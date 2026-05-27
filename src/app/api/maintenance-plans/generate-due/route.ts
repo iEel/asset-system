@@ -4,7 +4,7 @@ import { errorResponse } from "@/lib/api-response"
 import { logAudit } from "@/lib/audit-log"
 import { prisma } from "@/lib/db"
 import { generateDuePreventiveMaintenanceTickets } from "@/lib/preventive-maintenance-ticket-generator"
-import { getScheduledJobDecision, type ScheduledJobDecision } from "@/lib/scheduled-job"
+import { getScheduledJobDecision, schedulerTimezoneOffsetMinutes, type ScheduledJobDecision } from "@/lib/scheduled-job"
 import { getSettingValue, mapSystemSettings, updateScheduledJobRunState } from "@/lib/scheduled-job-run-state"
 import {
   pmAutoGenerationEnabledKey,
@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
         schedule: getSettingValue(settings, pmAutoGenerationScheduleKey, "5 6 * * *"),
         lastRunAt: getSettingValue(settings, pmAutoGenerationLastRunAtKey),
         now,
+        timezoneOffsetMinutes: schedulerTimezoneOffsetMinutes,
       })
 
       if (!scheduledDecision.shouldRun) {

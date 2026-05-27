@@ -340,6 +340,8 @@ curl -I http://127.0.0.1:3000/th/login
 
 ระบบใช้ script `npm run scheduler:heartbeat` เป็นตัวปลุกงานอัตโนมัติกลาง โดยตัว timer ไม่ได้เป็นคนตัดสินเวลา PM/LDAP เองแล้ว แต่จะเรียกแอปทุก 5 นาที จากนั้นแอปอ่านค่าที่ตั้งในหน้าเว็บ `/th/admin/settings` เพื่อเช็คว่า PM auto-generation หรือ LDAP Sync ถึงรอบตาม `cron` ในฐานข้อมูลหรือยัง
 
+ค่า `cron` ในหน้าเว็บถูกตีความเป็นเวลาไทย `Asia/Bangkok`; systemd timer มีหน้าที่ปลุก heartbeat เท่านั้น ไม่ใช่ source of truth ของรอบงาน PM/LDAP
+
 ก่อนตั้ง timer ให้แน่ใจว่า env มี token ที่ต้องใช้:
 
 ```env

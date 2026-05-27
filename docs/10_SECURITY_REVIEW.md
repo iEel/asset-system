@@ -33,8 +33,8 @@ Result: 3 tests passed.
 |---|---|---|---|---|
 | High | Documentation | Production-like infrastructure values and default admin password references were present in tracked documentation before this readiness pass. | Keep placeholders only and never commit real `.env` values or production admin credentials. | Fixed in documentation cleanup |
 | Medium | Database | Setup docs still need a controlled production migration policy because `prisma db push` is used for Dev/Test flows. | Use backup, change approval, rollback/restore plan, and versioned schema-change record before Production schema changes. | Documented |
-| Medium | Asset lifecycle | Some API routes enforce active-checkout rules, but closed-status hardening such as blocking Disposed/Retired checkout should be implemented as a tested workflow change. | Add explicit status transition validation in a future logic-hardening task. | Recommendation |
-| Low | Uploads | Upload helper validates file size and MIME type, and upload routes reviewed use shared validation or image-specific validation. | Keep all new upload routes on `validateUploadFile` or a stricter module-specific validator. | Accepted |
+| Medium | Asset lifecycle | Check-out now blocks Disposed, Retired, Pending Disposal, Under Maintenance, Lost, and Missing assets; normal transfer blocks Disposed, Retired, and Pending Disposal assets. | Keep future status changes behind tested lifecycle policy helpers. | Implemented |
+| Low | Uploads | Upload helper validates file size, MIME type, and allowed file extension; upload routes reviewed use shared validation or image-specific validation. | Keep all new upload routes on `validateUploadFile` or a stricter module-specific validator. | Hardened |
 | Low | Attachments | Attachment download/preview checks auth, module permission, active record, and safe upload path. | Keep attachment access through the central route rather than direct public file serving. | Accepted |
 | Low | Hard delete | Guarded test-data cleanup exists and requires explicit apply/confirmation/environment controls. | Keep hard delete limited to guarded cleanup tooling. | Accepted |
 
@@ -72,7 +72,7 @@ Sensitive data-changing workflows reviewed during previous implementation passes
 
 ## Follow-Up Recommendations
 
-- Add explicit API tests for asset lifecycle blocked statuses: Disposed, Retired, Pending Disposal, Under Maintenance, Lost, and Missing.
-- Add upload-route regression tests that verify oversize and disallowed MIME files are rejected.
+- Keep asset lifecycle policy tests aligned with any new operational status or privileged exception workflow.
+- Keep upload-route regression tests covering oversize, disallowed MIME, and spoofed-extension files.
 - Add a scheduled security review checklist before major releases.
 - Keep the RBAC route matrix test in `npm run verify`.

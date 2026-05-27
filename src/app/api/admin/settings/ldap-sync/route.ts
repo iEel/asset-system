@@ -3,7 +3,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/db"
 import { applyLdapSync, loadLdapSettings, previewLdapSync } from "@/lib/ldap-sync"
-import { getScheduledJobDecision, type ScheduledJobDecision } from "@/lib/scheduled-job"
+import { getScheduledJobDecision, schedulerTimezoneOffsetMinutes, type ScheduledJobDecision } from "@/lib/scheduled-job"
 import { getSettingValue, mapSystemSettings, updateScheduledJobRunState } from "@/lib/scheduled-job-run-state"
 import {
   ldapSyncLastErrorKey,
@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
         schedule: settings.ldap_sync_schedule ?? "0 2 * * *",
         lastRunAt: getSettingValue(statusSettings, ldapSyncLastRunAtKey),
         now,
+        timezoneOffsetMinutes: schedulerTimezoneOffsetMinutes,
       })
       if (!scheduledDecision.shouldRun) {
         return NextResponse.json({

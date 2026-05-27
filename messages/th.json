@@ -2768,7 +2768,7 @@
     "invalidWorkflowApproval": "ค่าการอนุมัติต้องเป็น true/false, จำนวนผู้อนุมัติต้องเป็นเลขจำนวนเต็ม 1-5 และ SLA ต้องเป็น 1-90 วัน",
     "schedulerSettings": "ตั้งค่างานอัตโนมัติ",
     "schedulerSettingsDescription": "กำหนดรอบเวลาที่ระบบหลังบ้านใช้สร้างงานอัตโนมัติ โดย systemd timer ทำหน้าที่ปลุก heartbeat กลาง",
-    "schedulerHeartbeatNote": "ตั้งเวลาในหน้านี้เป็นหลัก ส่วน systemd timer แนะนำให้รันทุก 5 นาทีเพื่อให้ระบบตรวจว่า PM หรือ LDAP Sync ถึงรอบตามค่าในฐานข้อมูลหรือยัง",
+    "schedulerHeartbeatNote": "ตั้งเวลาในหน้านี้เป็นหลัก โดย cron schedule ถูกตีความเป็นเวลาไทย (Asia/Bangkok) ส่วน systemd timer แนะนำให้รันทุก 5 นาทีเพื่อให้ระบบตรวจว่า PM หรือ LDAP Sync ถึงรอบตามค่าในฐานข้อมูลหรือยัง",
     "invalidSchedulerSchedule": "รอบเวลาอัตโนมัติต้องเป็น cron 5 ช่องที่ระบบรองรับ เช่น 5 6 * * * หรือ 0 */6 * * *",
     "pmAutoGeneration": "Preventive Maintenance อัตโนมัติ",
     "pmAutoGenerationDescription": "สร้างใบงานซ่อมจากแผน PM ที่ถึงกำหนด โดยกันใบงานซ้ำและเลื่อนกำหนดรอบถัดไปหลังสร้างสำเร็จ",

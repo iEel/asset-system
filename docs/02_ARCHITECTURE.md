@@ -35,6 +35,7 @@ Background work is driven by scripts and scheduler endpoints rather than embedde
 - `npm run notifications:digest` generates daily notification digests.
 
 Production deployment should run these through systemd service/timer units documented in the deployment guide.
+Cron schedules stored in app settings are interpreted in `Asia/Bangkok` time; the systemd timer only wakes the heartbeat.
 
 ## Storage Boundaries
 

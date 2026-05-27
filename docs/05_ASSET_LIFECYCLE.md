@@ -42,11 +42,11 @@ Seed data currently includes these operational statuses:
 
 ## Current Code Enforcement
 
-- Check-out requires `asset:edit`, loads active assets only, and blocks an asset that already has an active checkout.
+- Check-out requires `asset:edit`, loads active assets only, blocks an asset that already has an active checkout, and blocks assets in `Disposed`, `Retired`, `Pending Disposal`, `Under Maintenance`, `Lost`, or `Missing`.
 - Check-out sets asset status to `Checked Out` using `getRequiredAssetStatusId("Checked Out")`.
 - Check-in requires `asset:edit`, requires an active checkout, and only accepts return statuses from `Ready`, `Pending Repair`, and `Pending Disposal`.
 - Check-in can create a maintenance ticket only when the return status is `Pending Repair` and the user has `maintenance:create`.
-- Transfer requires `asset:edit` and blocks assets that already have an active checkout.
+- Transfer requires `asset:edit`, blocks assets that already have an active checkout, and blocks normal transfer for `Disposed`, `Retired`, and `Pending Disposal`.
 - Default audit-round target selection excludes `Disposed` and `Retired` unless the user explicitly includes closed assets.
 - Audit status dropdowns hide closed statuses by default to avoid confusing “all assets” with disposed/retired assets.
 
@@ -63,11 +63,8 @@ Seed data currently includes these operational statuses:
 
 These are recommended hardening items for future work. They should be implemented with tests before changing production workflow behavior.
 
-- Disposed assets should not be checked out.
-- Retired assets should not be checked out.
-- Pending Disposal assets should not be transferred without an explicit privileged workflow.
-- Under Maintenance assets should not be checked out unless the workflow explicitly returns them to service first.
-- Lost or Missing assets should require a review/resolve workflow before check-out.
+- If the organization needs to move `Pending Disposal` assets, add an explicit privileged transfer workflow with separate approval/audit evidence instead of using normal transfer.
+- If the organization needs to reissue `Lost`, `Missing`, or `Under Maintenance` assets, add a resolve/return-to-service workflow before checkout.
 - Disposal execution should be the only normal workflow that moves an asset to `Disposed`.
 - Maintenance close should document whether the asset returns to `Ready` or moves to `Pending Disposal`.
 

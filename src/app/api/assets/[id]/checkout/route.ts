@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { getAssetOperationStatusError } from "@/lib/asset-operation-policy"
 import { assetCheckoutSchema } from "@/lib/validations/asset-operations"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
 import { generateCheckoutDocumentNo } from "@/lib/operation-document-number"
@@ -25,8 +26,13 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
 
     const { id } = await context.params
     const { input, photoBefore, receiverSignature } = await parseCheckoutRequest(request)
-    const asset = await prisma.asset.findFirst({ where: { id, isActive: true } })
+    const asset = await prisma.asset.findFirst({
+      where: { id, isActive: true },
+      include: { status: { select: { name: true, nameTh: true } } },
+    })
     if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
+    const statusError = getAssetOperationStatusError("checkout", asset.status)
+    if (statusError) return NextResponse.json({ error: statusError }, { status: 400 })
 
     const activeCheckout = await prisma.assetCheckout.findFirst({
       where: { assetId: id, isReturned: false },
