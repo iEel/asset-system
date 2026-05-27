@@ -167,6 +167,30 @@ test("archiveOrphanUploadFile avoids overwriting archived files", async () => {
   assert.equal(await readFile(path.join(root, ".archive", "2026-05-28", "assets", "orphan-1.jpg"), "utf8"), "new")
 })
 
+test("archiveOrphanUploadFile rejects directory targets without moving them", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "asset-storage-"))
+  const sourceDirectory = path.join(root, "assets", "nested")
+  await mkdir(sourceDirectory, { recursive: true })
+  await writeFile(path.join(sourceDirectory, "child.txt"), "child")
+
+  let rejectedError: Error | null = null
+  try {
+    await archiveOrphanUploadFile({
+      uploadDir: root,
+      relativePath: "assets/nested",
+      archivedAt: new Date("2026-05-28T01:02:03.000Z"),
+    })
+  } catch (error) {
+    rejectedError = error as Error
+  }
+
+  assert.equal(existsSync(sourceDirectory), true)
+  assert.equal(await readFile(path.join(sourceDirectory, "child.txt"), "utf8"), "child")
+  assert.equal(existsSync(path.join(root, ".archive", ".tmp")), false)
+  assert.ok(rejectedError)
+  assert.match(rejectedError.message, /Storage archive target must be a file/)
+})
+
 test("archiveOrphanUploadFile does not overwrite a recreated source when restore fails", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "asset-storage-"))
   const sourcePath = path.join(root, "assets", "orphan.jpg")

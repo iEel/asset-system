@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { constants } from "node:fs"
-import { access, copyFile, link, mkdir, readdir, rename, stat, unlink } from "node:fs/promises"
+import { access, copyFile, link, lstat, mkdir, readdir, rename, stat, unlink } from "node:fs/promises"
 import path from "node:path"
 
 const ARCHIVE_DIRECTORY_NAME = ".archive"
@@ -180,6 +180,11 @@ export async function archiveOrphanUploadFile({
 
   if (!isPathInsideRoot(root, sourceAbsolutePath)) {
     throw new Error("Source path must stay inside the upload directory")
+  }
+
+  const sourceInfo = await lstat(sourceAbsolutePath)
+  if (!sourceInfo.isFile()) {
+    throw new Error("Storage archive target must be a file")
   }
 
   const archiveDate = archivedAt.toISOString().slice(0, 10)
