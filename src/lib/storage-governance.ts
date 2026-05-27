@@ -1,5 +1,6 @@
+import { randomUUID } from "node:crypto"
 import { constants } from "node:fs"
-import { access, mkdir, readdir, rename, stat } from "node:fs/promises"
+import { access, copyFile, link, mkdir, readdir, rename, stat, unlink } from "node:fs/promises"
 import path from "node:path"
 
 const ARCHIVE_DIRECTORY_NAME = ".archive"
@@ -137,12 +138,12 @@ export function assertStorageRelativePath(relativePath: string): string {
 
   const segments = slashNormalizedPath.split("/")
   if (segments.includes("..")) throw new Error("Storage path cannot contain traversal")
+  if (segments.some((segment) => segment.toLowerCase() === ARCHIVE_DIRECTORY_NAME)) {
+    throw new Error("Storage path cannot point inside the archive")
+  }
 
   const normalizedPath = path.posix.normalize(slashNormalizedPath)
   if (normalizedPath === ".") throw new Error("Storage relative path is required")
-  if (normalizedPath.split("/")[0]?.toLowerCase() === ARCHIVE_DIRECTORY_NAME) {
-    throw new Error("Storage path cannot point inside the archive")
-  }
 
   return normalizedPath
 }
@@ -171,23 +172,47 @@ export async function archiveOrphanUploadFile({
 
   const archiveDate = archivedAt.toISOString().slice(0, 10)
   const parsedSourcePath = path.posix.parse(sourceRelativePath)
+  const temporaryArchiveDirectory = path.resolve(root, ARCHIVE_DIRECTORY_NAME, ".tmp")
+  const temporaryArchivePath = path.join(temporaryArchiveDirectory, `${Date.now()}-${randomUUID()}.tmp`)
   let archiveRelativePath = ""
   let archiveAbsolutePath = ""
+  let archived = false
 
-  for (let attempt = 0; ; attempt += 1) {
-    const suffix = attempt === 0 ? "" : `-${attempt}`
-    const archiveFileName = `${parsedSourcePath.name}${suffix}${parsedSourcePath.ext}`
-    archiveRelativePath = path.posix.join(ARCHIVE_DIRECTORY_NAME, archiveDate, parsedSourcePath.dir, archiveFileName)
-    archiveAbsolutePath = path.resolve(root, archiveRelativePath)
-
-    if (!isPathInsideRoot(root, archiveAbsolutePath)) {
-      throw new Error("Archive path must stay inside the upload directory")
-    }
-    if (!(await fileExists(archiveAbsolutePath))) break
+  if (!isPathInsideRoot(root, temporaryArchivePath)) {
+    throw new Error("Archive path must stay inside the upload directory")
   }
 
-  await mkdir(path.dirname(archiveAbsolutePath), { recursive: true })
-  await rename(sourceAbsolutePath, archiveAbsolutePath)
+  await mkdir(temporaryArchiveDirectory, { recursive: true })
+  await rename(sourceAbsolutePath, temporaryArchivePath)
+
+  try {
+    for (let attempt = 0; ; attempt += 1) {
+      const suffix = attempt === 0 ? "" : `-${attempt}`
+      const archiveFileName = `${parsedSourcePath.name}${suffix}${parsedSourcePath.ext}`
+      archiveRelativePath = path.posix.join(ARCHIVE_DIRECTORY_NAME, archiveDate, parsedSourcePath.dir, archiveFileName)
+      archiveAbsolutePath = path.resolve(root, archiveRelativePath)
+
+      if (!isPathInsideRoot(root, archiveAbsolutePath)) {
+        throw new Error("Archive path must stay inside the upload directory")
+      }
+      if (await fileExists(archiveAbsolutePath)) continue
+
+      await mkdir(path.dirname(archiveAbsolutePath), { recursive: true })
+      try {
+        await placeArchiveFileWithoutOverwriting(temporaryArchivePath, archiveAbsolutePath)
+        archived = true
+        break
+      } catch (error) {
+        if (isAlreadyExistsError(error)) continue
+        throw error
+      }
+    }
+  } catch (error) {
+    await restoreTemporaryArchiveFile(temporaryArchivePath, sourceAbsolutePath)
+    throw error
+  } finally {
+    if (archived) await removeArchiveTemporaryFile(temporaryArchivePath)
+  }
 
   return {
     sourceRelativePath,
@@ -243,7 +268,56 @@ async function fileExists(absolutePath: string) {
   try {
     await access(absolutePath, constants.F_OK)
     return true
-  } catch {
-    return false
+  } catch (error) {
+    if (isNotFoundError(error)) return false
+    throw error
   }
+}
+
+async function placeArchiveFileWithoutOverwriting(sourceAbsolutePath: string, archiveAbsolutePath: string) {
+  try {
+    await link(sourceAbsolutePath, archiveAbsolutePath)
+  } catch (error) {
+    if (isAlreadyExistsError(error)) throw error
+    if (!canFallbackToExclusiveCopy(error)) throw error
+    await copyFile(sourceAbsolutePath, archiveAbsolutePath, constants.COPYFILE_EXCL)
+  }
+}
+
+async function restoreTemporaryArchiveFile(temporaryArchivePath: string, sourceAbsolutePath: string) {
+  try {
+    await mkdir(path.dirname(sourceAbsolutePath), { recursive: true })
+    await rename(temporaryArchivePath, sourceAbsolutePath)
+  } catch (error) {
+    if (!isNotFoundError(error)) throw error
+  }
+}
+
+async function removeArchiveTemporaryFile(temporaryArchivePath: string) {
+  try {
+    await unlink(temporaryArchivePath)
+  } catch (error) {
+    if (!isNotFoundError(error)) throw error
+  }
+}
+
+function isNotFoundError(error: unknown) {
+  return hasErrorCode(error, "ENOENT")
+}
+
+function isAlreadyExistsError(error: unknown) {
+  return hasErrorCode(error, "EEXIST")
+}
+
+function canFallbackToExclusiveCopy(error: unknown) {
+  return (
+    hasErrorCode(error, "EXDEV") ||
+    hasErrorCode(error, "EPERM") ||
+    hasErrorCode(error, "ENOSYS") ||
+    hasErrorCode(error, "ENOTSUP")
+  )
+}
+
+function hasErrorCode(error: unknown, code: string) {
+  return typeof error === "object" && error !== null && "code" in error && error.code === code
 }

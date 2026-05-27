@@ -65,9 +65,14 @@ test("assertStorageRelativePath normalizes safe relative paths", () => {
 
 test("assertStorageRelativePath rejects unsafe archive inputs", () => {
   assert.throws(() => assertStorageRelativePath(""))
+  assert.throws(() => assertStorageRelativePath("."))
   assert.throws(() => assertStorageRelativePath("../secret.txt"))
   assert.throws(() => assertStorageRelativePath("/etc/passwd"))
+  assert.throws(() => assertStorageRelativePath("C:\\temp\\file.jpg"))
+  assert.throws(() => assertStorageRelativePath("C:file.jpg"))
   assert.throws(() => assertStorageRelativePath(".archive/2026-05-28/file.jpg"))
+  assert.throws(() => assertStorageRelativePath("assets/.archive/file.jpg"))
+  assert.throws(() => assertStorageRelativePath("assets/.ARCHIVE/file.jpg"))
 })
 
 test("getStoragePathVariants returns deduped posix and Windows variants", () => {
