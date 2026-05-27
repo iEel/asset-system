@@ -337,7 +337,7 @@ export function AuditScanForm({
       if (foundAsset) {
         setOutOfScopeAsset(foundAsset)
         setValues((current) => ({ ...current, assetId: "" }))
-        setScanText(rawValue)
+        setScanText(foundAsset.assetTag || foundAsset.title)
         setScanSource(source)
         setScanFeedback({
           status: "not_in_round",
@@ -361,7 +361,7 @@ export function AuditScanForm({
     setValues((current) => ({ ...current, assetId: matchedItem.assetId }))
     setOutOfScopeAsset(null)
     setApplyCorrections(false)
-    setScanText(rawValue)
+    setScanText(getReadableAuditScanValue(matchedItem))
     setScanSource(source)
     setScanFeedback({
       status: "found",
@@ -706,6 +706,7 @@ export function AuditScanForm({
                   placeholder={t("scanInputPlaceholder")}
                   className="h-12 w-full rounded-md border border-border bg-surface px-3 text-base outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
+                <span className="mt-1 block text-xs text-muted-foreground">{t("scanInputHelp")}</span>
               </Field>
               <div className="grid gap-2 sm:grid-cols-2 md:flex">
                 <button
@@ -1086,6 +1087,11 @@ function buildAssetLookup(items: AuditScanItem[]) {
     lookup.set(item.label.toLowerCase(), item)
   }
   return lookup
+}
+
+function getReadableAuditScanValue(item: AuditScanItem) {
+  const assetTag = item.assetTag.trim()
+  return assetTag || item.label
 }
 
 function OptionList({ emptyLabel, options }: { emptyLabel?: string; options: Option[] }) {
