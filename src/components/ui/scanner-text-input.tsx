@@ -95,7 +95,7 @@ export function ScannerTextInput({
         verbose: false,
       })
       scannerRef.current = scanner
-      const scanConfig = { fps: 10, qrbox: getResponsiveQrBox, aspectRatio: 1.333 }
+      const scanConfig = getScannerConfig(scanMode)
       const handleScanSuccess = (decodedText: string) => {
         const normalizedText = decodedText.trim()
         if (!normalizedText) return
@@ -160,6 +160,10 @@ export function ScannerTextInput({
   }
 
   const showScannerPanel = scannerRunning || scannerLoading || Boolean(cameraErrorText)
+  const readerClassName =
+    scanMode === "asset-qr"
+      ? "aspect-square min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-background"
+      : "aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-background sm:min-h-56"
 
   return (
     <div className="min-w-0 max-w-full space-y-2">
@@ -223,13 +227,21 @@ export function ScannerTextInput({
             </label>
           )}
 
-          <div id={readerId} className="aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-background sm:min-h-56" />
+          <div id={readerId} className={readerClassName} />
           {scannerRunning && <p className="mt-2 text-xs text-muted-foreground">{labels.scanning}</p>}
           {cameraErrorText && <p className="mt-2 text-xs font-medium text-danger">{cameraErrorText}</p>}
         </div>
       )}
     </div>
   )
+}
+
+function getScannerConfig(scanMode: NonNullable<ScannerTextInputProps["scanMode"]>) {
+  if (scanMode === "asset-qr") {
+    return { fps: 10, qrbox: getResponsiveSquareQrBox, aspectRatio: 1 }
+  }
+
+  return { fps: 10, qrbox: getResponsiveQrBox, aspectRatio: 1.333 }
 }
 
 function getScannerCodeFormats(
@@ -257,6 +269,12 @@ function getScannerCodeFormats(
 function getResponsiveQrBox(viewfinderWidth: number, viewfinderHeight: number) {
   const minEdge = Math.min(viewfinderWidth, viewfinderHeight)
   const size = Math.max(140, Math.min(320, minEdge - 24, Math.floor(minEdge * 0.82)))
+  return { width: size, height: size }
+}
+
+function getResponsiveSquareQrBox(viewfinderWidth: number, viewfinderHeight: number) {
+  const minEdge = Math.min(viewfinderWidth, viewfinderHeight)
+  const size = Math.max(180, Math.min(360, minEdge - 32, Math.floor(minEdge * 0.72)))
   return { width: size, height: size }
 }
 
