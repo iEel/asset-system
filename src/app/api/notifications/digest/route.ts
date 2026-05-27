@@ -3,10 +3,25 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { logAudit } from "@/lib/audit-log"
 import { deliverDailyNotificationDigest, type NotificationDigestLocale } from "@/lib/notification-digest"
+import { updateScheduledJobRunState } from "@/lib/scheduled-job-run-state"
+import {
+  notificationDigestLastErrorKey,
+  notificationDigestLastRunAtKey,
+  notificationDigestLastStatusKey,
+} from "@/lib/system-setting-defaults"
+
+const notificationDigestSchedulerStatusKeys = {
+  lastRunAtKey: notificationDigestLastRunAtKey,
+  lastStatusKey: notificationDigestLastStatusKey,
+  lastErrorKey: notificationDigestLastErrorKey,
+}
 
 export async function POST(request: NextRequest) {
+  let schedulerAuthorized = false
+  let shouldRecordSchedulerState = false
+
   try {
-    const schedulerAuthorized = isSchedulerAuthorized(request)
+    schedulerAuthorized = isSchedulerAuthorized(request)
     const user = schedulerAuthorized ? null : await requireAuth()
     if (user) {
       requirePermission(user, "setting", "edit")
@@ -17,12 +32,20 @@ export async function POST(request: NextRequest) {
       locale?: string
       targetUserId?: string
     }
+    shouldRecordSchedulerState = schedulerAuthorized && payload.dryRun !== true
     const locale: NotificationDigestLocale = payload.locale === "en" ? "en" : "th"
     const result = await deliverDailyNotificationDigest({
       locale,
       dryRun: payload.dryRun === true,
       targetUserId: typeof payload.targetUserId === "string" ? payload.targetUserId : undefined,
     })
+
+    if (shouldRecordSchedulerState) {
+      await updateScheduledJobRunState({
+        keys: notificationDigestSchedulerStatusKeys,
+        status: "success",
+      })
+    }
 
     await logAudit({
       userId: user?.id,
@@ -35,6 +58,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result)
   } catch (error) {
+    if (schedulerAuthorized && shouldRecordSchedulerState) {
+      await updateScheduledJobRunState({
+        keys: notificationDigestSchedulerStatusKeys,
+        status: "failed",
+        error: error instanceof Error ? error.message : "Notification digest failed",
+      }).catch(() => undefined)
+    }
     return errorResponse(error, 400)
   }
 }

@@ -34,6 +34,11 @@ export type ProductionReadinessMasterDataCounts = {
   conditions: number
 }
 
+export type SchedulerRunReadinessInput = {
+  name: string
+  status?: string | null
+}
+
 export type ProductionReadinessInput = {
   settings: Map<string, string>
   approverMatrix: readonly ProductionReadinessApproverSummary[]
@@ -57,7 +62,7 @@ export type ProductionReadinessDeploymentInput = {
   maintenancePmGenerationToken?: string
   ldapSyncToken?: string
   notificationDigestToken?: string
-  schedulerLastRunStatuses?: string[]
+  schedulerRunStatuses?: SchedulerRunReadinessInput[]
   backupStatus?: string
   backupLastRunAt?: string
   backupLastRestoreTestAt?: string
@@ -297,16 +302,19 @@ function getSchedulerTokensValue(deployment?: ProductionReadinessDeploymentInput
 }
 
 function getSchedulerRunsStatus(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessStatus {
-  const statuses = deployment?.schedulerLastRunStatuses ?? []
-  if (statuses.some((status) => status === "failed")) return "fail"
-  if (statuses.some((status) => status === "success")) return "pass"
+  const runs = deployment?.schedulerRunStatuses ?? []
+  if (runs.length === 0) return "warning"
+  if (runs.some((run) => run.status === "failed")) return "fail"
+  if (runs.every((run) => run.status === "success")) return "pass"
   return "warning"
 }
 
 function getSchedulerRunsValue(deployment?: ProductionReadinessDeploymentInput) {
-  const statuses = deployment?.schedulerLastRunStatuses ?? []
-  if (statuses.length === 0) return "no runs yet"
-  return statuses.join(", ")
+  const runs = deployment?.schedulerRunStatuses ?? []
+  if (runs.length === 0) return "no runs yet"
+  return runs
+    .map((run) => `${run.name}: ${run.status?.trim() || "no runs yet"}`)
+    .join(" / ")
 }
 
 function getBackupStatus(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessStatus {

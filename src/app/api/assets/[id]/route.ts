@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { getAssetRegisterStatusChangeError } from "@/lib/asset-lifecycle-exception-policy"
 import { assetSchema } from "@/lib/validations/asset"
 
 type AssetRouteContext = {
@@ -54,11 +55,24 @@ export async function PUT(request: NextRequest, context: AssetRouteContext) {
     const input = assetSchema.parse(await request.json())
     const existing = await prisma.asset.findFirst({
       where: { id, isActive: true },
+      include: { status: { select: { name: true, nameTh: true } } },
     })
 
     if (!existing) {
       return NextResponse.json({ error: "Asset not found" }, { status: 404 })
     }
+
+    const nextStatus = input.statusId !== existing.statusId
+      ? await prisma.assetStatus.findFirst({
+          where: { id: input.statusId, isActive: true },
+          select: { id: true, name: true, nameTh: true },
+        })
+      : null
+    if (input.statusId !== existing.statusId && !nextStatus) {
+      return NextResponse.json({ error: "Asset status not found" }, { status: 404 })
+    }
+    const statusChangeError = getAssetRegisterStatusChangeError(existing.status, nextStatus)
+    if (statusChangeError) return NextResponse.json({ error: statusChangeError }, { status: 400 })
 
     await assertUniqueSerial(input.serialNumber, id)
 

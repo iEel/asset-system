@@ -33,8 +33,8 @@ Result: 3 tests passed.
 |---|---|---|---|---|
 | High | Documentation | Production-like infrastructure values and default admin password references were present in tracked documentation before this readiness pass. | Keep placeholders only and never commit real `.env` values or production admin credentials. | Fixed in documentation cleanup |
 | Medium | Database | Setup docs still need a controlled production migration policy because `prisma db push` is used for Dev/Test flows. | Use backup, change approval, rollback/restore plan, and versioned schema-change record before Production schema changes. | Documented |
-| Medium | Asset lifecycle | Check-out now blocks Disposed, Retired, Pending Disposal, Under Maintenance, Lost, and Missing assets; normal transfer blocks Disposed, Retired, and Pending Disposal assets. | Keep future status changes behind tested lifecycle policy helpers. | Implemented |
-| Low | Uploads | Upload helper validates file size, MIME type, and allowed file extension; upload routes reviewed use shared validation or image-specific validation. | Keep all new upload routes on `validateUploadFile` or a stricter module-specific validator. | Hardened |
+| Medium | Asset lifecycle | Check-out now blocks Disposed, Retired, Pending Disposal, Under Maintenance, Lost, and Missing assets; normal transfer blocks Disposed, Retired, and Pending Disposal assets; maintenance close, disposal execution, generic asset edit, and status correction use tested lifecycle exception helpers. | Keep future status changes behind tested lifecycle policy helpers and preserve the controlled correction audit trail. | Implemented |
+| Low | Uploads | Upload helper validates file size, MIME type, allowed file extension, and file content signature; saved uploads can optionally run through a server-side scanner hook. | Keep all new upload routes on `validateUploadFile`, `validateUploadFileContent`, and scanner cleanup where files are persisted. | Hardened |
 | Low | Attachments | Attachment download/preview checks auth, module permission, active record, and safe upload path. | Keep attachment access through the central route rather than direct public file serving. | Accepted |
 | Low | Hard delete | Guarded test-data cleanup exists and requires explicit apply/confirmation/environment controls. | Keep hard delete limited to guarded cleanup tooling. | Accepted |
 
@@ -49,7 +49,9 @@ Result: 3 tests passed.
 ## File Upload And Attachment Access
 
 - `src/lib/uploads.ts` defines a 10 MB upload limit and allowed MIME types.
-- Upload routes should call `validateUploadFile(file)` before reading/writing bytes.
+- Upload routes should call `validateUploadFile(file)` and `validateUploadFileContent(file)` before writing bytes.
+- Saved upload routes should call `scanWrittenUploadFile(filePath)` after writing bytes so optional scanner failures remove the just-written file.
+- `UPLOAD_SCAN_COMMAND` and optional `UPLOAD_SCAN_ARGS` can enable a ClamAV-compatible command-line scanner without changing application code.
 - File names are sanitized with `sanitizeFileName`.
 - Upload paths are rooted under `UPLOAD_DIR`.
 - Attachment download/preview calls `assertSafeUploadPath` before serving bytes.
@@ -72,7 +74,7 @@ Sensitive data-changing workflows reviewed during previous implementation passes
 
 ## Follow-Up Recommendations
 
-- Keep asset lifecycle policy tests aligned with any new operational status or privileged exception workflow.
-- Keep upload-route regression tests covering oversize, disallowed MIME, and spoofed-extension files.
+- Keep asset lifecycle policy tests aligned with any new operational status, correction workflow, or privileged exception workflow.
+- Keep upload-route regression tests covering oversize, disallowed MIME, spoofed-extension files, mismatched content signatures, and scanner hook wiring.
 - Add a scheduled security review checklist before major releases.
 - Keep the RBAC route matrix test in `npm run verify`.

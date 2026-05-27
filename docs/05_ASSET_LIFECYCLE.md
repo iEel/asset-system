@@ -47,6 +47,10 @@ Seed data currently includes these operational statuses:
 - Check-in requires `asset:edit`, requires an active checkout, and only accepts return statuses from `Ready`, `Pending Repair`, and `Pending Disposal`.
 - Check-in can create a maintenance ticket only when the return status is `Pending Repair` and the user has `maintenance:create`.
 - Transfer requires `asset:edit`, blocks assets that already have an active checkout, and blocks normal transfer for `Disposed`, `Retired`, and `Pending Disposal`.
+- Maintenance close only allows next asset status `Ready` or `Pending Disposal`.
+- Disposal execution only allows final asset status `Disposed` or `Retired`.
+- Generic asset edit cannot change protected lifecycle statuses such as `Pending Disposal`, `Disposed`, `Retired`, `Lost`, `Missing`, `Under Maintenance`, or `Pending Repair`; use status correction or the proper workflow.
+- Status correction can restore accidental `Pending Disposal`, `Disposed`, `Retired`, `Lost`, `Missing`, `Under Maintenance`, or `Pending Repair` statuses back to `Ready` with a required reason, asset movement, and audit log.
 - Default audit-round target selection excludes `Disposed` and `Retired` unless the user explicitly includes closed assets.
 - Audit status dropdowns hide closed statuses by default to avoid confusing “all assets” with disposed/retired assets.
 
@@ -57,16 +61,19 @@ Seed data currently includes these operational statuses:
 - Check-in must be tied to an active checkout.
 - Check-in next status must be one of `Ready`, `Pending Repair`, or `Pending Disposal`.
 - Maintenance ticket creation from check-in must require `Pending Repair`.
+- Maintenance close next status must be `Ready` or `Pending Disposal`.
+- Disposal execution next status must be `Disposed` or `Retired`.
+- Status correction must only return protected lifecycle statuses to `Ready` and must require a reason.
 - Default audit target selection must exclude `Disposed` and `Retired`.
 
 ## Validation Recommendations
 
 These are recommended hardening items for future work. They should be implemented with tests before changing production workflow behavior.
 
-- If the organization needs to move `Pending Disposal` assets, add an explicit privileged transfer workflow with separate approval/audit evidence instead of using normal transfer.
-- If the organization needs to reissue `Lost`, `Missing`, or `Under Maintenance` assets, add a resolve/return-to-service workflow before checkout.
-- Disposal execution should be the only normal workflow that moves an asset to `Disposed`.
-- Maintenance close should document whether the asset returns to `Ready` or moves to `Pending Disposal`.
+- If the organization needs to move `Pending Disposal` assets before final execution, add a privileged transfer workflow with separate approval/audit evidence instead of using normal transfer.
+- If the organization needs richer return-to-service steps than status correction, add a dedicated workflow with inspection evidence before checkout.
+- Disposal execution should remain the only normal workflow that moves an asset to `Disposed` or `Retired`.
+- Maintenance close should keep documenting whether the asset returns to `Ready` or moves to `Pending Disposal`.
 
 ## Audit Behavior
 

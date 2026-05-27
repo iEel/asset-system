@@ -40,7 +40,11 @@ test("marks core production readiness checks as pass when settings and coverage 
       maintenancePmGenerationToken: "pm-token",
       ldapSyncToken: "ldap-token",
       notificationDigestToken: "digest-token",
-      schedulerLastRunStatuses: ["success", "success"],
+      schedulerRunStatuses: [
+        { name: "pm_generate_due", status: "success" },
+        { name: "ldap_sync", status: "success" },
+        { name: "notification_digest", status: "success" },
+      ],
       backupStatus: "success",
       backupLastRunAt: "2026-05-20T01:00:00.000Z",
       backupLastRestoreTestAt: "2026-05-21T01:00:00.000Z",
@@ -64,6 +68,53 @@ test("marks core production readiness checks as pass when settings and coverage 
   assert.equal(checks.find((check) => check.key === "backupRestoreDrill")?.value, "2026-05-21T01:00:00.000Z")
   assert.equal(checks.find((check) => check.key === "retentionPolicy")?.value, "3/3 configured")
   assert.equal(checks.find((check) => check.key === "pwaAssets")?.value, "8/8 assets")
+})
+
+test("warns when notification digest scheduler status has not run yet", () => {
+  const checks = buildProductionReadinessChecks({
+    settings: baseSettings,
+    approverMatrix: readyApprovers,
+    activeAdminUsers: 2,
+    activeUserCount: 8,
+    deployment: {
+      nodeEnv: "production",
+      authUrl: "https://asset.company.com",
+      nextAuthUrl: "https://asset.company.com",
+      authSecret: "abcdefghijklmnopqrstuvwxyz1234567890",
+      nextAuthSecret: "abcdefghijklmnopqrstuvwxyz1234567890",
+      uploadDir: "/var/www/asset-system/uploads",
+      databaseUrl: "sqlserver://192.168.1.10;database=asset_management;user=asset_app;password=secret",
+      dbServer: "192.168.1.10",
+      dbUser: "asset_app",
+      dbPassword: "secret",
+      maintenancePmGenerationToken: "pm-token",
+      ldapSyncToken: "ldap-token",
+      notificationDigestToken: "digest-token",
+      schedulerRunStatuses: [
+        { name: "pm_generate_due", status: "success" },
+        { name: "ldap_sync", status: "success" },
+        { name: "notification_digest", status: "" },
+      ],
+      backupStatus: "success",
+      backupLastRunAt: "2026-05-20T01:00:00.000Z",
+      backupLastRestoreTestAt: "2026-05-21T01:00:00.000Z",
+      pwaAssets: {
+        available: 8,
+        total: 8,
+      },
+    },
+    masterDataCounts: {
+      companies: 1,
+      branches: 2,
+      departments: 3,
+      locations: 4,
+      categories: 5,
+      statuses: 3,
+      conditions: 3,
+    },
+  })
+
+  assert.equal(checks.find((check) => check.key === "schedulerRuns")?.status, "warning")
 })
 
 test("surfaces risky production readiness states", () => {
@@ -95,7 +146,11 @@ test("surfaces risky production readiness states", () => {
       maintenancePmGenerationToken: "",
       ldapSyncToken: "",
       notificationDigestToken: "",
-      schedulerLastRunStatuses: ["failed", "success"],
+      schedulerRunStatuses: [
+        { name: "pm_generate_due", status: "success" },
+        { name: "ldap_sync", status: "failed" },
+        { name: "notification_digest", status: "success" },
+      ],
       backupStatus: "missing",
       backupLastRunAt: "",
       backupLastRestoreTestAt: "",

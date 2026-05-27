@@ -1,7 +1,8 @@
 import { randomUUID } from "crypto"
 import { mkdir, writeFile } from "fs/promises"
 import path from "path"
-import { getUploadRoot, sanitizeFileName, validateUploadFile } from "@/lib/uploads"
+import { scanWrittenUploadFile } from "@/lib/upload-server"
+import { getUploadRoot, sanitizeFileName, validateUploadFile, validateUploadFileContent } from "@/lib/uploads"
 
 export type SavedOperationEvidence = {
   fileName: string
@@ -13,6 +14,7 @@ export type SavedOperationEvidence = {
 
 export async function saveOperationEvidenceFile(file: File, operation: "checkout" | "checkin") {
   validateUploadFile(file)
+  await validateUploadFileContent(file)
 
   const now = new Date()
   const year = String(now.getFullYear())
@@ -26,6 +28,7 @@ export async function saveOperationEvidenceFile(file: File, operation: "checkout
 
   await mkdir(uploadDir, { recursive: true })
   await writeFile(filePath, bytes)
+  await scanWrittenUploadFile(filePath)
 
   return {
     fileName,

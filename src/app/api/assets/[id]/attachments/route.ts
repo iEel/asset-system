@@ -6,7 +6,8 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { getUploadRoot, sanitizeFileName, validateUploadFile } from "@/lib/uploads"
+import { scanWrittenUploadFile } from "@/lib/upload-server"
+import { getUploadRoot, sanitizeFileName, validateUploadFile, validateUploadFileContent } from "@/lib/uploads"
 
 export const runtime = "nodejs"
 
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest, context: AssetAttachmentRouteCo
     }
 
     validateUploadFile(file)
+    await validateUploadFileContent(file)
 
     const now = new Date()
     const year = String(now.getFullYear())
@@ -62,6 +64,7 @@ export async function POST(request: NextRequest, context: AssetAttachmentRouteCo
 
     await mkdir(uploadDir, { recursive: true })
     await writeFile(filePath, bytes)
+    await scanWrittenUploadFile(filePath)
 
     const attachment = await prisma.attachment.create({
       data: {

@@ -136,6 +136,9 @@ AUTH_SECRET=<CHANGE_ME>
 NEXTAUTH_SECRET=<CHANGE_ME>
 
 UPLOAD_DIR=/var/www/asset-system/uploads
+UPLOAD_SCAN_COMMAND=
+UPLOAD_SCAN_ARGS=
+UPLOAD_SCAN_TIMEOUT_MS=30000
 
 # Optional PDF Thai font override. Leave blank to use bundled Noto Sans Thai fonts from public/fonts.
 PDF_THAI_FONT_REGULAR=
@@ -201,6 +204,9 @@ sudo chmod 640 /var/www/asset-system/env/asset-system.env
 - ถ้าใช้ static TCP port ใน production ให้ปล่อย `DB_INSTANCE=` ว่าง แล้วใช้ `DB_PORT=1433`; ในกรณีนี้ให้เปลี่ยน `DATABASE_URL` เป็นรูปแบบ `sqlserver://<DB_SERVER>:1433;database=<DB_NAME>;...`
 - ถ้า `LDAP_AUTO_PROVISION=true`, `LDAP_DEFAULT_ROLE` ต้องเป็น role ที่มีอยู่จริง เช่น `employee`, `viewer`, หรือ role ที่สร้างเองในหน้า Roles; ค่า `asset_user` จะใช้ได้เฉพาะเมื่อสร้าง role นี้แล้ว
 - `UPLOAD_DIR` ควรเป็น absolute path เพื่อไม่ผูกกับ `.next/standalone` และ user `assetapp` ต้องอ่าน/เขียนได้ เพราะหน้า Storage Governance จะ scan ไฟล์จริงใน directory นี้
+- `UPLOAD_SCAN_COMMAND` เป็น optional scanner hook สำหรับไฟล์ที่ระบบเขียนลง disk แล้ว เช่น `/usr/bin/clamscan`; ถ้าเว้นว่างระบบจะข้าม scan
+- `UPLOAD_SCAN_ARGS` เป็น optional argument template โดยใช้ `{file}` แทน path ไฟล์ เช่น `--no-summary {file}`; ถ้าเว้นว่างระบบจะส่ง path ไฟล์เป็น argument เดียว
+- ถ้า scanner คืน error หรือพบ malware ระบบจะลบไฟล์ที่เพิ่งเขียนก่อนตอบ error กลับไปยังผู้ใช้
 - PDF ภาษาไทยจะหา font ตามลำดับ: `PDF_THAI_FONT_REGULAR`, bundled `public/fonts/NotoSansThai-*.ttf`, bundled `public/fonts/Sarabun-*.ttf`, Ubuntu Noto fonts ถ้ามีติดตั้งไว้, Windows Tahoma, แล้วค่อย fallback เป็น Helvetica
 - Repo นี้ bundle `NotoSansThai-Regular.ttf` และ `NotoSansThai-Bold.ttf` ไว้ใน `public/fonts` แล้ว ภายใต้ SIL Open Font License ใน `public/fonts/OFL.txt`; หลัง build ต้อง copy `public` เข้า `.next/standalone/` ตามหัวข้อ 7 เพื่อให้ runtime เห็น font
 - ถ้าองค์กรมี font ไทยมาตรฐาน ให้ตั้ง `PDF_THAI_FONT_REGULAR` และ `PDF_THAI_FONT_BOLD` เป็น absolute path ของ `.ttf` บน server
@@ -966,6 +972,8 @@ sudo journalctl -u asset-system-notification-digest.service -n 80 --no-pager
 systemctl list-timers asset-system-notification-digest.timer
 ```
 
+เมื่อรันแบบ scheduler จริงและไม่ใช่ `--dry-run` route จะบันทึกสถานะล่าสุดลง `SystemSetting` เพื่อให้หน้า `/th/admin/readiness` เห็นผลรันของ PM, LDAP Sync และ Notification Digest ครบทั้งสามงาน ถ้าต้องการให้ readiness ผ่าน ให้ timer นี้เคยรันสำเร็จอย่างน้อยหนึ่งครั้งหลัง deploy
+
 ---
 
 ## 23. Production Checklist
@@ -978,10 +986,12 @@ systemctl list-timers asset-system-notification-digest.timer
 - [ ] `AUTH_URL` และ `NEXTAUTH_URL` เป็น `https://asset.company.com`
 - [ ] `AUTH_TRUST_HOST=true`
 - [ ] `UPLOAD_DIR` เป็น absolute path และมี backup
+- [ ] ถ้าองค์กรต้องการ malware scanning ให้ตั้ง `UPLOAD_SCAN_COMMAND` และทดสอบ upload ไฟล์จริงหนึ่งรอบ
 - [ ] ตรวจว่า `.next/standalone/public/fonts/NotoSansThai-Regular.ttf` และ `NotoSansThai-Bold.ttf` ถูก copy ไปพร้อม standalone แล้ว หรือกำหนด `PDF_THAI_FONT_REGULAR`/`PDF_THAI_FONT_BOLD` เป็น font ไทยอื่น
 - [ ] `MAINTENANCE_PM_GENERATION_TOKEN` เป็น random token จริง
 - [ ] `LDAP_SYNC_TOKEN` เป็น random token จริงถ้าเปิด LDAP scheduled sync
 - [ ] `NOTIFICATION_DIGEST_TOKEN` เป็น random token จริง เพื่อให้ Notification Digest พร้อมใช้งานและหน้า `/th/admin/readiness` ผ่านครบ 3 scheduler tokens
+- [ ] `asset-system-notification-digest.timer` เคยรันสำเร็จอย่างน้อยหนึ่งครั้ง เพื่อให้หน้า `/th/admin/readiness` มี Notification Digest last-run status
 - [ ] `NOTIFICATION_DIGEST_WEBHOOK_URL` ตั้งค่าแล้วถ้าต้องการส่ง digest ออกช่องทางภายนอก
 - [ ] `BACKUP_STATUS`, `BACKUP_LAST_RUN_AT`, และ `BACKUP_LAST_RESTORE_TEST_AT` ตั้งตามระบบ backup/restore drill หรือปล่อยเป็น `unknown`/ว่างอย่างตั้งใจ
 - [ ] SQL Server connection ใช้ production user ที่สิทธิ์เหมาะสม

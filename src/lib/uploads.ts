@@ -1,4 +1,5 @@
 import path from "path"
+import { isUploadSignatureAllowed } from "./upload-signature.ts"
 
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
@@ -70,6 +71,14 @@ export function validateUploadFile(file: File) {
   const extension = path.extname(file.name).toLowerCase()
   if (!allowedUploadExtensions.has(extension)) {
     throw new Error("File extension is not allowed")
+  }
+}
+
+export async function validateUploadFileContent(file: File) {
+  const extension = path.extname(file.name).toLowerCase()
+  const bytes = new Uint8Array(await file.slice(0, 8192).arrayBuffer())
+  if (!isUploadSignatureAllowed({ mimeType: file.type, extension, bytes })) {
+    throw new Error("File content does not match the uploaded file type")
   }
 }
 

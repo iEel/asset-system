@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
@@ -31,4 +32,15 @@ test("uses highest severity tone in digest", () => {
     ]),
     "danger"
   )
+})
+
+test("notification digest route records scheduler run state", () => {
+  const source = readFileSync("src/app/api/notifications/digest/route.ts", "utf8")
+
+  assert.match(source, /updateScheduledJobRunState/)
+  assert.match(source, /notificationDigestLastRunAtKey/)
+  assert.match(source, /notificationDigestLastStatusKey/)
+  assert.match(source, /notificationDigestLastErrorKey/)
+  assert.match(source, /status:\s*"success"/)
+  assert.match(source, /status:\s*"failed"/)
 })

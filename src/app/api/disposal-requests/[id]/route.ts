@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { getDisposalExecutionStatusError } from "@/lib/asset-lifecycle-exception-policy"
 import { disposalDecisionSchema, disposalExecutionSchema } from "@/lib/validations/disposal"
 
 type DisposalRequestContext = {
@@ -30,9 +31,11 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
       const input = disposalExecutionSchema.parse(body)
       const nextStatus = await prisma.assetStatus.findFirst({
         where: { id: input.nextStatusId, isActive: true },
-        select: { id: true },
+        select: { id: true, name: true, nameTh: true },
       })
       if (!nextStatus) return NextResponse.json({ error: "Next asset status not found" }, { status: 404 })
+      const nextStatusError = getDisposalExecutionStatusError(nextStatus)
+      if (nextStatusError) return NextResponse.json({ error: nextStatusError }, { status: 400 })
 
       const evidenceCount = await prisma.attachment.count({
         where: { module: "disposal", referenceId: disposalRequest.id, isActive: true },

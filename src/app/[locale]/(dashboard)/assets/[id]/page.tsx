@@ -25,6 +25,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 import { AssetQrCode } from "@/components/assets/asset-qr-code"
 import { AssetAttachments } from "@/components/assets/asset-attachments"
+import { AssetStatusCorrectionButton } from "@/components/assets/asset-status-correction-button"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { AssetComponentsPanel } from "@/components/assets/asset-components-panel"
 import { AssetPurchaseDocuments } from "@/components/assets/asset-purchase-documents"
@@ -37,6 +38,7 @@ import { MobileActionBar } from "@/components/ui/mobile-action-bar"
 import { ActivityDrawer } from "@/components/ui/activity-drawer"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
+import { canCorrectAssetStatus } from "@/lib/asset-lifecycle-exception-policy"
 import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
 import {
   compactMovementDetails,
@@ -96,7 +98,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const tBrandModel = await getTranslations("brandModel")
   const tMaintenance = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
-  const [asset, qrBaseUrlSetting] = await Promise.all([
+  const [asset, qrBaseUrlSetting, readyStatus] = await Promise.all([
     prisma.asset.findFirst({
       where: { id, isActive: true },
       include: {
@@ -205,6 +207,10 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
     prisma.systemSetting.findUnique({
       where: { key: assetQrPublicBaseUrlKey },
       select: { value: true },
+    }),
+    prisma.assetStatus.findFirst({
+      where: { isActive: true, OR: [{ name: "Ready" }, { nameTh: "พร้อมใช้งาน" }] },
+      select: { id: true },
     }),
   ])
 
@@ -811,6 +817,25 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
               <QuickAction key={action.label} {...action} />
             ))}
           </div>
+          {readyStatus && canCorrectAssetStatus(asset.status) ? (
+            <div className="mt-3">
+              <AssetStatusCorrectionButton
+                assetId={asset.id}
+                readyStatusId={readyStatus.id}
+                labels={{
+                  button: t("statusCorrectionButton"),
+                  title: t("statusCorrectionTitle"),
+                  description: t("statusCorrectionDescription"),
+                  reason: t("statusCorrectionReason"),
+                  reasonPlaceholder: t("statusCorrectionReasonPlaceholder"),
+                  cancel: tCommon("cancel"),
+                  submit: t("statusCorrectionSubmit"),
+                  submitting: t("statusCorrectionSubmitting"),
+                  errorFallback: t("statusCorrectionError"),
+                }}
+              />
+            </div>
+          ) : null}
         </div>
 
         <div className={`rounded-lg border p-4 shadow-sm ${getHealthPanelClass(dataHealthTone)}`}>

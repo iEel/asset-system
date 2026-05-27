@@ -12,6 +12,7 @@ import { buildProductionReadinessChecks, summarizeProductionReadiness, type Prod
 import { getResponsiveActionRowClasses, getSafeActionLinkClasses } from "@/lib/design-system"
 import {
   ldapSyncLastStatusKey,
+  notificationDigestLastStatusKey,
   pmAutoGenerationLastStatusKey,
   systemSettingDefaults,
 } from "@/lib/system-setting-defaults"
@@ -57,10 +58,11 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
       maintenancePmGenerationToken: process.env.MAINTENANCE_PM_GENERATION_TOKEN,
       ldapSyncToken: process.env.LDAP_SYNC_TOKEN,
       notificationDigestToken: process.env.NOTIFICATION_DIGEST_TOKEN,
-      schedulerLastRunStatuses: [
-        settings.get(pmAutoGenerationLastStatusKey) ?? "",
-        settings.get(ldapSyncLastStatusKey) ?? "",
-      ].filter(Boolean),
+      schedulerRunStatuses: [
+        { name: "pm_generate_due", status: settings.get(pmAutoGenerationLastStatusKey) },
+        { name: "ldap_sync", status: settings.get(ldapSyncLastStatusKey) },
+        { name: "notification_digest", status: settings.get(notificationDigestLastStatusKey) },
+      ],
       backupStatus: process.env.BACKUP_STATUS,
       backupLastRunAt: process.env.BACKUP_LAST_RUN_AT,
       backupLastRestoreTestAt: process.env.BACKUP_LAST_RESTORE_TEST_AT,

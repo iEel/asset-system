@@ -66,6 +66,14 @@ export const ldapSyncStatusSettingKeys = [
   ldapSyncLastStatusKey,
   ldapSyncLastErrorKey,
 ] as const
+export const notificationDigestLastRunAtKey = "notification_digest_last_run_at"
+export const notificationDigestLastStatusKey = "notification_digest_last_status"
+export const notificationDigestLastErrorKey = "notification_digest_last_error"
+export const notificationDigestStatusSettingKeys = [
+  notificationDigestLastRunAtKey,
+  notificationDigestLastStatusKey,
+  notificationDigestLastErrorKey,
+] as const
 export const ldapSettingKeys = [
   "ldap_enabled",
   "ldap_url",

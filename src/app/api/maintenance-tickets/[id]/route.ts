@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { getMaintenanceCloseStatusError } from "@/lib/asset-lifecycle-exception-policy"
 import { maintenanceTicketCloseSchema, maintenanceTicketStatusSchema } from "@/lib/validations/maintenance"
 import { closeableMaintenanceStatuses } from "@/lib/maintenance-status"
 
@@ -78,9 +79,11 @@ export async function PATCH(request: NextRequest, context: MaintenanceTicketCont
 
     const nextStatus = await prisma.assetStatus.findFirst({
       where: { id: input.nextStatusId, isActive: true },
-      select: { id: true },
+      select: { id: true, name: true, nameTh: true },
     })
     if (!nextStatus) return NextResponse.json({ error: "Next asset status not found" }, { status: 404 })
+    const nextStatusError = getMaintenanceCloseStatusError(nextStatus)
+    if (nextStatusError) return NextResponse.json({ error: nextStatusError }, { status: 400 })
 
     const updatedTicket = await prisma.$transaction(async (tx) => {
       const record = await tx.maintenanceTicket.update({
