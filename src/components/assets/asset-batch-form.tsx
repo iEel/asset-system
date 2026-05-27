@@ -11,6 +11,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { defaultAssetOwnershipType, normalizeAssetOwnershipType, assetOwnershipTypes } from "@/lib/asset-ownership"
 import { buildAssetBatchPreviewRows, buildAssetBatchReceiptCsv, createAssetBatchRows, findDuplicateBatchValues, parseBatchSerialPaste, type AssetBatchEditableRow } from "@/lib/asset-batch-create"
+import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
 
 type AssetBatchFormProps = React.ComponentProps<typeof AssetForm>
 
@@ -119,8 +120,17 @@ export function AssetBatchForm({
   const isSoftwareLicense = ownershipType === "software_license"
   const filteredBranches = branches.filter((branch) => branch.companyId === common.companyId)
   const filteredDepartments = departments.filter((department) => !department.companyId || department.companyId === common.companyId)
+  const selectedBranch = branches.find((branch) => branch.id === common.branchId)
+  const selectedDepartment = departments.find((department) => department.id === common.departmentId)
   const filteredEmployees = employees.filter(
-    (employee) => (!common.companyId || employee.companyId === common.companyId) && (!common.branchId || employee.branchId === common.branchId)
+    (employee) =>
+      optionMatchesOrganizationScope(employee, {
+        companyId: common.companyId,
+        branchId: common.branchId,
+        branchCode: selectedBranch?.code,
+        departmentId: common.departmentId,
+        departmentCode: selectedDepartment?.code,
+      })
   )
   const filteredLocations = locations.filter((location) => location.branchId === common.branchId)
   const filteredModels = models.filter(

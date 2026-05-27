@@ -34,7 +34,16 @@ export async function getAssetFormOptions() {
     }),
     prisma.employee.findMany({
       where: { isActive: true },
-      select: { id: true, code: true, fullNameTh: true, companyId: true, branchId: true },
+      select: {
+        id: true,
+        code: true,
+        fullNameTh: true,
+        companyId: true,
+        branchId: true,
+        departmentId: true,
+        branch: { select: { code: true } },
+        department: { select: { code: true } },
+      },
       orderBy: { code: "asc" },
     }),
     prisma.location.findMany({
@@ -121,17 +130,22 @@ export async function getAssetFormOptions() {
       id: branch.id,
       label: `${branch.code} - ${branch.name}`,
       companyId: branch.companyId,
+      code: branch.code,
     })),
     departments: departments.map((department) => ({
       id: department.id,
       label: `${department.code} - ${department.name}`,
       companyId: department.companyId,
+      code: department.code,
     })),
     employees: employees.map((employee) => ({
       id: employee.id,
       label: `${employee.code} - ${employee.fullNameTh}`,
       companyId: employee.companyId,
       branchId: employee.branchId,
+      branchCode: employee.branch.code,
+      departmentId: employee.departmentId,
+      departmentCode: employee.department.code,
     })),
     locations: locations.map((location) => ({
       id: location.id,

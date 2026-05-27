@@ -11,13 +11,18 @@ import { SearchableSelect } from "@/components/ui/searchable-select"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { assetOwnershipTypes, defaultAssetOwnershipType, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
+import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
 import { formatFileSize } from "@/lib/uploads"
 
 type Option = {
   id: string
   label: string
+  code?: string | null
   companyId?: string | null
   branchId?: string | null
+  branchCode?: string | null
+  departmentId?: string | null
+  departmentCode?: string | null
   categoryId?: string | null
   brandId?: string | null
   photoChecklist?: string[]
@@ -216,10 +221,17 @@ export function AssetForm({
   const filteredDepartments = departments.filter(
     (department) => !department.companyId || department.companyId === values.companyId
   )
+  const selectedBranch = branches.find((branch) => branch.id === values.branchId)
+  const selectedDepartment = departments.find((department) => department.id === values.departmentId)
   const filteredEmployees = employees.filter(
     (employee) =>
-      (!values.companyId || employee.companyId === values.companyId) &&
-      (!values.branchId || employee.branchId === values.branchId)
+      optionMatchesOrganizationScope(employee, {
+        companyId: values.companyId,
+        branchId: values.branchId,
+        branchCode: selectedBranch?.code,
+        departmentId: values.departmentId,
+        departmentCode: selectedDepartment?.code,
+      })
   )
   const filteredLocations = locations.filter((location) => location.branchId === values.branchId)
   const filteredModels = models.filter(
