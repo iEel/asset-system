@@ -50,9 +50,15 @@ export function createAuditWorkbook() {
 
 export function finalizeAuditWorksheet(worksheet: ExcelJS.Worksheet) {
   styleWorksheetHeader(worksheet)
+  const existingColumnKeys = new Set(
+    worksheet.columns
+      .map((column) => column.key)
+      .filter((key): key is string => typeof key === "string")
+  )
   for (const key of ["scannedAt", "lastScanAt", "reportedAt", "reviewedAt", "actionDueDate", "closedAt"]) {
+    if (!existingColumnKeys.has(key)) continue
     const column = worksheet.getColumn(key)
-    if (column) column.numFmt = "yyyy-mm-dd hh:mm"
+    column.numFmt = "yyyy-mm-dd hh:mm"
   }
 }
 
