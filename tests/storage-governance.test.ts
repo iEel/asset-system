@@ -1,8 +1,16 @@
 import assert from "node:assert/strict"
+import { existsSync } from "node:fs"
+import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises"
+import os from "node:os"
+import path from "node:path"
 import test from "node:test"
 
 import {
+  archiveOrphanUploadFile,
+  assertStorageRelativePath,
   buildStorageGovernanceDryRun,
+  getStoragePathVariants,
+  scanUploadDirectory,
   summarizeStorageGovernance,
 } from "../src/lib/storage-governance.ts"
 
@@ -48,4 +56,68 @@ test("builds dry-run storage governance actions from database and filesystem dif
   assert.deepEqual(dryRun.missingFiles.map((item) => item.filePath), ["uploads/missing.pdf"])
   assert.deepEqual(dryRun.orphanFiles.map((item) => item.relativePath), ["uploads/orphan.tmp", "uploads/inactive.jpg"])
   assert.deepEqual(dryRun.actions.map((item) => item.action), ["review_missing_db_file", "archive_orphan_file", "archive_orphan_file"])
+})
+
+test("assertStorageRelativePath normalizes safe relative paths", () => {
+  assert.equal(assertStorageRelativePath("assets\\photo.jpg"), "assets/photo.jpg")
+  assert.equal(assertStorageRelativePath("assets/photo.jpg"), "assets/photo.jpg")
+})
+
+test("assertStorageRelativePath rejects unsafe archive inputs", () => {
+  assert.throws(() => assertStorageRelativePath(""))
+  assert.throws(() => assertStorageRelativePath("../secret.txt"))
+  assert.throws(() => assertStorageRelativePath("/etc/passwd"))
+  assert.throws(() => assertStorageRelativePath(".archive/2026-05-28/file.jpg"))
+})
+
+test("getStoragePathVariants returns deduped posix and Windows variants", () => {
+  assert.deepEqual(getStoragePathVariants("assets/photo.jpg"), ["assets/photo.jpg", "assets\\photo.jpg"])
+  assert.deepEqual(getStoragePathVariants("photo.jpg"), ["photo.jpg"])
+})
+
+test("scanUploadDirectory excludes archive files", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "asset-storage-"))
+  await mkdir(path.join(root, "assets"), { recursive: true })
+  await mkdir(path.join(root, ".archive", "2026-05-28", "assets"), { recursive: true })
+  await writeFile(path.join(root, "assets", "active.jpg"), "active")
+  await writeFile(path.join(root, ".archive", "2026-05-28", "assets", "old.jpg"), "old")
+
+  const files = await scanUploadDirectory(root)
+
+  assert.deepEqual(files.map((file) => file.relativePath), ["assets/active.jpg"])
+})
+
+test("archiveOrphanUploadFile moves a file into the dated archive", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "asset-storage-"))
+  await mkdir(path.join(root, "assets"), { recursive: true })
+  await writeFile(path.join(root, "assets", "orphan.jpg"), "orphan")
+
+  const result = await archiveOrphanUploadFile({
+    uploadDir: root,
+    relativePath: "assets/orphan.jpg",
+    archivedAt: new Date("2026-05-28T01:02:03.000Z"),
+  })
+
+  assert.equal(result.sourceRelativePath, "assets/orphan.jpg")
+  assert.equal(result.archiveRelativePath, ".archive/2026-05-28/assets/orphan.jpg")
+  assert.equal(existsSync(path.join(root, "assets", "orphan.jpg")), false)
+  assert.equal(await readFile(path.join(root, ".archive", "2026-05-28", "assets", "orphan.jpg"), "utf8"), "orphan")
+})
+
+test("archiveOrphanUploadFile avoids overwriting archived files", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "asset-storage-"))
+  await mkdir(path.join(root, "assets"), { recursive: true })
+  await mkdir(path.join(root, ".archive", "2026-05-28", "assets"), { recursive: true })
+  await writeFile(path.join(root, "assets", "orphan.jpg"), "new")
+  await writeFile(path.join(root, ".archive", "2026-05-28", "assets", "orphan.jpg"), "old")
+
+  const result = await archiveOrphanUploadFile({
+    uploadDir: root,
+    relativePath: "assets/orphan.jpg",
+    archivedAt: new Date("2026-05-28T01:02:03.000Z"),
+  })
+
+  assert.equal(result.archiveRelativePath, ".archive/2026-05-28/assets/orphan-1.jpg")
+  assert.equal(await readFile(path.join(root, ".archive", "2026-05-28", "assets", "orphan.jpg"), "utf8"), "old")
+  assert.equal(await readFile(path.join(root, ".archive", "2026-05-28", "assets", "orphan-1.jpg"), "utf8"), "new")
 })
