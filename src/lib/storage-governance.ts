@@ -157,10 +157,12 @@ export async function archiveOrphanUploadFile({
   uploadDir,
   relativePath,
   archivedAt = new Date(),
+  beforeArchivePlacementForTest,
 }: {
   uploadDir: string
   relativePath: string
   archivedAt?: Date
+  beforeArchivePlacementForTest?: () => Promise<void> | void
 }): Promise<{ sourceRelativePath: string; archiveRelativePath: string }> {
   const root = path.resolve(uploadDir)
   const sourceRelativePath = assertStorageRelativePath(relativePath)
@@ -174,6 +176,7 @@ export async function archiveOrphanUploadFile({
   const parsedSourcePath = path.posix.parse(sourceRelativePath)
   const temporaryArchiveDirectory = path.resolve(root, ARCHIVE_DIRECTORY_NAME, ".tmp")
   const temporaryArchivePath = path.join(temporaryArchiveDirectory, `${Date.now()}-${randomUUID()}.tmp`)
+  const temporaryArchiveRelativePath = path.relative(root, temporaryArchivePath).replace(/\\/g, "/")
   let archiveRelativePath = ""
   let archiveAbsolutePath = ""
   let archived = false
@@ -186,6 +189,8 @@ export async function archiveOrphanUploadFile({
   await rename(sourceAbsolutePath, temporaryArchivePath)
 
   try {
+    await beforeArchivePlacementForTest?.()
+
     for (let attempt = 0; ; attempt += 1) {
       const suffix = attempt === 0 ? "" : `-${attempt}`
       const archiveFileName = `${parsedSourcePath.name}${suffix}${parsedSourcePath.ext}`
@@ -208,7 +213,12 @@ export async function archiveOrphanUploadFile({
       }
     }
   } catch (error) {
-    await restoreTemporaryArchiveFile(temporaryArchivePath, sourceAbsolutePath)
+    await restoreTemporaryArchiveFile({
+      temporaryArchivePath,
+      temporaryArchiveRelativePath,
+      sourceAbsolutePath,
+      sourceRelativePath,
+    })
     throw error
   } finally {
     if (archived) await removeArchiveTemporaryFile(temporaryArchivePath)
@@ -284,12 +294,29 @@ async function placeArchiveFileWithoutOverwriting(sourceAbsolutePath: string, ar
   }
 }
 
-async function restoreTemporaryArchiveFile(temporaryArchivePath: string, sourceAbsolutePath: string) {
+async function restoreTemporaryArchiveFile({
+  temporaryArchivePath,
+  temporaryArchiveRelativePath,
+  sourceAbsolutePath,
+  sourceRelativePath,
+}: {
+  temporaryArchivePath: string
+  temporaryArchiveRelativePath: string
+  sourceAbsolutePath: string
+  sourceRelativePath: string
+}) {
   try {
     await mkdir(path.dirname(sourceAbsolutePath), { recursive: true })
-    await rename(temporaryArchivePath, sourceAbsolutePath)
+    await placeArchiveFileWithoutOverwriting(temporaryArchivePath, sourceAbsolutePath)
+    await unlink(temporaryArchivePath)
   } catch (error) {
-    if (!isNotFoundError(error)) throw error
+    if (isNotFoundError(error)) return
+    if (isAlreadyExistsError(error)) {
+      throw new Error(
+        `Unable to restore archived file because the source path was recreated. Temporary archive remains at ${temporaryArchiveRelativePath}; source path is ${sourceRelativePath}.`
+      )
+    }
+    throw error
   }
 }
 

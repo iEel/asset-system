@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { existsSync } from "node:fs"
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises"
+import { mkdtemp, mkdir, readdir, readFile, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
@@ -125,4 +125,38 @@ test("archiveOrphanUploadFile avoids overwriting archived files", async () => {
   assert.equal(result.archiveRelativePath, ".archive/2026-05-28/assets/orphan-1.jpg")
   assert.equal(await readFile(path.join(root, ".archive", "2026-05-28", "assets", "orphan.jpg"), "utf8"), "old")
   assert.equal(await readFile(path.join(root, ".archive", "2026-05-28", "assets", "orphan-1.jpg"), "utf8"), "new")
+})
+
+test("archiveOrphanUploadFile does not overwrite a recreated source when restore fails", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "asset-storage-"))
+  const sourcePath = path.join(root, "assets", "orphan.jpg")
+  const archiveDateDirectory = path.join(root, ".archive", "2026-05-28")
+  await mkdir(path.dirname(sourcePath), { recursive: true })
+  await writeFile(sourcePath, "original")
+
+  let rejectedError: Error | null = null
+  try {
+    await archiveOrphanUploadFile({
+      uploadDir: root,
+      relativePath: "assets/orphan.jpg",
+      archivedAt: new Date("2026-05-28T01:02:03.000Z"),
+      beforeArchivePlacementForTest: async () => {
+        await writeFile(sourcePath, "recreated")
+        await mkdir(archiveDateDirectory, { recursive: true })
+        await writeFile(path.join(archiveDateDirectory, "assets"), "not a directory")
+      },
+    })
+  } catch (error) {
+    rejectedError = error as Error
+  }
+
+  assert.ok(rejectedError)
+  assert.match(rejectedError.message, /\.archive\/\.tmp\//)
+  assert.match(rejectedError.message, /assets\/orphan\.jpg/)
+  assert.equal(await readFile(sourcePath, "utf8"), "recreated")
+
+  const temporaryArchiveDirectory = path.join(root, ".archive", ".tmp")
+  const temporaryArchiveFiles = await readdir(temporaryArchiveDirectory)
+  assert.equal(temporaryArchiveFiles.length, 1)
+  assert.equal(await readFile(path.join(temporaryArchiveDirectory, temporaryArchiveFiles[0]), "utf8"), "original")
 })
