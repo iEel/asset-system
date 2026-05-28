@@ -94,14 +94,6 @@
     "deliveredDigestSubtitle": "Daily digest notifications the system has delivered, so users can review what was already sent.",
     "deliveredDigestEmpty": "No digest has been delivered to this user yet."
   },
-  "pwaInstall": {
-    "title": "Install Asset System",
-    "install": "Install App",
-    "installed": "Installed",
-    "iosTitle": "Add to Home Screen",
-    "iosHint": "On iPhone/iPad, use Safari's Share menu to add Asset System to the home screen.",
-    "iosSteps": "Tap Share, then choose Add to Home Screen"
-  },
   "nav": {
     "dashboard": "Dashboard",
     "workCenter": "Work Center",
