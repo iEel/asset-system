@@ -6,12 +6,16 @@
 - Add a batch of assets from the same page using shared purchase/master data plus row-level serial/manual asset tag/custodian/remark data.
 - Import legacy assets from Excel through the import/export tools.
 - Asset tags may be manually entered for legacy assets or auto-generated when left blank.
+- Company and branch on the asset form are the asset owner/tag scope; they drive generated asset tags and reporting/accounting scope.
+- Custodian defaults to the selected owner company/branch/department scope, but the form can opt in to cross-company custodians for cases where the asset owner and current holder are different organizations.
+- Cross-company custodian selections show an explicit warning and are recorded in the creation audit trail. Batch create follows the same model for shared owner/tag scope plus common or row-level custodian values.
 
 ## Asset Custody
 
 - Check-out records who receives the asset and captures handover evidence.
 - Check-in records return and receiving parties and can route the asset to Ready, Pending Repair, or Pending Disposal.
 - Transfer records location/custodian/department movement.
+- Checkout and transfer are the normal workflows for custody changes after registration; the asset owner company/branch remains the tag, reporting, and accounting scope unless the asset master data is intentionally edited.
 - Asset Detail shows a unified activity/custody timeline.
 
 ## Audit Counting

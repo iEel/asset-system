@@ -14,6 +14,7 @@ import { buildAssetBatchPreviewRows, buildAssetBatchReceiptCsv, createAssetBatch
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
 
 type AssetBatchFormProps = React.ComponentProps<typeof AssetForm>
+type ScopedEmployeeOption = AssetBatchFormProps["employees"][number]
 
 type BatchCommonValues = {
   name: string
@@ -114,6 +115,7 @@ export function AssetBatchForm({
   const [checkingDuplicates, setCheckingDuplicates] = useState(false)
   const [duplicateCheckMessage, setDuplicateCheckMessage] = useState("")
   const [duplicateCheckStatus, setDuplicateCheckStatus] = useState<"clean" | "duplicate" | "error" | null>(null)
+  const [allowCrossCompanyCustodian, setAllowCrossCompanyCustodian] = useState(false)
   const [saving, setSaving] = useState(false)
   const [createdBatch, setCreatedBatch] = useState<CreatedBatch | null>(null)
   const ownershipType = normalizeAssetOwnershipType(common.ownershipType)
@@ -122,7 +124,7 @@ export function AssetBatchForm({
   const filteredDepartments = departments.filter((department) => !department.companyId || department.companyId === common.companyId)
   const selectedBranch = branches.find((branch) => branch.id === common.branchId)
   const selectedDepartment = departments.find((department) => department.id === common.departmentId)
-  const filteredEmployees = employees.filter(
+  const filteredEmployees = allowCrossCompanyCustodian ? employees : employees.filter(
     (employee) =>
       optionMatchesOrganizationScope(employee, {
         companyId: common.companyId,
@@ -132,6 +134,11 @@ export function AssetBatchForm({
         departmentCode: selectedDepartment?.code,
       })
   )
+  const selectedCustodianIds = [common.custodianId, ...rows.map((row) => row.custodianId)].filter(Boolean)
+  const hasCrossCompanyCustodian = selectedCustodianIds.some((id) => {
+    const employee = employees.find((item) => item.id === id)
+    return Boolean(employee?.companyId && common.companyId && employee.companyId !== common.companyId)
+  })
   const filteredLocations = locations.filter((location) => location.branchId === common.branchId)
   const filteredModels = models.filter(
     (model) => (!common.categoryId || model.categoryId === common.categoryId) && (!common.brandId || model.brandId === common.brandId)
@@ -273,6 +280,38 @@ export function AssetBatchForm({
       currentLocationId: "",
     }))
     setRows((current) => current.map((row) => ({ ...row, custodianId: "" })))
+  }
+
+  function handleCrossCompanyCustodianToggle(checked: boolean) {
+    setAllowCrossCompanyCustodian(checked)
+    if (checked) return
+
+    setCommon((current) => {
+      const custodian = employees.find((employee) => employee.id === current.custodianId)
+      if (employeeMatchesBatchScope(custodian, current)) return current
+      return { ...current, custodianId: "" }
+    })
+    setRows((current) =>
+      current.map((row) => {
+        const custodian = employees.find((employee) => employee.id === row.custodianId)
+        if (employeeMatchesBatchScope(custodian, common)) return row
+        return { ...row, custodianId: "" }
+      })
+    )
+  }
+
+  function employeeMatchesBatchScope(employee: ScopedEmployeeOption | undefined, scope: BatchCommonValues) {
+    if (!employee) return true
+    const branch = branches.find((item) => item.id === scope.branchId)
+    const department = departments.find((item) => item.id === scope.departmentId)
+
+    return optionMatchesOrganizationScope(employee, {
+      companyId: scope.companyId,
+      branchId: scope.branchId,
+      branchCode: branch?.code,
+      departmentId: scope.departmentId,
+      departmentCode: department?.code,
+    })
   }
 
   function handleAddRow() {
@@ -478,27 +517,50 @@ export function AssetBatchForm({
           <SelectField label={t("ownershipType")} value={ownershipType} required onChange={(value) => setCommonField("ownershipType", value)}>
             {assetOwnershipTypes.map((type) => <option key={type} value={type}>{t(`ownershipType_${type}`)}</option>)}
           </SelectField>
-          <SelectField label={t("company")} value={common.companyId} required onChange={handleCompanyChange}>
-            <option value="">{t("selectCompany")}</option>
-            {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
-          </SelectField>
-          <SelectField label={t("branch")} value={common.branchId} required onChange={handleBranchChange}>
-            <option value="">{t("selectBranch")}</option>
-            {filteredBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
-          </SelectField>
+          <div>
+            <SelectField label={t("assetOwnerCompany")} value={common.companyId} required onChange={handleCompanyChange}>
+              <option value="">{t("selectCompany")}</option>
+              {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
+            </SelectField>
+            <p className="mt-1.5 text-xs text-muted-foreground">{t("assetOwnerCompanyHelp")}</p>
+          </div>
+          <div>
+            <SelectField label={t("assetOwnerBranch")} value={common.branchId} required onChange={handleBranchChange}>
+              <option value="">{t("selectBranch")}</option>
+              {filteredBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
+            </SelectField>
+            <p className="mt-1.5 text-xs text-muted-foreground">{t("assetOwnerBranchHelp")}</p>
+          </div>
           <SelectField label={t("department")} value={common.departmentId} required={ownershipType !== "personal" && !isSoftwareLicense} onChange={(value) => setCommonField("departmentId", value)}>
             <option value="">{t("selectDepartment")}</option>
             {filteredDepartments.map((department) => <option key={department.id} value={department.id}>{department.label}</option>)}
           </SelectField>
-          <SearchableSelect
-            label={isSoftwareLicense ? t("licenseAssignee") : t("custodian")}
-            value={common.custodianId}
-            options={filteredEmployees}
-            placeholder={isSoftwareLicense ? t("selectLicenseAssignee") : t("selectCustodian")}
-            searchPlaceholder={tCommon("searchSelectPlaceholder")}
-            emptyLabel={tCommon("searchSelectNoResults")}
-            onChange={(value) => setCommonField("custodianId", value)}
-          />
+          <div>
+            <SearchableSelect
+              label={isSoftwareLicense ? t("licenseAssignee") : t("custodian")}
+              value={common.custodianId}
+              options={filteredEmployees}
+              placeholder={isSoftwareLicense ? t("selectLicenseAssignee") : t("selectCustodian")}
+              searchPlaceholder={tCommon("searchSelectPlaceholder")}
+              emptyLabel={tCommon("searchSelectNoResults")}
+              onChange={(value) => setCommonField("custodianId", value)}
+            />
+            <label className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={allowCrossCompanyCustodian}
+                onChange={(event) => handleCrossCompanyCustodianToggle(event.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              />
+              <span>
+                <span className="block font-medium text-foreground">{t("allowCrossCompanyCustodian")}</span>
+                <span>{t("allowCrossCompanyCustodianHelp")}</span>
+              </span>
+            </label>
+            {hasCrossCompanyCustodian ? (
+              <p className="mt-2 text-xs font-medium text-warning">{t("crossCompanyCustodianWarning")}</p>
+            ) : null}
+          </div>
           <SelectField label={t("currentLocation")} value={common.currentLocationId} required onChange={(value) => setCommonField("currentLocationId", value)}>
             <option value="">{t("selectLocation")}</option>
             {filteredLocations.map((location) => <option key={location.id} value={location.id}>{location.label}</option>)}

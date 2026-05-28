@@ -205,6 +205,7 @@ export function AssetForm({
   const [newAssetPhotos, setNewAssetPhotos] = useState<AssetPhotoDraft[]>([])
   const [nameManuallyEdited, setNameManuallyEdited] = useState(() => Boolean(asset?.id || asset?.name?.trim()))
   const [showRawJson, setShowRawJson] = useState(false)
+  const [allowCrossCompanyCustodian, setAllowCrossCompanyCustodian] = useState(false)
   const [saving, setSaving] = useState(false)
   const [duplicateState, setDuplicateState] = useState<{
     checking: boolean
@@ -223,7 +224,7 @@ export function AssetForm({
   )
   const selectedBranch = branches.find((branch) => branch.id === values.branchId)
   const selectedDepartment = departments.find((department) => department.id === values.departmentId)
-  const filteredEmployees = employees.filter(
+  const filteredEmployees = allowCrossCompanyCustodian ? employees : employees.filter(
     (employee) =>
       optionMatchesOrganizationScope(employee, {
         companyId: values.companyId,
@@ -232,6 +233,12 @@ export function AssetForm({
         departmentId: values.departmentId,
         departmentCode: selectedDepartment?.code,
       })
+  )
+  const selectedCustodian = employees.find((employee) => employee.id === values.custodianId)
+  const hasCrossCompanyCustodian = Boolean(
+    selectedCustodian?.companyId &&
+    values.companyId &&
+    selectedCustodian.companyId !== values.companyId
   )
   const filteredLocations = locations.filter((location) => location.branchId === values.branchId)
   const filteredModels = models.filter(
@@ -362,6 +369,31 @@ export function AssetForm({
       homeLocationId: "",
       currentLocationId: "",
     }))
+  }
+
+  function handleCrossCompanyCustodianToggle(checked: boolean) {
+    setAllowCrossCompanyCustodian(checked)
+    if (checked) return
+
+    setValues((current) => {
+      const custodian = employees.find((employee) => employee.id === current.custodianId)
+      if (employeeMatchesAssetScope(custodian, current)) return current
+      return { ...current, custodianId: "" }
+    })
+  }
+
+  function employeeMatchesAssetScope(employee: Option | undefined, current: AssetFormValues) {
+    if (!employee) return true
+    const branch = branches.find((item) => item.id === current.branchId)
+    const department = departments.find((item) => item.id === current.departmentId)
+
+    return optionMatchesOrganizationScope(employee, {
+      companyId: current.companyId,
+      branchId: current.branchId,
+      branchCode: branch?.code,
+      departmentId: current.departmentId,
+      departmentCode: department?.code,
+    })
   }
 
   function handleOwnershipTypeChange(nextOwnershipType: string) {
@@ -790,28 +822,51 @@ export function AssetForm({
             </SelectField>
             <p className="mt-1.5 text-xs text-muted-foreground">{t(`ownershipType_${ownershipType}_help`)}</p>
           </div>
-          <SelectField label={t("company")} value={values.companyId} required onChange={handleCompanyChange}>
-            <option value="">{t("selectCompany")}</option>
-            {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
-          </SelectField>
-          <SelectField label={t("branch")} value={values.branchId} required onChange={handleBranchChange}>
-            <option value="">{t("selectBranch")}</option>
-            {filteredBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
-          </SelectField>
+          <div>
+            <SelectField label={t("assetOwnerCompany")} value={values.companyId} required onChange={handleCompanyChange}>
+              <option value="">{t("selectCompany")}</option>
+              {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
+            </SelectField>
+            <p className="mt-1.5 text-xs text-muted-foreground">{t("assetOwnerCompanyHelp")}</p>
+          </div>
+          <div>
+            <SelectField label={t("assetOwnerBranch")} value={values.branchId} required onChange={handleBranchChange}>
+              <option value="">{t("selectBranch")}</option>
+              {filteredBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
+            </SelectField>
+            <p className="mt-1.5 text-xs text-muted-foreground">{t("assetOwnerBranchHelp")}</p>
+          </div>
           <SelectField label={t("department")} value={values.departmentId ?? ""} required={ownershipType !== "personal" && !isSoftwareLicense} onChange={(value) => setField("departmentId", value)}>
             <option value="">{t("selectDepartment")}</option>
             {filteredDepartments.map((department) => <option key={department.id} value={department.id}>{department.label}</option>)}
           </SelectField>
           {ownershipType === "personal" || isSoftwareLicense ? (
-            <SearchableSelect
-              label={isSoftwareLicense ? t("licenseAssignee") : t("custodian")}
-              value={values.custodianId ?? ""}
-              options={filteredEmployees}
-              placeholder={isSoftwareLicense ? t("selectLicenseAssignee") : t("selectCustodian")}
-              searchPlaceholder={tCommon("searchSelectPlaceholder")}
-              emptyLabel={tCommon("searchSelectNoResults")}
-              onChange={(value) => setField("custodianId", value)}
-            />
+            <div>
+              <SearchableSelect
+                label={isSoftwareLicense ? t("licenseAssignee") : t("custodian")}
+                value={values.custodianId ?? ""}
+                options={filteredEmployees}
+                placeholder={isSoftwareLicense ? t("selectLicenseAssignee") : t("selectCustodian")}
+                searchPlaceholder={tCommon("searchSelectPlaceholder")}
+                emptyLabel={tCommon("searchSelectNoResults")}
+                onChange={(value) => setField("custodianId", value)}
+              />
+              <label className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={allowCrossCompanyCustodian}
+                  onChange={(event) => handleCrossCompanyCustodianToggle(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <span>
+                  <span className="block font-medium text-foreground">{t("allowCrossCompanyCustodian")}</span>
+                  <span>{t("allowCrossCompanyCustodianHelp")}</span>
+                </span>
+              </label>
+              {hasCrossCompanyCustodian ? (
+                <p className="mt-2 text-xs font-medium text-warning">{t("crossCompanyCustodianWarning")}</p>
+              ) : null}
+            </div>
           ) : (
             <div className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
               <div className="font-medium text-foreground">{t("custodianNotRequired")}</div>

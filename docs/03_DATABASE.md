@@ -22,6 +22,14 @@
 - Admin/RBAC: `User`, `Role`, `Permission`, `UserRole`, `RolePermission`
 - System: `SystemLog`, `SystemSetting`, `Notification`, `NotificationUserState`
 
+## Asset Organization And Custody Semantics
+
+- `Asset.companyId` and `Asset.branchId` represent the asset owner/tag/reporting scope, not necessarily the current human holder's organization.
+- Asset tag generation uses the selected asset owner company and branch. `Company.assetTagCode` overrides the company code in generated tags when configured.
+- `Asset.custodianId` points to `Employee` and may intentionally reference an employee from another company or branch for cross-company custody cases.
+- Single and batch asset creation write `SystemLog.newValue.custodianScope` metadata when a custodian is present, including whether the custodian is outside the asset owner company or branch scope.
+- Post-registration custody movement should normally be represented by checkout, check-in, and transfer records. Edit asset master organization fields only when the asset ownership/tag/reporting scope itself changes.
+
 ## Environment Rules
 
 Use placeholders in committed documentation and keep real values in environment files only:

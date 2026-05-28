@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { generateAssetTags } from "@/lib/asset-tag"
+import { buildCustodianScopeAudit } from "@/lib/asset-custodian-scope"
 import {
   type AssetBatchCreateItem,
   assetBatchCreateAuditRecordId,
@@ -82,11 +83,29 @@ export async function POST(request: Request) {
         currentLocationId: asset.currentLocationId,
       } satisfies AssetBatchCreateItem
     })
+    const custodianIds = [...new Set(assetsToCreate.flatMap((asset) => (asset.custodianId ? [asset.custodianId] : [])))]
+    const custodians = custodianIds.length
+      ? await prisma.employee.findMany({
+          where: { id: { in: custodianIds } },
+          select: {
+            id: true,
+            companyId: true,
+            branchId: true,
+            company: { select: { code: true, nameTh: true } },
+            branch: { select: { code: true, name: true } },
+          },
+        })
+      : []
+    const custodianById = new Map(custodians.map((custodian) => [custodian.id, custodian]))
 
     const createdAssets = await prisma.$transaction(async (tx) => {
       const assets: Array<{ id: string; assetTag: string; name: string }> = []
 
       for (const assetInput of assetsToCreate) {
+        const custodianScopeAudit = buildCustodianScopeAudit(
+          assetInput,
+          assetInput.custodianId ? custodianById.get(assetInput.custodianId) : null
+        )
         const asset = await tx.asset.create({
           data: {
             ...assetInput,
@@ -126,7 +145,7 @@ export async function POST(request: Request) {
             action: "batch_create_item",
             module: "asset",
             recordId: asset.id,
-            newValue: JSON.stringify(assetInput),
+            newValue: JSON.stringify({ ...assetInput, custodianScope: custodianScopeAudit }),
             remark: "Asset created from batch create",
           },
         })

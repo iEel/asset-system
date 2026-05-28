@@ -6,6 +6,7 @@ import { errorResponse } from "@/lib/api-response"
 import { assetSchema } from "@/lib/validations/asset"
 import { generateAssetTag } from "@/lib/asset-tag"
 import { buildAssetOrderBy, buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
+import { buildCustodianScopeAudit } from "@/lib/asset-custodian-scope"
 
 const assetInclude = {
   category: { select: { code: true, name: true } },
@@ -58,6 +59,19 @@ export async function POST(request: NextRequest) {
         branchId: input.branchId,
         categoryId: input.categoryId,
       }))
+    const custodian = input.custodianId
+      ? await prisma.employee.findUnique({
+          where: { id: input.custodianId },
+          select: {
+            id: true,
+            companyId: true,
+            branchId: true,
+            company: { select: { code: true, nameTh: true } },
+            branch: { select: { code: true, name: true } },
+          },
+        })
+      : null
+    const custodianScopeAudit = buildCustodianScopeAudit(input, custodian)
 
     const asset = await prisma.asset.create({
       data: {
@@ -87,7 +101,7 @@ export async function POST(request: NextRequest) {
       action: "create",
       module: "asset",
       recordId: asset.id,
-      newValue: { ...input, assetTag },
+      newValue: { ...input, assetTag, custodianScope: custodianScopeAudit },
     })
 
     return NextResponse.json(asset, { status: 201 })
