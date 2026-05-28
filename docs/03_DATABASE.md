@@ -36,6 +36,13 @@
 - The UI labels this field as `Tax ID / Supplier Code` to support Thai supplier tax IDs while preserving legacy or internal supplier codes.
 - The field is not currently validated as a strict 13-digit Thai tax ID because suppliers may include foreign vendors or existing internal vendor codes.
 
+## Classification Master Data Semantics
+
+- `AssetCategory.code` remains unique across active and inactive rows because the SQL Server unique constraint does not ignore soft-deleted records.
+- Category deletion is a soft delete. Creating a category with the same code as an inactive row reactivates and updates that row instead of inserting a duplicate.
+- Categories referenced by assets or models cannot be deleted or deactivated. Editing custom-field templates on an active category remains allowed even when models or assets reference it.
+- Asset create and batch create store `Asset.modelId` when a category and brand uniquely identify one active model, preserving model photo fallback and model-specific reporting.
+
 ## Environment Rules
 
 Use placeholders in committed documentation and keep real values in environment files only:

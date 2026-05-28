@@ -9,6 +9,7 @@ import { AssetForm } from "@/components/assets/asset-form"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
+import { resolveModelIdForScope } from "@/lib/asset-model-selection"
 import { defaultAssetOwnershipType, normalizeAssetOwnershipType, assetOwnershipTypes } from "@/lib/asset-ownership"
 import { buildAssetBatchPreviewRows, buildAssetBatchReceiptCsv, createAssetBatchRows, findDuplicateBatchValues, parseBatchSerialPaste, type AssetBatchEditableRow } from "@/lib/asset-batch-create"
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
@@ -218,7 +219,12 @@ export function AssetBatchForm({
       withSuggestedName({
         ...current,
         categoryId,
-        modelId: "",
+        modelId: resolveModelIdForScope({
+          models,
+          categoryId,
+          brandId: current.brandId,
+          currentModelId: current.modelId,
+        }),
       })
     )
   }
@@ -228,16 +234,15 @@ export function AssetBatchForm({
     setReviewing(false)
     clearDuplicateCheck()
     setCommon((current) => {
-      const currentModel = models.find((model) => model.id === current.modelId)
-      const modelStillMatches =
-        Boolean(currentModel) &&
-        (!current.categoryId || currentModel?.categoryId === current.categoryId) &&
-        (!brandId || currentModel?.brandId === brandId)
-
       return withSuggestedName({
         ...current,
         brandId,
-        modelId: modelStillMatches ? current.modelId : "",
+        modelId: resolveModelIdForScope({
+          models,
+          categoryId: current.categoryId,
+          brandId,
+          currentModelId: current.modelId,
+        }),
       })
     })
   }

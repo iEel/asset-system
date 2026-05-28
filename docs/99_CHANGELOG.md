@@ -227,6 +227,8 @@ Connection settings อยู่ใน `.env`:
 - **NoAction** ทุก FK relation (SQL Server cyclic cascade fix)
 - **NVARCHAR** สำหรับทุก text field (รองรับภาษาไทย)
 - **Custom Fields** ใช้ EAV pattern (`custom_field_definitions` + `custom_field_values`) + JSON snapshot (`customFieldsJson` ใน assets table); UI ล่าสุดให้ตั้ง template ที่ Category และ render field อัตโนมัติใน Asset Form
+- **Category Soft Delete / Reactivation** `AssetCategory.code` ยัง unique ทั้ง active/inactive rows ตาม SQL Server constraint; ถ้าสร้างหมวดหมู่ด้วย code เดิมที่ inactive ระบบจะ reactivate row เดิมแทนการ insert ใหม่, block การ delete/deactivate เมื่อมี asset/model อ้างอิง, และยังอนุญาตให้แก้ custom-field template ของ category ที่ active อยู่
+- **Asset Model Selection On Create** หน้าเพิ่มทรัพย์สินแบบเดี่ยวและแบบกลุ่ม auto-select `modelId` เมื่อ Category + Brand match active model ได้เพียงรายการเดียว เพื่อให้รูปประจำรุ่นและข้อมูล model-level ถูกใช้งานโดยไม่ต้องเลือก model เองทุกครั้ง
 - **Asset/Model Photos** ใช้ตาราง `attachments` เดิม: `module=asset` สำหรับรูปทรัพย์สินจริง, `module=asset_model` สำหรับรูปกลางของรุ่น, ไฟล์อยู่ใต้ `UPLOAD_DIR`; หน้า Brand/Model แสดง thumbnail รุ่นในคอลัมน์ชื่อรุ่นโดยไม่เพิ่มคอลัมน์ใหม่ และ preview รูปใช้ `object-contain` เพื่อไม่ตัดรูป
 - **Asset Model Specs** เก็บใน field `asset_models.specs` เดิม แต่ UI ใหม่ serialize เป็น JSON ผ่าน `src/lib/model-specs.ts`; parser ยังรองรับ legacy plain text และใช้สรุปแบบ key/value ใน table/detail
 - **Purchase Documents** ใช้ตารางกลาง `purchase_documents` + `purchase_document_assets` เพื่อให้ PO/Invoice/ใบส่งของ/ประกัน 1 ใบผูกหลาย Asset ได้; ไฟล์ของเอกสารกลางเก็บใน `attachments` ด้วย `module=purchase_document` และยังรองรับ legacy `module=asset_purchase`
@@ -1097,6 +1099,8 @@ await logAudit({
 174. Asset Batch Create duplicate pre-check endpoint/UI with `/api/assets/batch/check-duplicates`, shared duplicate summary helper, client status banner, RBAC route inventory coverage, and build verification
 175. Asset Batch Create Excel paste support for Serial Number rows with parser tests, optional `ScannerTextInput.onPaste`, automatic row expansion up to 100 rows, duplicate-check reset, translated paste hint, and build verification
 176. Asset Batch Create receipt/export actions with created-asset receipt table, Copy Asset Tags action, UTF-8 BOM CSV download for Excel compatibility, CSV helper coverage, translated labels, and build verification
+177. Asset create and batch create model auto-selection with `resolveModelIdForScope`, category/brand change handlers, unique-model matching, preserved manual selection when multiple models exist, and regression tests
+178. Category master data soft-delete guard with inactive-code reactivation, referenced-category delete/deactivation blocking, active-category custom-field template editing, and regression tests
 
 ---
 

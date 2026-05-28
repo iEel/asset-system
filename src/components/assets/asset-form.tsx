@@ -10,6 +10,7 @@ import { FileDropzone } from "@/components/ui/file-dropzone"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
+import { resolveModelIdForScope } from "@/lib/asset-model-selection"
 import { assetOwnershipTypes, defaultAssetOwnershipType, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
 import { formatFileSize } from "@/lib/uploads"
@@ -409,23 +410,27 @@ export function AssetForm({
       withSuggestedName({
         ...current,
         categoryId,
-        modelId: "",
+        modelId: resolveModelIdForScope({
+          models,
+          categoryId,
+          brandId: current.brandId,
+          currentModelId: current.modelId,
+        }),
       })
     )
   }
 
   function handleBrandChange(brandId: string) {
     setValues((current) => {
-      const currentModel = models.find((model) => model.id === current.modelId)
-      const modelStillMatches =
-        Boolean(currentModel) &&
-        (!current.categoryId || currentModel?.categoryId === current.categoryId) &&
-        (!brandId || currentModel?.brandId === brandId)
-
       return withSuggestedName({
         ...current,
         brandId,
-        modelId: modelStillMatches ? current.modelId : "",
+        modelId: resolveModelIdForScope({
+          models,
+          categoryId: current.categoryId,
+          brandId,
+          currentModelId: current.modelId,
+        }),
       })
     })
   }

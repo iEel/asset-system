@@ -62,12 +62,14 @@ export async function PUT(request: NextRequest, context: CategoryRouteContext) {
     if (!existing) {
       return NextResponse.json({ error: "Category not found" }, { status: 404 })
     }
-    const blockReason = getCategoryDeleteBlockReason({
-      assets: existing._count.assets,
-      models: existing._count.models,
-    })
-    if (blockReason) {
-      return NextResponse.json({ error: blockReason }, { status: 409 })
+    if (!input.isActive) {
+      const blockReason = getCategoryDeleteBlockReason({
+        assets: existing._count.assets,
+        models: existing._count.models,
+      })
+      if (blockReason) {
+        return NextResponse.json({ error: blockReason }, { status: 409 })
+      }
     }
 
     const category = await prisma.assetCategory.update({
@@ -129,10 +131,25 @@ export async function DELETE(_request: NextRequest, context: CategoryRouteContex
     const { id } = await context.params
     const existing = await prisma.assetCategory.findFirst({
       where: { id, isActive: true },
+      include: {
+        _count: {
+          select: {
+            assets: true,
+            models: true,
+          },
+        },
+      },
     })
 
     if (!existing) {
       return NextResponse.json({ error: "Category not found" }, { status: 404 })
+    }
+    const blockReason = getCategoryDeleteBlockReason({
+      assets: existing._count.assets,
+      models: existing._count.models,
+    })
+    if (blockReason) {
+      return NextResponse.json({ error: blockReason }, { status: 409 })
     }
 
     const category = await prisma.assetCategory.update({
