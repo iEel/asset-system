@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { logAudit } from "@/lib/audit-log"
 import { searchLdapSyncUsers, type LdapConfigInput } from "@/lib/ldap-auth"
+import { resolveLdapSyncAuditMetadata, type LdapSyncSource } from "@/lib/ldap-sync-audit"
 import {
   buildLdapDeactivationImpacts,
   getActiveUserIdsForDeactivatedEmployees,
@@ -131,7 +132,7 @@ export async function previewLdapSync(settings?: LdapConfigInput): Promise<LdapS
 export async function applyLdapSync(
   userId?: string,
   settings?: LdapConfigInput,
-  options: { source?: "manual" | "scheduled" } = {}
+  options: { source?: LdapSyncSource } = {}
 ): Promise<LdapSyncApplyResult> {
   const resolvedSettings = settings ?? await loadLdapSettings()
   const preview = await previewLdapSync(resolvedSettings)
@@ -271,13 +272,14 @@ export async function applyLdapSync(
     },
   }
 
+  const auditMetadata = resolveLdapSyncAuditMetadata(userId, options.source)
   await logAudit({
-    userId,
+    userId: auditMetadata.userId,
     action: "ldap_sync",
     module: "employee",
     recordId: "ldap_sync",
     newValue: result,
-    remark: "LDAP employee sync applied",
+    remark: auditMetadata.remark,
   })
 
   return result

@@ -3,18 +3,28 @@ import type React from "react"
 import { getMessages, getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
+import {
+  buildSystemLogFilterHref,
+  resolveSystemLogQuickFilter,
+  systemLogQuickFilters,
+  type SystemLogQuickFilterKey,
+} from "@/lib/system-log-history"
 import { buildSystemLogRecordLabels } from "@/lib/system-log-record-labels"
 import { buildSystemLogPresentation } from "@/lib/system-log-presenter"
 import { formatDateTime } from "@/lib/utils"
 
 type LogsPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ module?: string; action?: string }>
+  searchParams: Promise<{ module?: string | string[]; action?: string | string[] }>
 }
 
 export default async function LogsPage({ params, searchParams }: LogsPageProps) {
   const { locale } = await params
-  const filters = await searchParams
+  const rawFilters = await searchParams
+  const filters = {
+    module: getSearchParam(rawFilters.module),
+    action: getSearchParam(rawFilters.action),
+  }
   await requirePagePermission(locale, "system", "view")
   const t = await getTranslations("systemLogPage")
   const messages = await getMessages()
@@ -37,6 +47,11 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
     return systemLogMessages[messageKey] ?? key
   }
   const displayLogs = logs.map((log) => buildSystemLogPresentation(log, recordLabels, locale, translate))
+  const activeQuickFilter = resolveSystemLogQuickFilter(filters)
+  const quickFilters: Array<{ key: SystemLogQuickFilterKey; labelKey: string }> = [
+    { key: "all", labelKey: "quickFilterAll" },
+    ...systemLogQuickFilters.map((filter) => ({ key: filter.key, labelKey: filter.labelKey })),
+  ]
 
   return (
     <div className="space-y-6">
@@ -46,6 +61,24 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
       </div>
 
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <div className="mb-4">
+          <div className="mb-2 text-xs font-medium text-muted-foreground">{t("quickFilters")}</div>
+          <div className="flex flex-wrap gap-2">
+            {quickFilters.map((filter) => (
+              <Link
+                key={filter.key}
+                href={buildSystemLogFilterHref(locale, filter.key)}
+                className={`inline-flex min-h-9 items-center rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+                  activeQuickFilter === filter.key
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
+              >
+                {t(filter.labelKey)}
+              </Link>
+            ))}
+          </div>
+        </div>
         <form className="grid grid-cols-1 gap-3 md:grid-cols-4" action={`/${locale}/admin/logs`}>
           <label>
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("module")}</span>
@@ -143,4 +176,8 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
 
 function Head({ children }: { children: React.ReactNode }) {
   return <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{children}</th>
+}
+
+function getSearchParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value
 }

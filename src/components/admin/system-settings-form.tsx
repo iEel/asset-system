@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { Loader2, PlugZap, Plus, Save, Trash2 } from "lucide-react"
+import { ExternalLink, History, Loader2, PlugZap, Plus, Save, Trash2 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
 import {
@@ -58,6 +59,7 @@ import {
 } from "@/lib/retention-policy"
 import { isSupportedCronExpression } from "@/lib/scheduled-job"
 import { getSettingsTabOrder, type SettingsTabId } from "@/lib/settings-information-architecture"
+import { buildSystemLogFilterHref, type LdapSyncHistoryItem } from "@/lib/system-log-history"
 import {
   parseWorkflowApprovalPolicy,
   workflowApprovalAuditCloseRequiredKey,
@@ -82,6 +84,7 @@ type SystemSettingsFormProps = {
     code: string
     name: string
   }>
+  ldapSyncHistory: LdapSyncHistoryItem[]
   labels: {
     key: string
     value: string
@@ -310,6 +313,13 @@ type SystemSettingsFormProps = {
     ldapSyncApplySuccess: string
     ldapSyncFailed: string
     ldapSyncRecommendation: string
+    ldapSyncHistoryTitle: string
+    ldapSyncHistoryDescription: string
+    ldapSyncHistoryEmpty: string
+    ldapSyncHistoryViewAll: string
+    ldapSyncHistoryRunBy: string
+    ldapSyncHistoryStartedAt: string
+    ldapSyncHistoryBlockers: string
     ldapStepConnection: string
     ldapStepLoginMapping: string
     ldapStepProvisioning: string
@@ -473,7 +483,7 @@ function formatReviewValue(key: string, value: string | undefined) {
   return normalized || "-"
 }
 
-export function SystemSettingsForm({ settings, categories, labels }: SystemSettingsFormProps) {
+export function SystemSettingsForm({ settings, categories, ldapSyncHistory, labels }: SystemSettingsFormProps) {
   const router = useRouter()
   const params = useParams<{ locale?: string }>()
   const locale = typeof params.locale === "string" ? params.locale : "th"
@@ -1775,6 +1785,7 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
           ) : null}
           <SyncPreviewPanel labels={labels} preview={syncPreview} locale={locale} />
           </WizardStep>
+          <LdapSyncHistoryPanel labels={labels} history={ldapSyncHistory} locale={locale} />
         </div>
       </div>
       ) : null}
@@ -1870,6 +1881,96 @@ export function SystemSettingsForm({ settings, categories, labels }: SystemSetti
       </div>
     </form>
   )
+}
+
+function LdapSyncHistoryPanel({
+  labels,
+  history,
+  locale,
+}: {
+  labels: SystemSettingsFormProps["labels"]
+  history: LdapSyncHistoryItem[]
+  locale: string
+}) {
+  return (
+    <div className="rounded-md border border-border bg-background p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <History className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">{labels.ldapSyncHistoryTitle}</h3>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">{labels.ldapSyncHistoryDescription}</p>
+        </div>
+        <Link
+          href={buildSystemLogFilterHref(locale, "ldap_sync")}
+          className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:w-auto"
+        >
+          <ExternalLink className="h-4 w-4" />
+          {labels.ldapSyncHistoryViewAll}
+        </Link>
+      </div>
+
+      {history.length === 0 ? (
+        <p className="mt-4 rounded-md border border-dashed border-border bg-muted/20 px-3 py-4 text-sm text-muted-foreground">
+          {labels.ldapSyncHistoryEmpty}
+        </p>
+      ) : (
+        <div className="mt-4 divide-y divide-border">
+          {history.map((item) => (
+            <article key={item.id} className="py-3 first:pt-0 last:pb-0">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-foreground">
+                    {labels.ldapSyncHistoryStartedAt}: {formatHistoryDateTime(item.createdAt, locale)}
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {labels.ldapSyncHistoryRunBy}: {item.actorLabel}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 lg:w-[34rem]">
+                  <MiniMetric label={labels.ldapSyncTotal} value={item.total} locale={locale} />
+                  <MiniMetric label={labels.ldapSyncAppliedCreated} value={item.created} locale={locale} />
+                  <MiniMetric label={labels.ldapSyncAppliedUpdated} value={item.updated} locale={locale} />
+                  <MiniMetric label={labels.ldapSyncAppliedDeactivated} value={item.deactivated} locale={locale} />
+                  <MiniMetric label={labels.ldapSyncAppliedUsersDeactivated} value={item.deactivatedUsers} locale={locale} />
+                </div>
+              </div>
+              {item.blockerCount > 0 ? (
+                <div className="mt-2 text-xs font-medium text-warning">
+                  {labels.ldapSyncHistoryBlockers}: {formatHistoryNumber(item.blockerCount, locale)}
+                </div>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MiniMetric({ label, value, locale }: { label: string; value: number; locale: string }) {
+  return (
+    <div className="rounded-md border border-border px-2 py-2">
+      <div className="truncate text-[11px] text-muted-foreground">{label}</div>
+      <div className="mt-1 text-base font-semibold text-foreground">{formatHistoryNumber(value, locale)}</div>
+    </div>
+  )
+}
+
+function formatHistoryDateTime(value: string, locale = "th") {
+  return new Intl.DateTimeFormat(getIntlLocale(locale), {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value))
+}
+
+function formatHistoryNumber(value: number, locale: string) {
+  return value.toLocaleString(getIntlLocale(locale))
+}
+
+function getIntlLocale(locale: string) {
+  return locale === "en" ? "en-US" : "th-TH"
 }
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {

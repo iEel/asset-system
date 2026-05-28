@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { SystemSettingsForm } from "@/components/admin/system-settings-form"
 import { systemSettingDefaults } from "@/lib/system-setting-defaults"
+import { buildLdapSyncHistoryItems } from "@/lib/system-log-history"
 
 type SettingsPageProps = {
   params: Promise<{ locale: string }>
@@ -14,7 +15,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
   const t = await getTranslations("systemSettingsPage")
   const tCommon = await getTranslations("common")
 
-  const [savedSettings, categories] = await Promise.all([
+  const [savedSettings, categories, ldapSyncLogs] = await Promise.all([
     prisma.systemSetting.findMany({
       orderBy: { key: "asc" },
     }),
@@ -23,7 +24,14 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
       select: { id: true, code: true, name: true },
       orderBy: { code: "asc" },
     }),
+    prisma.systemLog.findMany({
+      where: { module: "employee", action: "ldap_sync", recordId: "ldap_sync" },
+      include: { user: { select: { username: true, displayName: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
   ])
+  const ldapSyncHistory = buildLdapSyncHistoryItems(ldapSyncLogs)
   const savedByKey = new Map(savedSettings.map((setting) => [setting.key, setting]))
   const defaultKeys = new Set(systemSettingDefaults.map((setting) => setting.key))
   const settings = [
@@ -46,6 +54,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           description: setting.description,
         }))}
         categories={categories}
+        ldapSyncHistory={ldapSyncHistory}
         labels={{
           key: t("key"),
           value: t("value"),
@@ -274,6 +283,13 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           ldapSyncApplySuccess: t("ldapSyncApplySuccess"),
           ldapSyncFailed: t("ldapSyncFailed"),
           ldapSyncRecommendation: t("ldapSyncRecommendation"),
+          ldapSyncHistoryTitle: t("ldapSyncHistoryTitle"),
+          ldapSyncHistoryDescription: t("ldapSyncHistoryDescription"),
+          ldapSyncHistoryEmpty: t("ldapSyncHistoryEmpty"),
+          ldapSyncHistoryViewAll: t("ldapSyncHistoryViewAll"),
+          ldapSyncHistoryRunBy: t("ldapSyncHistoryRunBy"),
+          ldapSyncHistoryStartedAt: t("ldapSyncHistoryStartedAt"),
+          ldapSyncHistoryBlockers: t("ldapSyncHistoryBlockers"),
           ldapStepConnection: t("ldapStepConnection"),
           ldapStepLoginMapping: t("ldapStepLoginMapping"),
           ldapStepProvisioning: t("ldapStepProvisioning"),
