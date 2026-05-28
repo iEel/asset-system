@@ -171,6 +171,15 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
         subtitle={t("subtitle")}
         createHref={`/${locale}/master-data/brands/new`}
         createLabel={t("createBrand")}
+        actions={
+          <Link
+            href={`/${locale}/master-data/brands/models/new`}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            <Plus className="h-4 w-4" />
+            {t("createModel")}
+          </Link>
+        }
       />
 
       <div className="grid gap-3 lg:grid-cols-3">
