@@ -12,12 +12,14 @@ const t = (key: string) => {
     "action.update": "แก้ไข",
     "action.checkin": "รับคืน",
     "action.upload": "อัปโหลด",
+    "action.batch_create": "สร้างแบบชุด",
     "action.deliver_notification_digest": "ส่งสรุปแจ้งเตือน",
     "module.setting": "ตั้งค่าระบบ",
     "module.asset": "ทรัพย์สิน",
     "module.brand": "ยี่ห้อ/รุ่น",
     "module.notification": "การแจ้งเตือน",
     "record.system_settings": "การตั้งค่าระบบ",
+    "record.asset_batch_create": "สร้างทรัพย์สินแบบชุด",
     "record.notification_digest": "สรุปแจ้งเตือน",
     "field.ldap_enabled": "เปิดใช้งาน LDAP",
     "field.ldap_url": "LDAP URL",
@@ -145,4 +147,32 @@ test("formats notification digest records without exposing raw reference ids", (
   assert.equal(result.remark, null)
   assert.deepEqual(result.changes, [])
   assert.doesNotMatch(result.summary, /notification-digest/)
+})
+
+test("treats asset batch create logs as synthetic records", () => {
+  const log: SystemLogPresenterInput = {
+    id: "log-5",
+    action: "batch_create",
+    module: "asset",
+    recordId: "asset_batch_create",
+    oldValue: null,
+    newValue: JSON.stringify({
+      created: 3,
+      assetIds: [
+        "11111111-1111-4111-8111-111111111111",
+        "22222222-2222-4222-8222-222222222222",
+        "33333333-3333-4333-8333-333333333333",
+      ],
+      assetTags: ["TAG-001", "TAG-002", "TAG-003"],
+    }),
+    remark: "Asset batch created",
+    createdAt: new Date("2026-05-28T09:00:00.000Z"),
+    user: { username: "admin", displayName: "System Administrator" },
+  }
+
+  const result = buildSystemLogPresentation(log, labels, "th", t)
+
+  assert.equal(result.recordLabel, "สร้างทรัพย์สินแบบชุด")
+  assert.equal(result.href, null)
+  assert.doesNotMatch(result.summary, /asset_batch_create/)
 })

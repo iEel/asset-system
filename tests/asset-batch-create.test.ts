@@ -7,6 +7,7 @@ import {
   buildAssetBatchDuplicateCheckSummary,
   buildAssetBatchDuplicateMessage,
   buildAssetBatchCreateItems,
+  assetBatchCreateAuditRecordId,
   createAssetBatchRows,
   defaultAssetBatchRowCount,
   findDuplicateBatchValues,
@@ -45,6 +46,11 @@ const validCommon = {
   customFieldsJson: "",
   isActive: true,
 }
+
+test("asset batch summary audit record id fits the system log column", () => {
+  assert.equal(assetBatchCreateAuditRecordId, "asset_batch_create")
+  assert.ok(assetBatchCreateAuditRecordId.length <= 100)
+})
 
 test("assetBatchCreateSchema accepts common asset data and row-specific serials", () => {
   const parsed = assetBatchCreateSchema.parse({

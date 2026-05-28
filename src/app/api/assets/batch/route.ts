@@ -5,6 +5,7 @@ import { errorResponse } from "@/lib/api-response"
 import { generateAssetTags } from "@/lib/asset-tag"
 import {
   type AssetBatchCreateItem,
+  assetBatchCreateAuditRecordId,
   buildAssetBatchCreateItems,
   buildAssetBatchDuplicateMessage,
   findDuplicateBatchValues,
@@ -136,9 +137,10 @@ export async function POST(request: Request) {
           userId: user.id,
           action: "batch_create",
           module: "asset",
-          recordId: assets.map((asset) => asset.id).join(","),
+          recordId: assetBatchCreateAuditRecordId,
           newValue: JSON.stringify({
             created: assets.length,
+            assetIds: assets.map((asset) => asset.id),
             assetTags: assets.map((asset) => asset.assetTag),
             purchaseDocumentIds: uniquePurchaseDocumentIds,
           }),

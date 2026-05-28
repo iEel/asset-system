@@ -8,6 +8,7 @@ type CreatedAssetSummary = {
 }
 
 export const defaultAssetBatchRowCount = 2
+export const assetBatchCreateAuditRecordId = "asset_batch_create"
 
 export type AssetBatchCreateItem = AssetInput & {
   assetTag: string

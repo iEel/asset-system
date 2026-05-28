@@ -172,7 +172,7 @@ export function isUuid(value: string) {
 }
 
 export function isSyntheticRecordId(value: string) {
-  return value === "system_settings" || value === "ldap_sync" || value === "bulk_move" || value === "bulk_update"
+  return value === "system_settings" || value === "ldap_sync" || value === "bulk_move" || value === "bulk_update" || value === "asset_batch_create"
 }
 
 function getRecordLabel(log: SystemLogPresenterInput, moduleKey: string, labels: SystemLogRecordLabels, t: Translate) {
