@@ -15,6 +15,13 @@
 - `src/app/api/**/route.ts` contains API endpoints.
 - `src/middleware.ts` handles locale routing.
 
+## Dashboard Layout And Scroll Ownership
+
+- The authenticated dashboard shell in `src/app/[locale]/(dashboard)/layout.tsx` is fixed to the viewport with `fixed inset-0`.
+- The dashboard `<main>` area is the vertical scroll owner through `overflow-y-auto`.
+- The browser document should not become a second vertical scroll owner on dashboard pages.
+- Sidebar navigation may scroll inside its own nav container when the menu is taller than the viewport.
+
 ## API Protection Pattern
 
 API routes should use the established helpers from `src/lib/auth-utils.ts`:

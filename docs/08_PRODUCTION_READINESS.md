@@ -48,6 +48,7 @@ To restore a file, move it from `.archive/YYYY-MM-DD/<relativePath>` back to `UP
 
 - [ ] `npm run verify` passes.
 - [ ] `npm run build` passes.
+- [ ] Dashboard pages show a single vertical scrollbar: content scrolls inside the app `<main>` area, and the browser document does not show a second page scrollbar.
 - [ ] Browser security headers are present for app routes and `/sw.js`.
 - [ ] Public QR Base URL is configured before printing labels.
 - [ ] RBAC route matrix test passes.

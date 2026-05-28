@@ -13,7 +13,7 @@ export default function DashboardLayout({
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   return (
-    <div className="flex h-dvh max-h-dvh max-w-full overflow-hidden bg-background">
+    <div className="fixed inset-0 flex max-w-full overflow-hidden bg-background">
       {/* Sidebar */}
       <Sidebar
         collapsed={sidebarCollapsed}
