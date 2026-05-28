@@ -30,6 +30,12 @@
 - Single and batch asset creation write `SystemLog.newValue.custodianScope` metadata when a custodian is present, including whether the custodian is outside the asset owner company or branch scope.
 - Post-registration custody movement should normally be represented by checkout, check-in, and transfer records. Edit asset master organization fields only when the asset ownership/tag/reporting scope itself changes.
 
+## Supplier Identifier Semantics
+
+- `Supplier.code` is the unique supplier identifier stored in the existing `suppliers.code` column (`NVARCHAR(20)`).
+- The UI labels this field as `Tax ID / Supplier Code` to support Thai supplier tax IDs while preserving legacy or internal supplier codes.
+- The field is not currently validated as a strict 13-digit Thai tax ID because suppliers may include foreign vendors or existing internal vendor codes.
+
 ## Environment Rules
 
 Use placeholders in committed documentation and keep real values in environment files only:

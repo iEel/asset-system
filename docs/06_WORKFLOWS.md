@@ -49,5 +49,7 @@
 
 ## Admin Operations
 
+- Brand / Model master data exposes Create Brand and Create Model actions at the top of the page, with the Create Model action repeated in the model list section for users already reviewing models.
+- Supplier master data treats the supplier code field as `Tax ID / Supplier Code`; Thai labels emphasize `เลขประจำตัวผู้เสียภาษี / รหัสผู้ขาย` while still allowing legacy supplier codes.
 - Manage users, roles, permissions, workflow policy, notifications, LDAP settings, scheduler settings, readiness checks, storage governance, and system logs.
 - System logs present readable record labels and before/after summaries where available.
