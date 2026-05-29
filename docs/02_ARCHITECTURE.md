@@ -17,10 +17,12 @@
 
 ## Dashboard Layout And Scroll Ownership
 
-- The authenticated dashboard shell in `src/app/[locale]/(dashboard)/layout.tsx` is fixed to the viewport with `fixed inset-0`.
+- The authenticated dashboard layout in `src/app/[locale]/(dashboard)/layout.tsx` loads the current session user server-side, redirects unauthenticated users to login, and passes the user into `src/components/layout/dashboard-shell.tsx`.
+- `DashboardShell` is the client shell for sidebar, topbar, and content state; it is fixed to the viewport with `fixed inset-0`.
 - The dashboard `<main>` area is the vertical scroll owner through `overflow-y-auto`.
 - The browser document should not become a second vertical scroll owner on dashboard pages.
 - Sidebar navigation may scroll inside its own nav container when the menu is taller than the viewport.
+- Sidebar navigation is filtered with `src/lib/navigation-permissions.ts` before rendering so users do not see menu items they cannot open.
 
 ## API Protection Pattern
 

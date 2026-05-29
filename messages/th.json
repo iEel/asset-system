@@ -188,6 +188,13 @@
     "loginFailed": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
     "sessionExpired": "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่"
   },
+  "accessDeniedPage": {
+    "title": "ไม่มีสิทธิ์เข้าหน้านี้",
+    "description": "บัญชีของคุณยังไม่มีสิทธิ์สำหรับเมนูหรือการทำงานนี้ หากต้องใช้งานจริงให้ติดต่อผู้ดูแลระบบเพื่อปรับ Role หรือ Permission",
+    "requestedPermission": "สิทธิ์ที่ต้องใช้: {permission}",
+    "backDashboard": "กลับแดชบอร์ด",
+    "openWorkCenter": "เปิดศูนย์งาน"
+  },
   "dashboard": {
     "title": "แดชบอร์ด",
     "totalAssets": "ทรัพย์สินทั้งหมด",
@@ -2836,6 +2843,9 @@
     "ldapUserDnTemplate": "User DN Template",
     "ldapAutoProvision": "สร้างบัญชีในระบบอัตโนมัติ",
     "ldapDefaultRole": "Role เริ่มต้น",
+    "ldapDefaultRolePlaceholder": "เลือก Role เริ่มต้น",
+    "ldapDefaultRoleHelp": "Role นี้จะถูกกำหนดให้ผู้ใช้ที่สร้างจาก LDAP ครั้งแรก หลังระบบพบ Employee active ที่ตรงกับ LDAP email หรือ employeeID",
+    "ldapDefaultRoleMissing": "ไม่พบ Role “{role}” ในรายการที่เปิดใช้งาน กรุณาเลือก Role ใหม่ก่อนเปิดใช้ auto-provision",
     "ldapSyncStrategy": "แนวทาง LDAP Sync",
     "ldapSyncStrategyDescription": "เตรียมค่าควบคุมการ sync ข้อมูลพนักงานและผู้ใช้จาก LDAP แบบปลอดภัย",
     "ldapSyncEnabled": "เปิดใช้ Sync",

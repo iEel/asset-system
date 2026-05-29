@@ -16,8 +16,11 @@ Use this checklist before go-live, before a production schema change, and before
 - [ ] Initial admin password has been changed.
 - [ ] Production admin accounts are named users, not shared credentials.
 - [ ] LDAP/AD settings are verified if enabled.
+- [ ] LDAP/AD default auto-provision role is selected from an active role and not a stale role key.
 - [ ] LDAP sync starts in preview/manual mode.
 - [ ] LDAP scheduled sync safety threshold is configured before automatic deactivation is enabled.
+- [ ] Restricted users do not see unauthorized sidebar menus, and direct restricted page URLs show the access denied page instead of a generic 404.
+- [ ] Topbar avatar/name show the signed-in user identity for local and LDAP users.
 
 ## Database
 

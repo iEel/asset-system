@@ -15,7 +15,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
   const t = await getTranslations("systemSettingsPage")
   const tCommon = await getTranslations("common")
 
-  const [savedSettings, categories, ldapSyncLogs] = await Promise.all([
+  const [savedSettings, categories, ldapSyncLogs, roles] = await Promise.all([
     prisma.systemSetting.findMany({
       orderBy: { key: "asc" },
     }),
@@ -30,8 +30,17 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
+    prisma.role.findMany({
+      where: { isActive: true },
+      select: { name: true, displayName: true, displayNameTh: true },
+      orderBy: { displayName: "asc" },
+    }),
   ])
   const ldapSyncHistory = buildLdapSyncHistoryItems(ldapSyncLogs)
+  const defaultRoleOptions = roles.map((role) => ({
+    id: role.name,
+    label: `${role.displayNameTh || role.displayName} · ${role.name}`,
+  }))
   const savedByKey = new Map(savedSettings.map((setting) => [setting.key, setting]))
   const defaultKeys = new Set(systemSettingDefaults.map((setting) => setting.key))
   const settings = [
@@ -54,6 +63,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           description: setting.description,
         }))}
         categories={categories}
+        defaultRoleOptions={defaultRoleOptions}
         ldapSyncHistory={ldapSyncHistory}
         labels={{
           key: t("key"),
@@ -239,6 +249,11 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           ldapUserDnTemplate: t("ldapUserDnTemplate"),
           ldapAutoProvision: t("ldapAutoProvision"),
           ldapDefaultRole: t("ldapDefaultRole"),
+          ldapDefaultRolePlaceholder: t("ldapDefaultRolePlaceholder"),
+          ldapDefaultRoleHelp: t("ldapDefaultRoleHelp"),
+          ldapDefaultRoleMissing: t("ldapDefaultRoleMissing", { role: "{role}" }),
+          searchSelectPlaceholder: tCommon("searchSelectPlaceholder"),
+          searchSelectNoResults: tCommon("searchSelectNoResults"),
           ldapSyncStrategy: t("ldapSyncStrategy"),
           ldapSyncStrategyDescription: t("ldapSyncStrategyDescription"),
           ldapSyncEnabled: t("ldapSyncEnabled"),

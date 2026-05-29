@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation"
 import { ExternalLink, History, Loader2, PlugZap, Plus, Save, Trash2 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import {
   assetLabelLayouts,
   assetLabelPresets,
@@ -83,6 +84,10 @@ type SystemSettingsFormProps = {
     id: string
     code: string
     name: string
+  }>
+  defaultRoleOptions: Array<{
+    id: string
+    label: string
   }>
   ldapSyncHistory: LdapSyncHistoryItem[]
   labels: {
@@ -269,6 +274,11 @@ type SystemSettingsFormProps = {
     ldapUserDnTemplate: string
     ldapAutoProvision: string
     ldapDefaultRole: string
+    ldapDefaultRolePlaceholder: string
+    ldapDefaultRoleHelp: string
+    ldapDefaultRoleMissing: string
+    searchSelectPlaceholder: string
+    searchSelectNoResults: string
     ldapSyncStrategy: string
     ldapSyncStrategyDescription: string
     ldapSyncEnabled: string
@@ -483,7 +493,13 @@ function formatReviewValue(key: string, value: string | undefined) {
   return normalized || "-"
 }
 
-export function SystemSettingsForm({ settings, categories, ldapSyncHistory, labels }: SystemSettingsFormProps) {
+export function SystemSettingsForm({
+  settings,
+  categories,
+  defaultRoleOptions,
+  ldapSyncHistory,
+  labels,
+}: SystemSettingsFormProps) {
   const router = useRouter()
   const params = useParams<{ locale?: string }>()
   const locale = typeof params.locale === "string" ? params.locale : "th"
@@ -1490,7 +1506,7 @@ export function SystemSettingsForm({ settings, categories, ldapSyncHistory, labe
       ) : null}
 
       {activeTab === "ldap-login" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="overflow-visible rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.ldapSettings} description={labels.ldapSettingsDescription} />
         <div className="space-y-5 px-4 py-4">
           <WizardStep number={1} title={labels.ldapStepConnection}>
@@ -1604,19 +1620,35 @@ export function SystemSettingsForm({ settings, categories, ldapSyncHistory, labe
 
           <WizardStep number={3} title={labels.ldapStepProvisioning}>
             <div className="grid gap-4 lg:grid-cols-2">
-              <ToggleField
-                label={labels.ldapAutoProvision}
-                checked={getValue("ldap_auto_provision") === "true"}
-                onChange={(checked) => setBooleanValue("ldap_auto_provision", checked)}
-              />
-              <Field label={labels.ldapDefaultRole} htmlFor="ldap-default-role">
-                <input
-                  id="ldap-default-role"
+              <div className="space-y-2">
+                <span className="block text-sm font-medium text-foreground">{labels.ldapAutoProvision}</span>
+                <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground">
+                  <span>{getValue("ldap_auto_provision") === "true" ? labels.enabled : labels.disabled}</span>
+                  <input
+                    type="checkbox"
+                    checked={getValue("ldap_auto_provision") === "true"}
+                    onChange={(event) => setBooleanValue("ldap_auto_provision", event.target.checked)}
+                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                  />
+                </label>
+              </div>
+              <div className="space-y-2">
+                <SearchableSelect
+                  label={labels.ldapDefaultRole}
                   value={getValue("ldap_default_role")}
-                  onChange={(event) => setValue("ldap_default_role", event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  options={defaultRoleOptions}
+                  placeholder={labels.ldapDefaultRolePlaceholder}
+                  searchPlaceholder={labels.searchSelectPlaceholder}
+                  emptyLabel={labels.searchSelectNoResults}
+                  onChange={(value) => setValue("ldap_default_role", value)}
                 />
-              </Field>
+                <p className="text-xs leading-relaxed text-muted-foreground">{labels.ldapDefaultRoleHelp}</p>
+                {getValue("ldap_default_role") && !defaultRoleOptions.some((option) => option.id === getValue("ldap_default_role")) ? (
+                  <p className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs font-medium text-warning">
+                    {labels.ldapDefaultRoleMissing.replace("{role}", getValue("ldap_default_role"))}
+                  </p>
+                ) : null}
+              </div>
             </div>
           </WizardStep>
         </div>

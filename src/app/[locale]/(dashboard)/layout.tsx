@@ -1,47 +1,30 @@
-"use client"
-
-import { useState } from "react"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Topbar } from "@/components/layout/topbar"
+import { redirect } from "next/navigation"
+import { DashboardShell } from "@/components/layout/dashboard-shell"
+import { getSessionUser } from "@/lib/auth-utils"
 
 export default function DashboardLayout({
   children,
+  params,
 }: {
   children: React.ReactNode
+  params: Promise<{ locale: string }>
 }) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  return <DashboardLayoutContent params={params}>{children}</DashboardLayoutContent>
+}
 
-  return (
-    <div className="fixed inset-0 flex max-w-full overflow-hidden bg-background">
-      {/* Sidebar */}
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        mobileOpen={mobileSidebarOpen}
-        onMobileClose={() => setMobileSidebarOpen(false)}
-      />
+async function DashboardLayoutContent({
+  children,
+  params,
+}: {
+  children: React.ReactNode
+  params: Promise<{ locale: string }>
+}) {
+  const { locale } = await params
+  const user = await getSessionUser()
 
-      {/* Main Area */}
-      <div className="flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden">
-        {/* Topbar */}
-        <Topbar
-          onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
-          onMobileMenuToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-        />
+  if (!user) {
+    redirect(`/${locale}/login`)
+  }
 
-        {/* Main Content */}
-        <main className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
-          {children}
-        </main>
-      </div>
-
-      {/* Mobile overlay */}
-      {mobileSidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
-          onClick={() => setMobileSidebarOpen(false)}
-        />
-      )}
-    </div>
-  )
+  return <DashboardShell user={user}>{children}</DashboardShell>
 }

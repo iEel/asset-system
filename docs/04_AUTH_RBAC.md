@@ -11,6 +11,7 @@ The system supports local credentials login and optional LDAP/AD login through t
 - When a service bind account is configured, the app searches the user entry first, then binds as that user's DN with the submitted password.
 - When `ldap_auto_provision` is enabled, the app creates a local `User` only after matching an active `Employee` by LDAP email or `employeeID`. The created user is linked to that employee through `employeeId`.
 - `ldap_default_role` must name an existing active role such as `employee`; otherwise LDAP-authenticated users without an existing app user are rejected.
+- In System Settings > AD/LDAP Login, the default role field is a searchable selector populated from active database roles. If the saved role key no longer exists, the UI keeps the saved value visible and warns the operator before saving.
 - If LDAP authentication succeeds but auto-provision cannot find a matching active Employee, the login is rejected and the server logs the skipped provisioning reason. Keep Employee email and LDAP `employeeID` aligned with AD.
 
 This employee link is required because SQL Server unique indexes do not allow multiple `NULL` values for `users.employeeId` in this schema. Creating unlinked LDAP users would collide with existing local users that have no employee link.
@@ -46,6 +47,14 @@ Permissions follow the established `module:action` pattern, for example:
 - `maintenance:create`
 - `disposal:approve`
 - `setting:edit`
+
+## Dashboard Navigation And Unauthorized Pages
+
+- Dashboard sidebar items declare required permissions and are filtered before rendering. Users should not see menu entries for modules they cannot access.
+- The `system_admin` role bypasses sidebar filtering and keeps full navigation visibility.
+- Page-level guards use `requirePagePermission()` and redirect unauthorized users to `/{locale}/access-denied?module=...&action=...`.
+- The access denied page explains that the user has no permission and links back to Dashboard and Work Center. This is the fallback for direct URL entry or stale bookmarks.
+- The topbar user menu reads the active session user for avatar initials, display name, and secondary email/username text.
 
 ## API Protection
 

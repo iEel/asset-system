@@ -188,6 +188,13 @@
     "loginFailed": "Invalid username or password",
     "sessionExpired": "Session expired. Please sign in again."
   },
+  "accessDeniedPage": {
+    "title": "You do not have access to this page",
+    "description": "Your account does not have permission for this menu or action. Contact an administrator if you need access for your work.",
+    "requestedPermission": "Required permission: {permission}",
+    "backDashboard": "Back to Dashboard",
+    "openWorkCenter": "Open Work Center"
+  },
   "dashboard": {
     "title": "Dashboard",
     "totalAssets": "Total Assets",
@@ -2836,6 +2843,9 @@
     "ldapUserDnTemplate": "User DN Template",
     "ldapAutoProvision": "Auto-provision app users",
     "ldapDefaultRole": "Default role",
+    "ldapDefaultRolePlaceholder": "Select default role",
+    "ldapDefaultRoleHelp": "This role is assigned to first-time LDAP-created users after the system matches an active Employee by LDAP email or employeeID.",
+    "ldapDefaultRoleMissing": "Role “{role}” is not active or does not exist. Select a valid role before enabling auto-provision.",
     "ldapSyncStrategy": "LDAP Sync Strategy",
     "ldapSyncStrategyDescription": "Prepare safe controls for syncing employee and user records from LDAP.",
     "ldapSyncEnabled": "Enable Sync",

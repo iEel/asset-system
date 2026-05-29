@@ -12,6 +12,8 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Review storage governance summary.
 - [ ] Create or edit a role permission set.
 - [ ] Confirm a user without admin permission cannot access admin menus.
+- [ ] Confirm AD/LDAP Login default role selector shows active roles and warns if the saved role key is missing.
+- [ ] Confirm topbar avatar/name match the signed-in admin user.
 
 ## asset_admin / IT Staff
 
@@ -67,7 +69,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] View own assigned assets.
 - [ ] Open assigned asset detail if permitted.
 - [ ] Confirm write actions are not available.
-- [ ] Confirm admin routes are blocked.
+- [ ] Confirm admin menus are hidden and direct admin URLs show the access denied page.
 
 ## viewer
 
@@ -91,7 +93,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] A user without maintenance permission cannot create or close maintenance jobs.
 - [ ] A user without disposal permission cannot approve disposal.
 - [ ] A user without audit permission cannot close audit rounds.
-- [ ] A user without admin permission cannot access system settings or logs.
+- [ ] A user without admin permission does not see admin menus and sees the access denied page for direct system settings/log URLs.
 - [ ] Direct API access returns unauthorized or forbidden for restricted actions.
 - [ ] A user cannot review an audit finding they reported if segregation-of-duties rules apply.
 

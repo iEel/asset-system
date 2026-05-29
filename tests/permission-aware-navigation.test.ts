@@ -1,0 +1,64 @@
+import assert from "node:assert/strict"
+import test from "node:test"
+
+import { buildAccessDeniedHref } from "../src/lib/access-denied.ts"
+import { filterNavigationItemsByPermission } from "../src/lib/navigation-permissions.ts"
+import { getUserDisplayLabel, getUserInitial, getUserSecondaryLabel } from "../src/lib/user-display.ts"
+
+const user = {
+  id: "user-1",
+  name: "Veerapon Laoharotkul",
+  email: "veerapon.l@sonic.co.th",
+  roles: ["employee"],
+  permissions: ["asset:view", "dashboard:view"],
+}
+
+test("filters navigation items by the current user's permissions", () => {
+  const filtered = filterNavigationItemsByPermission(
+    [
+      {
+        labelKey: "assetManagement",
+        children: [
+          { labelKey: "assetRegister", href: "/th/assets", permission: { module: "asset", action: "view" } },
+          { labelKey: "addAsset", href: "/th/assets/new", permission: { module: "asset", action: "create" } },
+        ],
+      },
+      { labelKey: "systemSetting", href: "/th/admin/settings", permission: { module: "setting", action: "view" } },
+    ],
+    user
+  )
+
+  assert.deepEqual(filtered, [
+    {
+      labelKey: "assetManagement",
+      children: [
+        { labelKey: "assetRegister", href: "/th/assets", permission: { module: "asset", action: "view" } },
+      ],
+    },
+  ])
+})
+
+test("system admin still sees all permissioned navigation items", () => {
+  const filtered = filterNavigationItemsByPermission(
+    [
+      { labelKey: "systemSetting", href: "/th/admin/settings", permission: { module: "setting", action: "view" } },
+      { labelKey: "rolePermission", href: "/th/admin/roles", permission: { module: "role", action: "view" } },
+    ],
+    { ...user, roles: ["system_admin"], permissions: [] }
+  )
+
+  assert.equal(filtered.length, 2)
+})
+
+test("builds a localized access denied fallback URL for direct route hits", () => {
+  assert.equal(
+    buildAccessDeniedHref({ locale: "th", module: "setting", action: "view" }),
+    "/th/access-denied?module=setting&action=view"
+  )
+})
+
+test("formats topbar user identity from the active session user", () => {
+  assert.equal(getUserInitial(user), "V")
+  assert.equal(getUserDisplayLabel(user), "Veerapon Laoharotkul")
+  assert.equal(getUserSecondaryLabel(user), "veerapon.l@sonic.co.th")
+})

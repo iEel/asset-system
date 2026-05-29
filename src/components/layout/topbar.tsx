@@ -16,6 +16,8 @@ import {
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { GlobalSearch } from "@/components/layout/global-search"
+import { getUserDisplayLabel, getUserInitial, getUserSecondaryLabel } from "@/lib/user-display"
+import type { SessionUser } from "@/lib/auth-utils"
 
 type NotificationItem = {
   key: string
@@ -30,9 +32,11 @@ type NotificationSummary = {
 }
 
 export function Topbar({
+  user,
   onToggleSidebar,
   onMobileMenuToggle,
 }: {
+  user: SessionUser
   onToggleSidebar: () => void
   onMobileMenuToggle: () => void
 }) {
@@ -46,6 +50,8 @@ export function Topbar({
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [notificationSummary, setNotificationSummary] = useState<NotificationSummary>({ total: 0, items: [] })
+  const userDisplayLabel = getUserDisplayLabel(user)
+  const userSecondaryLabel = getUserSecondaryLabel(user)
 
   useEffect(() => {
     let cancelled = false
@@ -219,16 +225,18 @@ export function Topbar({
             aria-label="User menu"
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-white">
-              A
+              {getUserInitial(user)}
             </div>
-            <span className="hidden text-sm font-medium sm:inline">Admin</span>
+            <span className="hidden max-w-36 truncate text-sm font-medium sm:inline">{userDisplayLabel}</span>
             <ChevronDown size={16} className="hidden sm:block" />
           </button>
           {userMenuOpen && (
-            <div className="absolute right-0 top-full z-50 mt-1 w-[calc(100vw-2rem)] max-w-[12rem] rounded-md border border-border bg-surface py-1 shadow-lg">
+            <div className="absolute right-0 top-full z-50 mt-1 w-[calc(100vw-2rem)] max-w-[16rem] rounded-md border border-border bg-surface py-1 shadow-lg">
               <div className="border-b border-border px-4 py-2">
-                <p className="text-sm font-medium">System Admin</p>
-                <p className="text-xs text-muted-foreground">admin@company.com</p>
+                <p className="truncate text-sm font-medium">{userDisplayLabel}</p>
+                {userSecondaryLabel ? (
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{userSecondaryLabel}</p>
+                ) : null}
               </div>
               <button
                 onClick={() => signOut({ callbackUrl: `/${locale}/login` })}

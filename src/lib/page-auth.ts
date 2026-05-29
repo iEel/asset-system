@@ -1,5 +1,6 @@
-import { notFound, redirect } from "next/navigation"
+import { redirect } from "next/navigation"
 import { getSessionUser, hasPermission } from "@/lib/auth-utils"
+import { buildAccessDeniedHref } from "@/lib/access-denied"
 
 export async function requirePagePermission(
   locale: string,
@@ -13,7 +14,7 @@ export async function requirePagePermission(
   }
 
   if (!hasPermission(user, module, action)) {
-    notFound()
+    redirect(buildAccessDeniedHref({ locale, module, action }))
   }
 
   return user
