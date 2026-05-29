@@ -56,6 +56,7 @@ Permissions follow the established `module:action` pattern, for example:
 - The access denied page explains that the user has no permission and links back to Dashboard and Work Center. This is the fallback for direct URL entry or stale bookmarks.
 - The topbar user menu reads the active session user for avatar initials, display name, and secondary email/username text.
 - `/{locale}/my-assets` is an authenticated self-service page for linked employee users. It does not grant Asset Register access; it filters server-side to `assets.custodianId = session.user.employeeId` and attachment previews are limited to image evidence on those owned active assets.
+- Default post-login routing is role-aware through `src/lib/default-home.ts`. Linked employee users with only self-service permissions land on `/{locale}/my-assets`; users with overview permissions such as asset, maintenance, audit, report, admin, or master-data view continue to land on `/{locale}/dashboard`. Direct `/dashboard` requests from self-service employee users redirect to My Assets before global dashboard metrics are queried.
 
 ## API Protection
 
