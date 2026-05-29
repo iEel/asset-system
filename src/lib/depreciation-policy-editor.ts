@@ -195,6 +195,30 @@ export function sanitizeResidualPercentInput(value: string, fallback: number) {
   return clampNumber(parsed, 0, 90)
 }
 
+export function sanitizePurchasePriceInput(value: string) {
+  const cleaned = value.replace(/[^\d.]/g, "")
+  if (cleaned === "") return ""
+
+  const decimalIndex = cleaned.indexOf(".")
+  const rawInteger = decimalIndex === -1 ? cleaned : cleaned.slice(0, decimalIndex)
+  const rawFraction = decimalIndex === -1 ? "" : cleaned.slice(decimalIndex + 1).replace(/\./g, "")
+  const integer = normalizeIntegerString(rawInteger)
+
+  if (decimalIndex === -1) return integer
+  return `${integer}.${rawFraction}`
+}
+
+export function formatPurchasePriceInput(value: string) {
+  const sanitized = sanitizePurchasePriceInput(value)
+  if (sanitized === "") return ""
+
+  const hasDecimal = sanitized.includes(".")
+  const [integer, fraction = ""] = sanitized.split(".")
+  const formattedInteger = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+
+  return hasDecimal ? `${formattedInteger}.${fraction}` : formattedInteger
+}
+
 function findCategoryForRule(rule: DepreciationPolicyRule, categories: DepreciationPolicyEditorCategory[]) {
   const match = rule.match.trim().toLowerCase()
   return categories.find((category) => category.code.toLowerCase() === match || category.name.toLowerCase() === match)
@@ -206,7 +230,8 @@ function buildStableGroupId(rule: DepreciationPolicyRule, index: number) {
 }
 
 function stripEditorMetadata(rule: LegacyPolicyRule): LabeledPolicyRule {
-  const { sourceOrder: _sourceOrder, ...serializedRule } = rule
+  const serializedRule = { ...rule }
+  delete serializedRule.sourceOrder
   return serializedRule
 }
 
@@ -222,4 +247,9 @@ function dedupeKnownCategoryIds(categoryIds: string[], categories: DepreciationP
 
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
+}
+
+function normalizeIntegerString(value: string) {
+  const normalized = value.replace(/^0+(?=\d)/, "")
+  return normalized === "" ? "0" : normalized
 }

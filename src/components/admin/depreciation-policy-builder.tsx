@@ -6,6 +6,8 @@ import { parseDepreciationPolicySetting, type DepreciationPolicy } from "@/lib/a
 import {
   buildDepreciationPolicyEditorState,
   buildDepreciationPolicyPreview,
+  formatPurchasePriceInput,
+  sanitizePurchasePriceInput,
   sanitizeResidualPercentInput,
   sanitizeUsefulLifeMonthsInput,
   serializeDepreciationPolicyEditorState,
@@ -285,15 +287,13 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
       <div className="rounded-md border border-border bg-background p-4">
         <h3 className="text-base font-semibold text-foreground">{labels.depreciationPreviewTitle}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{labels.depreciationPreviewDescription}</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label className="space-y-1 text-sm font-medium text-foreground">
-            <span>{labels.depreciationPreviewPurchasePrice}</span>
-            <input type="number" min={0} step={0.01} value={previewPurchasePrice} onChange={(event) => setPreviewPurchasePrice(event.target.value)} className={inputClassName} />
-          </label>
-          <label className="space-y-1 text-sm font-medium text-foreground">
-            <span>{labels.depreciationPreviewPurchaseDate}</span>
-            <input type="date" value={previewPurchaseDate} onChange={(event) => setPreviewPurchaseDate(event.target.value)} className={inputClassName} />
-          </label>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <PreviewInputField label={labels.depreciationPreviewPurchasePrice}>
+            <input type="text" inputMode="decimal" value={formatPurchasePriceInput(previewPurchasePrice)} onChange={(event) => setPreviewPurchasePrice(sanitizePurchasePriceInput(event.target.value))} className={previewInputClassName} />
+          </PreviewInputField>
+          <PreviewInputField label={labels.depreciationPreviewPurchaseDate}>
+            <input type="date" value={previewPurchaseDate} onChange={(event) => setPreviewPurchaseDate(event.target.value)} className={previewInputClassName} />
+          </PreviewInputField>
           <PreviewMetric label={labels.depreciationPreviewMonthly} value={formatMoney(preview.monthlyDepreciation)} />
           <PreviewMetric label={labels.depreciationPreviewNetBook} value={formatMoney(preview.netBookValue)} />
           <PreviewMetric label={labels.depreciationPreviewAccumulated} value={formatMoney(preview.accumulatedDepreciation)} />
@@ -328,6 +328,7 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
 }
 
 const inputClassName = "h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+const previewInputClassName = "mt-1 h-7 w-full bg-transparent text-base font-semibold text-foreground outline-none focus:text-primary"
 const compactButtonClassName = "inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
 
 function ReadonlyFact({ label, value }: { label: string; value: string }) {
@@ -341,10 +342,19 @@ function ReadonlyFact({ label, value }: { label: string; value: string }) {
 
 function PreviewMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-border bg-muted/20 px-3 py-2">
+    <div className="min-h-[66px] rounded-md border border-border bg-muted/20 px-3 py-2">
       <div className="text-xs font-medium text-muted-foreground">{label}</div>
       <div className="mt-1 text-base font-semibold text-foreground">{value}</div>
     </div>
+  )
+}
+
+function PreviewInputField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block min-h-[66px] rounded-md border border-border bg-background px-3 py-2">
+      <span className="block text-xs font-medium text-muted-foreground">{label}</span>
+      {children}
+    </label>
   )
 }
 

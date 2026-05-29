@@ -4,8 +4,10 @@ import test from "node:test"
 import {
   buildDepreciationPolicyEditorState,
   buildDepreciationPolicyPreview,
+  formatPurchasePriceInput,
   percentToRate,
   rateToPercent,
+  sanitizePurchasePriceInput,
   sanitizeResidualPercentInput,
   sanitizeUsefulLifeMonthsInput,
   serializeDepreciationPolicyEditorState,
@@ -196,6 +198,15 @@ test("sanitizes structured policy numeric input before serialization", () => {
   assert.equal(sanitizeResidualPercentInput("10.5", 5), 10.5)
   assert.equal(sanitizeResidualPercentInput("100", 5), 90)
   assert.equal(sanitizeResidualPercentInput("abc", 5), 5)
+})
+
+test("formats preview purchase price with thousands separators while preserving a numeric value", () => {
+  assert.equal(sanitizePurchasePriceInput("120,000.50 บาท"), "120000.50")
+  assert.equal(sanitizePurchasePriceInput("00120000"), "120000")
+  assert.equal(sanitizePurchasePriceInput("."), "0.")
+  assert.equal(formatPurchasePriceInput("120000"), "120,000")
+  assert.equal(formatPurchasePriceInput("120000.50"), "120,000.50")
+  assert.equal(formatPurchasePriceInput("0."), "0.")
 })
 
 test("preview uses purchase date as the depreciation start date", () => {
