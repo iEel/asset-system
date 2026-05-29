@@ -218,21 +218,21 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(180px,220px)_minmax(0,1fr)]">
         <aside className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm lg:sticky lg:top-4 lg:self-start">
-          <div className="border-b border-border px-4 py-4">
-            <h2 className="text-base font-semibold text-foreground">{t("brandNavigatorTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("brandNavigatorSubtitle")}</p>
+          <div className="border-b border-border px-3 py-3">
+            <h2 className="text-sm font-semibold text-foreground">{t("brandNavigatorTitle")}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{t("brandNavigatorSubtitle")}</p>
           </div>
           <div className="space-y-1 p-2">
             <Link
               href={`${basePath}?${buildBrandModelQueryString(listState, { modelBrandId: "", modelPage: 1 })}`}
               aria-current={!selectedBrand ? "page" : undefined}
-              className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm transition-colors ${
+              className={`flex items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-sm transition-colors ${
                 !selectedBrand ? "border-primary bg-primary/10 text-primary" : "border-transparent text-foreground hover:bg-accent"
               }`}
             >
-              <span className="font-medium">{t("allBrandNavigator")}</span>
+              <span className="min-w-0 truncate font-medium">{t("allBrandNavigator")}</span>
               <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{duplicateModelSource.length}</span>
             </Link>
             <div className="max-h-[60vh] space-y-1 overflow-y-auto pr-1">
@@ -243,7 +243,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                     key={brand.id}
                     href={`${basePath}?${buildBrandModelQueryString(listState, { modelBrandId: brand.id, modelPage: 1 })}`}
                     aria-current={isSelected ? "page" : undefined}
-                    className={`block rounded-md border px-3 py-2 transition-colors ${
+                    className={`block rounded-md border px-2.5 py-2 transition-colors ${
                       isSelected ? "border-primary bg-primary/10" : "border-transparent hover:bg-accent"
                     }`}
                   >
@@ -259,17 +259,17 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
             </div>
           </div>
           {selectedBrand ? (
-            <div className="border-t border-border p-3">
+            <div className="border-t border-border p-2.5">
               <div className="mb-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
                 {t("selectedBrandActions")}
               </div>
               <div className="flex items-center gap-2">
                 <Link
                   href={`/${locale}/master-data/brands/${selectedBrand.id}/edit`}
-                  className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+                  className="inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-sm font-medium transition-colors hover:bg-accent"
                 >
                   <Edit className="h-4 w-4" />
-                  {t("editSelectedBrand")}
+                  <span className="truncate">{t("editSelectedBrand")}</span>
                 </Link>
                 <BrandDeleteButton id={selectedBrand.id} />
               </div>
@@ -421,7 +421,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                           href={`/${locale}/master-data/brands/models/${model.id}/edit`}
                           label={`${tCommon("edit")}: ${model.name}`}
                         >
-                          <td className="min-w-64 px-4 py-3 font-medium text-foreground">
+                          <td className="min-w-[220px] px-4 py-3 font-medium text-foreground">
                             <div className="flex items-center gap-3">
                               <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">
                                 {photo && canPreviewPhoto ? (
@@ -441,12 +441,12 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                             </div>
                           </td>
                           {!selectedBrand ? (
-                            <td className="min-w-40 px-4 py-3 text-muted-foreground">{model.brand.name}</td>
+                            <td className="min-w-32 px-4 py-3 text-muted-foreground">{model.brand.name}</td>
                           ) : null}
-                          <td className="min-w-48 px-4 py-3 text-muted-foreground">
+                          <td className="min-w-44 px-4 py-3 text-muted-foreground">
                             {model.category.code} - {model.category.name}
                           </td>
-                          <td className="min-w-64 max-w-xl px-4 py-3 text-muted-foreground">
+                          <td className="min-w-[220px] max-w-lg px-4 py-3 text-muted-foreground">
                             <span className="line-clamp-2">{summarizeModelSpecs(model.specs) || "-"}</span>
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{model._count.assets}</td>

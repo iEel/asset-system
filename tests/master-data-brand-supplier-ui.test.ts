@@ -16,7 +16,7 @@ test("brand model page uses a brand navigator beside the model workspace", () =>
   assert.match(source, /brandNavigatorItems/)
   assert.match(source, /t\("brandNavigatorTitle"\)/)
   assert.match(source, /t\("modelWorkspaceTitle"\)/)
-  assert.match(source, /lg:grid-cols-\[minmax\(240px,320px\)_minmax\(0,1fr\)\]/)
+  assert.match(source, /lg:grid-cols-\[minmax\(180px,220px\)_minmax\(0,1fr\)\]/)
   assert.match(source, /href=\{`\$\{basePath\}\?\$\{buildBrandModelQueryString\(listState, \{ modelBrandId: brand\.id, modelPage: 1 \}\)\}`\}/)
 
   const navigatorIndex = source.indexOf('t("brandNavigatorTitle")')
