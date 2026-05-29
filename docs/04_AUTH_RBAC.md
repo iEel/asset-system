@@ -55,6 +55,7 @@ Permissions follow the established `module:action` pattern, for example:
 - Page-level guards use `requirePagePermission()` and redirect unauthorized users to `/{locale}/access-denied?module=...&action=...`.
 - The access denied page explains that the user has no permission and links back to Dashboard and Work Center. This is the fallback for direct URL entry or stale bookmarks.
 - The topbar user menu reads the active session user for avatar initials, display name, and secondary email/username text.
+- `/{locale}/my-assets` is an authenticated self-service page for linked employee users. It does not grant Asset Register access; it filters server-side to `assets.custodianId = session.user.employeeId` and attachment previews are limited to image evidence on those owned active assets.
 
 ## API Protection
 

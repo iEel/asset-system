@@ -67,9 +67,13 @@ Use this checklist with realistic master data and at least one asset in each imp
 ## employee
 
 - [ ] View own assigned assets.
+- [ ] Open My Assets and confirm only assets held by the signed-in employee appear.
+- [ ] Confirm My Assets does not show purchase price, supplier, accounting, disposal, audit, or admin-only fields.
+- [ ] Confirm My Assets thumbnails load for assets held by the signed-in employee even when the user does not have broad `asset:view`.
 - [ ] Open assigned asset detail if permitted.
 - [ ] Confirm write actions are not available.
 - [ ] Confirm admin menus are hidden and direct admin URLs show the access denied page.
+- [ ] Confirm an employee without `asset:view` still cannot open the full Asset Register menu.
 
 ## viewer
 
