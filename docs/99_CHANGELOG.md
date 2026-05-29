@@ -268,6 +268,7 @@ Connection settings อยู่ใน `.env`:
 - **Scheduler production guide** `DEPLOYMENT_UBUNTU_CLOUDFLARE.md` แนะนำให้ใช้ `asset-system-scheduler.service` + `asset-system-scheduler.timer` แทน crontab/PM timer แยก โดย service เป็น `Type=oneshot`, โหลด `/var/www/asset-system/env/asset-system.env`, override `AUTH_URL/NEXTAUTH_URL` ไป `http://127.0.0.1:3000` เฉพาะ job หลังบ้าน, ใช้ `MAINTENANCE_PM_GENERATION_TOKEN`, `LDAP_SYNC_TOKEN`, และ `NOTIFICATION_DIGEST_TOKEN`, มีคำสั่ง manual start และตรวจ log ผ่าน `journalctl`
 - **Notification Delivery Channel v1** `src/lib/notification-delivery.ts` รองรับ generic webhook สำหรับ daily digest ผ่าน `NOTIFICATION_DIGEST_WEBHOOK_URL`; `deliverDailyNotificationDigest()` ยังสร้าง in-app notification เหมือนเดิม และนับ `deliveredExternal/failedExternal` แยกเพื่อใช้ติดตาม channel ภายนอก เช่น Teams/LINE gateway ในอนาคต
 - **LDAP offboarding guard** LDAP Sync preview/apply คืน `deactivationImpacts` สำหรับพนักงานที่หายจาก AD แต่ยังถือ active assets หรือมี app user active; หน้า `/admin/settings` แสดง impact panel พร้อม asset ตัวอย่างและลิงก์ไป `/assets?custodianId=...` เพื่อทำรับคืน/โอนย้ายอย่างมีหลักฐาน และเมื่อเปิด `ldap_sync_deactivate_missing=true` ตอน Apply จะปิด `Employee` เป็น inactive/resigned พร้อมปิด `User.isActive=false` ของบัญชีที่ผูกกับพนักงานนั้น; scheduled sync มี safety threshold `ldap_sync_max_scheduled_deactivations` เพื่อ block รอบอัตโนมัติถ้าจะปิดพนักงานเกินจำนวนที่กำหนด
+- **LDAP login auto-provision employee linking** LDAP login auto-provision ตอนนี้หา active Employee จาก LDAP email หรือ `employeeID` ก่อนสร้าง app user และผูก `users.employeeId` กับ Employee นั้น เพื่อกัน SQL Server unique constraint `users_employeeId_key` ชนค่า `NULL` ซ้ำจาก local users เดิม; `ldap_default_role` ยังต้องเป็น role ที่มีอยู่จริง เช่น `employee`
 - **Standard verification scripts** เพิ่ม `npm test` ผ่าน `scripts/run-tests.mjs` เพื่อรันทุกไฟล์ `*.test.ts|*.test.mjs|*.test.js` ใน `tests/` และ `npm run verify` ผ่าน `scripts/verify.mjs` เพื่อรัน `npm run lint`, `npm test`, และ `npm run build` ต่อกันแบบ fail-fast; README อัปเดตให้ใช้คำสั่งนี้ก่อน deployment หรือ handoff commit
 - **RBAC API route inventory** `src/lib/rbac-route-matrix.ts` เพิ่ม `classifyApiRouteProtection()` และ public exception สำหรับ Auth.js endpoint; test ใหม่ scan ทุก `src/app/api/**/route.ts` เพื่อกัน route ใหม่หลุดจากหมวด `matrix`, `protected`, `custom_auth`, หรือ `public_exception`
 - **Docs Hygiene** `README.md` ถูกปรับจาก template Next.js เป็น entry point ของโปรเจกต์จริง ครอบคลุม doc map, stack, local setup, env สำคัญ, scripts, verification, module URLs, และ deployment pointer; `.gitignore` เพิ่ม `.next-dev*.log` และ `.tmp-next*.log` เพื่อกัน log ชั่วคราวจาก dev/build หลุดเข้า commit
@@ -543,7 +544,7 @@ LDAP_BIND_DN="CN=ldap-reader,OU=Service Accounts,DC=company,DC=local"
 LDAP_BIND_PASSWORD="change-me"
 LDAP_USER_FILTER="(&(objectClass=user)(sAMAccountName={username}))"
 LDAP_AUTO_PROVISION=false
-LDAP_DEFAULT_ROLE="asset_user"
+LDAP_DEFAULT_ROLE="employee"
 LDAP_SYNC_ENABLED=false
 LDAP_SYNC_BASE_DN=""
 LDAP_SYNC_FILTER="(&(objectCategory=person)(objectClass=user)(employeeID=*)(company=*)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))"
@@ -560,7 +561,7 @@ LDAP_DOMAIN="COMPANY"
 LDAP_USER_DN_TEMPLATE="CN={username},OU=Users,DC=company,DC=local"
 ```
 
-If `LDAP_AUTO_PROVISION=true`, the default role in `LDAP_DEFAULT_ROLE` must exist in `/admin/roles`; otherwise LDAP-authenticated users without an existing app account will be rejected.
+If `LDAP_AUTO_PROVISION=true`, the default role in `LDAP_DEFAULT_ROLE` must exist in `/admin/roles`; otherwise LDAP-authenticated users without an existing app account will be rejected. Auto-provisioned users are linked to an active Employee matched by LDAP email or `employeeID`; keep Employee master data aligned with AD before enabling this in production.
 
 ### Scheduler / Notification / Readiness Environment
 
@@ -593,6 +594,7 @@ Current AD mapping rules:
 
 - Login username uses `sAMAccountName`, so users can sign in with the User logon name only and do not need to append `@domain`.
 - Employee code uses LDAP `employeeID`, which is the key for asset custodian mapping and audit ownership.
+- LDAP login auto-provision matches active Employee records by email or `employeeID` before creating a local app user; this prevents unlinked users from colliding with SQL Server's unique `users.employeeId` constraint on `NULL`.
 - LDAP `company` maps to Company by code/name.
 - `distinguishedName` OU order maps as `OU[0]` = Department and `OU[1]` = Branch, e.g. `CN=Sonsawan Kongmani,OU=Account,OU=LeamChabang,DC=soniclocal,DC=com` maps Department `Account` and Branch `LeamChabang`.
 - If a DN has only one OU, the sync treats that OU as Branch and falls back Department from LDAP `department` or `ldap_sync_default_department_code`.
@@ -1101,6 +1103,7 @@ await logAudit({
 176. Asset Batch Create receipt/export actions with created-asset receipt table, Copy Asset Tags action, UTF-8 BOM CSV download for Excel compatibility, CSV helper coverage, translated labels, and build verification
 177. Asset create and batch create model auto-selection with `resolveModelIdForScope`, category/brand change handlers, unique-model matching, preserved manual selection when multiple models exist, and regression tests
 178. Category master data soft-delete guard with inactive-code reactivation, referenced-category delete/deactivation blocking, active-category custom-field template editing, and regression tests
+179. LDAP login auto-provision links new app users to active Employee records matched by LDAP email or `employeeID`, avoiding SQL Server unique `users.employeeId` collisions with `NULL` local users
 
 ---
 

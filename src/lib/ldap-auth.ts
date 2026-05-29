@@ -4,6 +4,7 @@ export type LdapProfile = {
   username: string
   displayName: string
   email: string | null
+  employeeCode: string | null
 }
 
 type LdapConfig = {
@@ -108,7 +109,7 @@ export async function authenticateLdapUser(username: string, password: string, s
         scope: "sub",
         sizeLimit: 1,
         filter: config.userFilter.replaceAll("{username}", escapeLdapFilterValue(username)),
-        attributes: ["dn", "displayName", "cn", "mail", "userPrincipalName", "sAMAccountName"],
+        attributes: ["dn", "employeeID", "displayName", "cn", "mail", "userPrincipalName", "sAMAccountName"],
       })
       const entry = searchEntries[0]
 
@@ -128,7 +129,7 @@ export async function authenticateLdapUser(username: string, password: string, s
         scope: "sub",
         sizeLimit: 1,
         filter: config.userFilter.replaceAll("{username}", escapeLdapFilterValue(username)),
-        attributes: ["dn", "displayName", "cn", "mail", "userPrincipalName", "sAMAccountName"],
+        attributes: ["dn", "employeeID", "displayName", "cn", "mail", "userPrincipalName", "sAMAccountName"],
       })
       const entry = searchEntries[0]
 
@@ -141,6 +142,7 @@ export async function authenticateLdapUser(username: string, password: string, s
       username,
       displayName: username,
       email: null,
+      employeeCode: null,
     }
   } catch {
     return null
@@ -289,6 +291,7 @@ function profileFromEntry(username: string, entry: Entry): LdapProfile {
     username: ldapUsername,
     displayName: getEntryString(entry, "displayName") ?? getEntryString(entry, "cn") ?? username,
     email: getEntryString(entry, "mail") ?? getEntryString(entry, "userPrincipalName"),
+    employeeCode: getEntryString(entry, "employeeID")?.trim() || null,
   }
 }
 

@@ -2,6 +2,12 @@ import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { prisma } from "@/lib/db"
 import { authenticateLdapUser, getLdapConfig, type LdapConfigInput } from "@/lib/ldap-auth"
+import {
+  buildLdapEmployeeLookup,
+  buildLdapUserLookup,
+  shouldCreateLdapUser,
+  type LdapProvisionProfile,
+} from "@/lib/ldap-user-provisioning"
 import { ldapSettingKeys } from "@/lib/system-setting-defaults"
 import bcrypt from "bcryptjs"
 import { randomUUID } from "node:crypto"
@@ -98,14 +104,10 @@ async function getLdapSettings(): Promise<LdapConfigInput> {
   return Object.fromEntries(settings.map((setting) => [setting.key, setting.value])) as LdapConfigInput
 }
 
-async function resolveLdapAppUser(profile: { username: string; displayName: string; email: string | null }, settings: LdapConfigInput) {
+async function resolveLdapAppUser(profile: LdapProvisionProfile, settings: LdapConfigInput) {
+  const linkedEmployee = await resolveLdapEmployee(profile)
   const existing = await prisma.user.findFirst({
-    where: {
-      OR: [
-        { username: profile.username },
-        ...(profile.email ? [{ email: profile.email }] : []),
-      ],
-    },
+    where: buildLdapUserLookup({ profile, employeeId: linkedEmployee?.id }),
     include: userWithAccess,
   })
 
@@ -128,12 +130,17 @@ async function resolveLdapAppUser(profile: { username: string; displayName: stri
   if (!ldapConfig.autoProvision) {
     return null
   }
+  if (!shouldCreateLdapUser(linkedEmployee?.id)) {
+    console.warn(`LDAP auto-provision skipped for ${profile.username}: no active Employee match`)
+    return null
+  }
 
   const defaultRole = await prisma.role.findUnique({
     where: { name: ldapConfig.defaultRole },
     select: { id: true },
   })
   if (!defaultRole) {
+    console.warn(`LDAP auto-provision skipped for ${profile.username}: default role ${ldapConfig.defaultRole} not found`)
     return null
   }
 
@@ -142,6 +149,7 @@ async function resolveLdapAppUser(profile: { username: string; displayName: stri
     data: {
       username: profile.username,
       passwordHash,
+      employeeId: linkedEmployee?.id,
       displayName: profile.displayName,
       email: profile.email,
       lastLoginAt: new Date(),
@@ -153,6 +161,16 @@ async function resolveLdapAppUser(profile: { username: string; displayName: stri
   })
 
   return created
+}
+
+async function resolveLdapEmployee(profile: LdapProvisionProfile) {
+  const where = buildLdapEmployeeLookup(profile)
+  if (!where) return null
+
+  return prisma.employee.findFirst({
+    where,
+    select: { id: true },
+  })
 }
 
 async function toSessionUser(user: NonNullable<Awaited<ReturnType<typeof resolveLdapAppUser>>>) {

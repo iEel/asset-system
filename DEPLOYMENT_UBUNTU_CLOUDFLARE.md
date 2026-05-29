@@ -203,6 +203,7 @@ sudo chmod 640 /var/www/asset-system/env/asset-system.env
 - ถ้าใช้ named instance เหมือนเครื่อง dev ปัจจุบัน ให้ใส่ `DB_INSTANCE=<DB_INSTANCE>`; runtime จะไม่ใช้ `DB_PORT` เมื่อมี `DB_INSTANCE`
 - ถ้าใช้ static TCP port ใน production ให้ปล่อย `DB_INSTANCE=` ว่าง แล้วใช้ `DB_PORT=1433`; ในกรณีนี้ให้เปลี่ยน `DATABASE_URL` เป็นรูปแบบ `sqlserver://<DB_SERVER>:1433;database=<DB_NAME>;...`
 - ถ้า `LDAP_AUTO_PROVISION=true`, `LDAP_DEFAULT_ROLE` ต้องเป็น role ที่มีอยู่จริง เช่น `employee`, `viewer`, หรือ role ที่สร้างเองในหน้า Roles; ค่า `asset_user` จะใช้ได้เฉพาะเมื่อสร้าง role นี้แล้ว
+- LDAP auto-provision จะสร้าง app user เฉพาะเมื่อเจอ Employee ที่ active จาก LDAP email หรือ `employeeID` เพื่อผูก `users.employeeId` ให้ชัดเจนและไม่ชน unique constraint ของ SQL Server กับค่า `NULL`; ก่อนเปิดใช้งานจริงให้ Sync/ตรวจ Employee master data ให้ email และ employee code ตรงกับ AD
 - `UPLOAD_DIR` ควรเป็น absolute path เพื่อไม่ผูกกับ `.next/standalone` และ user `assetapp` ต้องอ่าน/เขียนได้ เพราะหน้า Storage Governance จะ scan ไฟล์จริงใน directory นี้
 - `UPLOAD_SCAN_COMMAND` เป็น optional scanner hook สำหรับไฟล์ที่ระบบเขียนลง disk แล้ว เช่น `/usr/bin/clamscan`; ถ้าเว้นว่างระบบจะข้าม scan
 - `UPLOAD_SCAN_ARGS` เป็น optional argument template โดยใช้ `{file}` แทน path ไฟล์ เช่น `--no-summary {file}`; ถ้าเว้นว่างระบบจะส่ง path ไฟล์เป็น argument เดียว
