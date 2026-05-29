@@ -181,6 +181,20 @@ export function rateToPercent(rate: number | undefined) {
   return Math.round((rate ?? 0) * 10000) / 100
 }
 
+export function sanitizeUsefulLifeMonthsInput(value: string, fallback: number) {
+  if (value.trim() === "") return fallback
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  return clampNumber(Math.round(parsed), 1, 600)
+}
+
+export function sanitizeResidualPercentInput(value: string, fallback: number) {
+  if (value.trim() === "") return fallback
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  return clampNumber(parsed, 0, 90)
+}
+
 function findCategoryForRule(rule: DepreciationPolicyRule, categories: DepreciationPolicyEditorCategory[]) {
   const match = rule.match.trim().toLowerCase()
   return categories.find((category) => category.code.toLowerCase() === match || category.name.toLowerCase() === match)
@@ -204,4 +218,8 @@ function dedupeKnownCategoryIds(categoryIds: string[], categories: DepreciationP
     uniqueIds.push(categoryId)
   }
   return uniqueIds
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
 }

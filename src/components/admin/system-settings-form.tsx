@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft, ArrowRight, ExternalLink, History, Loader2, Pencil, PlugZap, Plus, Save, Search, Trash2, X } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
+import { DepreciationPolicyBuilder } from "@/components/admin/depreciation-policy-builder"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import {
   assetLabelLayouts,
@@ -231,6 +232,41 @@ type SystemSettingsFormProps = {
     accountingDepreciationPolicy: string
     accountingDepreciationPolicyDescription: string
     invalidAccountingDepreciationPolicy: string
+    depreciationPolicyBuilderTitle: string
+    depreciationPolicyBuilderDescription: string
+    depreciationMethod: string
+    depreciationMethodStraightLine: string
+    depreciationStartBasis: string
+    depreciationStartBasisPurchaseDate: string
+    depreciationDefaultUsefulLifeMonths: string
+    depreciationDefaultResidualPercent: string
+    depreciationPolicyGroups: string
+    depreciationPolicyGroupName: string
+    depreciationUsefulLifeMonths: string
+    depreciationResidualPercent: string
+    depreciationAvailableCategories: string
+    depreciationSelectedCategories: string
+    depreciationSearchCategories: string
+    depreciationAddGroup: string
+    depreciationRemoveGroup: string
+    depreciationAddSelectedCategories: string
+    depreciationRemoveSelectedCategories: string
+    depreciationNoGroups: string
+    depreciationNoMatchingCategories: string
+    depreciationNoSelectedCategories: string
+    depreciationAssignedCategoryConflict: string
+    depreciationLegacyRules: string
+    depreciationLegacyRulesHelp: string
+    depreciationPreviewTitle: string
+    depreciationPreviewDescription: string
+    depreciationPreviewPurchasePrice: string
+    depreciationPreviewPurchaseDate: string
+    depreciationPreviewMonthly: string
+    depreciationPreviewAccumulated: string
+    depreciationPreviewNetBook: string
+    depreciationPreviewAgeMonths: string
+    depreciationAdvancedJson: string
+    depreciationAdvancedJsonDescription: string
     notificationRules: string
     notificationRulesDescription: string
     returnDueSoonDays: string
@@ -866,6 +902,10 @@ export function SystemSettingsForm({
       toast.error(labels.invalidRetentionPolicy)
       return
     }
+    if (hasInvalidDepreciationPolicy) {
+      toast.error(labels.invalidAccountingDepreciationPolicy)
+      return
+    }
     if (hasInvalidWorkflowApproval) {
       toast.error(labels.invalidWorkflowApproval)
       return
@@ -1487,15 +1527,12 @@ export function SystemSettingsForm({
             />
           </Field>
           <div className="md:col-span-2">
-            <Field label={labels.accountingDepreciationPolicy} htmlFor="accounting-depreciation-policy">
-              <textarea
-                id="accounting-depreciation-policy"
-                value={getValue(depreciationPolicySettingKey)}
-                onChange={(event) => setValue(depreciationPolicySettingKey, event.target.value)}
-                rows={10}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </Field>
+            <DepreciationPolicyBuilder
+              categories={categories}
+              policyJson={getValue(depreciationPolicySettingKey)}
+              labels={labels}
+              onPolicyJsonChange={(value) => setValue(depreciationPolicySettingKey, value)}
+            />
             <p className="mt-2 text-sm text-muted-foreground">{labels.accountingDepreciationPolicyDescription}</p>
             {hasInvalidDepreciationPolicy ? <ValidationMessage message={labels.invalidAccountingDepreciationPolicy} /> : null}
           </div>

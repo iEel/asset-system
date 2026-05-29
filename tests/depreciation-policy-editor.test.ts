@@ -6,6 +6,8 @@ import {
   buildDepreciationPolicyPreview,
   percentToRate,
   rateToPercent,
+  sanitizeResidualPercentInput,
+  sanitizeUsefulLifeMonthsInput,
   serializeDepreciationPolicyEditorState,
   type DepreciationPolicyEditorCategory,
 } from "../src/lib/depreciation-policy-editor.ts"
@@ -147,20 +149,20 @@ test("preserves original rule order when mixed legacy and matched rules round tr
 })
 
 test("preserves metadata on matched category rules", () => {
+  const metadataRule = {
+    match: "CCTV",
+    usefulLifeMonths: 84,
+    residualRate: 0.1,
+    label: "Security assets",
+    source: "migration",
+  }
+
   const policy = serializeDepreciationPolicyEditorState(
     buildDepreciationPolicyEditorState(
       {
         defaultUsefulLifeMonths: 60,
         defaultResidualRate: 0,
-        rules: [
-          {
-            match: "CCTV",
-            usefulLifeMonths: 84,
-            residualRate: 0.1,
-            label: "Security assets",
-            source: "migration",
-          },
-        ],
+        rules: [metadataRule],
       },
       categories
     ),
@@ -181,6 +183,19 @@ test("preserves metadata on matched category rules", () => {
 test("converts residual rate values to editable percents and serialized rates", () => {
   assert.equal(rateToPercent(0.1), 10)
   assert.equal(percentToRate(10), 0.1)
+})
+
+test("sanitizes structured policy numeric input before serialization", () => {
+  assert.equal(sanitizeUsefulLifeMonthsInput("", 60), 60)
+  assert.equal(sanitizeUsefulLifeMonthsInput("0", 60), 1)
+  assert.equal(sanitizeUsefulLifeMonthsInput("600.8", 60), 600)
+  assert.equal(sanitizeUsefulLifeMonthsInput("abc", 60), 60)
+
+  assert.equal(sanitizeResidualPercentInput("", 5), 5)
+  assert.equal(sanitizeResidualPercentInput("-1", 5), 0)
+  assert.equal(sanitizeResidualPercentInput("10.5", 5), 10.5)
+  assert.equal(sanitizeResidualPercentInput("100", 5), 90)
+  assert.equal(sanitizeResidualPercentInput("abc", 5), 5)
 })
 
 test("preview uses purchase date as the depreciation start date", () => {
