@@ -4,6 +4,7 @@ import test from "node:test"
 
 const pageSource = () => readFileSync("src/app/[locale]/(dashboard)/admin/storage/page.tsx", "utf8")
 const buttonSource = () => readFileSync("src/components/admin/storage-archive-button.tsx", "utf8")
+const storageMessages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).storagePage
 
 test("storage page uses the archive button only for orphan file actions", () => {
   const source = pageSource()
@@ -25,6 +26,16 @@ test("storage page uses the archive button only for orphan file actions", () => 
   assert.ok(permissionConditionIndex > archiveConditionIndex)
   assert.ok(unavailableIndex > buttonIndex)
   assert.equal(source.match(/<StorageArchiveButton/g)?.length, 1)
+})
+
+test("storage page messages include every key used by the page and archive button", () => {
+  const usedKeys = new Set([...collectStorageMessageKeys(pageSource()), ...collectStorageMessageKeys(buttonSource())])
+
+  for (const locale of ["th", "en"] as const) {
+    const messages = storageMessages(locale)
+    const missingKeys = Array.from(usedKeys).filter((key) => !(key in messages))
+    assert.deepEqual(missingKeys, [], `${locale} storagePage is missing messages`)
+  }
 })
 
 test("storage page passes the resolved upload root through dry-run scanning", () => {
@@ -52,3 +63,7 @@ test("storage archive button confirms, posts archive request, and refreshes", ()
   assert.match(source, /toast\.error\([^)]*t\("archiveFailed"\)/)
   assert.match(source, /router\.refresh\(\)/)
 })
+
+function collectStorageMessageKeys(source: string) {
+  return Array.from(source.matchAll(/\bt\("([^"]+)"/g), (match) => match[1])
+}

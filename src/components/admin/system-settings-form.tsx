@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { ExternalLink, History, Loader2, PlugZap, Plus, Save, Trash2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, ExternalLink, History, Loader2, Pencil, PlugZap, Plus, Save, Search, Trash2, X } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
 import { SearchableSelect } from "@/components/ui/searchable-select"
@@ -62,6 +62,14 @@ import { isSupportedCronExpression } from "@/lib/scheduled-job"
 import { getSettingsTabOrder, type SettingsTabId } from "@/lib/settings-information-architecture"
 import { buildSystemLogFilterHref, type LdapSyncHistoryItem } from "@/lib/system-log-history"
 import {
+  applyCategoryPrefixGroupEdit,
+  buildCategoryPrefixGroups,
+  normalizeCategoryPrefix,
+  parsePrefixRows,
+  serializePrefixRows,
+  type CategoryPrefixRow,
+} from "@/lib/category-prefix-groups"
+import {
   parseWorkflowApprovalPolicy,
   workflowApprovalAuditCloseRequiredKey,
   workflowApprovalDisposalRequiredKey,
@@ -78,13 +86,15 @@ type SystemSettingItem = {
   description?: string | null
 }
 
+type SystemSettingsCategory = {
+  id: string
+  code: string
+  name: string
+}
+
 type SystemSettingsFormProps = {
   settings: SystemSettingItem[]
-  categories: Array<{
-    id: string
-    code: string
-    name: string
-  }>
+  categories: SystemSettingsCategory[]
   defaultRoleOptions: Array<{
     id: string
     label: string
@@ -193,6 +203,22 @@ type SystemSettingsFormProps = {
     category: string
     prefix: string
     addPrefix: string
+    editPrefix: string
+    prefixGroupCount: string
+    assignedCategoryCount: string
+    categoryCount: string
+    unassignedCategoryCount: string
+    availableCategories: string
+    selectedPrefixCategories: string
+    searchCategories: string
+    assignedToPrefix: string
+    noMatchingCategories: string
+    noSelectedCategories: string
+    addSelectedCategories: string
+    removeSelectedCategories: string
+    savePrefixGroup: string
+    cancel: string
+    categoryPrefixPreview: string
     removePrefix: string
     selectCategory: string
     duplicateCategory: string
@@ -346,11 +372,6 @@ type SystemSettingsFormProps = {
   }
 }
 
-type PrefixRow = {
-  categoryId: string
-  prefix: string
-}
-
 type LdapSyncChange = {
   code: string
   name: string
@@ -454,31 +475,6 @@ const ldapSchedulePresets = [
   { value: "custom", labelKey: "ldapSyncCustomSchedule" },
 ] as const
 
-function parsePrefixRows(value?: string) {
-  try {
-    const parsed = JSON.parse(value || "{}") as unknown
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return []
-    return Object.entries(parsed)
-      .map(([categoryId, prefix]) => ({
-        categoryId,
-        prefix: typeof prefix === "string" ? prefix.trim().toUpperCase() : "",
-      }))
-      .filter((row) => row.categoryId && row.prefix)
-  } catch {
-    return []
-  }
-}
-
-function serializePrefixRows(rows: PrefixRow[]) {
-  return JSON.stringify(
-    Object.fromEntries(
-      rows
-        .map((row) => [row.categoryId, row.prefix.trim().toUpperCase()])
-        .filter(([categoryId, prefix]) => categoryId && prefix)
-    )
-  )
-}
-
 function normalizeSettingValue(key: string, value: string | undefined) {
   if (key === assetTagCategoryPrefixesKey) {
     return serializePrefixRows(parsePrefixRows(value))
@@ -521,9 +517,18 @@ export function SystemSettingsForm({
     const savedSchedule = settings.find((setting) => setting.key === pmAutoGenerationScheduleKey)?.value ?? ""
     return !pmSchedulePresets.some((preset) => preset.value === savedSchedule)
   })
-  const [prefixRows, setPrefixRows] = useState<PrefixRow[]>(() =>
+  const [prefixRows, setPrefixRows] = useState<CategoryPrefixRow[]>(() =>
     parsePrefixRows(settings.find((setting) => setting.key === assetTagCategoryPrefixesKey)?.value)
   )
+  const [prefixEditor, setPrefixEditor] = useState<{
+    previousPrefix: string | null
+    prefix: string
+    categoryIds: string[]
+  } | null>(null)
+  const [availableCategorySearch, setAvailableCategorySearch] = useState("")
+  const [selectedCategorySearch, setSelectedCategorySearch] = useState("")
+  const [checkedAvailableCategoryIds, setCheckedAvailableCategoryIds] = useState<string[]>([])
+  const [checkedSelectedCategoryIds, setCheckedSelectedCategoryIds] = useState<string[]>([])
   const generalSettings = settings.filter(
     (setting) => !friendlySettingKeys.has(setting.key)
   )
@@ -544,6 +549,64 @@ export function SystemSettingsForm({
       [pmAutoGenerationModeKey]: next.mode,
     }))
   }
+  const resetPrefixEditorFilters = () => {
+    setAvailableCategorySearch("")
+    setSelectedCategorySearch("")
+    setCheckedAvailableCategoryIds([])
+    setCheckedSelectedCategoryIds([])
+  }
+  const openPrefixEditor = (prefix?: string) => {
+    const normalizedPrefix = normalizeCategoryPrefix(prefix ?? "")
+    const group = normalizedPrefix ? buildCategoryPrefixGroups(prefixRows).find((item) => item.prefix === normalizedPrefix) : null
+    setPrefixEditor({
+      previousPrefix: normalizedPrefix || null,
+      prefix: normalizedPrefix,
+      categoryIds: group?.categoryIds ?? [],
+    })
+    resetPrefixEditorFilters()
+  }
+  const closePrefixEditor = () => {
+    setPrefixEditor(null)
+    resetPrefixEditorFilters()
+  }
+  const addCheckedCategoriesToPrefix = () => {
+    setPrefixEditor((current) =>
+      current
+        ? {
+            ...current,
+            categoryIds: uniqueStrings([...current.categoryIds, ...checkedAvailableCategoryIds]),
+          }
+        : current
+    )
+    setCheckedAvailableCategoryIds([])
+  }
+  const removeCheckedCategoriesFromPrefix = () => {
+    const checkedIds = new Set(checkedSelectedCategoryIds)
+    setPrefixEditor((current) =>
+      current
+        ? {
+            ...current,
+            categoryIds: current.categoryIds.filter((categoryId) => !checkedIds.has(categoryId)),
+          }
+        : current
+    )
+    setCheckedSelectedCategoryIds([])
+  }
+  const applyPrefixEditor = () => {
+    if (!prefixEditor || !isValidCategoryPrefix(prefixEditor.prefix) || prefixEditor.categoryIds.length === 0) return
+    setPrefixRows((current) =>
+      applyCategoryPrefixGroupEdit(current, {
+        previousPrefix: prefixEditor.previousPrefix,
+        prefix: prefixEditor.prefix,
+        categoryIds: prefixEditor.categoryIds,
+      })
+    )
+    closePrefixEditor()
+  }
+  const removePrefixGroup = (prefix: string) => {
+    const normalizedPrefix = normalizeCategoryPrefix(prefix)
+    setPrefixRows((current) => current.filter((row) => normalizeCategoryPrefix(row.prefix) !== normalizedPrefix))
+  }
   const effectiveValues: Record<string, string> = {
     ...values,
     [assetTagCategoryPrefixesKey]: serializePrefixRows(prefixRows),
@@ -553,9 +616,27 @@ export function SystemSettingsForm({
     (setting) => normalizeSettingValue(setting.key, effectiveValues[setting.key]) !== normalizeSettingValue(setting.key, initialValues[setting.key])
   )
   const changedCount = changedSettings.length
-  const selectedCategories = prefixRows.map((row) => row.categoryId).filter(Boolean)
-  const hasDuplicateCategory = new Set(selectedCategories).size !== selectedCategories.length
-  const hasInvalidPrefix = prefixRows.some((row) => row.categoryId && !/^[A-Z0-9]{2,10}$/.test(row.prefix.trim().toUpperCase()))
+  const prefixGroups = buildCategoryPrefixGroups(prefixRows)
+  const categoryById = new Map(categories.map((category) => [category.id, category]))
+  const assignedPrefixByCategoryId = new Map(
+    prefixRows
+      .map((row) => [row.categoryId, normalizeCategoryPrefix(row.prefix)] as const)
+      .filter(([categoryId, prefix]) => categoryId && prefix)
+  )
+  const selectedPrefixCategoryIds = prefixRows.map((row) => row.categoryId).filter(Boolean)
+  const hasDuplicateCategory = new Set(selectedPrefixCategoryIds).size !== selectedPrefixCategoryIds.length
+  const hasInvalidPrefix = prefixRows.some((row) => row.categoryId && !isValidCategoryPrefix(row.prefix))
+  const unassignedCategoryCount = categories.filter((category) => !assignedPrefixByCategoryId.has(category.id)).length
+  const prefixEditorSelectedIds = prefixEditor?.categoryIds ?? []
+  const prefixEditorSelectedIdSet = new Set(prefixEditorSelectedIds)
+  const normalizedPrefixDraft = normalizeCategoryPrefix(prefixEditor?.prefix ?? "")
+  const filteredAvailableCategories = categories.filter(
+    (category) => !prefixEditorSelectedIdSet.has(category.id) && matchesCategorySearch(category, availableCategorySearch)
+  )
+  const filteredSelectedCategories = categories.filter(
+    (category) => prefixEditorSelectedIdSet.has(category.id) && matchesCategorySearch(category, selectedCategorySearch)
+  )
+  const canApplyPrefixEditor = Boolean(prefixEditor && isValidCategoryPrefix(prefixEditor.prefix) && prefixEditor.categoryIds.length > 0)
   const templateTokens = Array.from(formatTemplate.matchAll(/\{([A-Za-z0-9]+)\}/g)).map((match) => match[1])
   const hasInvalidTemplate =
     !formatTemplate.includes("{running}") || templateTokens.some((token) => !assetTagFormatTokens.includes(token))
@@ -1129,89 +1210,255 @@ export function SystemSettingsForm({
       {activeTab === "asset-numbering" ? (
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.categoryPrefixes} description={labels.categoryPrefixesDescription} />
-        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <Head>{labels.category}</Head>
-                <Head>{labels.prefix}</Head>
-                <Head>
-                  <span className="sr-only">{labels.removePrefix}</span>
-                </Head>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {prefixRows.length === 0 ? (
-                <tr>
-                  <td className="px-4 py-6 text-sm text-muted-foreground" colSpan={3}>
-                    {labels.noCategoryPrefixes}
-                  </td>
-                </tr>
-              ) : null}
-              {prefixRows.map((row, index) => (
-                <tr key={`${row.categoryId}-${index}`} className="hover:bg-accent/50">
-                  <td className="min-w-80 px-4 py-3">
-                    <select
-                      value={row.categoryId}
-                      onChange={(event) =>
-                        setPrefixRows((current) =>
-                          current.map((item, itemIndex) =>
-                            itemIndex === index ? { ...item, categoryId: event.target.value } : item
-                          )
-                        )
-                      }
-                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                    >
-                      <option value="">{labels.selectCategory}</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.code} - {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="min-w-48 px-4 py-3">
+        <div className="space-y-4 px-4 py-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <div className="font-medium text-foreground">
+                {formatTemplateText(labels.prefixGroupCount, { count: String(prefixGroups.length) })}
+              </div>
+              <div>
+                {formatTemplateText(labels.assignedCategoryCount, {
+                  assigned: String(categories.length - unassignedCategoryCount),
+                  total: String(categories.length),
+                })}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => openPrefixEditor()}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0"
+            >
+              <Plus className="h-4 w-4" />
+              {labels.addPrefix}
+            </button>
+          </div>
+
+          {prefixGroups.length === 0 ? (
+            <div className="rounded-md border border-dashed border-border bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
+              {labels.noCategoryPrefixes}
+            </div>
+          ) : (
+            <div className="w-full max-w-full overflow-x-auto overscroll-x-contain rounded-md border border-border">
+              <table className="min-w-full divide-y divide-border text-sm">
+                <thead className="bg-muted/40">
+                  <tr>
+                    <Head>{labels.prefix}</Head>
+                    <Head>{labels.category}</Head>
+                    <Head>{labels.categoryPrefixPreview}</Head>
+                    <Head>
+                      <span className="sr-only">{labels.editPrefix}</span>
+                    </Head>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border bg-surface">
+                  {prefixGroups.map((group) => (
+                    <tr key={group.prefix} className="hover:bg-accent/50">
+                      <td className="px-4 py-3">
+                        <span className="inline-flex min-h-8 items-center rounded-md border border-border bg-background px-3 font-mono text-sm font-semibold text-foreground">
+                          {group.prefix}
+                        </span>
+                      </td>
+                      <td className="min-w-72 px-4 py-3">
+                        <div className="font-medium text-foreground">
+                          {formatTemplateText(labels.categoryCount, { count: String(group.categoryIds.length) })}
+                        </div>
+                        <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                          {group.categoryIds
+                            .map((categoryId) => categoryById.get(categoryId))
+                            .filter(Boolean)
+                            .slice(0, 6)
+                            .map((category) => `${category?.code} - ${category?.name}`)
+                            .join(", ")}
+                        </div>
+                      </td>
+                      <td className="min-w-56 px-4 py-3 font-mono text-xs text-muted-foreground">
+                        {renderAssetTagPreview(formatTemplate, group.prefix, getValue("asset_tag_separator"))}
+                      </td>
+                      <td className="w-32 px-4 py-3">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openPrefixEditor(group.prefix)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                            title={labels.editPrefix}
+                            aria-label={labels.editPrefix}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removePrefixGroup(group.prefix)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                            title={labels.removePrefix}
+                            aria-label={labels.removePrefix}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+            {formatTemplateText(labels.unassignedCategoryCount, { count: String(unassignedCategoryCount) })}
+          </div>
+          {hasDuplicateCategory ? <ValidationMessage message={labels.duplicateCategory} /> : null}
+          {hasInvalidPrefix ? <ValidationMessage message={labels.invalidPrefix} /> : null}
+        </div>
+
+        {prefixEditor ? (
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center sm:p-4" role="dialog" aria-modal="true">
+            <div className="max-h-[92dvh] w-full max-w-5xl overflow-hidden rounded-lg border border-border bg-surface shadow-xl">
+              <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-4">
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">
+                    {prefixEditor.previousPrefix ? labels.editPrefix : labels.addPrefix}
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{labels.categoryPrefixesDescription}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closePrefixEditor}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  aria-label={labels.cancel}
+                  title={labels.cancel}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="max-h-[calc(92dvh-8rem)] space-y-4 overflow-y-auto px-4 py-4">
+                <div className="grid gap-4 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
+                  <Field label={labels.prefix} htmlFor="category-prefix-editor-prefix">
                     <input
-                      value={row.prefix}
+                      id="category-prefix-editor-prefix"
+                      value={prefixEditor.prefix}
                       onChange={(event) =>
-                        setPrefixRows((current) =>
-                          current.map((item, itemIndex) =>
-                            itemIndex === index ? { ...item, prefix: event.target.value.toUpperCase() } : item
-                          )
+                        setPrefixEditor((current) =>
+                          current ? { ...current, prefix: event.target.value.toUpperCase() } : current
                         )
                       }
                       maxLength={10}
-                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                     />
-                  </td>
-                  <td className="w-16 px-4 py-3 text-right">
+                  </Field>
+                  <div className="rounded-md border border-border bg-muted/20 px-3 py-2">
+                    <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                      {labels.categoryPrefixPreview}
+                    </div>
+                    <div className="mt-1 font-mono text-sm text-foreground">
+                      {renderAssetTagPreview(formatTemplate, normalizedPrefixDraft || "COM", getValue("asset_tag_separator"))}
+                    </div>
+                  </div>
+                </div>
+
+                {!isValidCategoryPrefix(prefixEditor.prefix) ? <ValidationMessage message={labels.invalidPrefix} /> : null}
+
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+                  <CategoryTransferPanel
+                    title={labels.availableCategories}
+                    count={filteredAvailableCategories.length}
+                    searchValue={availableCategorySearch}
+                    searchPlaceholder={labels.searchCategories}
+                    onSearchChange={setAvailableCategorySearch}
+                  >
+                    {filteredAvailableCategories.length === 0 ? (
+                      <EmptyTransferState label={labels.noMatchingCategories} />
+                    ) : (
+                      filteredAvailableCategories.map((category) => {
+                        const assignedPrefix = assignedPrefixByCategoryId.get(category.id)
+                        const isChecked = checkedAvailableCategoryIds.includes(category.id)
+                        return (
+                          <CategoryTransferRow
+                            key={category.id}
+                            category={category}
+                            checked={isChecked}
+                            badge={
+                              assignedPrefix && assignedPrefix !== normalizedPrefixDraft
+                                ? formatTemplateText(labels.assignedToPrefix, { prefix: assignedPrefix })
+                                : undefined
+                            }
+                            onChange={() => setCheckedAvailableCategoryIds((current) => toggleString(current, category.id))}
+                          />
+                        )
+                      })
+                    )}
+                  </CategoryTransferPanel>
+
+                  <div className="flex items-center justify-center gap-2 lg:flex-col">
                     <button
                       type="button"
-                      onClick={() => setPrefixRows((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                      title={labels.removePrefix}
-                      aria-label={labels.removePrefix}
+                      onClick={addCheckedCategoriesToPrefix}
+                      disabled={checkedAvailableCategoryIds.length === 0}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:min-h-0"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <ArrowRight className="h-4 w-4" />
+                      <span className="hidden sm:inline">{labels.addSelectedCategories}</span>
                     </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="border-t border-border px-4 py-3">
-          {hasDuplicateCategory ? <ValidationMessage message={labels.duplicateCategory} /> : null}
-          {hasInvalidPrefix ? <ValidationMessage message={labels.invalidPrefix} /> : null}
-          <button
-            type="button"
-            onClick={() => setPrefixRows((current) => [...current, { categoryId: "", prefix: "" }])}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
-          >
-            <Plus className="h-4 w-4" />
-            {labels.addPrefix}
-          </button>
-        </div>
+                    <button
+                      type="button"
+                      onClick={removeCheckedCategoriesFromPrefix}
+                      disabled={checkedSelectedCategoryIds.length === 0}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:min-h-0"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      <span className="hidden sm:inline">{labels.removeSelectedCategories}</span>
+                    </button>
+                  </div>
+
+                  <CategoryTransferPanel
+                    title={labels.selectedPrefixCategories}
+                    count={filteredSelectedCategories.length}
+                    searchValue={selectedCategorySearch}
+                    searchPlaceholder={labels.searchCategories}
+                    onSearchChange={setSelectedCategorySearch}
+                  >
+                    {prefixEditor.categoryIds.length === 0 ? (
+                      <EmptyTransferState label={labels.noSelectedCategories} />
+                    ) : filteredSelectedCategories.length === 0 ? (
+                      <EmptyTransferState label={labels.noMatchingCategories} />
+                    ) : (
+                      filteredSelectedCategories.map((category) => {
+                        const isChecked = checkedSelectedCategoryIds.includes(category.id)
+                        return (
+                          <CategoryTransferRow
+                            key={category.id}
+                            category={category}
+                            checked={isChecked}
+                            onChange={() => setCheckedSelectedCategoryIds((current) => toggleString(current, category.id))}
+                          />
+                        )
+                      })
+                    )}
+                  </CategoryTransferPanel>
+                </div>
+              </div>
+
+              <div className="flex flex-col-reverse gap-2 border-t border-border px-4 py-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closePrefixEditor}
+                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:h-10 sm:min-h-0"
+                >
+                  {labels.cancel}
+                </button>
+                <button
+                  type="button"
+                  onClick={applyPrefixEditor}
+                  disabled={!canApplyPrefixEditor}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:min-h-0"
+                >
+                  <Save className="h-4 w-4" />
+                  {labels.savePrefixGroup}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
       ) : null}
 
@@ -2003,6 +2250,123 @@ function formatHistoryNumber(value: number, locale: string) {
 
 function getIntlLocale(locale: string) {
   return locale === "en" ? "en-US" : "th-TH"
+}
+
+function isValidCategoryPrefix(prefix: string) {
+  return /^[A-Z0-9]{2,10}$/.test(normalizeCategoryPrefix(prefix))
+}
+
+function matchesCategorySearch(category: SystemSettingsCategory, search: string) {
+  const query = search.trim().toLowerCase()
+  if (!query) return true
+  return `${category.code} ${category.name}`.toLowerCase().includes(query)
+}
+
+function formatTemplateText(template: string, values: Record<string, string>) {
+  return Object.entries(values).reduce((current, [key, value]) => current.replaceAll(`{${key}}`, value), template)
+}
+
+function renderAssetTagPreview(template: string, prefix: string, separatorSetting: string) {
+  const separator = separatorSetting.trim() || "-"
+  const assetPrefix = normalizeCategoryPrefix(prefix) || "COM"
+  const safeTemplate = template.includes("{running}") ? template : defaultAssetTagFormatTemplate
+  const tokens: Record<string, string> = {
+    assetCompanyCode: "SNI",
+    companyCode: "SNI",
+    branchCode: "HQ",
+    categoryCode: "CAT",
+    assetPrefix,
+    globalPrefix: "AST",
+    separator,
+    year: "2026",
+    year2: "26",
+    month: "05",
+    day: "29",
+    running: "0001",
+  }
+
+  return safeTemplate.replace(/\{([A-Za-z0-9]+)\}/g, (_match, token: string) => tokens[token] ?? "")
+}
+
+function toggleString(values: string[], value: string) {
+  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value]
+}
+
+function uniqueStrings(values: string[]) {
+  return Array.from(new Set(values))
+}
+
+function CategoryTransferPanel({
+  title,
+  count,
+  searchValue,
+  searchPlaceholder,
+  onSearchChange,
+  children,
+}: {
+  title: string
+  count: number
+  searchValue: string
+  searchPlaceholder: string
+  onSearchChange: (value: string) => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="overflow-hidden rounded-md border border-border bg-background">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-3">
+        <div className="text-sm font-semibold text-foreground">{title}</div>
+        <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">{count}</span>
+      </div>
+      <div className="border-b border-border p-3">
+        <div className="flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-3">
+          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <input
+            value={searchValue}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder={searchPlaceholder}
+            className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          />
+        </div>
+      </div>
+      <div className="max-h-80 min-h-72 overflow-y-auto p-2">{children}</div>
+    </div>
+  )
+}
+
+function CategoryTransferRow({
+  category,
+  checked,
+  badge,
+  onChange,
+}: {
+  category: SystemSettingsCategory
+  checked: boolean
+  badge?: string
+  onChange: () => void
+}) {
+  return (
+    <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium text-foreground">{category.name}</span>
+        <span className="block truncate text-xs text-muted-foreground">{category.code}</span>
+      </span>
+      {badge ? (
+        <span className="shrink-0 rounded-full border border-warning/30 bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
+          {badge}
+        </span>
+      ) : null}
+    </label>
+  )
+}
+
+function EmptyTransferState({ label }: { label: string }) {
+  return <div className="flex min-h-64 items-center justify-center px-4 text-center text-sm text-muted-foreground">{label}</div>
 }
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
