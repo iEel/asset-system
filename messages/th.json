@@ -97,6 +97,7 @@
   "nav": {
     "dashboard": "แดชบอร์ด",
     "workCenter": "ศูนย์งานค้าง",
+    "myAssets": "ทรัพย์สินของฉัน",
     "assetManagement": "จัดการทรัพย์สิน",
     "assetRegistryGroup": "ทะเบียน",
     "assetTransactionsGroup": "ธุรกรรม",
@@ -143,6 +144,29 @@
     "notification": "การแจ้งเตือน",
     "systemLog": "ประวัติระบบ",
     "systemSetting": "ตั้งค่าระบบ"
+  },
+  "myAssets": {
+    "title": "ทรัพย์สินของฉัน",
+    "subtitle": "รายการทรัพย์สินที่ผูกกับโปรไฟล์พนักงานของคุณในปัจจุบัน",
+    "summary": "สรุปภาพรวม",
+    "list": "รายการทรัพย์สินที่ถือครอง",
+    "total": "ทั้งหมด",
+    "ready": "พร้อมใช้งาน",
+    "needsAttention": "ต้องติดตาม",
+    "missingPhoto": "ยังไม่มีรูป",
+    "asset": "ทรัพย์สิน",
+    "serialNumber": "Serial Number",
+    "status": "สถานะ",
+    "condition": "สภาพ",
+    "location": "ที่ตั้ง",
+    "companyBranch": "บริษัท / สาขา",
+    "category": "หมวดหมู่",
+    "noLinkedEmployeeTitle": "บัญชีนี้ยังไม่ได้ผูกกับพนักงาน",
+    "noLinkedEmployeeHelp": "ติดต่อผู้ดูแลระบบให้ผูกบัญชีผู้ใช้กับข้อมูลพนักงานก่อน จึงจะแสดงทรัพย์สินที่ถือครองได้",
+    "emptyTitle": "ยังไม่มีทรัพย์สินที่คุณถือครอง",
+    "emptyHelp": "ถ้าคุณควรถือครองทรัพย์สิน ให้ตรวจสอบกับผู้ดูแลทรัพย์สินว่ามีการส่งมอบหรือโอนผู้ถือครองแล้วหรือยัง",
+    "openWorkCenter": "เปิดศูนย์งานค้าง",
+    "updatedAt": "อัปเดตล่าสุด"
   },
   "assetTools": {
     "scanTitle": "สแกน / ค้นหาทรัพย์สิน",

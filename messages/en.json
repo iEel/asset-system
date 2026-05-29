@@ -97,6 +97,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "workCenter": "Work Center",
+    "myAssets": "My Assets",
     "assetManagement": "Asset Management",
     "assetRegistryGroup": "Register",
     "assetTransactionsGroup": "Transactions",
@@ -143,6 +144,29 @@
     "notification": "Notifications",
     "systemLog": "System Log",
     "systemSetting": "System Settings"
+  },
+  "myAssets": {
+    "title": "My Assets",
+    "subtitle": "Assets currently assigned to your employee profile.",
+    "summary": "Summary",
+    "list": "Assigned assets",
+    "total": "Total",
+    "ready": "Ready",
+    "needsAttention": "Needs attention",
+    "missingPhoto": "Missing photo",
+    "asset": "Asset",
+    "serialNumber": "Serial Number",
+    "status": "Status",
+    "condition": "Condition",
+    "location": "Location",
+    "companyBranch": "Company / Branch",
+    "category": "Category",
+    "noLinkedEmployeeTitle": "This account is not linked to an employee",
+    "noLinkedEmployeeHelp": "Ask an administrator to link your user account to an employee record before personal assets can be shown.",
+    "emptyTitle": "You do not currently hold any assets",
+    "emptyHelp": "If you should hold assets, ask the asset administrator to confirm the handover or custodian transfer.",
+    "openWorkCenter": "Open Work Center",
+    "updatedAt": "Last updated"
   },
   "assetTools": {
     "scanTitle": "Scan / Search Asset",
