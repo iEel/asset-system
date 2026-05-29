@@ -55,6 +55,11 @@ export function buildCategoryPrefixGroups(rows: CategoryPrefixRow[]): CategoryPr
   return Array.from(groups, ([prefix, categoryIds]) => ({ prefix, categoryIds }))
 }
 
+export function filterPrefixRowsByCategoryIds(rows: CategoryPrefixRow[], categoryIds: string[]) {
+  const knownCategoryIds = new Set(categoryIds)
+  return rows.filter((row) => knownCategoryIds.has(row.categoryId))
+}
+
 export function applyCategoryPrefixGroupEdit(
   rows: CategoryPrefixRow[],
   {

@@ -39,6 +39,20 @@ export type DuplicateNameGroup<TItem extends DuplicateNameItem> = {
   items: TItem[]
 }
 
+export type BrandNavigatorCount = {
+  brandId: string | null
+  count: number
+}
+
+export type BrandNavigatorItem = {
+  id: string
+  name: string
+  _count: {
+    models: number
+    assets: number
+  }
+}
+
 export function parseBrandModelListParams(input: BrandModelListParams): BrandModelListState {
   return {
     search: firstValue(input.search).trim(),
@@ -68,6 +82,24 @@ export function buildBrandModelQueryString(current: BrandModelListState, next: P
   return params.toString()
 }
 
+export function buildBrandNavigatorItems<TBrand extends BrandNavigatorItem>(
+  brands: TBrand[],
+  activeModelCounts: BrandNavigatorCount[],
+  activeAssetCounts: BrandNavigatorCount[]
+) {
+  const activeModelCountByBrandId = buildCountMap(activeModelCounts)
+  const activeAssetCountByBrandId = buildCountMap(activeAssetCounts)
+
+  return brands.map((brand) => ({
+    ...brand,
+    _count: {
+      ...brand._count,
+      models: activeModelCountByBrandId.get(brand.id) ?? 0,
+      assets: activeAssetCountByBrandId.get(brand.id) ?? 0,
+    },
+  }))
+}
+
 export function buildDuplicateNameGroups<TItem extends DuplicateNameItem>(items: TItem[]) {
   const groups = new Map<string, TItem[]>()
   for (const item of items) {
@@ -84,6 +116,15 @@ export function buildDuplicateNameGroups<TItem extends DuplicateNameItem>(items:
       items: groupItems,
     }))
     .sort((a, b) => b.items.length - a.items.length || a.displayName.localeCompare(b.displayName))
+}
+
+function buildCountMap(counts: BrandNavigatorCount[]) {
+  const countByBrandId = new Map<string, number>()
+  for (const item of counts) {
+    if (!item.brandId) continue
+    countByBrandId.set(item.brandId, item.count)
+  }
+  return countByBrandId
 }
 
 export function normalizeDuplicateName(name: string) {

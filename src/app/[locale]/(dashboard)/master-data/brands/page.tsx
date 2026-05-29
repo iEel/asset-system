@@ -2,7 +2,7 @@ import Link from "next/link"
 import Image from "next/image"
 import type { Prisma } from "@prisma/client"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, Download, Edit, FileSpreadsheet, Filter, ImageIcon, Plus } from "lucide-react"
+import { AlertTriangle, Download, Edit, FileSpreadsheet, Filter, ImageIcon, Plus, Search } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { BrandDeleteButton } from "@/components/master-data/brand-delete-button"
@@ -16,6 +16,7 @@ import {
 import { paginationRange } from "@/lib/master-data-query"
 import {
   buildBrandModelQueryString,
+  buildBrandNavigatorItems,
   buildDuplicateNameGroups,
   parseBrandModelListParams,
   type BrandModelListState,
@@ -49,11 +50,6 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
   const listState = parseBrandModelListParams(rawSearchParams)
   const searchText = listState.search
   const basePath = `/${locale}/master-data/brands`
-
-  const brandWhere: Prisma.AssetBrandWhereInput = {
-    isActive: true,
-    ...(searchText ? { name: { contains: searchText } } : {}),
-  }
 
   const modelIdsWithPhotos = listState.modelPhoto === "all"
     ? []
@@ -90,22 +86,33 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
   }
 
   const [
-    brands,
-    brandTotal,
+    rawBrandNavigatorItems,
+    activeModelCountGroups,
+    activeAssetCountGroups,
     models,
     modelTotal,
-    brandOptions,
     categoryOptions,
     duplicateModelSource,
   ] = await Promise.all([
     prisma.assetBrand.findMany({
-      where: brandWhere,
-      include: { _count: { select: { models: true, assets: true } } },
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        _count: { select: { models: true, assets: true } },
+      },
       orderBy: { name: "asc" },
-      skip: (listState.brandPage - 1) * listState.brandPageSize,
-      take: listState.brandPageSize,
     }),
-    prisma.assetBrand.count({ where: brandWhere }),
+    prisma.assetModel.groupBy({
+      by: ["brandId"],
+      where: { isActive: true },
+      _count: { _all: true },
+    }),
+    prisma.asset.groupBy({
+      by: ["brandId"],
+      where: { isActive: true, brandId: { not: null } },
+      _count: { _all: true },
+    }),
     prisma.assetModel.findMany({
       where: modelWhere,
       include: {
@@ -118,11 +125,6 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
       take: listState.modelPageSize,
     }),
     prisma.assetModel.count({ where: modelWhere }),
-    prisma.assetBrand.findMany({
-      where: { isActive: true },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
     prisma.assetCategory.findMany({
       where: { isActive: true },
       select: { id: true, code: true, name: true },
@@ -140,6 +142,12 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
     }),
   ])
 
+  const brandNavigatorItems = buildBrandNavigatorItems(
+    rawBrandNavigatorItems,
+    activeModelCountGroups.map((group) => ({ brandId: group.brandId, count: group._count._all })),
+    activeAssetCountGroups.map((group) => ({ brandId: group.brandId, count: group._count._all }))
+  )
+  const brandOptions = brandNavigatorItems.map((brand) => ({ id: brand.id, name: brand.name }))
   const modelPhotos = models.length
     ? await prisma.attachment.findMany({
         where: {
@@ -161,45 +169,19 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
 
   const brandDuplicateGroups = buildDuplicateNameGroups(brandOptions)
   const modelDuplicateGroups = buildDuplicateNameGroups(duplicateModelSource)
-  const selectedBrand = brandOptions.find((brand) => brand.id === listState.modelBrandId)
+  const totalDuplicateGroups = brandDuplicateGroups.length + modelDuplicateGroups.length
+  const selectedBrand = brandNavigatorItems.find((brand) => brand.id === listState.modelBrandId)
   const selectedCategory = categoryOptions.find((category) => category.id === listState.modelCategoryId)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <MasterDataHeader
         title={t("title")}
         subtitle={t("subtitle")}
-        createHref={`/${locale}/master-data/brands/new`}
-        createLabel={t("createBrand")}
+        createHref={`/${locale}/master-data/brands/models/new`}
+        createLabel={t("createModel")}
         actions={
-          <Link
-            href={`/${locale}/master-data/brands/models/new`}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-          >
-            <Plus className="h-4 w-4" />
-            {t("createModel")}
-          </Link>
-        }
-      />
-
-      <div className="grid gap-3 lg:grid-cols-3">
-        <SummaryTile label={t("brandTotal")} value={brandTotal} detail={t("filteredBySearch")} />
-        <SummaryTile label={t("modelTotal")} value={modelTotal} detail={t("filteredBySearchAndFilters")} />
-        <SummaryTile
-          label={t("duplicateReviewTitle")}
-          value={brandDuplicateGroups.length + modelDuplicateGroups.length}
-          detail={t("duplicateReviewShort")}
-          tone={brandDuplicateGroups.length + modelDuplicateGroups.length > 0 ? "warning" : "neutral"}
-        />
-      </div>
-
-      <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-        <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">{t("brandModelTools")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("brandModelToolsHelp")}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+          <>
             <Link
               href="/api/brand-models/export"
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
@@ -214,292 +196,298 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
               <FileSpreadsheet className="h-4 w-4" />
               {t("downloadBrandModelTemplate")}
             </Link>
-          </div>
-        </div>
-
-        <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(4,minmax(160px,1fr))_auto]" action={basePath}>
-          <input type="hidden" name="brandPage" value="1" />
-          <input type="hidden" name="brandPageSize" value={listState.brandPageSize} />
-          <input type="hidden" name="modelPage" value="1" />
-          <input type="hidden" name="modelPageSize" value={listState.modelPageSize} />
-          <label className="space-y-1 text-sm font-medium text-foreground">
-            <span>{tCommon("search")}</span>
-            <input
-              type="search"
-              name="search"
-              defaultValue={searchText}
-              placeholder={t("searchPlaceholder")}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-            />
-          </label>
-          <FilterSelect
-            label={t("brand")}
-            name="modelBrandId"
-            defaultValue={listState.modelBrandId}
-            allLabel={t("allBrands")}
-            options={brandOptions.map((brand) => ({ value: brand.id, label: brand.name }))}
-          />
-          <FilterSelect
-            label={t("category")}
-            name="modelCategoryId"
-            defaultValue={listState.modelCategoryId}
-            allLabel={t("allCategories")}
-            options={categoryOptions.map((category) => ({
-              value: category.id,
-              label: `${category.code} - ${category.name}`,
-            }))}
-          />
-          <FilterSelect
-            label={t("modelPhoto")}
-            name="modelPhoto"
-            defaultValue={listState.modelPhoto}
-            options={[
-              { value: "all", label: t("allPhotos") },
-              { value: "with", label: t("withPhoto") },
-              { value: "without", label: t("withoutPhoto") },
-            ]}
-          />
-          <FilterSelect
-            label={t("modelUsage")}
-            name="modelUsage"
-            defaultValue={listState.modelUsage}
-            options={[
-              { value: "all", label: t("allUsage") },
-              { value: "used", label: t("usedModels") },
-              { value: "unused", label: t("unusedModels") },
-            ]}
-          />
-          <div className="flex items-end gap-2">
-            <button
-              type="submit"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
-            >
-              <Filter className="h-4 w-4" />
-              {tCommon("filter")}
-            </button>
             <Link
-              href={basePath}
-              className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+              href={`/${locale}/master-data/brands/new`}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
             >
-              {t("clearFilters")}
+              <Plus className="h-4 w-4" />
+              {t("createBrand")}
             </Link>
-          </div>
-        </form>
+          </>
+        }
+      />
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <SummaryTile label={t("brandTotal")} value={brandNavigatorItems.length} detail={t("brandNavigatorSummaryHelp")} />
+        <SummaryTile label={t("modelTotal")} value={modelTotal} detail={t("filteredBySearchAndFilters")} />
+        <SummaryTile
+          label={t("duplicateReviewTitle")}
+          value={totalDuplicateGroups}
+          detail={t("duplicateReviewShort")}
+          tone={totalDuplicateGroups > 0 ? "warning" : "neutral"}
+        />
       </div>
 
-      {(brandDuplicateGroups.length > 0 || modelDuplicateGroups.length > 0) ? (
-        <div className="rounded-lg border border-warning/30 bg-warning/5 p-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex gap-3">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
-              <div>
-                <h2 className="text-base font-semibold text-foreground">{t("duplicateReviewTitle")}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{t("duplicateReviewSubtitle")}</p>
+      <div className="grid gap-4 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
+        <aside className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm lg:sticky lg:top-4 lg:self-start">
+          <div className="border-b border-border px-4 py-4">
+            <h2 className="text-base font-semibold text-foreground">{t("brandNavigatorTitle")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("brandNavigatorSubtitle")}</p>
+          </div>
+          <div className="space-y-1 p-2">
+            <Link
+              href={`${basePath}?${buildBrandModelQueryString(listState, { modelBrandId: "", modelPage: 1 })}`}
+              aria-current={!selectedBrand ? "page" : undefined}
+              className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm transition-colors ${
+                !selectedBrand ? "border-primary bg-primary/10 text-primary" : "border-transparent text-foreground hover:bg-accent"
+              }`}
+            >
+              <span className="font-medium">{t("allBrandNavigator")}</span>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{duplicateModelSource.length}</span>
+            </Link>
+            <div className="max-h-[60vh] space-y-1 overflow-y-auto pr-1">
+              {brandNavigatorItems.map((brand) => {
+                const isSelected = listState.modelBrandId === brand.id
+                return (
+                  <Link
+                    key={brand.id}
+                    href={`${basePath}?${buildBrandModelQueryString(listState, { modelBrandId: brand.id, modelPage: 1 })}`}
+                    aria-current={isSelected ? "page" : undefined}
+                    className={`block rounded-md border px-3 py-2 transition-colors ${
+                      isSelected ? "border-primary bg-primary/10" : "border-transparent hover:bg-accent"
+                    }`}
+                  >
+                    <span className={`block truncate text-sm font-medium ${isSelected ? "text-primary" : "text-foreground"}`}>
+                      {brand.name}
+                    </span>
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      {t("brandNavigatorCounts", { models: brand._count.models, assets: brand._count.assets })}
+                    </span>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+          {selectedBrand ? (
+            <div className="border-t border-border p-3">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                {t("selectedBrandActions")}
+              </div>
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/${locale}/master-data/brands/${selectedBrand.id}/edit`}
+                  className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+                >
+                  <Edit className="h-4 w-4" />
+                  {t("editSelectedBrand")}
+                </Link>
+                <BrandDeleteButton id={selectedBrand.id} />
               </div>
             </div>
-            <div className="grid flex-1 gap-3 md:grid-cols-2 lg:max-w-4xl">
-              <DuplicateGroupList title={t("duplicateBrands")} groups={brandDuplicateGroups.slice(0, 4)} />
-              <DuplicateGroupList title={t("duplicateModels")} groups={modelDuplicateGroups.slice(0, 4)} />
+          ) : null}
+        </aside>
+
+        <section className="min-w-0 space-y-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+            <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">{t("modelWorkspaceTitle")}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {selectedBrand || selectedCategory
+                    ? t("modelsFilteredBy", {
+                        brand: selectedBrand?.name ?? t("allBrands"),
+                        category: selectedCategory ? `${selectedCategory.code} - ${selectedCategory.name}` : t("allCategories"),
+                      })
+                    : t("modelWorkspaceSubtitle")}
+                </p>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {t("modelResultSummary", { count: modelTotal })}
+              </div>
             </div>
+            <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(3,minmax(150px,1fr))_auto]" action={basePath}>
+              <input type="hidden" name="brandPage" value="1" />
+              <input type="hidden" name="brandPageSize" value={listState.brandPageSize} />
+              <input type="hidden" name="modelPage" value="1" />
+              <input type="hidden" name="modelPageSize" value={listState.modelPageSize} />
+              <input type="hidden" name="modelBrandId" value={listState.modelBrandId} />
+              <label className="space-y-1 text-sm font-medium text-foreground">
+                <span>{t("modelFiltersTitle")}</span>
+                <span className="relative block">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="search"
+                    name="search"
+                    defaultValue={searchText}
+                    placeholder={t("searchPlaceholder")}
+                    className="h-10 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                </span>
+              </label>
+              <FilterSelect
+                label={t("category")}
+                name="modelCategoryId"
+                defaultValue={listState.modelCategoryId}
+                allLabel={t("allCategories")}
+                options={categoryOptions.map((category) => ({
+                  value: category.id,
+                  label: `${category.code} - ${category.name}`,
+                }))}
+              />
+              <FilterSelect
+                label={t("modelPhoto")}
+                name="modelPhoto"
+                defaultValue={listState.modelPhoto}
+                options={[
+                  { value: "all", label: t("allPhotos") },
+                  { value: "with", label: t("withPhoto") },
+                  { value: "without", label: t("withoutPhoto") },
+                ]}
+              />
+              <FilterSelect
+                label={t("modelUsage")}
+                name="modelUsage"
+                defaultValue={listState.modelUsage}
+                options={[
+                  { value: "all", label: t("allUsage") },
+                  { value: "used", label: t("usedModels") },
+                  { value: "unused", label: t("unusedModels") },
+                ]}
+              />
+              <div className="flex items-end gap-2">
+                <button
+                  type="submit"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+                >
+                  <Filter className="h-4 w-4" />
+                  {tCommon("filter")}
+                </button>
+                <Link
+                  href={basePath}
+                  className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+                >
+                  {t("clearFilters")}
+                </Link>
+              </div>
+            </form>
           </div>
-        </div>
-      ) : null}
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-border px-4 py-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">{t("brandListTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("brandListSubtitle")}</p>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <ColumnHeader>{t("brandName")}</ColumnHeader>
-                <ColumnHeader>{t("models")}</ColumnHeader>
-                <ColumnHeader>{t("assets")}</ColumnHeader>
-                <ColumnHeader>{tCommon("status")}</ColumnHeader>
-                <ColumnHeader align="right">{tCommon("actions")}</ColumnHeader>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {brands.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="h-32 px-4 text-center text-muted-foreground">
-                    {tCommon("noData")}
-                  </td>
-                </tr>
-              ) : (
-                brands.map((brand) => (
-                  <ClickableTableRow
-                    key={brand.id}
-                    href={`/${locale}/master-data/brands/${brand.id}/edit`}
-                    label={`${tCommon("edit")}: ${brand.name}`}
-                  >
-                    <td className="min-w-56 px-4 py-3 font-medium text-foreground">{brand.name}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{brand._count.models}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{brand._count.assets}</td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <ActiveBadge label={tCommon("active")} />
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        <Link
-                          href={`${basePath}?${buildBrandModelQueryString(listState, { modelBrandId: brand.id, modelPage: 1 })}`}
-                          title={t("viewModels")}
-                          className="inline-flex h-8 items-center justify-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+          {totalDuplicateGroups > 0 ? (
+            <details className="rounded-lg border border-warning/30 bg-warning/5 p-4">
+              <summary className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-foreground">
+                <AlertTriangle className="h-5 w-5 shrink-0 text-warning" />
+                {t("duplicateReviewCompact", { count: totalDuplicateGroups })}
+              </summary>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <DuplicateGroupList title={t("duplicateBrands")} groups={brandDuplicateGroups.slice(0, 4)} />
+                <DuplicateGroupList title={t("duplicateModels")} groups={modelDuplicateGroups.slice(0, 4)} />
+              </div>
+            </details>
+          ) : null}
+
+          <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-border px-4 py-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">{t("modelsTitle")}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{t("modelsSubtitle")}</p>
+              </div>
+              <Link
+                href={`/${locale}/master-data/brands/models/new`}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+              >
+                <Plus className="h-4 w-4" />
+                {t("createModel")}
+              </Link>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-border text-sm">
+                <thead className="bg-muted/40">
+                  <tr>
+                    <ColumnHeader>{t("modelName")}</ColumnHeader>
+                    {!selectedBrand ? <ColumnHeader>{t("brand")}</ColumnHeader> : null}
+                    <ColumnHeader>{t("category")}</ColumnHeader>
+                    <ColumnHeader>{t("specs")}</ColumnHeader>
+                    <ColumnHeader>{t("assets")}</ColumnHeader>
+                    <ColumnHeader>{tCommon("status")}</ColumnHeader>
+                    <ColumnHeader align="right">{tCommon("actions")}</ColumnHeader>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {models.length === 0 ? (
+                    <tr>
+                      <td colSpan={selectedBrand ? 6 : 7} className="h-32 px-4 text-center text-muted-foreground">
+                        {tCommon("noData")}
+                      </td>
+                    </tr>
+                  ) : (
+                    models.map((model) => {
+                      const photo = primaryPhotoByModelId.get(model.id)
+                      const canPreviewPhoto = photo ? previewableModelPhotoTypes.has(photo.fileType) : false
+
+                      return (
+                        <ClickableTableRow
+                          key={model.id}
+                          href={`/${locale}/master-data/brands/models/${model.id}/edit`}
+                          label={`${tCommon("edit")}: ${model.name}`}
                         >
-                          {t("viewModels")}
-                        </Link>
-                        <Link
-                          href={`/${locale}/master-data/brands/${brand.id}/edit`}
-                          title={tCommon("edit")}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Link>
-                        <BrandDeleteButton id={brand.id} />
-                      </div>
-                    </td>
-                  </ClickableTableRow>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        <BrandModelPagination
-          current={listState}
-          total={brandTotal}
-          basePath={basePath}
-          pageKey="brandPage"
-          pageSizeKey="brandPageSize"
-          labels={{
-            rowsPerPage: tCommon("rowsPerPage"),
-            page: tCommon("page"),
-            of: tCommon("of"),
-            previous: tCommon("previous"),
-            next: tCommon("next"),
-          }}
-        />
-      </div>
-
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-border px-4 py-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">{t("modelsTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {selectedBrand || selectedCategory
-                ? t("modelsFilteredBy", {
-                    brand: selectedBrand?.name ?? t("allBrands"),
-                    category: selectedCategory ? `${selectedCategory.code} - ${selectedCategory.name}` : t("allCategories"),
-                  })
-                : t("modelsSubtitle")}
-            </p>
+                          <td className="min-w-64 px-4 py-3 font-medium text-foreground">
+                            <div className="flex items-center gap-3">
+                              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">
+                                {photo && canPreviewPhoto ? (
+                                  <Image
+                                    src={`/api/attachments/${photo.id}?inline=1`}
+                                    alt=""
+                                    fill
+                                    unoptimized
+                                    className="object-contain p-1"
+                                    sizes="48px"
+                                  />
+                                ) : (
+                                  <ImageIcon className="h-5 w-5" aria-hidden="true" />
+                                )}
+                              </div>
+                              <span className="min-w-0 truncate">{model.name}</span>
+                            </div>
+                          </td>
+                          {!selectedBrand ? (
+                            <td className="min-w-40 px-4 py-3 text-muted-foreground">{model.brand.name}</td>
+                          ) : null}
+                          <td className="min-w-48 px-4 py-3 text-muted-foreground">
+                            {model.category.code} - {model.category.name}
+                          </td>
+                          <td className="min-w-64 max-w-xl px-4 py-3 text-muted-foreground">
+                            <span className="line-clamp-2">{summarizeModelSpecs(model.specs) || "-"}</span>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{model._count.assets}</td>
+                          <td className="whitespace-nowrap px-4 py-3">
+                            <ActiveBadge label={tCommon("active")} />
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right">
+                            <div className="inline-flex items-center gap-1">
+                              <Link
+                                href={`/${locale}/master-data/brands/models/${model.id}/edit`}
+                                title={tCommon("edit")}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Link>
+                              <AssetModelDeleteButton id={model.id} />
+                            </div>
+                          </td>
+                        </ClickableTableRow>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <BrandModelPagination
+              current={listState}
+              total={modelTotal}
+              basePath={basePath}
+              pageKey="modelPage"
+              pageSizeKey="modelPageSize"
+              labels={{
+                rowsPerPage: tCommon("rowsPerPage"),
+                page: tCommon("page"),
+                of: tCommon("of"),
+                previous: tCommon("previous"),
+                next: tCommon("next"),
+              }}
+            />
           </div>
-          <Link
-            href={`/${locale}/master-data/brands/models/new`}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            {t("createModel")}
-          </Link>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <ColumnHeader>{t("modelName")}</ColumnHeader>
-                <ColumnHeader>{t("brand")}</ColumnHeader>
-                <ColumnHeader>{t("category")}</ColumnHeader>
-                <ColumnHeader>{t("specs")}</ColumnHeader>
-                <ColumnHeader>{t("assets")}</ColumnHeader>
-                <ColumnHeader>{tCommon("status")}</ColumnHeader>
-                <ColumnHeader align="right">{tCommon("actions")}</ColumnHeader>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {models.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="h-32 px-4 text-center text-muted-foreground">
-                    {tCommon("noData")}
-                  </td>
-                </tr>
-              ) : (
-                models.map((model) => {
-                  const photo = primaryPhotoByModelId.get(model.id)
-                  const canPreviewPhoto = photo ? previewableModelPhotoTypes.has(photo.fileType) : false
-
-                  return (
-                    <ClickableTableRow
-                      key={model.id}
-                      href={`/${locale}/master-data/brands/models/${model.id}/edit`}
-                      label={`${tCommon("edit")}: ${model.name}`}
-                    >
-                      <td className="min-w-64 px-4 py-3 font-medium text-foreground">
-                        <div className="flex items-center gap-3">
-                          <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">
-                            {photo && canPreviewPhoto ? (
-                              <Image
-                                src={`/api/attachments/${photo.id}?inline=1`}
-                                alt=""
-                                fill
-                                unoptimized
-                                className="object-contain p-1"
-                                sizes="48px"
-                              />
-                            ) : (
-                              <ImageIcon className="h-5 w-5" aria-hidden="true" />
-                            )}
-                          </div>
-                          <span className="min-w-0 truncate">{model.name}</span>
-                        </div>
-                      </td>
-                      <td className="min-w-40 px-4 py-3 text-muted-foreground">{model.brand.name}</td>
-                      <td className="min-w-48 px-4 py-3 text-muted-foreground">
-                        {model.category.code} - {model.category.name}
-                      </td>
-                      <td className="min-w-64 max-w-xl px-4 py-3 text-muted-foreground">
-                        <span className="line-clamp-2">{summarizeModelSpecs(model.specs) || "-"}</span>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{model._count.assets}</td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <ActiveBadge label={tCommon("active")} />
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right">
-                        <div className="inline-flex items-center gap-1">
-                          <Link
-                            href={`/${locale}/master-data/brands/models/${model.id}/edit`}
-                            title={tCommon("edit")}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Link>
-                          <AssetModelDeleteButton id={model.id} />
-                        </div>
-                      </td>
-                    </ClickableTableRow>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-        <BrandModelPagination
-          current={listState}
-          total={modelTotal}
-          basePath={basePath}
-          pageKey="modelPage"
-          pageSizeKey="modelPageSize"
-          labels={{
-            rowsPerPage: tCommon("rowsPerPage"),
-            page: tCommon("page"),
-            of: tCommon("of"),
-            previous: tCommon("previous"),
-            next: tCommon("next"),
-          }}
-        />
+        </section>
       </div>
     </div>
   )

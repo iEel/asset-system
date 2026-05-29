@@ -64,6 +64,7 @@ import { buildSystemLogFilterHref, type LdapSyncHistoryItem } from "@/lib/system
 import {
   applyCategoryPrefixGroupEdit,
   buildCategoryPrefixGroups,
+  filterPrefixRowsByCategoryIds,
   normalizeCategoryPrefix,
   parsePrefixRows,
   serializePrefixRows,
@@ -529,6 +530,7 @@ export function SystemSettingsForm({
   const [selectedCategorySearch, setSelectedCategorySearch] = useState("")
   const [checkedAvailableCategoryIds, setCheckedAvailableCategoryIds] = useState<string[]>([])
   const [checkedSelectedCategoryIds, setCheckedSelectedCategoryIds] = useState<string[]>([])
+  const activeCategoryIds = categories.map((category) => category.id)
   const generalSettings = settings.filter(
     (setting) => !friendlySettingKeys.has(setting.key)
   )
@@ -557,7 +559,8 @@ export function SystemSettingsForm({
   }
   const openPrefixEditor = (prefix?: string) => {
     const normalizedPrefix = normalizeCategoryPrefix(prefix ?? "")
-    const group = normalizedPrefix ? buildCategoryPrefixGroups(prefixRows).find((item) => item.prefix === normalizedPrefix) : null
+    const activePrefixRows = filterPrefixRowsByCategoryIds(prefixRows, activeCategoryIds)
+    const group = normalizedPrefix ? buildCategoryPrefixGroups(activePrefixRows).find((item) => item.prefix === normalizedPrefix) : null
     setPrefixEditor({
       previousPrefix: normalizedPrefix || null,
       prefix: normalizedPrefix,
@@ -616,16 +619,17 @@ export function SystemSettingsForm({
     (setting) => normalizeSettingValue(setting.key, effectiveValues[setting.key]) !== normalizeSettingValue(setting.key, initialValues[setting.key])
   )
   const changedCount = changedSettings.length
-  const prefixGroups = buildCategoryPrefixGroups(prefixRows)
+  const activePrefixRows = filterPrefixRowsByCategoryIds(prefixRows, activeCategoryIds)
+  const prefixGroups = buildCategoryPrefixGroups(activePrefixRows)
   const categoryById = new Map(categories.map((category) => [category.id, category]))
   const assignedPrefixByCategoryId = new Map(
-    prefixRows
+    activePrefixRows
       .map((row) => [row.categoryId, normalizeCategoryPrefix(row.prefix)] as const)
       .filter(([categoryId, prefix]) => categoryId && prefix)
   )
-  const selectedPrefixCategoryIds = prefixRows.map((row) => row.categoryId).filter(Boolean)
+  const selectedPrefixCategoryIds = activePrefixRows.map((row) => row.categoryId).filter(Boolean)
   const hasDuplicateCategory = new Set(selectedPrefixCategoryIds).size !== selectedPrefixCategoryIds.length
-  const hasInvalidPrefix = prefixRows.some((row) => row.categoryId && !isValidCategoryPrefix(row.prefix))
+  const hasInvalidPrefix = activePrefixRows.some((row) => row.categoryId && !isValidCategoryPrefix(row.prefix))
   const unassignedCategoryCount = categories.filter((category) => !assignedPrefixByCategoryId.has(category.id)).length
   const prefixEditorSelectedIds = prefixEditor?.categoryIds ?? []
   const prefixEditorSelectedIdSet = new Set(prefixEditorSelectedIds)

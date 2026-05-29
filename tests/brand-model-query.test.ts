@@ -3,6 +3,7 @@ import test from "node:test"
 
 import {
   buildBrandModelQueryString,
+  buildBrandNavigatorItems,
   buildDuplicateNameGroups,
   parseBrandModelListParams,
 } from "../src/lib/brand-model-query.ts"
@@ -58,5 +59,31 @@ test("groups likely duplicate names after normalizing spaces and punctuation", (
   assert.deepEqual(
     groups[0]?.items.map((item) => item.id),
     ["1", "2", "3"]
+  )
+})
+
+test("builds brand navigator counts from active model and asset groups", () => {
+  const items = buildBrandNavigatorItems(
+    [
+      { id: "brand-apc", name: "APC", _count: { models: 2, assets: 7 } },
+      { id: "brand-dell", name: "Dell", _count: { models: 1, assets: 0 } },
+    ],
+    [
+      { brandId: "brand-apc", count: 1 },
+      { brandId: "brand-dell", count: 0 },
+      { brandId: null, count: 3 },
+    ],
+    [
+      { brandId: "brand-apc", count: 6 },
+      { brandId: "brand-dell", count: 0 },
+    ]
+  )
+
+  assert.deepEqual(
+    items.map((item) => ({ id: item.id, models: item._count.models, assets: item._count.assets })),
+    [
+      { id: "brand-apc", models: 1, assets: 6 },
+      { id: "brand-dell", models: 0, assets: 0 },
+    ]
   )
 })

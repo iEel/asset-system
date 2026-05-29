@@ -4,6 +4,7 @@ import test from "node:test"
 import {
   applyCategoryPrefixGroupEdit,
   buildCategoryPrefixGroups,
+  filterPrefixRowsByCategoryIds,
   parsePrefixRows,
   serializePrefixRows,
 } from "../src/lib/category-prefix-groups.ts"
@@ -20,6 +21,23 @@ test("groups category prefix rows by normalized prefix", () => {
     [
       { prefix: "COM", categoryIds: ["cat-a", "cat-b"] },
       { prefix: "UPS", categoryIds: ["cat-c"] },
+    ]
+  )
+})
+
+test("filters prefix rows to known active categories before UI grouping", () => {
+  assert.deepEqual(
+    filterPrefixRowsByCategoryIds(
+      [
+        { categoryId: "cat-a", prefix: "COM" },
+        { categoryId: "cat-stale", prefix: "COM" },
+        { categoryId: "cat-b", prefix: "UPS" },
+      ],
+      ["cat-a", "cat-b"]
+    ),
+    [
+      { categoryId: "cat-a", prefix: "COM" },
+      { categoryId: "cat-b", prefix: "UPS" },
     ]
   )
 })
