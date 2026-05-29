@@ -11,7 +11,7 @@ test("topbar does not expose a persistent PWA install prompt", () => {
 test("PWA install remains available through browser metadata", () => {
   const manifest = readFileSync("src/app/manifest.ts", "utf8")
   assert.match(manifest, /display: "standalone"/)
-  assert.match(manifest, /start_url: "\/th\/dashboard"/)
+  assert.match(manifest, /start_url: "\/th"/)
   assert.match(manifest, /icons:/)
 
   const rootLayout = readFileSync("src/app/layout.tsx", "utf8")

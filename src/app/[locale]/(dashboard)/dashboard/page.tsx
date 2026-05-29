@@ -1,5 +1,6 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
+import { redirect } from "next/navigation"
 import { getMessages, getTranslations } from "next-intl/server"
 import {
   Package,
@@ -18,6 +19,7 @@ import {
 import { getSessionUser } from "@/lib/auth-utils"
 import { getApprovalInboxAccess, getApprovalInboxCounts, type ApprovalInboxCounts } from "@/lib/approval-inbox-query"
 import { buildDashboardActionCardKeys, type DashboardActionCardKey } from "@/lib/dashboard-action-cards"
+import { shouldUseEmployeeHome } from "@/lib/default-home"
 import { prisma } from "@/lib/db"
 import { buildSystemLogRecordLabels } from "@/lib/system-log-record-labels"
 import { buildSystemLogPresentation, type SystemLogPresentation } from "@/lib/system-log-presenter"
@@ -52,6 +54,12 @@ const actionCardIconClass: Record<DashboardActionTone, string> = {
 
 export default async function DashboardPage({ params }: DashboardPageProps) {
   const { locale } = await params
+  const user = await getSessionUser()
+
+  if (user && shouldUseEmployeeHome(user)) {
+    redirect(`/${locale}/my-assets`)
+  }
+
   const [t, messages] = await Promise.all([getTranslations("dashboard"), getMessages()])
   const systemLogMessages = messages.systemLogPage && typeof messages.systemLogPage === "object"
     ? messages.systemLogPage as Record<string, string>
@@ -62,7 +70,6 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const monthRange = getMonthRange(new Date())
-  const user = await getSessionUser()
   const approvalInboxAccess = user ? getApprovalInboxAccess(user) : null
   const emptyApprovalInboxCounts: ApprovalInboxCounts = { total: 0, disposal: 0, maintenance: 0, audit: 0 }
 

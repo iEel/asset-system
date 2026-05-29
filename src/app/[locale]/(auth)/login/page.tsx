@@ -31,7 +31,7 @@ export default function LoginPage() {
       if (result?.error) {
         setError(t("loginFailed"))
       } else {
-        router.push(`/${locale}/dashboard`)
+        router.replace(`/${locale}`)
         router.refresh()
       }
     } catch {

@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Asset System",
     description: "ระบบบริหารจัดการทรัพย์สิน",
     lang: "th",
-    start_url: "/th/dashboard",
+    start_url: "/th",
     scope: "/",
     display: "standalone",
     background_color: "#F8FAFC",

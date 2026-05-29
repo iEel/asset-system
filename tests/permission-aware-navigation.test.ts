@@ -1,7 +1,9 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import { buildAccessDeniedHref } from "../src/lib/access-denied.ts"
+import { getDefaultHomeHref, shouldUseEmployeeHome } from "../src/lib/default-home.ts"
 import { filterNavigationItemsByPermission } from "../src/lib/navigation-permissions.ts"
 import { getUserDisplayLabel, getUserInitial, getUserSecondaryLabel } from "../src/lib/user-display.ts"
 
@@ -61,4 +63,36 @@ test("formats topbar user identity from the active session user", () => {
   assert.equal(getUserInitial(user), "V")
   assert.equal(getUserDisplayLabel(user), "Veerapon Laoharotkul")
   assert.equal(getUserSecondaryLabel(user), "veerapon.l@sonic.co.th")
+})
+
+test("uses My Assets as the default home for linked employee self-service users", () => {
+  const selfServiceUser = {
+    id: "user-2",
+    name: "Employee",
+    roles: ["employee"],
+    permissions: ["dashboard:view"],
+    employeeId: "emp-1",
+  }
+
+  assert.equal(shouldUseEmployeeHome(selfServiceUser), true)
+  assert.equal(getDefaultHomeHref("th", selfServiceUser), "/th/my-assets")
+  assert.equal(
+    getDefaultHomeHref("th", { ...selfServiceUser, permissions: ["dashboard:view", "asset:view"] }),
+    "/th/dashboard"
+  )
+  assert.equal(
+    getDefaultHomeHref("th", { ...selfServiceUser, roles: ["system_admin"], permissions: [] }),
+    "/th/dashboard"
+  )
+})
+
+test("login and dashboard entry points use the role-aware default home", () => {
+  const localePage = readFileSync("src/app/[locale]/page.tsx", "utf8")
+  const loginPage = readFileSync("src/app/[locale]/(auth)/login/page.tsx", "utf8")
+  const dashboardPage = readFileSync("src/app/[locale]/(dashboard)/dashboard/page.tsx", "utf8")
+
+  assert.match(localePage, /getDefaultHomeHref\(locale, user\)/)
+  assert.match(loginPage, /router\.replace\(`\/\$\{locale\}`\)/)
+  assert.match(dashboardPage, /shouldUseEmployeeHome\(user\)/)
+  assert.match(dashboardPage, /redirect\(`\/\$\{locale\}\/my-assets`\)/)
 })
