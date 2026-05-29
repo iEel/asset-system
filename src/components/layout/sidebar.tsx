@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from "next-intl"
 import {
   LayoutDashboard,
   Package,
+  PackageCheck,
   ClipboardCheck,
   FileCheck2,
   BarChart3,
@@ -80,6 +81,15 @@ export function Sidebar({
       permission: { module: "dashboard", action: "view" },
       icon: <Inbox size={20} />,
     },
+    ...(user.employeeId
+      ? [
+          {
+            labelKey: "myAssets",
+            href: `/${locale}/my-assets`,
+            icon: <PackageCheck size={20} />,
+          },
+        ]
+      : []),
     {
       labelKey: "assetManagement",
       icon: <Package size={20} />,

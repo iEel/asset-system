@@ -30,7 +30,7 @@ const myAssetSelect = {
   condition: { select: { nameTh: true, colorCode: true } },
   attachments: {
     where: { module: "asset", fileType: { startsWith: "image/" }, isActive: true },
-    select: { id: true, originalName: true, fileType: true },
+    select: { id: true, originalName: true },
     orderBy: { uploadedAt: "desc" },
     take: 1,
   },

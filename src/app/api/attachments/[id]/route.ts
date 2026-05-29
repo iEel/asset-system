@@ -24,7 +24,12 @@ export async function GET(request: NextRequest, context: AttachmentRouteContext)
     if (!attachment) {
       return NextResponse.json({ error: "Attachment not found" }, { status: 404 })
     }
-    requireAttachmentPermission(user, attachment.module, "view")
+    if (
+      !hasAttachmentPermission(user, attachment.module, "view") &&
+      !(await canViewOwnAssetAttachment(user, attachment))
+    ) {
+      requireAttachmentPermission(user, attachment.module, "view")
+    }
 
     const safePath = assertSafeUploadPath(attachment.filePath)
     const file = await readFile(safePath)
@@ -84,7 +89,21 @@ function requireAttachmentPermission(
   module: string,
   action: "view" | "edit"
 ) {
-  const permissionModule =
+  if (!hasAttachmentPermission(user, module, action)) {
+    throw new Error("Forbidden: insufficient permissions")
+  }
+}
+
+function hasAttachmentPermission(
+  user: Awaited<ReturnType<typeof requireAuth>>,
+  module: string,
+  action: "view" | "edit"
+) {
+  return hasPermission(user, getAttachmentPermissionModule(module), action)
+}
+
+function getAttachmentPermissionModule(module: string) {
+  return (
     module === "maintenance"
       ? "maintenance"
       : module === "audit_finding"
@@ -94,7 +113,22 @@ function requireAttachmentPermission(
         : module === "asset_model"
           ? "brand"
           : "asset"
-  if (!hasPermission(user, permissionModule, action)) {
-    throw new Error("Forbidden: insufficient permissions")
-  }
+  )
+}
+
+async function canViewOwnAssetAttachment(
+  user: Awaited<ReturnType<typeof requireAuth>>,
+  attachment: { module: string; assetId: string | null; referenceId: string }
+) {
+  if (attachment.module !== "asset" || !user.employeeId) return false
+
+  const assetId = attachment.assetId ?? attachment.referenceId
+  if (!assetId) return false
+
+  const asset = await prisma.asset.findFirst({
+    where: { id: assetId, isActive: true, custodianId: user.employeeId },
+    select: { id: true },
+  })
+
+  return Boolean(asset)
 }

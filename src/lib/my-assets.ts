@@ -28,5 +28,5 @@ export function summarizeMyAssets(items: MyAssetSummaryItem[]) {
 }
 
 function normalizeStatus(value: string | null) {
-  return (value ?? "").trim().toLocaleLowerCase()
+  return (value ?? "").trim().toLowerCase()
 }

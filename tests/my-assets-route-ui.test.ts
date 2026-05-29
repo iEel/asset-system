@@ -20,3 +20,15 @@ test("my assets route has Thai and English translations", () => {
   assert.match(en, /"myAssets"/)
   assert.match(en, /"My Assets"/)
 })
+
+test("sidebar exposes My Assets only through linked employee identity", () => {
+  const sidebar = readFileSync("src/components/layout/sidebar.tsx", "utf8")
+
+  assert.match(sidebar, /labelKey: "myAssets"/)
+  assert.match(sidebar, /user\.employeeId/)
+  assert.match(sidebar, /href: `\/\$\{locale\}\/my-assets`/)
+  assert.doesNotMatch(
+    sidebar,
+    /labelKey: "myAssets"[\s\S]{0,220}permission: \{ module: "asset", action: "view" \}/
+  )
+})
