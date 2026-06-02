@@ -1,0 +1,205 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-02T00:00:00+07:00",
+  "title": "Design System: Asset Management System",
+  "extensions": {
+    "colorMeta": {
+      "corporate-navy": {
+        "role": "primary",
+        "displayName": "Corporate Navy",
+        "canonical": "#1E3A5F",
+        "tonalRamp": ["oklch(18% 0.045 250)", "oklch(28% 0.055 250)", "oklch(38% 0.065 250)", "oklch(48% 0.07 250)", "oklch(60% 0.06 250)", "oklch(72% 0.045 250)", "oklch(84% 0.03 250)", "oklch(95% 0.015 250)"]
+      },
+      "soft-system-background": {
+        "role": "neutral",
+        "displayName": "Soft System Background",
+        "canonical": "#F8FAFC",
+        "tonalRamp": ["oklch(16% 0.01 250)", "oklch(28% 0.01 250)", "oklch(40% 0.01 250)", "oklch(55% 0.008 250)", "oklch(70% 0.008 250)", "oklch(82% 0.006 250)", "oklch(91% 0.004 250)", "oklch(98% 0.003 250)"]
+      },
+      "primary-slate-ink": {
+        "role": "neutral",
+        "displayName": "Primary Slate Ink",
+        "canonical": "#0F172A",
+        "tonalRamp": ["oklch(14% 0.03 260)", "oklch(24% 0.035 260)", "oklch(34% 0.035 260)", "oklch(46% 0.03 260)", "oklch(60% 0.025 260)", "oklch(74% 0.018 260)", "oklch(86% 0.012 260)", "oklch(96% 0.006 260)"]
+      },
+      "success": {
+        "role": "status",
+        "displayName": "Success Green",
+        "canonical": "#16A34A",
+        "tonalRamp": ["oklch(20% 0.07 145)", "oklch(32% 0.10 145)", "oklch(44% 0.13 145)", "oklch(56% 0.16 145)", "oklch(66% 0.14 145)", "oklch(78% 0.10 145)", "oklch(88% 0.055 145)", "oklch(96% 0.025 145)"]
+      },
+      "warning": {
+        "role": "status",
+        "displayName": "Warning Amber",
+        "canonical": "#F59E0B",
+        "tonalRamp": ["oklch(22% 0.06 75)", "oklch(34% 0.09 75)", "oklch(48% 0.13 75)", "oklch(62% 0.16 75)", "oklch(74% 0.14 75)", "oklch(84% 0.10 75)", "oklch(92% 0.06 75)", "oklch(97% 0.025 75)"]
+      },
+      "danger": {
+        "role": "status",
+        "displayName": "Danger Red",
+        "canonical": "#DC2626",
+        "tonalRamp": ["oklch(20% 0.08 28)", "oklch(32% 0.12 28)", "oklch(44% 0.16 28)", "oklch(56% 0.20 28)", "oklch(68% 0.16 28)", "oklch(80% 0.10 28)", "oklch(90% 0.055 28)", "oklch(96% 0.025 28)"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Compact Display",
+        "purpose": "Page titles and high-level report titles only."
+      },
+      "body": {
+        "displayName": "Operational Body",
+        "purpose": "Dense Thai and English UI text, table cells, and workflow copy."
+      },
+      "label": {
+        "displayName": "Interface Label",
+        "purpose": "Controls, navigation, field labels, and filter labels."
+      }
+    },
+    "shadows": [
+      {
+        "name": "structured-panel",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "purpose": "Subtle grouping for content panels, metric cards, and operational cards."
+      },
+      {
+        "name": "floating-overlay",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.10), 0 4px 6px -4px rgb(0 0 0 / 0.10)",
+        "purpose": "Dropdowns, popovers, and overlays above dense content."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-transition",
+        "value": "150ms-250ms ease-out",
+        "purpose": "Hover, focus, selection, and state feedback only."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce",
+        "purpose": "Disable nonessential transitions for users who request reduced motion."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action button for save, create, submit, approve, or workflow-forward actions.",
+      "html": "<button class=\"ds-btn-primary\">Save changes</button>",
+      "css": ".ds-btn-primary { min-height: 44px; height: 40px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 8px; background: #1E3A5F; color: #FFFFFF; font: 500 14px/1.4 Inter, system-ui, sans-serif; transition: background-color 160ms ease-out; } .ds-btn-primary:hover { background: rgb(30 58 95 / 0.9); } .ds-btn-primary:focus-visible { outline: 2px solid #1E3A5F; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Secondary action for filters, navigation-adjacent actions, and lower-priority commands.",
+      "html": "<button class=\"ds-btn-secondary\">Export current result</button>",
+      "css": ".ds-btn-secondary { min-height: 44px; height: 40px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #E2E8F0; border-radius: 8px; background: #FFFFFF; color: #0F172A; font: 500 14px/1.4 Inter, system-ui, sans-serif; transition: background-color 160ms ease-out, border-color 160ms ease-out; } .ds-btn-secondary:hover { background: #F1F5F9; } .ds-btn-secondary:focus-visible { outline: 2px solid #1E3A5F; outline-offset: 2px; } .ds-btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Standard form input for asset, employee, location, search, and settings fields.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Asset tag</span><input class=\"ds-input\" placeholder=\"Search asset tag\" /></label>",
+      "css": ".ds-field { display: grid; gap: 6px; font-family: Inter, system-ui, sans-serif; color: #0F172A; } .ds-field-label { font-size: 14px; line-height: 1.4; font-weight: 500; } .ds-input { min-height: 44px; height: 40px; width: 100%; border: 1px solid #E2E8F0; border-radius: 8px; background: #F8FAFC; color: #0F172A; padding: 0 12px; font: 400 14px/1.5 Inter, system-ui, sans-serif; outline: none; } .ds-input::placeholder { color: #475569; } .ds-input:focus { border-color: #1E3A5F; box-shadow: 0 0 0 1px #1E3A5F; } .ds-input:disabled { background: #F1F5F9; color: #475569; cursor: not-allowed; }"
+    },
+    {
+      "name": "Content Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Default grouped surface for forms, dashboard modules, settings sections, and operational content.",
+      "html": "<section class=\"ds-panel\"><h2 class=\"ds-panel-title\">Asset custody</h2><p class=\"ds-panel-copy\">Review current custodian, branch, department, and audit trail context.</p></section>",
+      "css": ".ds-panel { min-width: 0; max-width: 100%; border: 1px solid #E2E8F0; border-radius: 12px; background: #FFFFFF; color: #0F172A; padding: 16px; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); font-family: Inter, system-ui, sans-serif; } .ds-panel-title { margin: 0; font-size: 16px; line-height: 1.5; font-weight: 600; } .ds-panel-copy { margin: 4px 0 0; max-width: 72ch; font-size: 14px; line-height: 1.5; color: #475569; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge-status",
+      "description": "Compact workflow status cue that pairs color with a readable label.",
+      "html": "<span class=\"ds-status-badge ds-status-warning\">Pending review</span>",
+      "css": ".ds-status-badge { display: inline-flex; width: fit-content; align-items: center; border-radius: 9999px; padding: 4px 12px; font: 500 14px/1.4 Inter, system-ui, sans-serif; } .ds-status-warning { background: rgb(245 158 11 / 0.10); color: #B45309; } .ds-status-success { background: rgb(22 163 74 / 0.10); color: #15803D; } .ds-status-danger { background: rgb(220 38 38 / 0.10); color: #B91C1C; } .ds-status-info { background: rgb(37 99 235 / 0.10); color: #1D4ED8; }"
+    },
+    {
+      "name": "Sidebar Navigation Item",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "RBAC-filtered navigation row with icon, label, hover state, and active Corporate Navy identity.",
+      "html": "<a class=\"ds-nav-item ds-nav-item-active\" href=\"#\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z\" fill=\"currentColor\"/></svg><span>Dashboard</span></a>",
+      "css": ".ds-nav-item { min-height: 44px; display: flex; align-items: center; gap: 12px; border-radius: 8px; padding: 8px 12px; color: #475569; text-decoration: none; font: 500 14px/1.4 Inter, system-ui, sans-serif; transition: background-color 160ms ease-out, color 160ms ease-out; } .ds-nav-item svg { width: 20px; height: 20px; flex: 0 0 auto; } .ds-nav-item:hover { background: #F1F5F9; color: #0F172A; } .ds-nav-item:focus-visible { outline: 2px solid #1E3A5F; outline-offset: 2px; } .ds-nav-item-active { background: rgb(30 58 95 / 0.10); color: #1E3A5F; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Corporate Asset Ledger",
+    "overview": "This visual system should feel like a trusted enterprise record system for asset ownership, custody, audit, maintenance, disposal, reporting, and administration. It is structured, accountable, and operationally reliable. The interface serves real Thai corporate operations, so the design language is calm, corporate, data-driven, and practical.",
+    "keyCharacteristics": [
+      "Corporate, restrained, and audit-friendly.",
+      "Dense enough for enterprise scanning, never cramped.",
+      "Bordered and tonal by default, lightly lifted only where grouping matters.",
+      "Status-rich, permission-aware, and readable in Thai and English.",
+      "Built for desktop administration and mobile field audit work."
+    ],
+    "rules": [
+      {
+        "name": "The Corporate Accent Rule",
+        "body": "Corporate Navy is for primary action, current location, focus, and selected state. Do not use it as decorative fill across inactive cards or marketing-style sections.",
+        "section": "colors"
+      },
+      {
+        "name": "The Status With Evidence Rule",
+        "body": "Status cues must never rely on color alone. Pair semantic color with readable labels, consistent tone mapping, and visible workflow context.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Decorative Gradient Rule",
+        "body": "Decorative gradients are prohibited. The product should feel like an enterprise operations system, not a landing page.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Display Labels Rule",
+        "body": "Never use display fonts, fluid hero type, or oversized marketing typography for labels, buttons, data, navigation, or form controls.",
+        "section": "typography"
+      },
+      {
+        "name": "The Thai Readability Rule",
+        "body": "Thai and English labels must remain readable at operational density. Do not shrink helper text or placeholders below accessible contrast or touch usability.",
+        "section": "typography"
+      },
+      {
+        "name": "The Border First Rule",
+        "body": "Use a border and tonal surface before adding elevation. Add `shadow-sm` only when grouping or layer separation improves task clarity.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No Floating Marketing Cards Rule",
+        "body": "Panels may be lightly lifted for structure, but they must not become decorative cards arranged for landing-page drama.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do preserve existing tokens and design-system helpers such as panel, action button, field control, table shell, mobile card list, empty state, and touch icon button classes.",
+      "Do use Corporate Navy for primary actions, active navigation, selected state, and focus rings.",
+      "Do use borders and tonal layers as the default grouping mechanism, with `shadow-sm` only for important panels, cards, modals, and grouped sections.",
+      "Do keep tables and forms dense enough for enterprise scanning, but not cramped.",
+      "Do pair status colors with readable labels, icons, shapes, or explicit workflow context so status does not rely on color alone.",
+      "Do support Thai and English text, keyboard navigation, visible focus states, reduced motion, touch-safe mobile/tablet controls, and clear empty, loading, error, permission-denied, and validation states.",
+      "Do preserve business workflows, RBAC, locale routing, audit trail expectations, Prisma/SQL Server behavior, and production readiness assumptions."
+    ],
+    "donts": [
+      "Don't use consumer-app styling, bright playful colors, heavy animation, marketing-style hero layouts, gamified UI, casual startup dashboards, decorative gradients, or anything that makes the system feel like a landing page instead of an enterprise operations tool.",
+      "Don't use glassmorphism, heavy shadows, decorative gradients, floating marketing cards, or playful surfaces.",
+      "Don't redesign business workflows for visual effect.",
+      "Don't invent inconsistent button, input, modal, badge, or navigation vocabularies across screens.",
+      "Don't rely on color alone for status, permission, validation, audit, or lifecycle state.",
+      "Don't use display fonts, fluid hero typography, gradient text, oversized cards, or landing-page composition inside product workflows.",
+      "Don't use colored side-stripe borders as a decorative accent. Use full borders, status badges, text labels, and icons instead."
+    ]
+  }
+}
