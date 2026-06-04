@@ -10,16 +10,12 @@ import {
   type PreferredCameraSelection,
 } from "@/lib/camera-selection"
 import {
-  buildAssetQrVideoConstraints,
   startNativeAssetQrScanner,
+  startNativeSerialCodeScanner,
   type NativeAssetQrScannerRuntime,
+  type NativeSerialCodeScannerRuntime,
 } from "@/lib/asset-qr-scanner"
-import type {
-  CameraDevice,
-  Html5Qrcode,
-  Html5QrcodeCameraScanConfig,
-  Html5QrcodeSupportedFormats,
-} from "html5-qrcode"
+import type { CameraDevice } from "html5-qrcode"
 
 type ScannerTextInputLabels = {
   start: string
@@ -63,8 +59,7 @@ export function ScannerTextInput({
 }: ScannerTextInputProps) {
   const reactId = useId()
   const readerId = `scanner-reader-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}`
-  const scannerRef = useRef<Html5Qrcode | null>(null)
-  const assetQrRuntimeRef = useRef<NativeAssetQrScannerRuntime | null>(null)
+  const nativeScannerRuntimeRef = useRef<NativeAssetQrScannerRuntime | NativeSerialCodeScannerRuntime | null>(null)
   const [scannerRunning, setScannerRunning] = useState(false)
   const [scannerLoading, setScannerLoading] = useState(false)
   const [cameraErrorText, setCameraErrorText] = useState("")
@@ -87,7 +82,7 @@ export function ScannerTextInput({
     setScannerLoading(true)
     setCameraErrorText("")
     try {
-      const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode")
+      const { Html5Qrcode } = await import("html5-qrcode")
       const availableCameras = await Html5Qrcode.getCameras()
       setCameras(availableCameras)
 
@@ -109,36 +104,20 @@ export function ScannerTextInput({
         })
       }
 
-      if (scanMode === "asset-qr") {
-        const startWithSelection = async (selection: PreferredCameraSelection) => {
-          assetQrRuntimeRef.current = await startNativeAssetQrScanner({
+      const startWithSelection = async (selection: PreferredCameraSelection) => {
+        if (scanMode === "asset-qr") {
+          nativeScannerRuntimeRef.current = await startNativeAssetQrScanner({
             readerId,
             cameraSelection: selection,
             onScanSuccess: handleScanSuccess,
           })
+          return
         }
-
-        try {
-          await startWithSelection(cameraSelection)
-        } catch (startError) {
-          const fallbackCamera = getFallbackCameraAfterEnvironmentFailure(cameraSelection, availableCameras)
-          if (!fallbackCamera) throw startError
-          setSelectedCameraId(fallbackCamera.id)
-          await startWithSelection(resolvePreferredCameraSelection([fallbackCamera], fallbackCamera.id))
-        }
-        setScannerRunning(true)
-        return
-      }
-
-      const scanner = new Html5Qrcode(readerId, {
-        formatsToSupport: getScannerCodeFormats(Html5QrcodeSupportedFormats, scanMode),
-        useBarCodeDetectorIfSupported: true,
-        verbose: false,
-      })
-      scannerRef.current = scanner
-      const startWithSelection = async (selection: PreferredCameraSelection) => {
-        const scanConfig = getScannerConfig(scanMode, selection)
-        await scanner.start(selection.cameraConfig, scanConfig, handleScanSuccess, () => {})
+        nativeScannerRuntimeRef.current = await startNativeSerialCodeScanner({
+          readerId,
+          cameraSelection: selection,
+          onScanSuccess: handleScanSuccess,
+        })
       }
 
       try {
@@ -154,36 +133,22 @@ export function ScannerTextInput({
       const message = error instanceof Error ? error.message : labels.cameraError
       setCameraErrorText(message)
       toast.error(message)
-      scannerRef.current = null
+      nativeScannerRuntimeRef.current = null
     } finally {
       setScannerLoading(false)
     }
   }
 
   async function stopScanner() {
-    const assetQrRuntime = assetQrRuntimeRef.current
-    if (assetQrRuntime) {
-      assetQrRuntime.stop()
-      assetQrRuntimeRef.current = null
+    const nativeScannerRuntime = nativeScannerRuntimeRef.current
+    if (nativeScannerRuntime) {
+      nativeScannerRuntime.stop()
+      nativeScannerRuntimeRef.current = null
       setScannerRunning(false)
       return
     }
 
-    const scanner = scannerRef.current
-    if (!scanner) {
-      setScannerRunning(false)
-      return
-    }
-
-    try {
-      await scanner.stop()
-      scanner.clear()
-    } catch {
-      scanner.clear()
-    } finally {
-      scannerRef.current = null
-      setScannerRunning(false)
-    }
+    setScannerRunning(false)
   }
 
   async function handleToggleScanner() {
@@ -206,13 +171,13 @@ export function ScannerTextInput({
 
   const showScannerPanel = scannerRunning || scannerLoading || Boolean(cameraErrorText)
   const readerShellClassName =
-    scanMode === "asset-qr"
-      ? "relative isolate aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-background"
-      : "aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-background sm:min-h-56"
+    scanMode === "serial-code"
+      ? "relative isolate aspect-[16/9] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-background"
+      : "relative isolate aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-background"
   const readerClassName =
     scanMode === "asset-qr"
       ? "w-full [&_video]:!h-auto [&_video]:!w-full"
-      : "h-full w-full [&_video]:!h-full [&_video]:!w-full [&_video]:!object-cover"
+      : "w-full [&_video]:!h-auto [&_video]:!w-full"
 
   return (
     <div className="min-w-0 max-w-full space-y-2">
@@ -279,6 +244,7 @@ export function ScannerTextInput({
           <div className={readerShellClassName}>
             <div id={readerId} className={readerClassName} />
             {scanMode === "asset-qr" ? <QrScannerOverlay /> : null}
+            {scanMode === "serial-code" ? <SerialScannerOverlay /> : null}
           </div>
           {scannerRunning && <p className="mt-2 text-xs text-muted-foreground">{labels.scanning}</p>}
           {cameraErrorText && <p className="mt-2 text-xs font-medium text-danger">{cameraErrorText}</p>}
@@ -286,50 +252,6 @@ export function ScannerTextInput({
       )}
     </div>
   )
-}
-
-function getScannerConfig(
-  scanMode: NonNullable<ScannerTextInputProps["scanMode"]>,
-  cameraSelection?: PreferredCameraSelection
-): Html5QrcodeCameraScanConfig {
-  if (scanMode === "asset-qr") {
-    return {
-      fps: 15,
-      aspectRatio: 1.333,
-      disableFlip: true,
-      videoConstraints: buildAssetQrVideoConstraints(cameraSelection),
-    }
-  }
-
-  return { fps: 10, qrbox: getResponsiveQrBox, aspectRatio: 1.333 }
-}
-
-function getScannerCodeFormats(
-  formats: typeof Html5QrcodeSupportedFormats,
-  scanMode: NonNullable<ScannerTextInputProps["scanMode"]>
-): Html5QrcodeSupportedFormats[] {
-  if (scanMode === "asset-qr") return [formats.QR_CODE]
-
-  return [
-    formats.QR_CODE,
-    formats.CODE_128,
-    formats.CODE_39,
-    formats.CODE_93,
-    formats.EAN_13,
-    formats.EAN_8,
-    formats.UPC_A,
-    formats.UPC_E,
-    formats.ITF,
-    formats.CODABAR,
-    formats.DATA_MATRIX,
-    formats.PDF_417,
-  ]
-}
-
-function getResponsiveQrBox(viewfinderWidth: number, viewfinderHeight: number) {
-  const minEdge = Math.min(viewfinderWidth, viewfinderHeight)
-  const size = Math.max(140, Math.min(320, minEdge - 24, Math.floor(minEdge * 0.82)))
-  return { width: size, height: size }
 }
 
 function QrScannerOverlay() {
@@ -343,6 +265,22 @@ function QrScannerOverlay() {
         <span className="absolute right-0 top-0 h-10 w-10 border-r-4 border-t-4 border-white" />
         <span className="absolute bottom-0 left-0 h-10 w-10 border-b-4 border-l-4 border-white" />
         <span className="absolute bottom-0 right-0 h-10 w-10 border-b-4 border-r-4 border-white" />
+      </div>
+    </div>
+  )
+}
+
+function SerialScannerOverlay() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">
+      <div
+        className="absolute left-1/2 top-1/2 h-[46%] w-[72%] max-w-[28rem] -translate-x-1/2 -translate-y-1/2"
+        style={{ boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.36)" }}
+      >
+        <span className="absolute left-0 top-0 h-9 w-9 border-l-4 border-t-4 border-white" />
+        <span className="absolute right-0 top-0 h-9 w-9 border-r-4 border-t-4 border-white" />
+        <span className="absolute bottom-0 left-0 h-9 w-9 border-b-4 border-l-4 border-white" />
+        <span className="absolute bottom-0 right-0 h-9 w-9 border-b-4 border-r-4 border-white" />
       </div>
     </div>
   )

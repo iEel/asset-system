@@ -2,28 +2,30 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-test("asset QR scanner uses an undistorted camera preview and QR-only formats", () => {
+test("asset QR scanner uses an undistorted camera preview and QR-only native reader", () => {
   const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8")
+  const helper = readFileSync("src/lib/asset-qr-scanner.ts", "utf8")
 
   assert.match(source, /scanMode === "asset-qr"[\s\S]+aspect-\[4\/3\]/)
-  assert.match(source, /scanMode === "asset-qr"[\s\S]+aspectRatio: 1\.333/)
-  assert.match(source, /scanMode === "asset-qr"[\s\S]+return \[formats\.QR_CODE\]/)
+  assert.match(source, /scanMode === "asset-qr"[\s\S]+startNativeAssetQrScanner/)
+  assert.match(helper, /new BrowserQRCodeReader/)
 })
 
 test("asset QR scanner decodes the full viewfinder without CSS distortion", () => {
   const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8")
+  const helper = readFileSync("src/lib/asset-qr-scanner.ts", "utf8")
 
-  assert.match(source, /return \{[\s\S]*fps: 15[\s\S]*aspectRatio: 1\.333[\s\S]*videoConstraints: buildAssetQrVideoConstraints\(cameraSelection\)[\s\S]*\}/)
   assert.doesNotMatch(source, /qrbox: getResponsiveSquareQrBox/)
   assert.match(source, /scanMode === "asset-qr"\s+\?\s+"w-full \[&_video\]:!h-auto \[&_video\]:!w-full"/)
-  assert.doesNotMatch(source, /\[&_video\]:!object-fill/)
+  assert.doesNotMatch(source, /\[&_video\]:!object-(?:fill|cover)/)
+  assert.match(helper, /width: \{ ideal: 1280 \}/)
+  assert.match(helper, /height: \{ ideal: 960 \}/)
+  assert.match(helper, /aspectRatio: \{ ideal: 1\.333 \}/)
 })
 
 test("asset QR scanner requests focus-friendly camera constraints and tuning", () => {
-  const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8")
   const helper = readFileSync("src/lib/asset-qr-scanner.ts", "utf8")
 
-  assert.match(source, /buildAssetQrVideoConstraints/)
   assert.match(helper, /function buildAssetQrVideoConstraints/)
   assert.match(helper, /width: \{ ideal: 1280 \}/)
   assert.match(helper, /height: \{ ideal: 960 \}/)
@@ -37,8 +39,8 @@ test("asset QR scanner avoids mobile native detector and mirror flip retries", (
   const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8")
 
   assert.match(source, /if \(scanMode === "asset-qr"\) \{[\s\S]*startNativeAssetQrScanner/)
-  assert.match(source, /useBarCodeDetectorIfSupported: true/)
-  assert.match(source, /return \{[\s\S]*fps: 15[\s\S]*disableFlip: true[\s\S]*videoConstraints: buildAssetQrVideoConstraints\(cameraSelection\)[\s\S]*\}/)
+  assert.doesNotMatch(source, /useBarCodeDetectorIfSupported/)
+  assert.doesNotMatch(source, /disableFlip/)
 })
 
 test("asset QR scanner decodes from the native-resolution video frame", () => {
@@ -75,12 +77,41 @@ test("asset QR help tells users to frame the QR code instead of the whole label"
   assert.match(enMessages, /not the whole label/)
 })
 
-test("serial scanner keeps barcode-capable formats separate from asset QR mode", () => {
+test("serial scanner uses native-resolution ZXing multi-format decoding", () => {
   const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8")
+  const helper = readFileSync("src/lib/asset-qr-scanner.ts", "utf8")
 
-  assert.match(source, /formats\.CODE_128/)
-  assert.match(source, /formats\.DATA_MATRIX/)
-  assert.match(source, /return \{ fps: 10, qrbox: getResponsiveQrBox, aspectRatio: 1\.333 \}/)
+  assert.match(source, /startNativeSerialCodeScanner/)
+  assert.doesNotMatch(source, /new Html5Qrcode\(readerId/)
+  assert.match(helper, /BrowserMultiFormatReader/)
+  assert.match(helper, /POSSIBLE_FORMATS/)
+  assert.match(helper, /TRY_HARDER/)
+  assert.match(helper, /BarcodeFormat\.CODE_128/)
+  assert.match(helper, /BarcodeFormat\.QR_CODE/)
+  assert.match(helper, /reader\.decode\(video\)/)
+})
+
+test("serial scanner uses a wide barcode guide without cropping the video", () => {
+  const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8")
+  const helper = readFileSync("src/lib/asset-qr-scanner.ts", "utf8")
+
+  assert.match(source, /scanMode === "serial-code"[\s\S]+aspect-\[16\/9\]/)
+  assert.match(source, /scanMode === "serial-code" \? <SerialScannerOverlay \/> : null/)
+  assert.match(source, /function SerialScannerOverlay\(\)/)
+  assert.doesNotMatch(source, /\[&_video\]:!object-cover/)
+  assert.match(helper, /width: \{ ideal: 1920 \}/)
+  assert.match(helper, /height: \{ ideal: 1080 \}/)
+  assert.match(helper, /aspectRatio: \{ ideal: 1\.777 \}/)
+})
+
+test("serial scanner help tells users to center the code in the wide frame", () => {
+  const thMessages = readFileSync("messages/th.json", "utf8")
+  const enMessages = readFileSync("messages/en.json", "utf8")
+
+  assert.match(thMessages, /กลางกรอบแนวนอน/)
+  assert.match(thMessages, /เส้นคมชัด/)
+  assert.match(enMessages, /wide frame/)
+  assert.match(enMessages, /lines are sharp/)
 })
 
 test("scanner can trigger a scan success callback after stopping the camera", () => {
