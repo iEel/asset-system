@@ -25,7 +25,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Export asset register.
 - [ ] Print QR labels.
 - [ ] Scan QR and open asset detail.
-- [ ] On a mobile device, confirm `/th/asset-management/scan` defaults to the generic rear camera option, shows an undistorted 4:3 camera preview and smaller square QR guidance frame; center only the QR code in the frame, adjust distance until the QR is sharp, and confirm the scanned asset detail opens.
+- [ ] On a mobile device, confirm `/th/asset-management/scan` defaults to the generic rear camera option, shows an undistorted 4:3 camera preview and smaller square QR guidance frame; center only the QR code in the frame, adjust distance until the QR is sharp, and confirm the scanned asset detail opens. Asset QR mode should use ZXing decoding without native `BarcodeDetector` or mirror-flip retries.
 - [ ] Confirm Serial Number scanner inputs still scan manufacturer QR/barcode labels with the wider barcode-friendly preview.
 - [ ] Check-out an asset.
 - [ ] Check-in an asset.

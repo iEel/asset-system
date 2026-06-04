@@ -101,7 +101,7 @@ export function ScannerTextInput({
       setSelectedCameraId(cameraSelection.selectedCameraId)
       const scanner = new Html5Qrcode(readerId, {
         formatsToSupport: getScannerCodeFormats(Html5QrcodeSupportedFormats, scanMode),
-        useBarCodeDetectorIfSupported: true,
+        useBarCodeDetectorIfSupported: scanMode !== "asset-qr",
         verbose: false,
       })
       scannerRef.current = scanner
@@ -264,7 +264,12 @@ function getScannerConfig(
   cameraSelection?: PreferredCameraSelection
 ): Html5QrcodeCameraScanConfig {
   if (scanMode === "asset-qr") {
-    return { fps: 15, aspectRatio: 1.333, videoConstraints: buildAssetQrVideoConstraints(cameraSelection) }
+    return {
+      fps: 15,
+      aspectRatio: 1.333,
+      disableFlip: true,
+      videoConstraints: buildAssetQrVideoConstraints(cameraSelection),
+    }
   }
 
   return { fps: 10, qrbox: getResponsiveQrBox, aspectRatio: 1.333 }

@@ -13,7 +13,7 @@ test("asset QR scanner uses an undistorted camera preview and QR-only formats", 
 test("asset QR scanner decodes the full viewfinder without CSS distortion", () => {
   const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8")
 
-  assert.match(source, /return \{ fps: 15, aspectRatio: 1\.333, videoConstraints: buildAssetQrVideoConstraints\(cameraSelection\) \}/)
+  assert.match(source, /return \{[\s\S]*fps: 15[\s\S]*aspectRatio: 1\.333[\s\S]*videoConstraints: buildAssetQrVideoConstraints\(cameraSelection\)[\s\S]*\}/)
   assert.doesNotMatch(source, /qrbox: getResponsiveSquareQrBox/)
   assert.match(source, /scanMode === "asset-qr"\s+\?\s+"w-full \[&_video\]:!h-auto \[&_video\]:!w-full"/)
   assert.doesNotMatch(source, /\[&_video\]:!object-fill/)
@@ -29,6 +29,13 @@ test("asset QR scanner requests focus-friendly camera constraints and tuning", (
   assert.match(source, /exposureMode: "continuous"/)
   assert.match(source, /await tuneAssetQrCamera\(scanner, scanMode\)/)
   assert.match(source, /zoomFeature\(\)/)
+})
+
+test("asset QR scanner avoids mobile native detector and mirror flip retries", () => {
+  const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8")
+
+  assert.match(source, /useBarCodeDetectorIfSupported: scanMode !== "asset-qr"/)
+  assert.match(source, /return \{[\s\S]*fps: 15[\s\S]*disableFlip: true[\s\S]*videoConstraints: buildAssetQrVideoConstraints\(cameraSelection\)[\s\S]*\}/)
 })
 
 test("asset QR scanner renders its own square overlay instead of the library rectangle", () => {
