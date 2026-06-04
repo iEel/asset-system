@@ -15,7 +15,7 @@
 
 - Print Asset Label QR codes from the label workflows, using the configured Public QR Base URL when printing for production.
 - Use `/asset-management/scan` for field lookup of printed Asset Labels. This page is QR-first, recognizes `/q/a/{assetId}` resolver URLs, stops the camera after a successful read, and opens the asset detail automatically.
-- On mobile, the Asset Label scanner uses a square camera surface with a square QR frame. The reusable Serial Number scanner inputs still support QR plus common barcode formats and keep the wider preview that is better for manufacturer labels.
+- On mobile, the Asset Label scanner uses a square camera surface with a smaller square QR guidance frame. It scans the full square viewfinder instead of cropping to the frame, so labels with a small QR code on the left still have room to decode. Users should center the QR code itself in the frame and move closer until it is sharp. The reusable Serial Number scanner inputs still support QR plus common barcode formats and keep the wider preview that is better for manufacturer labels.
 
 ## Asset Custody
 

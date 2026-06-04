@@ -176,7 +176,7 @@
     "scannerStart": "Scan",
     "scannerStop": "Stop",
     "scannerTitle": "Scan Asset QR Code",
-    "scannerHelp": "Point the camera at the QR Code on the asset label. The system fills the value and opens the asset detail automatically.",
+    "scannerHelp": "Center the QR Code on the asset label inside the frame and move closer until it is sharp. The system fills the value and opens the asset detail automatically.",
     "cameraUnsupported": "This browser does not support camera access",
     "cameraNotFound": "No camera found on this device",
     "cameraError": "Unable to open the camera",

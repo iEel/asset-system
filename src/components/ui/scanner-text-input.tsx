@@ -170,7 +170,7 @@ export function ScannerTextInput({
       : "aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-background sm:min-h-56"
   const readerClassName =
     scanMode === "asset-qr"
-      ? "h-full w-full [&_#qr-shaded-region]:!hidden [&_video]:!h-full [&_video]:!w-full [&_video]:!object-cover"
+      ? "h-full w-full [&_video]:!h-full [&_video]:!w-full [&_video]:!object-fill"
       : "h-full w-full [&_video]:!h-full [&_video]:!w-full [&_video]:!object-cover"
 
   return (
@@ -249,7 +249,7 @@ export function ScannerTextInput({
 
 function getScannerConfig(scanMode: NonNullable<ScannerTextInputProps["scanMode"]>) {
   if (scanMode === "asset-qr") {
-    return { fps: 10, qrbox: getResponsiveSquareQrBox, aspectRatio: 1 }
+    return { fps: 15, aspectRatio: 1 }
   }
 
   return { fps: 10, qrbox: getResponsiveQrBox, aspectRatio: 1.333 }
@@ -283,23 +283,17 @@ function getResponsiveQrBox(viewfinderWidth: number, viewfinderHeight: number) {
   return { width: size, height: size }
 }
 
-function getResponsiveSquareQrBox(viewfinderWidth: number, viewfinderHeight: number) {
-  const minEdge = Math.min(viewfinderWidth, viewfinderHeight)
-  const size = Math.max(180, Math.min(360, minEdge - 32, Math.floor(minEdge * 0.72)))
-  return { width: size, height: size }
-}
-
 function QrScannerOverlay() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">
       <div
-        className="absolute left-1/2 top-1/2 aspect-square w-[72%] max-w-72 -translate-x-1/2 -translate-y-1/2"
+        className="absolute left-1/2 top-1/2 aspect-square w-[56%] max-w-56 -translate-x-1/2 -translate-y-1/2"
         style={{ boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.42)" }}
       >
-        <span className="absolute left-0 top-0 h-12 w-12 border-l-4 border-t-4 border-white" />
-        <span className="absolute right-0 top-0 h-12 w-12 border-r-4 border-t-4 border-white" />
-        <span className="absolute bottom-0 left-0 h-12 w-12 border-b-4 border-l-4 border-white" />
-        <span className="absolute bottom-0 right-0 h-12 w-12 border-b-4 border-r-4 border-white" />
+        <span className="absolute left-0 top-0 h-10 w-10 border-l-4 border-t-4 border-white" />
+        <span className="absolute right-0 top-0 h-10 w-10 border-r-4 border-t-4 border-white" />
+        <span className="absolute bottom-0 left-0 h-10 w-10 border-b-4 border-l-4 border-white" />
+        <span className="absolute bottom-0 right-0 h-10 w-10 border-b-4 border-r-4 border-white" />
       </div>
     </div>
   )
