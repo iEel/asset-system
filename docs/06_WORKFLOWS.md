@@ -11,6 +11,12 @@
 - Custodian defaults to the selected owner company/branch/department scope, but the form can opt in to cross-company custodians for cases where the asset owner and current holder are different organizations.
 - Cross-company custodian selections show an explicit warning and are recorded in the creation audit trail. Batch create follows the same model for shared owner/tag scope plus common or row-level custodian values.
 
+## Asset Scan And Labels
+
+- Print Asset Label QR codes from the label workflows, using the configured Public QR Base URL when printing for production.
+- Use `/asset-management/scan` for field lookup of printed Asset Labels. This page is QR-first, recognizes `/q/a/{assetId}` resolver URLs, stops the camera after a successful read, and opens the asset detail automatically.
+- On mobile, the Asset Label scanner uses a square camera surface with a square QR frame. The reusable Serial Number scanner inputs still support QR plus common barcode formats and keep the wider preview that is better for manufacturer labels.
+
 ## Asset Custody
 
 - Check-out records who receives the asset and captures handover evidence.

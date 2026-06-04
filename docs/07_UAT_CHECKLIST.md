@@ -25,6 +25,8 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Export asset register.
 - [ ] Print QR labels.
 - [ ] Scan QR and open asset detail.
+- [ ] On a mobile device, confirm `/th/asset-management/scan` shows a square camera preview and square QR frame, then opens the scanned asset detail.
+- [ ] Confirm Serial Number scanner inputs still scan manufacturer QR/barcode labels with the wider barcode-friendly preview.
 - [ ] Check-out an asset.
 - [ ] Check-in an asset.
 - [ ] Transfer an asset.

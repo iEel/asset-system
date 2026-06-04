@@ -10,6 +10,16 @@ test("asset QR scanner uses square mobile preview and QR-only formats", () => {
   assert.match(source, /scanMode === "asset-qr"[\s\S]+return \[formats\.QR_CODE\]/)
 })
 
+test("asset QR scanner renders its own square overlay instead of the library rectangle", () => {
+  const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8")
+
+  assert.match(source, /scanMode === "asset-qr" \? <QrScannerOverlay \/> : null/)
+  assert.match(source, /function QrScannerOverlay\(\)/)
+  assert.match(source, /\[&_#qr-shaded-region\]:!hidden/)
+  assert.match(source, /aspect-square w-\[72%\] max-w-72/)
+  assert.match(source, /boxShadow: "0 0 0 9999px rgba\(15, 23, 42, 0\.42\)"/)
+})
+
 test("serial scanner keeps barcode-capable formats separate from asset QR mode", () => {
   const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8")
 
