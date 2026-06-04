@@ -21,11 +21,13 @@ import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 import { extractAssetLookupCandidatesFromScanValue } from "@/lib/asset-qr"
+import { startNativeAssetQrScanner, type NativeAssetQrScannerRuntime } from "@/lib/asset-qr-scanner"
 import { normalizeAssetOwnershipType, requiresCustodian } from "@/lib/asset-ownership"
 import {
   environmentCameraId,
   getFallbackCameraAfterEnvironmentFailure,
   resolvePreferredCameraSelection,
+  type PreferredCameraSelection,
 } from "@/lib/camera-selection"
 import {
   addQueuedAuditScanAsync,
@@ -60,20 +62,6 @@ type AuditScanOptions = {
   departments: Option[]
   employees: Option[]
   conditions: Option[]
-}
-
-type Html5QrcodeInstance = {
-  start: (
-    cameraConfig: string | MediaTrackConstraints,
-    config: {
-      fps: number
-      qrbox: (viewfinderWidth: number, viewfinderHeight: number) => { width: number; height: number }
-    },
-    successCallback: (decodedText: string) => void,
-    errorCallback?: () => void
-  ) => Promise<unknown>
-  stop: () => Promise<unknown>
-  clear: () => void
 }
 
 type CameraDevice = { id: string; label: string }
@@ -137,7 +125,7 @@ export function AuditScanForm({
   const [applyCorrections, setApplyCorrections] = useState(false)
   const [offlineQueue, setOfflineQueue] = useState<QueuedAuditScan[]>([])
   const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine))
-  const qrReaderRef = useRef<Html5QrcodeInstance | null>(null)
+  const qrReaderRef = useRef<NativeAssetQrScannerRuntime | null>(null)
   const offlineStorageRef = useRef<AuditOfflineQueueStorage | null>(null)
   const lastDecodedRef = useRef<{ value: string; at: number } | null>(null)
   const [values, setValues] = useState({
@@ -214,7 +202,7 @@ export function AuditScanForm({
     return () => {
       const scanner = qrReaderRef.current
       if (!scanner) return
-      void scanner.stop().then(() => scanner.clear()).catch(() => scanner.clear())
+      scanner.stop()
     }
   }, [])
 
@@ -274,9 +262,6 @@ export function AuditScanForm({
       const cameraSelection = resolvePreferredCameraSelection(availableCameras, requestedCameraId)
       setSelectedCameraId(cameraSelection.selectedCameraId)
 
-      const scanner = new Html5Qrcode("audit-qr-reader") as unknown as Html5QrcodeInstance
-      qrReaderRef.current = scanner
-      const scanConfig = { fps: 10, qrbox: getResponsiveQrBox }
       const handleScanSuccess = (decodedText: string) => {
         const normalizedText = decodedText.trim()
         const now = Date.now()
@@ -285,14 +270,22 @@ export function AuditScanForm({
         setLastDecodedText(decodedText)
         void selectScannedAsset(decodedText, "qr")
       }
+      const startWithSelection = async (selection: PreferredCameraSelection) => {
+        qrReaderRef.current = await startNativeAssetQrScanner({
+          readerId: "audit-qr-reader",
+          cameraSelection: selection,
+          onScanSuccess: handleScanSuccess,
+          stopAfterSuccess: false,
+        })
+      }
 
       try {
-        await scanner.start(cameraSelection.cameraConfig, scanConfig, handleScanSuccess, () => {})
+        await startWithSelection(cameraSelection)
       } catch (startError) {
         const fallbackCamera = getFallbackCameraAfterEnvironmentFailure(cameraSelection, availableCameras)
         if (!fallbackCamera) throw startError
         setSelectedCameraId(fallbackCamera.id)
-        await scanner.start(fallbackCamera.id, scanConfig, handleScanSuccess, () => {})
+        await startWithSelection(resolvePreferredCameraSelection([fallbackCamera], fallbackCamera.id))
       }
       setScannerRunning(true)
     } catch (error) {
@@ -309,10 +302,9 @@ export function AuditScanForm({
     const scanner = qrReaderRef.current
     if (!scanner) return
     try {
-      await scanner.stop()
-      scanner.clear()
+      scanner.stop()
     } catch {
-      scanner.clear()
+      // Scanner may already be stopped by the browser.
     } finally {
       qrReaderRef.current = null
       setScannerRunning(false)
@@ -742,9 +734,11 @@ export function AuditScanForm({
             </label>
             <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
               <div
-                id="audit-qr-reader"
-                className={`aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-surface sm:min-h-[22rem] ${scannerRunning ? "block" : "hidden"}`}
-              />
+                className={`relative isolate aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-surface sm:min-h-[22rem] ${scannerRunning || scannerLoading ? "block" : "hidden"}`}
+              >
+                <div id="audit-qr-reader" className="w-full [&_video]:!h-auto [&_video]:!w-full" />
+                {scannerRunning ? <AuditQrScannerOverlay /> : null}
+              </div>
               <div className="rounded-md border border-border bg-surface p-3 text-sm text-muted-foreground">
                 <div className="flex items-start gap-2">
                   <Info className="mt-0.5 h-4 w-4 text-info" />
@@ -1035,14 +1029,24 @@ function ScanFeedbackCard({ feedback }: { feedback: ScanFeedback }) {
   )
 }
 
-function getResponsiveQrBox(viewfinderWidth: number, viewfinderHeight: number) {
-  const shortestSide = Math.min(viewfinderWidth, viewfinderHeight)
-  const size = Math.max(140, Math.min(320, shortestSide - 24, Math.floor(shortestSide * 0.82)))
-  return { width: size, height: size }
-}
-
 function isCameraAccessSupported() {
   return typeof navigator !== "undefined" && "mediaDevices" in navigator && "getUserMedia" in navigator.mediaDevices
+}
+
+function AuditQrScannerOverlay() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">
+      <div
+        className="absolute left-1/2 top-1/2 aspect-square h-[66%] max-h-56 -translate-x-1/2 -translate-y-1/2"
+        style={{ boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.42)" }}
+      >
+        <span className="absolute left-0 top-0 h-10 w-10 border-l-4 border-t-4 border-white" />
+        <span className="absolute right-0 top-0 h-10 w-10 border-r-4 border-t-4 border-white" />
+        <span className="absolute bottom-0 left-0 h-10 w-10 border-b-4 border-l-4 border-white" />
+        <span className="absolute bottom-0 right-0 h-10 w-10 border-b-4 border-r-4 border-white" />
+      </div>
+    </div>
+  )
 }
 
 function toAuditOfflinePhoto(photo: QueuedAuditPhoto): AuditOfflinePhoto {

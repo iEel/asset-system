@@ -37,6 +37,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Create or open an assigned audit round.
 - [ ] Preview audit-round candidates before creation.
 - [ ] Scan an expected asset.
+- [ ] On a mobile device, confirm `/th/audit/rounds/{id}/scan` can scan the same printed Asset Label QR in continuous mode, selects the audit item, keeps the raw QR URL only in the latest-decoded panel, and does not navigate away from the audit workflow.
 - [ ] Record found/matched result.
 - [ ] Record mismatch result.
 - [ ] Record not-found result.

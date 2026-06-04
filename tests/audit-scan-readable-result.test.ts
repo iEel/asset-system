@@ -11,6 +11,16 @@ test("audit QR scan keeps raw QR value separate from readable scan input", () =>
   assert.match(form, /return assetTag \|\| item\.label/)
 })
 
+test("audit QR scan uses native-resolution asset QR decoder in continuous mode", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+
+  assert.match(form, /startNativeAssetQrScanner/)
+  assert.match(form, /readerId: "audit-qr-reader"/)
+  assert.match(form, /stopAfterSuccess: false/)
+  assert.doesNotMatch(form, /new Html5Qrcode\("audit-qr-reader"\)/)
+  assert.match(form, /AuditQrScannerOverlay/)
+})
+
 test("audit scan readable result copy is translated", () => {
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))

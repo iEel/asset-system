@@ -15,7 +15,7 @@
 
 - Print Asset Label QR codes from the label workflows, using the configured Public QR Base URL when printing for production.
 - Use `/asset-management/scan` for field lookup of printed Asset Labels. This page is QR-first, recognizes `/q/a/{assetId}` resolver URLs, stops the camera after a successful read, and opens the asset detail automatically.
-- On mobile, the Asset Label scanner uses an undistorted 4:3 camera preview with a smaller square QR guidance frame. It defaults to the generic environment-facing rear camera when multiple devices are reported, requests 1280x960/30fps with continuous focus/exposure where supported, and applies best-effort zoom where available so users can hold the label slightly farther away while keeping the QR large. Asset QR decoding uses a direct `getUserMedia` stream plus ZXing `BrowserQRCodeReader.decode(video)` so it reads the native-resolution video frame rather than the CSS-pixel hidden canvas used by `html5-qrcode`; this avoids mobile native detector gaps and mirror-flip retries. Users should center only the QR code in the frame and adjust distance until the QR modules are sharp. The reusable Serial Number scanner inputs still support QR plus common barcode formats and keep the wider preview that is better for manufacturer labels.
+- On mobile, the Asset Label scanner uses an undistorted 4:3 camera preview with a smaller square QR guidance frame. It defaults to the generic environment-facing rear camera when multiple devices are reported, requests 1280x960/30fps with continuous focus/exposure where supported, and applies best-effort zoom where available so users can hold the label slightly farther away while keeping the QR large. Asset QR decoding uses a shared direct `getUserMedia` stream plus ZXing `BrowserQRCodeReader.decode(video)` so it reads the native-resolution video frame rather than the CSS-pixel hidden canvas used by `html5-qrcode`; this avoids mobile native detector gaps and mirror-flip retries. Users should center only the QR code in the frame and adjust distance until the QR modules are sharp. The reusable Serial Number scanner inputs still support QR plus common barcode formats and keep the wider preview that is better for manufacturer labels.
 
 ## Asset Custody
 
@@ -29,7 +29,7 @@
 
 - Create audit rounds from filtered asset candidates.
 - Preview candidates before creating a round.
-- Scan QR/barcode or manually enter asset identifiers.
+- Scan printed Asset Label QR codes or manually enter asset identifiers. The Audit Scan camera uses the same native-resolution Asset QR decoder as `/asset-management/scan`, but keeps continuous scan behavior for counting multiple labels in one session.
 - Record found, mismatch, not-found, out-of-scope, and correction cases.
 - Review findings and close rounds with segregation-of-duties protection.
 
