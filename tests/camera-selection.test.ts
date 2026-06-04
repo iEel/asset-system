@@ -21,11 +21,30 @@ test("prefers an explicitly selected camera device", () => {
   assert.equal(selection.usesEnvironmentConstraint, false)
 })
 
-test("prefers a labelled rear camera when no explicit camera is selected", () => {
+test("uses the environment camera selector by default when multiple cameras exist", () => {
   const selection = resolvePreferredCameraSelection([
     { id: "front", label: "Front Camera" },
     { id: "rear", label: "Rear Camera" },
   ])
+
+  assert.equal(selection.selectedCameraId, environmentCameraId)
+  assert.deepEqual(selection.cameraConfig, { facingMode: { exact: "environment" } })
+  assert.equal(selection.usesEnvironmentConstraint, true)
+})
+
+test("does not auto-select a named multi-lens iPhone rear camera", () => {
+  const selection = resolvePreferredCameraSelection([
+    { id: "front", label: "Front Camera" },
+    { id: "back-triple", label: "Back Triple Camera" },
+    { id: "back-ultra-wide", label: "Back Ultra Wide Camera" },
+  ])
+
+  assert.equal(selection.selectedCameraId, environmentCameraId)
+  assert.deepEqual(selection.cameraConfig, { facingMode: { exact: "environment" } })
+})
+
+test("uses the only labelled rear camera when it is the only available camera", () => {
+  const selection = resolvePreferredCameraSelection([{ id: "rear", label: "Rear Camera" }])
 
   assert.equal(selection.selectedCameraId, "rear")
   assert.equal(selection.cameraConfig, "rear")

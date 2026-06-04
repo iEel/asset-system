@@ -28,13 +28,13 @@ export function resolvePreferredCameraSelection(
     return buildDeviceSelection(requestedCamera.id)
   }
 
+  if (cameras.length > 1) {
+    return buildEnvironmentSelection()
+  }
+
   const rearCamera = cameras.find((camera) => rearCameraLabelPattern.test(camera.label))
   if (rearCamera) {
     return buildDeviceSelection(rearCamera.id)
-  }
-
-  if (cameras.length > 1) {
-    return buildEnvironmentSelection()
   }
 
   return buildDeviceSelection(cameras[0]?.id ?? environmentCameraId)

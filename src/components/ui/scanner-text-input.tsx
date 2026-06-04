@@ -7,10 +7,12 @@ import {
   environmentCameraId,
   getFallbackCameraAfterEnvironmentFailure,
   resolvePreferredCameraSelection,
+  type PreferredCameraSelection,
 } from "@/lib/camera-selection"
 import type {
   CameraDevice,
   Html5Qrcode,
+  Html5QrcodeCameraScanConfig,
   Html5QrcodeSupportedFormats,
 } from "html5-qrcode"
 
@@ -40,6 +42,12 @@ type ScannerTextInputProps = {
   inputClassName?: string
   onPaste?: React.ClipboardEventHandler<HTMLInputElement>
   onScanSuccess?: (value: string) => void
+}
+
+type AssetQrCameraTuningConstraintSet = MediaTrackConstraintSet & {
+  focusMode?: string
+  exposureMode?: string
+  whiteBalanceMode?: string
 }
 
 export function ScannerTextInput({
@@ -97,7 +105,6 @@ export function ScannerTextInput({
         verbose: false,
       })
       scannerRef.current = scanner
-      const scanConfig = getScannerConfig(scanMode)
       const handleScanSuccess = (decodedText: string) => {
         const normalizedText = decodedText.trim()
         if (!normalizedText) return
@@ -107,14 +114,19 @@ export function ScannerTextInput({
           onScanSuccess?.(normalizedText)
         })
       }
+      const startWithSelection = async (selection: PreferredCameraSelection) => {
+        const scanConfig = getScannerConfig(scanMode, selection)
+        await scanner.start(selection.cameraConfig, scanConfig, handleScanSuccess, () => {})
+        await tuneAssetQrCamera(scanner, scanMode)
+      }
 
       try {
-        await scanner.start(cameraSelection.cameraConfig, scanConfig, handleScanSuccess, () => {})
+        await startWithSelection(cameraSelection)
       } catch (startError) {
         const fallbackCamera = getFallbackCameraAfterEnvironmentFailure(cameraSelection, availableCameras)
         if (!fallbackCamera) throw startError
         setSelectedCameraId(fallbackCamera.id)
-        await scanner.start(fallbackCamera.id, scanConfig, handleScanSuccess, () => {})
+        await startWithSelection(resolvePreferredCameraSelection([fallbackCamera], fallbackCamera.id))
       }
       setScannerRunning(true)
     } catch (error) {
@@ -247,12 +259,72 @@ export function ScannerTextInput({
   )
 }
 
-function getScannerConfig(scanMode: NonNullable<ScannerTextInputProps["scanMode"]>) {
+function getScannerConfig(
+  scanMode: NonNullable<ScannerTextInputProps["scanMode"]>,
+  cameraSelection?: PreferredCameraSelection
+): Html5QrcodeCameraScanConfig {
   if (scanMode === "asset-qr") {
-    return { fps: 15, aspectRatio: 1.333 }
+    return { fps: 15, aspectRatio: 1.333, videoConstraints: buildAssetQrVideoConstraints(cameraSelection) }
   }
 
   return { fps: 10, qrbox: getResponsiveQrBox, aspectRatio: 1.333 }
+}
+
+function buildAssetQrVideoConstraints(cameraSelection?: PreferredCameraSelection): MediaTrackConstraints {
+  const baseConstraints: MediaTrackConstraints & Record<string, unknown> = cameraSelection?.usesEnvironmentConstraint
+    ? { facingMode: { exact: "environment" } }
+    : cameraSelection?.selectedCameraId
+      ? { deviceId: { exact: cameraSelection.selectedCameraId } }
+      : { facingMode: { exact: "environment" } }
+  const advanced: AssetQrCameraTuningConstraintSet[] = [
+    { focusMode: "continuous" },
+    { exposureMode: "continuous" },
+    { whiteBalanceMode: "continuous" },
+  ]
+
+  return {
+    ...baseConstraints,
+    width: { ideal: 1280 },
+    height: { ideal: 960 },
+    frameRate: { ideal: 30 },
+    aspectRatio: { ideal: 1.333 },
+    advanced,
+  }
+}
+
+async function tuneAssetQrCamera(scanner: Html5Qrcode, scanMode: NonNullable<ScannerTextInputProps["scanMode"]>) {
+  if (scanMode !== "asset-qr") return
+
+  try {
+    const capabilities = scanner.getRunningTrackCapabilities() as MediaTrackCapabilities & Record<string, unknown>
+    const advanced: AssetQrCameraTuningConstraintSet[] = []
+
+    if (supportsStringCapability(capabilities.focusMode, "continuous")) advanced.push({ focusMode: "continuous" })
+    if (supportsStringCapability(capabilities.exposureMode, "continuous")) advanced.push({ exposureMode: "continuous" })
+    if (supportsStringCapability(capabilities.whiteBalanceMode, "continuous")) advanced.push({ whiteBalanceMode: "continuous" })
+    if (advanced.length > 0) {
+      await scanner.applyVideoConstraints({ advanced } as MediaTrackConstraints)
+    }
+  } catch {
+    // Some mobile browsers expose camera capability keys but reject tuning; scanning should continue.
+  }
+
+  try {
+    const zoom = scanner.getRunningTrackCameraCapabilities().zoomFeature()
+    if (!zoom.isSupported()) return
+
+    const currentValue = zoom.value()
+    const targetValue = Math.min(zoom.max(), Math.max(zoom.min(), 2))
+    if (typeof currentValue === "number" && currentValue >= targetValue) return
+
+    await zoom.apply(targetValue)
+  } catch {
+    // Zoom is an optional improvement for small asset-label QR codes.
+  }
+}
+
+function supportsStringCapability(value: unknown, expected: string) {
+  return Array.isArray(value) && value.includes(expected)
 }
 
 function getScannerCodeFormats(
