@@ -48,9 +48,23 @@ type ZxingReader = {
   decode: (source: ZxingDecodeSource) => ZxingDecodedResult
 }
 
+type ZxingDirectImageReader = {
+  decodeImageData: (imageData: ImageData) => ZxingDecodedResult
+}
+
+type ZxingMultiFormatReader = {
+  decodeWithState: (bitmap: unknown) => ZxingDecodedResult
+  setHints: (hints: Map<unknown, unknown>) => void
+}
+
 type ZxingBrowserModule = {
   BrowserQRCodeReader: new (timeBetweenScansMillis?: number) => ZxingReader
   BrowserMultiFormatReader: new (hints?: Map<unknown, unknown>, timeBetweenScansMillis?: number) => ZxingReader
+  MultiFormatReader: new () => ZxingMultiFormatReader
+  RGBLuminanceSource: new (luminances: Uint8ClampedArray, width: number, height: number) => unknown
+  HybridBinarizer: new (source: unknown) => unknown
+  GlobalHistogramBinarizer: new (source: unknown) => unknown
+  BinaryBitmap: new (binarizer: unknown) => unknown
   BarcodeFormat: Record<string, unknown>
   DecodeHintType: Record<string, unknown>
 }
@@ -73,7 +87,7 @@ type SerialCodeDecoderState = {
   barcodeDetector?: NativeBarcodeDetector
   cropCanvas: HTMLCanvasElement
   cropContext: CanvasRenderingContext2D
-  cropReader: ZxingReader
+  cropReader: ZxingDirectImageReader
 }
 
 type NativeCodeScannerOptions = {
@@ -250,11 +264,16 @@ async function waitForNativeCodeVideo(video: HTMLVideoElement) {
 }
 
 function createZxingReader(
-  { BrowserQRCodeReader, BrowserMultiFormatReader, BarcodeFormat, DecodeHintType }: ZxingBrowserModule,
+  zxingModule: ZxingBrowserModule,
   scanMode: NativeCodeScanMode
 ) {
+  const { BrowserQRCodeReader, BrowserMultiFormatReader } = zxingModule
   if (scanMode === "asset-qr") return new BrowserQRCodeReader(100)
 
+  return new BrowserMultiFormatReader(createZxingSerialHints(zxingModule), 100)
+}
+
+function createZxingSerialHints({ BarcodeFormat, DecodeHintType }: ZxingBrowserModule) {
   const possibleFormats = [
     BarcodeFormat.QR_CODE,
     BarcodeFormat.CODE_128,
@@ -274,7 +293,31 @@ function createZxingReader(
     [DecodeHintType.TRY_HARDER, true],
   ])
 
-  return new BrowserMultiFormatReader(hints, 100)
+  return hints
+}
+
+function createZxingDirectImageReader(zxingModule: ZxingBrowserModule): ZxingDirectImageReader {
+  const { MultiFormatReader, RGBLuminanceSource, HybridBinarizer, GlobalHistogramBinarizer, BinaryBitmap } = zxingModule
+  const reader = new MultiFormatReader()
+  reader.setHints(createZxingSerialHints(zxingModule))
+
+  return {
+    decodeImageData(imageData) {
+      const luminanceSource = new RGBLuminanceSource(createImageDataLuminanceBuffer(imageData), imageData.width, imageData.height)
+      const binarizers = [new HybridBinarizer(luminanceSource), new GlobalHistogramBinarizer(luminanceSource)]
+      let lastError: unknown
+
+      for (const binarizer of binarizers) {
+        try {
+          return reader.decodeWithState(new BinaryBitmap(binarizer))
+        } catch (error) {
+          lastError = error
+        }
+      }
+
+      throw lastError instanceof Error ? lastError : new Error("No barcode in crop")
+    },
+  }
 }
 
 function createSerialCodeDecoderState(zxingModule: ZxingBrowserModule): SerialCodeDecoderState | undefined {
@@ -288,7 +331,7 @@ function createSerialCodeDecoderState(zxingModule: ZxingBrowserModule): SerialCo
     barcodeDetector: createNativeBarcodeDetector(),
     cropCanvas,
     cropContext,
-    cropReader: createZxingReader(zxingModule, "serial-code"),
+    cropReader: createZxingDirectImageReader(zxingModule),
   }
 }
 
@@ -317,7 +360,8 @@ async function decodeSerialCodeFrame(
       const detectedFromCrop = await detectNativeBarcode(state.barcodeDetector, state.cropCanvas)
       if (detectedFromCrop) return detectedFromCrop
 
-      const decodedFromCrop = tryDecodeZxingSource(state.cropReader, state.cropCanvas)
+      const cropImageData = state.cropContext.getImageData(0, 0, SERIAL_CODE_CANVAS_WIDTH, SERIAL_CODE_CANVAS_HEIGHT)
+      const decodedFromCrop = tryDecodeZxingImageData(state.cropReader, cropImageData)
       if (decodedFromCrop) return decodedFromCrop
     }
   }
@@ -389,6 +433,25 @@ function tryDecodeZxingSource(reader: ZxingReader, source: ZxingDecodeSource) {
   } catch {
     return ""
   }
+}
+
+function tryDecodeZxingImageData(reader: ZxingDirectImageReader, imageData: ImageData) {
+  try {
+    return normalizeDecodedCodeText(getZxingDecodedText(reader.decodeImageData(imageData)))
+  } catch {
+    return ""
+  }
+}
+
+function createImageDataLuminanceBuffer(imageData: ImageData) {
+  const luminances = new Uint8ClampedArray(imageData.width * imageData.height)
+  const data = imageData.data
+
+  for (let sourceIndex = 0, luminanceIndex = 0; sourceIndex < data.length; sourceIndex += 4, luminanceIndex += 1) {
+    luminances[luminanceIndex] = (data[sourceIndex] + data[sourceIndex + 1] * 2 + data[sourceIndex + 2]) >> 2
+  }
+
+  return luminances
 }
 
 function getZxingDecodedText(result: ZxingDecodedResult) {
