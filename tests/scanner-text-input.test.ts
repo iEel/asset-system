@@ -51,7 +51,7 @@ test("asset QR scanner decodes from the native-resolution video frame", () => {
   assert.match(helper, /navigator\.mediaDevices\.getUserMedia/)
   assert.match(helper, /html5-qrcode\/third_party\/zxing-js\.umd\.js/)
   assert.match(helper, /new BrowserQRCodeReader/)
-  assert.match(helper, /reader\.decode\(video\)/)
+  assert.match(helper, /tryDecodeZxingSource\(reader, video\)/)
   assert.match(helper, /video\.videoWidth/)
   assert.match(helper, /video\.videoHeight/)
   assert.match(helper, /stopAfterSuccess = true/)
@@ -88,7 +88,28 @@ test("serial scanner uses native-resolution ZXing multi-format decoding", () => 
   assert.match(helper, /TRY_HARDER/)
   assert.match(helper, /BarcodeFormat\.CODE_128/)
   assert.match(helper, /BarcodeFormat\.QR_CODE/)
-  assert.match(helper, /reader\.decode\(video\)/)
+  assert.match(helper, /tryDecodeZxingSource\(reader, video\)/)
+})
+
+test("serial scanner decodes focused scan bands before the full video frame", () => {
+  const helper = readFileSync("src/lib/asset-qr-scanner.ts", "utf8")
+
+  assert.match(helper, /SERIAL_CODE_SCAN_REGIONS/)
+  assert.match(helper, /SERIAL_CODE_CANVAS_WIDTH/)
+  assert.match(helper, /function decodeSerialCodeFrame/)
+  assert.match(helper, /drawImage\(\s*video/)
+  assert.match(helper, /tryDecodeZxingSource\(state\.cropReader, state\.cropCanvas\)/)
+  assert.match(helper, /tryDecodeZxingSource\(reader, video\)/)
+})
+
+test("serial scanner avoids forced digital zoom and uses native barcode detection when available", () => {
+  const helper = readFileSync("src/lib/asset-qr-scanner.ts", "utf8")
+
+  assert.match(helper, /BarcodeDetector/)
+  assert.match(helper, /createNativeBarcodeDetector/)
+  assert.match(helper, /detectNativeBarcode/)
+  assert.match(helper, /if \(scanMode === "serial-code"\) return/)
+  assert.doesNotMatch(helper, /const targetZoom = scanMode === "serial-code" \? 2\.5 : 2/)
 })
 
 test("serial scanner uses a wide barcode guide without cropping the video", () => {

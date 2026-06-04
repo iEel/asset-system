@@ -9,6 +9,28 @@ type NativeCodeCameraTuningConstraintSet = MediaTrackConstraintSet & {
   zoom?: number
 }
 
+const SERIAL_CODE_CANVAS_WIDTH = 1600
+const SERIAL_CODE_CANVAS_HEIGHT = 480
+const SERIAL_CODE_SCAN_REGIONS = [
+  { x: 0.08, y: 0.28, width: 0.84, height: 0.44 },
+  { x: 0.1, y: 0.36, width: 0.8, height: 0.28 },
+  { x: 0.16, y: 0.42, width: 0.68, height: 0.16 },
+]
+const NATIVE_BARCODE_DETECTOR_FORMATS = [
+  "qr_code",
+  "code_128",
+  "code_39",
+  "code_93",
+  "ean_13",
+  "ean_8",
+  "upc_a",
+  "upc_e",
+  "itf",
+  "codabar",
+  "data_matrix",
+  "pdf417",
+]
+
 export type NativeAssetQrScannerRuntime = {
   stop: () => void
 }
@@ -20,8 +42,10 @@ type ZxingDecodedResult = {
   text?: string
 }
 
+type ZxingDecodeSource = HTMLVideoElement | HTMLCanvasElement
+
 type ZxingReader = {
-  decode: (video: HTMLVideoElement) => ZxingDecodedResult
+  decode: (source: ZxingDecodeSource) => ZxingDecodedResult
 }
 
 type ZxingBrowserModule = {
@@ -29,6 +53,27 @@ type ZxingBrowserModule = {
   BrowserMultiFormatReader: new (hints?: Map<unknown, unknown>, timeBetweenScansMillis?: number) => ZxingReader
   BarcodeFormat: Record<string, unknown>
   DecodeHintType: Record<string, unknown>
+}
+
+type NativeBarcodeDetection = {
+  rawValue?: string
+}
+
+type NativeBarcodeDetector = {
+  detect: (source: ZxingDecodeSource) => Promise<NativeBarcodeDetection[]>
+}
+
+type NativeBarcodeDetectorConstructor = new (options?: { formats?: string[] }) => NativeBarcodeDetector
+
+type NativeBarcodeDetectorWindow = Window & {
+  BarcodeDetector?: NativeBarcodeDetectorConstructor
+}
+
+type SerialCodeDecoderState = {
+  barcodeDetector?: NativeBarcodeDetector
+  cropCanvas: HTMLCanvasElement
+  cropContext: CanvasRenderingContext2D
+  cropReader: ZxingReader
 }
 
 type NativeCodeScannerOptions = {
@@ -140,18 +185,24 @@ async function startNativeCodeScanner({
 
     const zxingModule = (await import("html5-qrcode/third_party/zxing-js.umd.js")) as unknown as ZxingBrowserModule
     const reader = createZxingReader(zxingModule, scanMode)
+    const serialDecoderState = scanMode === "serial-code" ? createSerialCodeDecoderState(zxingModule) : undefined
     let succeeded = false
 
-    const scanNativeFrame = () => {
+    const scheduleNextScan = () => {
+      timeoutId = window.setTimeout(() => void scanNativeFrame(), 100)
+    }
+
+    const scanNativeFrame = async () => {
       if (stopped || succeeded) return
       if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || video.videoWidth <= 0 || video.videoHeight <= 0) {
-        timeoutId = window.setTimeout(scanNativeFrame, 100)
+        scheduleNextScan()
         return
       }
 
       try {
-        const decodedText = getZxingDecodedText(reader.decode(video))
+        const decodedText = await decodeNativeCodeFrame(reader, video, scanMode, serialDecoderState)
         if (decodedText) {
+          if (stopped) return
           onScanSuccess(decodedText)
           if (stopAfterSuccess) {
             succeeded = true
@@ -161,10 +212,10 @@ async function startNativeCodeScanner({
       } catch {
         // No QR in this frame; keep scanning.
       }
-      timeoutId = window.setTimeout(scanNativeFrame, 100)
+      scheduleNextScan()
     }
 
-    timeoutId = window.setTimeout(scanNativeFrame, 100)
+    timeoutId = window.setTimeout(() => void scanNativeFrame(), 100)
     return { stop }
   } catch (error) {
     stop()
@@ -226,8 +277,126 @@ function createZxingReader(
   return new BrowserMultiFormatReader(hints, 100)
 }
 
+function createSerialCodeDecoderState(zxingModule: ZxingBrowserModule): SerialCodeDecoderState | undefined {
+  const cropCanvas = document.createElement("canvas")
+  cropCanvas.width = SERIAL_CODE_CANVAS_WIDTH
+  cropCanvas.height = SERIAL_CODE_CANVAS_HEIGHT
+  const cropContext = cropCanvas.getContext("2d", { willReadFrequently: true })
+  if (!cropContext) return undefined
+
+  return {
+    barcodeDetector: createNativeBarcodeDetector(),
+    cropCanvas,
+    cropContext,
+    cropReader: createZxingReader(zxingModule, "serial-code"),
+  }
+}
+
+async function decodeNativeCodeFrame(
+  reader: ZxingReader,
+  video: HTMLVideoElement,
+  scanMode: NativeCodeScanMode,
+  serialDecoderState?: SerialCodeDecoderState
+) {
+  if (scanMode === "serial-code") return decodeSerialCodeFrame(reader, video, serialDecoderState)
+
+  return tryDecodeZxingSource(reader, video)
+}
+
+async function decodeSerialCodeFrame(
+  reader: ZxingReader,
+  video: HTMLVideoElement,
+  state?: SerialCodeDecoderState
+) {
+  const detectedFromVideo = await detectNativeBarcode(state?.barcodeDetector, video)
+  if (detectedFromVideo) return detectedFromVideo
+
+  if (state) {
+    for (const region of SERIAL_CODE_SCAN_REGIONS) {
+      drawSerialCodeRegion(video, state, region)
+      const detectedFromCrop = await detectNativeBarcode(state.barcodeDetector, state.cropCanvas)
+      if (detectedFromCrop) return detectedFromCrop
+
+      const decodedFromCrop = tryDecodeZxingSource(state.cropReader, state.cropCanvas)
+      if (decodedFromCrop) return decodedFromCrop
+    }
+  }
+
+  return tryDecodeZxingSource(reader, video)
+}
+
+function drawSerialCodeRegion(
+  video: HTMLVideoElement,
+  state: SerialCodeDecoderState,
+  region: (typeof SERIAL_CODE_SCAN_REGIONS)[number]
+) {
+  const sourceWidth = video.videoWidth
+  const sourceHeight = video.videoHeight
+  const sx = Math.max(0, Math.round(sourceWidth * region.x))
+  const sy = Math.max(0, Math.round(sourceHeight * region.y))
+  const sWidth = Math.min(sourceWidth - sx, Math.round(sourceWidth * region.width))
+  const sHeight = Math.min(sourceHeight - sy, Math.round(sourceHeight * region.height))
+
+  state.cropContext.clearRect(0, 0, SERIAL_CODE_CANVAS_WIDTH, SERIAL_CODE_CANVAS_HEIGHT)
+  state.cropContext.imageSmoothingEnabled = false
+  state.cropContext.drawImage(
+    video,
+    sx,
+    sy,
+    sWidth,
+    sHeight,
+    0,
+    0,
+    SERIAL_CODE_CANVAS_WIDTH,
+    SERIAL_CODE_CANVAS_HEIGHT
+  )
+}
+
+async function detectNativeBarcode(detector: NativeBarcodeDetector | undefined, source: ZxingDecodeSource) {
+  if (!detector) return ""
+
+  try {
+    const detections = await detector.detect(source)
+    for (const detection of detections) {
+      const rawValue = normalizeDecodedCodeText(detection.rawValue ?? "")
+      if (rawValue) return rawValue
+    }
+  } catch {
+    // Browser barcode detection is optional; fall back to ZXing.
+  }
+
+  return ""
+}
+
+function createNativeBarcodeDetector() {
+  const BarcodeDetector = typeof window !== "undefined" ? (window as NativeBarcodeDetectorWindow).BarcodeDetector : undefined
+  if (!BarcodeDetector) return undefined
+
+  try {
+    return new BarcodeDetector({ formats: NATIVE_BARCODE_DETECTOR_FORMATS })
+  } catch {
+    try {
+      return new BarcodeDetector()
+    } catch {
+      return undefined
+    }
+  }
+}
+
+function tryDecodeZxingSource(reader: ZxingReader, source: ZxingDecodeSource) {
+  try {
+    return normalizeDecodedCodeText(getZxingDecodedText(reader.decode(source)))
+  } catch {
+    return ""
+  }
+}
+
 function getZxingDecodedText(result: ZxingDecodedResult) {
   return typeof result.getText === "function" ? result.getText() : result.text ?? ""
+}
+
+function normalizeDecodedCodeText(value: string) {
+  return value.trim()
 }
 
 async function tuneAssetQrMediaStream(stream: MediaStream) {
@@ -254,18 +423,23 @@ async function tuneNativeCodeMediaStream(stream: MediaStream, scanMode: NativeCo
     if (supportsStringCapability(capabilities.focusMode, "continuous")) advanced.push({ focusMode: "continuous" })
     if (supportsStringCapability(capabilities.exposureMode, "continuous")) advanced.push({ exposureMode: "continuous" })
     if (supportsStringCapability(capabilities.whiteBalanceMode, "continuous")) advanced.push({ whiteBalanceMode: "continuous" })
+    if (scanMode === "serial-code") return applyNativeCodeTrackConstraints(track, advanced)
+
     const zoom = capabilities.zoom
     if (typeof zoom === "object" && zoom !== null && "min" in zoom && "max" in zoom) {
       const min = typeof zoom.min === "number" ? zoom.min : 1
       const max = typeof zoom.max === "number" ? zoom.max : min
-      const targetZoom = scanMode === "serial-code" ? 2.5 : 2
-      advanced.push({ zoom: Math.min(max, Math.max(min, targetZoom)) })
+      advanced.push({ zoom: Math.min(max, Math.max(min, 2)) })
     }
-    if (advanced.length > 0) {
-      await track.applyConstraints({ advanced } as MediaTrackConstraints)
-    }
+    await applyNativeCodeTrackConstraints(track, advanced)
   } catch {
     // Some mobile browsers expose camera capability keys but reject tuning; scanning should continue.
+  }
+}
+
+async function applyNativeCodeTrackConstraints(track: MediaStreamTrack, advanced: NativeCodeCameraTuningConstraintSet[]) {
+  if (advanced.length > 0) {
+    await track.applyConstraints({ advanced } as MediaTrackConstraints)
   }
 }
 

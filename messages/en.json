@@ -393,7 +393,7 @@
     "scanSerialNumber": "Scan Serial",
     "stopSerialScan": "Stop scan",
     "serialScannerTitle": "Scan QR/Barcode for Serial Number",
-    "serialScannerHelp": "Center only the QR/barcode in the wide frame and adjust distance until the lines are sharp. If the preview looks blurry, hold the label slightly farther away. The value fills this field and can still be edited before saving.",
+    "serialScannerHelp": "Center only the QR/barcode band in the wide frame. Make the barcode fill most of the frame so the lines are sharp. The value fills this field and can still be edited before saving.",
     "serialScannerRunning": "Scanning QR/Barcode...",
     "serialScanned": "Serial Number filled from scan",
     "cameraUnsupported": "This browser does not support camera access",

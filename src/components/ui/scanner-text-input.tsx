@@ -274,13 +274,14 @@ function SerialScannerOverlay() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">
       <div
-        className="absolute left-1/2 top-1/2 h-[46%] w-[72%] max-w-[28rem] -translate-x-1/2 -translate-y-1/2"
+        className="absolute left-1/2 top-1/2 h-[34%] w-[78%] max-w-[30rem] -translate-x-1/2 -translate-y-1/2"
         style={{ boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.36)" }}
       >
-        <span className="absolute left-0 top-0 h-9 w-9 border-l-4 border-t-4 border-white" />
-        <span className="absolute right-0 top-0 h-9 w-9 border-r-4 border-t-4 border-white" />
-        <span className="absolute bottom-0 left-0 h-9 w-9 border-b-4 border-l-4 border-white" />
-        <span className="absolute bottom-0 right-0 h-9 w-9 border-b-4 border-r-4 border-white" />
+        <span className="absolute left-0 top-0 h-8 w-8 border-l-4 border-t-4 border-white" />
+        <span className="absolute right-0 top-0 h-8 w-8 border-r-4 border-t-4 border-white" />
+        <span className="absolute left-8 right-8 top-1/2 h-0.5 -translate-y-1/2 bg-white/85 shadow-[0_0_8px_rgba(255,255,255,0.7)]" />
+        <span className="absolute bottom-0 left-0 h-8 w-8 border-b-4 border-l-4 border-white" />
+        <span className="absolute bottom-0 right-0 h-8 w-8 border-b-4 border-r-4 border-white" />
       </div>
     </div>
   )

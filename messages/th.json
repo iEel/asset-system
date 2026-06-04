@@ -393,7 +393,7 @@
     "scanSerialNumber": "สแกน Serial",
     "stopSerialScan": "หยุดสแกน",
     "serialScannerTitle": "สแกน QR/Barcode สำหรับ Serial Number",
-    "serialScannerHelp": "เล็งเฉพาะ QR/Barcode ให้อยู่กลางกรอบแนวนอนและปรับระยะจนเส้นคมชัด ถ้าภาพเบลอให้ถือห่างขึ้นเล็กน้อย ระบบจะเติมค่าในช่องนี้และยังแก้ไขได้ก่อนบันทึก",
+    "serialScannerHelp": "เล็งเฉพาะแถบ QR/Barcode ให้อยู่กลางกรอบแนวนอน ให้เส้นบาร์โค้ดกินความกว้างส่วนใหญ่ของกรอบและเส้นคมชัด ระบบจะเติมค่าในช่องนี้และยังแก้ไขได้ก่อนบันทึก",
     "serialScannerRunning": "กำลังสแกน QR/Barcode...",
     "serialScanned": "เติม Serial Number จากการสแกนแล้ว",
     "cameraUnsupported": "เบราว์เซอร์นี้ไม่รองรับการใช้กล้อง",
