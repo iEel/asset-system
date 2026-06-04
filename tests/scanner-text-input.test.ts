@@ -27,15 +27,28 @@ test("asset QR scanner requests focus-friendly camera constraints and tuning", (
   assert.match(source, /height: \{ ideal: 960 \}/)
   assert.match(source, /focusMode: "continuous"/)
   assert.match(source, /exposureMode: "continuous"/)
-  assert.match(source, /await tuneAssetQrCamera\(scanner, scanMode\)/)
-  assert.match(source, /zoomFeature\(\)/)
+  assert.match(source, /await tuneAssetQrMediaStream\(stream\)/)
+  assert.match(source, /zoom: Math\.min/)
 })
 
 test("asset QR scanner avoids mobile native detector and mirror flip retries", () => {
   const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8")
 
-  assert.match(source, /useBarCodeDetectorIfSupported: scanMode !== "asset-qr"/)
+  assert.match(source, /if \(scanMode === "asset-qr"\) \{[\s\S]*startAssetQrScanner/)
+  assert.match(source, /useBarCodeDetectorIfSupported: true/)
   assert.match(source, /return \{[\s\S]*fps: 15[\s\S]*disableFlip: true[\s\S]*videoConstraints: buildAssetQrVideoConstraints\(cameraSelection\)[\s\S]*\}/)
+})
+
+test("asset QR scanner decodes from the native-resolution video frame", () => {
+  const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8")
+
+  assert.match(source, /startAssetQrScanner/)
+  assert.match(source, /navigator\.mediaDevices\.getUserMedia/)
+  assert.match(source, /html5-qrcode\/third_party\/zxing-js\.umd\.js/)
+  assert.match(source, /new BrowserQRCodeReader/)
+  assert.match(source, /reader\.decode\(video\)/)
+  assert.match(source, /video\.videoWidth/)
+  assert.match(source, /video\.videoHeight/)
 })
 
 test("asset QR scanner renders its own square overlay instead of the library rectangle", () => {

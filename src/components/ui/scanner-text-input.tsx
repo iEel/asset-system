@@ -48,6 +48,24 @@ type AssetQrCameraTuningConstraintSet = MediaTrackConstraintSet & {
   focusMode?: string
   exposureMode?: string
   whiteBalanceMode?: string
+  zoom?: number
+}
+
+type AssetQrScannerRuntime = {
+  stop: () => void
+}
+
+type ZxingQrResult = {
+  getText?: () => string
+  text?: string
+}
+
+type ZxingQrReader = {
+  decode: (video: HTMLVideoElement) => ZxingQrResult
+}
+
+type ZxingBrowserModule = {
+  BrowserQRCodeReader: new (timeBetweenScansMillis?: number) => ZxingQrReader
 }
 
 export function ScannerTextInput({
@@ -65,6 +83,7 @@ export function ScannerTextInput({
   const reactId = useId()
   const readerId = `scanner-reader-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}`
   const scannerRef = useRef<Html5Qrcode | null>(null)
+  const assetQrRuntimeRef = useRef<AssetQrScannerRuntime | null>(null)
   const [scannerRunning, setScannerRunning] = useState(false)
   const [scannerLoading, setScannerLoading] = useState(false)
   const [cameraErrorText, setCameraErrorText] = useState("")
@@ -99,12 +118,6 @@ export function ScannerTextInput({
 
       const cameraSelection = resolvePreferredCameraSelection(availableCameras, requestedCameraId)
       setSelectedCameraId(cameraSelection.selectedCameraId)
-      const scanner = new Html5Qrcode(readerId, {
-        formatsToSupport: getScannerCodeFormats(Html5QrcodeSupportedFormats, scanMode),
-        useBarCodeDetectorIfSupported: scanMode !== "asset-qr",
-        verbose: false,
-      })
-      scannerRef.current = scanner
       const handleScanSuccess = (decodedText: string) => {
         const normalizedText = decodedText.trim()
         if (!normalizedText) return
@@ -114,10 +127,33 @@ export function ScannerTextInput({
           onScanSuccess?.(normalizedText)
         })
       }
+
+      if (scanMode === "asset-qr") {
+        const startWithSelection = async (selection: PreferredCameraSelection) => {
+          assetQrRuntimeRef.current = await startAssetQrScanner(readerId, selection, handleScanSuccess)
+        }
+
+        try {
+          await startWithSelection(cameraSelection)
+        } catch (startError) {
+          const fallbackCamera = getFallbackCameraAfterEnvironmentFailure(cameraSelection, availableCameras)
+          if (!fallbackCamera) throw startError
+          setSelectedCameraId(fallbackCamera.id)
+          await startWithSelection(resolvePreferredCameraSelection([fallbackCamera], fallbackCamera.id))
+        }
+        setScannerRunning(true)
+        return
+      }
+
+      const scanner = new Html5Qrcode(readerId, {
+        formatsToSupport: getScannerCodeFormats(Html5QrcodeSupportedFormats, scanMode),
+        useBarCodeDetectorIfSupported: true,
+        verbose: false,
+      })
+      scannerRef.current = scanner
       const startWithSelection = async (selection: PreferredCameraSelection) => {
         const scanConfig = getScannerConfig(scanMode, selection)
         await scanner.start(selection.cameraConfig, scanConfig, handleScanSuccess, () => {})
-        await tuneAssetQrCamera(scanner, scanMode)
       }
 
       try {
@@ -140,6 +176,14 @@ export function ScannerTextInput({
   }
 
   async function stopScanner() {
+    const assetQrRuntime = assetQrRuntimeRef.current
+    if (assetQrRuntime) {
+      assetQrRuntime.stop()
+      assetQrRuntimeRef.current = null
+      setScannerRunning(false)
+      return
+    }
+
     const scanner = scannerRef.current
     if (!scanner) {
       setScannerRunning(false)
@@ -297,34 +341,133 @@ function buildAssetQrVideoConstraints(cameraSelection?: PreferredCameraSelection
   }
 }
 
-async function tuneAssetQrCamera(scanner: Html5Qrcode, scanMode: NonNullable<ScannerTextInputProps["scanMode"]>) {
-  if (scanMode !== "asset-qr") return
+async function startAssetQrScanner(
+  readerId: string,
+  cameraSelection: PreferredCameraSelection,
+  onScanSuccess: (decodedText: string) => void
+): Promise<AssetQrScannerRuntime> {
+  const readerElement = document.getElementById(readerId)
+  if (!readerElement) throw new Error("Scanner reader is not mounted")
 
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: buildAssetQrVideoConstraints(cameraSelection),
+    audio: false,
+  })
+  const video = document.createElement("video")
+  video.autoplay = true
+  video.muted = true
+  video.playsInline = true
+  video.setAttribute("autoplay", "true")
+  video.setAttribute("muted", "true")
+  video.setAttribute("playsinline", "true")
+  video.style.display = "block"
+  video.style.width = "100%"
+  video.style.height = "auto"
+  video.srcObject = stream
+  readerElement.replaceChildren(video)
+
+  const playPromise = video.play()
+  await waitForAssetQrVideo(video)
+  await playPromise
+  await tuneAssetQrMediaStream(stream)
+
+  const { BrowserQRCodeReader } = (await import(
+    "html5-qrcode/third_party/zxing-js.umd.js"
+  )) as unknown as ZxingBrowserModule
+  const reader = new BrowserQRCodeReader(100)
+  let stopped = false
+  let succeeded = false
+  let timeoutId: number | undefined
+
+  const stop = () => {
+    stopped = true
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+    stream.getTracks().forEach((track) => track.stop())
+    video.srcObject = null
+    video.remove()
+  }
+
+  const scanNativeFrame = () => {
+    if (stopped || succeeded) return
+    if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || video.videoWidth <= 0 || video.videoHeight <= 0) {
+      timeoutId = window.setTimeout(scanNativeFrame, 100)
+      return
+    }
+
+    try {
+      const decodedText = getZxingDecodedText(reader.decode(video))
+      if (decodedText) {
+        succeeded = true
+        onScanSuccess(decodedText)
+        return
+      }
+    } catch {
+      // No QR in this frame; keep scanning.
+    }
+    timeoutId = window.setTimeout(scanNativeFrame, 100)
+  }
+
+  timeoutId = window.setTimeout(scanNativeFrame, 100)
+  return { stop }
+}
+
+async function waitForAssetQrVideo(video: HTMLVideoElement) {
+  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0 && video.videoHeight > 0) return
+
+  await new Promise<void>((resolve, reject) => {
+    const timeoutId = window.setTimeout(resolve, 1800)
+    const cleanup = () => {
+      window.clearTimeout(timeoutId)
+      video.removeEventListener("loadedmetadata", handleReady)
+      video.removeEventListener("playing", handleReady)
+      video.removeEventListener("error", handleError)
+    }
+    const handleReady = () => {
+      if (video.videoWidth <= 0 || video.videoHeight <= 0) return
+      cleanup()
+      resolve()
+    }
+    const handleError = () => {
+      cleanup()
+      reject(new Error("Unable to start camera preview"))
+    }
+    video.addEventListener("loadedmetadata", handleReady)
+    video.addEventListener("playing", handleReady)
+    video.addEventListener("error", handleError)
+  })
+}
+
+function getZxingDecodedText(result: ZxingQrResult) {
+  return typeof result.getText === "function" ? result.getText() : result.text ?? ""
+}
+
+async function tuneAssetQrMediaStream(stream: MediaStream) {
   try {
-    const capabilities = scanner.getRunningTrackCapabilities() as MediaTrackCapabilities & Record<string, unknown>
+    const track = stream.getVideoTracks()[0]
+    if (!track) return
+
+    const capabilities =
+      typeof track.getCapabilities === "function"
+        ? (track.getCapabilities() as MediaTrackCapabilities & Record<string, unknown>)
+        : undefined
+    if (!capabilities) return
+
     const advanced: AssetQrCameraTuningConstraintSet[] = []
 
     if (supportsStringCapability(capabilities.focusMode, "continuous")) advanced.push({ focusMode: "continuous" })
     if (supportsStringCapability(capabilities.exposureMode, "continuous")) advanced.push({ exposureMode: "continuous" })
     if (supportsStringCapability(capabilities.whiteBalanceMode, "continuous")) advanced.push({ whiteBalanceMode: "continuous" })
+    const zoom = capabilities.zoom
+    if (typeof zoom === "object" && zoom !== null && "min" in zoom && "max" in zoom) {
+      const min = typeof zoom.min === "number" ? zoom.min : 1
+      const max = typeof zoom.max === "number" ? zoom.max : min
+      advanced.push({ zoom: Math.min(max, Math.max(min, 2)) })
+    }
     if (advanced.length > 0) {
-      await scanner.applyVideoConstraints({ advanced } as MediaTrackConstraints)
+      await track.applyConstraints({ advanced } as MediaTrackConstraints)
     }
   } catch {
     // Some mobile browsers expose camera capability keys but reject tuning; scanning should continue.
-  }
-
-  try {
-    const zoom = scanner.getRunningTrackCameraCapabilities().zoomFeature()
-    if (!zoom.isSupported()) return
-
-    const currentValue = zoom.value()
-    const targetValue = Math.min(zoom.max(), Math.max(zoom.min(), 2))
-    if (typeof currentValue === "number" && currentValue >= targetValue) return
-
-    await zoom.apply(targetValue)
-  } catch {
-    // Zoom is an optional improvement for small asset-label QR codes.
   }
 }
 
