@@ -206,7 +206,7 @@ export function AssetForm({
   const [newAssetPhotos, setNewAssetPhotos] = useState<AssetPhotoDraft[]>([])
   const [nameManuallyEdited, setNameManuallyEdited] = useState(() => Boolean(asset?.id || asset?.name?.trim()))
   const [showRawJson, setShowRawJson] = useState(false)
-  const [allowCrossCompanyCustodian, setAllowCrossCompanyCustodian] = useState(false)
+  const [allowCrossCompanyCustodian, setAllowCrossCompanyCustodian] = useState(() => shouldAllowCrossCompanyCustodianOnLoad(asset, employees, branches, departments))
   const [saving, setSaving] = useState(false)
   const [duplicateState, setDuplicateState] = useState<{
     checking: boolean
@@ -378,22 +378,8 @@ export function AssetForm({
 
     setValues((current) => {
       const custodian = employees.find((employee) => employee.id === current.custodianId)
-      if (employeeMatchesAssetScope(custodian, current)) return current
+      if (employeeMatchesAssetScope(custodian, current, branches, departments)) return current
       return { ...current, custodianId: "" }
-    })
-  }
-
-  function employeeMatchesAssetScope(employee: Option | undefined, current: AssetFormValues) {
-    if (!employee) return true
-    const branch = branches.find((item) => item.id === current.branchId)
-    const department = departments.find((item) => item.id === current.departmentId)
-
-    return optionMatchesOrganizationScope(employee, {
-      companyId: current.companyId,
-      branchId: current.branchId,
-      branchCode: branch?.code,
-      departmentId: current.departmentId,
-      departmentCode: department?.code,
     })
   }
 
@@ -1575,6 +1561,36 @@ function TemplateField({
       />
     </label>
   )
+}
+
+function shouldAllowCrossCompanyCustodianOnLoad(
+  current: AssetFormValues | undefined,
+  employees: Option[],
+  branches: Option[],
+  departments: Option[]
+) {
+  if (!current?.custodianId) return false
+  const custodian = employees.find((employee) => employee.id === current.custodianId)
+  return !employeeMatchesAssetScope(custodian, current, branches, departments)
+}
+
+function employeeMatchesAssetScope(
+  employee: Option | undefined,
+  current: AssetFormValues,
+  branches: Option[],
+  departments: Option[]
+) {
+  if (!employee) return true
+  const branch = branches.find((item) => item.id === current.branchId)
+  const department = departments.find((item) => item.id === current.departmentId)
+
+  return optionMatchesOrganizationScope(employee, {
+    companyId: current.companyId,
+    branchId: current.branchId,
+    branchCode: branch?.code,
+    departmentId: current.departmentId,
+    departmentCode: department?.code,
+  })
 }
 
 function createCustomFieldRow(key = "", value = ""): CustomFieldRow {

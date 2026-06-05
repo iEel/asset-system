@@ -98,7 +98,7 @@ Important data semantics:
 |---|---|
 | Asset list | Asset Register page with filters, responsive views, table/card behavior, and row navigation |
 | Asset detail | Unified page with overview, specs, QR, photos/files, components, purchase docs, movement, maintenance, audit, handover/return, notes |
-| Asset create/edit | Single asset form with owner/tag scope, category/brand/model, serial, custodian, location, purchase/warranty, custom fields, photos/files |
+| Asset create/edit | Single asset form with owner/tag scope, category/brand/model, serial, custodian, location, purchase/warranty, custom fields, photos/files; edit mode preserves saved cross-company custodians by opening the wider custodian list automatically |
 | Batch create | Batch creation from shared purchase/master data plus row-level serial/manual tag/custodian/remark values |
 | Asset import | Excel import preview and confirm APIs for legacy asset onboarding |
 | Asset export | Excel export using current filters where supported |

@@ -9,6 +9,7 @@
 - Asset tags may be manually entered for legacy assets or auto-generated when left blank.
 - Company and branch on the asset form are the asset owner/tag scope; they drive generated asset tags and reporting/accounting scope.
 - Custodian defaults to the selected owner company/branch/department scope, but the form can opt in to cross-company custodians for cases where the asset owner and current holder are different organizations.
+- When editing an existing asset, a saved custodian outside the owner company/branch/department scope automatically opens the cross-company custodian mode so the current holder remains visible and can be reviewed before saving.
 - Cross-company custodian selections show an explicit warning and are recorded in the creation audit trail. Batch create follows the same model for shared owner/tag scope plus common or row-level custodian values.
 
 ## Asset Scan And Labels

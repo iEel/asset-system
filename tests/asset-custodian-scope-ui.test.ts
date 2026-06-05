@@ -23,6 +23,13 @@ test("single asset form can opt into cross-company custodians with a visible war
   assert.match(source, /assetOwnerBranch/)
 })
 
+test("edit asset form opens cross-company custodian mode when the saved custodian is outside the owner scope", () => {
+  const source = readFileSync("src/components/assets/asset-form.tsx", "utf8")
+
+  assert.match(source, /shouldAllowCrossCompanyCustodianOnLoad\(asset, employees, branches, departments\)/)
+  assert.match(source, /useState\(\(\) => shouldAllowCrossCompanyCustodianOnLoad\(asset, employees, branches, departments\)\)/)
+})
+
 test("batch asset form can opt into cross-company custodians for common and row custodians", () => {
   const source = readFileSync("src/components/assets/asset-batch-form.tsx", "utf8")
 
