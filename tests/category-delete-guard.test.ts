@@ -41,3 +41,16 @@ test("category create route reactivates an inactive category with the same code 
   assert.match(source, /existingInactiveCategory\s*\?\s*await prisma\.assetCategory\.update\(/)
   assert.match(source, /action:\s*existingInactiveCategory\s*\?\s*"reactivate"\s*:\s*"create"/)
 })
+
+test("category create route does not send deleteMany in nested custom field create payload", () => {
+  const source = readFileSync("src/app/api/categories/route.ts", "utf8")
+  const createBranch = source.slice(source.indexOf(": await prisma.assetCategory.create"), source.indexOf("await saveCategoryPhotoChecklist"))
+  const createHelper = source.slice(source.indexOf("function buildCustomFieldDefsCreate"), source.indexOf("function buildCustomFieldDefsReplace"))
+  const createInputHelper = source.slice(source.indexOf("function buildCustomFieldDefinitionCreateInputs"), source.indexOf("function normalizeFieldOptions"))
+
+  assert.match(createBranch, /customFieldDefs:\s*buildCustomFieldDefsCreate\(input\.customFieldDefs\)/)
+  assert.doesNotMatch(createBranch, /buildCustomFieldDefsReplace\(input\.customFieldDefs\)/)
+  assert.match(createHelper, /create:\s*buildCustomFieldDefinitionCreateInputs\(customFieldDefs\)/)
+  assert.doesNotMatch(createHelper, /deleteMany/)
+  assert.match(createInputHelper, /customFieldDefs\.map/)
+})

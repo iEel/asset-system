@@ -1,0 +1,332 @@
+# Asset Management System - Feature List
+
+Last updated: 2026-06-05
+
+This feature list is based on the current repository documents and source code, not only on the original plan. It focuses on features that are represented by the current docs, routes, API endpoints, Prisma schema, and component/library structure.
+
+## Sources Reviewed
+
+| Source | Evidence Used |
+|---|---|
+| `README.md` | stack, scripts, key modules, deployment boundary |
+| `DEVELOPER_HANDOFF.md` | current production readiness notes, latest high-level modules, go-live decisions |
+| `docs/01_OVERVIEW.md` | product purpose, users, core modules |
+| `docs/02_ARCHITECTURE.md` | runtime, route structure, scheduler/background jobs, storage boundary |
+| `docs/03_DATABASE.md` | current Prisma model areas and ownership/custody semantics |
+| `docs/04_AUTH_RBAC.md` | local auth, LDAP/AD, RBAC, employee self-service rules |
+| `docs/05_ASSET_LIFECYCLE.md` | lifecycle statuses, allowed transitions, API enforcement |
+| `docs/06_WORKFLOWS.md` | implemented business workflows |
+| `docs/08_PRODUCTION_READINESS.md` | go-live checklist and operational controls |
+| `docs/10_SECURITY_REVIEW.md` | security controls, upload hardening, RBAC route checks |
+| `Implementation Plan.md` | original phase plan used as historical scope reference |
+| `System Requirement (2).md` | original business requirements |
+| `Enterprise Web UI UX Requirements.md` | UI/UX acceptance and enterprise design requirements |
+| `prisma/schema.prisma` | current database models |
+| `src/app/[locale]/(dashboard)/**` | actual authenticated pages |
+| `src/app/api/**/route.ts` | actual API surface |
+| `src/components/**` and `src/lib/**` | reusable UI/workflow modules and server helpers |
+
+## Current System Summary
+
+The system is an enterprise asset management web application for registering assets, controlling custody, printing QR labels, auditing, maintaining, disposing, reporting, and administering users/permissions/settings. It is designed for Thai operational workflows and supports multi-company, multi-branch, multi-department asset control.
+
+## Platform And Runtime
+
+| Feature | Current Implementation |
+|---|---|
+| Web framework | Next.js 16.2.4 App Router with standalone output |
+| Language/UI | TypeScript 5, React 19, Tailwind CSS 4 |
+| Database | SQL Server through Prisma 7, `@prisma/adapter-mssql`, `tedious` |
+| Auth | Auth.js / NextAuth credentials flow with optional LDAP/AD |
+| i18n | Thai and English locale routes through `next-intl` |
+| Exports | Excel and PDF exports, including Thai font support |
+| Scanning | QR and barcode scanning helpers for asset labels and serial numbers |
+| Mobile support | Mobile responsive QA documented across core field workflows |
+| PWA | App manifest and install icons for mobile Add to Home Screen |
+
+## Main Navigation And Pages
+
+Current authenticated pages exist under `src/app/[locale]/(dashboard)`:
+
+| Area | Pages / Capabilities |
+|---|---|
+| Dashboard | `/dashboard` KPI and overview page |
+| Work Center | `/work-center` actionable operations summary |
+| My Assets | `/my-assets` employee self-service asset list |
+| Asset Register | `/assets`, `/assets/new`, `/assets/{id}`, `/assets/{id}/edit` |
+| Asset Operations | `/asset-management/checkout`, `/checkin`, `/transfer`, `/bulk-move`, `/scan`, `/labels`, `/import-export` |
+| Audit | `/audit/rounds`, `/audit/rounds/new`, `/audit/rounds/{id}`, `/pending`, `/scan`, `/audit/findings` |
+| Maintenance | `/maintenance`, `/maintenance/{id}` |
+| Disposal | `/disposal`, `/disposal/{id}` |
+| Reports | `/reports` |
+| Master Data | companies, branches, departments, employees, locations, categories, brands/models, suppliers |
+| Admin | users, roles, approvals, data quality, storage, readiness, logs, settings, access denied |
+| Print Views | asset labels, bulk labels, handover forms, return forms, maintenance print, disposal print |
+| Public QR Resolver | `/q/a/{assetId}` redirects printed QR codes to asset detail through the configured public base URL or proxy headers |
+
+## Database And Data Model
+
+The Prisma schema contains current models for:
+
+- Organization: `Company`, `Branch`, `Department`, `Employee`
+- Location: `Location`
+- Classification: `AssetCategory`, `AssetBrand`, `AssetModel`
+- Reference data: `AssetStatus`, `AssetCondition`
+- Asset register: `Asset`, `AssetComponent`, `CustomFieldDefinition`, `CustomFieldValue`
+- Label printing: `AssetLabelPrintBatch`, `AssetLabelPrint`
+- Procurement: `PurchaseDocument`, `PurchaseDocumentAsset`
+- Operations: `AssetCheckout`, `AssetCheckin`, `AssetMovement`
+- Audit: `AuditRound`, `AuditItem`, `AuditFinding`, `AuditScanHistory`
+- Maintenance: `MaintenancePlan`, `MaintenanceTicket`
+- Disposal: `DisposalRequest`
+- Supplier: `Supplier`
+- Files: `Attachment`
+- Auth/RBAC: `User`, `Role`, `Permission`, `UserRole`, `RolePermission`
+- System: `SystemLog`, `SystemSetting`, `Notification`, `NotificationUserState`
+
+Important data semantics:
+
+- `Asset.companyId` and `Asset.branchId` represent asset owner/tag/reporting scope.
+- `Asset.custodianId` may point to an employee outside the asset owner company/branch for cross-company custody.
+- Asset ownership/tag scope changes should be intentional master-data edits; normal custody changes should use checkout, check-in, and transfer.
+- Files are stored under `UPLOAD_DIR` and referenced through `Attachment`; file bytes are not stored in SQL Server.
+- Production schema changes require backup, approved change record, and rollback/restore plan. `npx prisma db push` is Dev/Test-oriented.
+
+## Asset Register
+
+| Feature | Details |
+|---|---|
+| Asset list | Asset Register page with filters, responsive views, table/card behavior, and row navigation |
+| Asset detail | Unified page with overview, specs, QR, photos/files, components, purchase docs, movement, maintenance, audit, handover/return, notes |
+| Asset create/edit | Single asset form with owner/tag scope, category/brand/model, serial, custodian, location, purchase/warranty, custom fields, photos/files |
+| Batch create | Batch creation from shared purchase/master data plus row-level serial/manual tag/custodian/remark values |
+| Asset import | Excel import preview and confirm APIs for legacy asset onboarding |
+| Asset export | Excel export using current filters where supported |
+| Duplicate handling | Duplicate checking for asset tag/serial and batch duplicate review |
+| Asset tag generation | Configurable format, category prefix groups, company asset-tag code, branch/category/running tokens |
+| Custom fields | Category-level custom field templates rendered automatically in asset forms |
+| Model specs | Structured asset model specs with legacy text parsing and summary display |
+| Asset/model photos | Asset photos and model fallback photos stored as attachments and displayed in list/detail flows |
+| Purchase documents | Shared PO/Invoice/delivery/warranty/contract documents can link to multiple assets |
+| Components | Parent-child asset assembly with install/remove, role, slot, history, validation, movement logs |
+| Status correction | Guarded correction workflow for protected lifecycle statuses with reason, movement, audit trail |
+
+## Asset Labels, QR, And Scanning
+
+| Feature | Details |
+|---|---|
+| Label profiles | Configurable 12mm, 18mm, 24mm, and custom tape profiles |
+| Brother label support | Label text/QR optimized for Brother tape workflows; docs note PT-E550W 18mm driver setup |
+| Label templates | Primary/secondary/tertiary text templates and QR size/layout settings |
+| Public QR Base URL | Production QR links use public HTTPS base URL; print UI warns for localhost/private/relative targets |
+| Single label print | Asset detail print route |
+| Bulk label print | Label management page and bulk print route |
+| Print tracking | Label print batch and print history models exist in schema |
+| Asset scan/search | QR-first scanner page for printed asset labels |
+| QR resolver | `/q/a/{assetId}` resolves printed QR labels to the correct localized asset detail |
+| Serial/barcode scanning | Reusable scanner input supports manufacturer serial/barcode capture paths documented in handoff/workflows |
+| Mobile camera guidance | Rear-camera preference, undistorted preview, scan guide overlays, native-resolution decode paths |
+
+## Asset Custody And Movement
+
+| Feature | Details |
+|---|---|
+| Check-out | Handover to employee, department, location, or another asset |
+| Check-out evidence | Before-handover photo, receiver signature pad, attachment evidence |
+| Check-out validation | Blocks duplicate active checkout and protected lifecycle statuses |
+| Check-in | Return workflow with return/receive parties, condition after, next status, next location |
+| Check-in evidence | After-return photos, return signature, receive signature |
+| Check-in maintenance link | Can create maintenance ticket only when next status is Pending Repair and permission allows |
+| Transfer | Move asset location/custodian/department through controlled operation |
+| Bulk move | Bulk location movement for multiple assets |
+| Bulk update | API support for selected asset location/custodian updates |
+| Movement history | Every key operation creates `AssetMovement` records |
+| Operation documents | Printable handover and return documents with readable configurable document numbers |
+| Document numbering | Defaults to `HO-{yyyyMM}-{running}` and `RT-{yyyyMM}-{running}`, configurable in System Settings |
+
+## Asset Lifecycle Controls
+
+Implemented status lifecycle and enforcement from docs/code:
+
+- Check-out sets status to `Checked Out`.
+- Check-in can return only to `Ready`, `Pending Repair`, or `Pending Disposal`.
+- Check-out blocks `Disposed`, `Retired`, `Pending Disposal`, `Under Maintenance`, `Lost`, and `Missing`.
+- Transfer blocks assets with an active checkout and blocks normal transfer for `Disposed`, `Retired`, and `Pending Disposal`.
+- Maintenance close only allows `Ready` or `Pending Disposal`.
+- Disposal execution only allows `Disposed` or `Retired`.
+- Generic asset edit cannot directly assign protected lifecycle statuses.
+- Status correction can restore protected lifecycle statuses to `Ready` with a required reason and audit trail.
+- Default audit target selection excludes disposed/retired assets unless explicitly included.
+
+## Audit
+
+| Feature | Details |
+|---|---|
+| Audit rounds | Create rounds from scoped asset filters |
+| Candidate preview | Preview audit candidates before creating a round |
+| Expected list | Audit items generated from scope and start as pending |
+| Audit detail | Progress metrics and expected item list |
+| Audit scan | QR/manual scan, current expected vs actual data, photo evidence |
+| Continuous mobile scan | Uses asset QR decoder while keeping audit workflow on the audit scan page |
+| Found/mismatch/not found | Handles found, mismatch, out-of-scope, not-found, and found-later cases |
+| Not-found workflow | Mark pending items as not found without changing asset status to Lost automatically |
+| Findings | Finding list, review actions, evidence attachments, batch actions |
+| Reconciliation | Approve/reject findings with movement/audit trail and segregation controls |
+| Close-round controls | Close-round workflow with protection documented in lifecycle/workflow docs |
+| Exports | Audit result Excel/PDF, findings Excel/PDF, variance export |
+| Labels | User-facing labels resolve expected/actual references instead of raw ids where supported |
+
+## Maintenance And Preventive Maintenance
+
+| Feature | Details |
+|---|---|
+| Maintenance tickets | Create, view, update, close, export maintenance tickets |
+| Ticket detail | Attachments, previews, close/status actions, print page |
+| Check-in integration | Optional ticket creation from check-in when returned asset needs repair |
+| Maintenance status | Controlled close flow with post-repair asset status restrictions |
+| Evidence | Drag/drop attachments and preview/download/delete controls |
+| Costs/vendor/assignee | Ticket fields and options support internal/vendor repair workflows |
+| PM plans | Preventive maintenance plan model, form, generate-due endpoint, generate-ticket endpoint |
+| PM scheduling | Scheduler heartbeat and web-configured PM schedule settings |
+| PM history | Related PM/maintenance history visible through asset detail flows per docs |
+
+## Disposal
+
+| Feature | Details |
+|---|---|
+| Disposal request | Create and list disposal requests |
+| Detail | Request, asset, decision, execution/evidence, movement/history sections |
+| Approval | Approve/reject flow with approval remark/value/status updates |
+| Execution | Separate actual disposal execution with evidence, recipient/buyer/destination/document number/value/completion date |
+| Duplicate guard | Duplicate open requests are guarded |
+| Print | A4 disposal print route |
+| Export | Disposal export API using current filters where supported |
+| Lifecycle control | Final asset status limited to `Disposed` or `Retired` |
+
+## Reports, Accounting, And Exports
+
+| Feature | Details |
+|---|---|
+| Reports page | Central report entry point |
+| Asset overview export | `reports/assets-overview/export` API |
+| Asset register export | Current filter export through asset export API |
+| Audit exports | Audit round results, findings, variance Excel/PDF exports |
+| Maintenance export | Maintenance ticket export |
+| Disposal export | Disposal request export |
+| Category/brand-model exports | Master-data export APIs |
+| PDF print views | Asset labels, handover, return, maintenance, disposal |
+| Thai fonts | Bundled Thai fonts for PDF output unless production overrides are configured |
+| Depreciation policy | System Settings builder for straight-line depreciation defaults and category policies |
+
+## Master Data
+
+| Module | Features |
+|---|---|
+| Companies | CRUD, active flag, company code, Asset Tag Code, tax/address fields |
+| Branches | CRUD, company relation, branch code/name/address/contact |
+| Departments | CRUD, optional company relation, department code/name |
+| Employees | CRUD, company/branch/department, manager, employment status, linked user/self-service context |
+| Locations | CRUD, branch relation, parent/child hierarchy, location type |
+| Categories | CRUD, soft delete/reactivation by code, custom field templates, safe create/update template writes, photo checklist/prefix support |
+| Brands/Models | Compact brand navigator, model workspace, structured specs, model photos |
+| Suppliers | CRUD/detail, tax ID/supplier code semantics, contact/address fields |
+
+## Admin, Settings, And Governance
+
+| Feature | Details |
+|---|---|
+| User management | Create/edit users, active flag, employee link, role assignment |
+| Role management | Role CRUD, permission matrix, export, system-role guardrails |
+| RBAC navigation | Sidebar menu filtered by user permissions; system admin retains full access |
+| Access denied page | Direct unauthorized page hits show localized access-denied page |
+| System settings | Task-oriented settings UI for asset numbering, labels/QR, LDAP, PM, notifications, approvals, retention, depreciation, data quality |
+| LDAP/AD settings | DB-backed LDAP config, bind test, sync preview/apply, scheduled sync controls |
+| LDAP auto-provision | Links user to active Employee by LDAP email or employeeID before creating app user |
+| Approvals | Approval inbox/history for workflow-controlled operations |
+| Data quality | Configurable asset data quality rules and admin page |
+| Storage governance | Missing/orphan file review and archive action for orphan files |
+| Readiness | Production readiness page covering env, upload scanner, scheduler, backup-oriented checks |
+| System logs | Readable system log presentation with record labels and before/after summaries |
+| Notifications | Notification center, notification states, digest scheduler endpoint |
+| Retention policy | Settings for attachment, audit log, and orphan file retention windows |
+
+## Security And Production Controls
+
+| Feature | Details |
+|---|---|
+| Authentication | Local credential login plus optional LDAP/AD |
+| Authorization | `module:action` RBAC through page/API helpers |
+| Route matrix | `src/lib/rbac-route-matrix.ts` tracks expected route permissions |
+| Attachment access | Authenticated, module-permission-aware download/preview route |
+| Upload hardening | Size, MIME, extension, content signature, optional scanner hook |
+| Upload storage | Files stored under configured `UPLOAD_DIR`; attachments are private and no-store |
+| Security headers | Centralized browser security headers and service-worker headers |
+| Audit trail | Sensitive operations are expected to write system logs/audit records |
+| Secret policy | `.env*` ignored; committed docs use placeholders only |
+| Backup/restore | Runbook and production readiness checklist cover DB/file backup and restore tests |
+| Guarded cleanup | Test-data cleanup script is dry-run/guarded by explicit flags |
+
+## Background Jobs And Scheduler
+
+Scripts in `package.json` and docs support:
+
+- `npm run scheduler:heartbeat`
+- `npm run pm:generate-due`
+- `npm run pm:generate-due:scheduled`
+- `npm run ldap:sync`
+- `npm run ldap:sync:scheduled`
+- `npm run notifications:digest`
+- `npm run cleanup:test-data`
+
+Schedulers are intended to run through systemd timers in production. Web-configured schedules are interpreted in `Asia/Bangkok`.
+
+## Internationalization And UX
+
+| Feature | Details |
+|---|---|
+| Thai primary UI | Thai messages and routes are first-class |
+| English support | English message namespace exists for dual-language operation |
+| Enterprise layout | Fixed dashboard shell, sidebar/topbar, content scroll ownership |
+| Global search | Topbar/global search API searches across permitted modules |
+| Searchable selects | High-volume dropdowns use searchable combobox patterns |
+| Mobile cards | Data-heavy pages have mobile-responsive card/stacked patterns per handoff |
+| Touch/focus polish | Mobile touch targets and focus-visible behavior documented in handoff |
+| File dropzones | Reusable drag/drop and mobile camera capture flows |
+
+## API Surface Highlights
+
+Current API route groups include:
+
+- `api/assets` for CRUD, batch, duplicate check, import/export, labels, bulk move/update, components, purchase docs, status correction, checkout/checkin/transfer.
+- `api/audit-rounds`, `api/audit-items`, `api/audit-findings` for audit lifecycle, scan, exports, findings, review, attachments.
+- `api/maintenance-tickets` and `api/maintenance-plans` for repair/PM workflows.
+- `api/disposal-requests` for disposal request, attachments, decision/execution/export.
+- `api/admin` for users, roles, settings, LDAP test/sync, storage governance.
+- Master-data APIs for companies, branches, departments, employees, locations, categories, brands, models, suppliers.
+- `api/attachments` for controlled file preview/download/delete.
+- `api/search` for permission-aware global search.
+- `api/notifications` and `api/notifications/digest`.
+- `api/reports/assets-overview/export`.
+
+## Current Go-Live Decisions Still Open
+
+From `DEVELOPER_HANDOFF.md`, the following decisions remain to be confirmed before production:
+
+- Production database user and least-privilege permissions.
+- SQL Server production migration process.
+- Backup owner, restore approver, RTO, and RPO.
+- Public QR Base URL and Brother printer driver tape size before high-volume label printing.
+- LDAP/AD auto-provision default role and Employee matching rules with a real AD login account.
+- LDAP/AD scheduled sync safety threshold before automatic deactivation.
+- Notification delivery channels beyond in-app notifications.
+
+## Recommended Verification Before Release
+
+- Run `npm run verify`.
+- Run `npm run build`.
+- Complete role-based UAT using `docs/07_UAT_CHECKLIST.md`.
+- Verify attachment backup/restore and storage governance.
+- Verify QR label scanning on target phones.
+- Verify Brother printer tape-size driver settings and app label profile.
+- Verify LDAP login/sync in preview/manual mode before scheduled sync.
+- Verify audit, maintenance, disposal, reports, and exports with realistic data.

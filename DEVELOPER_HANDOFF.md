@@ -1,6 +1,6 @@
 # Developer Handoff
 
-> Last updated: 2026-06-04
+> Last updated: 2026-06-05
 > Scope: Developer onboarding, production readiness, and operational handoff for the Asset Management System.
 
 ## Start Here
@@ -18,7 +18,9 @@ Read these documents in order:
 9. `docs/08_PRODUCTION_READINESS.md`
 10. `docs/09_BACKUP_RESTORE_RUNBOOK.md`
 11. `docs/10_SECURITY_REVIEW.md`
-12. `DEPLOYMENT_UBUNTU_CLOUDFLARE.md`
+12. `docs/11_FEATURE_LIST.md`
+13. `docs/12_HANDOUT.md`
+14. `DEPLOYMENT_UBUNTU_CLOUDFLARE.md`
 
 Long-form development history is preserved in `docs/99_CHANGELOG.md`.
 
@@ -33,7 +35,7 @@ Long-form development history is preserved in `docs/99_CHANGELOG.md`.
 - Audit result Excel export guards worksheet date formatting by existing column keys only, preventing ExcelJS `Out of bounds. Excel supports columns from 1 to 16384` errors on result sheets that do not contain every audit/finding date column.
 - Asset create/edit and batch create ownership fields now explicitly represent the asset owner/tag scope. The company and branch drive generated asset tags and reporting scope, while the custodian can be selected from a different company by enabling the cross-company custodian option. The custodian dropdown is scoped by selected company, branch, and department by default, still tolerates legacy employee rows whose `branchId` points to a stale/duplicate branch record when company and branch code match, warns when the selected custodian belongs to a different company, and writes `custodianScope` audit metadata for single and batch asset creation.
 - Master Data usability now presents the Brand / Model page as a compact left-side brand navigator plus a right-side model workspace. Create Model is the primary header action, Create Brand remains available, duplicate review is compacted, the brand navigator uses a narrower desktop column so the model table has more usable width, and brand navigator counts are derived from active `AssetModel`/`Asset` group counts so soft-deleted models do not make the sidebar disagree with the visible model table. Supplier master data labels the existing `Supplier.code` field as `Tax ID / Supplier Code` (`เลขประจำตัวผู้เสียภาษี / รหัสผู้ขาย`) for Thai vendor workflows while keeping legacy/internal vendor code compatibility and the existing 20-character unique column.
-- Asset create and batch create now auto-select an asset model when the selected category and brand uniquely match one active model, so model-level photos can appear in the asset list/detail even when the user does not manually pick the model. Category master data respects SQL Server unique category codes with soft delete: recreating a deleted category reactivates the inactive row, delete/deactivation is blocked when assets or models still reference the category, and active category custom-field templates can still be edited without deleting the category.
+- Asset create and batch create now auto-select an asset model when the selected category and brand uniquely match one active model, so model-level photos can appear in the asset list/detail even when the user does not manually pick the model. Category master data respects SQL Server unique category codes with soft delete: recreating a deleted category reactivates the inactive row, delete/deactivation is blocked when assets or models still reference the category, and active category custom-field templates can still be edited without deleting the category. Category create now uses a create-only nested custom-field payload while update/reactivate uses the replace payload, preventing Prisma `deleteMany` from being sent to `assetCategory.create()`.
 - Accounting depreciation policy is edited through a structured Settings UI instead of raw JSON as the primary workflow. The builder manages default useful life, default residual value, category-specific policy groups, a purchase-date-based calculation preview, and an advanced JSON fallback while preserving the existing `accounting_depreciation_policy` setting shape. Depreciation still starts from `Asset.purchaseDate` in this phase.
 - System Settings > Asset Numbering now manages Asset Tag Prefix by prefix group instead of one row per category. Operators enter a prefix, move categories from available to selected lists with search, see existing-prefix badges when a category is assigned elsewhere, and save back to the existing `asset_tag_category_prefixes` JSON shape (`categoryId -> prefix`) so asset tag generation behavior and database schema stay unchanged. The grouping UI filters stale/inactive category ids out of the visible assigned/unassigned counts, while editing or removing a prefix group cleans up stale rows for that prefix.
 - Storage Governance includes an archive action column for orphan-file dry-run actions. `storagePage.action` is now covered in Thai/English messages, and `tests/storage-archive-ui.test.ts` checks every `storagePage` key used by the page and archive button to prevent missing-message regressions.
@@ -61,6 +63,8 @@ Long-form development history is preserved in `docs/99_CHANGELOG.md`.
 | `docs/08_PRODUCTION_READINESS.md` | Go-live readiness checklist |
 | `docs/09_BACKUP_RESTORE_RUNBOOK.md` | Backup, restore, restore-test, and audit evidence runbook |
 | `docs/10_SECURITY_REVIEW.md` | Security review findings and recommendations |
+| `docs/11_FEATURE_LIST.md` | Source-backed feature inventory for handoff and scope review |
+| `docs/12_HANDOUT.md` | Thai business handout summarizing the system for non-technical stakeholders |
 | `docs/99_CHANGELOG.md` | Historical implementation notes and feature chronology |
 | `docs/superpowers/plans/2026-05-27-mobile-responsive-qa.md` | Mobile responsive QA implementation plan and phase-by-phase commit/push protocol |
 

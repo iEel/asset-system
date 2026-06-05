@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
             isActive: input.isActive,
             updatedBy: user.id,
             ...(existingInactiveCategory._count.assets === 0 && existingInactiveCategory._count.models === 0
-              ? { customFieldDefs: buildCustomFieldDefsWrite(input.customFieldDefs) }
+              ? { customFieldDefs: buildCustomFieldDefsReplace(input.customFieldDefs) }
               : {}),
           },
         })
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
             isActive: input.isActive,
             createdBy: user.id,
             updatedBy: user.id,
-            customFieldDefs: buildCustomFieldDefsWrite(input.customFieldDefs),
+            customFieldDefs: buildCustomFieldDefsCreate(input.customFieldDefs),
           },
         })
     await saveCategoryPhotoChecklist(category.id, input.photoChecklist, user.id)
@@ -102,20 +102,30 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function buildCustomFieldDefsWrite(customFieldDefs: CategoryInput["customFieldDefs"]) {
+function buildCustomFieldDefsCreate(customFieldDefs: CategoryInput["customFieldDefs"]) {
+  return {
+    create: buildCustomFieldDefinitionCreateInputs(customFieldDefs),
+  }
+}
+
+function buildCustomFieldDefsReplace(customFieldDefs: CategoryInput["customFieldDefs"]) {
   return {
     deleteMany: {},
-    create: customFieldDefs.map((field, index) => ({
-      fieldName: field.fieldName,
-      fieldLabel: field.fieldLabel,
-      fieldLabelTh: field.fieldLabelTh,
-      fieldType: field.fieldType,
-      options: normalizeFieldOptions(field.options),
-      isRequired: field.isRequired,
-      sortOrder: field.sortOrder || index,
-      isActive: field.isActive,
-    })),
+    create: buildCustomFieldDefinitionCreateInputs(customFieldDefs),
   }
+}
+
+function buildCustomFieldDefinitionCreateInputs(customFieldDefs: CategoryInput["customFieldDefs"]) {
+  return customFieldDefs.map((field, index) => ({
+    fieldName: field.fieldName,
+    fieldLabel: field.fieldLabel,
+    fieldLabelTh: field.fieldLabelTh,
+    fieldType: field.fieldType,
+    options: normalizeFieldOptions(field.options),
+    isRequired: field.isRequired,
+    sortOrder: field.sortOrder || index,
+    isActive: field.isActive,
+  }))
 }
 
 function normalizeFieldOptions(options?: string | null) {

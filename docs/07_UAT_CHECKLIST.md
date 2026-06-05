@@ -19,6 +19,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 
 - [ ] Add a single asset.
 - [ ] Add assets by batch.
+- [ ] Create a new asset category with no custom-field template and confirm it saves without a Prisma nested-write error.
 - [ ] Enter a manual asset tag for a legacy asset.
 - [ ] Leave asset tag blank and confirm auto-generation.
 - [ ] Import assets from Excel.
