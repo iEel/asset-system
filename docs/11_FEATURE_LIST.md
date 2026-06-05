@@ -108,7 +108,7 @@ Important data semantics:
 | Model specs | Structured asset model specs with legacy text parsing and summary display |
 | Asset/model photos | Asset photos and model photos stored as attachments; Asset Register thumbnails prefer model photos first, then fall back to asset photos, while detail/evidence flows still show both |
 | Purchase documents | Shared PO/Invoice/delivery/warranty/contract documents can link to multiple assets |
-| Components | Parent-child asset assembly with install/remove, role, slot, history, validation, movement logs |
+| Components | Parent-child asset assembly with install/remove, role, slot, history, validation, movement logs, and a three-lane Asset Detail relationship map that keeps Asset Tags readable before names/badges |
 | Status correction | Guarded correction workflow for protected lifecycle statuses with reason, movement, audit trail |
 
 ## Asset Labels, QR, And Scanning

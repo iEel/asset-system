@@ -3,16 +3,22 @@ import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import {
   AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  Building2,
   CheckCircle2,
+  Cpu,
   Edit,
   FileText,
   GitBranch,
   History,
   ImageIcon,
+  Info as InfoIcon,
   MapPin,
   Paperclip,
   PackageCheck,
   Printer,
+  Puzzle,
   QrCode,
   RotateCcw,
   ScanLine,
@@ -933,13 +939,16 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             <AssetRelationshipMap
               title={t("relationshipMap")}
               subtitle={t("relationshipMapHelp")}
-              parentTitle={t("relationshipParent")}
-              currentTitle={t("relationshipCurrent")}
-              componentsTitle={t("relationshipComponents")}
+              parentLaneTitle={t("relationshipParentLane")}
+              currentTitle={t("relationshipCurrentViewing")}
+              componentsTitle={t("relationshipComponentsLane")}
+              componentsCountLabel={t("relationshipComponentsCount", { count: currentComponentsForPanel.length })}
               licenseAssignedTitle={t("relationshipLicenseAssignedAsset")}
               assignedLicensesTitle={t("relationshipAssignedLicenses")}
               assetTag={asset.assetTag}
               assetName={asset.name}
+              currentMetaLabel={t("category")}
+              currentMetaValue={`${asset.category.code} - ${asset.category.name}`}
               parentLinks={installedInLinksForPanel.map((link) => ({
                 id: link.id,
                 href: `/${locale}/assets/${link.parentAsset.id}`,
@@ -965,6 +974,22 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
                 role: formatLicenseRelationshipRole(license.licenseUsedSeats, license.licenseTotalSeats, t),
               }))}
               emptyLabel={t("relationshipMapEmpty")}
+              summaryParent={t("relationshipSummaryParent", { count: currentComponentsForPanel.length })}
+              summaryComponent={t("relationshipSummaryComponent", { parent: installedInLinksForPanel[0]?.parentAsset.assetTag ?? "-" })}
+              summaryParentAndComponent={t("relationshipSummaryParentAndComponent", {
+                parent: installedInLinksForPanel[0]?.parentAsset.assetTag ?? "-",
+                count: currentComponentsForPanel.length,
+              })}
+              summaryStandalone={t("relationshipSummaryStandalone")}
+              roleParentLabel={t("relationshipRoleParent")}
+              roleComponentLabel={t("relationshipRoleComponent")}
+              roleParentAndComponentLabel={t("relationshipRoleParentAndComponent")}
+              roleStandaloneLabel={t("relationshipRoleStandalone")}
+              parentEmptyTitle={t("relationshipNoParent")}
+              parentEmptyHelp={t("relationshipNoParentHelp")}
+              componentsEmptyTitle={t("relationshipNoComponents")}
+              componentsEmptyHelp={t("relationshipNoComponentsHelp")}
+              noteLabel={t("relationshipNote")}
             />
             <AssetComponentsPanel
               assetId={asset.id}
@@ -1654,67 +1679,293 @@ function SummaryStrip({
 function AssetRelationshipMap({
   title,
   subtitle,
-  parentTitle,
+  parentLaneTitle,
   currentTitle,
   componentsTitle,
+  componentsCountLabel,
   licenseAssignedTitle,
   assignedLicensesTitle,
   assetTag,
   assetName,
+  currentMetaLabel,
+  currentMetaValue,
   parentLinks,
   childLinks,
   licenseAssignedLinks,
   assignedLicenseLinks,
   emptyLabel,
+  summaryParent,
+  summaryComponent,
+  summaryParentAndComponent,
+  summaryStandalone,
+  roleParentLabel,
+  roleComponentLabel,
+  roleParentAndComponentLabel,
+  roleStandaloneLabel,
+  parentEmptyTitle,
+  parentEmptyHelp,
+  componentsEmptyTitle,
+  componentsEmptyHelp,
+  noteLabel,
 }: {
   title: string
   subtitle: string
-  parentTitle: string
+  parentLaneTitle: string
   currentTitle: string
   componentsTitle: string
+  componentsCountLabel: string
   licenseAssignedTitle: string
   assignedLicensesTitle: string
   assetTag: string
   assetName: string
+  currentMetaLabel: string
+  currentMetaValue: string
   parentLinks: RelationshipLink[]
   childLinks: RelationshipLink[]
   licenseAssignedLinks: RelationshipLink[]
   assignedLicenseLinks: RelationshipLink[]
   emptyLabel: string
+  summaryParent: string
+  summaryComponent: string
+  summaryParentAndComponent: string
+  summaryStandalone: string
+  roleParentLabel: string
+  roleComponentLabel: string
+  roleParentAndComponentLabel: string
+  roleStandaloneLabel: string
+  parentEmptyTitle: string
+  parentEmptyHelp: string
+  componentsEmptyTitle: string
+  componentsEmptyHelp: string
+  noteLabel: string
 }) {
-  const hasLinks = parentLinks.length > 0 || childLinks.length > 0 || licenseAssignedLinks.length > 0 || assignedLicenseLinks.length > 0
+  const relationshipState = getRelationshipState(parentLinks.length, childLinks.length)
+  const summaryLabel = getRelationshipSummaryLabel(relationshipState, {
+    parent: summaryParent,
+    component: summaryComponent,
+    parentAndComponent: summaryParentAndComponent,
+    standalone: summaryStandalone,
+  })
+  const currentRoleLabel = getRelationshipRoleLabel(relationshipState, {
+    parent: roleParentLabel,
+    component: roleComponentLabel,
+    parentAndComponent: roleParentAndComponentLabel,
+    standalone: roleStandaloneLabel,
+  })
 
   return (
     <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
       <SectionHeading title={title} subtitle={subtitle} icon={<GitBranch className="h-5 w-5 text-primary" />} />
-      {!hasLinks ? (
-        <div className="rounded-md border border-dashed border-border p-5 text-center text-sm text-muted-foreground">
-          {emptyLabel}
+
+      <div className="mb-5 flex flex-col gap-3 rounded-md border border-border bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{currentTitle}</div>
+          <div className="mt-1 text-sm font-semibold text-foreground">{currentRoleLabel}</div>
         </div>
-      ) : (
-        <div className="grid gap-3 lg:grid-cols-[1fr_auto_1fr] lg:items-stretch">
-          <RelationshipColumn title={parentTitle} links={parentLinks} emptyLabel={emptyLabel} />
-          <div className="flex items-center justify-center">
-            <div className="w-full rounded-md border border-primary/30 bg-primary/10 px-4 py-3 text-center lg:w-56">
-              <div className="text-xs font-medium uppercase tracking-normal text-primary">{currentTitle}</div>
-              <div className="mt-1 text-sm font-semibold text-foreground">{assetTag}</div>
-              <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{assetName}</div>
+        <RelationshipSummaryBadge label={summaryLabel} state={relationshipState} />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.1fr)_auto_minmax(0,1fr)] md:items-center">
+        <RelationshipLane title={parentLaneTitle} icon={<Building2 className="h-4 w-4" />}>
+          {parentLinks.length === 0 ? (
+            <RelationshipEmptyState title={parentEmptyTitle} help={parentEmptyHelp} icon={<Building2 className="h-8 w-8" />} />
+          ) : (
+            <div className="space-y-2">
+              {parentLinks.map((link) => (
+                <RelationshipAssetCard key={link.id} link={link} variant="parent" />
+              ))}
             </div>
-          </div>
-          <RelationshipColumn title={componentsTitle} links={childLinks} emptyLabel={emptyLabel} />
-          {(licenseAssignedLinks.length > 0 || assignedLicenseLinks.length > 0) ? (
-            <div className="grid gap-3 lg:col-span-3 lg:grid-cols-2">
-              <RelationshipColumn title={licenseAssignedTitle} links={licenseAssignedLinks} emptyLabel={emptyLabel} />
-              <RelationshipColumn title={assignedLicensesTitle} links={assignedLicenseLinks} emptyLabel={emptyLabel} />
-            </div>
-          ) : null}
+          )}
+        </RelationshipLane>
+
+        <RelationshipConnector direction="left" />
+
+        <div>
+          <div className="mb-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">{currentTitle}</div>
+          <RelationshipAssetCard
+            assetTag={assetTag}
+            assetName={assetName}
+            role={currentRoleLabel}
+            metaLabel={currentMetaLabel}
+            metaValue={currentMetaValue}
+            variant={relationshipState === "component" || relationshipState === "parentAndComponent" ? "component" : relationshipState}
+            current
+          />
         </div>
-      )}
+
+        <RelationshipConnector direction="right" />
+
+        <RelationshipLane title={componentsTitle} icon={<Puzzle className="h-4 w-4" />} countLabel={componentsCountLabel}>
+          {childLinks.length === 0 ? (
+            <RelationshipEmptyState title={componentsEmptyTitle} help={componentsEmptyHelp} icon={<Puzzle className="h-8 w-8" />} />
+          ) : (
+            <div className="space-y-2">
+              {childLinks.map((link) => (
+                <RelationshipAssetCard key={link.id} link={link} variant="child" />
+              ))}
+            </div>
+          )}
+        </RelationshipLane>
+      </div>
+
+      {(licenseAssignedLinks.length > 0 || assignedLicenseLinks.length > 0) ? (
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          <RelationshipLinkList title={licenseAssignedTitle} links={licenseAssignedLinks} emptyLabel={emptyLabel} />
+          <RelationshipLinkList title={assignedLicensesTitle} links={assignedLicenseLinks} emptyLabel={emptyLabel} />
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex items-start gap-2 rounded-md border border-primary/15 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+        <InfoIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+        <span>{noteLabel}</span>
+      </div>
     </section>
   )
 }
 
-function RelationshipColumn({
+function RelationshipLane({
+  title,
+  icon,
+  countLabel,
+  children,
+}: {
+  title: string
+  icon: React.ReactNode
+  countLabel?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="min-h-full rounded-md border border-border bg-background p-3">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+          <span className="text-primary">{icon}</span>
+          <span className="truncate">{title}</span>
+        </div>
+        {countLabel ? <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{countLabel}</span> : null}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function RelationshipConnector({ direction }: { direction: "left" | "right" }) {
+  const Icon = direction === "left" ? ArrowLeft : ArrowRight
+
+  return (
+    <div className="hidden items-center justify-center md:flex">
+      <div className="flex items-center gap-1 text-primary/60">
+        <span className="h-px w-5 border-t border-dashed border-border" />
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/25 bg-surface">
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="h-px w-5 border-t border-dashed border-border" />
+      </div>
+    </div>
+  )
+}
+
+function RelationshipSummaryBadge({
+  label,
+  state,
+}: {
+  label: string
+  state: RelationshipState
+}) {
+  const Icon = state === "standalone" ? InfoIcon : CheckCircle2
+
+  return (
+    <div className={`inline-flex w-fit items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium ${getRelationshipSummaryClass(state)}`}>
+      <Icon className="h-4 w-4" />
+      <span>{label}</span>
+    </div>
+  )
+}
+
+function RelationshipEmptyState({
+  title,
+  help,
+  icon,
+}: {
+  title: string
+  help: string
+  icon: React.ReactNode
+}) {
+  return (
+    <div className="flex min-h-32 flex-col items-center justify-center rounded-md border border-dashed border-border bg-surface/60 p-4 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">{icon}</div>
+      <div className="mt-3 text-sm font-semibold text-foreground">{title}</div>
+      <p className="mt-1 max-w-56 text-xs text-muted-foreground">{help}</p>
+    </div>
+  )
+}
+
+function RelationshipAssetCard({
+  link,
+  assetTag,
+  assetName,
+  role,
+  metaLabel,
+  metaValue,
+  variant,
+  current,
+}: {
+  link?: RelationshipLink
+  assetTag?: string
+  assetName?: string
+  role?: string
+  metaLabel?: string
+  metaValue?: string
+  variant: RelationshipCardVariant
+  current?: boolean
+}) {
+  const relationshipAsset = link ? splitRelationshipLabel(link.label) : { assetTag: assetTag ?? "-", name: assetName ?? "-" }
+  const roleLabel = role ?? link?.role
+  const iconBoxClassName = current ? "h-10 w-10" : "h-9 w-9"
+  const iconClassName = current ? "h-5 w-5" : "h-4 w-4"
+  const content = (
+    <div className="space-y-3">
+      <div className="flex items-start gap-3">
+        <div className={`flex shrink-0 items-center justify-center rounded-md ${iconBoxClassName} ${getRelationshipIconClass(variant)}`}>
+          {variant === "child" || variant === "component" ? <Cpu className={iconClassName} /> : <PackageCheck className={iconClassName} />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="font-mono text-sm font-semibold leading-5 text-foreground [overflow-wrap:anywhere]">{relationshipAsset.assetTag}</div>
+          <div className="mt-1 line-clamp-3 text-sm leading-5 text-foreground [overflow-wrap:anywhere]">{relationshipAsset.name}</div>
+        </div>
+      </div>
+
+      {roleLabel || (metaLabel && metaValue) ? (
+        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
+          {roleLabel ? (
+            <span className={`rounded-md px-2 py-1 text-xs font-medium ${getRelationshipBadgeClass(variant)}`}>
+              {roleLabel}
+            </span>
+          ) : null}
+          {metaLabel && metaValue ? (
+            <span className="text-xs leading-5 text-muted-foreground">
+              <span className="font-medium text-foreground">{metaLabel}</span>
+              <span className="mx-1">:</span>
+              <span>{metaValue}</span>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+  const className = `block rounded-md border px-3 py-3 transition-colors ${current ? "min-h-36" : ""} ${getRelationshipCardClass(variant, Boolean(current))}`
+
+  if (link) {
+    return (
+      <Link href={link.href} className={className}>
+        {content}
+      </Link>
+    )
+  }
+
+  return <div className={className}>{content}</div>
+}
+
+function RelationshipLinkList({
   title,
   links,
   emptyLabel,
@@ -1740,6 +1991,76 @@ function RelationshipColumn({
       )}
     </div>
   )
+}
+
+type RelationshipState = "parent" | "component" | "parentAndComponent" | "standalone"
+type RelationshipCardVariant = RelationshipState | "child"
+
+function getRelationshipState(parentCount: number, childCount: number): RelationshipState {
+  if (parentCount > 0 && childCount > 0) return "parentAndComponent"
+  if (parentCount > 0) return "component"
+  if (childCount > 0) return "parent"
+  return "standalone"
+}
+
+function getRelationshipSummaryLabel(
+  state: RelationshipState,
+  labels: { parent: string; component: string; parentAndComponent: string; standalone: string }
+) {
+  if (state === "parentAndComponent") return labels.parentAndComponent
+  if (state === "component") return labels.component
+  if (state === "parent") return labels.parent
+  return labels.standalone
+}
+
+function getRelationshipRoleLabel(
+  state: RelationshipState,
+  labels: { parent: string; component: string; parentAndComponent: string; standalone: string }
+) {
+  if (state === "parentAndComponent") return labels.parentAndComponent
+  if (state === "component") return labels.component
+  if (state === "parent") return labels.parent
+  return labels.standalone
+}
+
+function splitRelationshipLabel(label: string) {
+  const separator = " - "
+  const separatorIndex = label.indexOf(separator)
+  if (separatorIndex === -1) return { assetTag: label, name: "-" }
+
+  return {
+    assetTag: label.slice(0, separatorIndex),
+    name: label.slice(separatorIndex + separator.length),
+  }
+}
+
+function getRelationshipSummaryClass(state: RelationshipState) {
+  if (state === "component" || state === "parentAndComponent") return "border-amber-200 bg-amber-50 text-amber-800"
+  if (state === "parent") return "border-emerald-200 bg-emerald-50 text-emerald-800"
+  return "border-border bg-muted text-muted-foreground"
+}
+
+function getRelationshipCardClass(variant: RelationshipCardVariant, current: boolean) {
+  if (current && (variant === "component" || variant === "parentAndComponent")) return "border-amber-300 bg-amber-50/70 shadow-sm"
+  if (current && variant === "parent") return "border-primary/40 bg-primary/5 shadow-sm"
+  if (current) return "border-border bg-surface"
+  if (variant === "child") return "border-border bg-surface hover:border-primary/40 hover:bg-primary/5"
+  if (variant === "parent") return "border-border bg-surface hover:border-primary/40 hover:bg-primary/5"
+  return "border-border bg-surface hover:border-primary/40 hover:bg-primary/5"
+}
+
+function getRelationshipBadgeClass(variant: RelationshipCardVariant) {
+  if (variant === "component" || variant === "parentAndComponent") return "bg-amber-100 text-amber-800"
+  if (variant === "parent") return "bg-primary/10 text-primary"
+  if (variant === "child") return "bg-emerald-50 text-emerald-700"
+  return "bg-muted text-muted-foreground"
+}
+
+function getRelationshipIconClass(variant: RelationshipCardVariant) {
+  if (variant === "component" || variant === "parentAndComponent") return "bg-amber-100 text-amber-700"
+  if (variant === "child") return "bg-emerald-50 text-emerald-700"
+  if (variant === "parent") return "bg-primary/10 text-primary"
+  return "bg-muted text-muted-foreground"
 }
 
 function SidebarPhotoCard({
