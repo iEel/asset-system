@@ -152,17 +152,17 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
     status: { label: asset.status.nameTh, color: asset.status.colorCode },
     condition: { label: asset.condition.nameTh, color: asset.condition.colorCode },
     purchasePrice: asset.purchasePrice ? Number(asset.purchasePrice) : null,
-    photo: asset.attachments[0]
+    photo: asset.model?.id && modelPhotoByModelId.get(asset.model.id)
       ? {
-          id: asset.attachments[0].id,
-          alt: asset.attachments[0].originalName,
-          fileType: asset.attachments[0].fileType,
+          id: modelPhotoByModelId.get(asset.model.id)!.id,
+          alt: modelPhotoByModelId.get(asset.model.id)!.originalName,
+          fileType: modelPhotoByModelId.get(asset.model.id)!.fileType,
         }
-      : asset.model?.id && modelPhotoByModelId.get(asset.model.id)
+      : asset.attachments[0]
         ? {
-            id: modelPhotoByModelId.get(asset.model.id)!.id,
-            alt: modelPhotoByModelId.get(asset.model.id)!.originalName,
-            fileType: modelPhotoByModelId.get(asset.model.id)!.fileType,
+            id: asset.attachments[0].id,
+            alt: asset.attachments[0].originalName,
+            fileType: asset.attachments[0].fileType,
           }
         : null,
   }))

@@ -106,7 +106,7 @@ Important data semantics:
 | Asset tag generation | Configurable format, category prefix groups, company asset-tag code, branch/category/running tokens |
 | Custom fields | Category-level custom field templates rendered automatically in asset forms |
 | Model specs | Structured asset model specs with legacy text parsing and summary display |
-| Asset/model photos | Asset photos and model fallback photos stored as attachments and displayed in list/detail flows |
+| Asset/model photos | Asset photos and model photos stored as attachments; Asset Register thumbnails prefer model photos first, then fall back to asset photos, while detail/evidence flows still show both |
 | Purchase documents | Shared PO/Invoice/delivery/warranty/contract documents can link to multiple assets |
 | Components | Parent-child asset assembly with install/remove, role, slot, history, validation, movement logs |
 | Status correction | Guarded correction workflow for protected lifecycle statuses with reason, movement, audit trail |
