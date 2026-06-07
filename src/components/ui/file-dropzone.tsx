@@ -8,9 +8,11 @@ import { optimizeEvidenceImageFile } from "@/lib/evidence-image-optimization"
 export function FileDropzone({
   file,
   onFileChange,
+  onFilesChange,
   disabled,
   accept,
   capture,
+  multiple = false,
   title,
   hint,
   browseLabel,
@@ -18,9 +20,11 @@ export function FileDropzone({
 }: {
   file: File | null
   onFileChange: (file: File | null) => void
+  onFilesChange?: (files: File[]) => void
   disabled?: boolean
   accept?: string
   capture?: "user" | "environment"
+  multiple?: boolean
   title: string
   hint: string
   browseLabel: string
@@ -33,21 +37,32 @@ export function FileDropzone({
   const isDisabled = disabled || optimizing
   const showImageOptimizationHint = optimizeImages && (accept?.includes("image") ?? true)
 
-  async function handleSelectedFile(nextFile: File | null) {
-    if (!nextFile) {
+  async function handleSelectedFiles(nextFileList: FileList | File[] | null | undefined) {
+    const files = Array.from(nextFileList ?? [])
+    const selectedFiles = multiple ? files : files.slice(0, 1)
+
+    if (selectedFiles.length === 0) {
       onFileChange(null)
       return
     }
 
-    if (!optimizeImages || !nextFile.type.startsWith("image/")) {
-      onFileChange(nextFile)
+    if (!optimizeImages) {
+      if (multiple && onFilesChange) onFilesChange(selectedFiles)
+      else onFileChange(selectedFiles[0] ?? null)
       return
     }
 
     setOptimizing(true)
     try {
-      const result = await optimizeEvidenceImageFile(nextFile)
-      onFileChange(result.file)
+      const optimizedFiles = await Promise.all(
+        selectedFiles.map(async (nextFile) => {
+          if (!nextFile.type.startsWith("image/")) return nextFile
+          const result = await optimizeEvidenceImageFile(nextFile)
+          return result.file
+        })
+      )
+      if (multiple && onFilesChange) onFilesChange(optimizedFiles)
+      else onFileChange(optimizedFiles[0] ?? null)
     } finally {
       setOptimizing(false)
     }
@@ -58,9 +73,9 @@ export function FileDropzone({
     setDragging(false)
     if (isDisabled) return
 
-    const droppedFile = event.dataTransfer.files?.[0]
-    if (droppedFile) {
-      void handleSelectedFile(droppedFile)
+    const droppedFiles = Array.from(event.dataTransfer.files ?? [])
+    if (droppedFiles.length > 0) {
+      void handleSelectedFiles(droppedFiles)
     }
   }
 
@@ -91,10 +106,11 @@ export function FileDropzone({
         type="file"
         accept={accept}
         capture={capture}
+        multiple={multiple}
         disabled={isDisabled}
         className="sr-only"
         onChange={(event) => {
-          void handleSelectedFile(event.target.files?.[0] ?? null)
+          void handleSelectedFiles(Array.from(event.target.files ?? []))
           event.currentTarget.value = ""
         }}
       />

@@ -39,10 +39,12 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Preview audit-round candidates before creation.
 - [ ] Scan an expected asset.
 - [ ] On a mobile device, confirm `/th/audit/rounds/{id}/scan` can scan the same printed Asset Label QR in continuous mode, selects the audit item, keeps the raw QR URL only in the latest-decoded panel, and does not navigate away from the audit workflow.
+- [ ] After selecting an audit asset, confirm the scan page shows system data for comparison: current location, custodian, department, and condition.
 - [ ] Record found/matched result.
-- [ ] Record mismatch result.
+- [ ] In fast walking mode, choose `ข้อมูลตรง` and confirm the result saves without requiring a photo.
+- [ ] Choose `ข้อมูลไม่ตรง`, change at least one actual field, and confirm the page requires at least one evidence photo before saving.
 - [ ] Record not-found result.
-- [ ] Attach photo evidence if required.
+- [ ] Attach multiple free-form audit evidence photos, confirm the optional tag selector includes general evidence plus checklist labels, and confirm all queued photos remain listed before saving.
 - [ ] Retry offline/resume queue if available in the test device.
 
 ## audit_reviewer

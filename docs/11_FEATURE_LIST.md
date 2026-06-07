@@ -1,6 +1,6 @@
 # Asset Management System - Feature List
 
-Last updated: 2026-06-05
+Last updated: 2026-06-07
 
 This feature list is based on the current repository documents and source code, not only on the original plan. It focuses on features that are represented by the current docs, routes, API endpoints, Prisma schema, and component/library structure.
 
@@ -166,10 +166,11 @@ Implemented status lifecycle and enforcement from docs/code:
 | Candidate preview | Preview audit candidates before creating a round |
 | Expected list | Audit items generated from scope and start as pending |
 | Audit detail | Progress metrics and expected item list |
-| Audit scan | QR/manual scan, current expected vs actual data, photo evidence |
+| Audit scan | QR/manual scan, system data comparison panel, fast `ข้อมูลตรง` save path, detailed `ข้อมูลไม่ตรง` path, and photo evidence |
 | Continuous mobile scan | Uses asset QR decoder while keeping audit workflow on the audit scan page |
 | Found/mismatch/not found | Handles found, mismatch, out-of-scope, not-found, and found-later cases |
 | Not-found workflow | Mark pending items as not found without changing asset status to Lost automatically |
+| Evidence photos | Matched scans can save without photos; mismatched actual field data requires at least one free-form evidence photo, with multiple queued photos and optional grouping tags |
 | Findings | Finding list, review actions, evidence attachments, batch actions |
 | Reconciliation | Approve/reject findings with movement/audit trail and segregation controls |
 | Close-round controls | Close-round workflow with protection documented in lifecycle/workflow docs |

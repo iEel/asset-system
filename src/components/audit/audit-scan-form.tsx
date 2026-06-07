@@ -105,9 +105,7 @@ export function AuditScanForm({
   const [saving, setSaving] = useState(false)
   const [scannerRunning, setScannerRunning] = useState(false)
   const [scannerLoading, setScannerLoading] = useState(false)
-  const [cameraReadiness, setCameraReadiness] = useState<CameraReadiness>(() =>
-    isCameraAccessSupported() ? "ready" : "unavailable"
-  )
+  const [cameraReadiness, setCameraReadiness] = useState<CameraReadiness>("checking")
   const [cameraErrorText, setCameraErrorText] = useState("")
   const [cameras, setCameras] = useState<CameraDevice[]>([])
   const [selectedCameraId, setSelectedCameraId] = useState("")
@@ -139,6 +137,15 @@ export function AuditScanForm({
 
   const selectedItem = useMemo(() => items.find((item) => item.assetId === values.assetId), [items, values.assetId])
   const assetLookup = useMemo(() => buildAssetLookup(items), [items])
+  const optionLabelMaps = useMemo(
+    () => ({
+      locations: buildOptionLabelMap(options.locations),
+      employees: buildOptionLabelMap(options.employees),
+      departments: buildOptionLabelMap(options.departments),
+      conditions: buildOptionLabelMap(options.conditions),
+    }),
+    [options.conditions, options.departments, options.employees, options.locations]
+  )
   const mismatchPreview = useMemo(() => {
     if (!selectedItem) return []
     const actual = getActualValues(values, selectedItem)
@@ -161,9 +168,32 @@ export function AuditScanForm({
   const correctionMismatchCount = mismatchPreview.filter((mismatch) => mismatch.canApply).length
   const pendingCount = items.filter((item) => item.auditStatus === "pending").length
   const processedCount = items.length - pendingCount
+  const isDetailedScanVisible = Boolean(selectedItem && (!fastMode || showDetailedFields))
+  const systemDataRows = selectedItem
+    ? buildSystemDataRows(
+        selectedItem,
+        optionLabelMaps,
+        {
+          expectedLocation: t("expectedLocation"),
+          expectedCustodian: t("expectedCustodian"),
+          expectedDepartment: t("expectedDepartment"),
+          expectedCondition: t("expectedCondition"),
+          none: t("none"),
+        }
+      )
+    : []
+  const requiresMismatchPhoto = Boolean(isDetailedScanVisible && mismatchPreview.length > 0)
   const selectedAuditPhotoChecklist = selectedItem?.photoChecklist ?? []
+  const generalAuditPhotoLabel = t("generalAuditPhotoLabel")
+  const auditPhotoTagOptions = useMemo(
+    () => [
+      generalAuditPhotoLabel,
+      ...selectedAuditPhotoChecklist.filter((item) => item && item !== generalAuditPhotoLabel),
+    ],
+    [generalAuditPhotoLabel, selectedAuditPhotoChecklist]
+  )
   const effectiveAuditPhotoLabel =
-    selectedAuditPhotoChecklist.find((item) => item === auditPhotoLabel) ?? selectedAuditPhotoChecklist[0] ?? ""
+    auditPhotoTagOptions.find((item) => item === auditPhotoLabel) ?? generalAuditPhotoLabel
   const failedOfflineQueueCount = offlineQueue.filter((item) => item.syncStatus === "failed" || Boolean(item.lastSyncError)).length
   const queuedOfflinePhotoCount = offlineQueue.reduce((total, item) => total + (item.photos?.length ?? 0), 0)
   const lastOfflineQueueError = [...offlineQueue].reverse().find((item) => item.lastSyncError)?.lastSyncError ?? ""
@@ -184,19 +214,35 @@ export function AuditScanForm({
 
   function queueAuditPhoto(file: File | null) {
     if (!file) return
+    queueAuditPhotoFiles([file])
+  }
+
+  function queueAuditPhotoFiles(files: File[]) {
+    if (files.length === 0) return
     setQueuedAuditPhotos((current) => [
       ...current,
-      {
-        id: `${Date.now()}-${file.name}-${current.length}`,
+      ...files.map((file, index) => ({
+        id: `${Date.now()}-${file.name}-${current.length + index}`,
         label: effectiveAuditPhotoLabel,
         file,
-      },
+      })),
     ])
   }
 
   function removeQueuedAuditPhoto(id: string) {
     setQueuedAuditPhotos((current) => current.filter((photo) => photo.id !== id))
   }
+
+  function openMismatchDetails() {
+    setShowDetailedFields(true)
+  }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setCameraReadiness(isCameraAccessSupported() ? "ready" : "unavailable")
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -431,6 +477,10 @@ export function AuditScanForm({
 
   async function submitAuditScan(actualValues: ReturnType<typeof getActualValues>, quickMatched: boolean) {
     if (!selectedItem) return
+    if (!quickMatched && requiresMismatchPhoto && queuedAuditPhotos.length === 0) {
+      toast.error(t("auditPhotoRequiredForMismatch"))
+      return
+    }
     setSaving(true)
     const requestPayload: AuditOfflineScanPayload = {
       assetId: values.assetId,
@@ -800,10 +850,31 @@ export function AuditScanForm({
           </div>
 
           {selectedItem && (
-            <div className="md:col-span-2 rounded-md border border-primary/30 bg-primary/5 p-4">
-              <div className="text-xs font-semibold uppercase text-primary">{t("currentTarget")}</div>
-              <div className="mt-1 text-lg font-semibold text-foreground">{selectedItem.label}</div>
-              <div className="mt-1 text-sm text-muted-foreground">{t("currentTargetHelp")}</div>
+            <div className="md:col-span-2 rounded-md border border-primary/25 bg-primary/5 p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-primary">{t("currentTarget")}</div>
+                  <div className="mt-1 break-words text-lg font-semibold text-foreground">{selectedItem.label}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">{t("currentTargetHelp")}</div>
+                </div>
+                <div className="shrink-0 rounded-md border border-primary/20 bg-surface px-3 py-2 text-xs font-medium text-primary">
+                  {t("systemDataTitle")}
+                </div>
+              </div>
+              <div className="mt-4 rounded-md border border-border bg-surface">
+                <div className="border-b border-border px-3 py-2">
+                  <div className="text-sm font-semibold text-foreground">{t("systemDataTitle")}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{t("systemDataHelp")}</div>
+                </div>
+                <div className="grid gap-0 sm:grid-cols-2 lg:grid-cols-4">
+                  {systemDataRows.map((row) => (
+                    <div key={row.label} className="border-b border-border px-3 py-2 last:border-b-0 sm:border-r sm:last:border-r-0 lg:border-b-0">
+                      <div className="text-xs font-medium text-muted-foreground">{row.label}</div>
+                      <div className="mt-1 break-words text-sm font-semibold text-foreground">{row.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -811,8 +882,8 @@ export function AuditScanForm({
             <div className="md:col-span-2 rounded-md border border-success/30 bg-success/10 p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <div className="text-base font-semibold text-foreground">{t("quickFieldMode")}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{t("quickFieldModeHelp")}</div>
+                  <div className="text-base font-semibold text-foreground">{t("auditDecisionTitle")}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">{t("auditDecisionHelp")}</div>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <button
@@ -822,15 +893,15 @@ export function AuditScanForm({
                     className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-success px-4 text-sm font-semibold text-white transition-colors hover:bg-success/90 disabled:opacity-50"
                   >
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                    {t("quickMatched")}
+                    {t("dataMatches")}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowDetailedFields(true)}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+                    onClick={openMismatchDetails}
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-4 text-sm font-medium text-warning transition-colors hover:bg-warning/10"
                   >
                     <AlertTriangle className="h-4 w-4" />
-                    {t("openDetailedScan")}
+                    {t("dataMismatch")}
                   </button>
                 </div>
               </div>
@@ -860,8 +931,12 @@ export function AuditScanForm({
             </div>
           )}
 
-          {(!fastMode || showDetailedFields) && (
+          {isDetailedScanVisible && (
             <>
+              <div className="md:col-span-2 rounded-md border border-warning/30 bg-warning/10 p-3">
+                <div className="text-sm font-semibold text-foreground">{t("actualDataTitle")}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{t("actualDataHelp")}</div>
+              </div>
               {selectedItem && normalizeAssetOwnershipType(selectedItem.ownershipType) !== "software_license" ? (
                 <Select label={t("actualLocation")} value={values.actualLocationId || selectedItem.expectedLocationId || ""} required onChange={(value) => setField("actualLocationId", value)}>
                   <OptionList options={options.locations} />
@@ -910,44 +985,44 @@ export function AuditScanForm({
           {selectedItem && (
             <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
               <div className="mb-3 text-sm font-semibold text-foreground">{t("auditPhotoEvidence")}</div>
-              <p className="mb-3 text-sm text-muted-foreground">{t("auditPhotoEvidenceHelp")}</p>
-              {selectedAuditPhotoChecklist.length > 0 && (
-                <div className="mb-3 rounded-md border border-border bg-surface p-3">
-                  <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="text-sm font-semibold text-foreground">{t("selectAuditPhotoType")}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {t("autoAuditPhotoLabelHint", { label: effectiveAuditPhotoLabel })}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedAuditPhotoChecklist.map((item) => {
-                      const isSelected = effectiveAuditPhotoLabel === item
-
-                      return (
-                        <button
-                          key={item}
-                          type="button"
-                          onClick={() => setAuditPhotoLabel(item)}
-                          className={[
-                            "inline-flex min-h-9 items-center rounded-md border px-3 py-2 text-sm font-medium transition-colors",
-                            isSelected
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border bg-background text-foreground hover:bg-accent",
-                          ].join(" ")}
-                        >
-                          {item}
-                        </button>
-                      )
-                    })}
-                  </div>
+              <p className="mb-3 text-sm text-muted-foreground">
+                {requiresMismatchPhoto ? t("auditPhotoRequiredForMismatch") : t("auditPhotoOptionalForMatch")}
+              </p>
+              <div className="mb-3 rounded-md border border-border bg-surface p-3">
+                <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-sm font-semibold text-foreground">{t("selectAuditPhotoType")}</div>
+                  <div className="text-xs text-muted-foreground">{t("auditPhotoTagHint")}</div>
                 </div>
-              )}
+                <div className="flex flex-wrap gap-2">
+                  {auditPhotoTagOptions.map((item) => {
+                    const isSelected = effectiveAuditPhotoLabel === item
+
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setAuditPhotoLabel(item)}
+                        className={[
+                          "inline-flex min-h-9 items-center rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                          isSelected
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-background text-foreground hover:bg-accent",
+                        ].join(" ")}
+                      >
+                        {item}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
               <FileDropzone
                 file={null}
                 onFileChange={queueAuditPhoto}
+                onFilesChange={queueAuditPhotoFiles}
                 disabled={saving}
                 accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
                 capture="environment"
+                multiple
                 title={t("dropAuditPhotoTitle")}
                 hint={t("dropAuditPhotoSelected")}
                 browseLabel={t("dropAuditPhotoHint")}
@@ -1091,6 +1166,60 @@ function buildAssetLookup(items: AuditScanItem[]) {
     lookup.set(item.label.toLowerCase(), item)
   }
   return lookup
+}
+
+function buildOptionLabelMap(options: Option[]) {
+  return new Map(options.map((option) => [option.id, option.label]))
+}
+
+function buildSystemDataRows(
+  item: AuditScanItem,
+  maps: {
+    locations: Map<string, string>
+    employees: Map<string, string>
+    departments: Map<string, string>
+    conditions: Map<string, string>
+  },
+  labels: {
+    expectedLocation: string
+    expectedCustodian: string
+    expectedDepartment: string
+    expectedCondition: string
+    none: string
+  }
+) {
+  const rows: Array<{ label: string; value: string }> = []
+  const ownershipType = normalizeAssetOwnershipType(item.ownershipType)
+
+  if (ownershipType !== "software_license") {
+    rows.push({
+      label: labels.expectedLocation,
+      value: getOptionLabel(maps.locations, item.expectedLocationId, labels.none),
+    })
+  }
+  if (requiresCustodian(ownershipType)) {
+    rows.push({
+      label: labels.expectedCustodian,
+      value: getOptionLabel(maps.employees, item.expectedCustodianId, labels.none),
+    })
+  }
+  rows.push(
+    {
+      label: labels.expectedDepartment,
+      value: getOptionLabel(maps.departments, item.expectedDepartmentId, labels.none),
+    },
+    {
+      label: labels.expectedCondition,
+      value: getOptionLabel(maps.conditions, item.expectedConditionId, labels.none),
+    }
+  )
+
+  return rows
+}
+
+function getOptionLabel(options: Map<string, string>, id: string | null, emptyLabel: string) {
+  if (!id) return emptyLabel
+  return options.get(id) ?? id
 }
 
 function getReadableAuditScanValue(item: AuditScanItem) {
