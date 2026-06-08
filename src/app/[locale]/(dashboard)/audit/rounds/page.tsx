@@ -1,6 +1,7 @@
 import Link from "next/link"
+import type { ReactNode } from "react"
 import { getTranslations } from "next-intl/server"
-import { Eye } from "lucide-react"
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Eye, ListFilter, ScanLine } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { ColumnHeader, MasterDataHeader, MasterDataSearch } from "@/components/master-data/master-data-layout"
@@ -11,7 +12,7 @@ import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/desi
 
 type AuditRoundsPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string }>
+  searchParams: Promise<{ search?: string; view?: string }>
 }
 
 type CoverageAsset = {
@@ -32,14 +33,42 @@ type CoverageGap = {
   percent: number
 }
 
+const auditRoundViewValues = ["all", "open", "pending", "review", "mismatch", "readyToClose"] as const
+type AuditRoundView = (typeof auditRoundViewValues)[number]
+
+type AuditRoundListItem = {
+  id: string
+  auditNo: string
+  status: string
+  _count: { items: number; findings: number }
+}
+
+type AuditRoundInsight = {
+  pending: number
+  processed: number
+  followUps: number
+  hasMismatch: boolean
+  readyToClose: boolean
+}
+
+type ActionPanelItem = {
+  label: string
+  help: string
+  count: number
+  href: string
+  icon: ReactNode
+  tone: "primary" | "warning" | "success"
+}
+
 export default async function AuditRoundsPage({ params, searchParams }: AuditRoundsPageProps) {
   const { locale } = await params
-  const { search = "" } = await searchParams
+  const { search = "", view = "all" } = await searchParams
   await requirePagePermission(locale, "audit", "view")
 
   const t = await getTranslations("auditRound")
   const tCommon = await getTranslations("common")
   const searchText = search.trim()
+  const activeView: AuditRoundView = auditRoundViewValues.includes(view as AuditRoundView) ? (view as AuditRoundView) : "all"
   const currentYear = new Date().getFullYear()
   const [rounds, activeAssets, coveredItems, currentYearRoundCount, openItemStatusCounts, openFollowUpCount] = await Promise.all([
     prisma.auditRound.findMany({
@@ -94,13 +123,23 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
     }),
   ])
   const roundIds = rounds.map((round) => round.id)
-  const statusCounts = roundIds.length
-    ? await prisma.auditItem.groupBy({
-        by: ["auditRoundId", "auditStatus"],
-        where: { auditRoundId: { in: roundIds } },
-        _count: { _all: true },
-      })
-    : []
+  const [statusCounts, findingWorkCounts] = roundIds.length
+    ? await Promise.all([
+        prisma.auditItem.groupBy({
+          by: ["auditRoundId", "auditStatus"],
+          where: { auditRoundId: { in: roundIds } },
+          _count: { _all: true },
+        }),
+        prisma.auditFinding.groupBy({
+          by: ["auditRoundId"],
+          where: {
+            auditRoundId: { in: roundIds },
+            OR: [{ reviewStatus: "pending" }, { actionStatus: { in: ["planned", "in_progress"] } }],
+          },
+          _count: { _all: true },
+        }),
+      ])
+    : [[], []]
   const progressByRoundId = new Map<string, { pending: number; processed: number }>()
   for (const row of statusCounts) {
     const current = progressByRoundId.get(row.auditRoundId) ?? { pending: 0, processed: 0 }
@@ -111,6 +150,52 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
     }
     progressByRoundId.set(row.auditRoundId, current)
   }
+  const followUpsByRoundId = new Map(findingWorkCounts.map((row) => [row.auditRoundId, row._count._all]))
+  const insightsByRoundId = buildAuditRoundInsights(rounds, progressByRoundId, followUpsByRoundId)
+  const filteredRounds = filterRoundsByView(rounds, insightsByRoundId, activeView)
+  const pendingRounds = rounds.filter((round) => (insightsByRoundId.get(round.id)?.pending ?? 0) > 0 && round.status !== "closed")
+  const reviewRounds = rounds.filter((round) => (insightsByRoundId.get(round.id)?.followUps ?? 0) > 0)
+  const readyRounds = rounds.filter((round) => insightsByRoundId.get(round.id)?.readyToClose)
+  const viewLabels: Record<AuditRoundView, string> = {
+    all: t("viewAll"),
+    open: t("viewOpen"),
+    pending: t("viewPending"),
+    review: t("viewReview"),
+    mismatch: t("viewMismatch"),
+    readyToClose: t("viewReadyToClose"),
+  }
+  const quickFilters = auditRoundViewValues.map((value) => ({
+    value,
+    label: viewLabels[value],
+    count: filterRoundsByView(rounds, insightsByRoundId, value).length,
+    href: buildAuditRoundsHref(locale, value, searchText),
+  }))
+  const actionItems: ActionPanelItem[] = [
+    {
+      label: t("actionContinueScan"),
+      help: t("actionContinueScanHelp"),
+      count: pendingRounds.reduce((sum, round) => sum + (insightsByRoundId.get(round.id)?.pending ?? 0), 0),
+      href: pendingRounds[0] ? `/${locale}/audit/rounds/${pendingRounds[0].id}/scan` : buildAuditRoundsHref(locale, "pending", searchText),
+      icon: <ScanLine className="h-5 w-5" />,
+      tone: "primary",
+    },
+    {
+      label: t("actionReviewFindings"),
+      help: t("actionReviewFindingsHelp"),
+      count: reviewRounds.reduce((sum, round) => sum + (insightsByRoundId.get(round.id)?.followUps ?? 0), 0),
+      href: `/${locale}/audit/findings?status=pending`,
+      icon: <AlertTriangle className="h-5 w-5" />,
+      tone: "warning",
+    },
+    {
+      label: t("actionCloseReadyRounds"),
+      help: t("actionCloseReadyRoundsHelp"),
+      count: readyRounds.length,
+      href: readyRounds[0] ? `/${locale}/audit/rounds/${readyRounds[0].id}` : buildAuditRoundsHref(locale, "readyToClose", searchText),
+      icon: <ClipboardCheck className="h-5 w-5" />,
+      tone: "success",
+    },
+  ]
   const coveredAssetIds = new Set(coveredItems.map((item) => item.assetId))
   const coveredAssetCount = activeAssets.filter((asset) => coveredAssetIds.has(asset.id)).length
   const uncoveredAssetCount = Math.max(activeAssets.length - coveredAssetCount, 0)
@@ -207,22 +292,34 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
         </div>
       </section>
 
+      <ActionPanel title={t("nextActionsTitle")} help={t("nextActionsHelp")} actions={actionItems} />
+
+      <QuickFilterBar title={t("quickFiltersTitle")} activeView={activeView} filters={quickFilters} />
+
       <MasterDataSearch
         action={`/${locale}/audit/rounds`}
         defaultValue={searchText}
         placeholder={tCommon("search")}
         submitLabel={tCommon("search")}
+        hiddenInputs={activeView === "all" ? undefined : { view: activeView }}
       />
 
       <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <div className={`${getMobileCardListClasses()} p-3`}>
-          {rounds.length === 0 ? (
+          {filteredRounds.length === 0 ? (
             <div className="rounded-md border border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
               {tCommon("noData")}
             </div>
           ) : (
-            rounds.map((round) => {
+            filteredRounds.map((round) => {
               const progress = progressByRoundId.get(round.id) ?? { pending: round._count.items, processed: 0 }
+              const insight = insightsByRoundId.get(round.id) ?? {
+                pending: progress.pending,
+                processed: progress.processed,
+                followUps: 0,
+                hasMismatch: round._count.findings > 0,
+                readyToClose: false,
+              }
 
               return (
                 <article key={round.id} className="min-w-0 rounded-md border border-border bg-background p-3">
@@ -233,7 +330,18 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                       </Link>
                       <p className="mt-1 line-clamp-2 text-sm text-foreground">{round.name}</p>
                     </div>
-                    <AuditStatusBadge status={round.status} />
+                    <div className="flex flex-col items-end gap-1">
+                      <AuditStatusBadge status={round.status} />
+                      <ReadyToCloseBadge
+                        status={round.status}
+                        insight={insight}
+                        labels={{
+                          ready: t("readyToClose"),
+                          pending: t("blockedPendingItems", { count: insight.pending }),
+                          review: t("blockedPendingReview", { count: insight.followUps }),
+                        }}
+                      />
+                    </div>
                   </div>
                   <div className="mt-3 grid gap-2 text-sm">
                     <MobileAuditField label={t("scope")} value={formatScope(round)} />
@@ -278,15 +386,22 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {rounds.length === 0 ? (
+              {filteredRounds.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="h-32 px-4 text-center text-muted-foreground">
                     {tCommon("noData")}
                   </td>
                 </tr>
               ) : (
-                rounds.map((round) => {
+                filteredRounds.map((round) => {
                   const progress = progressByRoundId.get(round.id) ?? { pending: round._count.items, processed: 0 }
+                  const insight = insightsByRoundId.get(round.id) ?? {
+                    pending: progress.pending,
+                    processed: progress.processed,
+                    followUps: 0,
+                    hasMismatch: round._count.findings > 0,
+                    readyToClose: false,
+                  }
 
                   return (
                     <ClickableTableRow
@@ -301,7 +416,18 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                         {formatDate(round.startDate)} - {formatDate(round.endDate)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
-                        <AuditStatusBadge status={round.status} />
+                        <div className="flex flex-col items-start gap-1">
+                          <AuditStatusBadge status={round.status} />
+                          <ReadyToCloseBadge
+                            status={round.status}
+                            insight={insight}
+                            labels={{
+                              ready: t("readyToClose"),
+                              pending: t("blockedPendingItems", { count: insight.pending }),
+                              review: t("blockedPendingReview", { count: insight.followUps }),
+                            }}
+                          />
+                        </div>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right text-muted-foreground">{round._count.items}</td>
                       <td className="min-w-52 px-4 py-3">
@@ -334,6 +460,116 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
       </div>
     </div>
   )
+}
+
+function ActionPanel({ title, help, actions }: { title: string; help: string; actions: ActionPanelItem[] }) {
+  return (
+    <section className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">{title}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{help}</p>
+        </div>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-3">
+        {actions.map((action) => {
+          const toneClass =
+            action.tone === "success"
+              ? "border-success/30 bg-success/10 text-success hover:bg-success/15"
+              : action.tone === "warning"
+                ? "border-warning/30 bg-warning/10 text-warning hover:bg-warning/15"
+                : "border-primary/30 bg-primary/10 text-primary hover:bg-primary/15"
+
+          return (
+            <Link
+              key={action.label}
+              href={action.href}
+              className={`flex min-h-24 items-center justify-between gap-3 rounded-md border px-4 py-3 transition-colors ${toneClass}`}
+            >
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-background/80">{action.icon}</div>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-foreground">{action.label}</div>
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{action.help}</p>
+                </div>
+              </div>
+              <div className="shrink-0 text-2xl font-bold tabular-nums text-foreground">{action.count}</div>
+            </Link>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function QuickFilterBar({
+  title,
+  activeView,
+  filters,
+}: {
+  title: string
+  activeView: AuditRoundView
+  filters: Array<{ value: AuditRoundView; label: string; count: number; href: string }>
+}) {
+  return (
+    <section className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+        <ListFilter className="h-4 w-4 text-primary" />
+        {title}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {filters.map((filter) => {
+          const active = filter.value === activeView
+
+          return (
+            <Link
+              key={filter.value}
+              href={filter.href}
+              aria-current={active ? "page" : undefined}
+              className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors ${
+                active
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-background text-foreground hover:bg-accent"
+              }`}
+            >
+              <span>{filter.label}</span>
+              <span className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"}`}>
+                {filter.count}
+              </span>
+            </Link>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function ReadyToCloseBadge({
+  status,
+  insight,
+  labels,
+}: {
+  status: string
+  insight: AuditRoundInsight
+  labels: { ready: string; pending: string; review: string }
+}) {
+  if (status === "closed") return null
+  if (insight.readyToClose) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-1 text-xs font-medium text-success">
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        {labels.ready}
+      </span>
+    )
+  }
+  if (insight.pending > 0) {
+    return <span className="inline-flex rounded-full bg-warning/10 px-2 py-1 text-xs font-medium text-warning">{labels.pending}</span>
+  }
+  if (insight.followUps > 0) {
+    return <span className="inline-flex rounded-full bg-danger/10 px-2 py-1 text-xs font-medium text-danger">{labels.review}</span>
+  }
+
+  return null
 }
 
 function CoverageMetric({ label, value, tone = "neutral" }: { label: string; value: number; tone?: "neutral" | "warning" | "danger" }) {
@@ -449,6 +685,55 @@ function AuditStatusBadge({ status }: { status: string }) {
         : "bg-warning/10 text-warning"
 
   return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${className}`}>{status}</span>
+}
+
+function buildAuditRoundInsights(
+  rounds: AuditRoundListItem[],
+  progressByRoundId: Map<string, { pending: number; processed: number }>,
+  followUpsByRoundId: Map<string, number>,
+) {
+  const insights = new Map<string, AuditRoundInsight>()
+
+  for (const round of rounds) {
+    const progress = progressByRoundId.get(round.id) ?? { pending: round._count.items, processed: 0 }
+    const followUps = followUpsByRoundId.get(round.id) ?? 0
+    const hasMismatch = round._count.findings > 0
+    insights.set(round.id, {
+      pending: progress.pending,
+      processed: progress.processed,
+      followUps,
+      hasMismatch,
+      readyToClose: round.status !== "closed" && progress.pending === 0 && followUps === 0,
+    })
+  }
+
+  return insights
+}
+
+function filterRoundsByView<T extends AuditRoundListItem>(
+  rounds: T[],
+  insightsByRoundId: Map<string, AuditRoundInsight>,
+  activeView: AuditRoundView,
+) {
+  return rounds.filter((round) => {
+    const insight = insightsByRoundId.get(round.id)
+    if (activeView === "all") return true
+    if (activeView === "open") return round.status !== "closed"
+    if (activeView === "pending") return (insight?.pending ?? 0) > 0
+    if (activeView === "review") return (insight?.followUps ?? 0) > 0
+    if (activeView === "mismatch") return insight?.hasMismatch ?? (round._count.findings > 0)
+    if (activeView === "readyToClose") return insight?.readyToClose ?? false
+
+    return true
+  })
+}
+
+function buildAuditRoundsHref(locale: string, view: AuditRoundView, searchText: string) {
+  const params = new URLSearchParams()
+  if (searchText) params.set("search", searchText)
+  if (view !== "all") params.set("view", view)
+  const query = params.toString()
+  return `/${locale}/audit/rounds${query ? `?${query}` : ""}`
 }
 
 function formatScope(round: {

@@ -163,6 +163,7 @@ Implemented status lifecycle and enforcement from docs/code:
 | Feature | Details |
 |---|---|
 | Audit rounds | Create rounds from scoped asset filters |
+| Audit rounds action hub | Action-first list with next-action cards, URL-backed quick filters, and ready-to-close/blocker badges for high-volume audit operations |
 | Candidate preview | Preview audit candidates before creating a round |
 | Expected list | Audit items generated from scope and start as pending |
 | Audit detail | Progress metrics and expected item list |

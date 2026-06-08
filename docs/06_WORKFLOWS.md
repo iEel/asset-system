@@ -31,6 +31,7 @@
 
 - Create audit rounds from filtered asset candidates.
 - Preview candidates before creating a round.
+- The audit rounds list is action-first for large counting workloads: the page summarizes next actions for continuing scans, reviewing mismatches, and closing ready rounds, and exposes quick filters for all/open/pending/review/mismatch/ready-to-close rounds.
 - Scan printed Asset Label QR codes or manually enter asset identifiers. The Audit Scan camera uses the same native-resolution Asset QR decoder as `/asset-management/scan`, but keeps continuous scan behavior for counting multiple labels in one session.
 - After an asset is selected, the scan page shows the system data that auditors need for field comparison: current location, custodian, department, and condition.
 - In fast walking mode, auditors choose `ข้อมูลตรง` to save a matched result immediately, or `ข้อมูลไม่ตรง` to open the detailed actual-value fields. When actual field data differs from expected data, the scan result must include at least one evidence photo before it can be saved.
