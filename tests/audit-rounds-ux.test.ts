@@ -17,6 +17,13 @@ test("audit rounds page exposes action-first workflow controls", () => {
   assert.match(page, /t\("readyToClose"\)/)
 })
 
+test("audit rounds quick filters preserve scroll position", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/page.tsx", "utf8")
+
+  assert.match(page, /function QuickFilterBar/)
+  assert.match(page, /href=\{filter\.href\}[\s\S]*scroll=\{false\}/)
+})
+
 test("audit rounds UX copy is translated", () => {
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))

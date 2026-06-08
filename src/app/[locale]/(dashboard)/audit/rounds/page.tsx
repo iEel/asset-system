@@ -525,6 +525,7 @@ function QuickFilterBar({
             <Link
               key={filter.value}
               href={filter.href}
+              scroll={false}
               aria-current={active ? "page" : undefined}
               className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors ${
                 active
