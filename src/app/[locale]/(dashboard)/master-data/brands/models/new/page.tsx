@@ -1,13 +1,17 @@
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { AssetModelForm } from "@/components/master-data/asset-model-form"
+import { normalizeBrandModelReturnTo } from "@/lib/brand-model-query"
 
 type NewAssetModelPageProps = {
   params: Promise<{ locale: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function NewAssetModelPage({ params }: NewAssetModelPageProps) {
+export default async function NewAssetModelPage({ params, searchParams }: NewAssetModelPageProps) {
   const { locale } = await params
+  const rawSearchParams = await searchParams
+  const returnToHref = normalizeBrandModelReturnTo(locale, rawSearchParams.returnTo)
   await requirePagePermission(locale, "brand", "create")
 
   const [brands, categories] = await Promise.all([
@@ -23,5 +27,5 @@ export default async function NewAssetModelPage({ params }: NewAssetModelPagePro
     }),
   ])
 
-  return <AssetModelForm brands={brands} categories={categories} />
+  return <AssetModelForm brands={brands} categories={categories} backHref={returnToHref} />
 }

@@ -35,9 +35,11 @@ const emptyBranch: BranchFormValues = {
 export function BranchForm({
   branch,
   companies,
+  backHref: providedBackHref,
 }: {
   branch?: BranchFormValues
   companies: CompanyOption[]
+  backHref?: string
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -47,7 +49,7 @@ export function BranchForm({
   const [saving, setSaving] = useState(false)
 
   const isEdit = Boolean(branch?.id)
-  const backHref = `/${locale}/master-data/branches`
+  const backHref = providedBackHref ?? `/${locale}/master-data/branches`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
 
   function setField<K extends keyof BranchFormValues>(field: K, value: BranchFormValues[K]) {

@@ -3,13 +3,17 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { CategoryForm } from "@/components/master-data/category-form"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
+import { normalizeMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 
 type EditCategoryPageProps = {
   params: Promise<{ id: string; locale: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function EditCategoryPage({ params }: EditCategoryPageProps) {
+export default async function EditCategoryPage({ params, searchParams }: EditCategoryPageProps) {
   const { id, locale } = await params
+  const rawSearchParams = await searchParams
+  const returnToHref = normalizeMasterDataReturnTo(locale, "categories", rawSearchParams.returnTo)
   await requirePagePermission(locale, "category", "edit")
 
   const [category, photoChecklist] = await Promise.all([
@@ -48,6 +52,7 @@ export default async function EditCategoryPage({ params }: EditCategoryPageProps
         })),
         photoChecklist,
       }}
+      backHref={returnToHref}
     />
   )
 }

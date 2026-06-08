@@ -49,10 +49,12 @@ export function LocationForm({
   location,
   branches,
   parentLocations,
+  backHref: providedBackHref,
 }: {
   location?: LocationFormValues
   branches: BranchOption[]
   parentLocations: ParentLocationOption[]
+  backHref?: string
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -62,7 +64,7 @@ export function LocationForm({
   const [saving, setSaving] = useState(false)
 
   const isEdit = Boolean(location?.id)
-  const backHref = `/${locale}/master-data/locations`
+  const backHref = providedBackHref ?? `/${locale}/master-data/locations`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
 
   function setField<K extends keyof LocationFormValues>(field: K, value: LocationFormValues[K]) {

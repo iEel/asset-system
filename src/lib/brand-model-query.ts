@@ -53,6 +53,8 @@ export type BrandNavigatorItem = {
   }
 }
 
+type ReturnToParam = string | string[] | undefined
+
 export function parseBrandModelListParams(input: BrandModelListParams): BrandModelListState {
   return {
     search: firstValue(input.search).trim(),
@@ -80,6 +82,26 @@ export function buildBrandModelQueryString(current: BrandModelListState, next: P
   params.set("modelPhoto", merged.modelPhoto)
   params.set("modelUsage", merged.modelUsage)
   return params.toString()
+}
+
+export function normalizeBrandModelReturnTo(locale: string, value: ReturnToParam) {
+  const fallback = `/${locale}/master-data/brands`
+  const raw = Array.isArray(value) ? value[0] : value
+  if (!raw) return fallback
+
+  try {
+    const url = new URL(raw, "http://asset.local")
+    if (url.origin !== "http://asset.local") return fallback
+    if (url.pathname !== fallback) return fallback
+    return `${url.pathname}${url.search}${url.hash}`
+  } catch {
+    return fallback
+  }
+}
+
+export function appendBrandModelReturnTo(href: string, returnTo: string) {
+  const separator = href.includes("?") ? "&" : "?"
+  return `${href}${separator}returnTo=${encodeURIComponent(returnTo)}`
 }
 
 export function buildBrandNavigatorItems<TBrand extends BrandNavigatorItem>(

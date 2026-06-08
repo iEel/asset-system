@@ -28,7 +28,13 @@ const emptyCompany: CompanyFormValues = {
   isActive: true,
 }
 
-export function CompanyForm({ company }: { company?: CompanyFormValues }) {
+export function CompanyForm({
+  company,
+  backHref: providedBackHref,
+}: {
+  company?: CompanyFormValues
+  backHref?: string
+}) {
   const locale = useLocale()
   const router = useRouter()
   const t = useTranslations("company")
@@ -37,7 +43,7 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
   const [saving, setSaving] = useState(false)
 
   const isEdit = Boolean(company?.id)
-  const backHref = `/${locale}/master-data/companies`
+  const backHref = providedBackHref ?? `/${locale}/master-data/companies`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
 
   function setField<K extends keyof CompanyFormValues>(field: K, value: CompanyFormValues[K]) {

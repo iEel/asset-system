@@ -33,7 +33,13 @@ const emptyCategory: CategoryFormValues = {
   photoChecklist: [],
 }
 
-export function CategoryForm({ category }: { category?: CategoryFormValues }) {
+export function CategoryForm({
+  category,
+  backHref: providedBackHref,
+}: {
+  category?: CategoryFormValues
+  backHref?: string
+}) {
   const locale = useLocale()
   const router = useRouter()
   const t = useTranslations("category")
@@ -42,7 +48,7 @@ export function CategoryForm({ category }: { category?: CategoryFormValues }) {
   const [saving, setSaving] = useState(false)
 
   const isEdit = Boolean(category?.id)
-  const backHref = `/${locale}/master-data/categories`
+  const backHref = providedBackHref ?? `/${locale}/master-data/categories`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
 
   function setField<K extends keyof CategoryFormValues>(field: K, value: CategoryFormValues[K]) {

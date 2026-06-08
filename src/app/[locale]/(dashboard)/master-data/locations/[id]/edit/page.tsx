@@ -3,13 +3,17 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { LocationForm } from "@/components/master-data/location-form"
 import type { locationTypes } from "@/lib/validations/location"
+import { normalizeMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 
 type EditLocationPageProps = {
   params: Promise<{ id: string; locale: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function EditLocationPage({ params }: EditLocationPageProps) {
+export default async function EditLocationPage({ params, searchParams }: EditLocationPageProps) {
   const { id, locale } = await params
+  const rawSearchParams = await searchParams
+  const returnToHref = normalizeMasterDataReturnTo(locale, "locations", rawSearchParams.returnTo)
   await requirePagePermission(locale, "location", "edit")
 
   const [location, branches, parentLocations] = await Promise.all([
@@ -61,6 +65,7 @@ export default async function EditLocationPage({ params }: EditLocationPageProps
         description: location.description,
         isActive: location.isActive,
       }}
+      backHref={returnToHref}
     />
   )
 }

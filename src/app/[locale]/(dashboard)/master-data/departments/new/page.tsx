@@ -1,13 +1,17 @@
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { DepartmentForm } from "@/components/master-data/department-form"
+import { normalizeMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 
 type NewDepartmentPageProps = {
   params: Promise<{ locale: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function NewDepartmentPage({ params }: NewDepartmentPageProps) {
+export default async function NewDepartmentPage({ params, searchParams }: NewDepartmentPageProps) {
   const { locale } = await params
+  const rawSearchParams = await searchParams
+  const returnToHref = normalizeMasterDataReturnTo(locale, "departments", rawSearchParams.returnTo)
   await requirePagePermission(locale, "department", "create")
 
   const companies = await prisma.company.findMany({
@@ -20,5 +24,5 @@ export default async function NewDepartmentPage({ params }: NewDepartmentPagePro
     orderBy: { code: "asc" },
   })
 
-  return <DepartmentForm companies={companies} />
+  return <DepartmentForm companies={companies} backHref={returnToHref} />
 }

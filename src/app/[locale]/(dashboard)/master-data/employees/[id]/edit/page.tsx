@@ -2,13 +2,17 @@ import { notFound } from "next/navigation"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { EmployeeForm } from "@/components/master-data/employee-form"
+import { normalizeMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 
 type EditEmployeePageProps = {
   params: Promise<{ id: string; locale: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function EditEmployeePage({ params }: EditEmployeePageProps) {
+export default async function EditEmployeePage({ params, searchParams }: EditEmployeePageProps) {
   const { id, locale } = await params
+  const rawSearchParams = await searchParams
+  const returnToHref = normalizeMasterDataReturnTo(locale, "employees", rawSearchParams.returnTo)
   await requirePagePermission(locale, "employee", "edit")
 
   const [employee, companies, branches, departments, managers] = await Promise.all([
@@ -59,6 +63,7 @@ export default async function EditEmployeePage({ params }: EditEmployeePageProps
         managerId: employee.managerId,
         isActive: employee.isActive,
       }}
+      backHref={returnToHref}
     />
   )
 }

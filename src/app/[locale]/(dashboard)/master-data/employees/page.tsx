@@ -11,6 +11,7 @@ import {
 } from "@/components/master-data/master-data-layout"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { paginationRange } from "@/lib/master-data-query"
+import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import {
   buildEmployeeDrilldownHrefs,
   buildEmployeeOrderBy,
@@ -85,6 +86,7 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
     }),
   ])
   const basePath = `/${locale}/master-data/employees`
+  const employeeReturnHref = `${basePath}?${buildEmployeeQueryString(listState, {})}`
   const summary = buildEmployeeSummary(summaryEmployees)
   const filteredBranches = listState.companyId
     ? branches.filter((branch) => branch.companyId === listState.companyId)
@@ -98,7 +100,7 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
       <MasterDataHeader
         title={t("title")}
         subtitle={t("subtitle")}
-        createHref={`/${locale}/master-data/employees/new`}
+        createHref={appendMasterDataReturnTo(`/${locale}/master-data/employees/new`, employeeReturnHref)}
         createLabel={tCommon("create")}
       />
 
@@ -225,10 +227,12 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
               ) : (
                 employees.map((employee) => {
                   const drilldown = buildEmployeeDrilldownHrefs({ locale, employeeId: employee.id })
+                  const detailHref = appendMasterDataReturnTo(`/${locale}/master-data/employees/${employee.id}`, employeeReturnHref)
+                  const editHref = appendMasterDataReturnTo(`/${locale}/master-data/employees/${employee.id}/edit`, employeeReturnHref)
                   return (
                     <ClickableTableRow
                       key={employee.id}
-                      href={`/${locale}/master-data/employees/${employee.id}`}
+                      href={detailHref}
                       label={`${tCommon("view")}: ${employee.code}`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{employee.code}</td>
@@ -271,7 +275,7 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         <div className="inline-flex items-center gap-1">
                           <Link
-                            href={`/${locale}/master-data/employees/${employee.id}/edit`}
+                            href={editHref}
                             title={tCommon("edit")}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
                           >

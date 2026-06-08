@@ -28,7 +28,13 @@ const emptySupplier: SupplierFormValues = {
   isActive: true,
 }
 
-export function SupplierForm({ supplier }: { supplier?: SupplierFormValues }) {
+export function SupplierForm({
+  supplier,
+  backHref: providedBackHref,
+}: {
+  supplier?: SupplierFormValues
+  backHref?: string
+}) {
   const locale = useLocale()
   const router = useRouter()
   const t = useTranslations("supplier")
@@ -37,7 +43,7 @@ export function SupplierForm({ supplier }: { supplier?: SupplierFormValues }) {
   const [saving, setSaving] = useState(false)
 
   const isEdit = Boolean(supplier?.id)
-  const backHref = `/${locale}/master-data/suppliers`
+  const backHref = providedBackHref ?? `/${locale}/master-data/suppliers`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
 
   function setField<K extends keyof SupplierFormValues>(field: K, value: SupplierFormValues[K]) {

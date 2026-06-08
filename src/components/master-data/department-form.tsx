@@ -31,9 +31,11 @@ const emptyDepartment: DepartmentFormValues = {
 export function DepartmentForm({
   department,
   companies,
+  backHref: providedBackHref,
 }: {
   department?: DepartmentFormValues
   companies: CompanyOption[]
+  backHref?: string
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -43,7 +45,7 @@ export function DepartmentForm({
   const [saving, setSaving] = useState(false)
 
   const isEdit = Boolean(department?.id)
-  const backHref = `/${locale}/master-data/departments`
+  const backHref = providedBackHref ?? `/${locale}/master-data/departments`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
 
   function setField<K extends keyof DepartmentFormValues>(field: K, value: DepartmentFormValues[K]) {

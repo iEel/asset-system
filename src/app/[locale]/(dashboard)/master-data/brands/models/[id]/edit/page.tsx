@@ -2,13 +2,17 @@ import { notFound } from "next/navigation"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { AssetModelForm } from "@/components/master-data/asset-model-form"
+import { normalizeBrandModelReturnTo } from "@/lib/brand-model-query"
 
 type EditAssetModelPageProps = {
   params: Promise<{ id: string; locale: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function EditAssetModelPage({ params }: EditAssetModelPageProps) {
+export default async function EditAssetModelPage({ params, searchParams }: EditAssetModelPageProps) {
   const { id, locale } = await params
+  const rawSearchParams = await searchParams
+  const returnToHref = normalizeBrandModelReturnTo(locale, rawSearchParams.returnTo)
   await requirePagePermission(locale, "brand", "edit")
 
   const [model, brands, categories] = await Promise.all([
@@ -45,6 +49,7 @@ export default async function EditAssetModelPage({ params }: EditAssetModelPageP
         isActive: model.isActive,
       }}
       modelPhotos={modelPhotos}
+      backHref={returnToHref}
     />
   )
 }

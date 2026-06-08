@@ -23,13 +23,17 @@ import { getMaintenanceStatusLabel, getMaintenanceStatusTone, maintenanceStatuse
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { appendMasterDataReturnTo, normalizeMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 
 type EmployeeDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function EmployeeDetailPage({ params }: EmployeeDetailPageProps) {
+export default async function EmployeeDetailPage({ params, searchParams }: EmployeeDetailPageProps) {
   const { locale, id } = await params
+  const rawSearchParams = await searchParams
+  const returnToHref = normalizeMasterDataReturnTo(locale, "employees", rawSearchParams.returnTo)
   await requirePagePermission(locale, "employee", "view")
 
   const t = await getTranslations("employee")
@@ -206,6 +210,7 @@ export default async function EmployeeDetailPage({ params }: EmployeeDetailPageP
   ])
 
   const hrefs = buildEmployeeDetailHrefs({ locale, employeeId: id })
+  const editHref = appendMasterDataReturnTo(hrefs.edit, returnToHref)
   const summary = buildEmployeeDetailSummary({
     currentAssetCount,
     openCheckoutCount,
@@ -238,7 +243,7 @@ export default async function EmployeeDetailPage({ params }: EmployeeDetailPageP
           <div className="mb-2">
             <Breadcrumbs
               items={[
-                { label: t("title"), href: hrefs.list },
+                { label: t("title"), href: returnToHref },
                 { label: employee.code },
               ]}
             />
@@ -250,14 +255,14 @@ export default async function EmployeeDetailPage({ params }: EmployeeDetailPageP
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Link
-            href={hrefs.list}
+            href={returnToHref}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
           >
             <ArrowLeft className="h-4 w-4" />
             {tCommon("back")}
           </Link>
           <Link
-            href={hrefs.edit}
+            href={editHref}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
           >
             <Edit className="h-4 w-4" />

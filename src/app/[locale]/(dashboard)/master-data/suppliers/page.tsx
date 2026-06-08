@@ -11,6 +11,7 @@ import {
 } from "@/components/master-data/master-data-layout"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { paginationRange } from "@/lib/master-data-query"
+import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import {
   buildSupplierDrilldownHrefs,
   buildSupplierOrderBy,
@@ -68,6 +69,7 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
     }),
   ])
   const basePath = `/${locale}/master-data/suppliers`
+  const supplierReturnHref = `${basePath}?${buildSupplierQueryString(listState, {})}`
   const summary = buildSupplierSummary(summarySuppliers)
 
   return (
@@ -75,7 +77,7 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
       <MasterDataHeader
         title={t("title")}
         subtitle={t("subtitle")}
-        createHref={`/${locale}/master-data/suppliers/new`}
+        createHref={appendMasterDataReturnTo(`/${locale}/master-data/suppliers/new`, supplierReturnHref)}
         createLabel={tCommon("create")}
       />
 
@@ -177,10 +179,12 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
               ) : (
                 suppliers.map((supplier) => {
                   const drilldown = buildSupplierDrilldownHrefs({ locale, supplierId: supplier.id })
+                  const detailHref = appendMasterDataReturnTo(`/${locale}/master-data/suppliers/${supplier.id}`, supplierReturnHref)
+                  const editHref = appendMasterDataReturnTo(`/${locale}/master-data/suppliers/${supplier.id}/edit`, supplierReturnHref)
                   return (
                     <ClickableTableRow
                       key={supplier.id}
-                      href={`/${locale}/master-data/suppliers/${supplier.id}`}
+                      href={detailHref}
                       label={`${tCommon("view")}: ${supplier.code}`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{supplier.code}</td>
@@ -211,7 +215,7 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         <div className="inline-flex items-center gap-1">
                           <Link
-                            href={`/${locale}/master-data/suppliers/${supplier.id}/edit`}
+                            href={editHref}
                             title={tCommon("edit")}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
                           >

@@ -11,6 +11,7 @@ import {
 } from "@/components/master-data/master-data-layout"
 import { paginationRange } from "@/lib/master-data-query"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import { locationTypes } from "@/lib/validations/location"
 import {
   buildLocationDrilldownHrefs,
@@ -116,6 +117,7 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
     }),
   ])
   const basePath = `/${locale}/master-data/locations`
+  const locationReturnHref = `${basePath}?${buildLocationQueryString(listState, {})}`
   const summary = buildLocationSummary(summaryLocations)
   const locationPaths = buildLocationPathMap(pathLocations)
 
@@ -124,7 +126,7 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
       <MasterDataHeader
         title={t("title")}
         subtitle={t("subtitle")}
-        createHref={`/${locale}/master-data/locations/new`}
+        createHref={appendMasterDataReturnTo(`/${locale}/master-data/locations/new`, locationReturnHref)}
         createLabel={tCommon("create")}
       />
 
@@ -267,10 +269,11 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
               ) : (
                 locations.map((location) => {
                   const drilldown = buildLocationDrilldownHrefs({ locale, locationCode: location.code })
+                  const editHref = appendMasterDataReturnTo(`/${locale}/master-data/locations/${location.id}/edit`, locationReturnHref)
                   return (
                     <ClickableTableRow
                       key={location.id}
-                      href={`/${locale}/master-data/locations/${location.id}/edit`}
+                      href={editHref}
                       label={`${tCommon("edit")}: ${location.code}`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{location.code}</td>
@@ -306,7 +309,7 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         <div className="inline-flex items-center gap-1">
                           <Link
-                            href={`/${locale}/master-data/locations/${location.id}/edit`}
+                            href={editHref}
                             title={tCommon("edit")}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
                           >

@@ -4,6 +4,7 @@ import { Edit } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { DepartmentDeleteButton } from "@/components/master-data/department-delete-button"
+import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import {
   ActiveBadge,
   ColumnHeader,
@@ -25,6 +26,8 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
   const t = await getTranslations("department")
   const tCommon = await getTranslations("common")
   const searchText = search.trim()
+  const basePath = `/${locale}/master-data/departments`
+  const departmentReturnHref = searchText ? `${basePath}?${new URLSearchParams({ search: searchText }).toString()}` : basePath
 
   const departments = await prisma.department.findMany({
     where: {
@@ -56,12 +59,12 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
       <MasterDataHeader
         title={t("title")}
         subtitle={t("subtitle")}
-        createHref={`/${locale}/master-data/departments/new`}
+        createHref={appendMasterDataReturnTo(`/${locale}/master-data/departments/new`, departmentReturnHref)}
         createLabel={tCommon("create")}
       />
 
       <MasterDataSearch
-        action={`/${locale}/master-data/departments`}
+        action={basePath}
         defaultValue={searchText}
         placeholder={tCommon("search")}
         submitLabel={tCommon("search")}
@@ -87,12 +90,14 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
                   </td>
                 </tr>
               ) : (
-                departments.map((department) => (
-                  <ClickableTableRow
-                    key={department.id}
-                    href={`/${locale}/master-data/departments/${department.id}/edit`}
-                    label={`${tCommon("edit")}: ${department.code}`}
-                  >
+                departments.map((department) => {
+                  const editHref = appendMasterDataReturnTo(`/${locale}/master-data/departments/${department.id}/edit`, departmentReturnHref)
+                  return (
+                    <ClickableTableRow
+                      key={department.id}
+                      href={editHref}
+                      label={`${tCommon("edit")}: ${department.code}`}
+                    >
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{department.code}</td>
                     <td className="min-w-48 px-4 py-3 text-foreground">{department.name}</td>
                     <td className="min-w-56 px-4 py-3 text-muted-foreground">
@@ -106,7 +111,7 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
                     <td className="whitespace-nowrap px-4 py-3 text-right">
                       <div className="inline-flex items-center gap-1">
                         <Link
-                          href={`/${locale}/master-data/departments/${department.id}/edit`}
+                          href={editHref}
                           title={tCommon("edit")}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
                         >
@@ -115,8 +120,9 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
                         <DepartmentDeleteButton id={department.id} />
                       </div>
                     </td>
-                  </ClickableTableRow>
-                ))
+                    </ClickableTableRow>
+                  )
+                })
               )}
             </tbody>
           </table>

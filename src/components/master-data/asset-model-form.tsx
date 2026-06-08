@@ -61,11 +61,13 @@ export function AssetModelForm({
   brands,
   categories,
   modelPhotos = [],
+  backHref: providedBackHref,
 }: {
   model?: AssetModelFormValues
   brands: BrandOption[]
   categories: CategoryOption[]
   modelPhotos?: ModelPhoto[]
+  backHref?: string
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -79,7 +81,7 @@ export function AssetModelForm({
   const [structuredSpecs, setStructuredSpecs] = useState<StructuredModelSpecs>(() => parseModelSpecs(model?.specs))
 
   const isEdit = Boolean(model?.id)
-  const backHref = `/${locale}/master-data/brands`
+  const backHref = providedBackHref ?? `/${locale}/master-data/brands`
   const title = useMemo(() => (isEdit ? t("editModelTitle") : t("createModelTitle")), [isEdit, t])
 
   function setField<K extends keyof AssetModelFormValues>(field: K, value: AssetModelFormValues[K]) {

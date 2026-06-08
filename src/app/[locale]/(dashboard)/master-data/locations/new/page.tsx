@@ -1,13 +1,17 @@
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { LocationForm } from "@/components/master-data/location-form"
+import { normalizeMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 
 type NewLocationPageProps = {
   params: Promise<{ locale: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function NewLocationPage({ params }: NewLocationPageProps) {
+export default async function NewLocationPage({ params, searchParams }: NewLocationPageProps) {
   const { locale } = await params
+  const rawSearchParams = await searchParams
+  const returnToHref = normalizeMasterDataReturnTo(locale, "locations", rawSearchParams.returnTo)
   await requirePagePermission(locale, "location", "create")
 
   const [branches, parentLocations] = await Promise.all([
@@ -37,5 +41,5 @@ export default async function NewLocationPage({ params }: NewLocationPageProps) 
     }),
   ])
 
-  return <LocationForm branches={branches} parentLocations={parentLocations} />
+  return <LocationForm branches={branches} parentLocations={parentLocations} backHref={returnToHref} />
 }

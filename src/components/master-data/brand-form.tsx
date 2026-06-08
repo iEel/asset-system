@@ -18,7 +18,13 @@ const emptyBrand: BrandFormValues = {
   isActive: true,
 }
 
-export function BrandForm({ brand }: { brand?: BrandFormValues }) {
+export function BrandForm({
+  brand,
+  backHref: providedBackHref,
+}: {
+  brand?: BrandFormValues
+  backHref?: string
+}) {
   const locale = useLocale()
   const router = useRouter()
   const t = useTranslations("brandModel")
@@ -27,7 +33,7 @@ export function BrandForm({ brand }: { brand?: BrandFormValues }) {
   const [saving, setSaving] = useState(false)
 
   const isEdit = Boolean(brand?.id)
-  const backHref = `/${locale}/master-data/brands`
+  const backHref = providedBackHref ?? `/${locale}/master-data/brands`
   const title = useMemo(() => (isEdit ? t("editBrandTitle") : t("createBrandTitle")), [isEdit, t])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {

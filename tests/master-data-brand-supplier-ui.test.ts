@@ -5,7 +5,8 @@ import test from "node:test"
 test("brand model page exposes create model action in the top header", () => {
   const source = readFileSync("src/app/[locale]/(dashboard)/master-data/brands/page.tsx", "utf8")
 
-  assert.match(source, /<MasterDataHeader[\s\S]*createHref=\{`\/\$\{locale\}\/master-data\/brands\/models\/new`\}/)
+  assert.match(source, /const createModelHref = appendBrandModelReturnTo/)
+  assert.match(source, /<MasterDataHeader[\s\S]*createHref=\{createModelHref\}/)
   assert.match(source, /createLabel=\{t\("createModel"\)\}/)
   assert.match(source, /actions=\{[\s\S]*master-data\/brands\/new/)
 })
@@ -22,6 +23,30 @@ test("brand model page uses a brand navigator beside the model workspace", () =>
   const navigatorIndex = source.indexOf('t("brandNavigatorTitle")')
   const workspaceIndex = source.indexOf('t("modelWorkspaceTitle")')
   assert.ok(navigatorIndex > -1 && workspaceIndex > navigatorIndex)
+})
+
+test("brand model edit flow preserves the selected brand workspace after save", () => {
+  const listSource = readFileSync("src/app/[locale]/(dashboard)/master-data/brands/page.tsx", "utf8")
+  const editPageSource = readFileSync("src/app/[locale]/(dashboard)/master-data/brands/models/[id]/edit/page.tsx", "utf8")
+  const newPageSource = readFileSync("src/app/[locale]/(dashboard)/master-data/brands/models/new/page.tsx", "utf8")
+  const formSource = readFileSync("src/components/master-data/asset-model-form.tsx", "utf8")
+  const querySource = readFileSync("src/lib/brand-model-query.ts", "utf8")
+
+  assert.match(querySource, /normalizeBrandModelReturnTo/)
+  assert.match(querySource, /appendBrandModelReturnTo/)
+  assert.match(querySource, /url\.pathname !== fallback/)
+  assert.match(listSource, /const brandModelReturnHref = `\$\{basePath\}\?\$\{buildBrandModelQueryString\(listState, \{\}\)\}`/)
+  assert.match(listSource, /appendBrandModelReturnTo\(`\/\$\{locale\}\/master-data\/brands\/models\/new`, brandModelReturnHref\)/)
+  assert.match(listSource, /appendBrandModelReturnTo\(`\/\$\{locale\}\/master-data\/brands\/models\/\$\{model\.id\}\/edit`, brandModelReturnHref\)/)
+  assert.match(editPageSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
+  assert.match(editPageSource, /normalizeBrandModelReturnTo\(locale, rawSearchParams\.returnTo\)/)
+  assert.match(editPageSource, /backHref=\{returnToHref\}/)
+  assert.match(newPageSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
+  assert.match(newPageSource, /normalizeBrandModelReturnTo\(locale, rawSearchParams\.returnTo\)/)
+  assert.match(newPageSource, /backHref=\{returnToHref\}/)
+  assert.match(formSource, /backHref: providedBackHref/)
+  assert.match(formSource, /const backHref = providedBackHref \?\? `\/\$\{locale\}\/master-data\/brands`/)
+  assert.match(formSource, /router\.push\(backHref\)/)
 })
 
 test("brand model page messages cover the navigator workspace layout", () => {

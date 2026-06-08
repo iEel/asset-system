@@ -2,13 +2,17 @@ import { notFound } from "next/navigation"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { DepartmentForm } from "@/components/master-data/department-form"
+import { normalizeMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 
 type EditDepartmentPageProps = {
   params: Promise<{ id: string; locale: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function EditDepartmentPage({ params }: EditDepartmentPageProps) {
+export default async function EditDepartmentPage({ params, searchParams }: EditDepartmentPageProps) {
   const { id, locale } = await params
+  const rawSearchParams = await searchParams
+  const returnToHref = normalizeMasterDataReturnTo(locale, "departments", rawSearchParams.returnTo)
   await requirePagePermission(locale, "department", "edit")
 
   const [department, companies] = await Promise.all([
@@ -38,6 +42,7 @@ export default async function EditDepartmentPage({ params }: EditDepartmentPageP
         companyId: department.companyId,
         isActive: department.isActive,
       }}
+      backHref={returnToHref}
     />
   )
 }

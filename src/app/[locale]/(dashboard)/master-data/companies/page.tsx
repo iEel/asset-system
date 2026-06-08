@@ -11,6 +11,7 @@ import {
 } from "@/components/master-data/master-data-layout"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { paginationRange } from "@/lib/master-data-query"
+import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import {
   buildCompanyDrilldownHrefs,
   buildCompanyOrderBy,
@@ -70,6 +71,7 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
     }),
   ])
   const basePath = `/${locale}/master-data/companies`
+  const companyReturnHref = `${basePath}?${buildCompanyQueryString(listState, {})}`
   const summary = buildCompanySummary(summaryCompanies)
 
   return (
@@ -77,7 +79,7 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
       <MasterDataHeader
         title={t("title")}
         subtitle={t("subtitle")}
-        createHref={`/${locale}/master-data/companies/new`}
+        createHref={appendMasterDataReturnTo(`/${locale}/master-data/companies/new`, companyReturnHref)}
         createLabel={tCommon("create")}
       />
 
@@ -190,10 +192,11 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
               ) : (
                 companies.map((company) => {
                   const drilldown = buildCompanyDrilldownHrefs({ locale, companyId: company.id })
+                  const editHref = appendMasterDataReturnTo(`/${locale}/master-data/companies/${company.id}/edit`, companyReturnHref)
                   return (
                     <ClickableTableRow
                       key={company.id}
-                      href={`/${locale}/master-data/companies/${company.id}/edit`}
+                      href={editHref}
                       label={`${tCommon("edit")}: ${company.code}`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{company.code}</td>
@@ -234,7 +237,7 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         <div className="inline-flex items-center gap-1">
                           <Link
-                            href={`/${locale}/master-data/companies/${company.id}/edit`}
+                            href={editHref}
                             title={tCommon("edit")}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
                           >

@@ -12,6 +12,7 @@ import {
 import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
 import { assetTagCategoryPrefixesKey } from "@/lib/system-setting-defaults"
 import { paginationRange } from "@/lib/master-data-query"
+import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import {
   buildCategoryOrderBy,
   buildCategoryHealthSummary,
@@ -98,6 +99,7 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
     }),
   ])
   const basePath = `/${locale}/master-data/categories`
+  const categoryReturnHref = `${basePath}?${buildCategoryQueryString(listState, {})}`
   const healthSummary = buildCategoryHealthSummary(summaryCategories, { categoryIdsWithChecklist, categoryIdsWithPrefix })
 
   return (
@@ -105,7 +107,7 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
       <MasterDataHeader
         title={t("title")}
         subtitle={t("subtitle")}
-        createHref={`/${locale}/master-data/categories/new`}
+        createHref={appendMasterDataReturnTo(`/${locale}/master-data/categories/new`, categoryReturnHref)}
         createLabel={tCommon("create")}
         actions={
           <>
@@ -265,10 +267,11 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
               ) : (
                 categories.map((category) => {
                   const drilldown = buildCategoryDrilldownHrefs({ locale, categoryId: category.id })
+                  const editHref = appendMasterDataReturnTo(`/${locale}/master-data/categories/${category.id}/edit`, categoryReturnHref)
                   return (
                     <ClickableTableRow
                       key={category.id}
-                      href={drilldown.edit}
+                      href={editHref}
                       label={`${tCommon("edit")}: ${category.code}`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{category.code}</td>
@@ -305,7 +308,7 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
                             {t("viewModels")}
                           </Link>
                           <Link
-                            href={drilldown.edit}
+                            href={editHref}
                             title={tCommon("edit")}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
                           >

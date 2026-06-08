@@ -11,6 +11,7 @@ import {
 } from "@/components/master-data/master-data-layout"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { paginationRange } from "@/lib/master-data-query"
+import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import {
   buildBranchDrilldownHrefs,
   buildBranchOrderBy,
@@ -80,6 +81,7 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
     }),
   ])
   const basePath = `/${locale}/master-data/branches`
+  const branchReturnHref = `${basePath}?${buildBranchQueryString(listState, {})}`
   const summary = buildBranchSummary(summaryBranches)
 
   return (
@@ -87,7 +89,7 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
       <MasterDataHeader
         title={t("title")}
         subtitle={t("subtitle")}
-        createHref={`/${locale}/master-data/branches/new`}
+        createHref={appendMasterDataReturnTo(`/${locale}/master-data/branches/new`, branchReturnHref)}
         createLabel={tCommon("create")}
       />
 
@@ -211,10 +213,11 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
               ) : (
                 branches.map((branch) => {
                   const drilldown = buildBranchDrilldownHrefs({ locale, branchId: branch.id })
+                  const editHref = appendMasterDataReturnTo(`/${locale}/master-data/branches/${branch.id}/edit`, branchReturnHref)
                   return (
                     <ClickableTableRow
                       key={branch.id}
-                      href={`/${locale}/master-data/branches/${branch.id}/edit`}
+                      href={editHref}
                       label={`${tCommon("edit")}: ${branch.code}`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{branch.code}</td>
@@ -256,7 +259,7 @@ export default async function BranchesPage({ params, searchParams }: BranchesPag
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         <div className="inline-flex items-center gap-1">
                           <Link
-                            href={`/${locale}/master-data/branches/${branch.id}/edit`}
+                            href={editHref}
                             title={tCommon("edit")}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
                           >

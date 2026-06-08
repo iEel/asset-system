@@ -68,12 +68,14 @@ export function EmployeeForm({
   branches,
   departments,
   managers,
+  backHref: providedBackHref,
 }: {
   employee?: EmployeeFormValues
   companies: CompanyOption[]
   branches: BranchOption[]
   departments: DepartmentOption[]
   managers: ManagerOption[]
+  backHref?: string
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -83,7 +85,7 @@ export function EmployeeForm({
   const [saving, setSaving] = useState(false)
 
   const isEdit = Boolean(employee?.id)
-  const backHref = `/${locale}/master-data/employees`
+  const backHref = providedBackHref ?? `/${locale}/master-data/employees`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
   const filteredBranches = branches.filter((branch) => branch.companyId === values.companyId)
   const filteredDepartments = departments.filter(

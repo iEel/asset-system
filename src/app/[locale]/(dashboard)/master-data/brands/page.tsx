@@ -14,7 +14,9 @@ import {
   MasterDataHeader,
 } from "@/components/master-data/master-data-layout"
 import { paginationRange } from "@/lib/master-data-query"
+import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import {
+  appendBrandModelReturnTo,
   buildBrandModelQueryString,
   buildBrandNavigatorItems,
   buildDuplicateNameGroups,
@@ -172,13 +174,19 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
   const totalDuplicateGroups = brandDuplicateGroups.length + modelDuplicateGroups.length
   const selectedBrand = brandNavigatorItems.find((brand) => brand.id === listState.modelBrandId)
   const selectedCategory = categoryOptions.find((category) => category.id === listState.modelCategoryId)
+  const brandModelReturnHref = `${basePath}?${buildBrandModelQueryString(listState, {})}`
+  const brandReturnHref = brandModelReturnHref
+  const createModelHref = appendBrandModelReturnTo(`/${locale}/master-data/brands/models/new`, brandModelReturnHref)
+  const selectedBrandEditHref = selectedBrand
+    ? appendMasterDataReturnTo(`/${locale}/master-data/brands/${selectedBrand.id}/edit`, brandReturnHref)
+    : ""
 
   return (
     <div className="space-y-4">
       <MasterDataHeader
         title={t("title")}
         subtitle={t("subtitle")}
-        createHref={`/${locale}/master-data/brands/models/new`}
+        createHref={createModelHref}
         createLabel={t("createModel")}
         actions={
           <>
@@ -197,7 +205,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
               {t("downloadBrandModelTemplate")}
             </Link>
             <Link
-              href={`/${locale}/master-data/brands/new`}
+              href={appendMasterDataReturnTo(`/${locale}/master-data/brands/new`, brandReturnHref)}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
             >
               <Plus className="h-4 w-4" />
@@ -265,7 +273,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
               </div>
               <div className="flex items-center gap-2">
                 <Link
-                  href={`/${locale}/master-data/brands/${selectedBrand.id}/edit`}
+                  href={selectedBrandEditHref}
                   className="inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-sm font-medium transition-colors hover:bg-accent"
                 >
                   <Edit className="h-4 w-4" />
@@ -382,7 +390,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                 <p className="mt-1 text-sm text-muted-foreground">{t("modelsSubtitle")}</p>
               </div>
               <Link
-                href={`/${locale}/master-data/brands/models/new`}
+                href={createModelHref}
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
               >
                 <Plus className="h-4 w-4" />
@@ -414,11 +422,12 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                     models.map((model) => {
                       const photo = primaryPhotoByModelId.get(model.id)
                       const canPreviewPhoto = photo ? previewableModelPhotoTypes.has(photo.fileType) : false
+                      const editModelHref = appendBrandModelReturnTo(`/${locale}/master-data/brands/models/${model.id}/edit`, brandModelReturnHref)
 
                       return (
                         <ClickableTableRow
                           key={model.id}
-                          href={`/${locale}/master-data/brands/models/${model.id}/edit`}
+                          href={editModelHref}
                           label={`${tCommon("edit")}: ${model.name}`}
                         >
                           <td className="min-w-[220px] px-4 py-3 font-medium text-foreground">
@@ -456,7 +465,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                           <td className="whitespace-nowrap px-4 py-3 text-right">
                             <div className="inline-flex items-center gap-1">
                               <Link
-                                href={`/${locale}/master-data/brands/models/${model.id}/edit`}
+                                href={editModelHref}
                                 title={tCommon("edit")}
                                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
                               >
