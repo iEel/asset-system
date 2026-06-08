@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
@@ -13,6 +13,15 @@ import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
 import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
+import {
+  assetRegisterColumnOrder,
+  assetRegisterColumnPresets,
+  assetRegisterColumnStorageKey,
+  assetRegisterColumnsMatchPreset,
+  normalizeAssetRegisterColumns,
+  type AssetRegisterColumnKey,
+  type AssetRegisterColumnPresetKey,
+} from "@/lib/asset-register-columns"
 
 export type AssetRegisterRow = {
   id: string
@@ -29,18 +38,6 @@ export type AssetRegisterRow = {
   purchasePrice: number | null
   photo: { id: string; alt: string; fileType: string } | null
 }
-
-type ColumnKey =
-  | "assetTag"
-  | "name"
-  | "category"
-  | "companyBranch"
-  | "currentLocation"
-  | "custodian"
-  | "ownershipType"
-  | "status"
-  | "condition"
-  | "purchasePrice"
 
 type AssetRegisterTableProps = {
   locale: string
@@ -109,23 +106,15 @@ type AssetRegisterTableProps = {
     selectedCount: string
     assetName: string
     assetTag: string
+    columnPresets: string
+    columnPresetAll: string
+    columnPresetOperations: string
+    columnPresetAccounting: string
+    columnPresetAudit: string
     next: string
     status: string
   }
 }
-
-const columnOrder: ColumnKey[] = [
-  "assetTag",
-  "name",
-  "category",
-  "companyBranch",
-  "currentLocation",
-  "custodian",
-  "ownershipType",
-  "status",
-  "condition",
-  "purchasePrice",
-]
 
 const previewableAssetPhotoTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"])
 
@@ -142,7 +131,8 @@ export function AssetRegisterTable({
 }: AssetRegisterTableProps) {
   const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set(columnOrder))
+  const [visibleColumns, setVisibleColumns] = useState<Set<AssetRegisterColumnKey>>(new Set(assetRegisterColumnPresets.all))
+  const [columnPreferencesLoaded, setColumnPreferencesLoaded] = useState(false)
   const [bulkUpdateOpen, setBulkUpdateOpen] = useState(false)
   const [bulkSaving, setBulkSaving] = useState(false)
   const [bulkForm, setBulkForm] = useState({
@@ -156,7 +146,37 @@ export function AssetRegisterTable({
     [assets, selectedIds]
   )
   const allCurrentPageSelected = assets.length > 0 && assets.every((asset) => selectedIds.has(asset.id))
-  const visibleColumnCount = columnOrder.filter((column) => visibleColumns.has(column)).length
+  const visibleColumnCount = assetRegisterColumnOrder.filter((column) => visibleColumns.has(column)).length
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      try {
+        const storedColumns = window.localStorage.getItem(assetRegisterColumnStorageKey)
+        if (storedColumns) {
+          setVisibleColumns(new Set(normalizeAssetRegisterColumns(JSON.parse(storedColumns))))
+        }
+      } catch {
+        setVisibleColumns(new Set(assetRegisterColumnPresets.all))
+      } finally {
+        setColumnPreferencesLoaded(true)
+      }
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [])
+
+  useEffect(() => {
+    if (!columnPreferencesLoaded) return
+
+    try {
+      window.localStorage.setItem(
+        assetRegisterColumnStorageKey,
+        JSON.stringify(assetRegisterColumnOrder.filter((column) => visibleColumns.has(column)))
+      )
+    } catch {
+      // Ignore storage failures, the table still works with in-memory preferences.
+    }
+  }, [columnPreferencesLoaded, visibleColumns])
 
   function toggleAsset(id: string) {
     setSelectedIds((current) => {
@@ -179,13 +199,17 @@ export function AssetRegisterTable({
     })
   }
 
-  function toggleColumn(column: ColumnKey) {
+  function toggleColumn(column: AssetRegisterColumnKey) {
     setVisibleColumns((current) => {
       const next = new Set(current)
       if (next.has(column) && next.size > 1) next.delete(column)
       else next.add(column)
       return next
     })
+  }
+
+  function applyColumnPreset(preset: AssetRegisterColumnPresetKey) {
+    setVisibleColumns(new Set(assetRegisterColumnPresets[preset]))
   }
 
   function exportSelected() {
@@ -289,7 +313,28 @@ export function AssetRegisterTable({
               {labels.columns}
             </summary>
             <div className="absolute left-0 z-10 mt-2 w-[calc(100vw-3rem)] max-w-64 rounded-md border border-border bg-surface p-2 shadow-lg sm:left-auto sm:right-0 sm:w-56">
-              {columnOrder.map((column) => (
+              <div className="border-b border-border pb-2">
+                <div className="px-2 pb-1 text-xs font-medium text-muted-foreground">{labels.columnPresets}</div>
+                <div className="grid grid-cols-2 gap-1">
+                  {(["all", "operations", "accounting", "audit"] as const).map((preset) => {
+                    const active = assetRegisterColumnsMatchPreset(visibleColumns, assetRegisterColumnPresets[preset])
+                    return (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => applyColumnPreset(preset)}
+                        className={`rounded px-2 py-1.5 text-left text-xs font-medium transition-colors ${
+                          active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                        }`}
+                      >
+                        {columnPresetLabel(preset, labels)}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div className="pt-2">
+              {assetRegisterColumnOrder.map((column) => (
                 <label key={column} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent">
                   <input
                     type="checkbox"
@@ -300,6 +345,7 @@ export function AssetRegisterTable({
                   <span>{columnLabel(column, labels)}</span>
                 </label>
               ))}
+              </div>
             </div>
           </details>
           <button
@@ -787,8 +833,8 @@ function ownershipTypeTone(value: string) {
   return "bg-muted text-muted-foreground"
 }
 
-function columnLabel(column: ColumnKey, labels: AssetRegisterTableProps["labels"]) {
-  const map: Record<ColumnKey, string> = {
+function columnLabel(column: AssetRegisterColumnKey, labels: AssetRegisterTableProps["labels"]) {
+  const map: Record<AssetRegisterColumnKey, string> = {
     assetTag: labels.assetTag,
     name: labels.assetName,
     category: labels.category,
@@ -802,6 +848,17 @@ function columnLabel(column: ColumnKey, labels: AssetRegisterTableProps["labels"
   }
 
   return map[column]
+}
+
+function columnPresetLabel(preset: AssetRegisterColumnPresetKey, labels: AssetRegisterTableProps["labels"]) {
+  const map: Record<AssetRegisterColumnPresetKey, string> = {
+    all: labels.columnPresetAll,
+    operations: labels.columnPresetOperations,
+    accounting: labels.columnPresetAccounting,
+    audit: labels.columnPresetAudit,
+  }
+
+  return map[preset]
 }
 
 function csvCell(value: string) {

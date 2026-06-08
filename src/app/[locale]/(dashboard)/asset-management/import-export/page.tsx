@@ -95,6 +95,8 @@ export default async function AssetImportExportPage({ params }: AssetImportExpor
           importBatchStatusPartial: t("importBatchStatusPartial"),
           importBatchStatusBlocked: t("importBatchStatusBlocked"),
           importBatchStatusEmpty: t("importBatchStatusEmpty"),
+          openImportWizard: t("openImportWizard"),
+          collapseImportWizard: t("collapseImportWizard"),
         }}
       />
 

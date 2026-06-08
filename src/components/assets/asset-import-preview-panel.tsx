@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AlertCircle, CheckCircle2, FileSpreadsheet, ListChecks, Upload } from "lucide-react"
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp, FileSpreadsheet, ListChecks, Upload } from "lucide-react"
 import {
   assetImportWizardSteps,
   getAssetImportWizardStep,
@@ -70,12 +70,15 @@ type AssetImportPreviewPanelProps = {
     importBatchStatusPartial: string
     importBatchStatusBlocked: string
     importBatchStatusEmpty: string
+    openImportWizard: string
+    collapseImportWizard: string
   }
 }
 
 export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
+  const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -92,6 +95,29 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
   const issueSummary = preview ? summarizeAssetImportPreviewIssues(preview.rows) : []
   const mappedColumns = preview?.mapping?.filter((column) => column.sourceColumn != null) ?? []
   const missingColumns = preview?.mapping?.filter((column) => column.sourceColumn == null) ?? []
+  const header = (
+    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h2 className="text-base font-semibold text-foreground">{labels.wizardTitle}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{labels.wizardHelp}</p>
+        {preview && (
+          <p className="mt-1 text-sm text-muted-foreground">
+            {preview.summary.totalRows} {labels.previewRows} · {preview.summary.readyRows} {labels.previewReady} ·{" "}
+            {preview.summary.errorRows} {labels.previewErrors}
+          </p>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={() => setIsOpen((current) => !current)}
+        aria-expanded={isOpen}
+        className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+      >
+        {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        {isOpen ? labels.collapseImportWizard : labels.openImportWizard}
+      </button>
+    </div>
+  )
 
   async function handleFile(file?: File) {
     if (!file) {
@@ -158,37 +184,35 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
     }
   }
 
+  if (!isOpen) {
+    return (
+      <section className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
+        {header}
+      </section>
+    )
+  }
+
   return (
     <section className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">{labels.wizardTitle}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{labels.wizardHelp}</p>
-          {preview && (
-            <p className="mt-1 text-sm text-muted-foreground">
-              {preview.summary.totalRows} {labels.previewRows} · {preview.summary.readyRows} {labels.previewReady} ·{" "}
-              {preview.summary.errorRows} {labels.previewErrors}
-            </p>
-          )}
-        </div>
-        <div>
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".xlsx"
-            className="hidden"
-            onChange={(event) => void handleFile(event.target.files?.[0])}
-          />
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={isLoading || isImporting}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Upload className="h-4 w-4" />
-            {isLoading ? `${labels.chooseFile}...` : labels.chooseFile}
-          </button>
-        </div>
+      {header}
+
+      <div className="mt-4 flex justify-end">
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".xlsx"
+          className="hidden"
+          onChange={(event) => void handleFile(event.target.files?.[0])}
+        />
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={isLoading || isImporting}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Upload className="h-4 w-4" />
+          {isLoading ? `${labels.chooseFile}...` : labels.chooseFile}
+        </button>
       </div>
 
       <div className="mt-4 grid gap-2 md:grid-cols-5">

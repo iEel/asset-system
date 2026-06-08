@@ -39,6 +39,7 @@ test("builds exact asset filters and preserves them in query strings", () => {
       { category: { name: { contains: "printer" } } },
       { company: { code: { contains: "printer" } } },
       { branch: { code: { contains: "printer" } } },
+      { custodian: { code: { contains: "printer" } } },
       { custodian: { fullNameTh: { contains: "printer" } } },
       { currentLocation: { code: { contains: "printer" } } },
     ],
@@ -47,6 +48,16 @@ test("builds exact asset filters and preserves them in query strings", () => {
     buildAssetQueryString(filters, { page: 3 }),
     "search=printer&custodianId=employee-1&supplierId=supplier-1&sort=createdAt&direction=desc&page=3&pageSize=25"
   )
+})
+
+test("searches assets by current custodian employee code", () => {
+  const filters = parseAssetListParams({ search: "8044" })
+  const where = buildAssetWhere(filters)
+
+  assert.ok(Array.isArray(where.OR))
+  assert.ok(where.OR.some((rule) => JSON.stringify(rule) === JSON.stringify({ custodian: { code: { contains: "8044" } } })))
+  assert.equal(JSON.stringify(where).includes("reportedBy"), false)
+  assert.equal(JSON.stringify(where).includes("assignedTo"), false)
 })
 
 test("builds data quality drilldown filters for department and purchase gaps", () => {

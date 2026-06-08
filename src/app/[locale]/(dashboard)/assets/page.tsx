@@ -1,8 +1,10 @@
 import { getTranslations } from "next-intl/server"
+import Link from "next/link"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import {
   buildAssetOrderBy,
+  buildAssetQueryString,
   buildAssetWhere,
   parseAssetListParams,
   type AssetListParams,
@@ -32,6 +34,17 @@ type AssetFilterLabels = {
   ownershipType: string
   rowsPerPage: string
   ownershipTypes: Record<string, string>
+  quickFilters: string
+  quickFiltersHelp: string
+  quickFilterAll: string
+  dataQualitySerial: string
+  dataQualityPhoto: string
+  dataQualityPurchase: string
+  dataQualityWarranty: string
+  dataQualityResponsibility: string
+  quickFilterReady: string
+  quickFilterPendingRepair: string
+  quickFilterUnderMaintenance: string
 }
 
 export default async function AssetsPage({ params, searchParams }: AssetsPageProps) {
@@ -93,7 +106,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
     }),
     prisma.assetStatus.findMany({
       where: { isActive: true },
-      select: { id: true, nameTh: true },
+      select: { id: true, name: true, nameTh: true },
       orderBy: { sortOrder: "asc" },
     }),
     prisma.assetCondition.findMany({
@@ -196,6 +209,17 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           ownershipType: t("ownershipType"),
           rowsPerPage: tCommon("rowsPerPage"),
           ownershipTypes: Object.fromEntries(assetOwnershipTypes.map((type) => [type, t(`ownershipType_${type}`)])) as Record<string, string>,
+          quickFilters: t("quickFilters"),
+          quickFiltersHelp: t("quickFiltersHelp"),
+          quickFilterAll: t("quickFilterAll"),
+          dataQualitySerial: t("dataQualitySerial"),
+          dataQualityPhoto: t("dataQualityPhoto"),
+          dataQualityPurchase: t("dataQualityPurchase"),
+          dataQualityWarranty: t("dataQualityWarranty"),
+          dataQualityResponsibility: t("dataQualityResponsibility"),
+          quickFilterReady: t("quickFilterReady"),
+          quickFilterPendingRepair: t("quickFilterPendingRepair"),
+          quickFilterUnderMaintenance: t("quickFilterUnderMaintenance"),
         }}
       />
 
@@ -239,6 +263,8 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           importBatchStatusPartial: t("importBatchStatusPartial"),
           importBatchStatusBlocked: t("importBatchStatusBlocked"),
           importBatchStatusEmpty: t("importBatchStatusEmpty"),
+          openImportWizard: t("openImportWizard"),
+          collapseImportWizard: t("collapseImportWizard"),
         }}
       />
 
@@ -259,6 +285,11 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           all: tCommon("all"),
           assetName: t("assetName"),
           assetTag: t("assetTag"),
+          columnPresets: t("columnPresets"),
+          columnPresetAll: t("columnPresetAll"),
+          columnPresetOperations: t("columnPresetOperations"),
+          columnPresetAccounting: t("columnPresetAccounting"),
+          columnPresetAudit: t("columnPresetAudit"),
           category: t("category"),
           columns: t("columns"),
           company: t("company"),
@@ -317,16 +348,92 @@ function AssetFilters({
   companies: { id: string; code: string; nameTh: string }[]
   branches: { id: string; code: string; name: string; companyId: string; company: { code: string } }[]
   categories: { id: string; code: string; name: string }[]
-  statuses: { id: string; nameTh: string }[]
+  statuses: { id: string; name: string; nameTh: string }[]
   conditions: { id: string; nameTh: string }[]
   labels: AssetFilterLabels
 }) {
   const filteredBranches = filters.companyId
     ? branches.filter((branch) => branch.companyId === filters.companyId)
     : branches
+  const readyStatus = statuses.find((status) => status.name === "Ready")
+  const pendingRepairStatus = statuses.find((status) => status.name === "Pending Repair")
+  const underMaintenanceStatus = statuses.find((status) => status.name === "Under Maintenance")
+  const quickFilters = [
+    {
+      key: "all",
+      label: labels.quickFilterAll,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "", statusId: "", page: 1 })}`,
+      active: !filters.dataQuality && !filters.statusId,
+    },
+    {
+      key: "data-quality-serial",
+      label: labels.dataQualitySerial,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "serial", statusId: "", page: 1 })}`,
+      active: filters.dataQuality === "serial",
+    },
+    {
+      key: "data-quality-photo",
+      label: labels.dataQualityPhoto,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "photo", statusId: "", page: 1 })}`,
+      active: filters.dataQuality === "photo",
+    },
+    {
+      key: "data-quality-purchase",
+      label: labels.dataQualityPurchase,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "purchase", statusId: "", page: 1 })}`,
+      active: filters.dataQuality === "purchase",
+    },
+    {
+      key: "data-quality-warranty",
+      label: labels.dataQualityWarranty,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "warranty", statusId: "", page: 1 })}`,
+      active: filters.dataQuality === "warranty",
+    },
+    {
+      key: "data-quality-responsibility",
+      label: labels.dataQualityResponsibility,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "responsibility", statusId: "", page: 1 })}`,
+      active: filters.dataQuality === "responsibility",
+    },
+    buildStatusQuickFilter("ready", labels.quickFilterReady, readyStatus),
+    buildStatusQuickFilter("pending-repair", labels.quickFilterPendingRepair, pendingRepairStatus),
+    buildStatusQuickFilter("under-maintenance", labels.quickFilterUnderMaintenance, underMaintenanceStatus),
+  ].filter((quickFilter): quickFilter is { key: string; label: string; href: string; active: boolean } => Boolean(quickFilter))
+
+  function buildStatusQuickFilter(key: string, label: string, status?: { id: string; name: string; nameTh: string }) {
+    if (!status) return null
+
+    return {
+      key,
+      label,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { statusId: status.id, dataQuality: "", page: 1 })}`,
+      active: filters.statusId === status.id,
+    }
+  }
 
   return (
     <FilterPanel className="mb-4">
+      <div className="mb-4 border-b border-border pb-4">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">{labels.quickFilters}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{labels.quickFiltersHelp}</p>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {quickFilters.map((quickFilter) => (
+            <Link
+              key={quickFilter.key}
+              href={quickFilter.href}
+              className={`inline-flex min-h-9 items-center rounded-full border px-3 text-sm font-medium transition-colors ${
+                quickFilter.active
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-surface text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
+            >
+              {quickFilter.label}
+            </Link>
+          ))}
+        </div>
+      </div>
       <form className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6" action={`/${locale}/assets`}>
         <label className="md:col-span-2">
           <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{labels.search}</span>

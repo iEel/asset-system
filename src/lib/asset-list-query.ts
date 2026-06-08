@@ -73,6 +73,7 @@ export function buildAssetWhere(filters: ReturnType<typeof parseAssetListParams>
             { category: { name: { contains: filters.search } } },
             { company: { code: { contains: filters.search } } },
             { branch: { code: { contains: filters.search } } },
+            { custodian: { code: { contains: filters.search } } },
             { custodian: { fullNameTh: { contains: filters.search } } },
             { currentLocation: { code: { contains: filters.search } } },
           ],
