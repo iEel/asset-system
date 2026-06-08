@@ -7,7 +7,9 @@ test("asset register exposes clone action that opens create asset with cloneFrom
   const source = readFileSync(join(process.cwd(), "src", "components", "assets", "asset-register-table.tsx"), "utf8")
 
   assert.match(source, /cloneAsset/)
-  assert.match(source, /cloneFrom=\$\{encodeURIComponent\(asset\.id\)\}/)
+  assert.match(source, /function buildAssetCloneHref\(assetId: string\)/)
+  assert.match(source, /cloneFrom=\$\{encodeURIComponent\(assetId\)\}/)
+  assert.match(source, /appendReturnTo\(`\/\$\{locale\}\/assets\/new\?cloneFrom=\$\{encodeURIComponent\(assetId\)\}`, registerReturnHref\)/)
 })
 
 test("new asset page preloads clone source from search params", () => {
@@ -15,6 +17,8 @@ test("new asset page preloads clone source from search params", () => {
 
   assert.match(source, /searchParams: Promise/)
   assert.match(source, /cloneFrom/)
+  assert.match(source, /returnTo/)
+  assert.match(source, /normalizeAssetReturnTo/)
   assert.match(source, /buildAssetCloneFormState/)
   assert.match(source, /cloneSource=/)
 })

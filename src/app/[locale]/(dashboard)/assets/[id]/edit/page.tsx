@@ -2,16 +2,20 @@ import { notFound } from "next/navigation"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { getAssetFormOptions } from "@/lib/asset-form-options"
+import { normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
 import { AssetForm } from "@/components/assets/asset-form"
 import { AssetComponentsPanel } from "@/components/assets/asset-components-panel"
 
 type EditAssetPageProps = {
   params: Promise<{ id: string; locale: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function EditAssetPage({ params }: EditAssetPageProps) {
+export default async function EditAssetPage({ params, searchParams }: EditAssetPageProps) {
   const { id, locale } = await params
+  const rawSearchParams = await searchParams
   await requirePagePermission(locale, "asset", "edit")
+  const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
 
   const [asset, options] = await Promise.all([
     prisma.asset.findFirst({
@@ -102,6 +106,7 @@ export default async function EditAssetPage({ params }: EditAssetPageProps) {
           isActive: asset.isActive,
         }}
         existingAssetPhotos={asset.attachments}
+        backHref={returnToHref}
       />
 
       <div className="mx-auto max-w-6xl">

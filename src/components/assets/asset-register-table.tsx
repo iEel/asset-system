@@ -8,6 +8,7 @@ import { Columns3, Copy, Download, Edit, Eye, FileDown, FileSpreadsheet, ImageIc
 import { toast } from "sonner"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
+import { appendReturnTo } from "@/lib/asset-return-navigation"
 import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
 import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
@@ -296,6 +297,20 @@ export function AssetRegisterTable({
     return `/${locale}/assets?${buildAssetQueryString(filters, overrides)}`
   }
 
+  const registerReturnHref = buildHref({})
+
+  function buildAssetDetailHref(assetId: string) {
+    return appendReturnTo(`/${locale}/assets/${encodeURIComponent(assetId)}`, registerReturnHref)
+  }
+
+  function buildAssetEditHref(assetId: string) {
+    return appendReturnTo(`/${locale}/assets/${encodeURIComponent(assetId)}/edit`, registerReturnHref)
+  }
+
+  function buildAssetCloneHref(assetId: string) {
+    return appendReturnTo(`/${locale}/assets/new?cloneFrom=${encodeURIComponent(assetId)}`, registerReturnHref)
+  }
+
   function downloadFile(href: string) {
     window.location.href = href
   }
@@ -442,7 +457,7 @@ export function AssetRegisterTable({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <Link href={`/${locale}/assets/${asset.id}`} className="block break-words text-sm font-semibold text-foreground hover:text-primary">
+                  <Link href={buildAssetDetailHref(asset.id)} className="block break-words text-sm font-semibold text-foreground hover:text-primary">
                     {asset.assetTag}
                   </Link>
                   <p className="mt-1 line-clamp-2 text-sm text-foreground">{asset.name}</p>
@@ -463,21 +478,21 @@ export function AssetRegisterTable({
               </dl>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <Link
-                  href={`/${locale}/assets/${asset.id}`}
+                  href={buildAssetDetailHref(asset.id)}
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
                 >
                   <Eye className="h-4 w-4" />
                   {labels.detail}
                 </Link>
                 <Link
-                  href={`/${locale}/assets/${asset.id}/edit`}
+                  href={buildAssetEditHref(asset.id)}
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
                 >
                   <Edit className="h-4 w-4" />
                   {labels.edit}
                 </Link>
                 <Link
-                  href={`/${locale}/assets/new?cloneFrom=${encodeURIComponent(asset.id)}`}
+                  href={buildAssetCloneHref(asset.id)}
                   className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
                 >
                   <Copy className="h-4 w-4" />
@@ -535,7 +550,7 @@ export function AssetRegisterTable({
               assets.map((asset) => (
                 <ClickableTableRow
                   key={asset.id}
-                  href={`/${locale}/assets/${asset.id}`}
+                  href={buildAssetDetailHref(asset.id)}
                   label={`${labels.detail}: ${asset.assetTag}`}
                 >
                   <td className="whitespace-nowrap px-4 py-3">
@@ -605,21 +620,21 @@ export function AssetRegisterTable({
                   <td className="whitespace-nowrap px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-1">
                       <Link
-                        href={`/${locale}/assets/${asset.id}`}
+                        href={buildAssetDetailHref(asset.id)}
                         title={labels.detail}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent"
                       >
                         <Eye className="h-4 w-4" />
                       </Link>
                       <Link
-                        href={`/${locale}/assets/${asset.id}/edit`}
+                        href={buildAssetEditHref(asset.id)}
                         title={labels.edit}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
                       >
                         <Edit className="h-4 w-4" />
                       </Link>
                       <Link
-                        href={`/${locale}/assets/new?cloneFrom=${encodeURIComponent(asset.id)}`}
+                        href={buildAssetCloneHref(asset.id)}
                         title={labels.cloneAsset}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                       >

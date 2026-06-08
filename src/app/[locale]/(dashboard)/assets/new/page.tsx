@@ -3,11 +3,12 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { getAssetFormOptions } from "@/lib/asset-form-options"
 import { buildAssetCloneFormState } from "@/lib/asset-clone"
+import { normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
 import { AssetCreateWorkspace } from "@/components/assets/asset-create-workspace"
 
 type NewAssetPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ cloneFrom?: string | string[] }>
+  searchParams: Promise<{ cloneFrom?: string | string[]; returnTo?: string | string[] }>
 }
 
 export default async function NewAssetPage({ params, searchParams }: NewAssetPageProps) {
@@ -17,9 +18,10 @@ export default async function NewAssetPage({ params, searchParams }: NewAssetPag
 
   const options = await getAssetFormOptions()
   const cloneFrom = getSingleSearchParam(rawSearchParams.cloneFrom)
+  const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
 
   if (!cloneFrom) {
-    return <AssetCreateWorkspace {...options} />
+    return <AssetCreateWorkspace {...options} backHref={returnToHref} />
   }
 
   await requirePagePermission(locale, "asset", "view")
@@ -73,7 +75,7 @@ export default async function NewAssetPage({ params, searchParams }: NewAssetPag
 
   const cloneState = buildAssetCloneFormState(sourceAsset, { readyStatusId: readyStatus?.id })
 
-  return <AssetCreateWorkspace {...options} asset={cloneState.asset} cloneSource={cloneState.cloneSource} />
+  return <AssetCreateWorkspace {...options} asset={cloneState.asset} cloneSource={cloneState.cloneSource} backHref={returnToHref} />
 }
 
 function getSingleSearchParam(value: string | string[] | undefined) {

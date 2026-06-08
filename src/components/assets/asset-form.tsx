@@ -171,6 +171,7 @@ export function AssetForm({
   customFieldDefinitions,
   existingAssetPhotos = [],
   cloneSource,
+  backHref: providedBackHref,
 }: {
   asset?: AssetFormValues
   companies: Option[]
@@ -189,6 +190,7 @@ export function AssetForm({
   customFieldDefinitions: CustomFieldDefinition[]
   existingAssetPhotos?: ExistingAssetPhoto[]
   cloneSource?: CloneSourceContext
+  backHref?: string
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -223,7 +225,7 @@ export function AssetForm({
   }>({ checking: false, assetTagExists: false, serialNumberExists: false })
 
   const isEdit = Boolean(asset?.id)
-  const backHref = `/${locale}/assets`
+  const backHref = providedBackHref ?? `/${locale}/assets`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
   const ownershipType = normalizeAssetOwnershipType(values.ownershipType)
 

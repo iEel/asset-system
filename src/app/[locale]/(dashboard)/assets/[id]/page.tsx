@@ -47,6 +47,7 @@ import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { canCorrectAssetStatus } from "@/lib/asset-lifecycle-exception-policy"
 import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
+import { appendReturnTo, normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
 import {
   compactMovementDetails,
   createHealthItem,
@@ -64,6 +65,7 @@ import {
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
 type MovementCustodyDetail = {
@@ -97,9 +99,11 @@ type ActivitySummaryItem = {
 
 type RelationshipLink = { id: string; href: string; label: string; role: string }
 
-export default async function AssetDetailPage({ params }: AssetDetailPageProps) {
+export default async function AssetDetailPage({ params, searchParams }: AssetDetailPageProps) {
   const { id, locale } = await params
+  const rawSearchParams = await searchParams
   await requirePagePermission(locale, "asset", "view")
+  const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
 
   const t = await getTranslations("asset")
   const tBrandModel = await getTranslations("brandModel")
@@ -535,8 +539,8 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const checklistMissingLabels = getMissingPhotoChecklistLabels(photoChecklist, assetAttachments)
   const hasPurchaseDocuments = purchaseDocuments.length > 0 || legacyPurchaseDocuments.length > 0
   const encodedAssetId = encodeURIComponent(asset.id)
-  const editHref = `/${locale}/assets/${asset.id}/edit`
-  const cloneHref = `/${locale}/assets/new?cloneFrom=${encodedAssetId}`
+  const editHref = appendReturnTo(`/${locale}/assets/${asset.id}/edit`, returnToHref)
+  const cloneHref = appendReturnTo(`/${locale}/assets/new?cloneFrom=${encodedAssetId}`, returnToHref)
   const dataHealthItems = ownershipType === "software_license"
     ? [
         createHealthItem(Boolean(asset.serialNumber), t("dataHealthLicenseKey"), "#overview", t("dataHealthFixIdentity"), editHref),
@@ -715,7 +719,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           <div className="mb-2">
             <Breadcrumbs
               items={[
-                { label: t("title"), href: `/${locale}/assets` },
+                { label: t("title"), href: returnToHref },
                 { label: asset.assetTag },
               ]}
             />
@@ -724,6 +728,13 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           <p className="mt-1 break-words text-sm text-muted-foreground">{asset.name}</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
+          <Link
+            href={returnToHref}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:h-10 sm:min-h-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {tCommon("back")}
+          </Link>
           <ActivityDrawer
             title={t("activityDrawerTitle")}
             triggerLabel={t("activityDrawerOpen")}
@@ -745,7 +756,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             {t("cloneAsset")}
           </Link>
           <Link
-            href={`/${locale}/assets/${asset.id}/edit`}
+            href={editHref}
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0"
           >
             <Edit className="h-4 w-4" />
