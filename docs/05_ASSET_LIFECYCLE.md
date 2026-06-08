@@ -30,6 +30,8 @@ Asset status and asset condition are related but not the same field.
 - A damaged condition does not by itself move the asset through the lifecycle. The user still needs to choose the correct workflow, usually maintenance, disposal, audit follow-up, or a controlled status correction.
 - Inconsistent combinations should be treated as follow-up work. For example, `Ready` + damaged condition should usually open a maintenance ticket; `Under Maintenance` + good condition should usually be closed back to `Ready`; `Disposed` + good condition remains closed until a privileged business decision changes it.
 
+The application shows this guidance inline through help icons beside status and condition fields on Asset Create/Edit, Asset Detail, Asset Register filters, and Asset Register table headers. Keep these popovers aligned with the workflow rules in this document whenever lifecycle behavior changes.
+
 ## Allowed Transitions
 
 | From | To | Trigger |

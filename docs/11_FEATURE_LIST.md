@@ -105,6 +105,7 @@ Important data semantics:
 | Asset export | Excel export using current filters where supported |
 | Duplicate handling | Duplicate checking for asset tag/serial and batch duplicate review |
 | Asset tag generation | Configurable format, category prefix groups, company asset-tag code, branch/category/running tokens |
+| Status/condition guidance | Asset Create/Edit, Asset Detail, Asset Register filters, and Asset Register table headers expose help popovers explaining lifecycle status, physical condition, protected workflows, and normal next actions |
 | Custom fields | Category-level custom field templates rendered automatically in asset forms |
 | Model specs | Structured asset model specs with legacy text parsing and summary display |
 | Asset/model photos | Asset photos and model photos stored as attachments; Asset Register thumbnails prefer model photos first, then fall back to asset photos, while detail/evidence flows still show both |
@@ -159,6 +160,7 @@ Implemented status lifecycle and enforcement from docs/code:
 - Generic asset edit cannot directly assign protected lifecycle statuses, and the asset form blocks these changes before submit with workflow guidance.
 - Status correction can restore protected lifecycle statuses to `Ready` with a required reason and audit trail.
 - Status and condition are separate controls: status drives workflow availability, while condition records physical state and guides whether the next workflow should be Ready, repair, disposal, lost/missing follow-up, or correction.
+- Help icons beside status and condition fields surface the same lifecycle guidance inline on Asset Create/Edit, Asset Detail, Asset Register filters, and Asset Register table headers.
 - Default audit target selection excludes disposed/retired assets unless explicitly included.
 
 ## Audit

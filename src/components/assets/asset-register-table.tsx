@@ -13,6 +13,7 @@ import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
 import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import {
   assetRegisterColumnOrder,
@@ -114,6 +115,20 @@ type AssetRegisterTableProps = {
     columnPresetAudit: string
     next: string
     status: string
+    statusHelpTitle: string
+    statusHelpDescription: string
+    statusHelpReady: string
+    statusHelpPendingRepair: string
+    statusHelpUnderMaintenance: string
+    statusHelpPendingDisposal: string
+    statusHelpLostMissing: string
+    statusHelpUnderInspection: string
+    conditionHelpTitle: string
+    conditionHelpDescription: string
+    conditionHelpGood: string
+    conditionHelpDamaged: string
+    conditionHelpNeedsReview: string
+    conditionHelpMissing: string
   }
 }
 
@@ -148,6 +163,28 @@ export function AssetRegisterTable({
   )
   const allCurrentPageSelected = assets.length > 0 && assets.every((asset) => selectedIds.has(asset.id))
   const visibleColumnCount = assetRegisterColumnOrder.filter((column) => visibleColumns.has(column)).length
+  const assetStatusHelp = {
+    title: labels.statusHelpTitle,
+    description: labels.statusHelpDescription,
+    items: [
+      labels.statusHelpReady,
+      labels.statusHelpPendingRepair,
+      labels.statusHelpUnderMaintenance,
+      labels.statusHelpPendingDisposal,
+      labels.statusHelpLostMissing,
+      labels.statusHelpUnderInspection,
+    ],
+  }
+  const assetConditionHelp = {
+    title: labels.conditionHelpTitle,
+    description: labels.conditionHelpDescription,
+    items: [
+      labels.conditionHelpGood,
+      labels.conditionHelpDamaged,
+      labels.conditionHelpNeedsReview,
+      labels.conditionHelpMissing,
+    ],
+  }
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -531,8 +568,16 @@ export function AssetRegisterTable({
               {visibleColumns.has("currentLocation") && <ColumnHeader>{labels.currentLocation}</ColumnHeader>}
               {visibleColumns.has("custodian") && <ColumnHeader>{labels.custodian}</ColumnHeader>}
               {visibleColumns.has("ownershipType") && <ColumnHeader>{labels.ownershipType}</ColumnHeader>}
-              {visibleColumns.has("status") && <ColumnHeader>{labels.status}</ColumnHeader>}
-              {visibleColumns.has("condition") && <ColumnHeader>{labels.condition}</ColumnHeader>}
+              {visibleColumns.has("status") && (
+                <ColumnHeader>
+                  <HeaderWithHelp label={labels.status} help={assetStatusHelp} />
+                </ColumnHeader>
+              )}
+              {visibleColumns.has("condition") && (
+                <ColumnHeader>
+                  <HeaderWithHelp label={labels.condition} help={assetConditionHelp} />
+                </ColumnHeader>
+              )}
               {visibleColumns.has("purchasePrice") && (
                 <SortableHeader filters={filters} field="purchasePrice" label={labels.purchasePrice} buildHref={buildHref} />
               )}
@@ -814,6 +859,21 @@ function MobileAssetField({ label, value }: { label: string; value: string }) {
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd className="mt-1 break-words text-sm text-foreground">{value}</dd>
     </div>
+  )
+}
+
+function HeaderWithHelp({
+  label,
+  help,
+}: {
+  label: string
+  help: { title: string; description: string; items: string[] }
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {label}
+      <AssetStateHelpPopover {...help} />
+    </span>
   )
 }
 

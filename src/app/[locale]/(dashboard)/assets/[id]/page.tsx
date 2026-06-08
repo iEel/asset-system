@@ -33,6 +33,7 @@ import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 import { AssetQrCode } from "@/components/assets/asset-qr-code"
 import { AssetAttachments } from "@/components/assets/asset-attachments"
 import { AssetStatusCorrectionButton } from "@/components/assets/asset-status-correction-button"
+import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { AssetComponentsPanel } from "@/components/assets/asset-components-panel"
 import { AssetPurchaseDocuments } from "@/components/assets/asset-purchase-documents"
@@ -226,6 +227,29 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   ])
 
   if (!asset) notFound()
+
+  const assetStatusHelp = {
+    title: t("statusHelpTitle"),
+    description: t("statusHelpDescription"),
+    items: [
+      t("statusHelpReady"),
+      t("statusHelpPendingRepair"),
+      t("statusHelpUnderMaintenance"),
+      t("statusHelpPendingDisposal"),
+      t("statusHelpLostMissing"),
+      t("statusHelpUnderInspection"),
+    ],
+  }
+  const assetConditionHelp = {
+    title: t("conditionHelpTitle"),
+    description: t("conditionHelpDescription"),
+    items: [
+      t("conditionHelpGood"),
+      t("conditionHelpDamaged"),
+      t("conditionHelpNeedsReview"),
+      t("conditionHelpMissing"),
+    ],
+  }
 
   const installedComponentAssetIds = await prisma.assetComponent.findMany({
     where: { status: "installed", removedAt: null },
@@ -905,8 +929,14 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           <section id="overview" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={t("detailSections.overview")} subtitle={t("detailSections.overviewSubtitle")} />
             <div className="mb-5 flex flex-wrap items-center gap-3">
-              <StatusPill label={asset.status.nameTh} color={asset.status.colorCode} />
-              <StatusPill label={asset.condition.nameTh} color={asset.condition.colorCode} />
+              <div className="inline-flex items-center gap-1.5">
+                <StatusPill label={asset.status.nameTh} color={asset.status.colorCode} />
+                <AssetStateHelpPopover {...assetStatusHelp} />
+              </div>
+              <div className="inline-flex items-center gap-1.5">
+                <StatusPill label={asset.condition.nameTh} color={asset.condition.colorCode} />
+                <AssetStateHelpPopover {...assetConditionHelp} />
+              </div>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <Info label={t("category")} value={`${asset.category.code} - ${asset.category.name}`} />

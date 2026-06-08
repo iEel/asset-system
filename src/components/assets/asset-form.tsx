@@ -9,6 +9,7 @@ import Link from "next/link"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
+import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { resolveModelIdForScope } from "@/lib/asset-model-selection"
 import { assetOwnershipTypes, defaultAssetOwnershipType, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
@@ -253,6 +254,28 @@ export function AssetForm({
     : isSelectedPendingRepair
       ? t("protectedStatusEditHelp")
       : t("protectedStatusEditBlocked")
+  const assetStatusHelp = {
+    title: t("statusHelpTitle"),
+    description: t("statusHelpDescription"),
+    items: [
+      t("statusHelpReady"),
+      t("statusHelpPendingRepair"),
+      t("statusHelpUnderMaintenance"),
+      t("statusHelpPendingDisposal"),
+      t("statusHelpLostMissing"),
+      t("statusHelpUnderInspection"),
+    ],
+  }
+  const assetConditionHelp = {
+    title: t("conditionHelpTitle"),
+    description: t("conditionHelpDescription"),
+    items: [
+      t("conditionHelpGood"),
+      t("conditionHelpDamaged"),
+      t("conditionHelpNeedsReview"),
+      t("conditionHelpMissing"),
+    ],
+  }
 
   const filteredBranches = branches.filter((branch) => branch.companyId === values.companyId)
   const filteredDepartments = departments.filter(
@@ -975,7 +998,8 @@ export function AssetForm({
             <option value="">{t("selectLocation")}</option>
             {filteredLocations.map((location) => <option key={location.id} value={location.id}>{location.label}</option>)}
           </SelectField>
-          <Field label={t("status")} required>
+          <div>
+            <AssetStateFieldLabel label={t("status")} required help={assetStatusHelp} />
             <select
               value={values.statusId}
               required
@@ -1001,11 +1025,19 @@ export function AssetForm({
                 </div>
               </div>
             )}
-          </Field>
-          <SelectField label={t("condition")} value={values.conditionId} required onChange={(value) => setField("conditionId", value)}>
-            <option value="">{t("selectCondition")}</option>
-            {conditions.map((condition) => <option key={condition.id} value={condition.id}>{condition.label}</option>)}
-          </SelectField>
+          </div>
+          <div>
+            <AssetStateFieldLabel label={t("condition")} required help={assetConditionHelp} />
+            <select
+              value={values.conditionId}
+              required
+              onChange={(event) => setField("conditionId", event.target.value)}
+              className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0"
+            >
+              <option value="">{t("selectCondition")}</option>
+              {conditions.map((condition) => <option key={condition.id} value={condition.id}>{condition.label}</option>)}
+            </select>
+          </div>
         </Section>
 
         {!isEdit && (
@@ -1447,6 +1479,26 @@ function Field({ label, required, children }: { label: string; required?: boolea
       </span>
       {children}
     </label>
+  )
+}
+
+function AssetStateFieldLabel({
+  label,
+  required,
+  help,
+}: {
+  label: string
+  required?: boolean
+  help: { title: string; description: string; items: string[] }
+}) {
+  return (
+    <div className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-foreground">
+      <span>
+        {label}
+        {required && <span className="ml-1 text-danger">*</span>}
+      </span>
+      <AssetStateHelpPopover {...help} />
+    </div>
   )
 }
 

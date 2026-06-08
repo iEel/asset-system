@@ -16,6 +16,7 @@ import { assetOwnershipTypes, normalizeAssetOwnershipType } from "@/lib/asset-ow
 import { FilterPanel } from "@/components/ui/filter-panel"
 import { ActionButton } from "@/components/ui/action-button"
 import { getFieldControlClasses } from "@/lib/design-system"
+import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 
 type AssetsPageProps = {
   params: Promise<{ locale: string }>
@@ -45,6 +46,20 @@ type AssetFilterLabels = {
   quickFilterReady: string
   quickFilterPendingRepair: string
   quickFilterUnderMaintenance: string
+  statusHelpTitle: string
+  statusHelpDescription: string
+  statusHelpReady: string
+  statusHelpPendingRepair: string
+  statusHelpUnderMaintenance: string
+  statusHelpPendingDisposal: string
+  statusHelpLostMissing: string
+  statusHelpUnderInspection: string
+  conditionHelpTitle: string
+  conditionHelpDescription: string
+  conditionHelpGood: string
+  conditionHelpDamaged: string
+  conditionHelpNeedsReview: string
+  conditionHelpMissing: string
 }
 
 export default async function AssetsPage({ params, searchParams }: AssetsPageProps) {
@@ -220,6 +235,20 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           quickFilterReady: t("quickFilterReady"),
           quickFilterPendingRepair: t("quickFilterPendingRepair"),
           quickFilterUnderMaintenance: t("quickFilterUnderMaintenance"),
+          statusHelpTitle: t("statusHelpTitle"),
+          statusHelpDescription: t("statusHelpDescription"),
+          statusHelpReady: t("statusHelpReady"),
+          statusHelpPendingRepair: t("statusHelpPendingRepair"),
+          statusHelpUnderMaintenance: t("statusHelpUnderMaintenance"),
+          statusHelpPendingDisposal: t("statusHelpPendingDisposal"),
+          statusHelpLostMissing: t("statusHelpLostMissing"),
+          statusHelpUnderInspection: t("statusHelpUnderInspection"),
+          conditionHelpTitle: t("conditionHelpTitle"),
+          conditionHelpDescription: t("conditionHelpDescription"),
+          conditionHelpGood: t("conditionHelpGood"),
+          conditionHelpDamaged: t("conditionHelpDamaged"),
+          conditionHelpNeedsReview: t("conditionHelpNeedsReview"),
+          conditionHelpMissing: t("conditionHelpMissing"),
         }}
       />
 
@@ -327,6 +356,20 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           purchasePrice: t("purchasePrice"),
           selectedCount: t("selectedCount"),
           status: t("status"),
+          statusHelpTitle: t("statusHelpTitle"),
+          statusHelpDescription: t("statusHelpDescription"),
+          statusHelpReady: t("statusHelpReady"),
+          statusHelpPendingRepair: t("statusHelpPendingRepair"),
+          statusHelpUnderMaintenance: t("statusHelpUnderMaintenance"),
+          statusHelpPendingDisposal: t("statusHelpPendingDisposal"),
+          statusHelpLostMissing: t("statusHelpLostMissing"),
+          statusHelpUnderInspection: t("statusHelpUnderInspection"),
+          conditionHelpTitle: t("conditionHelpTitle"),
+          conditionHelpDescription: t("conditionHelpDescription"),
+          conditionHelpGood: t("conditionHelpGood"),
+          conditionHelpDamaged: t("conditionHelpDamaged"),
+          conditionHelpNeedsReview: t("conditionHelpNeedsReview"),
+          conditionHelpMissing: t("conditionHelpMissing"),
         }}
       />
     </div>
@@ -358,6 +401,28 @@ function AssetFilters({
   const readyStatus = statuses.find((status) => status.name === "Ready")
   const pendingRepairStatus = statuses.find((status) => status.name === "Pending Repair")
   const underMaintenanceStatus = statuses.find((status) => status.name === "Under Maintenance")
+  const assetStatusHelp = {
+    title: labels.statusHelpTitle,
+    description: labels.statusHelpDescription,
+    items: [
+      labels.statusHelpReady,
+      labels.statusHelpPendingRepair,
+      labels.statusHelpUnderMaintenance,
+      labels.statusHelpPendingDisposal,
+      labels.statusHelpLostMissing,
+      labels.statusHelpUnderInspection,
+    ],
+  }
+  const assetConditionHelp = {
+    title: labels.conditionHelpTitle,
+    description: labels.conditionHelpDescription,
+    items: [
+      labels.conditionHelpGood,
+      labels.conditionHelpDamaged,
+      labels.conditionHelpNeedsReview,
+      labels.conditionHelpMissing,
+    ],
+  }
   const quickFilters = [
     {
       key: "all",
@@ -468,7 +533,7 @@ function AssetFilters({
             </option>
           ))}
         </FilterSelect>
-        <FilterSelect name="statusId" label={labels.status} defaultValue={filters.statusId}>
+        <FilterSelect name="statusId" label={labels.status} defaultValue={filters.statusId} help={assetStatusHelp}>
           <option value="">{labels.all}</option>
           {statuses.map((status) => (
             <option key={status.id} value={status.id}>
@@ -476,7 +541,7 @@ function AssetFilters({
             </option>
           ))}
         </FilterSelect>
-        <FilterSelect name="conditionId" label={labels.condition} defaultValue={filters.conditionId}>
+        <FilterSelect name="conditionId" label={labels.condition} defaultValue={filters.conditionId} help={assetConditionHelp}>
           <option value="">{labels.all}</option>
           {conditions.map((condition) => (
             <option key={condition.id} value={condition.id}>
@@ -516,16 +581,21 @@ function FilterSelect({
   name,
   label,
   defaultValue,
+  help,
   children,
 }: {
   name: string
   label: string
   defaultValue: string
+  help?: { title: string; description: string; items: string[] }
   children: React.ReactNode
 }) {
   return (
-    <label>
-      <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{label}</span>
+    <div>
+      <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <span>{label}</span>
+        {help ? <AssetStateHelpPopover {...help} /> : null}
+      </div>
       <select
         name={name}
         defaultValue={defaultValue}
@@ -533,6 +603,6 @@ function FilterSelect({
       >
         {children}
       </select>
-    </label>
+    </div>
   )
 }
