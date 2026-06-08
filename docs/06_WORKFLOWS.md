@@ -38,6 +38,7 @@
 - Audit photo evidence is free-form and optional for matched results. Auditors can add multiple photos and optionally tag them as general evidence, checklist labels, Serial Number, or Asset Tag for easier review.
 - Record found, mismatch, not-found, out-of-scope, and correction cases.
 - Review findings and close rounds with segregation-of-duties protection.
+- Use `/audit/findings` as the Findings Resolution Center after field scanning. The page groups existing audit findings into pending review, open action, overdue, and closed queues, shows system-vs-found values together, keeps review/action/closure controls in place, and exports Excel/PDF with the same active filters.
 
 ## Maintenance And PM
 

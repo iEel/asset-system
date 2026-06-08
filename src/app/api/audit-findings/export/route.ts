@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { auditFindingColumns, createAuditWorkbook, finalizeAuditWorksheet, workbookResponse } from "@/lib/audit-excel"
 import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
+import { buildAuditFindingWhere, resolveAuditFindingStatus } from "@/lib/audit-finding-filters"
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,22 +12,9 @@ export async function GET(request: NextRequest) {
     requirePermission(user, "audit", "export")
 
     const search = request.nextUrl.searchParams.get("search")?.trim()
-    const status = request.nextUrl.searchParams.get("status")?.trim() || "pending"
+    const status = resolveAuditFindingStatus(request.nextUrl.searchParams.get("status")?.trim())
     const findings = await prisma.auditFinding.findMany({
-      where: {
-        ...(status === "all" ? {} : { reviewStatus: status }),
-        ...(search
-          ? {
-              OR: [
-                { findingType: { contains: search } },
-                { auditRound: { auditNo: { contains: search } } },
-                { auditRound: { name: { contains: search } } },
-                { asset: { assetTag: { contains: search } } },
-                { asset: { name: { contains: search } } },
-              ],
-            }
-          : {}),
-      },
+      where: buildAuditFindingWhere({ status, search }),
       include: {
         auditRound: { select: { auditNo: true, name: true } },
         asset: { select: { assetTag: true, name: true } },

@@ -50,6 +50,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 ## audit_reviewer
 
 - [ ] Review audit findings.
+- [ ] Open `/th/audit/findings` and confirm the resolution summary cards, quick filters, system-vs-found comparison, and Excel/PDF exports use the same selected queue.
 - [ ] Approve or resolve a finding.
 - [ ] Confirm segregation-of-duties guard blocks self-review where applicable.
 - [ ] Review round progress.

@@ -53,6 +53,7 @@ Asset Management System เป็น Web Application สำหรับบริ
 - บันทึกรูปหลักฐานและข้อมูลจริงที่พบ
 - แยกกรณี Found, Mismatch, Not Found, Out of Scope
 - Reviewer ตรวจและอนุมัติ Finding ก่อนอัปเดตข้อมูลหลัก
+- เมนู รายการไม่ตรง เป็นศูนย์จัดการ Finding โดยแยกงานรอ Review, งานที่ต้องแก้ไข, งานเกินกำหนด และงานที่ปิดแล้ว พร้อมเทียบข้อมูลในระบบกับข้อมูลที่พบจริงในหน้าเดียว
 - Export ผลตรวจนับและ Finding เป็น Excel/PDF
 
 ### 5. ซ่อมบำรุงและ Preventive Maintenance

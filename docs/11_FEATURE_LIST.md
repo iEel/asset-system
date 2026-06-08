@@ -1,6 +1,6 @@
 # Asset Management System - Feature List
 
-Last updated: 2026-06-07
+Last updated: 2026-06-08
 
 This feature list is based on the current repository documents and source code, not only on the original plan. It focuses on features that are represented by the current docs, routes, API endpoints, Prisma schema, and component/library structure.
 
@@ -172,7 +172,7 @@ Implemented status lifecycle and enforcement from docs/code:
 | Found/mismatch/not found | Handles found, mismatch, out-of-scope, not-found, and found-later cases |
 | Not-found workflow | Mark pending items as not found without changing asset status to Lost automatically |
 | Evidence photos | Matched scans can save without photos; mismatched actual field data requires at least one free-form evidence photo, with multiple queued photos and optional grouping tags |
-| Findings | Finding list, review actions, evidence attachments, batch actions |
+| Findings Resolution Center | `/audit/findings` summarizes pending review, open action, overdue, and closed queues; shows system-vs-found comparison, resolution-state badges, review/action/closure controls, evidence attachments, batch actions, and filtered Excel/PDF exports |
 | Reconciliation | Approve/reject findings with movement/audit trail and segregation controls |
 | Close-round controls | Close-round workflow with protection documented in lifecycle/workflow docs |
 | Exports | Audit result Excel/PDF, findings Excel/PDF, variance export |
