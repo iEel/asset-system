@@ -87,7 +87,7 @@ export async function getAssetFormOptions() {
     }),
     prisma.assetStatus.findMany({
       where: { isActive: true },
-      select: { id: true, nameTh: true },
+      select: { id: true, name: true, nameTh: true },
       orderBy: { sortOrder: "asc" },
     }),
     prisma.assetCondition.findMany({
@@ -177,7 +177,7 @@ export async function getAssetFormOptions() {
       categoryId: model.categoryId,
       brandId: model.brandId,
     })),
-    statuses: statuses.map((status) => ({ id: status.id, label: status.nameTh })),
+    statuses: statuses.map((status) => ({ id: status.id, label: status.nameTh, name: status.name })),
     conditions: conditions.map((condition) => ({ id: condition.id, label: condition.nameTh })),
     suppliers: suppliers.map((supplier) => ({
       id: supplier.id,

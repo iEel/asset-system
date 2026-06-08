@@ -109,3 +109,26 @@ test("asset detail exposes controlled status correction action", () => {
   assert.match(componentSource, /\/api\/assets\/\$\{assetId\}\/status-correction/)
   assert.match(componentSource, /reason\.trim\(\)\.length < 5/)
 })
+
+test("asset edit form guides protected lifecycle changes to the right workflow", () => {
+  const optionsSource = readFileSync("src/lib/asset-form-options.ts", "utf8")
+  const formSource = readFileSync("src/components/assets/asset-form.tsx", "utf8")
+
+  assert.match(optionsSource, /select: \{ id: true, name: true, nameTh: true \}/)
+  assert.match(optionsSource, /statuses: statuses\.map\(\(status\) => \(\{ id: status\.id, label: status\.nameTh, name: status\.name \}\)\)/)
+  assert.match(formSource, /protectedAssetWorkflowStatuses/)
+  assert.match(formSource, /isProtectedStatusChange/)
+  assert.match(formSource, /protectedStatusEditBlocked/)
+  assert.match(formSource, /\/\$\{locale\}\/maintenance\?assetId=\$\{encodeURIComponent\(asset\.id\)\}/)
+  assert.match(formSource, /openRepairWorkflow/)
+})
+
+test("asset lifecycle workflow guidance messages are localized", () => {
+  for (const file of ["messages/th.json", "messages/en.json"]) {
+    const messages = JSON.parse(readFileSync(file, "utf8"))
+    assert.equal(typeof messages.asset.protectedStatusEditBlocked, "string", file)
+    assert.equal(typeof messages.asset.protectedStatusEditHelp, "string", file)
+    assert.equal(typeof messages.asset.protectedStatusCorrectionHelp, "string", file)
+    assert.equal(typeof messages.asset.openRepairWorkflow, "string", file)
+  }
+})

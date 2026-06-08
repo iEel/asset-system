@@ -49,7 +49,9 @@
 ## Maintenance And PM
 
 - Create repair tickets from the maintenance page or asset quick actions.
+- Opening a repair ticket sets the asset to `Pending Repair` when that active status exists. The create-ticket form/API should not require `returnDate`; `returnDate` is collected when the repair is closed.
 - Track status, SLA, evidence, costs, assignee/vendor, close checklist, and inspector.
+- Close maintenance by choosing whether the asset returns to `Ready` or should move to `Pending Disposal`. Do not use the generic asset edit form for protected repair/disposal status changes.
 - Create Preventive Maintenance plans.
 - Scheduled PM generation uses the scheduler heartbeat and web-configured schedule.
 - PM history is visible from related asset detail flows.

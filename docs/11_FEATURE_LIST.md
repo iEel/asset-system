@@ -156,8 +156,9 @@ Implemented status lifecycle and enforcement from docs/code:
 - Transfer blocks assets with an active checkout and blocks normal transfer for `Disposed`, `Retired`, and `Pending Disposal`.
 - Maintenance close only allows `Ready` or `Pending Disposal`.
 - Disposal execution only allows `Disposed` or `Retired`.
-- Generic asset edit cannot directly assign protected lifecycle statuses.
+- Generic asset edit cannot directly assign protected lifecycle statuses, and the asset form blocks these changes before submit with workflow guidance.
 - Status correction can restore protected lifecycle statuses to `Ready` with a required reason and audit trail.
+- Status and condition are separate controls: status drives workflow availability, while condition records physical state and guides whether the next workflow should be Ready, repair, disposal, lost/missing follow-up, or correction.
 - Default audit target selection excludes disposed/retired assets unless explicitly included.
 
 ## Audit
@@ -186,6 +187,7 @@ Implemented status lifecycle and enforcement from docs/code:
 |---|---|
 | Maintenance tickets | Create, view, update, close, export maintenance tickets |
 | Ticket detail | Attachments, previews, close/status actions, print page |
+| Ticket creation validation | Opening a ticket moves the asset to Pending Repair when available and does not require `returnDate`; return date is required only when closing the ticket |
 | Check-in integration | Optional ticket creation from check-in when returned asset needs repair |
 | Maintenance status | Controlled close flow with post-repair asset status restrictions |
 | Evidence | Drag/drop attachments and preview/download/delete controls |

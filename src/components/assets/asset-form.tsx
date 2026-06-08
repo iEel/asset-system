@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Camera, Code2, Copy, FileText, Loader2, Plus, Save, Trash2 } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Camera, Code2, Copy, FileText, Loader2, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { FileDropzone } from "@/components/ui/file-dropzone"
@@ -18,6 +18,7 @@ import { formatFileSize } from "@/lib/uploads"
 type Option = {
   id: string
   label: string
+  name?: string | null
   code?: string | null
   companyId?: string | null
   branchId?: string | null
@@ -120,6 +121,15 @@ type CloneSourceContext = {
 }
 
 const purchaseDocumentTypes = ["purchase_order", "invoice", "delivery_note", "warranty", "quotation", "contract", "other"] as const
+const protectedAssetWorkflowStatuses = new Set([
+  "pending disposal",
+  "disposed",
+  "retired",
+  "lost",
+  "missing",
+  "under maintenance",
+  "pending repair",
+])
 
 const emptyAsset: AssetFormValues = {
   assetTag: "",
@@ -228,6 +238,21 @@ export function AssetForm({
   const backHref = providedBackHref ?? `/${locale}/assets`
   const title = useMemo(() => (isEdit ? t("editTitle") : t("createTitle")), [isEdit, t])
   const ownershipType = normalizeAssetOwnershipType(values.ownershipType)
+  const currentStatusId = asset?.statusId ?? ""
+  const selectedStatus = statuses.find((status) => status.id === values.statusId)
+  const currentStatus = statuses.find((status) => status.id === currentStatusId)
+  const selectedStatusName = normalizeStatusOptionName(selectedStatus)
+  const currentStatusIsProtected = isProtectedAssetWorkflowStatus(currentStatus)
+  const selectedStatusIsProtected = isProtectedAssetWorkflowStatus(selectedStatus)
+  const isStatusChanged = isEdit && Boolean(values.statusId) && values.statusId !== currentStatusId
+  const isProtectedStatusChange = isStatusChanged && (currentStatusIsProtected || selectedStatusIsProtected)
+  const isSelectedPendingRepair = selectedStatusName === "pending repair"
+  const repairWorkflowHref = asset?.id ? `/${locale}/maintenance?assetId=${encodeURIComponent(asset.id)}` : ""
+  const protectedStatusHelp = currentStatusIsProtected
+    ? t("protectedStatusCorrectionHelp")
+    : isSelectedPendingRepair
+      ? t("protectedStatusEditHelp")
+      : t("protectedStatusEditBlocked")
 
   const filteredBranches = branches.filter((branch) => branch.companyId === values.companyId)
   const filteredDepartments = departments.filter(
@@ -442,6 +467,10 @@ export function AssetForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (isProtectedStatusChange) {
+      toast.error(t("protectedStatusEditBlocked"))
+      return
+    }
     if (duplicateState.assetTagExists || duplicateState.serialNumberExists) {
       toast.error(t("duplicateWarning"))
       return
@@ -548,7 +577,8 @@ export function AssetForm({
       router.push(backHref)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      const errorMessage = error instanceof Error ? error.message : tCommon("error")
+      toast.error(errorMessage.includes("Protected lifecycle statuses") ? t("protectedStatusEditBlocked") : errorMessage)
     } finally {
       setSaving(false)
     }
@@ -945,10 +975,33 @@ export function AssetForm({
             <option value="">{t("selectLocation")}</option>
             {filteredLocations.map((location) => <option key={location.id} value={location.id}>{location.label}</option>)}
           </SelectField>
-          <SelectField label={t("status")} value={values.statusId} required onChange={(value) => setField("statusId", value)}>
-            <option value="">{t("selectStatus")}</option>
-            {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
-          </SelectField>
+          <Field label={t("status")} required>
+            <select
+              value={values.statusId}
+              required
+              onChange={(event) => setField("statusId", event.target.value)}
+              className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0"
+            >
+              <option value="">{t("selectStatus")}</option>
+              {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
+            </select>
+            {isProtectedStatusChange && (
+              <div className="mt-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">
+                <div className="flex gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-medium">{t("protectedStatusEditBlocked")}</p>
+                    <p className="mt-1 leading-relaxed">{protectedStatusHelp}</p>
+                    {isSelectedPendingRepair && repairWorkflowHref && (
+                      <Link href={repairWorkflowHref} className="mt-2 inline-flex font-medium underline underline-offset-2">
+                        {t("openRepairWorkflow")}
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </Field>
           <SelectField label={t("condition")} value={values.conditionId} required onChange={(value) => setField("conditionId", value)}>
             <option value="">{t("selectCondition")}</option>
             {conditions.map((condition) => <option key={condition.id} value={condition.id}>{condition.label}</option>)}
@@ -1364,7 +1417,7 @@ export function AssetForm({
           </Link>
           <button
             type="submit"
-            disabled={saving || duplicateState.checking || duplicateState.assetTagExists || duplicateState.serialNumberExists}
+            disabled={saving || isProtectedStatusChange || duplicateState.checking || duplicateState.assetTagExists || duplicateState.serialNumberExists}
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -1430,6 +1483,14 @@ function getRemainingLicenseSeats(total?: string | number | null, used?: string 
   if (!Number.isFinite(totalSeats) || totalSeats <= 0) return "-"
   const remainingSeats = Math.max(totalSeats - (Number.isFinite(usedSeats) ? usedSeats : 0), 0)
   return remainingSeats.toLocaleString("th-TH")
+}
+
+function isProtectedAssetWorkflowStatus(status: Option | null | undefined) {
+  return protectedAssetWorkflowStatuses.has(normalizeStatusOptionName(status))
+}
+
+function normalizeStatusOptionName(status: Option | null | undefined) {
+  return status?.name?.trim().toLowerCase() ?? ""
 }
 
 function CustomFieldRowsEditor({

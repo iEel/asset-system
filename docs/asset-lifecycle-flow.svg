@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1180" viewBox="0 0 1600 1180" role="img" aria-labelledby="title desc">
+  <title id="title">Asset Lifecycle Rules Flow</title>
+  <desc id="desc">Flow diagram explaining asset lifecycle rules, repair workflow, disposal workflow, and status correction.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f6f8fb; }
+      .panel { fill: #ffffff; stroke: #d8e0ea; stroke-width: 2; }
+      .card { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; }
+      .start { fill: #eaf2ff; stroke: #2563eb; }
+      .ok { fill: #eaf7ef; stroke: #16a34a; }
+      .warn { fill: #fff7e6; stroke: #f59e0b; }
+      .danger { fill: #feecec; stroke: #dc2626; }
+      .muted { fill: #f8fafc; stroke: #cbd5e1; }
+      .title { font: 700 46px "Noto Sans Thai", "Segoe UI", sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 24px "Noto Sans Thai", "Segoe UI", sans-serif; fill: #475569; }
+      .section { font: 700 28px "Noto Sans Thai", "Segoe UI", sans-serif; fill: #0f172a; }
+      .label { font: 700 23px "Noto Sans Thai", "Segoe UI", sans-serif; fill: #0f172a; }
+      .body { font: 400 19px "Noto Sans Thai", "Segoe UI", sans-serif; fill: #334155; }
+      .small { font: 400 17px "Noto Sans Thai", "Segoe UI", sans-serif; fill: #64748b; }
+      .tag { font: 700 17px "Noto Sans Thai", "Segoe UI", sans-serif; fill: #ffffff; }
+      .arrow { stroke: #64748b; stroke-width: 3; fill: none; marker-end: url(#arrowHead); }
+      .arrowOk { stroke: #16a34a; stroke-width: 3; fill: none; marker-end: url(#arrowHeadOk); }
+      .arrowWarn { stroke: #f59e0b; stroke-width: 3; fill: none; marker-end: url(#arrowHeadWarn); }
+      .arrowDanger { stroke: #dc2626; stroke-width: 3; fill: none; marker-end: url(#arrowHeadDanger); }
+      .rule { stroke: #e2e8f0; stroke-width: 2; }
+    </style>
+    <marker id="arrowHead" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrowHeadOk" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#16a34a"/>
+    </marker>
+    <marker id="arrowHeadWarn" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#f59e0b"/>
+    </marker>
+    <marker id="arrowHeadDanger" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#dc2626"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0f172a" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect class="bg" width="1600" height="1180"/>
+
+  <text x="80" y="82" class="title">Asset Lifecycle Rules</text>
+  <text x="80" y="124" class="subtitle">สถานะ lifecycle ที่ถูกล็อก ต้องเปลี่ยนผ่าน workflow เพื่อเก็บประวัติ เหตุผล และ audit log ให้ครบ</text>
+
+  <rect x="80" y="160" width="1440" height="120" rx="18" class="panel" filter="url(#shadow)"/>
+  <text x="120" y="214" class="section">หลักคิดสั้น ๆ</text>
+  <text x="120" y="250" class="body">สถานะ = workflow ของทรัพย์สิน / สภาพ = สภาพจริงของของ เช่น ดี เสียหาย ใช้งานไม่ได้</text>
+  <rect x="1000" y="190" width="450" height="60" rx="30" fill="#1d4ed8"/>
+  <text x="1036" y="228" class="tag">ห้ามเปลี่ยน protected status จากหน้าแก้ไขตรง ๆ</text>
+
+  <rect x="80" y="330" width="1440" height="760" rx="22" class="panel" filter="url(#shadow)"/>
+
+  <rect x="150" y="410" width="230" height="90" rx="16" class="card start"/>
+  <text x="190" y="448" class="label">หน้าทรัพย์สิน</text>
+  <text x="190" y="476" class="small">ดู / แก้ไขข้อมูล</text>
+
+  <path class="arrow" d="M380 455 H465"/>
+  <rect x="465" y="390" width="250" height="130" rx="18" class="card muted"/>
+  <text x="506" y="438" class="label">ต้องการเปลี่ยนอะไร?</text>
+  <text x="506" y="470" class="body">เลือกทางให้ตรง workflow</text>
+
+  <path class="arrowOk" d="M590 520 V610 H395"/>
+  <rect x="150" y="610" width="310" height="125" rx="16" class="card ok"/>
+  <text x="190" y="654" class="label">แก้ข้อมูลทั่วไป / สภาพ</text>
+  <text x="190" y="686" class="body">เช่น สภาพเสียหาย, หมายเหตุ,</text>
+  <text x="190" y="714" class="body">ที่ตั้ง หรือข้อมูลพื้นฐาน</text>
+  <path class="arrowOk" d="M460 672 H560"/>
+  <rect x="560" y="625" width="210" height="95" rx="16" class="card ok"/>
+  <text x="604" y="664" class="label">บันทึกได้</text>
+  <text x="604" y="693" class="small">จากหน้าแก้ไข</text>
+
+  <path class="arrowWarn" d="M715 455 H810"/>
+  <rect x="810" y="388" width="275" height="135" rx="16" class="card warn"/>
+  <text x="850" y="432" class="label">เสียหาย ต้องซ่อม</text>
+  <text x="850" y="464" class="body">ไม่แก้เป็น “รอซ่อม” ตรง ๆ</text>
+  <text x="850" y="492" class="body">ให้เปิดใบแจ้งซ่อม</text>
+
+  <path class="arrowWarn" d="M1085 455 H1165"/>
+  <rect x="1165" y="388" width="265" height="135" rx="16" class="card warn"/>
+  <text x="1205" y="432" class="label">เปิดใบแจ้งซ่อม</text>
+  <text x="1205" y="464" class="body">ระบบเปลี่ยนสถานะเป็น</text>
+  <text x="1205" y="492" class="body">“รอซ่อม” อัตโนมัติ</text>
+
+  <path class="arrowWarn" d="M1298 523 V585"/>
+  <rect x="1165" y="585" width="265" height="118" rx="16" class="card warn"/>
+  <text x="1205" y="628" class="label">รับงานซ่อม</text>
+  <text x="1205" y="660" class="body">สถานะเป็น</text>
+  <text x="1205" y="688" class="body">“อยู่ระหว่างซ่อม”</text>
+
+  <path class="arrowWarn" d="M1165 644 H1042"/>
+  <rect x="825" y="590" width="217" height="108" rx="16" class="card warn"/>
+  <text x="865" y="632" class="label">ปิดงานซ่อม</text>
+  <text x="865" y="664" class="body">เลือกผลลัพธ์ได้ 2 ทาง</text>
+
+  <path class="arrowOk" d="M825 618 H735 V785 H545"/>
+  <rect x="300" y="740" width="245" height="100" rx="16" class="card ok"/>
+  <text x="340" y="781" class="label">พร้อมใช้งาน</text>
+  <text x="340" y="812" class="small">ซ่อมเสร็จ ใช้งานต่อได้</text>
+
+  <path class="arrowDanger" d="M825 676 H735 V915 H545"/>
+  <rect x="300" y="870" width="245" height="100" rx="16" class="card danger"/>
+  <text x="340" y="911" class="label">รอตัดจำหน่าย</text>
+  <text x="340" y="942" class="small">ซ่อมไม่คุ้ม / รออนุมัติ</text>
+
+  <path class="arrowDanger" d="M590 520 V1010 H810"/>
+  <rect x="810" y="950" width="275" height="120" rx="16" class="card danger"/>
+  <text x="850" y="994" class="label">ต้องตัดจำหน่าย</text>
+  <text x="850" y="1026" class="body">เปิดคำขอตัดจำหน่าย</text>
+  <text x="850" y="1054" class="body">แล้วดำเนินการสุดท้าย</text>
+
+  <path class="arrowDanger" d="M1085 1010 H1165"/>
+  <rect x="1165" y="930" width="265" height="155" rx="16" class="card danger"/>
+  <text x="1205" y="976" class="label">สถานะสุดท้าย</text>
+  <line x1="1205" y1="998" x2="1390" y2="998" class="rule"/>
+  <text x="1205" y="1032" class="body">ตัดจำหน่ายแล้ว</text>
+  <text x="1205" y="1064" class="body">หรือ ปลดระวาง</text>
+
+  <rect x="80" y="1110" width="1440" height="1" fill="#dbe4ee"/>
+  <text x="80" y="1144" class="small">หมายเหตุ: ถ้ากด protected lifecycle status ผิด ให้ใช้ “แก้ไขสถานะ” จากหน้ารายละเอียดทรัพย์สินเพื่อกลับเป็น “พร้อมใช้งาน” พร้อมระบุเหตุผล</text>
+</svg>
