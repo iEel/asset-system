@@ -66,6 +66,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Review asset cost/accounting fields.
 - [ ] Review depreciation/book-value report.
 - [ ] Export reports.
+- [ ] On Reports, confirm branch breakdown rows show company/branch labels clearly when branch names repeat across companies and no duplicate-key console warning appears.
 - [ ] Review disposal request financial details.
 - [ ] Confirm accounting-only user cannot perform unrelated admin actions.
 

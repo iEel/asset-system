@@ -211,7 +211,7 @@ Implemented status lifecycle and enforcement from docs/code:
 
 | Feature | Details |
 |---|---|
-| Reports page | Central report entry point |
+| Reports page | Central report entry point with shared filters and grouped breakdowns; branch breakdown labels include company code so repeated branch names across companies remain clear |
 | Asset overview export | `reports/assets-overview/export` API |
 | Asset register export | Current filter export through asset export API |
 | Audit exports | Audit round results, findings, variance Excel/PDF exports |

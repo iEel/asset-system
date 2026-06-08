@@ -167,14 +167,14 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     prisma.assetStatus.findMany({ where: { id: { in: byStatus.map((item) => item.statusId) } }, select: { id: true, nameTh: true } }),
     prisma.assetCategory.findMany({ where: { id: { in: byCategory.map((item) => item.categoryId) } }, select: { id: true, code: true, name: true } }),
     prisma.company.findMany({ where: { id: { in: byCompany.map((item) => item.companyId) } }, select: { id: true, code: true, nameTh: true } }),
-    prisma.branch.findMany({ where: { id: { in: byBranch.map((item) => item.branchId) } }, select: { id: true, code: true, name: true } }),
+    prisma.branch.findMany({ where: { id: { in: byBranch.map((item) => item.branchId) } }, select: { id: true, code: true, name: true, company: { select: { code: true } } } }),
     prisma.department.findMany({ where: { id: { in: byDepartment.map((item) => item.departmentId).filter((id): id is string => Boolean(id)) } }, select: { id: true, code: true, name: true } }),
   ])
 
   const statusMap = new Map(statuses.map((status) => [status.id, status.nameTh]))
   const categoryMap = new Map(categories.map((category) => [category.id, `${category.code} - ${category.name}`]))
   const companyMap = new Map(companies.map((company) => [company.id, `${company.code} - ${company.nameTh}`]))
-  const branchMap = new Map(branches.map((branch) => [branch.id, `${branch.code} - ${branch.name}`]))
+  const branchMap = new Map(branches.map((branch) => [branch.id, `${branch.company.code} / ${branch.code} - ${branch.name}`]))
   const departmentMap = new Map(departments.map((department) => [department.id, `${department.code} - ${department.name}`]))
   const custodianMap = new Map(custodianOptions.map((employee) => [employee.id, `${employee.code} - ${employee.fullNameTh}`]))
   const locationMap = new Map(locationOptions.map((location) => [location.id, `${location.code} - ${location.name}`]))
@@ -853,8 +853,8 @@ function ReportTable({ title, rows }: { title: string; rows: [string, number][] 
         {rows.length === 0 ? (
           <div className="text-sm text-muted-foreground">-</div>
         ) : (
-          rows.map(([label, count]) => (
-            <div key={label} className="flex items-center justify-between gap-3 text-sm">
+          rows.map(([label, count], index) => (
+            <div key={`${index}:${label}`} className="flex items-center justify-between gap-3 text-sm">
               <span className="truncate text-muted-foreground">{label}</span>
               <span className="font-semibold text-foreground">{count.toLocaleString("th-TH")}</span>
             </div>
