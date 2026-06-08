@@ -14,13 +14,16 @@ import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { MobileActionBar } from "@/components/ui/mobile-action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 
 type DisposalDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function DisposalDetailPage({ params }: DisposalDetailPageProps) {
+export default async function DisposalDetailPage({ params, searchParams }: DisposalDetailPageProps) {
   const { locale, id } = await params
+  const rawSearchParams = await searchParams
   const user = await requirePagePermission(locale, "disposal", "view")
   const canApprove = hasPermission(user, "disposal", "approve")
   const canEdit = hasPermission(user, "disposal", "edit")
@@ -76,6 +79,8 @@ export default async function DisposalDetailPage({ params }: DisposalDetailPageP
     disposed: t("statuses.disposed"),
     rejected: t("statuses.rejected"),
   }
+  const returnToHref = normalizeOperationalReturnTo(locale, "disposal", rawSearchParams.returnTo)
+  const printHref = appendOperationalReturnTo(`/${locale}/disposal/${disposalRequest.id}/print`, returnToHref)
 
   return (
     <div className="space-y-6 pb-24 md:pb-0">
@@ -84,7 +89,7 @@ export default async function DisposalDetailPage({ params }: DisposalDetailPageP
           <div className="mb-2">
             <Breadcrumbs
               items={[
-                { label: t("title"), href: `/${locale}/disposal` },
+                { label: t("title"), href: returnToHref },
                 { label: disposalRequest.disposalNo },
               ]}
             />
@@ -96,7 +101,14 @@ export default async function DisposalDetailPage({ params }: DisposalDetailPageP
         </div>
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
           <Link
-            href={`/${locale}/disposal/${disposalRequest.id}/print`}
+            href={returnToHref}
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
+          >
+            <Trash2 className="h-4 w-4" />
+            {tCommon("back")}
+          </Link>
+          <Link
+            href={printHref}
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
           >
             <Printer className="h-4 w-4" />
@@ -119,9 +131,9 @@ export default async function DisposalDetailPage({ params }: DisposalDetailPageP
       <MobileActionBar
         actions={[
           { href: `/${locale}/assets/${disposalRequest.asset.id}`, label: t("openAsset"), icon: <FileText className="h-4 w-4" />, primary: true },
-          { href: `/${locale}/disposal/${disposalRequest.id}/print`, label: t("printDisposal"), icon: <Printer className="h-4 w-4" /> },
+          { href: printHref, label: t("printDisposal"), icon: <Printer className="h-4 w-4" /> },
           { href: "#history", label: t("disposalHistory"), icon: <History className="h-4 w-4" /> },
-          { href: `/${locale}/disposal`, label: tCommon("back"), icon: <Trash2 className="h-4 w-4" /> },
+          { href: returnToHref, label: tCommon("back"), icon: <Trash2 className="h-4 w-4" /> },
         ]}
       />
 

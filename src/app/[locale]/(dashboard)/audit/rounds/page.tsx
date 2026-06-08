@@ -9,6 +9,7 @@ import { formatDate } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
+import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 
 type AuditRoundsPageProps = {
   params: Promise<{ locale: string }>
@@ -164,6 +165,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
     mismatch: t("viewMismatch"),
     readyToClose: t("viewReadyToClose"),
   }
+  const auditRoundsReturnHref = buildAuditRoundsHref(locale, activeView, searchText)
   const quickFilters = auditRoundViewValues.map((value) => ({
     value,
     label: viewLabels[value],
@@ -175,7 +177,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
       label: t("actionContinueScan"),
       help: t("actionContinueScanHelp"),
       count: pendingRounds.reduce((sum, round) => sum + (insightsByRoundId.get(round.id)?.pending ?? 0), 0),
-      href: pendingRounds[0] ? `/${locale}/audit/rounds/${pendingRounds[0].id}/scan` : buildAuditRoundsHref(locale, "pending", searchText),
+      href: pendingRounds[0] ? appendOperationalReturnTo(`/${locale}/audit/rounds/${pendingRounds[0].id}/scan`, auditRoundsReturnHref) : buildAuditRoundsHref(locale, "pending", searchText),
       icon: <ScanLine className="h-5 w-5" />,
       tone: "primary",
     },
@@ -183,7 +185,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
       label: t("actionReviewFindings"),
       help: t("actionReviewFindingsHelp"),
       count: reviewRounds.reduce((sum, round) => sum + (insightsByRoundId.get(round.id)?.followUps ?? 0), 0),
-      href: `/${locale}/audit/findings?status=pending`,
+      href: appendOperationalReturnTo(`/${locale}/audit/findings?status=pending`, auditRoundsReturnHref),
       icon: <AlertTriangle className="h-5 w-5" />,
       tone: "warning",
     },
@@ -191,7 +193,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
       label: t("actionCloseReadyRounds"),
       help: t("actionCloseReadyRoundsHelp"),
       count: readyRounds.length,
-      href: readyRounds[0] ? `/${locale}/audit/rounds/${readyRounds[0].id}` : buildAuditRoundsHref(locale, "readyToClose", searchText),
+      href: readyRounds[0] ? appendOperationalReturnTo(`/${locale}/audit/rounds/${readyRounds[0].id}`, auditRoundsReturnHref) : buildAuditRoundsHref(locale, "readyToClose", searchText),
       icon: <ClipboardCheck className="h-5 w-5" />,
       tone: "success",
     },
@@ -320,12 +322,13 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                 hasMismatch: round._count.findings > 0,
                 readyToClose: false,
               }
+              const roundDetailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
 
               return (
                 <article key={round.id} className="min-w-0 rounded-md border border-border bg-background p-3">
                   <div className="flex min-w-0 items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <Link href={`/${locale}/audit/rounds/${round.id}`} className="break-words text-sm font-semibold text-foreground hover:text-primary">
+                      <Link href={roundDetailHref} className="break-words text-sm font-semibold text-foreground hover:text-primary">
                         {round.auditNo}
                       </Link>
                       <p className="mt-1 line-clamp-2 text-sm text-foreground">{round.name}</p>
@@ -360,7 +363,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                     />
                   </div>
                   <Link
-                    href={`/${locale}/audit/rounds/${round.id}`}
+                    href={roundDetailHref}
                     className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
                   >
                     <Eye className="h-4 w-4" />
@@ -402,11 +405,12 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                     hasMismatch: round._count.findings > 0,
                     readyToClose: false,
                   }
+                  const roundDetailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
 
                   return (
                     <ClickableTableRow
                       key={round.id}
-                      href={`/${locale}/audit/rounds/${round.id}`}
+                      href={roundDetailHref}
                       label={`${tCommon("view")}: ${round.auditNo}`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{round.auditNo}</td>
@@ -443,7 +447,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         <Link
-                          href={`/${locale}/audit/rounds/${round.id}`}
+                          href={roundDetailHref}
                           title={tCommon("view")}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
                         >

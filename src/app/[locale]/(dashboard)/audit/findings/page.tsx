@@ -22,6 +22,7 @@ import {
   resolveAuditFindingStatus,
   type AuditFindingResolutionStatus,
 } from "@/lib/audit-finding-filters"
+import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 
 type AuditFindingsPageProps = {
   params: Promise<{ locale: string }>
@@ -41,6 +42,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   const searchText = search.trim()
   const status = resolveAuditFindingStatus(statusParam)
   const today = getAuditFindingToday()
+  const auditFindingsReturnHref = buildAuditFindingsHref(locale, status, searchText)
   const exportParams = new URLSearchParams()
   if (searchText) exportParams.set("search", searchText)
   exportParams.set("status", status)
@@ -287,7 +289,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     ) : null}
                     {canCreateDisposal && finding.asset ? (
                       <Link
-                        href={`/${locale}/disposal?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`}
+                        href={appendOperationalReturnTo(`/${locale}/disposal?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref)}
                         className="inline-flex min-h-11 items-center justify-center rounded-md border border-warning/40 bg-warning/5 px-3 text-sm font-medium text-warning"
                       >
                         {t("openDisposalRequest")}
@@ -394,7 +396,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                         )}
                         {canCreateDisposal && finding.asset ? (
                           <Link
-                            href={`/${locale}/disposal?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`}
+                            href={appendOperationalReturnTo(`/${locale}/disposal?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref)}
                             className="ml-2 inline-flex h-8 items-center rounded-md border border-warning/40 bg-warning/5 px-2 text-xs font-medium text-warning"
                           >
                             {t("openDisposalRequest")}

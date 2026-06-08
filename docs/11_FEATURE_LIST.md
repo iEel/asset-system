@@ -169,6 +169,7 @@ Implemented status lifecycle and enforcement from docs/code:
 |---|---|
 | Audit rounds | Create rounds from scoped asset filters |
 | Audit rounds action hub | Action-first list with next-action cards, URL-backed quick filters, and ready-to-close/blocker badges for high-volume audit operations |
+| Audit return navigation | Round detail, pending, and scan links preserve the originating rounds view/search through sanitized internal `returnTo` targets; scan/pending return to the round detail and round detail returns to the filtered rounds list |
 | Candidate preview | Preview audit candidates before creating a round |
 | Expected list | Audit items generated from scope and start as pending |
 | Audit detail | Progress metrics and expected item list |
@@ -178,6 +179,7 @@ Implemented status lifecycle and enforcement from docs/code:
 | Not-found workflow | Mark pending items as not found without changing asset status to Lost automatically |
 | Evidence photos | Matched scans can save without photos; mismatched actual field data requires at least one free-form evidence photo, with multiple queued photos and optional grouping tags |
 | Findings Resolution Center | `/audit/findings` summarizes pending review, open action, overdue, and closed queues; shows system-vs-found comparison, resolution-state badges, review/action/closure controls, evidence attachments, batch actions, and filtered Excel/PDF exports |
+| Findings follow-up context | Disposal follow-up links from findings preserve the active findings queue/search as sanitized return context |
 | Reconciliation | Approve/reject findings with movement/audit trail and segregation controls |
 | Close-round controls | Close-round workflow with protection documented in lifecycle/workflow docs |
 | Exports | Audit result Excel/PDF, findings Excel/PDF, variance export |
@@ -189,6 +191,7 @@ Implemented status lifecycle and enforcement from docs/code:
 |---|---|
 | Maintenance tickets | Create, view, update, close, export maintenance tickets |
 | Ticket detail | Attachments, previews, close/status actions, print page |
+| Maintenance return navigation | Ticket detail, print, and Kanban/status drilldowns preserve the originating maintenance tab/status/search/asset filter through sanitized return context |
 | Ticket creation validation | Opening a ticket moves the asset to Pending Repair when available and does not require `returnDate`; return date is required only when closing the ticket |
 | Check-in integration | Optional ticket creation from check-in when returned asset needs repair |
 | Maintenance status | Controlled close flow with post-repair asset status restrictions |
@@ -204,6 +207,7 @@ Implemented status lifecycle and enforcement from docs/code:
 |---|---|
 | Disposal request | Create and list disposal requests |
 | Detail | Request, asset, decision, execution/evidence, movement/history sections |
+| Disposal return navigation | Request detail and print links preserve the originating disposal status/search filter through sanitized return context |
 | Approval | Approve/reject flow with approval remark/value/status updates |
 | Execution | Separate actual disposal execution with evidence, recipient/buyer/destination/document number/value/completion date |
 | Duplicate guard | Duplicate open requests are guarded |

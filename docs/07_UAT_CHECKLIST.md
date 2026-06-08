@@ -59,6 +59,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Approve or resolve a finding.
 - [ ] Confirm segregation-of-duties guard blocks self-review where applicable.
 - [ ] Review round progress.
+- [ ] From `/th/audit/rounds`, apply a quick filter/search, open round detail, open Scan and Pending from that round, then use Back and confirm the browser returns to the same round detail and filtered rounds list context.
 - [ ] Close an audit round.
 
 ## accounting
@@ -101,9 +102,9 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Add asset, print QR label, scan QR, then check-out.
 - [ ] Check-out asset, check-in with `Ready`, and confirm status/timeline.
 - [ ] Check-out asset, check-in with `Pending Repair`, and create maintenance follow-up.
-- [ ] Create maintenance ticket, close ticket, and verify asset detail maintenance history.
+- [ ] Create maintenance ticket, open it from a filtered maintenance list, print/open detail, then confirm Back returns to the same list tab/filter before closing the ticket and verifying asset detail maintenance history.
 - [ ] Create PM plan, generate due PM ticket, and verify no duplicate ticket is created for the same due occurrence.
-- [ ] Create disposal request, approve it, execute disposal, and confirm asset is no longer counted in default audit target selection.
+- [ ] Create disposal request, open it from a filtered disposal list, print/open detail, then confirm Back returns to the same list filter before approving/executing disposal and confirming the asset is no longer counted in default audit target selection.
 - [ ] Create audit round, scan assets, review findings, close round, and export results.
 - [ ] Import legacy assets, verify manual tags, and export asset register.
 

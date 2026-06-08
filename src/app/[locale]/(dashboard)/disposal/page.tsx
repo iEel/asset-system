@@ -14,6 +14,7 @@ import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
+import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 
 type DisposalPageProps = {
   params: Promise<{ locale: string }>
@@ -31,6 +32,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
   const tCommon = await getTranslations("common")
   const filters = parseDisposalListParams(rawSearchParams)
   const exportQuery = buildDisposalQueryString(filters)
+  const disposalReturnHref = `/${locale}/disposal${exportQuery ? `?${exportQuery}` : ""}`
 
   const [requests, options] = await Promise.all([
     prisma.disposalRequest.findMany({
@@ -170,7 +172,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
             requests.map((request) => (
               <article key={request.id} className="min-w-0 rounded-md border border-border bg-background p-3">
                 <div className="flex min-w-0 flex-col gap-2">
-                  <Link href={`/${locale}/disposal/${request.id}`} className="break-words text-sm font-semibold text-foreground hover:text-primary">
+                  <Link href={appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)} className="break-words text-sm font-semibold text-foreground hover:text-primary">
                     {request.disposalNo}
                   </Link>
                   <div>
@@ -205,7 +207,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                 </div>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                   <Link
-                    href={`/${locale}/disposal/${request.id}`}
+                    href={appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)}
                     className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
                   >
                     {tCommon("view")}
@@ -258,11 +260,11 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                 requests.map((request) => (
                   <ClickableTableRow
                     key={request.id}
-                    href={`/${locale}/disposal/${request.id}`}
+                    href={appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)}
                     label={`${tCommon("view")}: ${request.disposalNo}`}
                   >
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">
-                      <Link href={`/${locale}/disposal/${request.id}`} className="hover:text-primary">
+                      <Link href={appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)} className="hover:text-primary">
                         {request.disposalNo}
                       </Link>
                     </td>

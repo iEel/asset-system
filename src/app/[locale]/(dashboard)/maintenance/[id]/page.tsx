@@ -17,13 +17,16 @@ import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { MobileActionBar } from "@/components/ui/mobile-action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 
 type MaintenanceDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function MaintenanceDetailPage({ params }: MaintenanceDetailPageProps) {
+export default async function MaintenanceDetailPage({ params, searchParams }: MaintenanceDetailPageProps) {
   const { locale, id } = await params
+  const rawSearchParams = await searchParams
   const user = await requirePagePermission(locale, "maintenance", "view")
   const canEdit = hasPermission(user, "maintenance", "edit")
   const canCreateDisposal = hasPermission(user, "disposal", "create")
@@ -78,10 +81,16 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
   const repairCostRatio = purchasePrice > 0 ? totalRepairCost / purchasePrice : 0
   const shouldReviewDisposal = totalRepairCount >= 3 || repairCostRatio >= 0.5
   const hasAfterRepairEvidence = attachments.some((attachment) => getMaintenanceAttachmentType(attachment.originalName) === "after_repair")
+  const returnToHref = normalizeOperationalReturnTo(locale, "maintenance", rawSearchParams.returnTo)
+  const printHref = appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}/print`, returnToHref)
   const disposalReason = `${t("disposalReasonPrefix")} ${ticket.asset.assetTag} / ${ticket.repairNo}: ${t("disposalReasonDetail", {
     count: totalRepairCount,
     cost: formatCurrency(totalRepairCost),
   })}`
+  const disposalRequestHref = appendOperationalReturnTo(
+    `/${locale}/disposal?assetId=${ticket.asset.id}&reason=${encodeURIComponent(disposalReason)}&sourceType=maintenance&sourceId=${ticket.id}`,
+    returnToHref,
+  )
 
   return (
     <div className="space-y-6 pb-24 md:pb-0">
@@ -90,7 +99,7 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
           <div className="mb-2">
             <Breadcrumbs
               items={[
-                { label: t("title"), href: `/${locale}/maintenance` },
+                { label: t("title"), href: returnToHref },
                 { label: ticket.repairNo },
               ]}
             />
@@ -100,7 +109,14 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
         </div>
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
           <Link
-            href={`/${locale}/maintenance/${ticket.id}/print`}
+            href={returnToHref}
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
+          >
+            <Wrench className="h-4 w-4" />
+            {tCommon("back")}
+          </Link>
+          <Link
+            href={printHref}
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
           >
             <Printer className="h-4 w-4" />
@@ -136,9 +152,9 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
       <MobileActionBar
         actions={[
           { href: `/${locale}/assets/${ticket.asset.id}`, label: t("openAsset"), icon: <FileText className="h-4 w-4" />, primary: true },
-          { href: `/${locale}/maintenance/${ticket.id}/print`, label: t("printRepair"), icon: <Printer className="h-4 w-4" /> },
+          { href: printHref, label: t("printRepair"), icon: <Printer className="h-4 w-4" /> },
           { href: "#history", label: t("maintenanceHistory"), icon: <History className="h-4 w-4" /> },
-          { href: `/${locale}/maintenance`, label: tCommon("back"), icon: <Wrench className="h-4 w-4" /> },
+          { href: returnToHref, label: tCommon("back"), icon: <Wrench className="h-4 w-4" /> },
         ]}
       />
 
@@ -261,7 +277,7 @@ export default async function MaintenanceDetailPage({ params }: MaintenanceDetai
                 {purchasePrice > 0 ? <div>{t("disposalReviewRatio", { percent: Math.round(repairCostRatio * 100) })}</div> : null}
               </div>
               <Link
-                href={`/${locale}/disposal?assetId=${ticket.asset.id}&reason=${encodeURIComponent(disposalReason)}&sourceType=maintenance&sourceId=${ticket.id}`}
+                href={disposalRequestHref}
                 className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 text-sm font-medium text-warning transition-colors hover:bg-warning/10"
               >
                 <Trash2 className="h-4 w-4" />

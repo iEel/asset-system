@@ -22,6 +22,7 @@ import { getMaintenancePlanDueState, summarizeMaintenancePlans } from "@/lib/pre
 import { hasPrismaModelDelegate } from "@/lib/prisma-client-cache"
 import { buildMaintenanceViewHref, normalizeMaintenancePageView, type MaintenancePageView } from "@/lib/maintenance-view"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
+import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 
 type MaintenancePageProps = {
   params: Promise<{ locale: string }>
@@ -40,6 +41,11 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
   const listFilters = parseMaintenanceListParams(filters)
   const activeView = normalizeMaintenancePageView(filters.view)
   const exportQuery = buildMaintenanceQueryString(listFilters)
+  const maintenanceReturnParams = new URLSearchParams(exportQuery)
+  maintenanceReturnParams.set("view", activeView)
+  if (filters.assetId) maintenanceReturnParams.set("assetId", filters.assetId)
+  const maintenanceReturnQuery = maintenanceReturnParams.toString()
+  const maintenanceReturnHref = `/${locale}/maintenance${maintenanceReturnQuery ? `?${maintenanceReturnQuery}` : ""}`
   const evidenceTicketIds = await getMaintenanceAttachmentTicketIds()
   const hasMaintenancePlanSupport = hasPrismaModelDelegate(prisma, "maintenancePlan")
 
@@ -239,6 +245,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                 <MaintenanceKanbanColumn
                   key={status}
                   locale={locale}
+                  maintenanceReturnHref={maintenanceReturnHref}
                   status={status}
                   label={statusLabels[status] ?? status}
                   tickets={tickets.filter((ticket) => ticket.repairStatus === status)}
@@ -276,7 +283,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                 tickets.map((ticket) => (
                   <article key={ticket.id} className="min-w-0 rounded-md border border-border bg-background p-3">
                     <div className="flex min-w-0 flex-col gap-2">
-                      <Link href={`/${locale}/maintenance/${ticket.id}`} className="break-words text-sm font-semibold text-foreground hover:text-primary">
+                      <Link href={appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}`, maintenanceReturnHref)} className="break-words text-sm font-semibold text-foreground hover:text-primary">
                         {ticket.repairNo}
                       </Link>
                       <div>
@@ -302,13 +309,13 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                     </div>
                     <div className="mt-3 grid gap-2 sm:grid-cols-2">
                       <Link
-                        href={`/${locale}/maintenance/${ticket.id}`}
+                        href={appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}`, maintenanceReturnHref)}
                         className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
                       >
                         {tCommon("view")}
                       </Link>
                       <Link
-                        href={`/${locale}/maintenance/${ticket.id}/print`}
+                        href={appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}/print`, maintenanceReturnHref)}
                         className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
                       >
                         {t("printRepair")}
@@ -376,7 +383,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                     tickets.map((ticket) => (
                       <ClickableTableRow
                         key={ticket.id}
-                        href={`/${locale}/maintenance/${ticket.id}`}
+                        href={appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}`, maintenanceReturnHref)}
                         label={`${tCommon("view")}: ${ticket.repairNo}`}
                       >
                         <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{ticket.repairNo}</td>
@@ -418,13 +425,13 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                         <td className="whitespace-nowrap px-4 py-3">
                           <div className="flex items-center gap-2">
                             <Link
-                              href={`/${locale}/maintenance/${ticket.id}`}
+                              href={appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}`, maintenanceReturnHref)}
                               className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent"
                             >
                               {tCommon("view")}
                             </Link>
                             <Link
-                              href={`/${locale}/maintenance/${ticket.id}/print`}
+                              href={appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}/print`, maintenanceReturnHref)}
                               className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent"
                             >
                               {t("printRepair")}
@@ -690,11 +697,13 @@ function MobileMaintenanceField({ label, value }: { label: string; value: string
 
 function MaintenanceKanbanColumn({
   locale,
+  maintenanceReturnHref,
   status,
   label,
   tickets,
 }: {
   locale: string
+  maintenanceReturnHref: string
   status: string
   label: string
   tickets: Array<{
@@ -717,7 +726,7 @@ function MaintenanceKanbanColumn({
         {tickets.slice(0, 4).map((ticket) => (
           <Link
             key={ticket.id}
-            href={`/${locale}/maintenance/${ticket.id}`}
+            href={appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}`, maintenanceReturnHref)}
             className="block rounded-md border border-border bg-surface p-3 text-sm transition-colors hover:bg-accent"
           >
             <div className="font-medium text-foreground">{ticket.repairNo}</div>
@@ -731,7 +740,7 @@ function MaintenanceKanbanColumn({
         ))}
         {tickets.length > 4 ? (
           <Link
-            href={`/${locale}/maintenance?view=tickets&status=${status}`}
+            href={appendOperationalReturnTo(`/${locale}/maintenance?view=tickets&status=${status}`, maintenanceReturnHref)}
             className="block rounded-md border border-dashed border-border px-3 py-2 text-center text-xs font-medium text-muted-foreground transition-colors hover:bg-accent"
           >
             +{tickets.length - 4}

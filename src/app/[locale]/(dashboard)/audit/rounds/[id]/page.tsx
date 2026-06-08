@@ -17,13 +17,16 @@ import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { isSameAuditActor } from "@/lib/audit-segregation"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
+import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 
 type AuditRoundDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function AuditRoundDetailPage({ params }: AuditRoundDetailPageProps) {
+export default async function AuditRoundDetailPage({ params, searchParams }: AuditRoundDetailPageProps) {
   const { locale, id } = await params
+  const rawSearchParams = await searchParams
   const user = await requirePagePermission(locale, "audit", "view")
   const canApprove = hasPermission(user, "audit", "approve")
   const t = await getTranslations("auditRound")
@@ -115,6 +118,10 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
     auditStartDate: round.startDate,
     items: evidenceItems,
   })
+  const returnToHref = normalizeOperationalReturnTo(locale, "audit-rounds", rawSearchParams.returnTo)
+  const roundDetailReturnHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, returnToHref)
+  const pendingHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/pending`, roundDetailReturnHref)
+  const scanHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/scan`, roundDetailReturnHref)
 
   return (
     <div className="pb-24 md:pb-0">
@@ -123,7 +130,7 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
           <div className="mb-2">
             <Breadcrumbs
               items={[
-                { label: t("title"), href: `/${locale}/audit/rounds` },
+                { label: t("title"), href: returnToHref },
                 { label: round.auditNo },
               ]}
             />
@@ -158,14 +165,14 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
               {t("exportVariance")}
             </a>
             <Link
-              href={`/${locale}/audit/rounds/${round.id}/pending`}
+              href={pendingHref}
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
             >
               <AlertTriangle className="h-4 w-4" />
               {t("pendingAssets")}
             </Link>
             <Link
-              href={`/${locale}/audit/rounds/${round.id}/scan`}
+              href={scanHref}
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0 sm:w-auto"
             >
               <ScanLine className="h-4 w-4" />
@@ -176,10 +183,10 @@ export default async function AuditRoundDetailPage({ params }: AuditRoundDetailP
       </div>
       <MobileActionBar
         actions={[
-          { href: `/${locale}/audit/rounds/${round.id}/scan`, label: t("scan"), icon: <ScanLine className="h-4 w-4" />, primary: true },
-          { href: `/${locale}/audit/rounds/${round.id}/pending`, label: t("pendingAssets"), icon: <AlertTriangle className="h-4 w-4" /> },
+          { href: scanHref, label: t("scan"), icon: <ScanLine className="h-4 w-4" />, primary: true },
+          { href: pendingHref, label: t("pendingAssets"), icon: <AlertTriangle className="h-4 w-4" /> },
           { href: `/${locale}/audit/findings?status=pending`, label: t("pendingReview"), icon: <FileText className="h-4 w-4" /> },
-          { href: `/${locale}/audit/rounds`, label: tCommon("back"), icon: <Download className="h-4 w-4" /> },
+          { href: returnToHref, label: tCommon("back"), icon: <Download className="h-4 w-4" /> },
         ]}
       />
 

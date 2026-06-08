@@ -1,10 +1,12 @@
 "use client"
 
+import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import {
   AlertTriangle,
+  ArrowLeft,
   Camera,
   CheckCircle2,
   ImagePlus,
@@ -91,11 +93,13 @@ type OutOfScopeAsset = {
 export function AuditScanForm({
   roundId,
   roundName,
+  backHref,
   items,
   options,
 }: {
   roundId: string
   roundName: string
+  backHref: string
   items: AuditScanItem[]
   options: AuditScanOptions
 }) {
@@ -646,6 +650,10 @@ export function AuditScanForm({
     <div className="mx-auto max-w-6xl">
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
+          <Link href={backHref} className="mb-3 inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+            <ArrowLeft className="h-4 w-4" />
+            {tCommon("back")}
+          </Link>
           <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{roundName}</p>
         </div>

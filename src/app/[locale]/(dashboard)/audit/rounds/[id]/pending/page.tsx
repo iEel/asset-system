@@ -7,13 +7,16 @@ import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { AuditMarkNotFoundButton } from "@/components/audit/audit-mark-not-found-button"
 import { formatDateTime } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { normalizeAuditRoundDetailReturnTo } from "@/lib/operational-return-navigation"
 
 type AuditPendingPageProps = {
   params: Promise<{ locale: string; id: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function AuditPendingPage({ params }: AuditPendingPageProps) {
+export default async function AuditPendingPage({ params, searchParams }: AuditPendingPageProps) {
   const { locale, id } = await params
+  const rawSearchParams = await searchParams
   await requirePagePermission(locale, "audit", "view")
   const t = await getTranslations("auditPending")
   const tCommon = await getTranslations("common")
@@ -49,11 +52,12 @@ export default async function AuditPendingPage({ params }: AuditPendingPageProps
     },
   })
   if (!round) notFound()
+  const returnToHref = normalizeAuditRoundDetailReturnTo(locale, round.id, rawSearchParams.returnTo)
 
   return (
     <div>
       <div className="mb-6">
-        <Link href={`/${locale}/audit/rounds/${round.id}`} className="text-sm text-primary hover:underline">
+        <Link href={returnToHref} className="text-sm text-primary hover:underline">
           {tCommon("back")}
         </Link>
         <h1 className="mt-2 text-2xl font-bold text-foreground">{t("title")}</h1>

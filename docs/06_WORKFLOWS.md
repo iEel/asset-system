@@ -38,6 +38,7 @@
 - Create audit rounds from filtered asset candidates.
 - Preview candidates before creating a round.
 - The audit rounds list is action-first for large counting workloads: the page summarizes next actions for continuing scans, reviewing mismatches, and closing ready rounds, and exposes quick filters for all/open/pending/review/mismatch/ready-to-close rounds. Switching quick filters updates the URL-backed view without jumping the dashboard scroll position back to the top.
+- Opening audit round detail, pending list, or scan from `/audit/rounds` preserves the current rounds view/search through a sanitized `returnTo` value. The scan and pending pages return to the round detail, and the round detail returns to the originating rounds list context.
 - Scan printed Asset Label QR codes or manually enter asset identifiers. The Audit Scan camera uses the same native-resolution Asset QR decoder as `/asset-management/scan`, but keeps continuous scan behavior for counting multiple labels in one session.
 - After an asset is selected, the scan page shows the system data that auditors need for field comparison: current location, custodian, department, and condition.
 - In fast walking mode, auditors choose `ข้อมูลตรง` to save a matched result immediately, or `ข้อมูลไม่ตรง` to open the detailed actual-value fields. When actual field data differs from expected data, the scan result must include at least one evidence photo before it can be saved.
@@ -45,11 +46,13 @@
 - Record found, mismatch, not-found, out-of-scope, and correction cases.
 - Review findings and close rounds with segregation-of-duties protection.
 - Use `/audit/findings` as the Findings Resolution Center after field scanning. The page groups existing audit findings into pending review, open action, overdue, and closed queues, shows system-vs-found values together, keeps review/action/closure controls in place, and exports Excel/PDF with the same active filters.
+- Disposal follow-up links opened from `/audit/findings` carry the current findings queue/search as a sanitized return context so reviewers can return to the same resolution queue after the disposal workflow.
 
 ## Maintenance And PM
 
 - Create repair tickets from the maintenance page or asset quick actions.
 - Opening a repair ticket sets the asset to `Pending Repair` when that active status exists. The create-ticket form/API should not require `returnDate`; `returnDate` is collected when the repair is closed.
+- Opening maintenance ticket detail or print from a filtered maintenance list preserves the current tab, status, search, and asset filter through a sanitized `returnTo` value. Ticket detail exposes a Back action to that originating list context.
 - Track status, SLA, evidence, costs, assignee/vendor, close checklist, and inspector.
 - Close maintenance by choosing whether the asset returns to `Ready` or should move to `Pending Disposal`. Do not use the generic asset edit form for protected repair/disposal status changes.
 - Create Preventive Maintenance plans.
@@ -59,6 +62,7 @@
 ## Disposal
 
 - Create disposal requests from disposal module, maintenance, audit findings, or asset quick actions.
+- Opening disposal request detail or print from a filtered disposal list preserves the current status/search filter through a sanitized `returnTo` value. Request detail exposes a Back action to that originating list context.
 - Duplicate open requests are guarded.
 - Approval and actual execution are separated.
 - Execution captures evidence, recipient/buyer/destination, document number, actual value, and completion date.
