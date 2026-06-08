@@ -27,6 +27,16 @@ test("audit scan fast mode uses clear data-matched and data-mismatch actions", (
   assert.doesNotMatch(form, /t\("openDetailedScan"\)/)
 })
 
+test("audit scan scan-code actions align with the scan input", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+
+  assert.match(form, /lg:grid-cols-\[minmax\(0,1fr\)_auto\]/)
+  assert.match(form, /lg:w-\[15rem\] lg:pt-\[1\.625rem\]/)
+  assert.match(form, /inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap/)
+  assert.match(form, /focus-visible:ring-2 focus-visible:ring-primary/)
+  assert.doesNotMatch(form, /md:flex-row md:items-end/)
+})
+
 test("audit scan requires photo evidence before saving mismatched data", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
 

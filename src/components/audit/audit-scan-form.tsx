@@ -740,7 +740,7 @@ export function AuditScanForm({
           )}
 
           <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
-            <div className="flex flex-col gap-3 md:flex-row md:items-end">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
               <Field label={t("scanInput")}>
                 <input
                   value={scanText}
@@ -750,11 +750,11 @@ export function AuditScanForm({
                 />
                 <span className="mt-1 block text-xs text-muted-foreground">{t("scanInputHelp")}</span>
               </Field>
-              <div className="grid gap-2 sm:grid-cols-2 md:flex">
+              <div className="grid grid-cols-2 gap-2 lg:w-[15rem] lg:pt-[1.625rem]">
                 <button
                   type="button"
                   onClick={() => void selectScannedAsset(scanText, "manual")}
-                  className="inline-flex h-12 min-w-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
                   <Keyboard className="h-4 w-4" />
                   {t("useCode")}
@@ -763,7 +763,7 @@ export function AuditScanForm({
                   type="button"
                   onClick={() => void (scannerRunning ? stopScanner() : startScanner())}
                   disabled={scannerLoading}
-                  className="inline-flex h-12 min-w-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
                 >
                   {scannerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : scannerRunning ? <X className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
                   {scannerRunning ? t("stopCamera") : t("startCamera")}
