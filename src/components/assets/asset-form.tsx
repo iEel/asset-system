@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Camera, Code2, FileText, Loader2, Plus, Save, Trash2 } from "lucide-react"
+import { ArrowLeft, Camera, Code2, Copy, FileText, Loader2, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { FileDropzone } from "@/components/ui/file-dropzone"
@@ -113,6 +113,12 @@ type ExistingAssetPhoto = {
   fileSize: number
 }
 
+type CloneSourceContext = {
+  id: string
+  assetTag: string
+  name: string
+}
+
 const purchaseDocumentTypes = ["purchase_order", "invoice", "delivery_note", "warranty", "quotation", "contract", "other"] as const
 
 const emptyAsset: AssetFormValues = {
@@ -164,6 +170,7 @@ export function AssetForm({
   purchaseDocuments: purchaseDocumentOptions,
   customFieldDefinitions,
   existingAssetPhotos = [],
+  cloneSource,
 }: {
   asset?: AssetFormValues
   companies: Option[]
@@ -181,6 +188,7 @@ export function AssetForm({
   purchaseDocuments: PurchaseDocumentOption[]
   customFieldDefinitions: CustomFieldDefinition[]
   existingAssetPhotos?: ExistingAssetPhoto[]
+  cloneSource?: CloneSourceContext
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -718,6 +726,27 @@ export function AssetForm({
           {tCommon("back")}
         </Link>
       </div>
+
+      {cloneSource ? (
+        <div className="mb-5 rounded-md border border-warning/30 bg-warning/10 px-4 py-3">
+          <div className="flex gap-3">
+            <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-warning/15 text-warning">
+              <Copy className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <div className="break-words text-sm font-semibold text-foreground">
+                {t("cloneBannerTitle", { assetTag: cloneSource.assetTag })}
+              </div>
+              <p className="mt-1 break-words text-sm text-muted-foreground">
+                {t("cloneBannerDescription", { assetName: cloneSource.name })}
+              </p>
+              <p className="mt-2 break-words text-xs font-medium text-warning">
+                {t("cloneBannerReview")}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <Section title={t("basicInfo")}>

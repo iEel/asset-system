@@ -7,6 +7,7 @@ import {
   ArrowRight,
   Building2,
   CheckCircle2,
+  Copy,
   Cpu,
   Edit,
   FileText,
@@ -535,6 +536,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const hasPurchaseDocuments = purchaseDocuments.length > 0 || legacyPurchaseDocuments.length > 0
   const encodedAssetId = encodeURIComponent(asset.id)
   const editHref = `/${locale}/assets/${asset.id}/edit`
+  const cloneHref = `/${locale}/assets/new?cloneFrom=${encodedAssetId}`
   const dataHealthItems = ownershipType === "software_license"
     ? [
         createHealthItem(Boolean(asset.serialNumber), t("dataHealthLicenseKey"), "#overview", t("dataHealthFixIdentity"), editHref),
@@ -734,6 +736,13 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           >
             <Printer className="h-4 w-4" />
             {t("printLabel")}
+          </Link>
+          <Link
+            href={cloneHref}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:h-10 sm:min-h-0"
+          >
+            <Copy className="h-4 w-4" />
+            {t("cloneAsset")}
           </Link>
           <Link
             href={`/${locale}/assets/${asset.id}/edit`}

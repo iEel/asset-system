@@ -18,6 +18,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 ## asset_admin / IT Staff
 
 - [ ] Add a single asset.
+- [ ] Clone an existing asset from Asset Register or Asset Detail, confirm the create form shows the clone banner, copies shared details, and leaves Asset Tag, Serial Number, and FA/accounting code blank before saving.
 - [ ] Add assets by batch.
 - [ ] Create a new asset category with no custom-field template and confirm it saves without a Prisma nested-write error.
 - [ ] Enter a manual asset tag for a legacy asset.

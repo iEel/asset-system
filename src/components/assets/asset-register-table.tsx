@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Columns3, Download, Edit, Eye, FileDown, FileSpreadsheet, ImageIcon, Loader2, Printer, X } from "lucide-react"
+import { Columns3, Copy, Download, Edit, Eye, FileDown, FileSpreadsheet, ImageIcon, Loader2, Printer, X } from "lucide-react"
 import { toast } from "sonner"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
@@ -82,6 +82,7 @@ type AssetRegisterTableProps = {
     detail: string
     downloadTemplate: string
     edit: string
+    cloneAsset: string
     exportFiltered: string
     exportSelected: string
     bulkActions: string
@@ -429,6 +430,13 @@ export function AssetRegisterTable({
                   <Edit className="h-4 w-4" />
                   {labels.edit}
                 </Link>
+                <Link
+                  href={`/${locale}/assets/new?cloneFrom=${encodeURIComponent(asset.id)}`}
+                  className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+                >
+                  <Copy className="h-4 w-4" />
+                  {labels.cloneAsset}
+                </Link>
               </div>
               <div className="mt-2 flex justify-end">
                 <AssetDeleteButton id={asset.id} />
@@ -563,6 +571,13 @@ export function AssetRegisterTable({
                         className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
                       >
                         <Edit className="h-4 w-4" />
+                      </Link>
+                      <Link
+                        href={`/${locale}/assets/new?cloneFrom=${encodeURIComponent(asset.id)}`}
+                        title={labels.cloneAsset}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      >
+                        <Copy className="h-4 w-4" />
                       </Link>
                       <AssetDeleteButton id={asset.id} />
                     </div>

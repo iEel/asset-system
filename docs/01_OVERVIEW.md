@@ -18,7 +18,7 @@ Asset Management System is an enterprise system for registering, tracking, audit
 ## Core Modules
 
 - Dashboard and actionable operations summary
-- Asset Register, Asset Detail, Asset Create/Edit, and Batch Create
+- Asset Register, Asset Detail, Asset Create/Edit, Clone, and Batch Create
 - QR/barcode scan and asset search
 - QR label printing and print tracking
 - Check-out, check-in, transfer, and bulk movement

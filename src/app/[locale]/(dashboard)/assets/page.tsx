@@ -269,6 +269,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           detail: t("detailTitle"),
           downloadTemplate: t("downloadTemplate"),
           edit: tCommon("edit"),
+          cloneAsset: t("cloneAsset"),
           exportFiltered: t("exportFiltered"),
           exportSelected: t("exportSelected"),
           bulkActions: t("bulkActions"),

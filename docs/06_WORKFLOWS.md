@@ -3,6 +3,7 @@
 ## Asset Registration
 
 - Add a single asset from `/assets/new`.
+- Clone an existing asset from Asset Register or Asset Detail when adding another similar asset. The clone flow opens `/assets/new?cloneFrom={assetId}`, copies shared master, ownership, location, purchase, warranty, custom-field, and linked purchase-document data, but leaves Asset Tag, Serial Number, and FA/accounting code blank for the new record.
 - Add a batch of assets from the same page using shared purchase/master data plus row-level serial/manual asset tag/custodian/remark data.
 - Single and batch create auto-select the model when the selected category and brand uniquely match one active model; users can still choose a specific model when more than one exists.
 - Import legacy assets from Excel through the import/export tools.
@@ -11,6 +12,7 @@
 - Custodian defaults to the selected owner company/branch/department scope, but the form can opt in to cross-company custodians for cases where the asset owner and current holder are different organizations.
 - When editing an existing asset, a saved custodian outside the owner company/branch/department scope automatically opens the cross-company custodian mode so the current holder remains visible and can be reviewed before saving.
 - Cross-company custodian selections show an explicit warning and are recorded in the creation audit trail. Batch create follows the same model for shared owner/tag scope plus common or row-level custodian values.
+- Clone sessions show a warning banner reminding users to review custodian, location, purchasing data, and linked documents before saving. Batch mode is hidden during a clone session so the prefilled single-asset draft is not lost by switching modes.
 
 ## Asset Scan And Labels
 

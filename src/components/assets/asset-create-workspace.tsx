@@ -11,6 +11,10 @@ export function AssetCreateWorkspace(props: AssetCreateWorkspaceProps) {
   const t = useTranslations("asset")
   const [mode, setMode] = useState<"single" | "batch">("single")
 
+  if (props.cloneSource) {
+    return <AssetForm {...props} />
+  }
+
   return (
     <div className="space-y-4">
       <div className="inline-flex rounded-md border border-border bg-surface p-1">
