@@ -36,6 +36,7 @@
 
 - Check-out records who receives the asset and captures handover evidence.
 - Check-in records return and receiving parties and can route the asset to Ready, Pending Repair, or Pending Disposal.
+- Legacy/imported assets that already have a current custodian but no active checkout are handled from the Check-in page through the "ข้อมูลเก่า" panel. Search the panel by Asset Tag, asset name, current holder, or location; then create the backfilled handover before completing the normal return form. This creates `AssetCheckout`, `AssetMovement`, and `SystemLog` records with `legacy_return_backfill` so the return stays auditable instead of bypassing the check-in workflow.
 - Transfer records location/custodian/department movement.
 - Checkout and transfer are the normal workflows for custody changes after registration; the asset owner company/branch remains the tag, reporting, and accounting scope unless the asset master data is intentionally edited.
 - Asset Detail shows a unified activity/custody timeline.

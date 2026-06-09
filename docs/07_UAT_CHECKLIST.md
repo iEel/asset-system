@@ -41,6 +41,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Confirm Serial Number scanner inputs scan manufacturer QR/barcode labels with the 16:9 scan-line guide, native-resolution ZXing multi-format decoder, optional browser `BarcodeDetector` fallback, focused internal scan-band crops, and direct crop `ImageData` ZXing fallback; center the barcode band on the line, make the bars fill most of the frame, and adjust distance until the lines are sharp.
 - [ ] Check-out an asset.
 - [ ] Check-in an asset.
+- [ ] For a legacy/imported asset that has a current custodian but no open checkout, search the Check-in `ข้อมูลเก่า` panel by Asset Tag/holder/location, create the backfilled handover, and complete the normal return form; confirm the activity/audit history includes `legacy_return_backfill`.
 - [ ] Transfer an asset.
 - [ ] Upload and preview asset evidence.
 

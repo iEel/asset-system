@@ -11,7 +11,9 @@ export async function getAssetOperationOptions() {
         name: true,
         currentLocationId: true,
         custodianId: true,
+        conditionId: true,
         departmentId: true,
+        custodian: { select: { code: true, fullNameTh: true } },
       },
       orderBy: { assetTag: "asc" },
     }),
@@ -60,6 +62,10 @@ export async function getAssetOperationOptions() {
   const assetLabelById = new Map(assets.map((asset) => [asset.id, `${asset.assetTag} - ${asset.name}`]))
   const departmentLabelById = new Map(departments.map((department) => [department.id, `${department.code} - ${department.name}`]))
   const locationLabelById = new Map(locations.map((location) => [location.id, `${location.code} - ${location.name}`]))
+  type LegacyReturnAsset = (typeof assets)[number] & { custodianId: string }
+  const legacyReturnAssets = assets.filter((asset): asset is LegacyReturnAsset =>
+    Boolean(asset.custodianId) && !activeCheckoutAssetIds.has(asset.id)
+  )
 
   return {
     assets: assets.map((asset) => ({
@@ -85,6 +91,18 @@ export async function getAssetOperationOptions() {
       }),
       remark: checkout.remark,
     })),
+    legacyReturnCandidates: legacyReturnAssets
+      .map((asset) => ({
+        id: asset.id,
+        label: `${asset.assetTag} - ${asset.name}`,
+        assetTag: asset.assetTag,
+        assetName: asset.name,
+        custodianLabel: asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : "-",
+        custodianId: asset.custodianId,
+        currentLocationId: asset.currentLocationId,
+        currentLocationLabel: locationLabelById.get(asset.currentLocationId) ?? asset.currentLocationId,
+        conditionId: asset.conditionId,
+      })),
     employees: employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` })),
     departments: departments.map((department) => ({ id: department.id, label: `${department.code} - ${department.name}` })),
     locations: locations.map((location) => ({ id: location.id, label: `${location.code} - ${location.name}` })),

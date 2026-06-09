@@ -143,6 +143,7 @@ Important data semantics:
 | Check-out evidence | Before-handover photo, receiver signature pad, attachment evidence |
 | Check-out validation | Blocks duplicate active checkout and protected lifecycle statuses |
 | Check-in | Return workflow with return/receive parties, condition after, next status, next location |
+| Legacy check-in backfill | Check-in page exposes searchable legacy/current-custodian candidates and creates an auditable backfilled checkout before the standard return workflow |
 | Check-in evidence | After-return photos, return signature, receive signature |
 | Check-in maintenance link | Can create maintenance ticket only when next status is Pending Repair and permission allows |
 | Transfer | Move asset location/custodian/department through controlled operation |

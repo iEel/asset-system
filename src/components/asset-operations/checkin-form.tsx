@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FileImage, Loader2, PackageCheck, Save, Trash2, Wrench } from "lucide-react"
+import { FileImage, Loader2, PackageCheck, Save, Search, Trash2, Wrench } from "lucide-react"
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
@@ -25,6 +25,15 @@ type CheckoutOption = Option & {
   destinationLabel?: string
   remark?: string | null
 }
+type LegacyReturnCandidate = Option & {
+  assetTag: string
+  assetName: string
+  custodianLabel: string
+  custodianId: string
+  currentLocationId: string
+  currentLocationLabel: string
+  conditionId: string
+}
 type QueuedPhoto = {
   id: string
   label: string
@@ -33,6 +42,7 @@ type QueuedPhoto = {
 
 export function CheckinForm({
   activeCheckouts,
+  legacyReturnCandidates,
   employees,
   locations,
   statuses,
@@ -40,6 +50,7 @@ export function CheckinForm({
   initialCheckoutId,
 }: {
   activeCheckouts: CheckoutOption[]
+  legacyReturnCandidates: LegacyReturnCandidate[]
   employees: Option[]
   locations: Option[]
   statuses: StatusOption[]
@@ -51,6 +62,8 @@ export function CheckinForm({
   const t = useTranslations("checkin")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
+  const [legacyBackfillSavingId, setLegacyBackfillSavingId] = useState<string | null>(null)
+  const [legacyReturnSearch, setLegacyReturnSearch] = useState("")
   const [photoType, setPhotoType] = useState("overview")
   const [photosAfter, setPhotosAfter] = useState<QueuedPhoto[]>([])
   const [returnSignatureDataUrl, setReturnSignatureDataUrl] = useState<string | null>(null)
@@ -83,6 +96,20 @@ export function CheckinForm({
   const pendingRepairStatus = statuses.find((status) => status.name === "Pending Repair")
   const canCreateMaintenance = selectedStatus?.name === "Pending Repair"
   const hasActiveCheckouts = activeCheckouts.length > 0
+  const hasLegacyReturnCandidates = legacyReturnCandidates.length > 0
+  const filteredLegacyReturnCandidates = useMemo(() => {
+    const query = normalizeText(legacyReturnSearch)
+    if (!query) return legacyReturnCandidates
+
+    return legacyReturnCandidates.filter((asset) =>
+      [
+        asset.assetTag,
+        asset.assetName,
+        asset.custodianLabel,
+        asset.currentLocationLabel,
+      ].some((value) => normalizeText(value).includes(query))
+    )
+  }, [legacyReturnCandidates, legacyReturnSearch])
   const photoTypes = [
     { id: "overview", label: t("photoTypeOverview") },
     { id: "assetTag", label: t("photoTypeAssetTag") },
@@ -132,6 +159,36 @@ export function CheckinForm({
         file,
       },
     ])
+  }
+
+  async function handleCreateLegacyCheckout(assetId: string) {
+    const candidate = legacyReturnCandidates.find((asset) => asset.id === assetId)
+    setLegacyBackfillSavingId(assetId)
+    try {
+      const response = await fetch(`/api/assets/${assetId}/legacy-checkout`, {
+        method: "POST",
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(payload?.error ?? t("legacyReturnFailed"))
+
+      toast.success(t("legacyReturnCreated"))
+      if (candidate) {
+        setReturnByEmployeeId(candidate.custodianId)
+        setValues((current) => ({
+          ...current,
+          checkoutId: payload.id,
+          returnBy: candidate.custodianLabel,
+          conditionAfter: current.conditionAfter || candidate.conditionId,
+          nextLocationId: current.nextLocationId || candidate.currentLocationId,
+        }))
+      }
+      router.replace(`/${locale}/asset-management/checkin?checkoutId=${payload.id}`)
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("legacyReturnFailed"))
+    } finally {
+      setLegacyBackfillSavingId(null)
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -223,6 +280,69 @@ export function CheckinForm({
                 <Link href={`/${locale}/asset-management/checkout`} className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:w-auto">
                   {t("goToCheckout")}
                 </Link>
+              </div>
+            </div>
+          )}
+
+          {hasLegacyReturnCandidates && (
+            <div className="md:col-span-2 rounded-md border border-warning/30 bg-warning/5 p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="text-sm font-semibold text-foreground">{t("legacyReturnTitle")}</div>
+                    <span className="rounded-full border border-warning/30 bg-surface px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      {t("legacyReturnFilteredCount", {
+                        shown: filteredLegacyReturnCandidates.length,
+                        total: legacyReturnCandidates.length,
+                      })}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">{t("legacyReturnDescription")}</div>
+                </div>
+                <label className="relative w-full lg:max-w-sm">
+                  <span className="sr-only">{t("legacyReturnSearch")}</span>
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    value={legacyReturnSearch}
+                    onChange={(event) => setLegacyReturnSearch(event.target.value)}
+                    placeholder={t("legacyReturnSearch")}
+                    className="min-h-11 w-full rounded-md border border-border bg-surface pl-9 pr-3 text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                </label>
+              </div>
+              <div className="mt-3 grid max-h-96 gap-2 overflow-y-auto pr-1">
+                {filteredLegacyReturnCandidates.length === 0 ? (
+                  <div className="rounded-md border border-dashed border-warning/30 bg-surface/80 p-5 text-center text-sm text-muted-foreground">
+                    {t("legacyReturnNoResults")}
+                  </div>
+                ) : (
+                  filteredLegacyReturnCandidates.map((asset) => (
+                    <div key={asset.id} className="grid gap-3 rounded-md border border-border bg-surface p-3 lg:grid-cols-[1fr_auto] lg:items-center">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="font-semibold text-foreground">{asset.assetTag}</div>
+                          <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+                            {t("legacyReturnBadge")}
+                          </span>
+                        </div>
+                        <div className="mt-1 truncate text-sm text-muted-foreground" title={asset.assetName}>{asset.assetName}</div>
+                        <div className="mt-2 grid gap-1 text-xs text-muted-foreground md:grid-cols-2">
+                          <span className="truncate" title={asset.custodianLabel}>{t("legacyReturnCurrentHolder")}: {asset.custodianLabel}</span>
+                          <span className="truncate" title={asset.currentLocationLabel}>{t("legacyReturnCurrentLocation")}: {asset.currentLocationLabel}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={saving || legacyBackfillSavingId === asset.id}
+                        onClick={() => handleCreateLegacyCheckout(asset.id)}
+                        className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 text-sm font-medium text-warning transition-colors hover:bg-warning/20 disabled:opacity-50 lg:w-auto"
+                      >
+                        {legacyBackfillSavingId === asset.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
+                        {legacyBackfillSavingId === asset.id ? t("legacyReturnCreating") : t("legacyReturnAction")}
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -454,6 +574,10 @@ function ReadOnly({ label, value }: { label: string; value: string }) {
 function formatDate(value?: string | null) {
   if (!value) return "-"
   return new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(new Date(value))
+}
+
+function normalizeText(value: string) {
+  return value.trim().toLocaleLowerCase("th-TH")
 }
 
 function dataUrlToFile(dataUrl: string, fileName: string) {
