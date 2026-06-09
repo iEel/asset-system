@@ -21,6 +21,7 @@
 - Cross-company custodian selections show an explicit warning and are recorded in the creation audit trail. Batch create follows the same model for shared owner/tag scope plus common or row-level custodian values.
 - Home/current location defaults to the selected owner branch, but single and batch create can opt in to cross-branch locations when the physical site differs from the branch used for Asset Tag ownership. Cross-branch mode warns the operator and appends each location's branch label in the dropdown to avoid ambiguous repeated location codes.
 - Use the Asset Register cross-scope quick filters when reviewing assets that are held or physically located outside their owner/tag scope. The filters separate all cross-scope cases, custodian different company, custodian different branch, and current location different branch while preserving the normal search/company/branch/category context.
+- The Dashboard highlights active cross-scope assets as a high-level KPI and review panel. Use those cards as the daily entry point for ownership/custody scope cleanup; they drill into the same Asset Register cross-scope filters and do not change custody, transfer, or master-edit rules.
 - Clone sessions show a warning banner reminding users to review custodian, location, purchasing data, and linked documents before saving. Batch mode is hidden during a clone session so the prefilled single-asset draft is not lost by switching modes.
 
 ## Asset Scan And Labels
@@ -77,7 +78,7 @@
 ## Reports And Export
 
 - Asset register export and report exports use current filters where supported.
-- Cross-scope filters are supported by Asset Register export and Asset Overview export. Asset register export includes owner/custodian/home/current location branch context and cross-scope flags; Asset Overview export includes cross-scope summary metrics and a Cross Scope sheet for review.
+- Cross-scope filters are supported by Dashboard drilldowns, Asset Register export, Reports, and Asset Overview export. Asset register export includes owner/custodian/home/current location branch context and cross-scope flags; Asset Overview export includes cross-scope summary metrics and a Cross Scope sheet for review.
 - Audit, disposal, maintenance, and asset overview exports support operational review.
 - PDF output uses bundled Thai fonts unless production overrides are configured.
 

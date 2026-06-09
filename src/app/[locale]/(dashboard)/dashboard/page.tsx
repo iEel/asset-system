@@ -21,6 +21,8 @@ import { getApprovalInboxAccess, getApprovalInboxCounts, type ApprovalInboxCount
 import { buildDashboardActionCardKeys, type DashboardActionCardKey } from "@/lib/dashboard-action-cards"
 import { shouldUseEmployeeHome } from "@/lib/default-home"
 import { prisma } from "@/lib/db"
+import { buildAssetCrossScopeSummary, type AssetCrossScopeSummaryRow } from "@/lib/asset-cross-scope"
+import { getAssetCrossScopeFlagLabels, type AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
 import { buildSystemLogRecordLabels } from "@/lib/system-log-record-labels"
 import { buildSystemLogPresentation, type SystemLogPresentation } from "@/lib/system-log-presenter"
 import { cn } from "@/lib/utils"
@@ -85,6 +87,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     pendingDisposals,
     approvedDisposals,
     approvalInboxCounts,
+    crossScopeSummary,
     currentMonthAssets,
     previousMonthAssets,
     currentMonthMaintenance,
@@ -135,6 +138,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "pending" } }),
     prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "approved" } }),
     user && approvalInboxAccess?.canAnyApproval ? getApprovalInboxCounts(user) : Promise.resolve(emptyApprovalInboxCounts),
+    buildAssetCrossScopeSummary({ isActive: true }, 5),
     prisma.asset.count({ where: { isActive: true, createdAt: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
     prisma.asset.count({ where: { isActive: true, createdAt: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
     prisma.maintenanceTicket.count({ where: { isActive: true, reportedDate: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
@@ -145,12 +149,15 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     prisma.disposalRequest.count({ where: { isActive: true, requestDate: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
   ])
 
+  const crossScopeTotal = crossScopeSummary.all
+  const crossScopeAssetsHref = buildDashboardCrossScopeHref(locale, "all")
   const kpiCards = [
     { label: t("totalAssets"), value: totalAssets.toLocaleString("th-TH"), icon: <Package size={24} />, color: "text-primary", href: `/${locale}/assets` },
     { label: t("inUse"), value: inUse.toLocaleString("th-TH"), icon: <Monitor size={24} />, color: "text-success", href: `/${locale}/assets` },
     { label: t("readyToDeploy"), value: ready.toLocaleString("th-TH"), icon: <Shield size={24} />, color: "text-info", href: `/${locale}/assets` },
     { label: t("pendingRepair"), value: pendingRepair.toLocaleString("th-TH"), icon: <Wrench size={24} />, color: "text-warning", href: `/${locale}/maintenance` },
     { label: t("warrantyExpiring"), value: warrantyExpiring.toLocaleString("th-TH"), icon: <AlertTriangle size={24} />, color: "text-danger", href: `/${locale}/assets` },
+    { label: t("crossScopeAssets"), value: crossScopeTotal.toLocaleString("th-TH"), icon: <AlertTriangle size={24} />, color: "text-warning", href: crossScopeAssetsHref },
   ]
 
   const actionCardMap: Record<DashboardActionCardKey, DashboardActionCard> = {
@@ -195,7 +202,16 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       tone: "warning",
     },
   }
-  const actionCards = buildDashboardActionCardKeys({
+  const crossScopeActionCard: DashboardActionCard = {
+    label: t("crossScopeActionTitle"),
+    value: crossScopeSummary.custodianCompany,
+    detail: t("crossScopeActionDetail"),
+    href: buildDashboardCrossScopeHref(locale, "custodian_company"),
+    icon: <AlertTriangle className="h-5 w-5" />,
+    tone: "warning",
+  }
+  const actionCards = [
+    ...buildDashboardActionCardKeys({
     approvalInbox: {
       visible: Boolean(approvalInboxAccess?.canAnyApproval),
       ...approvalInboxCounts,
@@ -204,7 +220,36 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     pendingAuditFindings,
     pendingDisposals,
     approvedDisposals,
-  }).map((key) => actionCardMap[key])
+    }).map((key) => actionCardMap[key]),
+    crossScopeActionCard,
+  ]
+  const crossScopeCards = [
+    {
+      key: "all",
+      label: t("crossScopeAll"),
+      value: crossScopeSummary.all,
+      crossScope: "all" as const,
+    },
+    {
+      key: "custodian_company",
+      label: t("crossScopeCustodianCompany"),
+      value: crossScopeSummary.custodianCompany,
+      crossScope: "custodian_company" as const,
+    },
+    {
+      key: "custodian_branch",
+      label: t("crossScopeCustodianBranch"),
+      value: crossScopeSummary.custodianBranch,
+      crossScope: "custodian_branch" as const,
+    },
+    {
+      key: "location_branch",
+      label: t("crossScopeLocationBranch"),
+      value: crossScopeSummary.locationBranch,
+      crossScope: "location_branch" as const,
+    },
+  ]
+  const crossScopePreviewRows = crossScopeSummary.rows
   const trendCards = [
     {
       label: t("trendAssetsCreated"),
@@ -243,7 +288,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       <h1 className="mb-6 text-2xl font-bold text-foreground">{t("title")}</h1>
 
       {/* KPI Cards */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
         {kpiCards.map((card) => (
           <Link
             key={card.label}
@@ -274,7 +319,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        <div className={cn("grid grid-cols-1 gap-3 md:grid-cols-2", actionCards.length >= 5 ? "xl:grid-cols-5" : "xl:grid-cols-4")}>
+        <div className={cn("grid grid-cols-1 gap-3 md:grid-cols-2", actionCards.length >= 6 ? "xl:grid-cols-3 2xl:grid-cols-6" : actionCards.length >= 5 ? "xl:grid-cols-5" : "xl:grid-cols-4")}>
           {actionCards.map((card) => (
             <Link
               key={card.label}
@@ -292,6 +337,42 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
             </Link>
           ))}
         </div>
+      </section>
+
+      <section className="mb-8 rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">{t("crossScopePanelTitle")}</h2>
+            <p className="text-sm text-muted-foreground">{t("crossScopePanelSubtitle")}</p>
+          </div>
+          <Link href={crossScopeAssetsHref} className="inline-flex w-fit items-center gap-1 text-sm font-medium text-primary hover:underline">
+            {t("crossScopeViewAll")}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {crossScopeCards.map((card) => (
+            <Link
+              key={card.key}
+              href={buildDashboardCrossScopeHref(locale, card.crossScope)}
+              className="rounded-md border border-border bg-background p-4 transition-colors hover:bg-accent"
+            >
+              <div className="text-sm text-muted-foreground">{card.label}</div>
+              <div className="mt-2 text-2xl font-bold text-foreground">{card.value.toLocaleString("th-TH")}</div>
+            </Link>
+          ))}
+        </div>
+        <DashboardCrossScopePreview
+          rows={crossScopePreviewRows}
+          locale={locale}
+          labels={{
+            title: t("crossScopePreviewTitle"),
+            empty: t("crossScopePreviewEmpty"),
+            custodianCompany: t("crossScopeCustodianCompany"),
+            custodianBranch: t("crossScopeCustodianBranch"),
+            locationBranch: t("crossScopeLocationBranch"),
+          }}
+        />
       </section>
 
       <section className="mb-8 rounded-lg border border-border bg-surface p-5 shadow-sm">
@@ -425,6 +506,64 @@ function ActivityLogContent({ log }: { log: ReadableDashboardLog }) {
       <div className="mt-1 text-xs text-muted-foreground">{log.meta}</div>
     </div>
   )
+}
+
+function DashboardCrossScopePreview({
+  rows,
+  locale,
+  labels,
+}: {
+  rows: AssetCrossScopeSummaryRow[]
+  locale: string
+  labels: {
+    title: string
+    empty: string
+    custodianCompany: string
+    custodianBranch: string
+    locationBranch: string
+  }
+}) {
+  return (
+    <div className="mt-4 rounded-md border border-border bg-background">
+      <div className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">{labels.title}</div>
+      {rows.length === 0 ? (
+        <div className="px-4 py-6 text-center text-sm text-muted-foreground">{labels.empty}</div>
+      ) : (
+        <div className="divide-y divide-border">
+          {rows.map((row) => {
+            const flagLabels = getAssetCrossScopeFlagLabels(row.flags, {
+              custodianCompany: labels.custodianCompany,
+              custodianBranch: labels.custodianBranch,
+              locationBranch: labels.locationBranch,
+            })
+
+            return (
+              <Link key={row.id} href={`/${locale}/assets/${row.id}`} className="block px-4 py-3 transition-colors hover:bg-accent">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-foreground">{row.assetTag}</div>
+                    <div className="mt-1 text-sm text-muted-foreground">{row.name}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{row.ownerBranch}</div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 md:max-w-md md:justify-end">
+                    {flagLabels.map((label) => (
+                      <span key={label} className="rounded-full bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function buildDashboardCrossScopeHref(locale: string, crossScope: AssetCrossScopeFilter) {
+  return `/${locale}/assets?crossScope=${crossScope}&page=1`
 }
 
 function getMonthRange(now: Date) {

@@ -50,7 +50,7 @@ Current authenticated pages exist under `src/app/[locale]/(dashboard)`:
 
 | Area | Pages / Capabilities |
 |---|---|
-| Dashboard | `/dashboard` KPI and overview page |
+| Dashboard | `/dashboard` KPI and overview page, including cross-scope asset counters and drilldowns |
 | Work Center | `/work-center` actionable operations summary |
 | My Assets | `/my-assets` employee self-service asset list |
 | Asset Register | `/assets`, `/assets/new`, `/assets/{id}`, `/assets/{id}/edit` |
@@ -89,7 +89,7 @@ Important data semantics:
 - `Asset.companyId` and `Asset.branchId` represent asset owner/tag/reporting scope.
 - `Asset.custodianId` may point to an employee outside the asset owner company/branch for cross-company custody.
 - `Asset.homeLocationId` and `Asset.currentLocationId` may point to locations outside the asset owner branch when the operator intentionally enables cross-branch location mode; owner/tag scope remains unchanged.
-- Cross-scope reporting compares owner/tag scope against current custodian company/branch and current location branch, then exposes the result through Asset Register filters and report exports without changing movement workflow rules.
+- Cross-scope reporting compares owner/tag scope against current custodian company/branch and current location branch, then exposes the result through Dashboard counters, Asset Register filters, report panels, and report exports without changing movement workflow rules.
 - Asset ownership/tag scope changes should be intentional master-data edits; normal custody changes should use checkout, check-in, and transfer.
 - Files are stored under `UPLOAD_DIR` and referenced through `Attachment`; file bytes are not stored in SQL Server.
 - Production schema changes require backup, approved change record, and rollback/restore plan. `npx prisma db push` is Dev/Test-oriented.
@@ -106,7 +106,7 @@ Important data semantics:
 | Asset import | Excel import preview and confirm APIs for legacy asset onboarding; the register import helper starts collapsed and opens on demand |
 | Asset export | Excel export using current filters where supported |
 | Master-data drilldowns | Category, brand, and model count links open the relevant Brand/Model workspace or Asset Register filters (`categoryId`, `brandId`, `modelId`) with removable active filter chips where applicable |
-| Cross-scope visibility | URL-backed quick filters and exports for assets whose current custodian company, current custodian branch, or current location branch differs from the owner/tag scope |
+| Cross-scope visibility | Dashboard KPI/review panel, URL-backed quick filters, and exports for assets whose current custodian company, current custodian branch, or current location branch differs from the owner/tag scope |
 | Duplicate handling | Duplicate checking for asset tag/serial and batch duplicate review |
 | Asset tag generation | Configurable format, category prefix groups, company asset-tag code, branch/category/running tokens |
 | Status/condition guidance | Asset Create/Edit, Asset Detail, Asset Register filters, and Asset Register table headers expose help popovers explaining lifecycle status, physical condition, protected workflows, and normal next actions; register filter icons use a compact size so the filter rows stay visually aligned |

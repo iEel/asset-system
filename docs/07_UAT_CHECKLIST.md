@@ -29,6 +29,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Export asset register.
 - [ ] On Asset Register, confirm quick filters for data-quality gaps and lifecycle statuses update the list while preserving existing search/company/branch/category context.
 - [ ] On Asset Register, apply cross-scope quick filters for all cross-scope, custodian different company, custodian different branch, and current location different branch; confirm the list and Asset Register export show matching cross-scope flags and owner/custodian/location branch context.
+- [ ] On Dashboard, confirm the cross-scope KPI, urgent-work card, and review panel show active assets held or located outside the owner/tag scope, and confirm each drilldown opens Asset Register with the expected `crossScope` filter.
 - [ ] On Asset Register desktop width, confirm the filter panel fills the right side without an empty final column: first row shows search/company/branch/category and second row shows status/condition/ownership/rows/filter action.
 - [ ] From Category, Brand, and Brand/Model master data counts, click model/asset counts and confirm the destination opens the expected Brand/Model workspace or Asset Register drilldown with a removable active filter chip where applicable.
 - [ ] Search Asset Register by the current custodian's employee code and confirm only assets held by that employee are returned; do not expect matches from repair reporter/assignee history.
