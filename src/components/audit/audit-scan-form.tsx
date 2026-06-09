@@ -70,7 +70,7 @@ type CameraDevice = { id: string; label: string }
 type CameraReadiness = "checking" | "ready" | "unavailable"
 type AuditMismatchPreview = { type: string; label: string; canApply: boolean }
 type ScanFeedback = {
-  status: "found" | "mismatch" | "not_in_round" | "saved"
+  status: "found" | "mismatch" | "out_of_scope" | "unknown_asset" | "saved" | "found_later"
   title: string
   description: string
 }
@@ -241,6 +241,10 @@ export function AuditScanForm({
     setShowDetailedFields(true)
   }
 
+  function scrollToAuditPhotoEvidence() {
+    document.getElementById("audit-photo-evidence")?.scrollIntoView({ behavior: "smooth", block: "center" })
+  }
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setCameraReadiness(isCameraAccessSupported() ? "ready" : "unavailable")
@@ -382,7 +386,7 @@ export function AuditScanForm({
         setScanText(foundAsset.assetTag || foundAsset.title)
         setScanSource(source)
         setScanFeedback({
-          status: "not_in_round",
+          status: "out_of_scope",
           title: t("feedbackOutOfScopeTitle"),
           description: `${foundAsset.title} - ${foundAsset.subtitle}`,
         })
@@ -392,11 +396,11 @@ export function AuditScanForm({
       }
       setOutOfScopeAsset(null)
       setScanFeedback({
-        status: "not_in_round",
-        title: t("feedbackNotInRoundTitle"),
-        description: t("feedbackNotInRoundDescription", { code: rawValue }),
+        status: "unknown_asset",
+        title: t("feedbackUnknownAssetTitle"),
+        description: t("feedbackUnknownAssetDescription", { code: rawValue }),
       })
-      toast.error(t("assetNotInRound"))
+      toast.error(t("unknownAsset"))
       return false
     }
 
@@ -520,7 +524,7 @@ export function AuditScanForm({
             ? t("foundSuccess")
             : t("mismatchSuccess")
       setScanFeedback({
-        status: payload.auditResult === "found" ? "saved" : "mismatch",
+        status: payload.resolvedNotFoundFinding ? "found_later" : payload.auditResult === "found" ? "saved" : "mismatch",
         title: successMessage,
         description: selectedItem.label,
       })
@@ -765,7 +769,7 @@ export function AuditScanForm({
                   className="inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
                   <Keyboard className="h-4 w-4" />
-                  {t("useCode")}
+                  {t("manualScanAction")}
                 </button>
                 <button
                   type="button"
@@ -893,7 +897,7 @@ export function AuditScanForm({
                   <div className="text-base font-semibold text-foreground">{t("auditDecisionTitle")}</div>
                   <div className="mt-1 text-sm text-muted-foreground">{t("auditDecisionHelp")}</div>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-2 sm:grid-cols-3">
                   <button
                     type="button"
                     onClick={handleQuickMatchedScan}
@@ -910,6 +914,14 @@ export function AuditScanForm({
                   >
                     <AlertTriangle className="h-4 w-4" />
                     {t("dataMismatch")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={scrollToAuditPhotoEvidence}
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                    {t("captureEvidenceAction")}
                   </button>
                 </div>
               </div>
@@ -991,7 +1003,7 @@ export function AuditScanForm({
           )}
 
           {selectedItem && (
-            <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
+            <div id="audit-photo-evidence" className="scroll-mt-24 md:col-span-2 rounded-md border border-border bg-background p-4">
               <div className="mb-3 text-sm font-semibold text-foreground">{t("auditPhotoEvidence")}</div>
               <p className="mb-3 text-sm text-muted-foreground">
                 {requiresMismatchPhoto ? t("auditPhotoRequiredForMismatch") : t("auditPhotoOptionalForMatch")}
@@ -1092,12 +1104,12 @@ function AuditMetric({ label, value }: { label: string; value: string }) {
 
 function ScanFeedbackCard({ feedback }: { feedback: ScanFeedback }) {
   const tone =
-    feedback.status === "found" || feedback.status === "saved"
+    feedback.status === "found" || feedback.status === "saved" || feedback.status === "found_later"
       ? "border-success/40 bg-success/10 text-success"
-      : feedback.status === "not_in_round"
+      : feedback.status === "unknown_asset"
         ? "border-danger/40 bg-danger/10 text-danger"
         : "border-warning/40 bg-warning/10 text-warning"
-  const Icon = feedback.status === "found" || feedback.status === "saved" ? CheckCircle2 : AlertTriangle
+  const Icon = feedback.status === "found" || feedback.status === "saved" || feedback.status === "found_later" ? CheckCircle2 : AlertTriangle
 
   return (
     <div className={`md:col-span-2 rounded-md border p-4 ${tone}`}>
