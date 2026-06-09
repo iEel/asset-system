@@ -4,7 +4,10 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import {
+  buildAssetLabelPrintQueueOrderBy,
   buildAssetLabelPrintQueueWhere,
+  normalizeLabelPrintQueueFilters,
+  normalizeLabelPrintQueueSort,
   normalizeLabelPrintAssetIds,
   normalizeLabelTapeSize,
 } from "@/lib/asset-label-print-tracking"
@@ -22,14 +25,26 @@ export async function GET(request: NextRequest) {
 
     const pageSize = clampPageSize(request.nextUrl.searchParams.get("pageSize"))
     const mode = request.nextUrl.searchParams.get("mode")
+    const filters = normalizeLabelPrintQueueFilters({
+      companyId: request.nextUrl.searchParams.get("companyId"),
+      branchId: request.nextUrl.searchParams.get("branchId"),
+      categoryId: request.nextUrl.searchParams.get("categoryId"),
+      locationId: request.nextUrl.searchParams.get("locationId"),
+      createdFrom: request.nextUrl.searchParams.get("createdFrom"),
+      createdTo: request.nextUrl.searchParams.get("createdTo"),
+    })
+    const sort = normalizeLabelPrintQueueSort(request.nextUrl.searchParams.get("sort"))
     const locale = request.nextUrl.searchParams.get("locale") === "en" ? "en" : "th"
     const assets = await prisma.asset.findMany({
-      where: buildAssetLabelPrintQueueWhere(mode),
+      where: buildAssetLabelPrintQueueWhere(mode, filters),
       select: {
         id: true,
         assetTag: true,
         name: true,
         serialNumber: true,
+        createdAt: true,
+        company: { select: { code: true, nameTh: true, nameEn: true } },
+        branch: { select: { code: true, name: true } },
         category: { select: { code: true, name: true } },
         brand: { select: { name: true } },
         model: { select: { name: true } },
@@ -43,7 +58,7 @@ export async function GET(request: NextRequest) {
         },
         _count: { select: { labelPrints: true } },
       },
-      orderBy: [{ createdAt: "desc" }, { assetTag: "asc" }],
+      orderBy: buildAssetLabelPrintQueueOrderBy(sort),
       take: pageSize,
     })
 
@@ -55,6 +70,9 @@ export async function GET(request: NextRequest) {
           assetTag: asset.assetTag,
           name: asset.name,
           serialNumber: asset.serialNumber,
+          createdAt: asset.createdAt.toISOString(),
+          company: asset.company,
+          branch: asset.branch,
           category: asset.category,
           brand: asset.brand,
           model: asset.model,
@@ -72,6 +90,8 @@ export async function GET(request: NextRequest) {
       }),
       locale,
       pageSize,
+      filters,
+      sort,
     })
   } catch (error) {
     return errorResponse(error)
@@ -157,7 +177,7 @@ export async function POST(request: NextRequest) {
 function clampPageSize(value: string | null) {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return 20
-  return Math.min(Math.max(Math.trunc(parsed), 1), 50)
+  return Math.min(Math.max(Math.trunc(parsed), 1), 100)
 }
 
 function trimNullable(value: string | null, maxLength: number) {

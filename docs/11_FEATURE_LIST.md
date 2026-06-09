@@ -125,8 +125,9 @@ Important data semantics:
 | Label templates | Primary/secondary/tertiary text templates and QR size/layout settings |
 | Public QR Base URL | Production QR links use public HTTPS base URL; print UI warns for localhost/private/relative targets |
 | Single label print | Asset detail print route |
-| Bulk label print | Label management page and bulk print route |
-| Print tracking | Label print batch and print history models exist in schema |
+| Bulk label print | Label management page and bulk print route with queue filters for print status, company, branch, category, location, created date, and selected-label sort order |
+| Label queue UX | Branch and location filter options include hierarchy context, and asset display names de-duplicate brand/model text already present in the asset name |
+| Print tracking | Label print batch and print history models exist in schema; current behavior records the print batch when the print page executes |
 | Asset scan/search | QR-first scanner page for printed asset labels |
 | QR resolver | `/q/a/{assetId}` resolves printed QR labels to the correct localized asset detail |
 | Serial/barcode scanning | Reusable scanner input supports manufacturer serial/barcode capture paths documented in handoff/workflows |

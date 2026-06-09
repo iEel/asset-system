@@ -80,7 +80,7 @@ export default async function AssetLabelsPage({ params, searchParams }: AssetLab
         recordingPrint: t("recordingLabelPrint"),
         printRecorded: t("labelPrintRecorded"),
         printRecordFailed: t("labelPrintRecordFailed"),
-        printerTapeGuidance: t("labelPrinterTapeGuidance"),
+        printerTapeGuidance: t("labelPrinterTapeGuidance", { tapeSize: "{tapeSize}" }),
         qrPrintTarget: t("labelQrPrintTarget"),
         qrLocalWarning: t("labelQrLocalWarning"),
         scanHint: t("scanToOpenDetail"),

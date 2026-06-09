@@ -8,6 +8,7 @@
 
 | Area | Update |
 |---|---|
+| Asset Label workflow | `/th/asset-management/labels` now has queue filters for print status, company, branch, category, location, and created date, selected-label sort controls, hierarchy-aware branch/location dropdowns, and de-duplicated asset display names so brand/model text is not repeated when already present in the asset name. The label print pages also pass the Brother tape-size placeholder through `next-intl` to prevent missing `tapeSize` formatting errors. |
 | Master-data drilldowns | Category model counts now open the Brand/Model workspace filtered by category, category asset counts open Asset Register filtered by category, brand asset counts open Asset Register filtered by brand, and model asset counts open Asset Register filtered by model. Asset Register preserves `brandId`/`modelId` through the filter form and shows removable active drilldown chips. |
 | Asset Register filter UX | The register filter panel now uses a balanced five-column desktop grid so both filter rows fill the available width. Status and condition remain grouped together, and their lifecycle/condition help icons use a compact size inside filter labels. |
 

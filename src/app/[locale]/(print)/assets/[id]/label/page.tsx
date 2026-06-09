@@ -75,7 +75,7 @@ export default async function AssetLabelPage({ params }: AssetLabelPageProps) {
         recordingPrint: t("recordingLabelPrint"),
         printRecorded: t("labelPrintRecorded"),
         printRecordFailed: t("labelPrintRecordFailed"),
-        printerTapeGuidance: t("labelPrinterTapeGuidance"),
+        printerTapeGuidance: t("labelPrinterTapeGuidance", { tapeSize: "{tapeSize}" }),
         qrPrintTarget: t("labelQrPrintTarget"),
         qrLocalWarning: t("labelQrLocalWarning"),
         scanHint: t("scanToOpenDetail"),
