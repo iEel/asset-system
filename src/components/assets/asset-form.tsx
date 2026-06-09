@@ -228,6 +228,7 @@ export function AssetForm({
   const [nameManuallyEdited, setNameManuallyEdited] = useState(() => Boolean(asset?.id || asset?.name?.trim()))
   const [showRawJson, setShowRawJson] = useState(false)
   const [allowCrossCompanyCustodian, setAllowCrossCompanyCustodian] = useState(() => shouldAllowCrossCompanyCustodianOnLoad(asset, employees, branches, departments))
+  const [allowCrossBranchLocation, setAllowCrossBranchLocation] = useState(() => shouldAllowCrossBranchLocationOnLoad(asset, locations))
   const [saving, setSaving] = useState(false)
   const [duplicateState, setDuplicateState] = useState<{
     checking: boolean
@@ -299,7 +300,12 @@ export function AssetForm({
     values.companyId &&
     selectedCustodian.companyId !== values.companyId
   )
-  const filteredLocations = locations.filter((location) => location.branchId === values.branchId)
+  const filteredLocations = allowCrossBranchLocation ? locations : locations.filter((location) => location.branchId === values.branchId)
+  const selectedHomeLocation = locations.find((location) => location.id === values.homeLocationId)
+  const selectedCurrentLocation = locations.find((location) => location.id === values.currentLocationId)
+  const hasCrossBranchLocation =
+    isCrossBranchLocation(selectedHomeLocation, values.branchId) ||
+    isCrossBranchLocation(selectedCurrentLocation, values.branchId)
   const filteredModels = models.filter(
     (model) =>
       (!values.categoryId || model.categoryId === values.categoryId) &&
@@ -438,6 +444,28 @@ export function AssetForm({
       const custodian = employees.find((employee) => employee.id === current.custodianId)
       if (employeeMatchesAssetScope(custodian, current, branches, departments)) return current
       return { ...current, custodianId: "" }
+    })
+  }
+
+  function handleCrossBranchLocationToggle(checked: boolean) {
+    setAllowCrossBranchLocation(checked)
+    if (checked) return
+
+    setValues((current) => {
+      const homeLocation = locations.find((location) => location.id === current.homeLocationId)
+      const currentLocation = locations.find((location) => location.id === current.currentLocationId)
+      const nextHomeLocationId = locationMatchesAssetBranch(homeLocation, current.branchId) ? current.homeLocationId : ""
+      const nextCurrentLocationId = locationMatchesAssetBranch(currentLocation, current.branchId) ? current.currentLocationId : ""
+
+      if (nextHomeLocationId === current.homeLocationId && nextCurrentLocationId === current.currentLocationId) {
+        return current
+      }
+
+      return {
+        ...current,
+        homeLocationId: nextHomeLocationId,
+        currentLocationId: nextCurrentLocationId,
+      }
     })
   }
 
@@ -990,13 +1018,30 @@ export function AssetForm({
         )}
 
         <Section title={t("locationCustodian")}>
+          <div className="md:col-span-2">
+            <label className="flex items-start gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={allowCrossBranchLocation}
+                onChange={(event) => handleCrossBranchLocationToggle(event.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              />
+              <span>
+                <span className="block font-medium text-foreground">{t("allowCrossBranchLocation")}</span>
+                <span>{t("allowCrossBranchLocationHelp")}</span>
+              </span>
+            </label>
+            {hasCrossBranchLocation ? (
+              <p className="mt-2 text-xs font-medium text-warning">{t("crossBranchLocationWarning")}</p>
+            ) : null}
+          </div>
           <SelectField label={t("homeLocation")} value={values.homeLocationId ?? ""} onChange={(value) => setField("homeLocationId", value)}>
             <option value="">{t("selectLocation")}</option>
-            {filteredLocations.map((location) => <option key={location.id} value={location.id}>{location.label}</option>)}
+            {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
           </SelectField>
           <SelectField label={t("currentLocation")} value={values.currentLocationId} required onChange={(value) => setField("currentLocationId", value)}>
             <option value="">{t("selectLocation")}</option>
-            {filteredLocations.map((location) => <option key={location.id} value={location.id}>{location.label}</option>)}
+            {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
           </SelectField>
           <div>
             <AssetStateFieldLabel label={t("status")} required help={assetStatusHelp} />
@@ -1735,6 +1780,30 @@ function employeeMatchesAssetScope(
     departmentId: current.departmentId,
     departmentCode: department?.code,
   })
+}
+
+function shouldAllowCrossBranchLocationOnLoad(current: AssetFormValues | undefined, locations: Option[]) {
+  if (!current?.branchId) return false
+  return [current.homeLocationId, current.currentLocationId].some((locationId) => {
+    const location = locations.find((item) => item.id === locationId)
+    return isCrossBranchLocation(location, current.branchId)
+  })
+}
+
+function isCrossBranchLocation(location: Option | undefined, branchId?: string | null) {
+  return Boolean(location?.branchId && branchId && location.branchId !== branchId)
+}
+
+function locationMatchesAssetBranch(location: Option | undefined, branchId?: string | null) {
+  if (!location) return true
+  if (!branchId) return false
+  return !location.branchId || location.branchId === branchId
+}
+
+function getLocationOptionLabel(location: Option, includeBranch: boolean, branches: Option[]) {
+  if (!includeBranch || !location.branchId) return location.label
+  const branch = branches.find((item) => item.id === location.branchId)
+  return branch ? `${location.label} (${branch.label})` : location.label
 }
 
 function createCustomFieldRow(key = "", value = ""): CustomFieldRow {

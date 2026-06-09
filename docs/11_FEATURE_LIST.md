@@ -1,6 +1,6 @@
 # Asset Management System - Feature List
 
-Last updated: 2026-06-08
+Last updated: 2026-06-09
 
 This feature list is based on the current repository documents and source code, not only on the original plan. It focuses on features that are represented by the current docs, routes, API endpoints, Prisma schema, and component/library structure.
 
@@ -88,6 +88,7 @@ Important data semantics:
 
 - `Asset.companyId` and `Asset.branchId` represent asset owner/tag/reporting scope.
 - `Asset.custodianId` may point to an employee outside the asset owner company/branch for cross-company custody.
+- `Asset.homeLocationId` and `Asset.currentLocationId` may point to locations outside the asset owner branch when the operator intentionally enables cross-branch location mode; owner/tag scope remains unchanged.
 - Asset ownership/tag scope changes should be intentional master-data edits; normal custody changes should use checkout, check-in, and transfer.
 - Files are stored under `UPLOAD_DIR` and referenced through `Attachment`; file bytes are not stored in SQL Server.
 - Production schema changes require backup, approved change record, and rollback/restore plan. `npx prisma db push` is Dev/Test-oriented.
@@ -98,9 +99,9 @@ Important data semantics:
 |---|---|
 | Asset list | Asset Register page with filters, URL-backed operational quick filters, responsive views, table/card behavior, row navigation, search that includes the current custodian employee code, master-data drilldown filters, and return-to-list navigation that preserves page/filter/sort/search state |
 | Asset detail | Unified page with overview, specs, QR, photos/files, components, purchase docs, movement, maintenance, audit, handover/return, notes, and an explicit Back action to the originating register view |
-| Asset create/edit | Single asset form with owner/tag scope, category/brand/model, serial, custodian, location, purchase/warranty, custom fields, photos/files; edit mode preserves saved cross-company custodians by opening the wider custodian list automatically |
+| Asset create/edit | Single asset form with owner/tag scope, category/brand/model, serial, custodian, location, purchase/warranty, custom fields, photos/files; edit mode preserves saved cross-company custodians and cross-branch locations by opening the wider selector automatically |
 | Asset clone | Asset Register and Asset Detail can open `/assets/new?cloneFrom={assetId}` to create a new asset from an existing record, preserving the originating register view when launched from the list. The clone draft copies shared master, ownership, location, purchase/warranty, custom-field, and linked purchase-document data while leaving Asset Tag, Serial Number, and FA/accounting code blank and showing a review banner. |
-| Batch create | Batch creation from shared purchase/master data plus row-level serial/manual tag/custodian/remark values |
+| Batch create | Batch creation from shared purchase/master data plus row-level serial/manual tag/custodian/remark values; shared location can opt into cross-branch/site selection without changing owner/tag scope |
 | Asset import | Excel import preview and confirm APIs for legacy asset onboarding; the register import helper starts collapsed and opens on demand |
 | Asset export | Excel export using current filters where supported |
 | Master-data drilldowns | Category, brand, and model count links open the relevant Brand/Model workspace or Asset Register filters (`categoryId`, `brandId`, `modelId`) with removable active filter chips where applicable |

@@ -18,6 +18,7 @@
 - Custodian defaults to the selected owner company/branch/department scope, but the form can opt in to cross-company custodians for cases where the asset owner and current holder are different organizations.
 - When editing an existing asset, a saved custodian outside the owner company/branch/department scope automatically opens the cross-company custodian mode so the current holder remains visible and can be reviewed before saving.
 - Cross-company custodian selections show an explicit warning and are recorded in the creation audit trail. Batch create follows the same model for shared owner/tag scope plus common or row-level custodian values.
+- Home/current location defaults to the selected owner branch, but single and batch create can opt in to cross-branch locations when the physical site differs from the branch used for Asset Tag ownership. Cross-branch mode warns the operator and appends each location's branch label in the dropdown to avoid ambiguous repeated location codes.
 - Clone sessions show a warning banner reminding users to review custodian, location, purchasing data, and linked documents before saving. Batch mode is hidden during a clone session so the prefilled single-asset draft is not lost by switching modes.
 
 ## Asset Scan And Labels

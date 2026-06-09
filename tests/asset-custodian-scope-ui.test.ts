@@ -40,3 +40,24 @@ test("batch asset form can opt into cross-company custodians for common and row 
   assert.match(source, /assetOwnerCompany/)
   assert.match(source, /assetOwnerBranch/)
 })
+
+test("asset forms can opt into cross-branch locations without changing asset tag ownership scope", () => {
+  const singleForm = readFileSync("src/components/assets/asset-form.tsx", "utf8")
+  const batchForm = readFileSync("src/components/assets/asset-batch-form.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(singleForm, /allowCrossBranchLocation/)
+  assert.match(singleForm, /allowCrossBranchLocation \? locations : locations\.filter/)
+  assert.match(singleForm, /shouldAllowCrossBranchLocationOnLoad\(asset, locations\)/)
+  assert.match(singleForm, /getLocationOptionLabel\(location, allowCrossBranchLocation, branches\)/)
+  assert.match(singleForm, /crossBranchLocationWarning/)
+
+  assert.match(batchForm, /allowCrossBranchLocation/)
+  assert.match(batchForm, /allowCrossBranchLocation \? locations : locations\.filter/)
+  assert.match(batchForm, /getLocationOptionLabel\(location, allowCrossBranchLocation, branches\)/)
+  assert.match(batchForm, /crossBranchLocationWarning/)
+
+  assert.equal(th.asset.allowCrossBranchLocation, "แสดงที่ตั้งต่างบริษัท/ต่างสาขา")
+  assert.equal(en.asset.allowCrossBranchLocation, "Show cross-branch locations")
+})

@@ -16,6 +16,7 @@ import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter
 
 type AssetBatchFormProps = React.ComponentProps<typeof AssetForm>
 type ScopedEmployeeOption = AssetBatchFormProps["employees"][number]
+type ScopedLocationOption = AssetBatchFormProps["locations"][number]
 
 type BatchCommonValues = {
   name: string
@@ -117,6 +118,7 @@ export function AssetBatchForm({
   const [duplicateCheckMessage, setDuplicateCheckMessage] = useState("")
   const [duplicateCheckStatus, setDuplicateCheckStatus] = useState<"clean" | "duplicate" | "error" | null>(null)
   const [allowCrossCompanyCustodian, setAllowCrossCompanyCustodian] = useState(false)
+  const [allowCrossBranchLocation, setAllowCrossBranchLocation] = useState(false)
   const [saving, setSaving] = useState(false)
   const [createdBatch, setCreatedBatch] = useState<CreatedBatch | null>(null)
   const ownershipType = normalizeAssetOwnershipType(common.ownershipType)
@@ -140,7 +142,12 @@ export function AssetBatchForm({
     const employee = employees.find((item) => item.id === id)
     return Boolean(employee?.companyId && common.companyId && employee.companyId !== common.companyId)
   })
-  const filteredLocations = locations.filter((location) => location.branchId === common.branchId)
+  const filteredLocations = allowCrossBranchLocation ? locations : locations.filter((location) => location.branchId === common.branchId)
+  const selectedHomeLocation = locations.find((location) => location.id === common.homeLocationId)
+  const selectedCurrentLocation = locations.find((location) => location.id === common.currentLocationId)
+  const hasCrossBranchLocation =
+    isCrossBranchLocation(selectedHomeLocation, common.branchId) ||
+    isCrossBranchLocation(selectedCurrentLocation, common.branchId)
   const filteredModels = models.filter(
     (model) => (!common.categoryId || model.categoryId === common.categoryId) && (!common.brandId || model.brandId === common.brandId)
   )
@@ -305,6 +312,31 @@ export function AssetBatchForm({
     )
   }
 
+  function handleCrossBranchLocationToggle(checked: boolean) {
+    setCreatedBatch(null)
+    setReviewing(false)
+    clearDuplicateCheck()
+    setAllowCrossBranchLocation(checked)
+    if (checked) return
+
+    setCommon((current) => {
+      const homeLocation = locations.find((location) => location.id === current.homeLocationId)
+      const currentLocation = locations.find((location) => location.id === current.currentLocationId)
+      const nextHomeLocationId = locationMatchesAssetBranch(homeLocation, current.branchId) ? current.homeLocationId : ""
+      const nextCurrentLocationId = locationMatchesAssetBranch(currentLocation, current.branchId) ? current.currentLocationId : ""
+
+      if (nextHomeLocationId === current.homeLocationId && nextCurrentLocationId === current.currentLocationId) {
+        return current
+      }
+
+      return {
+        ...current,
+        homeLocationId: nextHomeLocationId,
+        currentLocationId: nextCurrentLocationId,
+      }
+    })
+  }
+
   function employeeMatchesBatchScope(employee: ScopedEmployeeOption | undefined, scope: BatchCommonValues) {
     if (!employee) return true
     const branch = branches.find((item) => item.id === scope.branchId)
@@ -317,6 +349,22 @@ export function AssetBatchForm({
       departmentId: scope.departmentId,
       departmentCode: department?.code,
     })
+  }
+
+  function isCrossBranchLocation(location: ScopedLocationOption | undefined, branchId?: string | null) {
+    return Boolean(location?.branchId && branchId && location.branchId !== branchId)
+  }
+
+  function locationMatchesAssetBranch(location: ScopedLocationOption | undefined, branchId?: string | null) {
+    if (!location) return true
+    if (!branchId) return false
+    return !location.branchId || location.branchId === branchId
+  }
+
+  function getLocationOptionLabel(location: ScopedLocationOption, includeBranch: boolean, branchOptions: AssetBatchFormProps["branches"]) {
+    if (!includeBranch || !location.branchId) return location.label
+    const branch = branchOptions.find((item) => item.id === location.branchId)
+    return branch ? `${location.label} (${branch.label})` : location.label
   }
 
   function handleAddRow() {
@@ -566,13 +614,30 @@ export function AssetBatchForm({
               <p className="mt-2 text-xs font-medium text-warning">{t("crossCompanyCustodianWarning")}</p>
             ) : null}
           </div>
+          <div className="md:col-span-2">
+            <label className="flex items-start gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={allowCrossBranchLocation}
+                onChange={(event) => handleCrossBranchLocationToggle(event.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              />
+              <span>
+                <span className="block font-medium text-foreground">{t("allowCrossBranchLocation")}</span>
+                <span>{t("allowCrossBranchLocationHelp")}</span>
+              </span>
+            </label>
+            {hasCrossBranchLocation ? (
+              <p className="mt-2 text-xs font-medium text-warning">{t("crossBranchLocationWarning")}</p>
+            ) : null}
+          </div>
           <SelectField label={t("currentLocation")} value={common.currentLocationId} required onChange={(value) => setCommonField("currentLocationId", value)}>
             <option value="">{t("selectLocation")}</option>
-            {filteredLocations.map((location) => <option key={location.id} value={location.id}>{location.label}</option>)}
+            {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
           </SelectField>
           <SelectField label={t("homeLocation")} value={common.homeLocationId} onChange={(value) => setCommonField("homeLocationId", value)}>
             <option value="">{t("selectLocation")}</option>
-            {filteredLocations.map((location) => <option key={location.id} value={location.id}>{location.label}</option>)}
+            {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
           </SelectField>
           <SelectField label={t("status")} value={common.statusId} required onChange={(value) => setCommonField("statusId", value)}>
             <option value="">{t("selectStatus")}</option>
