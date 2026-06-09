@@ -90,3 +90,23 @@ test("audit scan field-mode UX copy is translated", () => {
     assert.match(messages.auditScan.dropAuditPhotoHint, /หลายรูป|multiple/)
   }
 })
+
+test("audit scan mobile layout uses compact progress and post-scan actions", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(form, /showMobileQuickActionBar/)
+  assert.match(form, /AuditCompactMetric/)
+  assert.match(form, /md:hidden/)
+  assert.match(form, /fixed inset-x-0 bottom-0/)
+  assert.match(form, /aria-label=\{t\("mobileActionBar"\)\}/)
+  assert.match(form, /scrollToAuditScanInput/)
+  assert.match(form, /id="audit-scan-input-panel"/)
+  assert.match(form, /selectedItem \? \(showMobileQuickActionBar \? "hidden md:flex" : "flex"\) : "hidden md:flex"/)
+
+  assert.equal(typeof th.auditScan.mobileActionBar, "string")
+  assert.match(th.auditScan.continueOrManualAction, /สแกนต่อ|กรอกเอง/)
+  assert.equal(typeof en.auditScan.mobileActionBar, "string")
+  assert.match(en.auditScan.continueOrManualAction, /scan|manual/i)
+})

@@ -173,6 +173,8 @@ export function AuditScanForm({
   const pendingCount = items.filter((item) => item.auditStatus === "pending").length
   const processedCount = items.length - pendingCount
   const isDetailedScanVisible = Boolean(selectedItem && (!fastMode || showDetailedFields))
+  const showMobileQuickActionBar = Boolean(selectedItem && fastMode && !showDetailedFields)
+  const submitBarVisibility = selectedItem ? (showMobileQuickActionBar ? "hidden md:flex" : "flex") : "hidden md:flex"
   const systemDataRows = selectedItem
     ? buildSystemDataRows(
         selectedItem,
@@ -243,6 +245,10 @@ export function AuditScanForm({
 
   function scrollToAuditPhotoEvidence() {
     document.getElementById("audit-photo-evidence")?.scrollIntoView({ behavior: "smooth", block: "center" })
+  }
+
+  function scrollToAuditScanInput() {
+    document.getElementById("audit-scan-input-panel")?.scrollIntoView({ behavior: "smooth", block: "center" })
   }
 
   useEffect(() => {
@@ -651,7 +657,7 @@ export function AuditScanForm({
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className={`mx-auto max-w-6xl ${selectedItem ? "pb-36 md:pb-0" : ""}`}>
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Link href={backHref} className="mb-3 inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent">
@@ -679,6 +685,11 @@ export function AuditScanForm({
           processedLabel={t("scannedQueue")}
           pendingLabel={t("pendingQueue")}
         />
+        <div className="mt-3 grid grid-cols-3 gap-2 md:hidden">
+          <AuditCompactMetric label={t("pendingQueue")} value={pendingCount.toString()} />
+          <AuditCompactMetric label={t("scannedQueue")} value={processedCount.toString()} />
+          <AuditCompactMetric label={t("photoQueue")} value={queuedAuditPhotos.length.toString()} />
+        </div>
       </div>
 
       {offlineQueue.length > 0 ? (
@@ -723,7 +734,7 @@ export function AuditScanForm({
 
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
-          <div className="md:col-span-2 grid gap-3 sm:grid-cols-3">
+          <div className="hidden gap-3 md:col-span-2 md:grid md:grid-cols-3">
             <AuditMetric label={t("pendingQueue")} value={pendingCount.toString()} />
             <AuditMetric label={t("scannedQueue")} value={processedCount.toString()} />
             <AuditMetric label={t("photoQueue")} value={queuedAuditPhotos.length.toString()} />
@@ -751,7 +762,7 @@ export function AuditScanForm({
             <ScanFeedbackCard feedback={scanFeedback} />
           )}
 
-          <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
+          <div id="audit-scan-input-panel" className="scroll-mt-24 md:col-span-2 rounded-md border border-border bg-background p-4">
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
               <Field label={t("scanInput")}>
                 <input
@@ -891,7 +902,7 @@ export function AuditScanForm({
           )}
 
           {selectedItem && fastMode && !showDetailedFields && (
-            <div className="md:col-span-2 rounded-md border border-success/30 bg-success/10 p-4">
+            <div className="hidden rounded-md border border-success/30 bg-success/10 p-4 md:col-span-2 md:block">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <div className="text-base font-semibold text-foreground">{t("auditDecisionTitle")}</div>
@@ -1081,7 +1092,7 @@ export function AuditScanForm({
               <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
             </Field>
           </div>
-          <div className="sticky bottom-0 z-10 -mx-4 flex justify-end border-t border-border bg-surface/95 p-3 backdrop-blur md:col-span-2 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+          <div className={`sticky bottom-0 z-10 -mx-4 justify-end border-t border-border bg-surface/95 p-3 backdrop-blur md:col-span-2 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none ${submitBarVisibility}`}>
             <button type="submit" disabled={saving || !selectedItem || (fastMode && !showDetailedFields)} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-base font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {t("submitScan")}
@@ -1089,6 +1100,54 @@ export function AuditScanForm({
           </div>
         </form>
       </section>
+      {showMobileQuickActionBar ? (
+        <div aria-label={t("mobileActionBar")} className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 px-3 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-lg backdrop-blur md:hidden">
+          <div className="mx-auto grid max-w-6xl grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={handleQuickMatchedScan}
+              disabled={saving}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-success px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-success/90 disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              <span>{t("dataMatches")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={openMismatchDetails}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 py-2 text-sm font-semibold text-warning transition-colors hover:bg-warning/10"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              <span>{t("dataMismatch")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={scrollToAuditPhotoEvidence}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              <ImagePlus className="h-4 w-4" />
+              <span>{t("captureEvidenceAction")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={scrollToAuditScanInput}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              <Keyboard className="h-4 w-4" />
+              <span>{t("continueOrManualAction")}</span>
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function AuditCompactMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border bg-background px-2 py-2 text-center">
+      <div className="truncate text-[11px] font-medium text-muted-foreground">{label}</div>
+      <div className="mt-0.5 text-lg font-bold leading-none text-foreground">{value}</div>
     </div>
   )
 }

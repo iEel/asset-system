@@ -1798,6 +1798,8 @@
     "useCode": "ใช้รหัส",
     "manualScanAction": "กรอกเอง/ใช้รหัส",
     "captureEvidenceAction": "ถ่ายรูปหลักฐาน",
+    "continueOrManualAction": "สแกนต่อ / กรอกเอง",
+    "mobileActionBar": "การทำงานหลังสแกน",
     "startCamera": "เปิดกล้อง",
     "stopCamera": "ปิดกล้อง",
     "cameraError": "ไม่สามารถเปิดกล้องได้",

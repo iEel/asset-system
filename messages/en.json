@@ -1798,6 +1798,8 @@
     "useCode": "Use Code",
     "manualScanAction": "Manual / Use code",
     "captureEvidenceAction": "Take evidence photo",
+    "continueOrManualAction": "Scan again / manual",
+    "mobileActionBar": "Post-scan actions",
     "startCamera": "Start Camera",
     "stopCamera": "Stop Camera",
     "cameraError": "Unable to start camera",
