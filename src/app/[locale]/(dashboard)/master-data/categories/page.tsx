@@ -280,10 +280,30 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
                         {category.description || "-"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {category._count.models}
+                        {category._count.models > 0 ? (
+                          <Link
+                            prefetch={false}
+                            href={drilldown.models}
+                            className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                          >
+                            {category._count.models.toLocaleString()}
+                          </Link>
+                        ) : (
+                          "0"
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {category._count.assets}
+                        {category._count.assets > 0 ? (
+                          <Link
+                            prefetch={false}
+                            href={drilldown.assets}
+                            className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                          >
+                            {category._count.assets.toLocaleString()}
+                          </Link>
+                        ) : (
+                          "0"
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {category._count.customFieldDefs}

@@ -96,16 +96,17 @@ Important data semantics:
 
 | Feature | Details |
 |---|---|
-| Asset list | Asset Register page with filters, URL-backed operational quick filters, responsive views, table/card behavior, row navigation, search that includes the current custodian employee code, and return-to-list navigation that preserves page/filter/sort/search state |
+| Asset list | Asset Register page with filters, URL-backed operational quick filters, responsive views, table/card behavior, row navigation, search that includes the current custodian employee code, master-data drilldown filters, and return-to-list navigation that preserves page/filter/sort/search state |
 | Asset detail | Unified page with overview, specs, QR, photos/files, components, purchase docs, movement, maintenance, audit, handover/return, notes, and an explicit Back action to the originating register view |
 | Asset create/edit | Single asset form with owner/tag scope, category/brand/model, serial, custodian, location, purchase/warranty, custom fields, photos/files; edit mode preserves saved cross-company custodians by opening the wider custodian list automatically |
 | Asset clone | Asset Register and Asset Detail can open `/assets/new?cloneFrom={assetId}` to create a new asset from an existing record, preserving the originating register view when launched from the list. The clone draft copies shared master, ownership, location, purchase/warranty, custom-field, and linked purchase-document data while leaving Asset Tag, Serial Number, and FA/accounting code blank and showing a review banner. |
 | Batch create | Batch creation from shared purchase/master data plus row-level serial/manual tag/custodian/remark values |
 | Asset import | Excel import preview and confirm APIs for legacy asset onboarding; the register import helper starts collapsed and opens on demand |
 | Asset export | Excel export using current filters where supported |
+| Master-data drilldowns | Category, brand, and model count links open the relevant Brand/Model workspace or Asset Register filters (`categoryId`, `brandId`, `modelId`) with removable active filter chips where applicable |
 | Duplicate handling | Duplicate checking for asset tag/serial and batch duplicate review |
 | Asset tag generation | Configurable format, category prefix groups, company asset-tag code, branch/category/running tokens |
-| Status/condition guidance | Asset Create/Edit, Asset Detail, Asset Register filters, and Asset Register table headers expose help popovers explaining lifecycle status, physical condition, protected workflows, and normal next actions |
+| Status/condition guidance | Asset Create/Edit, Asset Detail, Asset Register filters, and Asset Register table headers expose help popovers explaining lifecycle status, physical condition, protected workflows, and normal next actions; register filter icons use a compact size so the filter rows stay visually aligned |
 | Custom fields | Category-level custom field templates rendered automatically in asset forms |
 | Model specs | Structured asset model specs with legacy text parsing and summary display |
 | Asset/model photos | Asset photos and model photos stored as attachments; Asset Register thumbnails prefer model photos first, then fall back to asset photos, while detail/evidence flows still show both |
@@ -239,8 +240,8 @@ Implemented status lifecycle and enforcement from docs/code:
 | Departments | CRUD, optional company relation, department code/name |
 | Employees | CRUD, company/branch/department, manager, employment status, linked user/self-service context |
 | Locations | CRUD, branch relation, parent/child hierarchy, location type |
-| Categories | CRUD, soft delete/reactivation by code, custom field templates, safe create/update template writes, photo checklist/prefix support |
-| Brands/Models | Compact brand navigator, model workspace, structured specs, model photos |
+| Categories | CRUD, soft delete/reactivation by code, custom field templates, safe create/update template writes, photo checklist/prefix support, and count drilldowns to models/assets |
+| Brands/Models | Compact brand navigator, model workspace, structured specs, model photos, active count summaries, and drilldowns to brand/model asset lists |
 | Suppliers | CRUD/detail, tax ID/supplier code semantics, contact/address fields |
 
 ## Admin, Settings, And Governance

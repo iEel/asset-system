@@ -18,6 +18,8 @@ test("asset status and condition help uses an accessible popover component", () 
   assert.match(source, /onFocus/)
   assert.match(source, /onClick/)
   assert.match(source, /role="status"/)
+  assert.match(source, /size = "default"/)
+  assert.match(source, /isCompact/)
 })
 
 test("asset form, detail, and register expose status and condition help", () => {
@@ -32,6 +34,23 @@ test("asset form, detail, and register expose status and condition help", () => 
   assert.match(assetRegisterTableSource(), /AssetStateHelpPopover/)
   assert.match(assetRegisterPageSource(), /statusHelpTitle: t\("statusHelpTitle"\)/)
   assert.match(assetRegisterPageSource(), /conditionHelpTitle: t\("conditionHelpTitle"\)/)
+})
+
+test("asset register keeps status and condition filters grouped", () => {
+  const source = assetRegisterPageSource()
+  const groupStart = source.indexOf('aria-label={labels.assetStateFilterGroup}')
+  const statusIndex = source.indexOf('name="statusId"', groupStart)
+  const conditionIndex = source.indexOf('name="conditionId"', groupStart)
+
+  assert.notEqual(groupStart, -1)
+  assert.match(source, /lg:grid-cols-4 xl:grid-cols-5/)
+  assert.match(source, /className="lg:col-span-2"/)
+  assert.doesNotMatch(source, /xl:grid-cols-6/)
+  assert.doesNotMatch(source, /2xl:grid-cols-7/)
+  assert.match(source, /className="grid gap-3 sm:grid-cols-2 lg:col-span-2"/)
+  assert.match(source, /<AssetStateHelpPopover \{\.\.\.help\} size="compact" \/>/)
+  assert.ok(statusIndex > groupStart)
+  assert.ok(conditionIndex > statusIndex)
 })
 
 test("asset status and condition help messages are localized", () => {
@@ -50,6 +69,7 @@ test("asset status and condition help messages are localized", () => {
     "conditionHelpDamaged",
     "conditionHelpNeedsReview",
     "conditionHelpMissing",
+    "assetStateFilterGroup",
   ]
 
   for (const file of ["messages/th.json", "messages/en.json"]) {

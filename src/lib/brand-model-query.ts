@@ -84,6 +84,21 @@ export function buildBrandModelQueryString(current: BrandModelListState, next: P
   return params.toString()
 }
 
+export function buildBrandDrilldownHrefs({ locale, brandId }: { locale: string; brandId: string }) {
+  const encodedBrandId = encodeURIComponent(brandId)
+  return {
+    assets: `/${locale}/assets?brandId=${encodedBrandId}&page=1`,
+    models: `/${locale}/master-data/brands?modelBrandId=${encodedBrandId}&modelPage=1`,
+  }
+}
+
+export function buildModelDrilldownHrefs({ locale, modelId }: { locale: string; modelId: string }) {
+  const encodedModelId = encodeURIComponent(modelId)
+  return {
+    assets: `/${locale}/assets?modelId=${encodedModelId}&page=1`,
+  }
+}
+
 export function normalizeBrandModelReturnTo(locale: string, value: ReturnToParam) {
   const fallback = `/${locale}/master-data/brands`
   const raw = Array.isArray(value) ? value[0] : value

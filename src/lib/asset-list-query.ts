@@ -7,6 +7,8 @@ export type AssetListParams = {
   companyId?: string
   branchId?: string
   categoryId?: string
+  brandId?: string
+  modelId?: string
   statusId?: string
   conditionId?: string
   ownershipType?: string
@@ -38,6 +40,8 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
     companyId: String(getValue("companyId") ?? "").trim(),
     branchId: String(getValue("branchId") ?? "").trim(),
     categoryId: String(getValue("categoryId") ?? "").trim(),
+    brandId: String(getValue("brandId") ?? "").trim(),
+    modelId: String(getValue("modelId") ?? "").trim(),
     statusId: String(getValue("statusId") ?? "").trim(),
     conditionId: String(getValue("conditionId") ?? "").trim(),
     ownershipType: assetOwnershipTypes.includes(ownershipType as (typeof assetOwnershipTypes)[number]) ? ownershipType : "",
@@ -57,6 +61,8 @@ export function buildAssetWhere(filters: ReturnType<typeof parseAssetListParams>
     ...(filters.companyId ? { companyId: filters.companyId } : {}),
     ...(filters.branchId ? { branchId: filters.branchId } : {}),
     ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+    ...(filters.brandId ? { brandId: filters.brandId } : {}),
+    ...(filters.modelId ? { modelId: filters.modelId } : {}),
     ...(filters.statusId ? { statusId: filters.statusId } : {}),
     ...(filters.conditionId ? { conditionId: filters.conditionId } : {}),
     ...(filters.ownershipType ? { ownershipType: filters.ownershipType } : {}),
@@ -100,7 +106,7 @@ export function buildAssetQueryString(
   const next = { ...filters, ...overrides }
   const params = new URLSearchParams()
 
-  for (const key of ["search", "companyId", "branchId", "categoryId", "statusId", "conditionId", "ownershipType", "custodianId", "supplierId", "dataQuality", "sort", "direction"] as const) {
+  for (const key of ["search", "companyId", "branchId", "categoryId", "brandId", "modelId", "statusId", "conditionId", "ownershipType", "custodianId", "supplierId", "dataQuality", "sort", "direction"] as const) {
     if (next[key]) params.set(key, String(next[key]))
   }
 

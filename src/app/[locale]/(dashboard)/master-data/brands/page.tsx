@@ -17,9 +17,11 @@ import { paginationRange } from "@/lib/master-data-query"
 import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import {
   appendBrandModelReturnTo,
+  buildBrandDrilldownHrefs,
   buildBrandModelQueryString,
   buildBrandNavigatorItems,
   buildDuplicateNameGroups,
+  buildModelDrilldownHrefs,
   parseBrandModelListParams,
   type BrandModelListState,
 } from "@/lib/brand-model-query"
@@ -246,22 +248,49 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
             <div className="max-h-[60vh] space-y-1 overflow-y-auto pr-1">
               {brandNavigatorItems.map((brand) => {
                 const isSelected = listState.modelBrandId === brand.id
+                const brandModelsHref = `${basePath}?${buildBrandModelQueryString(listState, { modelBrandId: brand.id, modelPage: 1 })}`
+                const brandDrilldown = buildBrandDrilldownHrefs({ locale, brandId: brand.id })
                 return (
-                  <Link
+                  <div
                     key={brand.id}
-                    href={`${basePath}?${buildBrandModelQueryString(listState, { modelBrandId: brand.id, modelPage: 1 })}`}
-                    aria-current={isSelected ? "page" : undefined}
-                    className={`block rounded-md border px-2.5 py-2 transition-colors ${
+                    className={`rounded-md border px-2.5 py-2 transition-colors ${
                       isSelected ? "border-primary bg-primary/10" : "border-transparent hover:bg-accent"
                     }`}
                   >
-                    <span className={`block truncate text-sm font-medium ${isSelected ? "text-primary" : "text-foreground"}`}>
+                    <Link
+                      prefetch={false}
+                      href={`${basePath}?${buildBrandModelQueryString(listState, { modelBrandId: brand.id, modelPage: 1 })}`}
+                      aria-current={isSelected ? "page" : undefined}
+                      className={`block truncate text-sm font-medium ${isSelected ? "text-primary" : "text-foreground"}`}
+                    >
                       {brand.name}
-                    </span>
-                    <span className="mt-1 block text-xs text-muted-foreground">
-                      {t("brandNavigatorCounts", { models: brand._count.models, assets: brand._count.assets })}
-                    </span>
-                  </Link>
+                    </Link>
+                    <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                      {brand._count.models > 0 ? (
+                        <Link
+                          prefetch={false}
+                          href={brandModelsHref}
+                          className="inline-flex h-7 items-center rounded-md px-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                        >
+                          {t("modelCountInline", { count: brand._count.models })}
+                        </Link>
+                      ) : (
+                        <span>{t("modelCountInline", { count: 0 })}</span>
+                      )}
+                      <span>/</span>
+                      {brand._count.assets > 0 ? (
+                        <Link
+                          prefetch={false}
+                          href={brandDrilldown.assets}
+                          className="inline-flex h-7 items-center rounded-md px-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                        >
+                          {t("assetCountInline", { count: brand._count.assets })}
+                        </Link>
+                      ) : (
+                        <span>{t("assetCountInline", { count: 0 })}</span>
+                      )}
+                    </div>
+                  </div>
                 )
               })}
             </div>
@@ -423,6 +452,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                       const photo = primaryPhotoByModelId.get(model.id)
                       const canPreviewPhoto = photo ? previewableModelPhotoTypes.has(photo.fileType) : false
                       const editModelHref = appendBrandModelReturnTo(`/${locale}/master-data/brands/models/${model.id}/edit`, brandModelReturnHref)
+                      const modelDrilldown = buildModelDrilldownHrefs({ locale, modelId: model.id })
 
                       return (
                         <ClickableTableRow
@@ -458,7 +488,19 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                           <td className="min-w-[220px] max-w-lg px-4 py-3 text-muted-foreground">
                             <span className="line-clamp-2">{summarizeModelSpecs(model.specs) || "-"}</span>
                           </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{model._count.assets}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                            {model._count.assets > 0 ? (
+                              <Link
+                                prefetch={false}
+                                href={modelDrilldown.assets}
+                                className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                              >
+                                {model._count.assets.toLocaleString()}
+                              </Link>
+                            ) : (
+                              "0"
+                            )}
+                          </td>
                           <td className="whitespace-nowrap px-4 py-3">
                             <ActiveBadge label={tCommon("active")} />
                           </td>

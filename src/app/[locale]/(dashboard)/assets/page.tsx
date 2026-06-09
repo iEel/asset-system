@@ -32,11 +32,15 @@ type AssetFilterLabels = {
   category: string
   status: string
   condition: string
+  brand: string
+  model: string
   ownershipType: string
   rowsPerPage: string
   ownershipTypes: Record<string, string>
   quickFilters: string
   quickFiltersHelp: string
+  activeDrilldownFilters: string
+  clearDrilldownFilter: string
   quickFilterAll: string
   dataQualitySerial: string
   dataQualityPhoto: string
@@ -54,6 +58,7 @@ type AssetFilterLabels = {
   statusHelpPendingDisposal: string
   statusHelpLostMissing: string
   statusHelpUnderInspection: string
+  assetStateFilterGroup: string
   conditionHelpTitle: string
   conditionHelpDescription: string
   conditionHelpGood: string
@@ -71,7 +76,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   const tCommon = await getTranslations("common")
   const filters = parseAssetListParams(rawSearchParams)
   const where = buildAssetWhere(filters)
-  const [assets, total, companies, branches, categories, statuses, conditions, locations, employees] = await Promise.all([
+  const [assets, total, companies, branches, categories, statuses, conditions, locations, employees, selectedBrand, selectedModel] = await Promise.all([
     prisma.asset.findMany({
       where,
       include: {
@@ -139,6 +144,18 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       select: { id: true, code: true, fullNameTh: true },
       orderBy: { code: "asc" },
     }),
+    filters.brandId
+      ? prisma.assetBrand.findUnique({
+          where: { id: filters.brandId },
+          select: { name: true },
+        })
+      : Promise.resolve(null),
+    filters.modelId
+      ? prisma.assetModel.findUnique({
+          where: { id: filters.modelId },
+          select: { name: true, brand: { select: { name: true } } },
+        })
+      : Promise.resolve(null),
   ])
   const modelIds = Array.from(
     new Set(assets.map((asset) => asset.model?.id).filter((modelId): modelId is string => Boolean(modelId)))
@@ -164,6 +181,22 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize))
   const fromRow = total === 0 ? 0 : (filters.page - 1) * filters.pageSize + 1
   const toRow = Math.min(total, filters.page * filters.pageSize)
+  const activeDrilldownFilters = [
+    filters.brandId
+      ? {
+          key: "brand",
+          label: `${t("brand")}: ${selectedBrand?.name ?? filters.brandId}`,
+          href: `/${locale}/assets?${buildAssetQueryString(filters, { brandId: "", page: 1 })}`,
+        }
+      : null,
+    filters.modelId
+      ? {
+          key: "model",
+          label: `${t("model")}: ${selectedModel ? `${selectedModel.brand.name} / ${selectedModel.name}` : filters.modelId}`,
+          href: `/${locale}/assets?${buildAssetQueryString(filters, { modelId: "", page: 1 })}`,
+        }
+      : null,
+  ].filter((item): item is { key: string; label: string; href: string } => Boolean(item))
   const tableAssets: AssetRegisterRow[] = assets.map((asset) => ({
     id: asset.id,
     assetTag: asset.assetTag,
@@ -212,6 +245,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
         categories={categories}
         statuses={statuses}
         conditions={conditions}
+        activeDrilldownFilters={activeDrilldownFilters}
         labels={{
           search: tCommon("search"),
           filter: tCommon("filter"),
@@ -219,6 +253,8 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           company: t("company"),
           branch: t("branch"),
           category: t("category"),
+          brand: t("brand"),
+          model: t("model"),
           status: t("status"),
           condition: t("condition"),
           ownershipType: t("ownershipType"),
@@ -226,6 +262,8 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           ownershipTypes: Object.fromEntries(assetOwnershipTypes.map((type) => [type, t(`ownershipType_${type}`)])) as Record<string, string>,
           quickFilters: t("quickFilters"),
           quickFiltersHelp: t("quickFiltersHelp"),
+          activeDrilldownFilters: t("activeDrilldownFilters"),
+          clearDrilldownFilter: t("clearDrilldownFilter"),
           quickFilterAll: t("quickFilterAll"),
           dataQualitySerial: t("dataQualitySerial"),
           dataQualityPhoto: t("dataQualityPhoto"),
@@ -243,6 +281,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           statusHelpPendingDisposal: t("statusHelpPendingDisposal"),
           statusHelpLostMissing: t("statusHelpLostMissing"),
           statusHelpUnderInspection: t("statusHelpUnderInspection"),
+          assetStateFilterGroup: t("assetStateFilterGroup"),
           conditionHelpTitle: t("conditionHelpTitle"),
           conditionHelpDescription: t("conditionHelpDescription"),
           conditionHelpGood: t("conditionHelpGood"),
@@ -384,6 +423,7 @@ function AssetFilters({
   categories,
   statuses,
   conditions,
+  activeDrilldownFilters,
   labels,
 }: {
   locale: string
@@ -393,6 +433,7 @@ function AssetFilters({
   categories: { id: string; code: string; name: string }[]
   statuses: { id: string; name: string; nameTh: string }[]
   conditions: { id: string; nameTh: string }[]
+  activeDrilldownFilters: Array<{ key: string; label: string; href: string }>
   labels: AssetFilterLabels
 }) {
   const filteredBranches = filters.companyId
@@ -499,8 +540,26 @@ function AssetFilters({
           ))}
         </div>
       </div>
-      <form className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6" action={`/${locale}/assets`}>
-        <label className="md:col-span-2">
+      {activeDrilldownFilters.length > 0 ? (
+        <div className="mb-4 rounded-md border border-primary/20 bg-primary/5 px-3 py-2">
+          <div className="text-xs font-semibold uppercase tracking-normal text-primary">{labels.activeDrilldownFilters}</div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {activeDrilldownFilters.map((filter) => (
+              <Link
+                key={filter.key}
+                href={filter.href}
+                aria-label={`${labels.clearDrilldownFilter}: ${filter.label}`}
+                className="inline-flex min-h-8 items-center gap-2 rounded-full border border-primary/20 bg-surface px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+              >
+                <span>{filter.label}</span>
+                <span aria-hidden="true" className="text-xs text-primary/70">x</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      <form className="grid grid-cols-1 gap-3 lg:grid-cols-4 xl:grid-cols-5" action={`/${locale}/assets`}>
+        <label className="lg:col-span-2">
           <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{labels.search}</span>
           <input
             type="search"
@@ -533,22 +592,24 @@ function AssetFilters({
             </option>
           ))}
         </FilterSelect>
-        <FilterSelect name="statusId" label={labels.status} defaultValue={filters.statusId} help={assetStatusHelp}>
-          <option value="">{labels.all}</option>
-          {statuses.map((status) => (
-            <option key={status.id} value={status.id}>
-              {status.nameTh}
-            </option>
-          ))}
-        </FilterSelect>
-        <FilterSelect name="conditionId" label={labels.condition} defaultValue={filters.conditionId} help={assetConditionHelp}>
-          <option value="">{labels.all}</option>
-          {conditions.map((condition) => (
-            <option key={condition.id} value={condition.id}>
-              {condition.nameTh}
-            </option>
-          ))}
-        </FilterSelect>
+        <div className="grid gap-3 sm:grid-cols-2 lg:col-span-2" aria-label={labels.assetStateFilterGroup}>
+          <FilterSelect name="statusId" label={labels.status} defaultValue={filters.statusId} help={assetStatusHelp}>
+            <option value="">{labels.all}</option>
+            {statuses.map((status) => (
+              <option key={status.id} value={status.id}>
+                {status.nameTh}
+              </option>
+            ))}
+          </FilterSelect>
+          <FilterSelect name="conditionId" label={labels.condition} defaultValue={filters.conditionId} help={assetConditionHelp}>
+            <option value="">{labels.all}</option>
+            {conditions.map((condition) => (
+              <option key={condition.id} value={condition.id}>
+                {condition.nameTh}
+              </option>
+            ))}
+          </FilterSelect>
+        </div>
         <FilterSelect name="ownershipType" label={labels.ownershipType} defaultValue={filters.ownershipType}>
           <option value="">{labels.all}</option>
           {assetOwnershipTypes.map((type) => (
@@ -566,6 +627,8 @@ function AssetFilters({
         </FilterSelect>
         {filters.custodianId ? <input type="hidden" name="custodianId" value={filters.custodianId} /> : null}
         {filters.supplierId ? <input type="hidden" name="supplierId" value={filters.supplierId} /> : null}
+        {filters.brandId ? <input type="hidden" name="brandId" value={filters.brandId} /> : null}
+        {filters.modelId ? <input type="hidden" name="modelId" value={filters.modelId} /> : null}
         {filters.dataQuality ? <input type="hidden" name="dataQuality" value={filters.dataQuality} /> : null}
         <input type="hidden" name="sort" value={filters.sort} />
         <input type="hidden" name="direction" value={filters.direction} />
@@ -594,7 +657,7 @@ function FilterSelect({
     <div>
       <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
         <span>{label}</span>
-        {help ? <AssetStateHelpPopover {...help} /> : null}
+        {help ? <AssetStateHelpPopover {...help} size="compact" /> : null}
       </div>
       <select
         name={name}

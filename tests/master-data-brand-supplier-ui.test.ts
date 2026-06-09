@@ -15,14 +15,33 @@ test("brand model page uses a brand navigator beside the model workspace", () =>
   const source = readFileSync("src/app/[locale]/(dashboard)/master-data/brands/page.tsx", "utf8")
 
   assert.match(source, /brandNavigatorItems/)
+  assert.match(source, /buildBrandDrilldownHrefs/)
+  assert.match(source, /buildModelDrilldownHrefs/)
   assert.match(source, /t\("brandNavigatorTitle"\)/)
   assert.match(source, /t\("modelWorkspaceTitle"\)/)
   assert.match(source, /lg:grid-cols-\[minmax\(180px,220px\)_minmax\(0,1fr\)\]/)
   assert.match(source, /href=\{`\$\{basePath\}\?\$\{buildBrandModelQueryString\(listState, \{ modelBrandId: brand\.id, modelPage: 1 \}\)\}`\}/)
+  assert.match(source, /href=\{brandDrilldown\.assets\}/)
+  assert.match(source, /href=\{modelDrilldown\.assets\}/)
 
   const navigatorIndex = source.indexOf('t("brandNavigatorTitle")')
   const workspaceIndex = source.indexOf('t("modelWorkspaceTitle")')
   assert.ok(navigatorIndex > -1 && workspaceIndex > navigatorIndex)
+})
+
+test("category and brand count cells use branch-style drilldown links", () => {
+  const categorySource = readFileSync("src/app/[locale]/(dashboard)/master-data/categories/page.tsx", "utf8")
+  const brandSource = readFileSync("src/app/[locale]/(dashboard)/master-data/brands/page.tsx", "utf8")
+
+  assert.match(categorySource, /category\._count\.models > 0/)
+  assert.match(categorySource, /href=\{drilldown\.models\}/)
+  assert.match(categorySource, /category\._count\.assets > 0/)
+  assert.match(categorySource, /href=\{drilldown\.assets\}/)
+  assert.match(categorySource, /text-xs font-medium text-primary transition-colors hover:bg-primary\/10/)
+
+  assert.match(brandSource, /brand\._count\.assets > 0/)
+  assert.match(brandSource, /model\._count\.assets > 0/)
+  assert.match(brandSource, /text-xs font-medium text-primary transition-colors hover:bg-primary\/10/)
 })
 
 test("brand model edit flow preserves the selected brand workspace after save", () => {

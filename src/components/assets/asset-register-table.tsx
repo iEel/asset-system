@@ -49,6 +49,8 @@ type AssetRegisterTableProps = {
     companyId: string
     branchId: string
     categoryId: string
+    brandId: string
+    modelId: string
     statusId: string
     conditionId: string
     ownershipType: string

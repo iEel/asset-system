@@ -8,13 +8,19 @@ type AssetStateHelpPopoverProps = {
   description: string
   items: string[]
   srLabel?: string
+  size?: "default" | "compact"
 }
 
-export function AssetStateHelpPopover({ title, description, items, srLabel }: AssetStateHelpPopoverProps) {
+export function AssetStateHelpPopover({ title, description, items, srLabel, size = "default" }: AssetStateHelpPopoverProps) {
   const buttonRef = useRef<HTMLButtonElement | null>(null)
   const popoverId = useId()
   const [open, setOpen] = useState(false)
   const [position, setPosition] = useState({ top: 0, left: 0 })
+  const isCompact = size === "compact"
+  const buttonClassName = isCompact
+    ? "inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+    : "inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+  const iconClassName = isCompact ? "h-3.5 w-3.5" : "h-4 w-4"
 
   useEffect(() => {
     if (!open) return
@@ -64,9 +70,9 @@ export function AssetStateHelpPopover({ title, description, items, srLabel }: As
         aria-expanded={open}
         aria-controls={popoverId}
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        className={buttonClassName}
       >
-        <CircleHelp className="h-4 w-4" aria-hidden="true" />
+        <CircleHelp className={iconClassName} aria-hidden="true" />
       </button>
       {open ? (
         <span

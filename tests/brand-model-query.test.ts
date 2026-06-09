@@ -2,8 +2,10 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  buildBrandDrilldownHrefs,
   buildBrandModelQueryString,
   buildBrandNavigatorItems,
+  buildModelDrilldownHrefs,
   buildDuplicateNameGroups,
   parseBrandModelListParams,
 } from "../src/lib/brand-model-query.ts"
@@ -86,4 +88,15 @@ test("builds brand navigator counts from active model and asset groups", () => {
       { id: "brand-dell", models: 0, assets: 0 },
     ]
   )
+})
+
+test("builds brand and model drilldown links for related records", () => {
+  assert.deepEqual(buildBrandDrilldownHrefs({ locale: "th", brandId: "brand-1" }), {
+    assets: "/th/assets?brandId=brand-1&page=1",
+    models: "/th/master-data/brands?modelBrandId=brand-1&modelPage=1",
+  })
+
+  assert.deepEqual(buildModelDrilldownHrefs({ locale: "th", modelId: "model-1" }), {
+    assets: "/th/assets?modelId=model-1&page=1",
+  })
 })

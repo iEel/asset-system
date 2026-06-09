@@ -26,6 +26,8 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Import assets from Excel.
 - [ ] Export asset register.
 - [ ] On Asset Register, confirm quick filters for data-quality gaps and lifecycle statuses update the list while preserving existing search/company/branch/category context.
+- [ ] On Asset Register desktop width, confirm the filter panel fills the right side without an empty final column: first row shows search/company/branch/category and second row shows status/condition/ownership/rows/filter action.
+- [ ] From Category, Brand, and Brand/Model master data counts, click model/asset counts and confirm the destination opens the expected Brand/Model workspace or Asset Register drilldown with a removable active filter chip where applicable.
 - [ ] Search Asset Register by the current custodian's employee code and confirm only assets held by that employee are returned; do not expect matches from repair reporter/assignee history.
 - [ ] Confirm Asset Register column presets switch between All, Operations, Accounting, and Audit views and persist after page reload in the same browser.
 - [ ] Confirm the Asset Register import helper starts collapsed and opens only after clicking the import helper button.

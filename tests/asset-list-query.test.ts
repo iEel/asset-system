@@ -11,11 +11,15 @@ test("parses asset custodian and supplier filters for master-data drilldowns", (
   const filters = parseAssetListParams({
     custodianId: "employee-1",
     supplierId: "supplier-1",
+    brandId: "brand-1",
+    modelId: "model-1",
     page: "2",
   })
 
   assert.equal(filters.custodianId, "employee-1")
   assert.equal(filters.supplierId, "supplier-1")
+  assert.equal(filters.brandId, "brand-1")
+  assert.equal(filters.modelId, "model-1")
   assert.equal(filters.page, 2)
 })
 
@@ -24,12 +28,16 @@ test("builds exact asset filters and preserves them in query strings", () => {
     search: "printer",
     custodianId: "employee-1",
     supplierId: "supplier-1",
+    brandId: "brand-1",
+    modelId: "model-1",
   })
 
   assert.deepEqual(buildAssetWhere(filters), {
     isActive: true,
     custodianId: "employee-1",
     supplierId: "supplier-1",
+    brandId: "brand-1",
+    modelId: "model-1",
     OR: [
       { assetTag: { contains: "printer" } },
       { name: { contains: "printer" } },
@@ -46,7 +54,7 @@ test("builds exact asset filters and preserves them in query strings", () => {
   })
   assert.equal(
     buildAssetQueryString(filters, { page: 3 }),
-    "search=printer&custodianId=employee-1&supplierId=supplier-1&sort=createdAt&direction=desc&page=3&pageSize=25"
+    "search=printer&brandId=brand-1&modelId=model-1&custodianId=employee-1&supplierId=supplier-1&sort=createdAt&direction=desc&page=3&pageSize=25"
   )
 })
 

@@ -76,6 +76,18 @@ test("asset register page exposes operational quick filters", () => {
   assert.match(source, /status\.name === "Pending Repair"/)
 })
 
+test("asset register surfaces scoped brand and model drilldown filters", () => {
+  const source = assetsPageSource()
+
+  assert.match(source, /selectedBrand/)
+  assert.match(source, /selectedModel/)
+  assert.match(source, /activeDrilldownFilters/)
+  assert.match(source, /buildAssetQueryString\(filters, \{ brandId: "", page: 1 \}\)/)
+  assert.match(source, /buildAssetQueryString\(filters, \{ modelId: "", page: 1 \}\)/)
+  assert.match(source, /name="brandId"/)
+  assert.match(source, /name="modelId"/)
+})
+
 test("asset register UX messages exist in Thai and English", () => {
   const keys = [
     "quickFilters",
@@ -96,6 +108,8 @@ test("asset register UX messages exist in Thai and English", () => {
     "columnPresetOperations",
     "columnPresetAccounting",
     "columnPresetAudit",
+    "activeDrilldownFilters",
+    "clearDrilldownFilter",
   ]
 
   for (const locale of ["th", "en"] as const) {
