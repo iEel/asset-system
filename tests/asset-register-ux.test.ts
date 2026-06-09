@@ -71,6 +71,10 @@ test("asset register page exposes operational quick filters", () => {
   assert.match(source, /dataQuality: "photo"/)
   assert.match(source, /dataQuality: "purchase"/)
   assert.match(source, /dataQuality: "warranty"/)
+  assert.match(source, /buildCrossScopeQuickFilter\("cross-scope-all", labels\.quickFilterCrossScopeAll, "all"\)/)
+  assert.match(source, /buildCrossScopeQuickFilter\("cross-scope-custodian-company", labels\.quickFilterCustodianCrossCompany, "custodian_company"\)/)
+  assert.match(source, /buildCrossScopeQuickFilter\("cross-scope-custodian-branch", labels\.quickFilterCustodianCrossBranch, "custodian_branch"\)/)
+  assert.match(source, /buildCrossScopeQuickFilter\("cross-scope-location-branch", labels\.quickFilterLocationCrossBranch, "location_branch"\)/)
   assert.match(source, /name: true, nameTh: true/)
   assert.match(source, /status\.name === "Ready"/)
   assert.match(source, /status\.name === "Pending Repair"/)
@@ -98,6 +102,10 @@ test("asset register UX messages exist in Thai and English", () => {
     "dataQualityPurchase",
     "dataQualityWarranty",
     "dataQualityResponsibility",
+    "quickFilterCrossScopeAll",
+    "quickFilterCustodianCrossCompany",
+    "quickFilterCustodianCrossBranch",
+    "quickFilterLocationCrossBranch",
     "quickFilterReady",
     "quickFilterPendingRepair",
     "quickFilterUnderMaintenance",

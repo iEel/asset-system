@@ -20,3 +20,11 @@ test("branch report labels include company code to disambiguate repeated branch 
     /const branchMap = new Map\(branches\.map\(\(branch\) => \[branch\.id, `\$\{branch\.company\.code\} \/ \$\{branch\.code\} - \$\{branch\.name\}`\]\)\)/
   )
 })
+
+test("reports page exposes cross-scope asset visibility and export shortcuts", () => {
+  assert.match(reportsPage, /buildAssetCrossScopeSummary\(baseAssetWhere, 8\)/)
+  assert.match(reportsPage, /crossScopeCards/)
+  assert.match(reportsPage, /crossScope: "all"/)
+  assert.match(reportsPage, /exportCrossScopeAssets/)
+  assert.match(reportsPage, /CrossScopePreviewTable/)
+})

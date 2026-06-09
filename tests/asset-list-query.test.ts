@@ -30,8 +30,10 @@ test("builds exact asset filters and preserves them in query strings", () => {
     supplierId: "supplier-1",
     brandId: "brand-1",
     modelId: "model-1",
+    crossScope: "custodian_company",
   })
 
+  assert.equal(filters.crossScope, "custodian_company")
   assert.deepEqual(buildAssetWhere(filters), {
     isActive: true,
     custodianId: "employee-1",
@@ -54,8 +56,13 @@ test("builds exact asset filters and preserves them in query strings", () => {
   })
   assert.equal(
     buildAssetQueryString(filters, { page: 3 }),
-    "search=printer&brandId=brand-1&modelId=model-1&custodianId=employee-1&supplierId=supplier-1&sort=createdAt&direction=desc&page=3&pageSize=25"
+    "search=printer&brandId=brand-1&modelId=model-1&custodianId=employee-1&supplierId=supplier-1&crossScope=custodian_company&sort=createdAt&direction=desc&page=3&pageSize=25"
   )
+})
+
+test("rejects unknown cross-scope asset filters", () => {
+  assert.equal(parseAssetListParams({ crossScope: "bad-filter" }).crossScope, "")
+  assert.equal(parseAssetListParams({ crossScope: "location_branch" }).crossScope, "location_branch")
 })
 
 test("searches assets by current custodian employee code", () => {

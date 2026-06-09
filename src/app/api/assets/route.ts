@@ -6,6 +6,7 @@ import { errorResponse } from "@/lib/api-response"
 import { assetSchema } from "@/lib/validations/asset"
 import { generateAssetTag } from "@/lib/asset-tag"
 import { buildAssetOrderBy, buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
+import { applyAssetCrossScopeFilter } from "@/lib/asset-cross-scope"
 import { buildCustodianScopeAudit } from "@/lib/asset-custodian-scope"
 
 const assetInclude = {
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
     requirePermission(user, "asset", "view")
 
     const filters = parseAssetListParams(request.nextUrl.searchParams)
-    const where = buildAssetWhere(filters)
+    const where = await applyAssetCrossScopeFilter(buildAssetWhere(filters), filters.crossScope)
     const [assets, total] = await Promise.all([
       prisma.asset.findMany({
         where,

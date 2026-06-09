@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client"
+import { normalizeAssetCrossScopeFilter } from "./asset-cross-scope-filter.ts"
 import { normalizeAssetDataQualityFilter } from "./asset-data-quality-filter.ts"
 import { assetMissingResponsibilityWhere, assetOwnershipTypes } from "./asset-ownership.ts"
 
@@ -15,6 +16,7 @@ export type AssetListParams = {
   custodianId?: string
   supplierId?: string
   dataQuality?: string
+  crossScope?: string
   page?: string | number
   pageSize?: string | number
   sort?: string
@@ -34,6 +36,7 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
   const direction = getValue("direction") === "asc" ? "asc" : "desc"
   const ownershipType = String(getValue("ownershipType") ?? "").trim()
   const dataQuality = normalizeAssetDataQualityFilter(getValue("dataQuality"))
+  const crossScope = normalizeAssetCrossScopeFilter(getValue("crossScope"))
 
   return {
     search: String(getValue("search") ?? "").trim(),
@@ -48,6 +51,7 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
     custodianId: String(getValue("custodianId") ?? "").trim(),
     supplierId: String(getValue("supplierId") ?? "").trim(),
     dataQuality,
+    crossScope,
     page,
     pageSize,
     sort: sortableFields.has(sort) ? sort : "createdAt",
@@ -106,7 +110,7 @@ export function buildAssetQueryString(
   const next = { ...filters, ...overrides }
   const params = new URLSearchParams()
 
-  for (const key of ["search", "companyId", "branchId", "categoryId", "brandId", "modelId", "statusId", "conditionId", "ownershipType", "custodianId", "supplierId", "dataQuality", "sort", "direction"] as const) {
+  for (const key of ["search", "companyId", "branchId", "categoryId", "brandId", "modelId", "statusId", "conditionId", "ownershipType", "custodianId", "supplierId", "dataQuality", "crossScope", "sort", "direction"] as const) {
     if (next[key]) params.set(key, String(next[key]))
   }
 

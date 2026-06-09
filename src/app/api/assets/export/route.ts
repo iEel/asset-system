@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { buildAssetOrderBy, buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
+import { applyAssetCrossScopeFilter, formatAssetCrossScopeFlags } from "@/lib/asset-cross-scope"
 import { assetExportColumns, createWorkbook, styleWorksheetHeader, toExcelDate, workbookResponse } from "@/lib/asset-excel"
 import { normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 
@@ -13,14 +14,38 @@ export async function GET(request: NextRequest) {
 
     const filters = parseAssetListParams(request.nextUrl.searchParams)
     const assets = await prisma.asset.findMany({
-      where: buildAssetWhere(filters),
+      where: await applyAssetCrossScopeFilter(buildAssetWhere(filters), filters.crossScope),
       include: {
         category: { select: { code: true, name: true } },
         company: { select: { code: true, nameTh: true } },
-        branch: { select: { code: true, name: true } },
+        branch: { select: { code: true, name: true, company: { select: { code: true } } } },
         department: { select: { code: true, name: true } },
-        custodian: { select: { code: true, fullNameTh: true } },
-        currentLocation: { select: { code: true, name: true } },
+        custodian: {
+          select: {
+            code: true,
+            fullNameTh: true,
+            companyId: true,
+            branchId: true,
+            company: { select: { code: true, nameTh: true } },
+            branch: { select: { code: true, name: true, company: { select: { code: true } } } },
+          },
+        },
+        homeLocation: {
+          select: {
+            code: true,
+            name: true,
+            branchId: true,
+            branch: { select: { code: true, name: true, company: { select: { code: true } } } },
+          },
+        },
+        currentLocation: {
+          select: {
+            code: true,
+            name: true,
+            branchId: true,
+            branch: { select: { code: true, name: true, company: { select: { code: true } } } },
+          },
+        },
         status: { select: { nameTh: true } },
         condition: { select: { nameTh: true } },
         supplier: { select: { code: true, name: true } },
@@ -44,10 +69,16 @@ export async function GET(request: NextRequest) {
         licenseAssignedAsset: asset.licenseAssignedAsset ? `${asset.licenseAssignedAsset.assetTag} - ${asset.licenseAssignedAsset.name}` : "",
         category: `${asset.category.code} - ${asset.category.name}`,
         company: `${asset.company.code} - ${asset.company.nameTh}`,
-        branch: `${asset.company.code} / ${asset.branch.code} - ${asset.branch.name}`,
+        branch: formatBranch(asset.branch),
         department: asset.department ? `${asset.department.code} - ${asset.department.name}` : "",
         custodian: asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : "",
+        custodianCompany: asset.custodian ? `${asset.custodian.company.code} - ${asset.custodian.company.nameTh}` : "",
+        custodianBranch: asset.custodian ? formatBranch(asset.custodian.branch) : "",
+        homeLocation: asset.homeLocation ? `${asset.homeLocation.code} - ${asset.homeLocation.name}` : "",
+        homeLocationBranch: asset.homeLocation ? formatBranch(asset.homeLocation.branch) : "",
         currentLocation: `${asset.currentLocation.code} - ${asset.currentLocation.name}`,
+        currentLocationBranch: formatBranch(asset.currentLocation.branch),
+        crossScopeFlags: formatAssetCrossScopeFlags(asset),
         status: asset.status.nameTh,
         condition: asset.condition.nameTh,
         purchaseDate: toExcelDate(asset.purchaseDate),
@@ -67,4 +98,8 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return errorResponse(error)
   }
+}
+
+function formatBranch(branch: { code: string; name: string; company?: { code: string } | null }) {
+  return `${branch.company?.code ? `${branch.company.code} / ` : ""}${branch.code} - ${branch.name}`
 }

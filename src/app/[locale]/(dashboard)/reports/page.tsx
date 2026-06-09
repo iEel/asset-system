@@ -7,6 +7,8 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type AssetListParams } from "@/lib/asset-list-query"
+import { applyAssetCrossScopeFilter, buildAssetCrossScopeSummary, type AssetCrossScopeSummaryRow } from "@/lib/asset-cross-scope"
+import { getAssetCrossScopeFlagLabels } from "@/lib/asset-cross-scope-filter"
 import { assetMissingResponsibilityWhere, assetOwnershipTypes, hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { buildCostInsights, type CostExposureAsset } from "@/lib/cost-insights"
 import { buildDepreciationSummary, depreciationPolicySettingKey, parseDepreciationPolicySetting, type DepreciableAsset } from "@/lib/asset-depreciation"
@@ -34,7 +36,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const canDisposalExport = hasPermission(user, "disposal", "export")
   const canRoleExport = hasPermission(user, "role", "export")
   const filters = parseAssetListParams(rawSearchParams)
-  const assetWhere = buildAssetWhere(filters)
+  const baseAssetWhere = buildAssetWhere(filters)
+  const assetWhere = await applyAssetCrossScopeFilter(baseAssetWhere, filters.crossScope)
   const exportQuery = buildAssetQueryString(filters, { page: 1, pageSize: 100 })
   const warrantyThreshold = new Date()
   warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
@@ -65,6 +68,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     costAssets,
     costRepairGroups,
     depreciationPolicySetting,
+    crossScopeSummary,
   ] = await Promise.all([
     prisma.asset.count({ where: assetWhere }),
     prisma.asset.aggregate({ where: assetWhere, _sum: { purchasePrice: true } }),
@@ -157,6 +161,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       _sum: { repairCost: true },
     }),
     prisma.systemSetting.findUnique({ where: { key: depreciationPolicySettingKey }, select: { value: true } }),
+    buildAssetCrossScopeSummary(baseAssetWhere, 8),
   ])
   const [custodianOptions, locationOptions, repairAssets] = await Promise.all([
     prisma.employee.findMany({ where: { id: { in: byCustodian.map((item) => item.custodianId).filter((id): id is string => Boolean(id)) } }, select: { id: true, code: true, fullNameTh: true } }),
@@ -206,6 +211,32 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     { policy: parseDepreciationPolicySetting(depreciationPolicySetting?.value).policy }
   )
   const savedFilterUrl = `/${locale}/reports?${exportQuery}`
+  const crossScopeCards = [
+    {
+      key: "all",
+      label: t("crossScopeAll"),
+      value: crossScopeSummary.all,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "all", dataQuality: "", statusId: "", page: 1 })}`,
+    },
+    {
+      key: "custodian_company",
+      label: t("crossScopeCustodianCompany"),
+      value: crossScopeSummary.custodianCompany,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "custodian_company", dataQuality: "", statusId: "", page: 1 })}`,
+    },
+    {
+      key: "custodian_branch",
+      label: t("crossScopeCustodianBranch"),
+      value: crossScopeSummary.custodianBranch,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "custodian_branch", dataQuality: "", statusId: "", page: 1 })}`,
+    },
+    {
+      key: "location_branch",
+      label: t("crossScopeLocationBranch"),
+      value: crossScopeSummary.locationBranch,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "location_branch", dataQuality: "", statusId: "", page: 1 })}`,
+    },
+  ]
   const recurringReports = [
     { name: t("monthlyAssetOverview"), cadence: t("monthly"), href: `/api/reports/assets-overview/export?${exportQuery}`, owner: t("ownerAccounting"), allowed: canReportExport },
     { name: t("weeklyMaintenanceFollowUp"), cadence: t("weekly"), href: "/api/maintenance-tickets/export", owner: t("ownerMaintenance"), allowed: canMaintenanceExport },
@@ -221,6 +252,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       reports: [
         { label: t("assetRegister"), viewHref: `/${locale}/assets?${exportQuery}`, exportHref: `/api/assets/export?${exportQuery}`, exportLabel: t("exportAssetRegister"), exportAllowed: canAssetExport },
         { label: t("assetOverviewExcel"), viewHref: `/${locale}/reports?${exportQuery}`, exportHref: `/api/reports/assets-overview/export?${exportQuery}`, exportLabel: t("exportAssetOverview"), exportAllowed: canReportExport },
+        { label: t("crossScopeAssetsExcel"), viewHref: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "all", dataQuality: "", statusId: "", page: 1 })}`, exportHref: `/api/assets/export?${buildAssetQueryString(filters, { crossScope: "all", dataQuality: "", statusId: "", page: 1 })}`, exportLabel: t("exportCrossScopeAssets"), exportAllowed: canAssetExport },
       ],
     },
     {
@@ -446,6 +478,48 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           <MetricCard label={t("missingPhoto")} value={missingPhoto.toLocaleString("th-TH")} compact />
           <MetricCard label={t("warrantyExpiring")} value={warrantyExpiring.toLocaleString("th-TH")} compact />
         </div>
+      </section>
+
+      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">{t("crossScopeTitle")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("crossScopeHelp")}</p>
+          </div>
+          {canAssetExport ? (
+            <Link
+              href={`/api/assets/export?${buildAssetQueryString(filters, { crossScope: "all", dataQuality: "", statusId: "", page: 1 })}`}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0"
+            >
+              <Download className="h-4 w-4" />
+              {t("exportCrossScopeAssets")}
+            </Link>
+          ) : null}
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {crossScopeCards.map((card) => (
+            <Link key={card.key} href={card.href} className="rounded-md border border-border bg-background p-4 transition-colors hover:bg-accent">
+              <div className="text-sm text-muted-foreground">{card.label}</div>
+              <div className="mt-2 text-2xl font-bold text-foreground">{card.value.toLocaleString("th-TH")}</div>
+            </Link>
+          ))}
+        </div>
+        <CrossScopePreviewTable
+          rows={crossScopeSummary.rows}
+          locale={locale}
+          labels={{
+            title: t("crossScopePreviewTitle"),
+            empty: t("crossScopeEmpty"),
+            asset: t("assetName"),
+            ownerBranch: t("crossScopeOwnerBranch"),
+            custodianBranch: t("crossScopeCustodianBranchColumn"),
+            locationBranch: t("crossScopeLocationBranchColumn"),
+            flags: t("crossScopeFlags"),
+            custodianCompany: t("crossScopeCustodianCompany"),
+            custodianBranchDifference: t("crossScopeCustodianBranch"),
+            locationBranchDifference: t("crossScopeLocationBranch"),
+          }}
+        />
       </section>
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
@@ -740,6 +814,88 @@ function DepreciationTable({
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.ageMonths.toLocaleString("th-TH")}</td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CrossScopePreviewTable({
+  rows,
+  locale,
+  labels,
+}: {
+  rows: AssetCrossScopeSummaryRow[]
+  locale: string
+  labels: {
+    title: string
+    empty: string
+    asset: string
+    ownerBranch: string
+    custodianBranch: string
+    locationBranch: string
+    flags: string
+    custodianCompany: string
+    custodianBranchDifference: string
+    locationBranchDifference: string
+  }
+}) {
+  return (
+    <div className="mt-4 overflow-hidden rounded-md border border-border bg-background">
+      <div className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">{labels.title}</div>
+      {rows.length === 0 ? (
+        <div className="px-4 py-6 text-center text-sm text-muted-foreground">{labels.empty}</div>
+      ) : (
+        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
+          <table className="min-w-full divide-y divide-border text-sm">
+            <thead className="bg-muted/40">
+              <tr>
+                <PreviewHead>{labels.asset}</PreviewHead>
+                <PreviewHead>{labels.ownerBranch}</PreviewHead>
+                <PreviewHead>{labels.custodianBranch}</PreviewHead>
+                <PreviewHead>{labels.locationBranch}</PreviewHead>
+                <PreviewHead>{labels.flags}</PreviewHead>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map((asset) => {
+                const flagLabels = getAssetCrossScopeFlagLabels(asset.flags, {
+                  custodianCompany: labels.custodianCompany,
+                  custodianBranch: labels.custodianBranchDifference,
+                  locationBranch: labels.locationBranchDifference,
+                })
+
+                return (
+                  <tr key={asset.id}>
+                    <td className="min-w-64 px-4 py-3 font-medium text-foreground">
+                      <Link href={`/${locale}/assets/${asset.id}`} className="text-primary hover:underline">
+                        {asset.assetTag}
+                      </Link>
+                      <div className="mt-1 text-xs font-normal text-muted-foreground">{asset.name}</div>
+                    </td>
+                    <td className="min-w-48 px-4 py-3 text-muted-foreground">{asset.ownerBranch}</td>
+                    <td className="min-w-56 px-4 py-3 text-muted-foreground">
+                      <div>{asset.custodian}</div>
+                      <div className="mt-1 text-xs">{asset.custodianBranch}</div>
+                    </td>
+                    <td className="min-w-56 px-4 py-3 text-muted-foreground">
+                      <div>{asset.currentLocation}</div>
+                      <div className="mt-1 text-xs">{asset.currentLocationBranch}</div>
+                    </td>
+                    <td className="min-w-56 px-4 py-3">
+                      <div className="flex flex-wrap gap-1.5">
+                        {flagLabels.map((label) => (
+                          <span key={label} className="rounded-full bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

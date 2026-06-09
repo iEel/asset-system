@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
+import type { AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
 import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
 import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
@@ -57,6 +58,7 @@ type AssetRegisterTableProps = {
     custodianId: string
     supplierId: string
     dataQuality: "" | AssetDataQualityFilter
+    crossScope: "" | AssetCrossScopeFilter
     page: number
     pageSize: number
     sort: string

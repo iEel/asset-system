@@ -18,6 +18,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 ## asset_admin / IT Staff
 
 - [ ] Add a single asset.
+- [ ] On single asset create/edit, scroll through the long form and confirm Save/Cancel remain visible in the fixed bottom action bar without covering the final fields.
 - [ ] Clone an existing asset from Asset Register or Asset Detail, confirm the create form shows the clone banner, copies shared details, and leaves Asset Tag, Serial Number, and FA/accounting code blank before saving.
 - [ ] Add assets by batch.
 - [ ] On single and batch asset create/edit, enable cross-branch location mode, choose a home/current location under a different branch, confirm the warning appears, branch labels distinguish repeated location codes, and the generated Asset Tag still follows the owner company/branch.
@@ -27,6 +28,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Import assets from Excel.
 - [ ] Export asset register.
 - [ ] On Asset Register, confirm quick filters for data-quality gaps and lifecycle statuses update the list while preserving existing search/company/branch/category context.
+- [ ] On Asset Register, apply cross-scope quick filters for all cross-scope, custodian different company, custodian different branch, and current location different branch; confirm the list and Asset Register export show matching cross-scope flags and owner/custodian/location branch context.
 - [ ] On Asset Register desktop width, confirm the filter panel fills the right side without an empty final column: first row shows search/company/branch/category and second row shows status/condition/ownership/rows/filter action.
 - [ ] From Category, Brand, and Brand/Model master data counts, click model/asset counts and confirm the destination opens the expected Brand/Model workspace or Asset Register drilldown with a removable active filter chip where applicable.
 - [ ] Search Asset Register by the current custodian's employee code and confirm only assets held by that employee are returned; do not expect matches from repair reporter/assignee history.
@@ -71,6 +73,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Review depreciation/book-value report.
 - [ ] Export reports.
 - [ ] On Reports, confirm branch breakdown rows show company/branch labels clearly when branch names repeat across companies and no duplicate-key console warning appears.
+- [ ] On Reports, confirm the cross-scope asset panel shows counts and preview rows for custodian/company, custodian/branch, and location/branch mismatches; open each drilldown and export Asset Overview to verify the Cross Scope sheet.
 - [ ] Review disposal request financial details.
 - [ ] Confirm accounting-only user cannot perform unrelated admin actions.
 

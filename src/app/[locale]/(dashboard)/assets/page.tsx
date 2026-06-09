@@ -12,6 +12,8 @@ import {
 import { AssetImportPreviewPanel } from "@/components/assets/asset-import-preview-panel"
 import { AssetRegisterTable, type AssetRegisterRow } from "@/components/assets/asset-register-table"
 import { MasterDataHeader } from "@/components/master-data/master-data-layout"
+import { applyAssetCrossScopeFilter } from "@/lib/asset-cross-scope"
+import type { AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
 import { assetOwnershipTypes, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { FilterPanel } from "@/components/ui/filter-panel"
 import { ActionButton } from "@/components/ui/action-button"
@@ -47,6 +49,10 @@ type AssetFilterLabels = {
   dataQualityPurchase: string
   dataQualityWarranty: string
   dataQualityResponsibility: string
+  quickFilterCrossScopeAll: string
+  quickFilterCustodianCrossCompany: string
+  quickFilterCustodianCrossBranch: string
+  quickFilterLocationCrossBranch: string
   quickFilterReady: string
   quickFilterPendingRepair: string
   quickFilterUnderMaintenance: string
@@ -75,7 +81,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   const t = await getTranslations("asset")
   const tCommon = await getTranslations("common")
   const filters = parseAssetListParams(rawSearchParams)
-  const where = buildAssetWhere(filters)
+  const where = await applyAssetCrossScopeFilter(buildAssetWhere(filters), filters.crossScope)
   const [assets, total, companies, branches, categories, statuses, conditions, locations, employees, selectedBrand, selectedModel] = await Promise.all([
     prisma.asset.findMany({
       where,
@@ -270,6 +276,10 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           dataQualityPurchase: t("dataQualityPurchase"),
           dataQualityWarranty: t("dataQualityWarranty"),
           dataQualityResponsibility: t("dataQualityResponsibility"),
+          quickFilterCrossScopeAll: t("quickFilterCrossScopeAll"),
+          quickFilterCustodianCrossCompany: t("quickFilterCustodianCrossCompany"),
+          quickFilterCustodianCrossBranch: t("quickFilterCustodianCrossBranch"),
+          quickFilterLocationCrossBranch: t("quickFilterLocationCrossBranch"),
           quickFilterReady: t("quickFilterReady"),
           quickFilterPendingRepair: t("quickFilterPendingRepair"),
           quickFilterUnderMaintenance: t("quickFilterUnderMaintenance"),
@@ -468,39 +478,43 @@ function AssetFilters({
     {
       key: "all",
       label: labels.quickFilterAll,
-      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "", statusId: "", page: 1 })}`,
-      active: !filters.dataQuality && !filters.statusId,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "", statusId: "", crossScope: "", page: 1 })}`,
+      active: !filters.dataQuality && !filters.statusId && !filters.crossScope,
     },
     {
       key: "data-quality-serial",
       label: labels.dataQualitySerial,
-      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "serial", statusId: "", page: 1 })}`,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "serial", statusId: "", crossScope: "", page: 1 })}`,
       active: filters.dataQuality === "serial",
     },
     {
       key: "data-quality-photo",
       label: labels.dataQualityPhoto,
-      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "photo", statusId: "", page: 1 })}`,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "photo", statusId: "", crossScope: "", page: 1 })}`,
       active: filters.dataQuality === "photo",
     },
     {
       key: "data-quality-purchase",
       label: labels.dataQualityPurchase,
-      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "purchase", statusId: "", page: 1 })}`,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "purchase", statusId: "", crossScope: "", page: 1 })}`,
       active: filters.dataQuality === "purchase",
     },
     {
       key: "data-quality-warranty",
       label: labels.dataQualityWarranty,
-      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "warranty", statusId: "", page: 1 })}`,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "warranty", statusId: "", crossScope: "", page: 1 })}`,
       active: filters.dataQuality === "warranty",
     },
     {
       key: "data-quality-responsibility",
       label: labels.dataQualityResponsibility,
-      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "responsibility", statusId: "", page: 1 })}`,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "responsibility", statusId: "", crossScope: "", page: 1 })}`,
       active: filters.dataQuality === "responsibility",
     },
+    buildCrossScopeQuickFilter("cross-scope-all", labels.quickFilterCrossScopeAll, "all"),
+    buildCrossScopeQuickFilter("cross-scope-custodian-company", labels.quickFilterCustodianCrossCompany, "custodian_company"),
+    buildCrossScopeQuickFilter("cross-scope-custodian-branch", labels.quickFilterCustodianCrossBranch, "custodian_branch"),
+    buildCrossScopeQuickFilter("cross-scope-location-branch", labels.quickFilterLocationCrossBranch, "location_branch"),
     buildStatusQuickFilter("ready", labels.quickFilterReady, readyStatus),
     buildStatusQuickFilter("pending-repair", labels.quickFilterPendingRepair, pendingRepairStatus),
     buildStatusQuickFilter("under-maintenance", labels.quickFilterUnderMaintenance, underMaintenanceStatus),
@@ -512,8 +526,17 @@ function AssetFilters({
     return {
       key,
       label,
-      href: `/${locale}/assets?${buildAssetQueryString(filters, { statusId: status.id, dataQuality: "", page: 1 })}`,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { statusId: status.id, dataQuality: "", crossScope: "", page: 1 })}`,
       active: filters.statusId === status.id,
+    }
+  }
+
+  function buildCrossScopeQuickFilter(key: string, label: string, crossScope: AssetCrossScopeFilter) {
+    return {
+      key,
+      label,
+      href: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope, dataQuality: "", statusId: "", page: 1 })}`,
+      active: filters.crossScope === crossScope,
     }
   }
 
@@ -630,6 +653,7 @@ function AssetFilters({
         {filters.brandId ? <input type="hidden" name="brandId" value={filters.brandId} /> : null}
         {filters.modelId ? <input type="hidden" name="modelId" value={filters.modelId} /> : null}
         {filters.dataQuality ? <input type="hidden" name="dataQuality" value={filters.dataQuality} /> : null}
+        {filters.crossScope ? <input type="hidden" name="crossScope" value={filters.crossScope} /> : null}
         <input type="hidden" name="sort" value={filters.sort} />
         <input type="hidden" name="direction" value={filters.direction} />
         <ActionButton type="submit" variant="primary" className="self-end">

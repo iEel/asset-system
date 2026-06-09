@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { createWorkbook, styleWorksheetHeader, workbookResponse } from "@/lib/asset-excel"
 import { errorResponse } from "@/lib/api-response"
 import { buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
+import { applyAssetCrossScopeFilter, buildAssetCrossScopeSummary } from "@/lib/asset-cross-scope"
 import { assetMissingResponsibilityWhere, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { buildDepreciationSummary, depreciationPolicySettingKey, parseDepreciationPolicySetting } from "@/lib/asset-depreciation"
 
@@ -12,9 +13,9 @@ export async function GET(request: NextRequest) {
     const user = await requireAuth()
     requirePermission(user, "report", "export")
     const filters = parseAssetListParams(request.nextUrl.searchParams)
-    const assetWhere = buildAssetWhere(filters)
+    const assetWhere = await applyAssetCrossScopeFilter(buildAssetWhere(filters), filters.crossScope)
 
-    const [totalAssets, totalValue, byStatus, byCategory, byCompany, byBranch, byDepartment, byOwnership, licenseSummary, dataQuality, depreciationAssets, depreciationPolicySetting] = await Promise.all([
+    const [totalAssets, totalValue, byStatus, byCategory, byCompany, byBranch, byDepartment, byOwnership, licenseSummary, dataQuality, depreciationAssets, depreciationPolicySetting, crossScopeSummary] = await Promise.all([
       prisma.asset.count({ where: assetWhere }),
       prisma.asset.aggregate({ where: assetWhere, _sum: { purchasePrice: true } }),
       prisma.asset.groupBy({ by: ["statusId"], where: assetWhere, _count: { _all: true } }),
@@ -42,6 +43,7 @@ export async function GET(request: NextRequest) {
         },
       }),
       prisma.systemSetting.findUnique({ where: { key: depreciationPolicySettingKey }, select: { value: true } }),
+      buildAssetCrossScopeSummary(assetWhere, 5000),
     ])
 
     const [statuses, categories, companies, branches, departments] = await Promise.all([
@@ -92,6 +94,10 @@ export async function GET(request: NextRequest) {
       { metric: "Missing Serial Number", value: dataQuality.missingSerial },
       { metric: "Missing Asset Photo", value: dataQuality.missingPhoto },
       { metric: "Warranty Expiring in 30 Days", value: dataQuality.warrantyExpiring },
+      { metric: "Cross Scope Assets", value: crossScopeSummary.all },
+      { metric: "Custodian Different Company", value: crossScopeSummary.custodianCompany },
+      { metric: "Custodian Different Branch", value: crossScopeSummary.custodianBranch },
+      { metric: "Location Different Branch", value: crossScopeSummary.locationBranch },
     ])
     styleWorksheetHeader(summarySheet)
 
@@ -101,6 +107,7 @@ export async function GET(request: NextRequest) {
     addGroupSheet(workbook, "By Branch", byBranch.map((item) => [branchMap.get(item.branchId) ?? item.branchId, item._count._all]))
     addGroupSheet(workbook, "By Department", byDepartment.map((item) => [departmentMap.get(item.departmentId ?? "") ?? item.departmentId ?? "Unassigned", item._count._all]))
     addGroupSheet(workbook, "By Ownership Type", byOwnership.map((item) => [normalizeAssetOwnershipType(item.ownershipType), item._count._all]))
+    addCrossScopeSheet(workbook, crossScopeSummary.rows)
     addDepreciationSheet(workbook, depreciationSummary.depreciableAssets)
 
     const buffer = await workbook.xlsx.writeBuffer()
@@ -108,6 +115,45 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return errorResponse(error)
   }
+}
+
+function addCrossScopeSheet(workbook: ReturnType<typeof createWorkbook>, rows: Awaited<ReturnType<typeof buildAssetCrossScopeSummary>>["rows"]) {
+  const sheet = workbook.addWorksheet("Cross Scope")
+  sheet.columns = [
+    { header: "Asset Tag", key: "assetTag", width: 22 },
+    { header: "Asset Name", key: "name", width: 34 },
+    { header: "Owner Company", key: "ownerCompany", width: 28 },
+    { header: "Owner Branch", key: "ownerBranch", width: 28 },
+    { header: "Custodian", key: "custodian", width: 28 },
+    { header: "Custodian Company", key: "custodianCompany", width: 28 },
+    { header: "Custodian Branch", key: "custodianBranch", width: 28 },
+    { header: "Home Location", key: "homeLocation", width: 30 },
+    { header: "Home Location Branch", key: "homeLocationBranch", width: 28 },
+    { header: "Current Location", key: "currentLocation", width: 30 },
+    { header: "Current Location Branch", key: "currentLocationBranch", width: 28 },
+    { header: "Custodian Different Company", key: "custodianDifferentCompany", width: 28 },
+    { header: "Custodian Different Branch", key: "custodianDifferentBranch", width: 28 },
+    { header: "Location Different Branch", key: "locationDifferentBranch", width: 28 },
+  ]
+  sheet.addRows(
+    rows.map((asset) => ({
+      assetTag: asset.assetTag,
+      name: asset.name,
+      ownerCompany: asset.ownerCompany,
+      ownerBranch: asset.ownerBranch,
+      custodian: asset.custodian,
+      custodianCompany: asset.custodianCompany,
+      custodianBranch: asset.custodianBranch,
+      homeLocation: asset.homeLocation,
+      homeLocationBranch: asset.homeLocationBranch,
+      currentLocation: asset.currentLocation,
+      currentLocationBranch: asset.currentLocationBranch,
+      custodianDifferentCompany: asset.flags.custodianCompany ? "Yes" : "No",
+      custodianDifferentBranch: asset.flags.custodianBranch ? "Yes" : "No",
+      locationDifferentBranch: asset.flags.locationBranch ? "Yes" : "No",
+    }))
+  )
+  styleWorksheetHeader(sheet)
 }
 
 async function getAssetDataQualityCounts(assetWhere: ReturnType<typeof buildAssetWhere>) {

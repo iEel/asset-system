@@ -831,7 +831,7 @@ export function AssetForm({
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-5 pb-36 sm:pb-24">
         <Section title={t("basicInfo")}>
           <Field label={t("assetTag")}>
             <input
@@ -1488,18 +1488,22 @@ export function AssetForm({
           </label>
         </Section>
 
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-          <Link href={backHref} className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:w-auto">
-            {tCommon("cancel")}
-          </Link>
-          <button
-            type="submit"
-            disabled={saving || isProtectedStatusChange || duplicateState.checking || duplicateState.assetTagExists || duplicateState.serialNumberExists}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {tCommon("save")}
-          </button>
+        <div className="fixed bottom-3 left-4 right-4 z-40 lg:left-[calc(16rem+1.5rem)] lg:right-6">
+          <div className="mx-auto max-w-6xl rounded-lg border border-border bg-surface/95 p-3 shadow-lg backdrop-blur">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+              <Link href={backHref} className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:w-auto">
+                {tCommon("cancel")}
+              </Link>
+              <button
+                type="submit"
+                disabled={saving || isProtectedStatusChange || duplicateState.checking || duplicateState.assetTagExists || duplicateState.serialNumberExists}
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {tCommon("save")}
+              </button>
+            </div>
+          </div>
         </div>
       </form>
     </div>

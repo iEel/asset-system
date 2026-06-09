@@ -89,6 +89,7 @@ Important data semantics:
 - `Asset.companyId` and `Asset.branchId` represent asset owner/tag/reporting scope.
 - `Asset.custodianId` may point to an employee outside the asset owner company/branch for cross-company custody.
 - `Asset.homeLocationId` and `Asset.currentLocationId` may point to locations outside the asset owner branch when the operator intentionally enables cross-branch location mode; owner/tag scope remains unchanged.
+- Cross-scope reporting compares owner/tag scope against current custodian company/branch and current location branch, then exposes the result through Asset Register filters and report exports without changing movement workflow rules.
 - Asset ownership/tag scope changes should be intentional master-data edits; normal custody changes should use checkout, check-in, and transfer.
 - Files are stored under `UPLOAD_DIR` and referenced through `Attachment`; file bytes are not stored in SQL Server.
 - Production schema changes require backup, approved change record, and rollback/restore plan. `npx prisma db push` is Dev/Test-oriented.
@@ -99,12 +100,13 @@ Important data semantics:
 |---|---|
 | Asset list | Asset Register page with filters, URL-backed operational quick filters, responsive views, table/card behavior, row navigation, search that includes the current custodian employee code, master-data drilldown filters, and return-to-list navigation that preserves page/filter/sort/search state |
 | Asset detail | Unified page with overview, specs, QR, photos/files, components, purchase docs, movement, maintenance, audit, handover/return, notes, and an explicit Back action to the originating register view |
-| Asset create/edit | Single asset form with owner/tag scope, category/brand/model, serial, custodian, location, purchase/warranty, custom fields, photos/files; edit mode preserves saved cross-company custodians and cross-branch locations by opening the wider selector automatically |
+| Asset create/edit | Single asset form with owner/tag scope, category/brand/model, serial, custodian, location, purchase/warranty, custom fields, photos/files, and a fixed bottom Save/Cancel action bar for long forms; edit mode preserves saved cross-company custodians and cross-branch locations by opening the wider selector automatically |
 | Asset clone | Asset Register and Asset Detail can open `/assets/new?cloneFrom={assetId}` to create a new asset from an existing record, preserving the originating register view when launched from the list. The clone draft copies shared master, ownership, location, purchase/warranty, custom-field, and linked purchase-document data while leaving Asset Tag, Serial Number, and FA/accounting code blank and showing a review banner. |
 | Batch create | Batch creation from shared purchase/master data plus row-level serial/manual tag/custodian/remark values; shared location can opt into cross-branch/site selection without changing owner/tag scope |
 | Asset import | Excel import preview and confirm APIs for legacy asset onboarding; the register import helper starts collapsed and opens on demand |
 | Asset export | Excel export using current filters where supported |
 | Master-data drilldowns | Category, brand, and model count links open the relevant Brand/Model workspace or Asset Register filters (`categoryId`, `brandId`, `modelId`) with removable active filter chips where applicable |
+| Cross-scope visibility | URL-backed quick filters and exports for assets whose current custodian company, current custodian branch, or current location branch differs from the owner/tag scope |
 | Duplicate handling | Duplicate checking for asset tag/serial and batch duplicate review |
 | Asset tag generation | Configurable format, category prefix groups, company asset-tag code, branch/category/running tokens |
 | Status/condition guidance | Asset Create/Edit, Asset Detail, Asset Register filters, and Asset Register table headers expose help popovers explaining lifecycle status, physical condition, protected workflows, and normal next actions; register filter icons use a compact size so the filter rows stay visually aligned |
@@ -222,9 +224,9 @@ Implemented status lifecycle and enforcement from docs/code:
 
 | Feature | Details |
 |---|---|
-| Reports page | Central report entry point with shared filters and grouped breakdowns; branch breakdown labels include company code so repeated branch names across companies remain clear |
-| Asset overview export | `reports/assets-overview/export` API |
-| Asset register export | Current filter export through asset export API |
+| Reports page | Central report entry point with shared filters, grouped breakdowns, and a cross-scope asset panel for custodian/location scope mismatches; branch breakdown labels include company code so repeated branch names across companies remain clear |
+| Asset overview export | `reports/assets-overview/export` API with cross-scope summary metrics and a Cross Scope sheet |
+| Asset register export | Current filter export through asset export API, including cross-scope filters and owner/custodian/home/current location branch columns |
 | Audit exports | Audit round results, findings, variance Excel/PDF exports |
 | Maintenance export | Maintenance ticket export |
 | Disposal export | Disposal request export |
