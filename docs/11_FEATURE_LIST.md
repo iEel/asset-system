@@ -179,10 +179,10 @@ Implemented status lifecycle and enforcement from docs/code:
 | Candidate preview | Preview audit candidates before creating a round |
 | Expected list | Audit items generated from scope and start as pending |
 | Audit detail | Progress metrics and expected item list |
-| Audit scan | QR/manual scan, system data comparison panel, sticky single-source progress header with photo-queue badge, readable scan-result card, fast `บันทึกพบตรง` save path, detailed `บันทึกข้อมูลไม่ตรง / Finding` path, photo evidence, and mobile bottom action bar after scan selection |
+| Audit scan | QR/manual scan, compact Fast Scan Mode toggle, system data comparison panel, sticky single-source progress header with photo-queue badge, combined scan-result/recent-scan panel, fast `บันทึกพบตรง` save path, detailed `บันทึกข้อมูลไม่ตรง / Finding` path, photo evidence, and mobile bottom action bar after scan selection |
 | Continuous mobile scan | Uses asset QR decoder while keeping audit workflow on the audit scan page |
 | Audit scan camera UX | Hides normal camera-ready status text; shows camera utilities only while scanning, when multiple cameras are selectable, after a decoded QR reference exists, or when a camera issue needs attention; supported camera tracks expose a flashlight toggle for low-light scans |
-| Recent audit scans | Shows the latest eight QR/manual scan outcomes in the current page session so auditors can verify what they just scanned while walking |
+| Recent audit scans | Shows previous QR/manual scan outcomes inside the scan-result panel so auditors can verify what they just scanned while walking without a duplicate large section |
 | Found/mismatch/not found | Handles found, mismatch, out-of-scope, unknown asset, not-found, and found-later cases |
 | Scan result semantics | Successful scan results do not show Not Found as a primary action; assets outside the round are Out-of-scope, unknown codes are Unknown Asset, and Found Later reuses the existing recovery logic |
 | Not-found workflow | Mark pending items as not found from the pending list/zone queue without changing asset status to Lost automatically |

@@ -809,30 +809,18 @@ export function AuditScanForm({
 
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
-          <div className="md:col-span-2 rounded-md border border-info/30 bg-info/10 p-3">
-            <label className="flex cursor-pointer items-start gap-3 text-sm">
-              <input
-                type="checkbox"
-                checked={fastMode}
-                onChange={(event) => {
-                  setFastMode(event.target.checked)
-                  setShowDetailedFields(!event.target.checked)
-                }}
-                className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
-              />
-              <span>
-                <span className="block font-semibold text-foreground">{t("fastMode")}</span>
-                <span className="mt-1 block text-muted-foreground">{t("fastModeHelp")}</span>
-              </span>
-            </label>
-          </div>
+          <FastModeToggle
+            checked={fastMode}
+            onChange={(checked) => {
+              setFastMode(checked)
+              setShowDetailedFields(!checked)
+            }}
+            t={t}
+          />
 
           {scanFeedback && (
-            <ScanFeedbackCard feedback={scanFeedback} t={t} />
+            <ScanResultPanel feedback={scanFeedback} recentScans={recentScans} t={t} />
           )}
-          {recentScans.length > 0 ? (
-            <RecentScanList recentScans={recentScans} t={t} />
-          ) : null}
 
           <div id="audit-scan-input-panel" className="scroll-mt-24 md:col-span-2 rounded-md border border-border bg-background p-4">
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
@@ -1233,9 +1221,48 @@ type AuditScanTranslator = {
   (key: string, values: Record<string, string | number | Date>): string
 }
 
-function ScanFeedbackCard({ feedback, t }: { feedback: ScanFeedback; t: AuditScanTranslator }) {
+function FastModeToggle({
+  checked,
+  onChange,
+  t,
+}: {
+  checked: boolean
+  onChange: (checked: boolean) => void
+  t: AuditScanTranslator
+}) {
+  return (
+    <div className="md:col-span-2 flex flex-col gap-2 rounded-md border border-border bg-background px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+      <label className="inline-flex min-h-10 cursor-pointer items-center gap-3 text-sm">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(event) => onChange(event.target.checked)}
+          className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+        />
+        <span className="font-semibold text-foreground">{t("fastMode")}</span>
+        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${checked ? "bg-info/15 text-info" : "bg-warning/15 text-warning"}`}>
+          {checked ? t("fastModeOn") : t("detailModeOn")}
+        </span>
+      </label>
+      <div className="text-xs text-muted-foreground">
+        {checked ? t("fastModeCompactHelp") : t("detailModeCompactHelp")}
+      </div>
+    </div>
+  )
+}
+
+function ScanResultPanel({
+  feedback,
+  recentScans,
+  t,
+}: {
+  feedback: ScanFeedback
+  recentScans: AuditRecentScan[]
+  t: AuditScanTranslator
+}) {
   const meta = getScanFeedbackMeta(feedback.status, t)
   const Icon = meta.icon
+  const previousScans = recentScans.slice(1, 6)
 
   return (
     <div className={`md:col-span-2 rounded-md border p-4 ${meta.cardClass}`}>
@@ -1245,55 +1272,48 @@ function ScanFeedbackCard({ feedback, t }: { feedback: ScanFeedback; t: AuditSca
             <Icon className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("scanResult")}</div>
+            <div className="text-xs font-semibold tracking-normal text-muted-foreground">{t("scanResult")}</div>
             <div className="mt-1 break-words text-base font-semibold text-foreground">{feedback.title}</div>
             <div className="mt-1 break-words text-sm text-muted-foreground">{feedback.description}</div>
           </div>
         </div>
-        <span className={`inline-flex shrink-0 items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold ${meta.chipClass}`}>
-          {meta.label}
-        </span>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <span className={`inline-flex items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold ${meta.chipClass}`}>
+            {meta.label}
+          </span>
+          <span className="inline-flex items-center rounded-full bg-surface/70 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            {recentScans.length.toLocaleString("th-TH")}/{MAX_RECENT_AUDIT_SCANS}
+          </span>
+        </div>
       </div>
+      {previousScans.length > 0 ? (
+        <div className="mt-3 rounded-md border border-border/80 bg-surface/80 p-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="text-xs font-semibold text-foreground">{t("recentScansTitle")}</div>
+            <div className="text-xs text-muted-foreground">{t("recentScansHelp")}</div>
+          </div>
+          <div className="grid gap-1.5">
+            {previousScans.map((scan) => (
+              <RecentScanCompactRow key={scan.id} scan={scan} t={t} />
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
 
-function RecentScanList({ recentScans, t }: { recentScans: AuditRecentScan[]; t: AuditScanTranslator }) {
+function RecentScanCompactRow({ scan, t }: { scan: AuditRecentScan; t: AuditScanTranslator }) {
+  const meta = getScanFeedbackMeta(scan.status, t)
+
   return (
-    <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="text-sm font-semibold text-foreground">{t("recentScansTitle")}</div>
-          <div className="mt-1 text-xs text-muted-foreground">{t("recentScansHelp")}</div>
-        </div>
-        <div className="text-xs text-muted-foreground">{recentScans.length.toLocaleString("th-TH")}/{MAX_RECENT_AUDIT_SCANS}</div>
-      </div>
-      <div className="mt-3 grid gap-2">
-        {recentScans.map((scan) => {
-          const meta = getScanFeedbackMeta(scan.status, t)
-          const Icon = meta.icon
-          return (
-            <div key={scan.id} className="flex items-start gap-3 rounded-md border border-border bg-surface p-3">
-              <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${meta.iconClass}`}>
-                <Icon className="h-4 w-4" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="break-words text-sm font-semibold text-foreground">{scan.title}</span>
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${meta.chipClass}`}>
-                    {meta.label}
-                  </span>
-                </div>
-                <div className="mt-1 line-clamp-2 break-words text-xs text-muted-foreground">{scan.description}</div>
-              </div>
-              <div className="shrink-0 text-right text-xs text-muted-foreground">
-                <div>{scan.source === "qr" ? "QR" : t("manualScanAction")}</div>
-                <div className="mt-1">{formatRecentScanTime(scan.at)}</div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+    <div className="flex items-center gap-2 rounded-md bg-background px-2 py-1.5 text-xs">
+      <span className={`h-2 w-2 shrink-0 rounded-full ${meta.dotClass}`} />
+      <span className="min-w-0 flex-1 truncate font-medium text-foreground">{scan.title}</span>
+      <span className={`shrink-0 rounded-full px-2 py-0.5 font-semibold ${meta.chipClass}`}>
+        {meta.label}
+      </span>
+      <span className="shrink-0 text-muted-foreground">{formatRecentScanTime(scan.at)}</span>
     </div>
   )
 }
@@ -1311,6 +1331,7 @@ function getScanFeedbackMeta(status: ScanFeedback["status"], t: AuditScanTransla
       cardClass: "border-success/35 bg-success/10",
       chipClass: "bg-success/15 text-success",
       iconClass: "bg-success/15 text-success",
+      dotClass: "bg-success",
     }
   }
 
@@ -1321,6 +1342,7 @@ function getScanFeedbackMeta(status: ScanFeedback["status"], t: AuditScanTransla
       cardClass: "border-danger/35 bg-danger/10",
       chipClass: "bg-danger/15 text-danger",
       iconClass: "bg-danger/15 text-danger",
+      dotClass: "bg-danger",
     }
   }
 
@@ -1331,6 +1353,7 @@ function getScanFeedbackMeta(status: ScanFeedback["status"], t: AuditScanTransla
       cardClass: "border-warning/35 bg-warning/10",
       chipClass: "bg-warning/15 text-warning",
       iconClass: "bg-warning/15 text-warning",
+      dotClass: "bg-warning",
     }
   }
 
@@ -1341,6 +1364,7 @@ function getScanFeedbackMeta(status: ScanFeedback["status"], t: AuditScanTransla
       cardClass: "border-info/35 bg-info/10",
       chipClass: "bg-info/15 text-info",
       iconClass: "bg-info/15 text-info",
+      dotClass: "bg-info",
     }
   }
 
@@ -1350,6 +1374,7 @@ function getScanFeedbackMeta(status: ScanFeedback["status"], t: AuditScanTransla
     cardClass: "border-warning/35 bg-warning/10",
     chipClass: "bg-warning/15 text-warning",
     iconClass: "bg-warning/15 text-warning",
+    dotClass: "bg-warning",
   }
 }
 

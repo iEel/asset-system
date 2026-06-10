@@ -136,8 +136,8 @@ test("audit scan phase 1 shows readable result semantics and recent scans", () =
   assert.match(form, /MAX_RECENT_AUDIT_SCANS = 8/)
   assert.match(form, /function pushRecentScan\(/)
   assert.match(form, /setRecentScans\(\(current\) => \[/)
-  assert.match(form, /RecentScanList recentScans=\{recentScans\}/)
-  assert.match(form, /function RecentScanList/)
+  assert.match(form, /ScanResultPanel feedback=\{scanFeedback\} recentScans=\{recentScans\}/)
+  assert.match(form, /function ScanResultPanel/)
   assert.match(form, /function getScanFeedbackMeta/)
   assert.match(form, /t\("feedbackStatusFound"\)/)
   assert.match(form, /t\("recentScansTitle"\)/)
@@ -153,6 +153,27 @@ test("audit scan phase 1 shows readable result semantics and recent scans", () =
     assert.equal(typeof messages.auditScan.feedbackStatusUnknownAsset, "string")
     assert.equal(typeof messages.auditScan.feedbackStatusFoundLater, "string")
     assert.equal(typeof messages.auditScan.feedbackStatusOfflineQueued, "string")
+  }
+})
+
+test("audit scan phase 1 compacts fast mode and combines result with recent scans", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(form, /function FastModeToggle/)
+  assert.match(form, /fastModeCompactHelp/)
+  assert.match(form, /detailModeCompactHelp/)
+  assert.match(form, /ScanResultPanel feedback=\{scanFeedback\} recentScans=\{recentScans\}/)
+  assert.match(form, /const previousScans = recentScans\.slice\(1, 6\)/)
+  assert.doesNotMatch(form, /<ScanFeedbackCard feedback=\{scanFeedback\}/)
+  assert.doesNotMatch(form, /<RecentScanList recentScans=\{recentScans\}/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditScan.fastModeCompactHelp, "string")
+    assert.equal(typeof messages.auditScan.detailModeCompactHelp, "string")
+    assert.equal(typeof messages.auditScan.fastModeOn, "string")
+    assert.equal(typeof messages.auditScan.detailModeOn, "string")
   }
 })
 
