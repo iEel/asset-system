@@ -10,7 +10,6 @@ import {
   Camera,
   CheckCircle2,
   ImagePlus,
-  Info,
   Keyboard,
   Loader2,
   RefreshCcw,
@@ -209,6 +208,9 @@ export function AuditScanForm({
       : failedOfflineQueueCount > 0
         ? t("offlineQueueFailedHelp", { count: failedOfflineQueueCount })
         : t("offlineQueueHelp")
+  const hasCameraIssue = Boolean(cameraErrorText || cameraReadiness === "unavailable")
+  const shouldShowCameraUtilities = cameras.length > 1 || Boolean(lastDecodedText) || hasCameraIssue
+  const shouldShowCameraPanel = scannerRunning || scannerLoading || shouldShowCameraUtilities
 
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -685,10 +687,10 @@ export function AuditScanForm({
           processedLabel={t("scannedQueue")}
           pendingLabel={t("pendingQueue")}
         />
-        <div className="mt-3 grid grid-cols-3 gap-2 md:hidden">
-          <AuditCompactMetric label={t("pendingQueue")} value={pendingCount.toString()} />
-          <AuditCompactMetric label={t("scannedQueue")} value={processedCount.toString()} />
-          <AuditCompactMetric label={t("photoQueue")} value={queuedAuditPhotos.length.toString()} />
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span className="rounded-full border border-border bg-background px-2 py-1">
+            {t("photoQueue")}: <span className="font-semibold text-foreground">{queuedAuditPhotos.length}</span>
+          </span>
         </div>
       </div>
 
@@ -734,12 +736,6 @@ export function AuditScanForm({
 
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
-          <div className="hidden gap-3 md:col-span-2 md:grid md:grid-cols-3">
-            <AuditMetric label={t("pendingQueue")} value={pendingCount.toString()} />
-            <AuditMetric label={t("scannedQueue")} value={processedCount.toString()} />
-            <AuditMetric label={t("photoQueue")} value={queuedAuditPhotos.length.toString()} />
-          </div>
-
           <div className="md:col-span-2 rounded-md border border-info/30 bg-info/10 p-3">
             <label className="flex cursor-pointer items-start gap-3 text-sm">
               <input
@@ -805,60 +801,50 @@ export function AuditScanForm({
                 <span className="mt-1 block text-muted-foreground">{t("continuousScanHelp")}</span>
               </span>
             </label>
-            <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
-              <div
-                className={`relative isolate aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-surface sm:min-h-[22rem] ${scannerRunning || scannerLoading ? "block" : "hidden"}`}
-              >
-                <div id="audit-qr-reader" className="w-full [&_video]:!h-auto [&_video]:!w-full" />
-                {scannerRunning ? <AuditQrScannerOverlay /> : null}
-              </div>
-              <div className="rounded-md border border-border bg-surface p-3 text-sm text-muted-foreground">
-                <div className="flex items-start gap-2">
-                  <Info className="mt-0.5 h-4 w-4 text-info" />
-                  <div>
-                    <div className="font-medium text-foreground">{t("cameraStatus")}</div>
-                    <div className="mt-1">
-                      {scannerRunning
-                        ? t("cameraRunning")
-                        : cameraReadiness === "ready"
-                          ? t("cameraReady")
-                          : t("cameraUnavailable")}
-                    </div>
-                  </div>
+            {shouldShowCameraPanel ? (
+              <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
+                <div
+                  className={`relative isolate aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-surface sm:min-h-[22rem] ${scannerRunning || scannerLoading ? "block" : "hidden"}`}
+                >
+                  <div id="audit-qr-reader" className="w-full [&_video]:!h-auto [&_video]:!w-full" />
+                  {scannerRunning ? <AuditQrScannerOverlay /> : null}
                 </div>
-                {cameras.length > 1 ? (
-                  <label className="mt-3 block">
-                    <span className="mb-1.5 block text-xs font-medium text-foreground">{t("cameraDevice")}</span>
-                    <select
-                      value={selectedCameraId}
-                      disabled={scannerLoading}
-                      onChange={(event) => void handleCameraChange(event.target.value)}
-                      className="min-h-11 w-full rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60 sm:h-9 sm:min-h-0"
-                    >
-                      <option value={environmentCameraId}>{t("cameraRear")}</option>
-                      {cameras.map((camera, index) => (
-                        <option key={camera.id} value={camera.id}>
-                          {camera.label || t("cameraDeviceFallback", { index: index + 1 })}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : null}
-                {lastDecodedText ? (
-                  <div className="mt-3 rounded-md bg-background p-2 text-xs">
-                    <div className="font-medium text-foreground">{t("lastDecoded")}</div>
-                    <div className="mt-1 break-all">{lastDecodedText}</div>
+                {shouldShowCameraUtilities ? (
+                  <div className="rounded-md border border-border bg-surface p-3 text-sm text-muted-foreground">
+                    {cameras.length > 1 ? (
+                      <label className="block">
+                        <span className="mb-1.5 block text-xs font-medium text-foreground">{t("cameraDevice")}</span>
+                        <select
+                          value={selectedCameraId}
+                          disabled={scannerLoading}
+                          onChange={(event) => void handleCameraChange(event.target.value)}
+                          className="min-h-11 w-full rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60 sm:h-9 sm:min-h-0"
+                        >
+                          <option value={environmentCameraId}>{t("cameraRear")}</option>
+                          {cameras.map((camera, index) => (
+                            <option key={camera.id} value={camera.id}>
+                              {camera.label || t("cameraDeviceFallback", { index: index + 1 })}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
+                    {lastDecodedText ? (
+                      <div className="mt-3 rounded-md bg-background p-2 text-xs">
+                        <div className="font-medium text-foreground">{t("lastDecoded")}</div>
+                        <div className="mt-1 break-all">{lastDecodedText}</div>
+                      </div>
+                    ) : null}
+                    {hasCameraIssue ? (
+                      <div className="mt-3 rounded-md border border-warning/30 bg-warning/10 p-2 text-xs text-warning">
+                        <div>{cameraErrorText || t("cameraUnsupported")}</div>
+                        <div className="mt-1 text-muted-foreground">{t("cameraHelp")}</div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
-                {cameraErrorText || cameraReadiness === "unavailable" ? (
-                  <div className="mt-3 rounded-md border border-warning/30 bg-warning/10 p-2 text-xs text-warning">
-                    {cameraErrorText || t("cameraUnsupported")}
-                  </div>
-                ) : (
-                  <div className="mt-3 text-xs">{t("cameraHelp")}</div>
-                )}
               </div>
-            </div>
+            ) : null}
           </div>
 
           <div className="md:col-span-2">
@@ -1139,24 +1125,6 @@ export function AuditScanForm({
           </div>
         </div>
       ) : null}
-    </div>
-  )
-}
-
-function AuditCompactMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-border bg-background px-2 py-2 text-center">
-      <div className="truncate text-[11px] font-medium text-muted-foreground">{label}</div>
-      <div className="mt-0.5 text-lg font-bold leading-none text-foreground">{value}</div>
-    </div>
-  )
-}
-
-function AuditMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-border bg-background p-3">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="mt-1 text-2xl font-bold text-foreground">{value}</div>
     </div>
   )
 }

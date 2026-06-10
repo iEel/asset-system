@@ -52,7 +52,9 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Scan an expected asset.
 - [ ] On a mobile device, confirm `/th/audit/rounds/{id}/scan` can scan the same printed Asset Label QR in continuous mode, selects the audit item, keeps the raw QR URL only in the latest-decoded panel, and does not navigate away from the audit workflow.
 - [ ] After selecting an audit asset, confirm the scan page shows system data for comparison: current location, custodian, department, and condition.
-- [ ] On a mobile device, confirm the sticky progress header shows compact pending/scanned/photo counts and that the post-scan bottom action bar appears only after an asset is selected or scanned.
+- [ ] On a mobile device, confirm the sticky progress header is the only progress summary, shows checked/pending counts plus the photo-queue badge, and that the old metric-card row is not repeated below it.
+- [ ] Confirm the Audit Scan camera section does not show normal `สถานะกล้อง` / `พร้อมเปิดกล้อง` text before scanning; camera utilities should appear only while scanning, after a decoded QR reference exists, when multiple cameras can be selected, or when a camera issue is shown.
+- [ ] Confirm the post-scan bottom action bar appears only after an asset is selected or scanned.
 - [ ] Record found/matched result.
 - [ ] In fast walking mode, choose `บันทึกพบตรง` and confirm the result saves without requiring a photo.
 - [ ] Choose `บันทึกข้อมูลไม่ตรง / Finding`, change at least one actual field, and confirm the page requires at least one evidence photo before saving.

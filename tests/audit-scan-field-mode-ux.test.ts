@@ -69,6 +69,18 @@ test("audit scan camera readiness renders a stable hydration fallback", () => {
   assert.match(form, /window\.clearTimeout\(timer\)/)
 })
 
+test("audit scan hides normal camera status and only surfaces camera issues", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+
+  assert.doesNotMatch(form, /t\("cameraStatus"\)/)
+  assert.doesNotMatch(form, /t\("cameraReady"\)/)
+  assert.doesNotMatch(form, /t\("cameraRunning"\)/)
+  assert.match(form, /shouldShowCameraPanel/)
+  assert.match(form, /shouldShowCameraUtilities/)
+  assert.match(form, /cameraErrorText \|\| cameraReadiness === "unavailable"/)
+  assert.match(form, /t\("cameraHelp"\)/)
+})
+
 test("audit scan field-mode UX copy is translated", () => {
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
@@ -91,13 +103,17 @@ test("audit scan field-mode UX copy is translated", () => {
   }
 })
 
-test("audit scan mobile layout uses compact progress and post-scan actions", () => {
+test("audit scan layout keeps progress metrics in one place", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
   assert.match(form, /showMobileQuickActionBar/)
-  assert.match(form, /AuditCompactMetric/)
+  assert.doesNotMatch(form, /AuditCompactMetric/)
+  assert.doesNotMatch(form, /AuditMetric label=\{t\("pendingQueue"\)\}/)
+  assert.doesNotMatch(form, /AuditMetric label=\{t\("scannedQueue"\)\}/)
+  assert.match(form, /t\("photoQueue"\)/)
+  assert.match(form, /rounded-full border border-border bg-background px-2 py-1/)
   assert.match(form, /md:hidden/)
   assert.match(form, /fixed inset-x-0 bottom-0/)
   assert.match(form, /aria-label=\{t\("mobileActionBar"\)\}/)

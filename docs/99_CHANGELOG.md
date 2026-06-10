@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-06-10
+
+| Area | Update |
+|---|---|
+| Audit Scan UX | `/th/audit/rounds/{id}/scan` now treats the sticky progress header as the single progress source, moves photo queue into a compact header badge, removes the duplicated metric-card row, and hides normal camera-ready status text. Camera utility/error UI now appears only while scanning, when multiple cameras are available, after a decoded QR reference exists, or when the browser reports a camera issue. Business logic, audit item handling, offline queue behavior, and finding/recovery rules are unchanged. |
+
+---
+
 ## 2026-06-09
 
 | Area | Update |
