@@ -126,3 +126,62 @@ test("audit scan layout keeps progress metrics in one place", () => {
   assert.equal(typeof en.auditScan.mobileActionBar, "string")
   assert.match(en.auditScan.continueOrManualAction, /scan|manual/i)
 })
+
+test("audit scan phase 1 shows readable result semantics and recent scans", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(form, /type AuditRecentScan/)
+  assert.match(form, /MAX_RECENT_AUDIT_SCANS = 8/)
+  assert.match(form, /function pushRecentScan\(/)
+  assert.match(form, /setRecentScans\(\(current\) => \[/)
+  assert.match(form, /RecentScanList recentScans=\{recentScans\}/)
+  assert.match(form, /function RecentScanList/)
+  assert.match(form, /function getScanFeedbackMeta/)
+  assert.match(form, /t\("feedbackStatusFound"\)/)
+  assert.match(form, /t\("recentScansTitle"\)/)
+  assert.match(form, /t\("recentScansHelp"\)/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditScan.recentScansTitle, "string")
+    assert.equal(typeof messages.auditScan.recentScansHelp, "string")
+    assert.equal(typeof messages.auditScan.feedbackStatusFound, "string")
+    assert.equal(typeof messages.auditScan.feedbackStatusSaved, "string")
+    assert.equal(typeof messages.auditScan.feedbackStatusMismatch, "string")
+    assert.equal(typeof messages.auditScan.feedbackStatusOutOfScope, "string")
+    assert.equal(typeof messages.auditScan.feedbackStatusUnknownAsset, "string")
+    assert.equal(typeof messages.auditScan.feedbackStatusFoundLater, "string")
+    assert.equal(typeof messages.auditScan.feedbackStatusOfflineQueued, "string")
+  }
+})
+
+test("audit scan flashlight is a progressive camera enhancement", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const scanner = readFileSync("src/lib/asset-qr-scanner.ts", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(scanner, /type NativeCodeTorchController/)
+  assert.match(scanner, /torch\?: NativeCodeTorchController/)
+  assert.match(scanner, /function createNativeCodeTorchController/)
+  assert.match(scanner, /capabilities\.torch/)
+  assert.match(scanner, /applyConstraints\(\{ advanced: \[\{ torch: enabled \}/)
+  assert.match(scanner, /torchController\?\.setEnabled\(false\)/)
+
+  assert.match(form, /Flashlight/)
+  assert.match(form, /FlashlightOff/)
+  assert.match(form, /torchAvailable/)
+  assert.match(form, /torchEnabled/)
+  assert.match(form, /function resetTorchState/)
+  assert.match(form, /async function toggleTorch/)
+  assert.match(form, /aria-pressed=\{torchEnabled\}/)
+  assert.match(form, /t\(torchEnabled \? "torchOff" : "torchOn"\)/)
+  assert.match(form, /t\("torchUnsupported"\)/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditScan.torchOn, "string")
+    assert.equal(typeof messages.auditScan.torchOff, "string")
+    assert.equal(typeof messages.auditScan.torchUnsupported, "string")
+  }
+})

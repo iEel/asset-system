@@ -9,6 +9,8 @@ import {
   ArrowLeft,
   Camera,
   CheckCircle2,
+  Flashlight,
+  FlashlightOff,
   ImagePlus,
   Keyboard,
   Loader2,
@@ -69,15 +71,22 @@ type CameraDevice = { id: string; label: string }
 type CameraReadiness = "checking" | "ready" | "unavailable"
 type AuditMismatchPreview = { type: string; label: string; canApply: boolean }
 type ScanFeedback = {
-  status: "found" | "mismatch" | "out_of_scope" | "unknown_asset" | "saved" | "found_later"
+  status: "found" | "mismatch" | "out_of_scope" | "unknown_asset" | "saved" | "found_later" | "offline_queued"
   title: string
   description: string
+}
+type AuditRecentScan = ScanFeedback & {
+  id: string
+  source: "manual" | "qr"
+  at: number
 }
 type QueuedAuditPhoto = {
   id: string
   label: string
   file: File
 }
+
+const MAX_RECENT_AUDIT_SCANS = 8
 type OutOfScopeAsset = {
   id: string
   assetTag: string
@@ -122,10 +131,14 @@ export function AuditScanForm({
   const [fastMode, setFastMode] = useState(true)
   const [showDetailedFields, setShowDetailedFields] = useState(false)
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null)
+  const [recentScans, setRecentScans] = useState<AuditRecentScan[]>([])
   const [outOfScopeAsset, setOutOfScopeAsset] = useState<OutOfScopeAsset | null>(null)
   const [applyCorrections, setApplyCorrections] = useState(false)
   const [offlineQueue, setOfflineQueue] = useState<QueuedAuditScan[]>([])
   const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine))
+  const [torchAvailable, setTorchAvailable] = useState(false)
+  const [torchEnabled, setTorchEnabled] = useState(false)
+  const [torchUpdating, setTorchUpdating] = useState(false)
   const qrReaderRef = useRef<NativeAssetQrScannerRuntime | null>(null)
   const offlineStorageRef = useRef<AuditOfflineQueueStorage | null>(null)
   const lastDecodedRef = useRef<{ value: string; at: number } | null>(null)
@@ -188,12 +201,12 @@ export function AuditScanForm({
       )
     : []
   const requiresMismatchPhoto = Boolean(isDetailedScanVisible && mismatchPreview.length > 0)
-  const selectedAuditPhotoChecklist = selectedItem?.photoChecklist ?? []
+  const selectedAuditPhotoChecklist = selectedItem?.photoChecklist
   const generalAuditPhotoLabel = t("generalAuditPhotoLabel")
   const auditPhotoTagOptions = useMemo(
     () => [
       generalAuditPhotoLabel,
-      ...selectedAuditPhotoChecklist.filter((item) => item && item !== generalAuditPhotoLabel),
+      ...(selectedAuditPhotoChecklist ?? []).filter((item) => item && item !== generalAuditPhotoLabel),
     ],
     [generalAuditPhotoLabel, selectedAuditPhotoChecklist]
   )
@@ -209,7 +222,7 @@ export function AuditScanForm({
         ? t("offlineQueueFailedHelp", { count: failedOfflineQueueCount })
         : t("offlineQueueHelp")
   const hasCameraIssue = Boolean(cameraErrorText || cameraReadiness === "unavailable")
-  const shouldShowCameraUtilities = cameras.length > 1 || Boolean(lastDecodedText) || hasCameraIssue
+  const shouldShowCameraUtilities = cameras.length > 1 || torchAvailable || Boolean(lastDecodedText) || hasCameraIssue
   const shouldShowCameraPanel = scannerRunning || scannerLoading || shouldShowCameraUtilities
 
   function setField(field: string, value: string) {
@@ -251,6 +264,61 @@ export function AuditScanForm({
 
   function scrollToAuditScanInput() {
     document.getElementById("audit-scan-input-panel")?.scrollIntoView({ behavior: "smooth", block: "center" })
+  }
+
+  function pushRecentScan(feedback: ScanFeedback, source: "manual" | "qr" = scanSource) {
+    const at = Date.now()
+    setRecentScans((current) => [
+      {
+        ...feedback,
+        id: `${at}-${feedback.status}-${current.length}`,
+        source,
+        at,
+      },
+      ...current,
+    ].slice(0, MAX_RECENT_AUDIT_SCANS))
+  }
+
+  function showScanFeedback(feedback: ScanFeedback, source: "manual" | "qr" = scanSource) {
+    setScanFeedback(feedback)
+    pushRecentScan(feedback, source)
+  }
+
+  function resetTorchState() {
+    setTorchAvailable(false)
+    setTorchEnabled(false)
+    setTorchUpdating(false)
+  }
+
+  function syncTorchState(scanner: NativeAssetQrScannerRuntime | null) {
+    const available = Boolean(scanner?.torch?.isAvailable())
+    setTorchAvailable(available)
+    setTorchEnabled(available ? Boolean(scanner?.torch?.isEnabled()) : false)
+    setTorchUpdating(false)
+  }
+
+  async function toggleTorch() {
+    const torch = qrReaderRef.current?.torch
+    if (!torch?.isAvailable()) {
+      resetTorchState()
+      toast.warning(t("torchUnsupported"))
+      return
+    }
+
+    const nextValue = !torchEnabled
+    setTorchUpdating(true)
+    try {
+      const applied = await torch.setEnabled(nextValue)
+      if (!applied) {
+        resetTorchState()
+        toast.warning(t("torchUnsupported"))
+        return
+      }
+      setTorchAvailable(true)
+      setTorchEnabled(nextValue)
+    } finally {
+      setTorchUpdating(false)
+    }
   }
 
   useEffect(() => {
@@ -310,6 +378,7 @@ export function AuditScanForm({
 
     setScannerLoading(true)
     setCameraErrorText("")
+    resetTorchState()
     try {
       const { Html5Qrcode } = await import("html5-qrcode")
       const availableCameras = (await Html5Qrcode.getCameras()) as CameraDevice[]
@@ -333,12 +402,14 @@ export function AuditScanForm({
         void selectScannedAsset(decodedText, "qr")
       }
       const startWithSelection = async (selection: PreferredCameraSelection) => {
-        qrReaderRef.current = await startNativeAssetQrScanner({
+        const scanner = await startNativeAssetQrScanner({
           readerId: "audit-qr-reader",
           cameraSelection: selection,
           onScanSuccess: handleScanSuccess,
           stopAfterSuccess: false,
         })
+        qrReaderRef.current = scanner
+        syncTorchState(scanner)
       }
 
       try {
@@ -355,6 +426,7 @@ export function AuditScanForm({
       setCameraErrorText(message)
       toast.error(message)
       qrReaderRef.current = null
+      resetTorchState()
     } finally {
       setScannerLoading(false)
     }
@@ -370,6 +442,7 @@ export function AuditScanForm({
     } finally {
       qrReaderRef.current = null
       setScannerRunning(false)
+      resetTorchState()
     }
   }
 
@@ -393,21 +466,21 @@ export function AuditScanForm({
         setValues((current) => ({ ...current, assetId: "" }))
         setScanText(foundAsset.assetTag || foundAsset.title)
         setScanSource(source)
-        setScanFeedback({
+        showScanFeedback({
           status: "out_of_scope",
           title: t("feedbackOutOfScopeTitle"),
           description: `${foundAsset.title} - ${foundAsset.subtitle}`,
-        })
+        }, source)
         toast.warning(t("outOfScopeFound"))
         if (!continuousScan) void stopScanner()
         return false
       }
       setOutOfScopeAsset(null)
-      setScanFeedback({
+      showScanFeedback({
         status: "unknown_asset",
         title: t("feedbackUnknownAssetTitle"),
         description: t("feedbackUnknownAssetDescription", { code: rawValue }),
-      })
+      }, source)
       toast.error(t("unknownAsset"))
       return false
     }
@@ -417,11 +490,11 @@ export function AuditScanForm({
     setApplyCorrections(false)
     setScanText(getReadableAuditScanValue(matchedItem))
     setScanSource(source)
-    setScanFeedback({
+    showScanFeedback({
       status: "found",
       title: t("feedbackFoundTitle"),
       description: matchedItem.label,
-    })
+    }, source)
     toast.success(t("assetSelected"))
     if (source === "qr" && !continuousScan) void stopScanner()
     return true
@@ -461,7 +534,7 @@ export function AuditScanForm({
         await uploadAuditPhoto(outOfScopeAsset.id, photo.file, photo.label)
       }
       toast.success(t("outOfScopeSaved"))
-      setScanFeedback({
+      showScanFeedback({
         status: "mismatch",
         title: t("feedbackOutOfScopeSavedTitle"),
         description: `${outOfScopeAsset.title} - ${outOfScopeAsset.subtitle}`,
@@ -531,7 +604,7 @@ export function AuditScanForm({
           : payload.auditResult === "found"
             ? t("foundSuccess")
             : t("mismatchSuccess")
-      setScanFeedback({
+      showScanFeedback({
         status: payload.resolvedNotFoundFinding ? "found_later" : payload.auditResult === "found" ? "saved" : "mismatch",
         title: successMessage,
         description: selectedItem.label,
@@ -564,8 +637,8 @@ export function AuditScanForm({
       photos: queuedAuditPhotos.map(toAuditOfflinePhoto),
     })
     await refreshOfflineQueue()
-    setScanFeedback({
-      status: "mismatch",
+    showScanFeedback({
+      status: "offline_queued",
       title: t("offlineQueuedTitle"),
       description: label,
     })
@@ -755,8 +828,11 @@ export function AuditScanForm({
           </div>
 
           {scanFeedback && (
-            <ScanFeedbackCard feedback={scanFeedback} />
+            <ScanFeedbackCard feedback={scanFeedback} t={t} />
           )}
+          {recentScans.length > 0 ? (
+            <RecentScanList recentScans={recentScans} t={t} />
+          ) : null}
 
           <div id="audit-scan-input-panel" className="scroll-mt-24 md:col-span-2 rounded-md border border-border bg-background p-4">
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
@@ -808,6 +884,29 @@ export function AuditScanForm({
                 >
                   <div id="audit-qr-reader" className="w-full [&_video]:!h-auto [&_video]:!w-full" />
                   {scannerRunning ? <AuditQrScannerOverlay /> : null}
+                  {scannerRunning && torchAvailable ? (
+                    <button
+                      type="button"
+                      onClick={toggleTorch}
+                      disabled={torchUpdating}
+                      aria-pressed={torchEnabled}
+                      title={t(torchEnabled ? "torchOff" : "torchOn")}
+                      className={`absolute right-3 top-3 z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-md border px-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60 ${
+                        torchEnabled
+                          ? "border-warning/50 bg-warning text-white hover:bg-warning/90"
+                          : "border-white/50 bg-slate-950/70 text-white hover:bg-slate-950/85"
+                      }`}
+                    >
+                      {torchUpdating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : torchEnabled ? (
+                        <FlashlightOff className="h-4 w-4" />
+                      ) : (
+                        <Flashlight className="h-4 w-4" />
+                      )}
+                      <span className="hidden sm:inline">{t(torchEnabled ? "torchOff" : "torchOn")}</span>
+                    </button>
+                  ) : null}
                 </div>
                 {shouldShowCameraUtilities ? (
                   <div className="rounded-md border border-border bg-surface p-3 text-sm text-muted-foreground">
@@ -1129,26 +1228,133 @@ export function AuditScanForm({
   )
 }
 
-function ScanFeedbackCard({ feedback }: { feedback: ScanFeedback }) {
-  const tone =
-    feedback.status === "found" || feedback.status === "saved" || feedback.status === "found_later"
-      ? "border-success/40 bg-success/10 text-success"
-      : feedback.status === "unknown_asset"
-        ? "border-danger/40 bg-danger/10 text-danger"
-        : "border-warning/40 bg-warning/10 text-warning"
-  const Icon = feedback.status === "found" || feedback.status === "saved" || feedback.status === "found_later" ? CheckCircle2 : AlertTriangle
+type AuditScanTranslator = {
+  (key: string): string
+  (key: string, values: Record<string, string | number | Date>): string
+}
+
+function ScanFeedbackCard({ feedback, t }: { feedback: ScanFeedback; t: AuditScanTranslator }) {
+  const meta = getScanFeedbackMeta(feedback.status, t)
+  const Icon = meta.icon
 
   return (
-    <div className={`md:col-span-2 rounded-md border p-4 ${tone}`}>
-      <div className="flex items-start gap-3">
-        <Icon className="mt-0.5 h-5 w-5 shrink-0" />
-        <div className="min-w-0">
-          <div className="font-semibold">{feedback.title}</div>
-          <div className="mt-1 break-words text-sm text-foreground">{feedback.description}</div>
+    <div className={`md:col-span-2 rounded-md border p-4 ${meta.cardClass}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${meta.iconClass}`}>
+            <Icon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("scanResult")}</div>
+            <div className="mt-1 break-words text-base font-semibold text-foreground">{feedback.title}</div>
+            <div className="mt-1 break-words text-sm text-muted-foreground">{feedback.description}</div>
+          </div>
         </div>
+        <span className={`inline-flex shrink-0 items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold ${meta.chipClass}`}>
+          {meta.label}
+        </span>
       </div>
     </div>
   )
+}
+
+function RecentScanList({ recentScans, t }: { recentScans: AuditRecentScan[]; t: AuditScanTranslator }) {
+  return (
+    <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-sm font-semibold text-foreground">{t("recentScansTitle")}</div>
+          <div className="mt-1 text-xs text-muted-foreground">{t("recentScansHelp")}</div>
+        </div>
+        <div className="text-xs text-muted-foreground">{recentScans.length.toLocaleString("th-TH")}/{MAX_RECENT_AUDIT_SCANS}</div>
+      </div>
+      <div className="mt-3 grid gap-2">
+        {recentScans.map((scan) => {
+          const meta = getScanFeedbackMeta(scan.status, t)
+          const Icon = meta.icon
+          return (
+            <div key={scan.id} className="flex items-start gap-3 rounded-md border border-border bg-surface p-3">
+              <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${meta.iconClass}`}>
+                <Icon className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="break-words text-sm font-semibold text-foreground">{scan.title}</span>
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${meta.chipClass}`}>
+                    {meta.label}
+                  </span>
+                </div>
+                <div className="mt-1 line-clamp-2 break-words text-xs text-muted-foreground">{scan.description}</div>
+              </div>
+              <div className="shrink-0 text-right text-xs text-muted-foreground">
+                <div>{scan.source === "qr" ? "QR" : t("manualScanAction")}</div>
+                <div className="mt-1">{formatRecentScanTime(scan.at)}</div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function getScanFeedbackMeta(status: ScanFeedback["status"], t: AuditScanTranslator) {
+  if (status === "found" || status === "saved" || status === "found_later") {
+    return {
+      label:
+        status === "found"
+          ? t("feedbackStatusFound")
+          : status === "found_later"
+            ? t("feedbackStatusFoundLater")
+            : t("feedbackStatusSaved"),
+      icon: CheckCircle2,
+      cardClass: "border-success/35 bg-success/10",
+      chipClass: "bg-success/15 text-success",
+      iconClass: "bg-success/15 text-success",
+    }
+  }
+
+  if (status === "unknown_asset") {
+    return {
+      label: t("feedbackStatusUnknownAsset"),
+      icon: AlertTriangle,
+      cardClass: "border-danger/35 bg-danger/10",
+      chipClass: "bg-danger/15 text-danger",
+      iconClass: "bg-danger/15 text-danger",
+    }
+  }
+
+  if (status === "out_of_scope") {
+    return {
+      label: t("feedbackStatusOutOfScope"),
+      icon: AlertTriangle,
+      cardClass: "border-warning/35 bg-warning/10",
+      chipClass: "bg-warning/15 text-warning",
+      iconClass: "bg-warning/15 text-warning",
+    }
+  }
+
+  if (status === "offline_queued") {
+    return {
+      label: t("feedbackStatusOfflineQueued"),
+      icon: WifiOff,
+      cardClass: "border-info/35 bg-info/10",
+      chipClass: "bg-info/15 text-info",
+      iconClass: "bg-info/15 text-info",
+    }
+  }
+
+  return {
+    label: t("feedbackStatusMismatch"),
+    icon: AlertTriangle,
+    cardClass: "border-warning/35 bg-warning/10",
+    chipClass: "bg-warning/15 text-warning",
+    iconClass: "bg-warning/15 text-warning",
+  }
+}
+
+function formatRecentScanTime(value: number) {
+  return new Date(value).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })
 }
 
 function isCameraAccessSupported() {

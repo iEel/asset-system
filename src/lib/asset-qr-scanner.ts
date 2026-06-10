@@ -8,6 +8,12 @@ type NativeCodeCameraTuningConstraintSet = MediaTrackConstraintSet & {
   whiteBalanceMode?: string
   zoom?: number
 }
+type NativeCodeTorchConstraintSet = MediaTrackConstraintSet & {
+  torch?: boolean
+}
+type NativeCodeTorchCapabilities = MediaTrackCapabilities & {
+  torch?: boolean
+}
 
 const SERIAL_CODE_CANVAS_WIDTH = 1600
 const SERIAL_CODE_CANVAS_HEIGHT = 480
@@ -31,8 +37,15 @@ const NATIVE_BARCODE_DETECTOR_FORMATS = [
   "pdf417",
 ]
 
+type NativeCodeTorchController = {
+  isAvailable: () => boolean
+  isEnabled: () => boolean
+  setEnabled: (enabled: boolean) => Promise<boolean>
+}
+
 export type NativeAssetQrScannerRuntime = {
   stop: () => void
+  torch?: NativeCodeTorchController
 }
 
 export type NativeSerialCodeScannerRuntime = NativeAssetQrScannerRuntime
@@ -163,6 +176,7 @@ async function startNativeCodeScanner({
     video: buildNativeCodeVideoConstraints(scanMode, cameraSelection),
     audio: false,
   })
+  const torchController = createNativeCodeTorchController(stream)
   const video = document.createElement("video")
   let timeoutId: number | undefined
   let stopped = false
@@ -170,6 +184,7 @@ async function startNativeCodeScanner({
   const stop = () => {
     stopped = true
     if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+    if (torchController?.isEnabled()) void torchController?.setEnabled(false)
     stream.getTracks().forEach((track) => track.stop())
     video.srcObject = null
     video.remove()
@@ -230,10 +245,34 @@ async function startNativeCodeScanner({
     }
 
     timeoutId = window.setTimeout(() => void scanNativeFrame(), 100)
-    return { stop }
+    return { stop, torch: torchController }
   } catch (error) {
     stop()
     throw error
+  }
+}
+
+function createNativeCodeTorchController(stream: MediaStream): NativeCodeTorchController | undefined {
+  const track = stream.getVideoTracks()[0]
+  if (!track || typeof track.getCapabilities !== "function" || typeof track.applyConstraints !== "function") return undefined
+
+  const capabilities = track.getCapabilities() as NativeCodeTorchCapabilities
+  if (!capabilities.torch) return undefined
+
+  let torchEnabled = false
+  return {
+    isAvailable: () => true,
+    isEnabled: () => torchEnabled,
+    async setEnabled(enabled: boolean) {
+      try {
+        await track.applyConstraints({ advanced: [{ torch: enabled } as NativeCodeTorchConstraintSet] } as MediaTrackConstraints)
+        torchEnabled = enabled
+        return true
+      } catch {
+        torchEnabled = false
+        return false
+      }
+    },
   }
 }
 

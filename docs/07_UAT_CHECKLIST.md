@@ -54,7 +54,9 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] After selecting an audit asset, confirm the scan page shows system data for comparison: current location, custodian, department, and condition.
 - [ ] On a mobile device, confirm the sticky progress header is the only progress summary, shows checked/pending counts plus the photo-queue badge, and that the old metric-card row is not repeated below it.
 - [ ] Confirm the Audit Scan camera section does not show normal `สถานะกล้อง` / `พร้อมเปิดกล้อง` text before scanning; camera utilities should appear only while scanning, after a decoded QR reference exists, when multiple cameras can be selected, or when a camera issue is shown.
+- [ ] On a supported mobile device, start the Audit Scan camera in a low-light area and confirm the flashlight button appears, can toggle on/off, and turns off after closing the scanner or switching cameras. On unsupported devices, confirm the flashlight control is hidden instead of disabled noise.
 - [ ] Confirm the post-scan bottom action bar appears only after an asset is selected or scanned.
+- [ ] Scan or manually enter several audit items and confirm the recent-scan list shows the latest outcomes with readable matched/mismatch/out-of-scope/unknown/found-later/offline-queued labels without replacing the saved audit history.
 - [ ] Record found/matched result.
 - [ ] In fast walking mode, choose `บันทึกพบตรง` and confirm the result saves without requiring a photo.
 - [ ] Choose `บันทึกข้อมูลไม่ตรง / Finding`, change at least one actual field, and confirm the page requires at least one evidence photo before saving.
