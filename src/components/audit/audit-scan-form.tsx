@@ -13,6 +13,7 @@ import {
   FlashlightOff,
   ImagePlus,
   Keyboard,
+  ListChecks,
   Loader2,
   RefreshCcw,
   Save,
@@ -99,12 +100,14 @@ type OutOfScopeAsset = {
 }
 
 export function AuditScanForm({
+  locale,
   roundId,
   roundName,
   backHref,
   items,
   options,
 }: {
+  locale: string
   roundId: string
   roundName: string
   backHref: string
@@ -132,6 +135,7 @@ export function AuditScanForm({
   const [showDetailedFields, setShowDetailedFields] = useState(false)
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null)
   const [recentScans, setRecentScans] = useState<AuditRecentScan[]>([])
+  const [showPendingQueue, setShowPendingQueue] = useState(false)
   const [outOfScopeAsset, setOutOfScopeAsset] = useState<OutOfScopeAsset | null>(null)
   const [applyCorrections, setApplyCorrections] = useState(false)
   const [offlineQueue, setOfflineQueue] = useState<QueuedAuditScan[]>([])
@@ -182,7 +186,9 @@ export function AuditScanForm({
     ].filter((mismatch): mismatch is AuditMismatchPreview => Boolean(mismatch))
   }, [selectedItem, t, values])
   const correctionMismatchCount = mismatchPreview.filter((mismatch) => mismatch.canApply).length
-  const pendingCount = items.filter((item) => item.auditStatus === "pending").length
+  const pendingItems = useMemo(() => items.filter((item) => item.auditStatus === "pending"), [items])
+  const pendingQueuePreview = useMemo(() => pendingItems.slice(0, 8), [pendingItems])
+  const pendingCount = pendingItems.length
   const processedCount = items.length - pendingCount
   const isDetailedScanVisible = Boolean(selectedItem && (!fastMode || showDetailedFields))
   const showMobileQuickActionBar = Boolean(selectedItem && fastMode && !showDetailedFields)
@@ -224,6 +230,9 @@ export function AuditScanForm({
   const hasCameraIssue = Boolean(cameraErrorText || cameraReadiness === "unavailable")
   const shouldShowCameraUtilities = cameras.length > 1 || torchAvailable || Boolean(lastDecodedText) || hasCameraIssue
   const shouldShowCameraPanel = scannerRunning || scannerLoading || shouldShowCameraUtilities
+  const scanEntryPanelClass = !selectedItem && !scanFeedback
+    ? "border-primary/30 bg-primary/5 shadow-sm ring-1 ring-primary/10"
+    : "border-border bg-background"
 
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -231,6 +240,17 @@ export function AuditScanForm({
       setApplyCorrections(false)
       setShowDetailedFields(false)
     }
+  }
+
+  function selectPendingQueueItem(item: AuditScanItem) {
+    setField("assetId", item.assetId)
+    setScanText(getReadableAuditScanValue(item))
+    setScanSource("manual")
+    setOutOfScopeAsset(null)
+    setShowPendingQueue(false)
+    window.setTimeout(() => {
+      document.getElementById("audit-scan-input-panel")?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 0)
   }
 
   function queueAuditPhoto(file: File | null) {
@@ -764,6 +784,14 @@ export function AuditScanForm({
           <span className="rounded-full border border-border bg-background px-2 py-1">
             {t("photoQueue")}: <span className="font-semibold text-foreground">{queuedAuditPhotos.length}</span>
           </span>
+          <button
+            type="button"
+            onClick={() => setShowPendingQueue((current) => !current)}
+            className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-border bg-background px-2 py-1 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <ListChecks className="h-3.5 w-3.5" />
+            {t("pendingQueueQuickAction", { count: pendingCount })}
+          </button>
         </div>
       </div>
 
@@ -809,20 +837,17 @@ export function AuditScanForm({
 
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
-          <FastModeToggle
-            checked={fastMode}
-            onChange={(checked) => {
-              setFastMode(checked)
-              setShowDetailedFields(!checked)
-            }}
-            t={t}
-          />
-
           {scanFeedback && (
             <ScanResultPanel feedback={scanFeedback} recentScans={recentScans} t={t} />
           )}
 
-          <div id="audit-scan-input-panel" className="scroll-mt-24 md:col-span-2 rounded-md border border-border bg-background p-4">
+          <div id="audit-scan-input-panel" className={`scroll-mt-24 md:col-span-2 rounded-md border p-4 ${scanEntryPanelClass}`}>
+            {!selectedItem && !scanFeedback ? (
+              <div className="mb-3 flex flex-col gap-1">
+                <div className="text-sm font-semibold text-foreground">{t("scanEntryTitle")}</div>
+                <div className="text-xs text-muted-foreground">{t("scanEntryHelp")}</div>
+              </div>
+            ) : null}
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
               <Field label={t("scanInput")}>
                 <input
@@ -933,6 +958,25 @@ export function AuditScanForm({
               </div>
             ) : null}
           </div>
+
+          <FastModeToggle
+            checked={fastMode}
+            onChange={(checked) => {
+              setFastMode(checked)
+              setShowDetailedFields(!checked)
+            }}
+            t={t}
+          />
+
+          {showPendingQueue ? (
+            <PendingQueuePanel
+              items={pendingQueuePreview}
+              total={pendingCount}
+              pendingHref={`/${locale}/audit/rounds/${roundId}/pending`}
+              onSelect={selectPendingQueueItem}
+              t={t}
+            />
+          ) : null}
 
           <div className="md:col-span-2">
             <Select label={t("asset")} value={values.assetId} required onChange={(value) => setField("assetId", value)}>
@@ -1314,6 +1358,68 @@ function RecentScanCompactRow({ scan, t }: { scan: AuditRecentScan; t: AuditScan
         {meta.label}
       </span>
       <span className="shrink-0 text-muted-foreground">{formatRecentScanTime(scan.at)}</span>
+    </div>
+  )
+}
+
+function PendingQueuePanel({
+  items,
+  total,
+  pendingHref,
+  onSelect,
+  t,
+}: {
+  items: AuditScanItem[]
+  total: number
+  pendingHref: string
+  onSelect: (item: AuditScanItem) => void
+  t: AuditScanTranslator
+}) {
+  return (
+    <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <ListChecks className="h-4 w-4 text-primary" />
+            {t("pendingQueuePanelTitle")}
+            <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning">
+              {total.toLocaleString("th-TH")}
+            </span>
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">{t("pendingQueuePanelHelp")}</div>
+        </div>
+        <Link
+          href={pendingHref}
+          className="inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+        >
+          {t("pendingQueueOpenFull")}
+        </Link>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="mt-3 rounded-md border border-dashed border-border bg-surface p-4 text-sm text-muted-foreground">
+          {t("pendingQueueEmpty")}
+        </div>
+      ) : (
+        <div className="mt-3 grid gap-2">
+          {items.map((item) => (
+            <div key={item.id} className="flex flex-col gap-3 rounded-md border border-border bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-foreground">{item.assetTag}</div>
+                <div className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.label}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onSelect(item)}
+                className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <ScanLine className="h-4 w-4" />
+                {t("pendingQueueSelect")}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

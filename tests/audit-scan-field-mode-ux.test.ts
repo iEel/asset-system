@@ -177,6 +177,33 @@ test("audit scan phase 1 compacts fast mode and combines result with recent scan
   }
 })
 
+test("audit scan phase 2 emphasizes scan entry and exposes pending queue access", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(form, /const pendingItems = useMemo/)
+  assert.match(form, /pendingItems\.slice\(0, 8\)/)
+  assert.match(form, /function PendingQueuePanel/)
+  assert.match(form, /pendingQueueQuickAction/)
+  assert.match(form, /scanEntryTitle/)
+  assert.match(form, /scanEntryHelp/)
+  assert.match(form, /!selectedItem && !scanFeedback/)
+  assert.match(form, /border-primary\/30 bg-primary\/5/)
+  assert.match(form, /selectPendingQueueItem/)
+  assert.match(form, /pendingHref=\{`\/\$\{locale\}\/audit\/rounds\/\$\{roundId\}\/pending`\}/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditScan.scanEntryTitle, "string")
+    assert.equal(typeof messages.auditScan.scanEntryHelp, "string")
+    assert.equal(typeof messages.auditScan.pendingQueueQuickAction, "string")
+    assert.equal(typeof messages.auditScan.pendingQueuePanelTitle, "string")
+    assert.equal(typeof messages.auditScan.pendingQueuePanelHelp, "string")
+    assert.equal(typeof messages.auditScan.pendingQueueOpenFull, "string")
+    assert.equal(typeof messages.auditScan.pendingQueueSelect, "string")
+  }
+})
+
 test("audit scan flashlight is a progressive camera enhancement", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
   const scanner = readFileSync("src/lib/asset-qr-scanner.ts", "utf8")

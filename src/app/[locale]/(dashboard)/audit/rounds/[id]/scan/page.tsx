@@ -57,6 +57,7 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
 
   return (
     <AuditScanForm
+      locale={locale}
       roundId={round.id}
       roundName={`${round.auditNo} - ${round.name}`}
       backHref={returnToHref}
