@@ -52,10 +52,14 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Scan an expected asset.
 - [ ] On a mobile device, confirm `/th/audit/rounds/{id}/scan` can scan the same printed Asset Label QR in continuous mode, selects the audit item, keeps the raw QR URL only in the latest-decoded panel, and does not navigate away from the audit workflow.
 - [ ] After selecting an audit asset, confirm the scan page shows system data for comparison: current location, custodian, department, and condition.
+- [ ] On a mobile device, confirm the sticky progress header shows compact pending/scanned/photo counts and that the post-scan bottom action bar appears only after an asset is selected or scanned.
 - [ ] Record found/matched result.
-- [ ] In fast walking mode, choose `ข้อมูลตรง` and confirm the result saves without requiring a photo.
-- [ ] Choose `ข้อมูลไม่ตรง`, change at least one actual field, and confirm the page requires at least one evidence photo before saving.
-- [ ] Record not-found result.
+- [ ] In fast walking mode, choose `บันทึกพบตรง` and confirm the result saves without requiring a photo.
+- [ ] Choose `บันทึกข้อมูลไม่ตรง / Finding`, change at least one actual field, and confirm the page requires at least one evidence photo before saving.
+- [ ] Scan an asset that exists in the system but is outside the round and confirm it is shown as Out-of-scope, not as Not Found.
+- [ ] Scan or enter an unknown QR/asset code and confirm it is shown as an unknown asset/not found in system, not as a not-found audit item.
+- [ ] Record not-found result from the pending list or zone queue for an expected item that cannot be physically located.
+- [ ] If an item previously marked not found is later scanned, confirm the found-later recovery flow resolves it through the existing audit scan behavior.
 - [ ] Attach multiple free-form audit evidence photos, confirm the optional tag selector includes general evidence plus checklist labels, and confirm all queued photos remain listed before saving.
 - [ ] Retry offline/resume queue if available in the test device.
 
