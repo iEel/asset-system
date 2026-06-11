@@ -1,6 +1,6 @@
 # Asset Management System - Feature List
 
-Last updated: 2026-06-09
+Last updated: 2026-06-11
 
 This feature list is based on the current repository documents and source code, not only on the original plan. It focuses on features that are represented by the current docs, routes, API endpoints, Prisma schema, and component/library structure.
 
@@ -179,14 +179,14 @@ Implemented status lifecycle and enforcement from docs/code:
 | Candidate preview | Preview audit candidates before creating a round |
 | Expected list | Audit items generated from scope and start as pending |
 | Audit detail | Progress metrics and expected item list |
-| Audit scan | QR/manual scan, scan-first entry focus, compact Fast/Continuous Scan switch bar, system data comparison panel, sticky single-source progress header with photo-queue badge and collapsible pending queue shortcut, pending-list return-to-scan navigation, combined scan-result/recent-scan panel, fast `บันทึกพบตรง` save path, detailed `บันทึกข้อมูลไม่ตรง / Finding` path, photo evidence, and mobile bottom action bar after scan selection |
+| Audit scan | QR/manual scan, scan-first entry focus, compact Fast/Continuous Scan switch bar, searchable manual item picker, system data comparison panel, sticky single-source progress header with photo-queue badge and collapsible pending queue shortcut, pending-list return-to-scan navigation, focused scan-result card, compact recent-scan panel, fast `บันทึกพบตรง` save path, detailed `บันทึกข้อมูลไม่ตรง / Finding` path, photo evidence, and mobile bottom action bar after scan selection |
 | Continuous mobile scan | Uses asset QR decoder while keeping audit workflow on the audit scan page |
 | Audit scan camera UX | Hides normal camera-ready status text; shows camera utilities only while scanning, when multiple cameras are selectable, after a decoded QR reference exists, or when a camera issue needs attention; supported camera tracks expose a flashlight toggle for low-light scans |
-| Recent audit scans | Shows previous QR/manual scan outcomes in a collapsible section inside the scan-result panel so auditors can verify what they just scanned while walking without a duplicate large section |
+| Recent audit scans | Shows the newest QR/manual scan outcomes in a separate compact panel with the latest three reads visible and older reads collapsible so auditors can verify walking-scan context without mixing it into the current result card |
 | Found/mismatch/not found | Handles found, mismatch, out-of-scope, unknown asset, not-found, and found-later cases |
 | Scan result semantics | Successful scan results do not show Not Found as a primary action; assets outside the round are Out-of-scope, unknown codes are Unknown Asset, and Found Later reuses the existing recovery logic |
 | Not-found workflow | Mark pending items as not found from the pending list/zone queue without changing asset status to Lost automatically |
-| Pending audit queue shortcut | Audit Scan can open an inline preview of pending items from the current round, while the full pending list remains the not-found workflow surface |
+| Pending audit queue shortcut | Audit Scan can open an inline preview of pending items from the current round with expected location/custodian/department context on each card, while the full pending list remains the not-found workflow surface |
 | Evidence photos | Matched scans can save without photos; mismatched actual field data requires at least one free-form evidence photo, with multiple queued photos and optional grouping tags |
 | Findings Resolution Center | `/audit/findings` summarizes pending review, open action, overdue, and closed queues; shows system-vs-found comparison, resolution-state badges, review/action/closure controls, evidence attachments, batch actions, and filtered Excel/PDF exports |
 | Findings follow-up context | Disposal follow-up links from findings preserve the active findings queue/search as sanitized return context |

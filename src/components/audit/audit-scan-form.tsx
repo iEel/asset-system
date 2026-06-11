@@ -19,6 +19,7 @@ import {
   RefreshCcw,
   Save,
   ScanLine,
+  Search,
   WifiOff,
   X,
 } from "lucide-react"
@@ -69,6 +70,13 @@ type AuditScanOptions = {
   employees: Option[]
   conditions: Option[]
 }
+type OptionLabelMaps = {
+  locations: Map<string, string>
+  employees: Map<string, string>
+  departments: Map<string, string>
+  conditions: Map<string, string>
+}
+type PendingQueueContextRow = { label: string; value: string }
 
 type CameraDevice = { id: string; label: string }
 type CameraReadiness = "checking" | "ready" | "unavailable"
@@ -139,6 +147,8 @@ export function AuditScanForm({
   const [recentScans, setRecentScans] = useState<AuditRecentScan[]>([])
   const [showPendingQueue, setShowPendingQueue] = useState(false)
   const [pendingQueueExpanded, setPendingQueueExpanded] = useState(true)
+  const [assetPickerExpanded, setAssetPickerExpanded] = useState(false)
+  const [assetPickerQuery, setAssetPickerQuery] = useState("")
   const [outOfScopeAsset, setOutOfScopeAsset] = useState<OutOfScopeAsset | null>(null)
   const [applyCorrections, setApplyCorrections] = useState(false)
   const [offlineQueue, setOfflineQueue] = useState<QueuedAuditScan[]>([])
@@ -191,6 +201,16 @@ export function AuditScanForm({
   const correctionMismatchCount = mismatchPreview.filter((mismatch) => mismatch.canApply).length
   const pendingItems = useMemo(() => items.filter((item) => item.auditStatus === "pending"), [items])
   const pendingQueuePreview = useMemo(() => pendingItems.slice(0, 8), [pendingItems])
+  const filteredAssetPickerItems = useMemo(() => {
+    const query = assetPickerQuery.trim().toLocaleLowerCase("th-TH")
+    const sourceItems = query ? items : pendingItems
+    return sourceItems
+      .filter((item) => {
+        if (!query) return true
+        return buildAssetPickerSearchText(item, optionLabelMaps).toLocaleLowerCase("th-TH").includes(query)
+      })
+      .slice(0, 12)
+  }, [assetPickerQuery, items, optionLabelMaps, pendingItems])
   const scanReturnHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${roundId}/scan`, backHref)
   const pendingListHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${roundId}/pending`, scanReturnHref)
   const pendingCount = pendingItems.length
@@ -255,6 +275,17 @@ export function AuditScanForm({
     setShowPendingQueue(false)
     window.setTimeout(() => {
       document.getElementById("audit-scan-input-panel")?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 0)
+  }
+
+  function selectAssetFromFallback(item: AuditScanItem) {
+    setField("assetId", item.assetId)
+    setScanText(getReadableAuditScanValue(item))
+    setScanSource("manual")
+    setOutOfScopeAsset(null)
+    setAssetPickerExpanded(false)
+    window.setTimeout(() => {
+      document.getElementById("audit-scan-input-panel")?.scrollIntoView({ behavior: "smooth", block: "center" })
     }, 0)
   }
 
@@ -851,17 +882,17 @@ export function AuditScanForm({
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
           {scanFeedback && (
-            <ScanResultPanel feedback={scanFeedback} recentScans={recentScans} t={t} />
+            <ScanResultPanel feedback={scanFeedback} t={t} />
           )}
 
-          <div id="audit-scan-input-panel" className={`scroll-mt-24 md:col-span-2 rounded-md border p-4 ${scanEntryPanelClass}`}>
+          <div id="audit-scan-input-panel" className={`scroll-mt-24 md:col-span-2 rounded-md border p-3 sm:p-4 ${scanEntryPanelClass}`}>
             {!selectedItem && !scanFeedback ? (
-              <div className="mb-3 flex flex-col gap-1">
+              <div className="mb-2 flex flex-col gap-1">
                 <div className="text-sm font-semibold text-foreground">{t("scanEntryTitle")}</div>
                 <div className="text-xs text-muted-foreground">{t("scanEntryHelp")}</div>
               </div>
             ) : null}
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+            <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
               <Field label={t("scanInput")}>
                 <input
                   value={scanText}
@@ -970,6 +1001,10 @@ export function AuditScanForm({
             ) : null}
           </div>
 
+          {recentScans.length > 0 ? (
+            <RecentScansPanel recentScans={recentScans} t={t} />
+          ) : null}
+
           {showPendingQueue ? (
             <PendingQueuePanel
               items={pendingQueuePreview}
@@ -978,20 +1013,23 @@ export function AuditScanForm({
               onSelect={selectPendingQueueItem}
               expanded={pendingQueueExpanded}
               onExpandedChange={setPendingQueueExpanded}
+              optionLabelMaps={optionLabelMaps}
               t={t}
             />
           ) : null}
 
-          <div className="md:col-span-2">
-            <Select label={t("asset")} value={values.assetId} required onChange={(value) => setField("assetId", value)}>
-              <option value="">{t("selectAsset")}</option>
-              {items.map((item) => (
-                <option key={item.id} value={item.assetId}>
-                  {item.label} {item.auditStatus !== "pending" ? `(${item.auditStatus})` : ""}
-                </option>
-              ))}
-            </Select>
-          </div>
+          <AssetFallbackPicker
+            expanded={assetPickerExpanded}
+            items={filteredAssetPickerItems}
+            query={assetPickerQuery}
+            selectedAssetId={values.assetId}
+            total={items.length}
+            onExpandedChange={setAssetPickerExpanded}
+            onQueryChange={setAssetPickerQuery}
+            onSelect={selectAssetFromFallback}
+            optionLabelMaps={optionLabelMaps}
+            t={t}
+          />
 
           {selectedItem && (
             <div className="md:col-span-2 rounded-md border border-primary/25 bg-primary/5 p-4">
@@ -1283,18 +1321,20 @@ function AuditScanOptionStrip({
   t: AuditScanTranslator
 }) {
   return (
-    <div role="group" aria-label={t("scanOptions")} className="mt-3 overflow-hidden rounded-md border border-border/80 bg-background">
-      <div className="grid divide-y divide-border/80 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+    <div role="group" aria-label={t("scanOptions")} className="mt-2 rounded-md border border-border/80 bg-background p-2">
+      <div className="grid gap-2 sm:grid-cols-2">
         <ScanOptionToggle
           checked={fastMode}
           label={t("fastMode")}
           description={fastMode ? t("fastModeCompactHelp") : t("detailModeCompactHelp")}
+          statusLabel={fastMode ? t("fastModeOn") : t("detailModeOn")}
           onChange={onFastModeChange}
         />
         <ScanOptionToggle
           checked={continuousScan}
           label={t("continuousScan")}
           description={t("continuousScanHelp")}
+          statusLabel={continuousScan ? t("fastModeOn") : t("scanOptionOff")}
           onChange={onContinuousScanChange}
         />
       </div>
@@ -1306,11 +1346,13 @@ function ScanOptionToggle({
   checked,
   label,
   description,
+  statusLabel,
   onChange,
 }: {
   checked: boolean
   label: string
   description: string
+  statusLabel: string
   onChange: (checked: boolean) => void
 }) {
   return (
@@ -1320,11 +1362,14 @@ function ScanOptionToggle({
       aria-checked={checked}
       title={description}
       onClick={() => onChange(!checked)}
-      className="flex min-h-12 w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+      className="flex min-h-10 w-full items-center justify-between gap-2 rounded-md border border-border bg-surface px-3 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
     >
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold">{label}</span>
-        <span className="mt-0.5 hidden text-xs text-muted-foreground lg:block">{description}</span>
+        <span className="sr-only">{description}</span>
+      </span>
+      <span className="hidden shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground sm:inline-flex">
+        {statusLabel}
       </span>
       <span
         aria-hidden="true"
@@ -1338,17 +1383,13 @@ function ScanOptionToggle({
 
 function ScanResultPanel({
   feedback,
-  recentScans,
   t,
 }: {
   feedback: ScanFeedback
-  recentScans: AuditRecentScan[]
   t: AuditScanTranslator
 }) {
   const meta = getScanFeedbackMeta(feedback.status, t)
   const Icon = meta.icon
-  const previousScans = recentScans.slice(1, 6)
-  const [recentScansExpanded, setRecentScansExpanded] = useState(false)
 
   return (
     <div className={`md:col-span-2 rounded-md border p-4 ${meta.cardClass}`}>
@@ -1367,34 +1408,58 @@ function ScanResultPanel({
           <span className={`inline-flex items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold ${meta.chipClass}`}>
             {meta.label}
           </span>
-          <span className="inline-flex items-center rounded-full bg-surface/70 px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            {recentScans.length.toLocaleString("th-TH")}/{MAX_RECENT_AUDIT_SCANS}
-          </span>
         </div>
       </div>
-      {previousScans.length > 0 ? (
-        <div className="mt-3 rounded-md border border-border/80 bg-surface/80 p-3">
-          <button
-            type="button"
-            aria-expanded={recentScansExpanded}
-            aria-controls="audit-recent-scans-list"
-            onClick={() => setRecentScansExpanded((current) => !current)}
-            className="flex min-h-10 w-full items-center justify-between gap-3 rounded-md px-1 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <span className="min-w-0">
-              <span className="block text-xs font-semibold text-foreground">{t("recentScansTitle")}</span>
-              <span className="mt-0.5 block text-xs text-muted-foreground">{t("recentScansHelp")}</span>
-            </span>
-            <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary">
+    </div>
+  )
+}
+
+function RecentScansPanel({
+  recentScans,
+  t,
+}: {
+  recentScans: AuditRecentScan[]
+  t: AuditScanTranslator
+}) {
+  const visibleScans = recentScans.slice(0, 3)
+  const olderScans = recentScans.slice(3)
+  const [recentScansExpanded, setRecentScansExpanded] = useState(false)
+
+  return (
+    <div className="md:col-span-2 rounded-md border border-border bg-background p-3">
+      <button
+        type="button"
+        aria-expanded={recentScansExpanded}
+        aria-controls="audit-recent-scans-list"
+        onClick={() => setRecentScansExpanded((current) => !current)}
+        className="flex min-h-10 w-full items-center justify-between gap-3 rounded-md text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-foreground">{t("recentScansTitle")}</span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">{t("recentScansHelp")}</span>
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-2">
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+            {recentScans.length.toLocaleString("th-TH")}/{MAX_RECENT_AUDIT_SCANS}
+          </span>
+          {olderScans.length > 0 ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
               {t(recentScansExpanded ? "recentScansCollapse" : "recentScansExpand")}
               <ChevronDown className={`h-4 w-4 transition-transform ${recentScansExpanded ? "rotate-180" : ""}`} />
             </span>
-          </button>
-          <div id="audit-recent-scans-list" hidden={!recentScansExpanded} className="mt-2 grid gap-1.5">
-            {previousScans.map((scan) => (
-              <RecentScanCompactRow key={scan.id} scan={scan} t={t} />
-            ))}
-          </div>
+          ) : null}
+        </span>
+      </button>
+      <div className="mt-2 grid gap-1.5">
+        {visibleScans.map((scan) => (
+          <RecentScanCompactRow key={scan.id} scan={scan} t={t} />
+        ))}
+      </div>
+      {olderScans.length > 0 ? (
+        <div id="audit-recent-scans-list" hidden={!recentScansExpanded} className="mt-1.5 grid gap-1.5">
+          {olderScans.map((scan) => (
+            <RecentScanCompactRow key={scan.id} scan={scan} t={t} />
+          ))}
         </div>
       ) : null}
     </div>
@@ -1423,6 +1488,7 @@ function PendingQueuePanel({
   onSelect,
   expanded,
   onExpandedChange,
+  optionLabelMaps,
   t,
 }: {
   items: AuditScanItem[]
@@ -1431,8 +1497,16 @@ function PendingQueuePanel({
   onSelect: (item: AuditScanItem) => void
   expanded: boolean
   onExpandedChange: (expanded: boolean) => void
+  optionLabelMaps: OptionLabelMaps
   t: AuditScanTranslator
 }) {
+  const contextLabels = {
+    location: t("pendingQueueLocation"),
+    custodian: t("pendingQueueCustodian"),
+    department: t("pendingQueueDepartment"),
+    none: t("none"),
+  }
+
   return (
     <div id="audit-pending-queue-panel" className="md:col-span-2 rounded-md border border-border bg-background p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1474,24 +1548,160 @@ function PendingQueuePanel({
         ) : (
           <div className="mt-3 grid gap-2">
             {items.map((item) => (
-              <div key={item.id} className="flex flex-col gap-3 rounded-md border border-border bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-foreground">{item.assetTag}</div>
-                  <div className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.label}</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onSelect(item)}
-                  className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <ScanLine className="h-4 w-4" />
-                  {t("pendingQueueSelect")}
-                </button>
-              </div>
+              <PendingQueueItem
+                key={item.id}
+                item={item}
+                contextRows={buildPendingQueueContext(item, optionLabelMaps, contextLabels)}
+                onSelect={onSelect}
+                t={t}
+              />
             ))}
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function PendingQueueItem({
+  item,
+  contextRows,
+  onSelect,
+  t,
+}: {
+  item: AuditScanItem
+  contextRows: PendingQueueContextRow[]
+  onSelect: (item: AuditScanItem) => void
+  t: AuditScanTranslator
+}) {
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-border bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="truncate text-sm font-semibold text-foreground">{item.assetTag}</div>
+        <div className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.label}</div>
+        <ContextChipList rows={contextRows} />
+      </div>
+      <button
+        type="button"
+        onClick={() => onSelect(item)}
+        className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <ScanLine className="h-4 w-4" />
+        {t("pendingQueueSelect")}
+      </button>
+    </div>
+  )
+}
+
+function AssetFallbackPicker({
+  expanded,
+  items,
+  query,
+  selectedAssetId,
+  total,
+  onExpandedChange,
+  onQueryChange,
+  onSelect,
+  optionLabelMaps,
+  t,
+}: {
+  expanded: boolean
+  items: AuditScanItem[]
+  query: string
+  selectedAssetId: string
+  total: number
+  onExpandedChange: (expanded: boolean) => void
+  onQueryChange: (query: string) => void
+  onSelect: (item: AuditScanItem) => void
+  optionLabelMaps: OptionLabelMaps
+  t: AuditScanTranslator
+}) {
+  const contextLabels = {
+    location: t("pendingQueueLocation"),
+    custodian: t("pendingQueueCustodian"),
+    department: t("pendingQueueDepartment"),
+    none: t("none"),
+  }
+
+  return (
+    <div className="md:col-span-2 rounded-md border border-border bg-background p-3">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls="audit-asset-fallback-picker"
+        onClick={() => onExpandedChange(!expanded)}
+        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-md text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-foreground">{t("assetPickerTitle")}</span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">{t("assetPickerHelp")}</span>
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-2">
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+            {total.toLocaleString("th-TH")}
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+            {t(expanded ? "assetPickerCollapse" : "assetPickerExpand")}
+            <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
+          </span>
+        </span>
+      </button>
+
+      <div id="audit-asset-fallback-picker" hidden={!expanded} className="mt-3">
+        <label className="relative block">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(event) => onQueryChange(event.target.value)}
+            placeholder={t("assetPickerSearch")}
+            className="h-11 w-full rounded-md border border-border bg-surface pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+        </label>
+        {items.length === 0 ? (
+          <div className="mt-3 rounded-md border border-dashed border-border bg-surface p-4 text-center text-sm text-muted-foreground">
+            {t("assetPickerEmpty")}
+          </div>
+        ) : (
+          <div className="mt-3 grid gap-2">
+            {items.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onSelect(item)}
+                className={`w-full rounded-md border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  selectedAssetId === item.assetId
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-surface hover:bg-accent"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-foreground">{item.assetTag}</div>
+                    <div className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.label}</div>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    {item.auditStatus}
+                  </span>
+                </div>
+                <ContextChipList rows={buildPendingQueueContext(item, optionLabelMaps, contextLabels)} />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ContextChipList({ rows }: { rows: PendingQueueContextRow[] }) {
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {rows.map((row) => (
+        <span key={row.label} className="inline-flex max-w-full items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
+          <span className="shrink-0 font-medium text-foreground">{row.label}:</span>
+          <span className="truncate">{row.value}</span>
+        </span>
+      ))}
     </div>
   )
 }
@@ -1630,12 +1840,7 @@ function buildOptionLabelMap(options: Option[]) {
 
 function buildSystemDataRows(
   item: AuditScanItem,
-  maps: {
-    locations: Map<string, string>
-    employees: Map<string, string>
-    departments: Map<string, string>
-    conditions: Map<string, string>
-  },
+  maps: OptionLabelMaps,
   labels: {
     expectedLocation: string
     expectedCustodian: string
@@ -1671,6 +1876,48 @@ function buildSystemDataRows(
   )
 
   return rows
+}
+
+function buildPendingQueueContext(
+  item: AuditScanItem,
+  maps: OptionLabelMaps,
+  labels: {
+    location: string
+    custodian: string
+    department: string
+    none: string
+  }
+) {
+  const rows: PendingQueueContextRow[] = [
+    {
+      label: labels.location,
+      value: getOptionLabel(maps.locations, item.expectedLocationId, labels.none),
+    },
+    {
+      label: labels.department,
+      value: getOptionLabel(maps.departments, item.expectedDepartmentId, labels.none),
+    },
+  ]
+
+  if (requiresCustodian(item.ownershipType)) {
+    rows.splice(1, 0, {
+      label: labels.custodian,
+      value: getOptionLabel(maps.employees, item.expectedCustodianId, labels.none),
+    })
+  }
+
+  return rows
+}
+
+function buildAssetPickerSearchText(item: AuditScanItem, maps: OptionLabelMaps) {
+  return [
+    item.assetTag,
+    item.label,
+    item.auditStatus,
+    getOptionLabel(maps.locations, item.expectedLocationId, ""),
+    getOptionLabel(maps.employees, item.expectedCustodianId, ""),
+    getOptionLabel(maps.departments, item.expectedDepartmentId, ""),
+  ].join(" ")
 }
 
 function getOptionLabel(options: Map<string, string>, id: string | null, emptyLabel: string) {

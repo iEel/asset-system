@@ -136,8 +136,10 @@ test("audit scan phase 1 shows readable result semantics and recent scans", () =
   assert.match(form, /MAX_RECENT_AUDIT_SCANS = 8/)
   assert.match(form, /function pushRecentScan\(/)
   assert.match(form, /setRecentScans\(\(current\) => \[/)
-  assert.match(form, /ScanResultPanel feedback=\{scanFeedback\} recentScans=\{recentScans\}/)
+  assert.match(form, /ScanResultPanel feedback=\{scanFeedback\} t=\{t\}/)
+  assert.match(form, /<RecentScansPanel recentScans=\{recentScans\} t=\{t\} \/>/)
   assert.match(form, /function ScanResultPanel/)
+  assert.match(form, /function RecentScansPanel/)
   assert.match(form, /function getScanFeedbackMeta/)
   assert.match(form, /t\("feedbackStatusFound"\)/)
   assert.match(form, /t\("recentScansTitle"\)/)
@@ -156,7 +158,7 @@ test("audit scan phase 1 shows readable result semantics and recent scans", () =
   }
 })
 
-test("audit scan phase 1 compacts fast mode and combines result with recent scans", () => {
+test("audit scan phase 1 compacts fast mode and separates result from recent scans", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
@@ -170,9 +172,8 @@ test("audit scan phase 1 compacts fast mode and combines result with recent scan
   assert.match(form, /aria-checked=\{checked\}/)
   assert.match(form, /role="group"/)
   assert.match(form, /aria-label=\{t\("scanOptions"\)\}/)
-  assert.match(form, /grid divide-y divide-border\/80 sm:grid-cols-2 sm:divide-x sm:divide-y-0/)
-  assert.match(form, /hidden text-xs text-muted-foreground lg:block/)
-  assert.match(form, /min-h-12/)
+  assert.match(form, /grid gap-2 sm:grid-cols-2/)
+  assert.match(form, /min-h-10/)
   assert.match(form, /translate-x-5/)
   assert.match(form, /fastModeCompactHelp/)
   assert.match(form, /detailModeCompactHelp/)
@@ -180,8 +181,9 @@ test("audit scan phase 1 compacts fast mode and combines result with recent scan
   assert.doesNotMatch(form, /border-b border-border\/80 px-3 py-2 text-xs font-semibold/)
   assert.doesNotMatch(form, /aria-pressed=\{checked\}/)
   assert.doesNotMatch(form, /const Icon = checked \? CheckCircle2 : X/)
-  assert.match(form, /ScanResultPanel feedback=\{scanFeedback\} recentScans=\{recentScans\}/)
-  assert.match(form, /const previousScans = recentScans\.slice\(1, 6\)/)
+  assert.match(form, /ScanResultPanel feedback=\{scanFeedback\} t=\{t\}/)
+  assert.match(form, /<RecentScansPanel recentScans=\{recentScans\} t=\{t\} \/>/)
+  assert.match(form, /const visibleScans = recentScans\.slice\(0, 3\)/)
   assert.doesNotMatch(form, /<ScanFeedbackCard feedback=\{scanFeedback\}/)
   assert.doesNotMatch(form, /<RecentScanList recentScans=\{recentScans\}/)
 
@@ -245,6 +247,46 @@ test("audit scan pending queue and recent scans are collapsible", () => {
     assert.equal(typeof messages.auditScan.pendingQueueCollapse, "string")
     assert.equal(typeof messages.auditScan.recentScansExpand, "string")
     assert.equal(typeof messages.auditScan.recentScansCollapse, "string")
+  }
+})
+
+test("audit scan mobile-first field workflow compacts scan setup and moves list work into searchable panels", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(form, /const \[assetPickerExpanded, setAssetPickerExpanded\]/)
+  assert.match(form, /const \[assetPickerQuery, setAssetPickerQuery\]/)
+  assert.match(form, /const filteredAssetPickerItems = useMemo/)
+  assert.match(form, /function AssetFallbackPicker/)
+  assert.match(form, /items=\{filteredAssetPickerItems\}/)
+  assert.match(form, /onSelect=\{selectAssetFromFallback\}/)
+  assert.doesNotMatch(form, /<Select label=\{t\("asset"\)\}/)
+
+  assert.match(form, /function buildPendingQueueContext/)
+  assert.match(form, /contextRows=\{buildPendingQueueContext/)
+  assert.match(form, /pendingQueueLocation/)
+  assert.match(form, /pendingQueueCustodian/)
+  assert.match(form, /pendingQueueDepartment/)
+
+  assert.match(form, /function RecentScansPanel/)
+  assert.match(form, /<RecentScansPanel recentScans=\{recentScans\} t=\{t\} \/>/)
+  assert.doesNotMatch(form, /ScanResultPanel feedback=\{scanFeedback\} recentScans=\{recentScans\}/)
+
+  assert.match(form, /scanEntryPanelClass/)
+  assert.match(form, /grid gap-2 sm:grid-cols-2/)
+  assert.match(form, /min-h-10/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditScan.assetPickerTitle, "string")
+    assert.equal(typeof messages.auditScan.assetPickerHelp, "string")
+    assert.equal(typeof messages.auditScan.assetPickerSearch, "string")
+    assert.equal(typeof messages.auditScan.assetPickerExpand, "string")
+    assert.equal(typeof messages.auditScan.assetPickerCollapse, "string")
+    assert.equal(typeof messages.auditScan.assetPickerEmpty, "string")
+    assert.equal(typeof messages.auditScan.pendingQueueLocation, "string")
+    assert.equal(typeof messages.auditScan.pendingQueueCustodian, "string")
+    assert.equal(typeof messages.auditScan.pendingQueueDepartment, "string")
   }
 })
 

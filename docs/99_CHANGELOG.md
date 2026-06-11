@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-06-11
+
+| Area | Update |
+|---|---|
+| Audit Scan mobile field workflow | `/th/audit/rounds/{id}/scan` now keeps the current scan result focused on the active QR/manual outcome, moves recent reads into a separate compact panel with the newest three visible and older reads collapsible, replaces the old full asset dropdown with a collapsible searchable round-item picker, and shows expected location/custodian/department context on pending queue cards. This is UI/UX only; audit item state, scan history, findings, not-found handling, offline queue behavior, permissions, SOD, and raw QR traceability remain unchanged. |
+
+---
+
 ## 2026-06-10
 
 | Area | Update |
