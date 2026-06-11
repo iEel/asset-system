@@ -15,8 +15,6 @@ import {
   Keyboard,
   ListChecks,
   Loader2,
-  Maximize2,
-  Minimize2,
   RefreshCcw,
   Save,
   ScanLine,
@@ -83,11 +81,6 @@ type AuditRecentScan = ScanFeedback & {
   source: "manual" | "qr"
   at: number
 }
-type AuditZoneQueueGroup = {
-  id: string
-  label: string
-  items: AuditScanItem[]
-}
 type QueuedAuditPhoto = {
   id: string
   label: string
@@ -139,7 +132,6 @@ export function AuditScanForm({
   const [queuedAuditPhotos, setQueuedAuditPhotos] = useState<QueuedAuditPhoto[]>([])
   const [continuousScan, setContinuousScan] = useState(true)
   const [fastMode, setFastMode] = useState(true)
-  const [walkingMode, setWalkingMode] = useState(false)
   const [showDetailedFields, setShowDetailedFields] = useState(false)
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null)
   const [recentScans, setRecentScans] = useState<AuditRecentScan[]>([])
@@ -196,14 +188,10 @@ export function AuditScanForm({
   const correctionMismatchCount = mismatchPreview.filter((mismatch) => mismatch.canApply).length
   const pendingItems = useMemo(() => items.filter((item) => item.auditStatus === "pending"), [items])
   const pendingQueuePreview = useMemo(() => pendingItems.slice(0, 8), [pendingItems])
-  const zoneQueueGroups = useMemo(
-    () => buildZoneQueueGroups(pendingItems, optionLabelMaps.locations, t("none")),
-    [optionLabelMaps.locations, pendingItems, t]
-  )
   const pendingCount = pendingItems.length
   const processedCount = items.length - pendingCount
   const isDetailedScanVisible = Boolean(selectedItem && (!fastMode || showDetailedFields))
-  const showMobileQuickActionBar = Boolean(selectedItem && fastMode && !showDetailedFields && !walkingMode)
+  const showMobileQuickActionBar = Boolean(selectedItem && fastMode && !showDetailedFields)
   const submitBarVisibility = selectedItem ? (showMobileQuickActionBar ? "hidden md:flex" : "flex") : "hidden md:flex"
   const systemDataRows = selectedItem
     ? buildSystemDataRows(
@@ -242,16 +230,6 @@ export function AuditScanForm({
   const hasCameraIssue = Boolean(cameraErrorText || cameraReadiness === "unavailable")
   const shouldShowCameraUtilities = cameras.length > 1 || torchAvailable || Boolean(lastDecodedText) || hasCameraIssue
   const shouldShowCameraPanel = scannerRunning || scannerLoading || shouldShowCameraUtilities
-  const stickyProgressTopClass = walkingMode ? "top-[5.5rem]" : "top-0"
-  const walkingModeRootClass = walkingMode
-    ? "fixed inset-0 z-50 overflow-y-auto bg-background px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+6.5rem)]"
-    : `mx-auto max-w-6xl ${selectedItem ? "pb-36 md:pb-0" : ""}`
-  const auditScanSectionClass = walkingMode
-    ? "rounded-lg border border-border bg-surface p-3 shadow-sm"
-    : "rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6"
-  const scannerPreviewClass = walkingMode
-    ? "relative isolate aspect-square min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-surface"
-    : "relative isolate aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-surface sm:min-h-[22rem]"
   const scanEntryPanelClass = !selectedItem && !scanFeedback
     ? "border-primary/30 bg-primary/5 shadow-sm ring-1 ring-primary/10"
     : "border-border bg-background"
@@ -377,20 +355,6 @@ export function AuditScanForm({
       scanner.stop()
     }
   }, [])
-
-  useEffect(() => {
-    if (!walkingMode) return
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [walkingMode])
-
-  useEffect(() => {
-    if (!scanFeedback) return
-    playScanFeedbackCue(scanFeedback.status)
-  }, [scanFeedback])
 
   const refreshOfflineQueue = useCallback(async () => {
     if (typeof window === "undefined") return
@@ -788,48 +752,25 @@ export function AuditScanForm({
   }
 
   return (
-    <div className={walkingModeRootClass}>
-      {walkingMode ? (
-        <WalkingModeTopBar
-          roundName={roundName}
-          processedCount={processedCount}
-          totalCount={items.length}
-          pendingCount={pendingCount}
-          queuedPhotoCount={queuedAuditPhotos.length}
-          torchAvailable={torchAvailable}
-          onClose={() => setWalkingMode(false)}
-          t={t}
-        />
-      ) : (
-        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <Link href={backHref} className="mb-3 inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent">
-              <ArrowLeft className="h-4 w-4" />
-              {tCommon("back")}
-            </Link>
-            <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{roundName}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setWalkingMode(true)}
-              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <Maximize2 className="h-4 w-4" />
-              {t("walkingModeOpen")}
-            </button>
-            {lastResult && (
-              <div className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm text-muted-foreground">
-                <CheckCircle2 className="h-4 w-4 text-success" />
-                {t("lastResult")}: {lastResult}
-              </div>
-            )}
-          </div>
+    <div className={`mx-auto max-w-6xl ${selectedItem ? "pb-36 md:pb-0" : ""}`}>
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <Link href={backHref} className="mb-3 inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+            <ArrowLeft className="h-4 w-4" />
+            {tCommon("back")}
+          </Link>
+          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{roundName}</p>
         </div>
-      )}
+        {lastResult && (
+          <div className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm text-muted-foreground">
+            <CheckCircle2 className="h-4 w-4 text-success" />
+            {t("lastResult")}: {lastResult}
+          </div>
+        )}
+      </div>
 
-      <div className={`sticky ${stickyProgressTopClass} z-20 mb-4 rounded-lg border border-border bg-surface/95 p-3 shadow-sm backdrop-blur`}>
+      <div className="sticky top-0 z-20 mb-4 rounded-lg border border-border bg-surface/95 p-3 shadow-sm backdrop-blur">
         <AuditProgressBar
           compact
           total={items.length}
@@ -894,9 +835,9 @@ export function AuditScanForm({
         </div>
       ) : null}
 
-      <section className={auditScanSectionClass}>
+      <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
-          {scanFeedback && !walkingMode && (
+          {scanFeedback && (
             <ScanResultPanel feedback={scanFeedback} recentScans={recentScans} t={t} />
           )}
 
@@ -951,7 +892,9 @@ export function AuditScanForm({
             </label>
             {shouldShowCameraPanel ? (
               <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
-                <div className={`${scannerPreviewClass} ${scannerRunning || scannerLoading ? "block" : "hidden"}`}>
+                <div
+                  className={`relative isolate aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-surface sm:min-h-[22rem] ${scannerRunning || scannerLoading ? "block" : "hidden"}`}
+                >
                   <div id="audit-qr-reader" className="w-full [&_video]:!h-auto [&_video]:!w-full" />
                   {scannerRunning ? <AuditQrScannerOverlay /> : null}
                   {scannerRunning && torchAvailable ? (
@@ -976,11 +919,6 @@ export function AuditScanForm({
                       )}
                       <span className="hidden sm:inline">{t(torchEnabled ? "torchOff" : "torchOn")}</span>
                     </button>
-                  ) : null}
-                  {walkingMode && scannerRunning && torchAvailable ? (
-                    <div className="absolute bottom-3 left-3 right-3 z-20 rounded-md bg-slate-950/70 px-3 py-2 text-xs text-white">
-                      {t("walkingModeTorchHint")}
-                    </div>
                   ) : null}
                 </div>
                 {shouldShowCameraUtilities ? (
@@ -1031,23 +969,13 @@ export function AuditScanForm({
           />
 
           {showPendingQueue ? (
-            walkingMode ? (
-              <ZoneQueuePanel
-                groups={zoneQueueGroups}
-                total={pendingCount}
-                pendingHref={`/${locale}/audit/rounds/${roundId}/pending`}
-                onSelect={selectPendingQueueItem}
-                t={t}
-              />
-            ) : (
-              <PendingQueuePanel
-                items={pendingQueuePreview}
-                total={pendingCount}
-                pendingHref={`/${locale}/audit/rounds/${roundId}/pending`}
-                onSelect={selectPendingQueueItem}
-                t={t}
-              />
-            )
+            <PendingQueuePanel
+              items={pendingQueuePreview}
+              total={pendingCount}
+              pendingHref={`/${locale}/audit/rounds/${roundId}/pending`}
+              onSelect={selectPendingQueueItem}
+              t={t}
+            />
           ) : null}
 
           <div className="md:col-span-2">
@@ -1328,19 +1256,6 @@ export function AuditScanForm({
           </div>
         </div>
       ) : null}
-      {walkingMode && scanFeedback ? (
-        <ScanResultBottomSheet
-          feedback={scanFeedback}
-          recentScans={recentScans}
-          selectedItem={selectedItem}
-          saving={saving}
-          onMatched={handleQuickMatchedScan}
-          onMismatch={openMismatchDetails}
-          onPhoto={scrollToAuditPhotoEvidence}
-          onContinue={scrollToAuditScanInput}
-          t={t}
-        />
-      ) : null}
     </div>
   )
 }
@@ -1348,65 +1263,6 @@ export function AuditScanForm({
 type AuditScanTranslator = {
   (key: string): string
   (key: string, values: Record<string, string | number | Date>): string
-}
-
-function WalkingModeTopBar({
-  roundName,
-  processedCount,
-  totalCount,
-  pendingCount,
-  queuedPhotoCount,
-  torchAvailable,
-  onClose,
-  t,
-}: {
-  roundName: string
-  processedCount: number
-  totalCount: number
-  pendingCount: number
-  queuedPhotoCount: number
-  torchAvailable: boolean
-  onClose: () => void
-  t: AuditScanTranslator
-}) {
-  return (
-    <div className="sticky top-0 z-40 -mx-3 mb-3 border-b border-border bg-background/95 px-3 py-2 backdrop-blur">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-sm font-semibold text-foreground">{t("walkingModeTitle")}</div>
-          <div className="truncate text-xs text-muted-foreground">{roundName}</div>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          <Minimize2 className="h-4 w-4" />
-          {t("walkingModeClose")}
-        </button>
-      </div>
-      <div className="mt-2 grid grid-cols-4 gap-2 text-center text-xs">
-        <div className="rounded-md border border-border bg-surface px-2 py-1">
-          <div className="font-semibold text-foreground">
-            {processedCount.toLocaleString("th-TH")}/{totalCount.toLocaleString("th-TH")}
-          </div>
-          <div className="truncate text-muted-foreground">{t("scannedQueue")}</div>
-        </div>
-        <div className="rounded-md border border-border bg-surface px-2 py-1">
-          <div className="font-semibold text-foreground">{pendingCount.toLocaleString("th-TH")}</div>
-          <div className="truncate text-muted-foreground">{t("pendingQueue")}</div>
-        </div>
-        <div className="rounded-md border border-border bg-surface px-2 py-1">
-          <div className="font-semibold text-foreground">{queuedPhotoCount.toLocaleString("th-TH")}</div>
-          <div className="truncate text-muted-foreground">{t("photoQueue")}</div>
-        </div>
-        <div className="rounded-md border border-border bg-surface px-2 py-1">
-          <div className="font-semibold text-foreground">{torchAvailable ? t("torchOn") : "-"}</div>
-          <div className="truncate text-muted-foreground">{t("walkingModeTorchHint")}</div>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 function FastModeToggle({
@@ -1491,99 +1347,6 @@ function ScanResultPanel({
   )
 }
 
-function ScanResultBottomSheet({
-  feedback,
-  recentScans,
-  selectedItem,
-  saving,
-  onMatched,
-  onMismatch,
-  onPhoto,
-  onContinue,
-  t,
-}: {
-  feedback: ScanFeedback
-  recentScans: AuditRecentScan[]
-  selectedItem: AuditScanItem | undefined
-  saving: boolean
-  onMatched: () => Promise<void>
-  onMismatch: () => void
-  onPhoto: () => void
-  onContinue: () => void
-  t: AuditScanTranslator
-}) {
-  const meta = getScanFeedbackMeta(feedback.status, t)
-  const Icon = meta.icon
-  const canRecordRoundResult = Boolean(selectedItem)
-  const previousScans = recentScans.slice(1, 4)
-
-  return (
-    <div className="fixed inset-x-0 bottom-0 z-[60] border-t border-border bg-surface/95 px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-2xl backdrop-blur">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-3 flex items-start gap-3 rounded-md border border-border bg-background p-3">
-          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${meta.iconClass}`}>
-            <Icon className="h-5 w-5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="text-xs font-semibold text-muted-foreground">{t("scanResultSheetTitle")}</div>
-              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.chipClass}`}>
-                {meta.label}
-              </span>
-            </div>
-            <div className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">{feedback.title}</div>
-            <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{feedback.description}</div>
-            <div className="mt-1 text-xs text-muted-foreground">{t("scanResultSheetHelp")}</div>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <button
-            type="button"
-            onClick={() => void onMatched()}
-            disabled={!canRecordRoundResult || saving}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-success px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-success/90 disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-            {t("dataMatches")}
-          </button>
-          <button
-            type="button"
-            onClick={onMismatch}
-            disabled={!canRecordRoundResult}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 py-2 text-sm font-semibold text-warning transition-colors hover:bg-warning/10 disabled:opacity-50"
-          >
-            <AlertTriangle className="h-4 w-4" />
-            {t("dataMismatch")}
-          </button>
-          <button
-            type="button"
-            onClick={onPhoto}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            <ImagePlus className="h-4 w-4" />
-            {t("captureEvidenceAction")}
-          </button>
-          <button
-            type="button"
-            onClick={onContinue}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            <Keyboard className="h-4 w-4" />
-            {t("continueOrManualAction")}
-          </button>
-        </div>
-        {previousScans.length > 0 ? (
-          <div className="mt-3 grid gap-1.5">
-            {previousScans.map((scan) => (
-              <RecentScanCompactRow key={scan.id} scan={scan} t={t} />
-            ))}
-          </div>
-        ) : null}
-      </div>
-    </div>
-  )
-}
-
 function RecentScanCompactRow({ scan, t }: { scan: AuditRecentScan; t: AuditScanTranslator }) {
   const meta = getScanFeedbackMeta(scan.status, t)
 
@@ -1595,75 +1358,6 @@ function RecentScanCompactRow({ scan, t }: { scan: AuditRecentScan; t: AuditScan
         {meta.label}
       </span>
       <span className="shrink-0 text-muted-foreground">{formatRecentScanTime(scan.at)}</span>
-    </div>
-  )
-}
-
-function ZoneQueuePanel({
-  groups,
-  total,
-  pendingHref,
-  onSelect,
-  t,
-}: {
-  groups: AuditZoneQueueGroup[]
-  total: number
-  pendingHref: string
-  onSelect: (item: AuditScanItem) => void
-  t: AuditScanTranslator
-}) {
-  return (
-    <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <ListChecks className="h-4 w-4 text-primary" />
-            {t("zoneQueueTitle")}
-            <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning">
-              {t("zoneQueueItemCount", { count: total })}
-            </span>
-          </div>
-          <div className="mt-1 text-xs text-muted-foreground">{t("zoneQueueByLocation")}</div>
-        </div>
-        <Link
-          href={pendingHref}
-          className="inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-        >
-          {t("pendingQueueOpenFull")}
-        </Link>
-      </div>
-
-      {groups.length === 0 ? (
-        <div className="mt-3 rounded-md border border-dashed border-border bg-surface p-4 text-sm text-muted-foreground">
-          {t("pendingQueueEmpty")}
-        </div>
-      ) : (
-        <div className="mt-3 grid gap-3">
-          {groups.slice(0, 6).map((group) => (
-            <div key={group.id} className="rounded-md border border-border bg-surface p-3">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <div className="min-w-0 truncate text-sm font-semibold text-foreground">{group.label}</div>
-                <span className="shrink-0 rounded-full bg-background px-2 py-0.5 text-xs font-semibold text-muted-foreground">
-                  {t("zoneQueueItemCount", { count: group.items.length })}
-                </span>
-              </div>
-              <div className="grid gap-2">
-                {group.items.slice(0, 3).map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => onSelect(item)}
-                    className="min-h-12 rounded-md border border-border bg-background px-3 py-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    <div className="truncate text-sm font-semibold text-foreground">{item.assetTag}</div>
-                    <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{item.label}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
@@ -1794,25 +1488,6 @@ function formatRecentScanTime(value: number) {
   return new Date(value).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })
 }
 
-function playScanFeedbackCue(status: ScanFeedback["status"]) {
-  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return
-
-  const pattern =
-    status === "found" || status === "saved" || status === "found_later"
-      ? [18]
-      : status === "mismatch" || status === "out_of_scope"
-        ? [28, 36, 28]
-        : status === "unknown_asset"
-          ? [45, 45, 45]
-          : [20, 30, 20]
-
-  try {
-    navigator.vibrate(pattern)
-  } catch {
-    // Some mobile browsers expose the API but reject vibration in quiet modes.
-  }
-}
-
 function isCameraAccessSupported() {
   return typeof navigator !== "undefined" && "mediaDevices" in navigator && "getUserMedia" in navigator.mediaDevices
 }
@@ -1879,28 +1554,6 @@ function buildAssetLookup(items: AuditScanItem[]) {
 
 function buildOptionLabelMap(options: Option[]) {
   return new Map(options.map((option) => [option.id, option.label]))
-}
-
-function buildZoneQueueGroups(
-  items: AuditScanItem[],
-  locationLabels: Map<string, string>,
-  emptyLabel: string
-): AuditZoneQueueGroup[] {
-  const groups = new Map<string, AuditZoneQueueGroup>()
-
-  for (const item of items) {
-    const groupId = item.expectedLocationId || "none"
-    const label = getOptionLabel(locationLabels, item.expectedLocationId, emptyLabel)
-    const existing = groups.get(groupId)
-
-    if (existing) {
-      existing.items.push(item)
-    } else {
-      groups.set(groupId, { id: groupId, label, items: [item] })
-    }
-  }
-
-  return Array.from(groups.values()).sort((a, b) => a.label.localeCompare(b.label, "th"))
 }
 
 function buildSystemDataRows(

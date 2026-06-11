@@ -4,14 +4,6 @@
 
 ---
 
-## 2026-06-11
-
-| Area | Update |
-|---|---|
-| Audit Scan mobile walking mode | `/th/audit/rounds/{id}/scan` now has a fullscreen walking mode for high-volume mobile counts. The change keeps the same audit round, `audit_items`, scan history, findings, offline queue, permission, and SOD behavior, but presents a compact mobile scan surface with sticky progress, a one-hand scan-result bottom sheet, expected-location queue grouping, supported-camera flashlight access, and browser vibration cues where available. |
-
----
-
 ## 2026-06-10
 
 | Area | Update |

@@ -204,66 +204,6 @@ test("audit scan phase 2 emphasizes scan entry and exposes pending queue access"
   }
 })
 
-test("audit scan walking mode keeps the scanner as a fullscreen mobile task surface", () => {
-  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
-  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
-  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
-
-  assert.match(form, /const \[walkingMode, setWalkingMode\] = useState\(false\)/)
-  assert.match(form, /walkingModeRootClass/)
-  assert.match(form, /fixed inset-0 z-50/)
-  assert.match(form, /WalkingModeTopBar/)
-  assert.match(form, /walkingModeOpen/)
-  assert.match(form, /walkingModeClose/)
-  assert.match(form, /walkingModeTorchHint/)
-  assert.match(form, /walkingMode \? "top-\[5\.5rem\]" : "top-0"/)
-  assert.match(form, /scannerRunning && torchAvailable/)
-  assert.match(form, /toggleTorch/)
-
-  for (const messages of [th, en]) {
-    assert.equal(typeof messages.auditScan.walkingModeOpen, "string")
-    assert.equal(typeof messages.auditScan.walkingModeClose, "string")
-    assert.equal(typeof messages.auditScan.walkingModeTitle, "string")
-    assert.equal(typeof messages.auditScan.walkingModeTorchHint, "string")
-  }
-})
-
-test("audit scan walking mode uses a bottom result sheet and location queue", () => {
-  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
-  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
-  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
-
-  assert.match(form, /zoneQueueGroups/)
-  assert.match(form, /buildZoneQueueGroups/)
-  assert.match(form, /function ScanResultBottomSheet/)
-  assert.match(form, /function ZoneQueuePanel/)
-  assert.match(form, /scanFeedback && !walkingMode/)
-  assert.match(form, /walkingMode && scanFeedback/)
-  assert.match(form, /selectedItem && fastMode && !showDetailedFields && !walkingMode/)
-  assert.match(form, /zoneQueueByLocation/)
-  assert.match(form, /scanResultSheetTitle/)
-
-  for (const messages of [th, en]) {
-    assert.equal(typeof messages.auditScan.scanResultSheetTitle, "string")
-    assert.equal(typeof messages.auditScan.scanResultSheetHelp, "string")
-    assert.equal(typeof messages.auditScan.zoneQueueTitle, "string")
-    assert.equal(typeof messages.auditScan.zoneQueueByLocation, "string")
-    assert.equal(typeof messages.auditScan.zoneQueueItemCount, "string")
-  }
-})
-
-test("audit scan mobile feedback cues are progressive and status-aware", () => {
-  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
-
-  assert.match(form, /function playScanFeedbackCue/)
-  assert.match(form, /navigator\.vibrate/)
-  assert.match(form, /scanFeedback\.status/)
-  assert.match(form, /playScanFeedbackCue\(scanFeedback\.status\)/)
-  assert.match(form, /status === "found"/)
-  assert.match(form, /status === "mismatch"/)
-  assert.match(form, /status === "unknown_asset"/)
-})
-
 test("audit scan flashlight is a progressive camera enhancement", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
   const scanner = readFileSync("src/lib/asset-qr-scanner.ts", "utf8")
