@@ -83,6 +83,11 @@ type AuditRecentScan = ScanFeedback & {
   source: "manual" | "qr"
   at: number
 }
+type AuditZoneQueueGroup = {
+  id: string
+  label: string
+  items: AuditScanItem[]
+}
 type QueuedAuditPhoto = {
   id: string
   label: string
@@ -191,10 +196,14 @@ export function AuditScanForm({
   const correctionMismatchCount = mismatchPreview.filter((mismatch) => mismatch.canApply).length
   const pendingItems = useMemo(() => items.filter((item) => item.auditStatus === "pending"), [items])
   const pendingQueuePreview = useMemo(() => pendingItems.slice(0, 8), [pendingItems])
+  const zoneQueueGroups = useMemo(
+    () => buildZoneQueueGroups(pendingItems, optionLabelMaps.locations, t("none")),
+    [optionLabelMaps.locations, pendingItems, t]
+  )
   const pendingCount = pendingItems.length
   const processedCount = items.length - pendingCount
   const isDetailedScanVisible = Boolean(selectedItem && (!fastMode || showDetailedFields))
-  const showMobileQuickActionBar = Boolean(selectedItem && fastMode && !showDetailedFields)
+  const showMobileQuickActionBar = Boolean(selectedItem && fastMode && !showDetailedFields && !walkingMode)
   const submitBarVisibility = selectedItem ? (showMobileQuickActionBar ? "hidden md:flex" : "flex") : "hidden md:flex"
   const systemDataRows = selectedItem
     ? buildSystemDataRows(
@@ -882,7 +891,7 @@ export function AuditScanForm({
 
       <section className={auditScanSectionClass}>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
-          {scanFeedback && (
+          {scanFeedback && !walkingMode && (
             <ScanResultPanel feedback={scanFeedback} recentScans={recentScans} t={t} />
           )}
 
@@ -1017,13 +1026,23 @@ export function AuditScanForm({
           />
 
           {showPendingQueue ? (
-            <PendingQueuePanel
-              items={pendingQueuePreview}
-              total={pendingCount}
-              pendingHref={`/${locale}/audit/rounds/${roundId}/pending`}
-              onSelect={selectPendingQueueItem}
-              t={t}
-            />
+            walkingMode ? (
+              <ZoneQueuePanel
+                groups={zoneQueueGroups}
+                total={pendingCount}
+                pendingHref={`/${locale}/audit/rounds/${roundId}/pending`}
+                onSelect={selectPendingQueueItem}
+                t={t}
+              />
+            ) : (
+              <PendingQueuePanel
+                items={pendingQueuePreview}
+                total={pendingCount}
+                pendingHref={`/${locale}/audit/rounds/${roundId}/pending`}
+                onSelect={selectPendingQueueItem}
+                t={t}
+              />
+            )
           ) : null}
 
           <div className="md:col-span-2">
@@ -1304,6 +1323,19 @@ export function AuditScanForm({
           </div>
         </div>
       ) : null}
+      {walkingMode && scanFeedback ? (
+        <ScanResultBottomSheet
+          feedback={scanFeedback}
+          recentScans={recentScans}
+          selectedItem={selectedItem}
+          saving={saving}
+          onMatched={handleQuickMatchedScan}
+          onMismatch={openMismatchDetails}
+          onPhoto={scrollToAuditPhotoEvidence}
+          onContinue={scrollToAuditScanInput}
+          t={t}
+        />
+      ) : null}
     </div>
   )
 }
@@ -1454,6 +1486,99 @@ function ScanResultPanel({
   )
 }
 
+function ScanResultBottomSheet({
+  feedback,
+  recentScans,
+  selectedItem,
+  saving,
+  onMatched,
+  onMismatch,
+  onPhoto,
+  onContinue,
+  t,
+}: {
+  feedback: ScanFeedback
+  recentScans: AuditRecentScan[]
+  selectedItem: AuditScanItem | undefined
+  saving: boolean
+  onMatched: () => Promise<void>
+  onMismatch: () => void
+  onPhoto: () => void
+  onContinue: () => void
+  t: AuditScanTranslator
+}) {
+  const meta = getScanFeedbackMeta(feedback.status, t)
+  const Icon = meta.icon
+  const canRecordRoundResult = Boolean(selectedItem)
+  const previousScans = recentScans.slice(1, 4)
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-[60] border-t border-border bg-surface/95 px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-2xl backdrop-blur">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-3 flex items-start gap-3 rounded-md border border-border bg-background p-3">
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${meta.iconClass}`}>
+            <Icon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="text-xs font-semibold text-muted-foreground">{t("scanResultSheetTitle")}</div>
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.chipClass}`}>
+                {meta.label}
+              </span>
+            </div>
+            <div className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">{feedback.title}</div>
+            <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{feedback.description}</div>
+            <div className="mt-1 text-xs text-muted-foreground">{t("scanResultSheetHelp")}</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <button
+            type="button"
+            onClick={() => void onMatched()}
+            disabled={!canRecordRoundResult || saving}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-success px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-success/90 disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+            {t("dataMatches")}
+          </button>
+          <button
+            type="button"
+            onClick={onMismatch}
+            disabled={!canRecordRoundResult}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 py-2 text-sm font-semibold text-warning transition-colors hover:bg-warning/10 disabled:opacity-50"
+          >
+            <AlertTriangle className="h-4 w-4" />
+            {t("dataMismatch")}
+          </button>
+          <button
+            type="button"
+            onClick={onPhoto}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            <ImagePlus className="h-4 w-4" />
+            {t("captureEvidenceAction")}
+          </button>
+          <button
+            type="button"
+            onClick={onContinue}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            <Keyboard className="h-4 w-4" />
+            {t("continueOrManualAction")}
+          </button>
+        </div>
+        {previousScans.length > 0 ? (
+          <div className="mt-3 grid gap-1.5">
+            {previousScans.map((scan) => (
+              <RecentScanCompactRow key={scan.id} scan={scan} t={t} />
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
 function RecentScanCompactRow({ scan, t }: { scan: AuditRecentScan; t: AuditScanTranslator }) {
   const meta = getScanFeedbackMeta(scan.status, t)
 
@@ -1465,6 +1590,75 @@ function RecentScanCompactRow({ scan, t }: { scan: AuditRecentScan; t: AuditScan
         {meta.label}
       </span>
       <span className="shrink-0 text-muted-foreground">{formatRecentScanTime(scan.at)}</span>
+    </div>
+  )
+}
+
+function ZoneQueuePanel({
+  groups,
+  total,
+  pendingHref,
+  onSelect,
+  t,
+}: {
+  groups: AuditZoneQueueGroup[]
+  total: number
+  pendingHref: string
+  onSelect: (item: AuditScanItem) => void
+  t: AuditScanTranslator
+}) {
+  return (
+    <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <ListChecks className="h-4 w-4 text-primary" />
+            {t("zoneQueueTitle")}
+            <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning">
+              {t("zoneQueueItemCount", { count: total })}
+            </span>
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">{t("zoneQueueByLocation")}</div>
+        </div>
+        <Link
+          href={pendingHref}
+          className="inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+        >
+          {t("pendingQueueOpenFull")}
+        </Link>
+      </div>
+
+      {groups.length === 0 ? (
+        <div className="mt-3 rounded-md border border-dashed border-border bg-surface p-4 text-sm text-muted-foreground">
+          {t("pendingQueueEmpty")}
+        </div>
+      ) : (
+        <div className="mt-3 grid gap-3">
+          {groups.slice(0, 6).map((group) => (
+            <div key={group.id} className="rounded-md border border-border bg-surface p-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <div className="min-w-0 truncate text-sm font-semibold text-foreground">{group.label}</div>
+                <span className="shrink-0 rounded-full bg-background px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                  {t("zoneQueueItemCount", { count: group.items.length })}
+                </span>
+              </div>
+              <div className="grid gap-2">
+                {group.items.slice(0, 3).map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onSelect(item)}
+                    className="min-h-12 rounded-md border border-border bg-background px-3 py-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <div className="truncate text-sm font-semibold text-foreground">{item.assetTag}</div>
+                    <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{item.label}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -1661,6 +1855,28 @@ function buildAssetLookup(items: AuditScanItem[]) {
 
 function buildOptionLabelMap(options: Option[]) {
   return new Map(options.map((option) => [option.id, option.label]))
+}
+
+function buildZoneQueueGroups(
+  items: AuditScanItem[],
+  locationLabels: Map<string, string>,
+  emptyLabel: string
+): AuditZoneQueueGroup[] {
+  const groups = new Map<string, AuditZoneQueueGroup>()
+
+  for (const item of items) {
+    const groupId = item.expectedLocationId || "none"
+    const label = getOptionLabel(locationLabels, item.expectedLocationId, emptyLabel)
+    const existing = groups.get(groupId)
+
+    if (existing) {
+      existing.items.push(item)
+    } else {
+      groups.set(groupId, { id: groupId, label, items: [item] })
+    }
+  }
+
+  return Array.from(groups.values()).sort((a, b) => a.label.localeCompare(b.label, "th"))
 }
 
 function buildSystemDataRows(
