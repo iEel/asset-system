@@ -387,6 +387,11 @@ export function AuditScanForm({
     }
   }, [walkingMode])
 
+  useEffect(() => {
+    if (!scanFeedback) return
+    playScanFeedbackCue(scanFeedback.status)
+  }, [scanFeedback])
+
   const refreshOfflineQueue = useCallback(async () => {
     if (typeof window === "undefined") return
     const storage = getAuditOfflineStorage()
@@ -1787,6 +1792,25 @@ function getScanFeedbackMeta(status: ScanFeedback["status"], t: AuditScanTransla
 
 function formatRecentScanTime(value: number) {
   return new Date(value).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })
+}
+
+function playScanFeedbackCue(status: ScanFeedback["status"]) {
+  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return
+
+  const pattern =
+    status === "found" || status === "saved" || status === "found_later"
+      ? [18]
+      : status === "mismatch" || status === "out_of_scope"
+        ? [28, 36, 28]
+        : status === "unknown_asset"
+          ? [45, 45, 45]
+          : [20, 30, 20]
+
+  try {
+    navigator.vibrate(pattern)
+  } catch {
+    // Some mobile browsers expose the API but reject vibration in quiet modes.
+  }
 }
 
 function isCameraAccessSupported() {

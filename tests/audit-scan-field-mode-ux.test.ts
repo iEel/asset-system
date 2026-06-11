@@ -252,6 +252,18 @@ test("audit scan walking mode uses a bottom result sheet and location queue", ()
   }
 })
 
+test("audit scan mobile feedback cues are progressive and status-aware", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+
+  assert.match(form, /function playScanFeedbackCue/)
+  assert.match(form, /navigator\.vibrate/)
+  assert.match(form, /scanFeedback\.status/)
+  assert.match(form, /playScanFeedbackCue\(scanFeedback\.status\)/)
+  assert.match(form, /status === "found"/)
+  assert.match(form, /status === "mismatch"/)
+  assert.match(form, /status === "unknown_asset"/)
+})
+
 test("audit scan flashlight is a progressive camera enhancement", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
   const scanner = readFileSync("src/lib/asset-qr-scanner.ts", "utf8")
