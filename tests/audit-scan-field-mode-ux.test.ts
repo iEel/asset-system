@@ -161,15 +161,32 @@ test("audit scan phase 1 compacts fast mode and combines result with recent scan
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
-  assert.match(form, /function FastModeToggle/)
+  assert.match(form, /function AuditScanOptionStrip/)
+  assert.match(form, /function ScanOptionToggle/)
+  assert.match(form, /continuousScan=\{continuousScan\}/)
+  assert.match(form, /onContinuousScanChange=\{setContinuousScan\}/)
+  assert.match(form, /onFastModeChange=\{\(checked\) =>/)
+  assert.match(form, /role="switch"/)
+  assert.match(form, /aria-checked=\{checked\}/)
+  assert.match(form, /role="group"/)
+  assert.match(form, /aria-label=\{t\("scanOptions"\)\}/)
+  assert.match(form, /grid divide-y divide-border\/80 sm:grid-cols-2 sm:divide-x sm:divide-y-0/)
+  assert.match(form, /hidden text-xs text-muted-foreground lg:block/)
+  assert.match(form, /min-h-12/)
+  assert.match(form, /translate-x-5/)
   assert.match(form, /fastModeCompactHelp/)
   assert.match(form, /detailModeCompactHelp/)
+  assert.doesNotMatch(form, /<label className="mt-3 flex[^"]*border-info\/30(?:(?!<\/label>)[\s\S])*checked=\{continuousScan\}/)
+  assert.doesNotMatch(form, /border-b border-border\/80 px-3 py-2 text-xs font-semibold/)
+  assert.doesNotMatch(form, /aria-pressed=\{checked\}/)
+  assert.doesNotMatch(form, /const Icon = checked \? CheckCircle2 : X/)
   assert.match(form, /ScanResultPanel feedback=\{scanFeedback\} recentScans=\{recentScans\}/)
   assert.match(form, /const previousScans = recentScans\.slice\(1, 6\)/)
   assert.doesNotMatch(form, /<ScanFeedbackCard feedback=\{scanFeedback\}/)
   assert.doesNotMatch(form, /<RecentScanList recentScans=\{recentScans\}/)
 
   for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditScan.scanOptions, "string")
     assert.equal(typeof messages.auditScan.fastModeCompactHelp, "string")
     assert.equal(typeof messages.auditScan.detailModeCompactHelp, "string")
     assert.equal(typeof messages.auditScan.fastModeOn, "string")
@@ -191,7 +208,11 @@ test("audit scan phase 2 emphasizes scan entry and exposes pending queue access"
   assert.match(form, /!selectedItem && !scanFeedback/)
   assert.match(form, /border-primary\/30 bg-primary\/5/)
   assert.match(form, /selectPendingQueueItem/)
-  assert.match(form, /pendingHref=\{`\/\$\{locale\}\/audit\/rounds\/\$\{roundId\}\/pending`\}/)
+  assert.match(form, /scanReturnHref/)
+  assert.match(form, /appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{roundId\}\/scan`, backHref\)/)
+  assert.match(form, /pendingListHref/)
+  assert.match(form, /appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{roundId\}\/pending`, scanReturnHref\)/)
+  assert.match(form, /pendingHref=\{pendingListHref\}/)
 
   for (const messages of [th, en]) {
     assert.equal(typeof messages.auditScan.scanEntryTitle, "string")
@@ -201,6 +222,29 @@ test("audit scan phase 2 emphasizes scan entry and exposes pending queue access"
     assert.equal(typeof messages.auditScan.pendingQueuePanelHelp, "string")
     assert.equal(typeof messages.auditScan.pendingQueueOpenFull, "string")
     assert.equal(typeof messages.auditScan.pendingQueueSelect, "string")
+  }
+})
+
+test("audit scan pending queue and recent scans are collapsible", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(form, /pendingQueueExpanded/)
+  assert.match(form, /setPendingQueueExpanded/)
+  assert.match(form, /aria-controls="audit-pending-queue-panel"/)
+  assert.match(form, /aria-expanded=\{showPendingQueue\}/)
+  assert.match(form, /expanded=\{pendingQueueExpanded\}/)
+  assert.match(form, /recentScansExpanded/)
+  assert.match(form, /setRecentScansExpanded/)
+  assert.match(form, /aria-expanded=\{recentScansExpanded\}/)
+  assert.match(form, /t\(recentScansExpanded \? "recentScansCollapse" : "recentScansExpand"\)/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditScan.pendingQueueExpand, "string")
+    assert.equal(typeof messages.auditScan.pendingQueueCollapse, "string")
+    assert.equal(typeof messages.auditScan.recentScansExpand, "string")
+    assert.equal(typeof messages.auditScan.recentScansCollapse, "string")
   }
 })
 

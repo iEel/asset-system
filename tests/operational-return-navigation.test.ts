@@ -7,9 +7,11 @@ test("operational return navigation helper only accepts internal workflow target
 
   assert.match(source, /normalizeOperationalReturnTo/)
   assert.match(source, /normalizeAuditRoundDetailReturnTo/)
+  assert.match(source, /normalizeAuditRoundWorkflowReturnTo/)
   assert.match(source, /new URL\(raw, "http:\/\/asset\.local"\)/)
   assert.match(source, /url\.origin !== "http:\/\/asset\.local"/)
   assert.match(source, /url\.pathname !== fallback/)
+  assert.match(source, /allowedPaths/)
   assert.match(source, /appendOperationalReturnTo/)
 })
 
@@ -62,7 +64,7 @@ test("audit rounds preserve list context across round detail, scan, and pending 
   assert.match(detailSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}\/scan`, roundDetailReturnHref\)/)
 
   assert.match(pendingSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
-  assert.match(pendingSource, /normalizeAuditRoundDetailReturnTo\(locale, round\.id, rawSearchParams\.returnTo\)/)
+  assert.match(pendingSource, /normalizeAuditRoundWorkflowReturnTo\(locale, round\.id, rawSearchParams\.returnTo\)/)
   assert.match(pendingSource, /href=\{returnToHref\}/)
 
   assert.match(scanSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)

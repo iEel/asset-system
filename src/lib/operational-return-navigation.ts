@@ -23,19 +23,25 @@ export function normalizeAuditRoundDetailReturnTo(locale: string, roundId: strin
   return normalizeInternalReturnTo(fallback, value)
 }
 
+export function normalizeAuditRoundWorkflowReturnTo(locale: string, roundId: string, value: ReturnToParam) {
+  const fallback = `/${locale}/audit/rounds/${roundId}`
+  const scanPath = `/${locale}/audit/rounds/${roundId}/scan`
+  return normalizeInternalReturnTo(fallback, value, [scanPath])
+}
+
 export function appendOperationalReturnTo(href: string, returnTo: string) {
   const separator = href.includes("?") ? "&" : "?"
   return `${href}${separator}returnTo=${encodeURIComponent(returnTo)}`
 }
 
-function normalizeInternalReturnTo(fallback: string, value: ReturnToParam) {
+function normalizeInternalReturnTo(fallback: string, value: ReturnToParam, allowedPaths: string[] = []) {
   const raw = Array.isArray(value) ? value[0] : value
   if (!raw) return fallback
 
   try {
     const url = new URL(raw, "http://asset.local")
     if (url.origin !== "http://asset.local") return fallback
-    if (url.pathname !== fallback) return fallback
+    if (url.pathname !== fallback && !allowedPaths.includes(url.pathname)) return fallback
     return `${url.pathname}${url.search}${url.hash}`
   } catch {
     return fallback

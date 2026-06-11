@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   Camera,
+  ChevronDown,
   CheckCircle2,
   Flashlight,
   FlashlightOff,
@@ -44,6 +45,7 @@ import {
   type AuditOfflineQueueStorage,
   type QueuedAuditScan,
 } from "@/lib/audit-offline-queue"
+import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 
 type Option = { id: string; label: string }
 type AuditScanItem = {
@@ -136,6 +138,7 @@ export function AuditScanForm({
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null)
   const [recentScans, setRecentScans] = useState<AuditRecentScan[]>([])
   const [showPendingQueue, setShowPendingQueue] = useState(false)
+  const [pendingQueueExpanded, setPendingQueueExpanded] = useState(true)
   const [outOfScopeAsset, setOutOfScopeAsset] = useState<OutOfScopeAsset | null>(null)
   const [applyCorrections, setApplyCorrections] = useState(false)
   const [offlineQueue, setOfflineQueue] = useState<QueuedAuditScan[]>([])
@@ -188,6 +191,8 @@ export function AuditScanForm({
   const correctionMismatchCount = mismatchPreview.filter((mismatch) => mismatch.canApply).length
   const pendingItems = useMemo(() => items.filter((item) => item.auditStatus === "pending"), [items])
   const pendingQueuePreview = useMemo(() => pendingItems.slice(0, 8), [pendingItems])
+  const scanReturnHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${roundId}/scan`, backHref)
+  const pendingListHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${roundId}/pending`, scanReturnHref)
   const pendingCount = pendingItems.length
   const processedCount = items.length - pendingCount
   const isDetailedScanVisible = Boolean(selectedItem && (!fastMode || showDetailedFields))
@@ -251,6 +256,12 @@ export function AuditScanForm({
     window.setTimeout(() => {
       document.getElementById("audit-scan-input-panel")?.scrollIntoView({ behavior: "smooth", block: "start" })
     }, 0)
+  }
+
+  function togglePendingQueue() {
+    const nextValue = !showPendingQueue
+    setShowPendingQueue(nextValue)
+    if (nextValue) setPendingQueueExpanded(true)
   }
 
   function queueAuditPhoto(file: File | null) {
@@ -786,7 +797,9 @@ export function AuditScanForm({
           </span>
           <button
             type="button"
-            onClick={() => setShowPendingQueue((current) => !current)}
+            onClick={togglePendingQueue}
+            aria-expanded={showPendingQueue}
+            aria-controls="audit-pending-queue-panel"
             className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-border bg-background px-2 py-1 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <ListChecks className="h-3.5 w-3.5" />
@@ -878,18 +891,16 @@ export function AuditScanForm({
                 </button>
               </div>
             </div>
-            <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-md border border-info/30 bg-info/10 p-3 text-sm">
-              <input
-                type="checkbox"
-                checked={continuousScan}
-                onChange={(event) => setContinuousScan(event.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
-              />
-              <span>
-                <span className="block font-semibold text-foreground">{t("continuousScan")}</span>
-                <span className="mt-1 block text-muted-foreground">{t("continuousScanHelp")}</span>
-              </span>
-            </label>
+            <AuditScanOptionStrip
+              continuousScan={continuousScan}
+              onContinuousScanChange={setContinuousScan}
+              fastMode={fastMode}
+              onFastModeChange={(checked) => {
+                setFastMode(checked)
+                setShowDetailedFields(!checked)
+              }}
+              t={t}
+            />
             {shouldShowCameraPanel ? (
               <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
                 <div
@@ -959,21 +970,14 @@ export function AuditScanForm({
             ) : null}
           </div>
 
-          <FastModeToggle
-            checked={fastMode}
-            onChange={(checked) => {
-              setFastMode(checked)
-              setShowDetailedFields(!checked)
-            }}
-            t={t}
-          />
-
           {showPendingQueue ? (
             <PendingQueuePanel
               items={pendingQueuePreview}
               total={pendingCount}
-              pendingHref={`/${locale}/audit/rounds/${roundId}/pending`}
+              pendingHref={pendingListHref}
               onSelect={selectPendingQueueItem}
+              expanded={pendingQueueExpanded}
+              onExpandedChange={setPendingQueueExpanded}
               t={t}
             />
           ) : null}
@@ -1265,33 +1269,70 @@ type AuditScanTranslator = {
   (key: string, values: Record<string, string | number | Date>): string
 }
 
-function FastModeToggle({
-  checked,
-  onChange,
+function AuditScanOptionStrip({
+  continuousScan,
+  onContinuousScanChange,
+  fastMode,
+  onFastModeChange,
   t,
 }: {
-  checked: boolean
-  onChange: (checked: boolean) => void
+  continuousScan: boolean
+  onContinuousScanChange: (checked: boolean) => void
+  fastMode: boolean
+  onFastModeChange: (checked: boolean) => void
   t: AuditScanTranslator
 }) {
   return (
-    <div className="md:col-span-2 flex flex-col gap-2 rounded-md border border-border bg-background px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-      <label className="inline-flex min-h-10 cursor-pointer items-center gap-3 text-sm">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(event) => onChange(event.target.checked)}
-          className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+    <div role="group" aria-label={t("scanOptions")} className="mt-3 overflow-hidden rounded-md border border-border/80 bg-background">
+      <div className="grid divide-y divide-border/80 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+        <ScanOptionToggle
+          checked={fastMode}
+          label={t("fastMode")}
+          description={fastMode ? t("fastModeCompactHelp") : t("detailModeCompactHelp")}
+          onChange={onFastModeChange}
         />
-        <span className="font-semibold text-foreground">{t("fastMode")}</span>
-        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${checked ? "bg-info/15 text-info" : "bg-warning/15 text-warning"}`}>
-          {checked ? t("fastModeOn") : t("detailModeOn")}
-        </span>
-      </label>
-      <div className="text-xs text-muted-foreground">
-        {checked ? t("fastModeCompactHelp") : t("detailModeCompactHelp")}
+        <ScanOptionToggle
+          checked={continuousScan}
+          label={t("continuousScan")}
+          description={t("continuousScanHelp")}
+          onChange={onContinuousScanChange}
+        />
       </div>
     </div>
+  )
+}
+
+function ScanOptionToggle({
+  checked,
+  label,
+  description,
+  onChange,
+}: {
+  checked: boolean
+  label: string
+  description: string
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      title={description}
+      onClick={() => onChange(!checked)}
+      className="flex min-h-12 w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-semibold">{label}</span>
+        <span className="mt-0.5 hidden text-xs text-muted-foreground lg:block">{description}</span>
+      </span>
+      <span
+        aria-hidden="true"
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? "bg-primary" : "bg-muted-foreground/30"}`}
+      >
+        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
+      </span>
+    </button>
   )
 }
 
@@ -1307,6 +1348,7 @@ function ScanResultPanel({
   const meta = getScanFeedbackMeta(feedback.status, t)
   const Icon = meta.icon
   const previousScans = recentScans.slice(1, 6)
+  const [recentScansExpanded, setRecentScansExpanded] = useState(false)
 
   return (
     <div className={`md:col-span-2 rounded-md border p-4 ${meta.cardClass}`}>
@@ -1332,11 +1374,23 @@ function ScanResultPanel({
       </div>
       {previousScans.length > 0 ? (
         <div className="mt-3 rounded-md border border-border/80 bg-surface/80 p-3">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <div className="text-xs font-semibold text-foreground">{t("recentScansTitle")}</div>
-            <div className="text-xs text-muted-foreground">{t("recentScansHelp")}</div>
-          </div>
-          <div className="grid gap-1.5">
+          <button
+            type="button"
+            aria-expanded={recentScansExpanded}
+            aria-controls="audit-recent-scans-list"
+            onClick={() => setRecentScansExpanded((current) => !current)}
+            className="flex min-h-10 w-full items-center justify-between gap-3 rounded-md px-1 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <span className="min-w-0">
+              <span className="block text-xs font-semibold text-foreground">{t("recentScansTitle")}</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">{t("recentScansHelp")}</span>
+            </span>
+            <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary">
+              {t(recentScansExpanded ? "recentScansCollapse" : "recentScansExpand")}
+              <ChevronDown className={`h-4 w-4 transition-transform ${recentScansExpanded ? "rotate-180" : ""}`} />
+            </span>
+          </button>
+          <div id="audit-recent-scans-list" hidden={!recentScansExpanded} className="mt-2 grid gap-1.5">
             {previousScans.map((scan) => (
               <RecentScanCompactRow key={scan.id} scan={scan} t={t} />
             ))}
@@ -1367,16 +1421,20 @@ function PendingQueuePanel({
   total,
   pendingHref,
   onSelect,
+  expanded,
+  onExpandedChange,
   t,
 }: {
   items: AuditScanItem[]
   total: number
   pendingHref: string
   onSelect: (item: AuditScanItem) => void
+  expanded: boolean
+  onExpandedChange: (expanded: boolean) => void
   t: AuditScanTranslator
 }) {
   return (
-    <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
+    <div id="audit-pending-queue-panel" className="md:col-span-2 rounded-md border border-border bg-background p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -1388,38 +1446,52 @@ function PendingQueuePanel({
           </div>
           <div className="mt-1 text-xs text-muted-foreground">{t("pendingQueuePanelHelp")}</div>
         </div>
-        <Link
-          href={pendingHref}
-          className="inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-        >
-          {t("pendingQueueOpenFull")}
-        </Link>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-controls="audit-pending-queue-content"
+            onClick={() => onExpandedChange(!expanded)}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            {t(expanded ? "pendingQueueCollapse" : "pendingQueueExpand")}
+            <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
+          </button>
+          <Link
+            href={pendingHref}
+            className="inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            {t("pendingQueueOpenFull")}
+          </Link>
+        </div>
       </div>
 
-      {items.length === 0 ? (
-        <div className="mt-3 rounded-md border border-dashed border-border bg-surface p-4 text-sm text-muted-foreground">
-          {t("pendingQueueEmpty")}
-        </div>
-      ) : (
-        <div className="mt-3 grid gap-2">
-          {items.map((item) => (
-            <div key={item.id} className="flex flex-col gap-3 rounded-md border border-border bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-foreground">{item.assetTag}</div>
-                <div className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.label}</div>
+      <div id="audit-pending-queue-content" hidden={!expanded}>
+        {items.length === 0 ? (
+          <div className="mt-3 rounded-md border border-dashed border-border bg-surface p-4 text-sm text-muted-foreground">
+            {t("pendingQueueEmpty")}
+          </div>
+        ) : (
+          <div className="mt-3 grid gap-2">
+            {items.map((item) => (
+              <div key={item.id} className="flex flex-col gap-3 rounded-md border border-border bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-foreground">{item.assetTag}</div>
+                  <div className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.label}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onSelect(item)}
+                  className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <ScanLine className="h-4 w-4" />
+                  {t("pendingQueueSelect")}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => onSelect(item)}
-                className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <ScanLine className="h-4 w-4" />
-                {t("pendingQueueSelect")}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
