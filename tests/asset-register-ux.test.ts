@@ -54,6 +54,17 @@ test("asset register table starts in the operational column preset before stored
   assert.doesNotMatch(source, /useState<Set<AssetRegisterColumnKey>>\(new Set\(assetRegisterColumnPresets\.all\)\)/)
 })
 
+test("asset register desktop table keeps key columns frozen during horizontal scroll", () => {
+  const source = registerTableSource()
+
+  assert.match(source, /assetRegisterStickyFirstColumnClasses/)
+  assert.match(source, /assetRegisterStickyNameColumnClasses/)
+  assert.match(source, /assetRegisterStickyActionsColumnClasses/)
+  assert.match(source, /visibleColumns\.has\("assetTag"\) \? assetRegisterStickyNameColumnClasses : assetRegisterStickyFirstColumnClasses/)
+  assert.match(source, /right-0/)
+  assert.match(source, /group-hover:bg-accent\/50/)
+})
+
 test("asset register keeps table utility controls out of the mobile-first path", () => {
   const source = registerTableSource()
 
@@ -116,6 +127,33 @@ test("asset register surfaces scoped brand and model drilldown filters", () => {
   assert.match(source, /name="modelId"/)
 })
 
+test("asset register summarizes active filters and provides a clear all action", () => {
+  const source = assetsPageSource()
+
+  assert.match(source, /activeFilterChips/)
+  assert.match(source, /data-asset-active-filters/)
+  assert.match(source, /clearAllFilters/)
+  assert.match(source, /buildAssetQueryString\(filters, \{\s*search: "",\s*companyId: "",\s*branchId: ""/s)
+})
+
+test("asset register desktop table exposes horizontal scroll affordance", () => {
+  const source = registerTableSource()
+
+  assert.match(source, /data-asset-table-scroll-hint/)
+  assert.match(source, /tableScrollHint/)
+  assert.match(source, /overscroll-x-contain/)
+})
+
+test("asset register table improves frozen name readability and row focus", () => {
+  const tableSource = registerTableSource()
+  const rowSource = readFileSync("src/components/ui/clickable-table-row.tsx", "utf8")
+
+  assert.match(tableSource, /title=\{asset\.name\}/)
+  assert.match(tableSource, /line-clamp-2 font-medium leading-snug/)
+  assert.match(rowSource, /focus-visible:ring-2/)
+  assert.match(rowSource, /focus-visible:ring-inset/)
+})
+
 test("asset register UX messages exist in Thai and English", () => {
   const keys = [
     "quickFilters",
@@ -147,6 +185,9 @@ test("asset register UX messages exist in Thai and English", () => {
     "columnPresetAudit",
     "activeDrilldownFilters",
     "clearDrilldownFilter",
+    "activeFilters",
+    "clearAllFilters",
+    "tableScrollHint",
   ]
 
   for (const locale of ["th", "en"] as const) {

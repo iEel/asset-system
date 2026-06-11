@@ -117,6 +117,7 @@ type AssetRegisterTableProps = {
     columnPresetOperations: string
     columnPresetAccounting: string
     columnPresetAudit: string
+    tableScrollHint: string
     next: string
     status: string
     statusHelpTitle: string
@@ -137,6 +138,14 @@ type AssetRegisterTableProps = {
 }
 
 const previewableAssetPhotoTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"])
+const assetRegisterStickyFirstColumnClasses = "sticky left-0"
+const assetRegisterStickyNameColumnClasses = "sticky [left:11rem]"
+const assetRegisterStickyActionsColumnClasses = "sticky right-0"
+const assetRegisterStickyHeaderColumnClasses = "z-30 bg-muted/95"
+const assetRegisterStickyBodyColumnClasses = "z-20 bg-surface group-hover:bg-accent/50 group-focus:bg-accent/50"
+const assetRegisterAssetTagColumnClasses = "w-44 min-w-44 max-w-44"
+const assetRegisterNameColumnClasses = "w-80 min-w-80 max-w-80"
+const assetRegisterActionsColumnClasses = "w-36 min-w-36"
 
 export function AssetRegisterTable({
   locale,
@@ -167,6 +176,7 @@ export function AssetRegisterTable({
   )
   const allCurrentPageSelected = assets.length > 0 && assets.every((asset) => selectedIds.has(asset.id))
   const visibleColumnCount = assetRegisterColumnOrder.filter((column) => visibleColumns.has(column)).length
+  const stickyNameColumnClass = visibleColumns.has("assetTag") ? assetRegisterStickyNameColumnClasses : assetRegisterStickyFirstColumnClasses
   const assetStatusHelp = {
     title: labels.statusHelpTitle,
     description: labels.statusHelpDescription,
@@ -548,7 +558,14 @@ export function AssetRegisterTable({
         )}
       </div>
 
-      <div className={`${getDesktopTableOnlyClasses()} overflow-x-auto`}>
+      <div
+        data-asset-table-scroll-hint
+        className={`${getDesktopTableOnlyClasses()} border-t border-border bg-muted/20 px-4 py-2 text-xs text-muted-foreground`}
+      >
+        {labels.tableScrollHint}
+      </div>
+
+      <div className={`${getDesktopTableOnlyClasses()} relative overflow-x-auto overscroll-x-contain`}>
         <table className="min-w-full divide-y divide-border text-sm">
           <thead className="bg-muted/40">
             <tr>
@@ -562,10 +579,24 @@ export function AssetRegisterTable({
                 />
               </ColumnHeader>
               {visibleColumns.has("assetTag") && (
-                <SortableHeader filters={filters} field="assetTag" label={labels.assetTag} buildHref={buildHref} />
+                <SortableHeader
+                  filters={filters}
+                  field="assetTag"
+                  label={labels.assetTag}
+                  buildHref={buildHref}
+                  className={`${assetRegisterStickyHeaderColumnClasses} ${assetRegisterStickyFirstColumnClasses} ${assetRegisterAssetTagColumnClasses} border-r border-border`}
+                  linkClassName="block truncate"
+                />
               )}
               {visibleColumns.has("name") && (
-                <SortableHeader filters={filters} field="name" label={labels.assetName} buildHref={buildHref} />
+                <SortableHeader
+                  filters={filters}
+                  field="name"
+                  label={labels.assetName}
+                  buildHref={buildHref}
+                  className={`${assetRegisterStickyHeaderColumnClasses} ${stickyNameColumnClass} ${assetRegisterNameColumnClasses} border-r border-border`}
+                  linkClassName="block truncate"
+                />
               )}
               {visibleColumns.has("category") && <ColumnHeader>{labels.category}</ColumnHeader>}
               {visibleColumns.has("companyBranch") && <ColumnHeader>{labels.company}</ColumnHeader>}
@@ -585,7 +616,12 @@ export function AssetRegisterTable({
               {visibleColumns.has("purchasePrice") && (
                 <SortableHeader filters={filters} field="purchasePrice" label={labels.purchasePrice} buildHref={buildHref} />
               )}
-              <ColumnHeader align="right">{labels.actions}</ColumnHeader>
+              <th
+                scope="col"
+                className={`${assetRegisterStickyHeaderColumnClasses} ${assetRegisterStickyActionsColumnClasses} ${assetRegisterActionsColumnClasses} border-l border-border px-4 py-3 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground`}
+              >
+                {labels.actions}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -601,6 +637,7 @@ export function AssetRegisterTable({
                   key={asset.id}
                   href={buildAssetDetailHref(asset.id)}
                   label={`${labels.detail}: ${asset.assetTag}`}
+                  className="group"
                 >
                   <td className="whitespace-nowrap px-4 py-3">
                     <input
@@ -612,10 +649,16 @@ export function AssetRegisterTable({
                     />
                   </td>
                   {visibleColumns.has("assetTag") && (
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{asset.assetTag}</td>
+                    <td
+                      className={`${assetRegisterStickyBodyColumnClasses} ${assetRegisterStickyFirstColumnClasses} ${assetRegisterAssetTagColumnClasses} border-r border-border px-4 py-3 font-medium text-foreground`}
+                    >
+                      <span className="block truncate">{asset.assetTag}</span>
+                    </td>
                   )}
                   {visibleColumns.has("name") && (
-                    <td className="min-w-56 px-4 py-3 text-foreground">
+                    <td
+                      className={`${assetRegisterStickyBodyColumnClasses} ${stickyNameColumnClass} ${assetRegisterNameColumnClasses} border-r border-border px-4 py-3 text-foreground`}
+                    >
                       <div className="flex items-center gap-3">
                         <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">
                           {asset.photo && previewableAssetPhotoTypes.has(asset.photo.fileType) ? (
@@ -632,7 +675,9 @@ export function AssetRegisterTable({
                           )}
                         </div>
                         <div className="min-w-0">
-                          <div className="truncate font-medium">{asset.name}</div>
+                          <div className="line-clamp-2 font-medium leading-snug" title={asset.name}>
+                            {asset.name}
+                          </div>
                           {asset.serialNumber && <div className="truncate text-xs text-muted-foreground">{asset.serialNumber}</div>}
                         </div>
                       </div>
@@ -666,7 +711,9 @@ export function AssetRegisterTable({
                   {visibleColumns.has("purchasePrice") && (
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.purchasePrice)}</td>
                   )}
-                  <td className="whitespace-nowrap px-4 py-3 text-right">
+                  <td
+                    className={`${assetRegisterStickyBodyColumnClasses} ${assetRegisterStickyActionsColumnClasses} ${assetRegisterActionsColumnClasses} border-l border-border px-4 py-3 text-right`}
+                  >
                     <div className="inline-flex items-center gap-1">
                       <Link
                         href={buildAssetDetailHref(asset.id)}
@@ -815,21 +862,28 @@ function SortableHeader({
   field,
   label,
   buildHref,
+  className = "",
+  linkClassName = "",
 }: {
   filters: { sort: string; direction: string }
   field: string
   label: string
   buildHref: (overrides: { page?: number; sort?: string; direction?: string }) => string
+  className?: string
+  linkClassName?: string
 }) {
   const direction = filters.sort === field && filters.direction === "asc" ? "desc" : "asc"
   const suffix = filters.sort === field ? (filters.direction === "asc" ? " ↑" : " ↓") : ""
   return (
-    <ColumnHeader>
-      <Link href={buildHref({ sort: field, direction, page: 1 })} className="hover:text-primary">
+    <th
+      scope="col"
+      className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground ${className}`}
+    >
+      <Link href={buildHref({ sort: field, direction, page: 1 })} className={`hover:text-primary ${linkClassName}`}>
         {label}
         {suffix}
       </Link>
-    </ColumnHeader>
+    </th>
   )
 }
 

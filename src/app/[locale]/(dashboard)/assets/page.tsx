@@ -43,6 +43,8 @@ type AssetFilterLabels = {
   quickFiltersHelp: string
   activeDrilldownFilters: string
   clearDrilldownFilter: string
+  activeFilters: string
+  clearAllFilters: string
   quickFilterAll: string
   dataQualitySerial: string
   dataQualityPhoto: string
@@ -275,6 +277,8 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           quickFiltersHelp: t("quickFiltersHelp"),
           activeDrilldownFilters: t("activeDrilldownFilters"),
           clearDrilldownFilter: t("clearDrilldownFilter"),
+          activeFilters: t("activeFilters"),
+          clearAllFilters: t("clearAllFilters"),
           quickFilterAll: t("quickFilterAll"),
           dataQualitySerial: t("dataQualitySerial"),
           dataQualityPhoto: t("dataQualityPhoto"),
@@ -333,6 +337,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           columnPresetOperations: t("columnPresetOperations"),
           columnPresetAccounting: t("columnPresetAccounting"),
           columnPresetAudit: t("columnPresetAudit"),
+          tableScrollHint: t("tableScrollHint"),
           category: t("category"),
           columns: t("columns"),
           company: t("company"),
@@ -540,6 +545,103 @@ function AssetFilters({
     { key: "lifecycle", label: labels.quickFilterGroupLifecycle, filters: lifecycleQuickFilters },
   ].filter((group) => group.filters.length > 0)
   const hasAdvancedFilters = Boolean(filters.statusId || filters.conditionId || filters.ownershipType || filters.pageSize !== 25)
+  const selectedCompany = companies.find((company) => company.id === filters.companyId)
+  const selectedBranch = branches.find((branch) => branch.id === filters.branchId)
+  const selectedCategory = categories.find((category) => category.id === filters.categoryId)
+  const selectedStatus = statuses.find((status) => status.id === filters.statusId)
+  const selectedCondition = conditions.find((condition) => condition.id === filters.conditionId)
+  const selectedDataQualityFilter = dataQualityQuickFilters.find((quickFilter) => quickFilter.active)
+  const selectedCrossScopeFilter = crossScopeQuickFilters.find((quickFilter) => quickFilter.active)
+  const clearAllFiltersHref = `/${locale}/assets?${buildAssetQueryString(filters, {
+    search: "",
+    companyId: "",
+    branchId: "",
+    categoryId: "",
+    brandId: "",
+    modelId: "",
+    statusId: "",
+    conditionId: "",
+    ownershipType: "",
+    custodianId: "",
+    supplierId: "",
+    dataQuality: "",
+    crossScope: "",
+    page: 1,
+    pageSize: 25,
+  })}`
+  const activeFilterChips = [
+    filters.search
+      ? {
+          key: "search",
+          label: `${labels.search}: ${filters.search}`,
+          href: `/${locale}/assets?${buildAssetQueryString(filters, { search: "", page: 1 })}`,
+        }
+      : null,
+    filters.companyId
+      ? {
+          key: "company",
+          label: `${labels.company}: ${selectedCompany ? `${selectedCompany.code} - ${selectedCompany.nameTh}` : filters.companyId}`,
+          href: `/${locale}/assets?${buildAssetQueryString(filters, { companyId: "", branchId: "", page: 1 })}`,
+        }
+      : null,
+    filters.branchId
+      ? {
+          key: "branch",
+          label: `${labels.branch}: ${selectedBranch ? `${selectedBranch.company.code} / ${selectedBranch.code} - ${selectedBranch.name}` : filters.branchId}`,
+          href: `/${locale}/assets?${buildAssetQueryString(filters, { branchId: "", page: 1 })}`,
+        }
+      : null,
+    filters.categoryId
+      ? {
+          key: "category",
+          label: `${labels.category}: ${selectedCategory ? `${selectedCategory.code} - ${selectedCategory.name}` : filters.categoryId}`,
+          href: `/${locale}/assets?${buildAssetQueryString(filters, { categoryId: "", page: 1 })}`,
+        }
+      : null,
+    filters.statusId
+      ? {
+          key: "status",
+          label: `${labels.status}: ${selectedStatus?.nameTh ?? filters.statusId}`,
+          href: `/${locale}/assets?${buildAssetQueryString(filters, { statusId: "", page: 1 })}`,
+        }
+      : null,
+    filters.conditionId
+      ? {
+          key: "condition",
+          label: `${labels.condition}: ${selectedCondition?.nameTh ?? filters.conditionId}`,
+          href: `/${locale}/assets?${buildAssetQueryString(filters, { conditionId: "", page: 1 })}`,
+        }
+      : null,
+    filters.ownershipType
+      ? {
+          key: "ownershipType",
+          label: `${labels.ownershipType}: ${labels.ownershipTypes[filters.ownershipType] ?? filters.ownershipType}`,
+          href: `/${locale}/assets?${buildAssetQueryString(filters, { ownershipType: "", page: 1 })}`,
+        }
+      : null,
+    filters.dataQuality
+      ? {
+          key: "dataQuality",
+          label: selectedDataQualityFilter?.label ?? filters.dataQuality,
+          href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "", page: 1 })}`,
+        }
+      : null,
+    filters.crossScope
+      ? {
+          key: "crossScope",
+          label: selectedCrossScopeFilter?.label ?? filters.crossScope,
+          href: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "", page: 1 })}`,
+        }
+      : null,
+    filters.pageSize !== 25
+      ? {
+          key: "pageSize",
+          label: `${labels.rowsPerPage}: ${filters.pageSize}`,
+          href: `/${locale}/assets?${buildAssetQueryString(filters, { pageSize: 25, page: 1 })}`,
+        }
+      : null,
+    ...activeDrilldownFilters,
+  ].filter((chip): chip is { key: string; label: string; href: string } => Boolean(chip))
 
   function buildStatusQuickFilter(key: string, label: string, status?: { id: string; name: string; nameTh: string }) {
     if (!status) return null
@@ -584,21 +686,31 @@ function AssetFilters({
           ))}
         </div>
       </div>
-      {activeDrilldownFilters.length > 0 ? (
-        <div className="mb-4 rounded-md border border-primary/20 bg-primary/5 px-3 py-2">
-          <div className="text-xs font-semibold uppercase tracking-normal text-primary">{labels.activeDrilldownFilters}</div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {activeDrilldownFilters.map((filter) => (
-              <Link
-                key={filter.key}
-                href={filter.href}
-                aria-label={`${labels.clearDrilldownFilter}: ${filter.label}`}
-                className="inline-flex min-h-8 items-center gap-2 rounded-full border border-primary/20 bg-surface px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
-              >
-                <span>{filter.label}</span>
-                <span aria-hidden="true" className="text-xs text-primary/70">x</span>
-              </Link>
-            ))}
+      {activeFilterChips.length > 0 ? (
+        <div data-asset-active-filters className="mb-4 rounded-md border border-primary/20 bg-primary/5 px-3 py-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <div className="text-xs font-semibold uppercase tracking-normal text-primary">{labels.activeFilters}</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {activeFilterChips.map((filter) => (
+                  <Link
+                    key={filter.key}
+                    href={filter.href}
+                    aria-label={`${labels.clearDrilldownFilter}: ${filter.label}`}
+                    className="inline-flex min-h-8 max-w-full items-center gap-2 rounded-full border border-primary/20 bg-surface px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+                  >
+                    <span className="truncate">{filter.label}</span>
+                    <span aria-hidden="true" className="text-xs text-primary/70">x</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <Link
+              href={clearAllFiltersHref}
+              className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-surface px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+            >
+              {labels.clearAllFilters}
+            </Link>
           </div>
         </div>
       ) : null}

@@ -37,7 +37,7 @@ export function ClickableTableRow({
         event.preventDefault()
         openDetail()
       }}
-      className={`cursor-pointer hover:bg-accent/50 focus:bg-accent/50 focus:outline-none ${className}`}
+      className={`cursor-pointer hover:bg-accent/50 focus:bg-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${className}`}
     >
       {children}
     </tr>

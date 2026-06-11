@@ -98,7 +98,7 @@ Important data semantics:
 
 | Feature | Details |
 |---|---|
-| Asset list | Asset Register page with primary filters, grouped URL-backed operational quick filters, collapsible advanced filters, responsive table/card behavior, row navigation, search that includes the current custodian employee code, master-data drilldown filters, and return-to-list navigation that preserves page/filter/sort/search state |
+| Asset list | Asset Register page with primary filters, grouped URL-backed operational quick filters, a consolidated active-filter summary with clear-all action, collapsible advanced filters, responsive table/card behavior, row navigation, search that includes the current custodian employee code, master-data drilldown filters, and return-to-list navigation that preserves page/filter/sort/search state |
 | Asset detail | Unified page with overview, specs, QR, photos/files, components, purchase docs, movement, maintenance, audit, handover/return, notes, and an explicit Back action to the originating register view |
 | Asset create/edit | Single asset form with owner/tag scope, category/brand/model, serial, custodian, location, purchase/warranty, custom fields, photos/files, and a fixed bottom Save/Cancel action bar for long forms; edit mode preserves saved cross-company custodians and cross-branch locations by opening the wider selector automatically |
 | Asset clone | Asset Register and Asset Detail can open `/assets/new?cloneFrom={assetId}` to create a new asset from an existing record, preserving the originating register view when launched from the list. The clone draft copies shared master, ownership, location, purchase/warranty, custom-field, and linked purchase-document data while leaving Asset Tag, Serial Number, and FA/accounting code blank and showing a review banner. |
@@ -113,7 +113,7 @@ Important data semantics:
 | Custom fields | Category-level custom field templates rendered automatically in asset forms |
 | Model specs | Structured asset model specs with legacy text parsing and summary display |
 | Asset/model photos | Asset photos and model photos stored as attachments; Asset Register thumbnails prefer model photos first, then fall back to asset photos, while detail/evidence flows still show both |
-| Column presets | Asset Register table defaults to the Operations preset before stored browser preferences load, supports persisted All, Operations, Accounting, and Audit column presets per browser, and keeps column/export/template controls desktop-only while mobile cards stay focused on lookup and row actions |
+| Column presets | Asset Register table defaults to the Operations preset before stored browser preferences load, supports persisted All, Operations, Accounting, and Audit column presets per browser, keeps Asset Tag/name sticky on the left and actions sticky on the right, shows a horizontal-scroll hint for wide desktop tables, clamps long asset names to two readable lines, and keeps column/export/template controls desktop-only while mobile cards stay focused on lookup and row actions |
 | Purchase documents | Shared PO/Invoice/delivery/warranty/contract documents can link to multiple assets |
 | Components | Parent-child asset assembly with install/remove, role, slot, history, validation, movement logs, and a three-lane Asset Detail relationship map that keeps Asset Tags readable before names/badges |
 | Status correction | Guarded correction workflow for protected lifecycle statuses with reason, movement, audit trail |
