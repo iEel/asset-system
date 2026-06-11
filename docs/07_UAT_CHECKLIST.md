@@ -27,14 +27,15 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Leave asset tag blank and confirm auto-generation.
 - [ ] Import assets from Excel.
 - [ ] Export asset register.
-- [ ] On Asset Register, confirm quick filters for data-quality gaps and lifecycle statuses update the list while preserving existing search/company/branch/category context.
+- [ ] On Asset Register, confirm quick filters are grouped by data quality, ownership/custody scope, and lifecycle status; each filter updates the list while preserving existing search/company/branch/category context.
 - [ ] On Asset Register, apply cross-scope quick filters for all cross-scope, custodian different company, custodian different branch, and current location different branch; confirm the list and Asset Register export show matching cross-scope flags and owner/custodian/location branch context.
 - [ ] On Dashboard, confirm the cross-scope KPI, urgent-work card, and review panel show active assets held or located outside the owner/tag scope, and confirm each drilldown opens Asset Register with the expected `crossScope` filter.
-- [ ] On Asset Register desktop width, confirm the filter panel fills the right side without an empty final column: first row shows search/company/branch/category and second row shows status/condition/ownership/rows/filter action.
+- [ ] On Asset Register desktop width, confirm search/company/branch/category remain visible as primary filters and status/condition/ownership/rows are hidden under the advanced filter section by default, reopening automatically when active.
+- [ ] On Asset Register mobile width, confirm quick-filter groups scroll horizontally without page overflow, advanced filters stay collapsed by default, desktop column/export/template utility buttons are hidden, and the first asset cards appear before the import helper.
 - [ ] From Category, Brand, and Brand/Model master data counts, click model/asset counts and confirm the destination opens the expected Brand/Model workspace or Asset Register drilldown with a removable active filter chip where applicable.
 - [ ] Search Asset Register by the current custodian's employee code and confirm only assets held by that employee are returned; do not expect matches from repair reporter/assignee history.
-- [ ] Confirm Asset Register column presets switch between All, Operations, Accounting, and Audit views and persist after page reload in the same browser.
-- [ ] Confirm the Asset Register import helper starts collapsed and opens only after clicking the import helper button.
+- [ ] Confirm Asset Register starts with the Operations table preset before browser preferences are saved, then column presets switch between All, Operations, Accounting, and Audit views and persist after page reload in the same browser.
+- [ ] Confirm the Asset Register import helper appears after the table/card list, starts collapsed, and opens only after clicking the import helper button.
 - [ ] Print QR labels.
 - [ ] Scan QR and open asset detail.
 - [ ] On a mobile device, confirm `/th/asset-management/scan` defaults to the generic rear camera option, shows an undistorted 4:3 camera preview and smaller square QR guidance frame; center only the QR code in the frame, adjust distance until the QR is sharp, and confirm the scanned asset detail opens. Asset QR mode should decode from the native-resolution video frame through ZXing without native `BarcodeDetector`, `html5-qrcode` CSS-pixel canvas downsampling, or mirror-flip retries.

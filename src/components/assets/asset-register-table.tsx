@@ -151,7 +151,7 @@ export function AssetRegisterTable({
 }: AssetRegisterTableProps) {
   const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [visibleColumns, setVisibleColumns] = useState<Set<AssetRegisterColumnKey>>(new Set(assetRegisterColumnPresets.all))
+  const [visibleColumns, setVisibleColumns] = useState<Set<AssetRegisterColumnKey>>(new Set(assetRegisterColumnPresets.operations))
   const [columnPreferencesLoaded, setColumnPreferencesLoaded] = useState(false)
   const [bulkUpdateOpen, setBulkUpdateOpen] = useState(false)
   const [bulkSaving, setBulkSaving] = useState(false)
@@ -198,7 +198,7 @@ export function AssetRegisterTable({
           setVisibleColumns(new Set(normalizeAssetRegisterColumns(JSON.parse(storedColumns))))
         }
       } catch {
-        setVisibleColumns(new Set(assetRegisterColumnPresets.all))
+        setVisibleColumns(new Set(assetRegisterColumnPresets.operations))
       } finally {
         setColumnPreferencesLoaded(true)
       }
@@ -362,7 +362,7 @@ export function AssetRegisterTable({
         <div className="text-sm text-muted-foreground">
           {fromRow}-{toRow} {labels.of} {total}
         </div>
-        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+        <div className="hidden min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end md:flex">
           <details className="relative min-w-0">
             <summary className="inline-flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium hover:bg-accent sm:h-9 sm:min-h-0 sm:w-auto">
               <Columns3 className="h-4 w-4" />

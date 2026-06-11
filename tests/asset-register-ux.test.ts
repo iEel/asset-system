@@ -47,6 +47,19 @@ test("asset register table exposes persisted column presets", () => {
   assert.match(source, /columnPresetAudit/)
 })
 
+test("asset register table starts in the operational column preset before stored preferences load", () => {
+  const source = registerTableSource()
+
+  assert.match(source, /new Set\(assetRegisterColumnPresets\.operations\)/)
+  assert.doesNotMatch(source, /useState<Set<AssetRegisterColumnKey>>\(new Set\(assetRegisterColumnPresets\.all\)\)/)
+})
+
+test("asset register keeps table utility controls out of the mobile-first path", () => {
+  const source = registerTableSource()
+
+  assert.match(source, /hidden min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end md:flex/)
+})
+
 test("asset register import wizard starts collapsed and expands on demand", () => {
   const source = importPanelSource()
 
@@ -80,6 +93,17 @@ test("asset register page exposes operational quick filters", () => {
   assert.match(source, /status\.name === "Pending Repair"/)
 })
 
+test("asset register groups quick filters and collapses advanced filters", () => {
+  const source = assetsPageSource()
+
+  assert.match(source, /quickFilterGroups/)
+  assert.match(source, /quickFilterGroupDataQuality/)
+  assert.match(source, /quickFilterGroupCrossScope/)
+  assert.match(source, /quickFilterGroupLifecycle/)
+  assert.match(source, /advancedFilters/)
+  assert.match(source, /data-asset-advanced-filters/)
+})
+
 test("asset register surfaces scoped brand and model drilldown filters", () => {
   const source = assetsPageSource()
 
@@ -109,6 +133,11 @@ test("asset register UX messages exist in Thai and English", () => {
     "quickFilterReady",
     "quickFilterPendingRepair",
     "quickFilterUnderMaintenance",
+    "quickFilterGroupDataQuality",
+    "quickFilterGroupCrossScope",
+    "quickFilterGroupLifecycle",
+    "advancedFilters",
+    "advancedFiltersHelp",
     "openImportWizard",
     "collapseImportWizard",
     "columnPresets",

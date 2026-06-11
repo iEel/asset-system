@@ -56,6 +56,11 @@ type AssetFilterLabels = {
   quickFilterReady: string
   quickFilterPendingRepair: string
   quickFilterUnderMaintenance: string
+  quickFilterGroupDataQuality: string
+  quickFilterGroupCrossScope: string
+  quickFilterGroupLifecycle: string
+  advancedFilters: string
+  advancedFiltersHelp: string
   statusHelpTitle: string
   statusHelpDescription: string
   statusHelpReady: string
@@ -283,6 +288,11 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           quickFilterReady: t("quickFilterReady"),
           quickFilterPendingRepair: t("quickFilterPendingRepair"),
           quickFilterUnderMaintenance: t("quickFilterUnderMaintenance"),
+          quickFilterGroupDataQuality: t("quickFilterGroupDataQuality"),
+          quickFilterGroupCrossScope: t("quickFilterGroupCrossScope"),
+          quickFilterGroupLifecycle: t("quickFilterGroupLifecycle"),
+          advancedFilters: t("advancedFilters"),
+          advancedFiltersHelp: t("advancedFiltersHelp"),
           statusHelpTitle: t("statusHelpTitle"),
           statusHelpDescription: t("statusHelpDescription"),
           statusHelpReady: t("statusHelpReady"),
@@ -298,51 +308,6 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           conditionHelpDamaged: t("conditionHelpDamaged"),
           conditionHelpNeedsReview: t("conditionHelpNeedsReview"),
           conditionHelpMissing: t("conditionHelpMissing"),
-        }}
-      />
-
-      <AssetImportPreviewPanel
-        labels={{
-          importPreview: t("importPreview"),
-          chooseFile: t("chooseImportFile"),
-          previewReady: t("previewReady"),
-          previewErrors: t("previewErrors"),
-          previewRows: t("previewRows"),
-          row: t("row"),
-          status: t("status"),
-          errors: t("errors"),
-          assetName: t("assetName"),
-          assetTag: t("assetTag"),
-          confirmImport: t("confirmImport"),
-          fileRequired: t("fileRequired"),
-          importSuccess: t("importSuccess"),
-          importing: t("importing"),
-          wizardTitle: t("importWizardTitle"),
-          wizardHelp: t("importWizardHelp"),
-          wizardStepTemplate: t("importWizardStepTemplate"),
-          wizardStepUpload: t("importWizardStepUpload"),
-          wizardStepReview: t("importWizardStepReview"),
-          wizardStepImport: t("importWizardStepImport"),
-          wizardStepComplete: t("importWizardStepComplete"),
-          currentStep: t("importWizardCurrentStep"),
-          selectedFile: t("selectedImportFile"),
-          issueSummaryTitle: t("importIssueSummaryTitle"),
-          issueSummaryHelp: t("importIssueSummaryHelp"),
-          affectedRows: t("affectedRows"),
-          mappingTitle: t("importMappingTitle"),
-          mappingHelp: t("importMappingHelp"),
-          mappingMatched: t("importMappingMatched"),
-          mappingMissing: t("importMappingMissing"),
-          sourceColumn: t("importSourceColumn"),
-          importBatchTitle: t("importBatchTitle"),
-          importBatchHelp: t("importBatchHelp"),
-          importBatchId: t("importBatchId"),
-          importBatchStatusReady: t("importBatchStatusReady"),
-          importBatchStatusPartial: t("importBatchStatusPartial"),
-          importBatchStatusBlocked: t("importBatchStatusBlocked"),
-          importBatchStatusEmpty: t("importBatchStatusEmpty"),
-          openImportWizard: t("openImportWizard"),
-          collapseImportWizard: t("collapseImportWizard"),
         }}
       />
 
@@ -421,6 +386,51 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           conditionHelpMissing: t("conditionHelpMissing"),
         }}
       />
+
+      <AssetImportPreviewPanel
+        labels={{
+          importPreview: t("importPreview"),
+          chooseFile: t("chooseImportFile"),
+          previewReady: t("previewReady"),
+          previewErrors: t("previewErrors"),
+          previewRows: t("previewRows"),
+          row: t("row"),
+          status: t("status"),
+          errors: t("errors"),
+          assetName: t("assetName"),
+          assetTag: t("assetTag"),
+          confirmImport: t("confirmImport"),
+          fileRequired: t("fileRequired"),
+          importSuccess: t("importSuccess"),
+          importing: t("importing"),
+          wizardTitle: t("importWizardTitle"),
+          wizardHelp: t("importWizardHelp"),
+          wizardStepTemplate: t("importWizardStepTemplate"),
+          wizardStepUpload: t("importWizardStepUpload"),
+          wizardStepReview: t("importWizardStepReview"),
+          wizardStepImport: t("importWizardStepImport"),
+          wizardStepComplete: t("importWizardStepComplete"),
+          currentStep: t("importWizardCurrentStep"),
+          selectedFile: t("selectedImportFile"),
+          issueSummaryTitle: t("importIssueSummaryTitle"),
+          issueSummaryHelp: t("importIssueSummaryHelp"),
+          affectedRows: t("affectedRows"),
+          mappingTitle: t("importMappingTitle"),
+          mappingHelp: t("importMappingHelp"),
+          mappingMatched: t("importMappingMatched"),
+          mappingMissing: t("importMappingMissing"),
+          sourceColumn: t("importSourceColumn"),
+          importBatchTitle: t("importBatchTitle"),
+          importBatchHelp: t("importBatchHelp"),
+          importBatchId: t("importBatchId"),
+          importBatchStatusReady: t("importBatchStatusReady"),
+          importBatchStatusPartial: t("importBatchStatusPartial"),
+          importBatchStatusBlocked: t("importBatchStatusBlocked"),
+          importBatchStatusEmpty: t("importBatchStatusEmpty"),
+          openImportWizard: t("openImportWizard"),
+          collapseImportWizard: t("collapseImportWizard"),
+        }}
+      />
     </div>
   )
 }
@@ -474,13 +484,13 @@ function AssetFilters({
       labels.conditionHelpMissing,
     ],
   }
-  const quickFilters = [
-    {
-      key: "all",
-      label: labels.quickFilterAll,
-      href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "", statusId: "", crossScope: "", page: 1 })}`,
-      active: !filters.dataQuality && !filters.statusId && !filters.crossScope,
-    },
+  const allQuickFilter = {
+    key: "all",
+    label: labels.quickFilterAll,
+    href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "", statusId: "", crossScope: "", page: 1 })}`,
+    active: !filters.dataQuality && !filters.statusId && !filters.crossScope,
+  }
+  const dataQualityQuickFilters = [
     {
       key: "data-quality-serial",
       label: labels.dataQualitySerial,
@@ -511,14 +521,25 @@ function AssetFilters({
       href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: "responsibility", statusId: "", crossScope: "", page: 1 })}`,
       active: filters.dataQuality === "responsibility",
     },
+  ]
+  const crossScopeQuickFilters = [
     buildCrossScopeQuickFilter("cross-scope-all", labels.quickFilterCrossScopeAll, "all"),
     buildCrossScopeQuickFilter("cross-scope-custodian-company", labels.quickFilterCustodianCrossCompany, "custodian_company"),
     buildCrossScopeQuickFilter("cross-scope-custodian-branch", labels.quickFilterCustodianCrossBranch, "custodian_branch"),
     buildCrossScopeQuickFilter("cross-scope-location-branch", labels.quickFilterLocationCrossBranch, "location_branch"),
+  ].filter((quickFilter): quickFilter is { key: string; label: string; href: string; active: boolean } => Boolean(quickFilter))
+  const lifecycleQuickFilters = [
     buildStatusQuickFilter("ready", labels.quickFilterReady, readyStatus),
     buildStatusQuickFilter("pending-repair", labels.quickFilterPendingRepair, pendingRepairStatus),
     buildStatusQuickFilter("under-maintenance", labels.quickFilterUnderMaintenance, underMaintenanceStatus),
   ].filter((quickFilter): quickFilter is { key: string; label: string; href: string; active: boolean } => Boolean(quickFilter))
+  const quickFilters = [allQuickFilter, ...dataQualityQuickFilters, ...crossScopeQuickFilters, ...lifecycleQuickFilters]
+  const quickFilterGroups = [
+    { key: "data-quality", label: labels.quickFilterGroupDataQuality, filters: dataQualityQuickFilters },
+    { key: "cross-scope", label: labels.quickFilterGroupCrossScope, filters: crossScopeQuickFilters },
+    { key: "lifecycle", label: labels.quickFilterGroupLifecycle, filters: lifecycleQuickFilters },
+  ].filter((group) => group.filters.length > 0)
+  const hasAdvancedFilters = Boolean(filters.statusId || filters.conditionId || filters.ownershipType || filters.pageSize !== 25)
 
   function buildStatusQuickFilter(key: string, label: string, status?: { id: string; name: string; nameTh: string }) {
     if (!status) return null
@@ -543,23 +564,23 @@ function AssetFilters({
   return (
     <FilterPanel className="mb-4">
       <div className="mb-4 border-b border-border pb-4">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">{labels.quickFilters}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{labels.quickFiltersHelp}</p>
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">{labels.quickFilters}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{labels.quickFiltersHelp}</p>
+          </div>
+          <QuickFilterLink quickFilter={quickFilters[0]} />
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {quickFilters.map((quickFilter) => (
-            <Link
-              key={quickFilter.key}
-              href={quickFilter.href}
-              className={`inline-flex min-h-9 items-center rounded-full border px-3 text-sm font-medium transition-colors ${
-                quickFilter.active
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-surface text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
-            >
-              {quickFilter.label}
-            </Link>
+        <div className="mt-3 grid auto-cols-[minmax(16rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-1 xl:grid-flow-row xl:grid-cols-3 xl:overflow-visible xl:pb-0">
+          {quickFilterGroups.map((group) => (
+            <div key={group.key} className="rounded-md border border-border bg-background/60 p-3">
+              <div className="text-xs font-semibold text-muted-foreground">{group.label}</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {group.filters.map((quickFilter) => (
+                  <QuickFilterLink key={quickFilter.key} quickFilter={quickFilter} />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -581,73 +602,90 @@ function AssetFilters({
           </div>
         </div>
       ) : null}
-      <form className="grid grid-cols-1 gap-3 lg:grid-cols-4 xl:grid-cols-5" action={`/${locale}/assets`}>
-        <label className="lg:col-span-2">
-          <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{labels.search}</span>
-          <input
-            type="search"
-            name="search"
-            defaultValue={filters.search}
-            className={getFieldControlClasses()}
-          />
-        </label>
-        <FilterSelect name="companyId" label={labels.company} defaultValue={filters.companyId}>
-          <option value="">{labels.all}</option>
-          {companies.map((company) => (
-            <option key={company.id} value={company.id}>
-              {company.code} - {company.nameTh}
-            </option>
-          ))}
-        </FilterSelect>
-        <FilterSelect name="branchId" label={labels.branch} defaultValue={filters.branchId}>
-          <option value="">{labels.all}</option>
-          {filteredBranches.map((branch) => (
-            <option key={branch.id} value={branch.id}>
-              {branch.company.code} / {branch.code} - {branch.name}
-            </option>
-          ))}
-        </FilterSelect>
-        <FilterSelect name="categoryId" label={labels.category} defaultValue={filters.categoryId}>
-          <option value="">{labels.all}</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.code} - {category.name}
-            </option>
-          ))}
-        </FilterSelect>
-        <div className="grid gap-3 sm:grid-cols-2 lg:col-span-2" aria-label={labels.assetStateFilterGroup}>
-          <FilterSelect name="statusId" label={labels.status} defaultValue={filters.statusId} help={assetStatusHelp}>
+      <form className="space-y-3" action={`/${locale}/assets`}>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
+          <label className="col-span-2">
+            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{labels.search}</span>
+            <input
+              type="search"
+              name="search"
+              defaultValue={filters.search}
+              className={getFieldControlClasses()}
+            />
+          </label>
+          <FilterSelect name="companyId" label={labels.company} defaultValue={filters.companyId}>
             <option value="">{labels.all}</option>
-            {statuses.map((status) => (
-              <option key={status.id} value={status.id}>
-                {status.nameTh}
+            {companies.map((company) => (
+              <option key={company.id} value={company.id}>
+                {company.code} - {company.nameTh}
               </option>
             ))}
           </FilterSelect>
-          <FilterSelect name="conditionId" label={labels.condition} defaultValue={filters.conditionId} help={assetConditionHelp}>
+          <FilterSelect name="branchId" label={labels.branch} defaultValue={filters.branchId}>
             <option value="">{labels.all}</option>
-            {conditions.map((condition) => (
-              <option key={condition.id} value={condition.id}>
-                {condition.nameTh}
+            {filteredBranches.map((branch) => (
+              <option key={branch.id} value={branch.id}>
+                {branch.company.code} / {branch.code} - {branch.name}
               </option>
             ))}
           </FilterSelect>
+          <FilterSelect name="categoryId" label={labels.category} defaultValue={filters.categoryId}>
+            <option value="">{labels.all}</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.code} - {category.name}
+              </option>
+            ))}
+          </FilterSelect>
+          <ActionButton type="submit" variant="primary" className="self-end">
+            {labels.filter}
+          </ActionButton>
         </div>
-        <FilterSelect name="ownershipType" label={labels.ownershipType} defaultValue={filters.ownershipType}>
-          <option value="">{labels.all}</option>
-          {assetOwnershipTypes.map((type) => (
-            <option key={type} value={type}>
-              {labels.ownershipTypes[type] ?? type}
-            </option>
-          ))}
-        </FilterSelect>
-        <FilterSelect name="pageSize" label={labels.rowsPerPage} defaultValue={String(filters.pageSize)}>
-          {[10, 25, 50, 100].map((pageSize) => (
-            <option key={pageSize} value={pageSize}>
-              {pageSize}
-            </option>
-          ))}
-        </FilterSelect>
+        <details
+          data-asset-advanced-filters
+          className="group rounded-md border border-border bg-background/60 px-3 py-2"
+          open={hasAdvancedFilters}
+        >
+          <summary className="flex cursor-pointer list-none flex-col gap-1 text-sm font-medium text-foreground sm:flex-row sm:items-center sm:justify-between">
+            <span>{labels.advancedFilters}</span>
+            <span className="text-xs font-normal text-muted-foreground">{labels.advancedFiltersHelp}</span>
+          </summary>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:col-span-2" aria-label={labels.assetStateFilterGroup}>
+              <FilterSelect name="statusId" label={labels.status} defaultValue={filters.statusId} help={assetStatusHelp}>
+                <option value="">{labels.all}</option>
+                {statuses.map((status) => (
+                  <option key={status.id} value={status.id}>
+                    {status.nameTh}
+                  </option>
+                ))}
+              </FilterSelect>
+              <FilterSelect name="conditionId" label={labels.condition} defaultValue={filters.conditionId} help={assetConditionHelp}>
+                <option value="">{labels.all}</option>
+                {conditions.map((condition) => (
+                  <option key={condition.id} value={condition.id}>
+                    {condition.nameTh}
+                  </option>
+                ))}
+              </FilterSelect>
+            </div>
+            <FilterSelect name="ownershipType" label={labels.ownershipType} defaultValue={filters.ownershipType}>
+              <option value="">{labels.all}</option>
+              {assetOwnershipTypes.map((type) => (
+                <option key={type} value={type}>
+                  {labels.ownershipTypes[type] ?? type}
+                </option>
+              ))}
+            </FilterSelect>
+            <FilterSelect name="pageSize" label={labels.rowsPerPage} defaultValue={String(filters.pageSize)}>
+              {[10, 25, 50, 100].map((pageSize) => (
+                <option key={pageSize} value={pageSize}>
+                  {pageSize}
+                </option>
+              ))}
+            </FilterSelect>
+          </div>
+        </details>
         {filters.custodianId ? <input type="hidden" name="custodianId" value={filters.custodianId} /> : null}
         {filters.supplierId ? <input type="hidden" name="supplierId" value={filters.supplierId} /> : null}
         {filters.brandId ? <input type="hidden" name="brandId" value={filters.brandId} /> : null}
@@ -656,11 +694,27 @@ function AssetFilters({
         {filters.crossScope ? <input type="hidden" name="crossScope" value={filters.crossScope} /> : null}
         <input type="hidden" name="sort" value={filters.sort} />
         <input type="hidden" name="direction" value={filters.direction} />
-        <ActionButton type="submit" variant="primary" className="self-end">
-          {labels.filter}
-        </ActionButton>
       </form>
     </FilterPanel>
+  )
+}
+
+function QuickFilterLink({
+  quickFilter,
+}: {
+  quickFilter: { key: string; label: string; href: string; active: boolean }
+}) {
+  return (
+    <Link
+      href={quickFilter.href}
+      className={`inline-flex min-h-9 items-center rounded-full border px-3 text-sm font-medium transition-colors ${
+        quickFilter.active
+          ? "border-primary bg-primary/10 text-primary"
+          : "border-border bg-surface text-muted-foreground hover:bg-accent hover:text-foreground"
+      }`}
+    >
+      {quickFilter.label}
+    </Link>
   )
 }
 
