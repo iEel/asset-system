@@ -113,7 +113,7 @@ export default async function AssetImportExportPage({ params }: AssetImportExpor
           rollbackReady: t("importHistoryRollbackReady"),
           rollbackBlocked: t("importHistoryRollbackBlocked"),
           rollbackAssets: t("importHistoryRollbackAssets"),
-          moreAssets: t("importHistoryMoreAssets"),
+          moreAssets: (count: string) => t("importHistoryMoreAssets", { count }),
           status: t("status"),
         }}
       />
@@ -143,7 +143,7 @@ function ImportHistoryPanel({
     rollbackReady: string
     rollbackBlocked: string
     rollbackAssets: string
-    moreAssets: string
+    moreAssets: (count: string) => string
     status: string
   }
 }) {
@@ -203,7 +203,7 @@ function ImportHistoryPanel({
                     ))}
                   </ul>
                   {batch.rollbackSummary.hiddenAssetCount > 0 ? (
-                    <p className="mt-2 text-xs text-muted-foreground">{labels.moreAssets.replace("{count}", batch.rollbackSummary.hiddenAssetCount.toLocaleString("th-TH"))}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">{labels.moreAssets(batch.rollbackSummary.hiddenAssetCount.toLocaleString("th-TH"))}</p>
                   ) : null}
                 </div>
               ) : null}

@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-06-12
+
+| Area | Update |
+|---|---|
+| Asset Import/Export history | `/th/asset-management/import-export` now formats the import-history hidden asset count with the `next-intl` `{count}` variable at render time instead of passing `importHistoryMoreAssets` as a static label string, preventing `FORMATTING_ERROR` on the Import/Export page while preserving the existing import history and rollback preview behavior. |
+
+---
+
 ## 2026-06-11
 
 | Area | Update |

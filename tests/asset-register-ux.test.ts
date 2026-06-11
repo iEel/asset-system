@@ -87,6 +87,14 @@ test("asset import wizard labels are passed on every import surface", () => {
   assert.match(source, /collapseImportWizard: t\("collapseImportWizard"\)/)
 })
 
+test("asset import history formats hidden asset count when rendering", () => {
+  const source = importExportPageSource()
+
+  assert.doesNotMatch(source, /moreAssets:\s*t\("importHistoryMoreAssets"\)/)
+  assert.match(source, /moreAssets:\s*\(count: string\) => t\("importHistoryMoreAssets", \{ count \}\)/)
+  assert.match(source, /labels\.moreAssets\(batch\.rollbackSummary\.hiddenAssetCount\.toLocaleString\("th-TH"\)\)/)
+})
+
 test("asset register page exposes operational quick filters", () => {
   const source = assetsPageSource()
 
