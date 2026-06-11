@@ -204,6 +204,30 @@ test("audit scan phase 2 emphasizes scan entry and exposes pending queue access"
   }
 })
 
+test("audit scan walking mode keeps the scanner as a fullscreen mobile task surface", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(form, /const \[walkingMode, setWalkingMode\] = useState\(false\)/)
+  assert.match(form, /walkingModeRootClass/)
+  assert.match(form, /fixed inset-0 z-50/)
+  assert.match(form, /WalkingModeTopBar/)
+  assert.match(form, /walkingModeOpen/)
+  assert.match(form, /walkingModeClose/)
+  assert.match(form, /walkingModeTorchHint/)
+  assert.match(form, /walkingMode \? "top-\[5\.5rem\]" : "top-0"/)
+  assert.match(form, /scannerRunning && torchAvailable/)
+  assert.match(form, /toggleTorch/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditScan.walkingModeOpen, "string")
+    assert.equal(typeof messages.auditScan.walkingModeClose, "string")
+    assert.equal(typeof messages.auditScan.walkingModeTitle, "string")
+    assert.equal(typeof messages.auditScan.walkingModeTorchHint, "string")
+  }
+})
+
 test("audit scan flashlight is a progressive camera enhancement", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
   const scanner = readFileSync("src/lib/asset-qr-scanner.ts", "utf8")

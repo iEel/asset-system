@@ -15,6 +15,8 @@ import {
   Keyboard,
   ListChecks,
   Loader2,
+  Maximize2,
+  Minimize2,
   RefreshCcw,
   Save,
   ScanLine,
@@ -132,6 +134,7 @@ export function AuditScanForm({
   const [queuedAuditPhotos, setQueuedAuditPhotos] = useState<QueuedAuditPhoto[]>([])
   const [continuousScan, setContinuousScan] = useState(true)
   const [fastMode, setFastMode] = useState(true)
+  const [walkingMode, setWalkingMode] = useState(false)
   const [showDetailedFields, setShowDetailedFields] = useState(false)
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null)
   const [recentScans, setRecentScans] = useState<AuditRecentScan[]>([])
@@ -230,6 +233,16 @@ export function AuditScanForm({
   const hasCameraIssue = Boolean(cameraErrorText || cameraReadiness === "unavailable")
   const shouldShowCameraUtilities = cameras.length > 1 || torchAvailable || Boolean(lastDecodedText) || hasCameraIssue
   const shouldShowCameraPanel = scannerRunning || scannerLoading || shouldShowCameraUtilities
+  const stickyProgressTopClass = walkingMode ? "top-[5.5rem]" : "top-0"
+  const walkingModeRootClass = walkingMode
+    ? "fixed inset-0 z-50 overflow-y-auto bg-background px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+6.5rem)]"
+    : `mx-auto max-w-6xl ${selectedItem ? "pb-36 md:pb-0" : ""}`
+  const auditScanSectionClass = walkingMode
+    ? "rounded-lg border border-border bg-surface p-3 shadow-sm"
+    : "rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6"
+  const scannerPreviewClass = walkingMode
+    ? "relative isolate aspect-square min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-surface"
+    : "relative isolate aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-surface sm:min-h-[22rem]"
   const scanEntryPanelClass = !selectedItem && !scanFeedback
     ? "border-primary/30 bg-primary/5 shadow-sm ring-1 ring-primary/10"
     : "border-border bg-background"
@@ -355,6 +368,15 @@ export function AuditScanForm({
       scanner.stop()
     }
   }, [])
+
+  useEffect(() => {
+    if (!walkingMode) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [walkingMode])
 
   const refreshOfflineQueue = useCallback(async () => {
     if (typeof window === "undefined") return
@@ -752,25 +774,48 @@ export function AuditScanForm({
   }
 
   return (
-    <div className={`mx-auto max-w-6xl ${selectedItem ? "pb-36 md:pb-0" : ""}`}>
-      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <Link href={backHref} className="mb-3 inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent">
-            <ArrowLeft className="h-4 w-4" />
-            {tCommon("back")}
-          </Link>
-          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{roundName}</p>
-        </div>
-        {lastResult && (
-          <div className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm text-muted-foreground">
-            <CheckCircle2 className="h-4 w-4 text-success" />
-            {t("lastResult")}: {lastResult}
+    <div className={walkingModeRootClass}>
+      {walkingMode ? (
+        <WalkingModeTopBar
+          roundName={roundName}
+          processedCount={processedCount}
+          totalCount={items.length}
+          pendingCount={pendingCount}
+          queuedPhotoCount={queuedAuditPhotos.length}
+          torchAvailable={torchAvailable}
+          onClose={() => setWalkingMode(false)}
+          t={t}
+        />
+      ) : (
+        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <Link href={backHref} className="mb-3 inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+              <ArrowLeft className="h-4 w-4" />
+              {tCommon("back")}
+            </Link>
+            <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{roundName}</p>
           </div>
-        )}
-      </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setWalkingMode(true)}
+              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <Maximize2 className="h-4 w-4" />
+              {t("walkingModeOpen")}
+            </button>
+            {lastResult && (
+              <div className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm text-muted-foreground">
+                <CheckCircle2 className="h-4 w-4 text-success" />
+                {t("lastResult")}: {lastResult}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
-      <div className="sticky top-0 z-20 mb-4 rounded-lg border border-border bg-surface/95 p-3 shadow-sm backdrop-blur">
+      <div className={`sticky ${stickyProgressTopClass} z-20 mb-4 rounded-lg border border-border bg-surface/95 p-3 shadow-sm backdrop-blur`}>
         <AuditProgressBar
           compact
           total={items.length}
@@ -835,7 +880,7 @@ export function AuditScanForm({
         </div>
       ) : null}
 
-      <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
+      <section className={auditScanSectionClass}>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
           {scanFeedback && (
             <ScanResultPanel feedback={scanFeedback} recentScans={recentScans} t={t} />
@@ -892,9 +937,7 @@ export function AuditScanForm({
             </label>
             {shouldShowCameraPanel ? (
               <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
-                <div
-                  className={`relative isolate aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-surface sm:min-h-[22rem] ${scannerRunning || scannerLoading ? "block" : "hidden"}`}
-                >
+                <div className={`${scannerPreviewClass} ${scannerRunning || scannerLoading ? "block" : "hidden"}`}>
                   <div id="audit-qr-reader" className="w-full [&_video]:!h-auto [&_video]:!w-full" />
                   {scannerRunning ? <AuditQrScannerOverlay /> : null}
                   {scannerRunning && torchAvailable ? (
@@ -919,6 +962,11 @@ export function AuditScanForm({
                       )}
                       <span className="hidden sm:inline">{t(torchEnabled ? "torchOff" : "torchOn")}</span>
                     </button>
+                  ) : null}
+                  {walkingMode && scannerRunning && torchAvailable ? (
+                    <div className="absolute bottom-3 left-3 right-3 z-20 rounded-md bg-slate-950/70 px-3 py-2 text-xs text-white">
+                      {t("walkingModeTorchHint")}
+                    </div>
                   ) : null}
                 </div>
                 {shouldShowCameraUtilities ? (
@@ -1263,6 +1311,65 @@ export function AuditScanForm({
 type AuditScanTranslator = {
   (key: string): string
   (key: string, values: Record<string, string | number | Date>): string
+}
+
+function WalkingModeTopBar({
+  roundName,
+  processedCount,
+  totalCount,
+  pendingCount,
+  queuedPhotoCount,
+  torchAvailable,
+  onClose,
+  t,
+}: {
+  roundName: string
+  processedCount: number
+  totalCount: number
+  pendingCount: number
+  queuedPhotoCount: number
+  torchAvailable: boolean
+  onClose: () => void
+  t: AuditScanTranslator
+}) {
+  return (
+    <div className="sticky top-0 z-40 -mx-3 mb-3 border-b border-border bg-background/95 px-3 py-2 backdrop-blur">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-foreground">{t("walkingModeTitle")}</div>
+          <div className="truncate text-xs text-muted-foreground">{roundName}</div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <Minimize2 className="h-4 w-4" />
+          {t("walkingModeClose")}
+        </button>
+      </div>
+      <div className="mt-2 grid grid-cols-4 gap-2 text-center text-xs">
+        <div className="rounded-md border border-border bg-surface px-2 py-1">
+          <div className="font-semibold text-foreground">
+            {processedCount.toLocaleString("th-TH")}/{totalCount.toLocaleString("th-TH")}
+          </div>
+          <div className="truncate text-muted-foreground">{t("scannedQueue")}</div>
+        </div>
+        <div className="rounded-md border border-border bg-surface px-2 py-1">
+          <div className="font-semibold text-foreground">{pendingCount.toLocaleString("th-TH")}</div>
+          <div className="truncate text-muted-foreground">{t("pendingQueue")}</div>
+        </div>
+        <div className="rounded-md border border-border bg-surface px-2 py-1">
+          <div className="font-semibold text-foreground">{queuedPhotoCount.toLocaleString("th-TH")}</div>
+          <div className="truncate text-muted-foreground">{t("photoQueue")}</div>
+        </div>
+        <div className="rounded-md border border-border bg-surface px-2 py-1">
+          <div className="font-semibold text-foreground">{torchAvailable ? t("torchOn") : "-"}</div>
+          <div className="truncate text-muted-foreground">{t("walkingModeTorchHint")}</div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function FastModeToggle({
