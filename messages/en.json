@@ -729,6 +729,8 @@
     "quickFilterCustodianCrossBranch": "Custodian different branch",
     "quickFilterLocationCrossBranch": "Location different branch",
     "quickFilterReady": "Ready",
+    "quickFilterInUse": "In use",
+    "quickFilterCheckedOut": "Checked out",
     "quickFilterPendingRepair": "Pending repair",
     "quickFilterUnderMaintenance": "Under maintenance",
     "quickFilterGroupDataQuality": "Data to review",

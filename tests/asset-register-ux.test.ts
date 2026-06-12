@@ -109,6 +109,8 @@ test("asset register page exposes operational quick filters", () => {
   assert.match(source, /buildCrossScopeQuickFilter\("cross-scope-location-branch", labels\.quickFilterLocationCrossBranch, "location_branch"\)/)
   assert.match(source, /name: true, nameTh: true/)
   assert.match(source, /status\.name === "Ready"/)
+  assert.match(source, /status\.name === "Checked Out"/)
+  assert.match(source, /status\.name === "In Use"/)
   assert.match(source, /status\.name === "Pending Repair"/)
 })
 
@@ -177,6 +179,8 @@ test("asset register UX messages exist in Thai and English", () => {
     "quickFilterCustodianCrossBranch",
     "quickFilterLocationCrossBranch",
     "quickFilterReady",
+    "quickFilterCheckedOut",
+    "quickFilterInUse",
     "quickFilterPendingRepair",
     "quickFilterUnderMaintenance",
     "quickFilterGroupDataQuality",

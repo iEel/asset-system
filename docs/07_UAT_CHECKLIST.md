@@ -27,7 +27,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Leave asset tag blank and confirm auto-generation.
 - [ ] Import assets from Excel.
 - [ ] Export asset register.
-- [ ] On Asset Register, confirm quick filters are grouped by data quality, ownership/custody scope, and lifecycle status; each filter updates the list while preserving existing search/company/branch/category context.
+- [ ] On Asset Register, confirm quick filters are grouped by data quality, ownership/custody scope, and lifecycle status; the lifecycle group includes Ready, In Use, Checked Out, Pending Repair, and Under Maintenance, and each filter updates the list while preserving existing search/company/branch/category context.
 - [ ] On Asset Register, apply cross-scope quick filters for all cross-scope, custodian different company, custodian different branch, and current location different branch; confirm the list and Asset Register export show matching cross-scope flags and owner/custodian/location branch context.
 - [ ] On Dashboard, confirm the cross-scope KPI, urgent-work card, and review panel show active assets held or located outside the owner/tag scope, and confirm each drilldown opens Asset Register with the expected `crossScope` filter.
 - [ ] On Asset Register desktop width, confirm search/company/branch/category remain visible as primary filters and status/condition/ownership/rows are hidden under the advanced filter section by default, reopening automatically when active.

@@ -729,6 +729,8 @@
     "quickFilterCustodianCrossBranch": "ผู้ถือครองต่างสาขา",
     "quickFilterLocationCrossBranch": "ที่ตั้งต่างสาขา",
     "quickFilterReady": "พร้อมใช้งาน",
+    "quickFilterInUse": "ใช้งานอยู่",
+    "quickFilterCheckedOut": "ถูกเบิก",
     "quickFilterPendingRepair": "รอซ่อม",
     "quickFilterUnderMaintenance": "อยู่ระหว่างซ่อม",
     "quickFilterGroupDataQuality": "ข้อมูลที่ต้องตรวจ",

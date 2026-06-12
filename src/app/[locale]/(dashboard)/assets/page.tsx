@@ -56,6 +56,8 @@ type AssetFilterLabels = {
   quickFilterCustodianCrossBranch: string
   quickFilterLocationCrossBranch: string
   quickFilterReady: string
+  quickFilterCheckedOut: string
+  quickFilterInUse: string
   quickFilterPendingRepair: string
   quickFilterUnderMaintenance: string
   quickFilterGroupDataQuality: string
@@ -290,6 +292,8 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           quickFilterCustodianCrossBranch: t("quickFilterCustodianCrossBranch"),
           quickFilterLocationCrossBranch: t("quickFilterLocationCrossBranch"),
           quickFilterReady: t("quickFilterReady"),
+          quickFilterCheckedOut: t("quickFilterCheckedOut"),
+          quickFilterInUse: t("quickFilterInUse"),
           quickFilterPendingRepair: t("quickFilterPendingRepair"),
           quickFilterUnderMaintenance: t("quickFilterUnderMaintenance"),
           quickFilterGroupDataQuality: t("quickFilterGroupDataQuality"),
@@ -465,6 +469,8 @@ function AssetFilters({
     ? branches.filter((branch) => branch.companyId === filters.companyId)
     : branches
   const readyStatus = statuses.find((status) => status.name === "Ready")
+  const inUseStatus = statuses.find((status) => status.name === "In Use")
+  const checkedOutStatus = statuses.find((status) => status.name === "Checked Out")
   const pendingRepairStatus = statuses.find((status) => status.name === "Pending Repair")
   const underMaintenanceStatus = statuses.find((status) => status.name === "Under Maintenance")
   const assetStatusHelp = {
@@ -535,6 +541,8 @@ function AssetFilters({
   ].filter((quickFilter): quickFilter is { key: string; label: string; href: string; active: boolean } => Boolean(quickFilter))
   const lifecycleQuickFilters = [
     buildStatusQuickFilter("ready", labels.quickFilterReady, readyStatus),
+    buildStatusQuickFilter("in-use", labels.quickFilterInUse, inUseStatus),
+    buildStatusQuickFilter("checked-out", labels.quickFilterCheckedOut, checkedOutStatus),
     buildStatusQuickFilter("pending-repair", labels.quickFilterPendingRepair, pendingRepairStatus),
     buildStatusQuickFilter("under-maintenance", labels.quickFilterUnderMaintenance, underMaintenanceStatus),
   ].filter((quickFilter): quickFilter is { key: string; label: string; href: string; active: boolean } => Boolean(quickFilter))
