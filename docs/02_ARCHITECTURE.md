@@ -21,6 +21,7 @@
 - `DashboardShell` is the client shell for sidebar, topbar, and content state; it is fixed to the viewport with `fixed inset-0`.
 - The dashboard `<main>` area is the vertical scroll owner through `overflow-y-auto`.
 - The browser document should not become a second vertical scroll owner on dashboard pages.
+- Hash-anchor navigation inside dashboard pages should scroll the `<main>` container, not the outer fixed shell. `DashboardShell` resets accidental outer-shell scroll and then scrolls the target section inside `<main>` so shortcuts such as Asset Detail `#notes` and `#audit` do not leave a blank tail area pinned in the viewport.
 - Sidebar navigation may scroll inside its own nav container when the menu is taller than the viewport.
 - Sidebar navigation is filtered with `src/lib/navigation-permissions.ts` before rendering so users do not see menu items they cannot open.
 

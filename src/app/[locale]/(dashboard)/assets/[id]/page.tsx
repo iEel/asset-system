@@ -710,9 +710,9 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     { id: "evidence", label: t("detailSections.evidence") },
     { id: "handover", label: t("detailSections.handover") },
     { id: "movement", label: t("detailSections.movement") },
+    { id: "notes", label: t("detailSections.notes") },
     { id: "maintenance", label: t("detailSections.maintenance") },
     { id: "audit", label: t("detailSections.audit") },
-    { id: "notes", label: t("detailSections.notes") },
   ]
   const allEvidenceItems = [
     ...buildEvidenceItems(assetAttachments, t("evidenceGroupAsset"), asset.assetTag),
@@ -1274,6 +1274,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             />
           </section>
 
+          <section id="notes" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <SectionHeading title={t("remark")} subtitle={t("detailSections.notesSubtitle")} />
+            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{asset.remark || "-"}</p>
+          </section>
+
           <section id="maintenance" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={tMaintenance("maintenanceHistory")} subtitle={t("detailSections.maintenanceSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
             <SummaryStrip
@@ -1398,10 +1403,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             )}
           </section>
 
-          <section id="notes" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <SectionHeading title={t("remark")} subtitle={t("detailSections.notesSubtitle")} />
-            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{asset.remark || "-"}</p>
-          </section>
         </div>
 
         <aside className="space-y-6">
