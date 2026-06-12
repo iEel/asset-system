@@ -46,6 +46,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] For a legacy/imported asset that has a current custodian but no open checkout, search the Check-in `ข้อมูลเก่า` panel by Asset Tag/holder/location, create the backfilled handover, and complete the normal return form; confirm the activity/audit history includes `legacy_return_backfill`.
 - [ ] Transfer an asset.
 - [ ] Upload and preview asset evidence.
+- [ ] On Asset Detail, confirm model/asset preview photos stay compact in the side rail, the `รูปและไฟล์` section initially shows only the preview set, and expanding/collapsing extra photos or files keeps preview, download, and delete actions available.
 
 ## auditor
 

@@ -1418,12 +1418,14 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             caption={asset.model?.name ?? t("modelPhoto")}
             attachment={primaryModelPhoto}
             emptyLabel={tCommon("noData")}
+            viewLabel={t("viewPhotoGallery")}
           />
           <SidebarPhotoCard
             title={t("assetPhotos")}
             caption={t("primaryAssetPhoto")}
             attachment={primaryAssetPhoto}
             emptyLabel={tCommon("noData")}
+            viewLabel={t("viewPhotoGallery")}
           />
         </aside>
       </div>
@@ -2119,24 +2121,26 @@ function SidebarPhotoCard({
   caption,
   attachment,
   emptyLabel,
+  viewLabel,
 }: {
   title: string
   caption: string
   attachment?: { id: string; originalName: string } | null
   emptyLabel: string
+  viewLabel: string
 }) {
   return (
-    <section className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
-      <h2 className="mb-4 flex items-center justify-center gap-2 text-lg font-semibold text-foreground">
+    <section className="scroll-mt-24 rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
         <ImageIcon className="h-5 w-5 text-primary" />
         {title}
       </h2>
       {attachment ? (
         <a
           href="#photos"
-          className="group block overflow-hidden rounded-lg border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary"
+          className="group block overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary"
         >
-          <div className="flex aspect-[4/3] w-full items-center justify-center bg-muted/40 p-2">
+          <div className="flex h-32 w-full items-center justify-center bg-muted/40 p-2">
             {/* Authenticated attachment URLs render more reliably as browser-native images. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -2150,14 +2154,15 @@ function SidebarPhotoCard({
             />
           </div>
           <div className="border-t border-border p-3 text-left">
-            <div className="text-sm font-medium text-foreground">{caption}</div>
+            <div className="line-clamp-2 text-sm font-medium text-foreground">{caption}</div>
             <div className="mt-1 truncate text-xs text-muted-foreground">{attachment.originalName}</div>
+            <div className="mt-2 text-xs font-medium text-primary">{viewLabel}</div>
           </div>
         </a>
       ) : (
         <a
           href="#photos"
-          className="flex aspect-[4/3] items-center justify-center rounded-lg border border-dashed border-border bg-background text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+          className="flex h-32 items-center justify-center rounded-md border border-dashed border-border bg-background text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
         >
           {emptyLabel}
         </a>

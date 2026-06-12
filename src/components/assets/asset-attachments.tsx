@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { CheckCircle2, Download, FileText, ImageIcon, Loader2, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
+import { getAssetPhotoGalleryState } from "@/lib/asset-photo-gallery"
 import { formatFileSize } from "@/lib/uploads"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 
@@ -42,6 +43,8 @@ export function AssetAttachments({
   const [photoLabel, setPhotoLabel] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewPhoto, setPreviewPhoto] = useState<PhotoPreviewState | null>(null)
+  const [showAllChecklistPhotos, setShowAllChecklistPhotos] = useState(false)
+  const [showAllOtherAttachments, setShowAllOtherAttachments] = useState(false)
   const imageAttachments = attachments.filter(isImage)
   const primaryModelPhoto = modelPhotos.find(isImage)
   const legacyLabelCounts = photoChecklist.reduce<Record<string, number>>((counts, item) => {
@@ -55,6 +58,8 @@ export function AssetAttachments({
   }))
   const checklistAttachmentIds = new Set(checklistItems.map((item) => item.attachment?.id).filter(Boolean))
   const otherAttachments = attachments.filter((attachment) => !checklistAttachmentIds.has(attachment.id))
+  const checklistGallery = getAssetPhotoGalleryState(checklistItems, showAllChecklistPhotos)
+  const otherAttachmentGallery = getAssetPhotoGalleryState(otherAttachments, showAllOtherAttachments)
 
   useEffect(() => {
     if (!previewPhoto) return
@@ -142,12 +147,22 @@ export function AssetAttachments({
 
   return (
     <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
-        <ImageIcon className="h-5 w-5 text-primary" />
-        {t("assetPhotos")}
-      </h2>
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+            <ImageIcon className="h-5 w-5 text-primary" />
+            {t("assetPhotos")}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("photoGalleryPreviewHelp")}</p>
+        </div>
+        {attachments.length > 0 ? (
+          <div className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+            {t("photoFileCount", { count: attachments.length })}
+          </div>
+        ) : null}
+      </div>
 
-      <div className="mb-4 grid grid-cols-1 gap-3">
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {primaryModelPhoto && (
           <PhotoPreview title={t("modelPhoto")} attachment={primaryModelPhoto} onPreview={setPreviewPhoto} />
         )}
@@ -161,8 +176,8 @@ export function AssetAttachments({
               {checklistItems.filter((item) => item.attachment).length}/{checklistItems.length}
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-3">
-            {checklistItems.map((item) => {
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {checklistGallery.visibleItems.map((item) => {
               const attachment = item.attachment
 
               return (
@@ -239,6 +254,15 @@ export function AssetAttachments({
               )
             })}
           </div>
+          {checklistGallery.hasOverflow ? (
+            <GalleryToggle
+              expanded={showAllChecklistPhotos}
+              hiddenCount={checklistGallery.hiddenCount}
+              showMoreLabel={(count) => t("showMorePhotos", { count })}
+              hideLabel={t("hideExtraPhotos")}
+              onClick={() => setShowAllChecklistPhotos((current) => !current)}
+            />
+          ) : null}
         </div>
       )}
 
@@ -275,38 +299,30 @@ export function AssetAttachments({
           {tCommon("noData")}
         </div>
       ) : (
-        <div className="space-y-3">
-          {otherAttachments.map((attachment) => (
-            <div key={attachment.id} className="rounded-md border border-border bg-background p-3">
-              <div className="text-sm font-medium text-foreground">{attachment.originalName}</div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {attachment.fileType} · {formatFileSize(attachment.fileSize)}
-              </div>
-              <div className="mt-3 flex gap-2">
-                <a
-                  href={`/api/attachments/${attachment.id}`}
-                  className="inline-flex h-8 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  {t("download")}
-                </a>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(attachment.id)}
-                  disabled={deletingId === attachment.id}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 disabled:opacity-50"
-                  title={tCommon("delete")}
-                >
-                  {deletingId === attachment.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-3.5 w-3.5" />
-                  )}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {otherAttachmentGallery.visibleItems.map((attachment) => (
+              <AttachmentCard
+                key={attachment.id}
+                attachment={attachment}
+                downloadLabel={t("download")}
+                deleteLabel={tCommon("delete")}
+                deleting={deletingId === attachment.id}
+                onDelete={() => handleDelete(attachment.id)}
+                onPreview={isImage(attachment) ? () => setPreviewPhoto({ title: attachment.originalName, attachment }) : undefined}
+              />
+            ))}
+          </div>
+          {otherAttachmentGallery.hasOverflow ? (
+            <GalleryToggle
+              expanded={showAllOtherAttachments}
+              hiddenCount={otherAttachmentGallery.hiddenCount}
+              showMoreLabel={(count) => t("showMorePhotos", { count })}
+              hideLabel={t("hideExtraPhotos")}
+              onClick={() => setShowAllOtherAttachments((current) => !current)}
+            />
+          ) : null}
+        </>
       )}
 
       {previewPhoto ? (
@@ -335,7 +351,7 @@ function PhotoPreview({
       <button
         type="button"
         onClick={() => onPreview({ title, attachment })}
-        className="relative block aspect-video w-full bg-muted/40 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-primary"
+        className="relative block h-32 w-full bg-muted/40 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-primary"
       >
         <Image
           src={`/api/attachments/${attachment.id}?inline=1`}
@@ -350,6 +366,96 @@ function PhotoPreview({
         <div className="mt-1 text-xs text-muted-foreground">{attachment.originalName}</div>
       </div>
     </div>
+  )
+}
+
+function AttachmentCard({
+  attachment,
+  downloadLabel,
+  deleteLabel,
+  deleting,
+  onDelete,
+  onPreview,
+}: {
+  attachment: Attachment
+  downloadLabel: string
+  deleteLabel: string
+  deleting: boolean
+  onDelete: () => void
+  onPreview?: () => void
+}) {
+  return (
+    <div className="overflow-hidden rounded-md border border-border bg-background">
+      {onPreview ? (
+        <button
+          type="button"
+          onClick={onPreview}
+          className="relative block h-28 w-full bg-muted/40 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          <Image
+            src={`/api/attachments/${attachment.id}?inline=1`}
+            alt={attachment.originalName}
+            fill
+            unoptimized
+            className="object-contain p-2"
+          />
+        </button>
+      ) : (
+        <div className="flex h-28 items-center justify-center bg-muted/40 p-3 text-center text-xs font-medium text-muted-foreground">
+          {attachment.fileType}
+        </div>
+      )}
+      <div className="p-3">
+        <div className="truncate text-sm font-medium text-foreground">{attachment.originalName}</div>
+        <div className="mt-1 text-xs text-muted-foreground">{formatFileSize(attachment.fileSize)}</div>
+        <div className="mt-3 flex gap-2">
+          <a
+            href={`/api/attachments/${attachment.id}`}
+            className="inline-flex h-8 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent"
+          >
+            <Download className="h-3.5 w-3.5" />
+            {downloadLabel}
+          </a>
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={deleting}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 disabled:opacity-50"
+            title={deleteLabel}
+          >
+            {deleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" />
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function GalleryToggle({
+  expanded,
+  hiddenCount,
+  showMoreLabel,
+  hideLabel,
+  onClick,
+}: {
+  expanded: boolean
+  hiddenCount: number
+  showMoreLabel: (count: number) => string
+  hideLabel: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:w-auto"
+    >
+      {expanded ? hideLabel : showMoreLabel(hiddenCount)}
+    </button>
   )
 }
 

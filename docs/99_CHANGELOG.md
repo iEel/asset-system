@@ -8,6 +8,7 @@
 
 | Area | Update |
 |---|---|
+| Asset Detail photo evidence UX | Asset Detail now keeps model/asset side-rail previews compact, shows the full `รูปและไฟล์` section as a thumbnail-first gallery with expand/collapse controls, and uses a tested helper to limit visible photo, checklist, and file items before expansion. |
 | Dashboard shell hash-anchor scroll | Dashboard pages now keep hash-anchor navigation inside the `<main>` scroll container and reset accidental scroll on the outer fixed shell. Asset Detail shortcuts such as `หมายเหตุ` and `ตรวจนับ` no longer leave a large blank bottom area pinned in the viewport, and the notes section was moved before short tail workflow sections to reduce blank-tail anchor cases. |
 | Asset Import/Export history | `/th/asset-management/import-export` now formats the import-history hidden asset count with the `next-intl` `{count}` variable at render time instead of passing `importHistoryMoreAssets` as a static label string, preventing `FORMATTING_ERROR` on the Import/Export page while preserving the existing import history and rollback preview behavior. |
 

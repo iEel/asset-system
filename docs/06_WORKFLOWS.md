@@ -40,6 +40,7 @@
 - Transfer records location/custodian/department movement.
 - Checkout and transfer are the normal workflows for custody changes after registration; the asset owner company/branch remains the tag, reporting, and accounting scope unless the asset master data is intentionally edited.
 - Asset Detail shows a unified activity/custody timeline.
+- Asset Detail keeps right-rail photos compact and shows the full `รูปและไฟล์` evidence area as a thumbnail-first gallery. Long model, asset, checklist, or file histories start with a short preview and can be expanded without losing preview, download, or delete actions.
 - Asset Detail relationship map shows parent/component structure as a three-lane read-only map: what the current item is installed under, the current item, and any components installed under it. The status summary states whether the current item is a parent asset, component, both, or standalone. Relationship cards prioritize the full Asset Tag, then asset name, then role/category metadata so users can identify records without relying on truncated labels.
 
 ## Audit Counting
