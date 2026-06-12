@@ -16,7 +16,6 @@ import {
   ImageIcon,
   Info as InfoIcon,
   MapPin,
-  Paperclip,
   PackageCheck,
   Printer,
   Puzzle,
@@ -32,6 +31,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 import { AssetQrCode } from "@/components/assets/asset-qr-code"
 import { AssetAttachments } from "@/components/assets/asset-attachments"
+import { AssetEvidenceDrawer } from "@/components/assets/asset-evidence-drawer"
 import { AssetStatusCorrectionButton } from "@/components/assets/asset-status-correction-button"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
@@ -707,7 +707,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     { id: "components", label: t("detailSections.components") },
     { id: "purchase", label: t("detailSections.purchase") },
     { id: "photos", label: t("detailSections.photos") },
-    { id: "evidence", label: t("detailSections.evidence") },
     { id: "handover", label: t("detailSections.handover") },
     { id: "movement", label: t("detailSections.movement") },
     { id: "notes", label: t("detailSections.notes") },
@@ -725,6 +724,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     ...buildEvidenceItems(auditFindingAttachments, t("evidenceGroupAudit"), t("detailSections.audit")),
     ...buildEvidenceItems(disposalAttachments, t("evidenceGroupDisposal"), t("movementFilters.disposal")),
   ].sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime())
+  const evidenceDrawerItems = allEvidenceItems.map((item) => ({
+    ...item,
+    uploadedAt: item.uploadedAt.toISOString(),
+    displayDate: formatDate(item.uploadedAt),
+  }))
   const activityDrawerItems = [
     latestActivityItem,
     ...activityFollowUpItems,
@@ -764,6 +768,19 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             triggerLabel={t("activityDrawerOpen")}
             emptyLabel={tCommon("noData")}
             items={activityDrawerItems}
+          />
+          <AssetEvidenceDrawer
+            items={evidenceDrawerItems}
+            labels={{
+              title: t("evidenceCenter"),
+              triggerLabel: t("detailSections.evidence"),
+              emptyLabel: t("noEvidenceHelp"),
+              total: t("evidenceTotal"),
+              images: t("evidenceImages"),
+              documents: t("evidenceDocuments"),
+              all: t("movementFilters.all"),
+              openFile: t("openEvidenceFile"),
+            }}
           />
           <Link
             href={`/${locale}/assets/${asset.id}/label`}
@@ -1080,60 +1097,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               photoChecklist={photoChecklist}
             />
           </div>
-
-          <section id="evidence" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <SectionHeading title={t("evidenceCenter")} subtitle={t("detailSections.evidenceSubtitle")} icon={<Paperclip className="h-5 w-5 text-primary" />} />
-            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <SummaryPill label={t("evidenceTotal")} value={String(allEvidenceItems.length)} />
-              <SummaryPill label={t("evidenceImages")} value={String(allEvidenceItems.filter((item) => item.fileType.startsWith("image/")).length)} />
-              <SummaryPill label={t("evidenceDocuments")} value={String(allEvidenceItems.filter((item) => !item.fileType.startsWith("image/")).length)} />
-            </div>
-            {allEvidenceItems.length === 0 ? (
-              <ActionEmptyState
-                icon={<Paperclip className="h-6 w-6" />}
-                title={t("noEvidence")}
-                description={t("noEvidenceHelp")}
-                actionHref="#photos"
-                actionLabel={t("detailSections.photos")}
-              />
-            ) : (
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {allEvidenceItems.map((item) => (
-                  <a
-                    key={`${item.group}-${item.id}`}
-                    href={item.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="group overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    {item.fileType.startsWith("image/") ? (
-                      <div className="flex aspect-video w-full items-center justify-center bg-muted/40 p-2">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={`${item.href}?inline=1`}
-                          alt={item.title}
-                          loading="lazy"
-                          className="max-h-full w-full object-contain transition-transform group-hover:scale-[1.01]"
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex aspect-video w-full items-center justify-center bg-muted/40 p-3 text-sm font-medium text-muted-foreground">
-                        {item.fileType}
-                      </div>
-                    )}
-                    <div className="border-t border-border p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">{item.group}</span>
-                        <span className="text-xs text-muted-foreground">{formatDate(item.uploadedAt)}</span>
-                      </div>
-                      <div className="mt-2 truncate text-sm font-medium text-foreground">{item.title}</div>
-                      <div className="mt-1 truncate text-xs text-muted-foreground">{item.detail}</div>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            )}
-          </section>
 
           <section id="handover" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={t("detailSections.handover")} subtitle={t("detailSections.handoverSubtitle")} icon={<FileText className="h-5 w-5 text-primary" />} />
@@ -2218,15 +2181,6 @@ function EvidenceLinks({
           ))}
         </div>
       )}
-    </div>
-  )
-}
-
-function SummaryPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-border bg-background p-3">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 text-2xl font-bold text-foreground">{value}</div>
     </div>
   )
 }

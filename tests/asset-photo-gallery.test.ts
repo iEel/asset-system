@@ -27,3 +27,13 @@ test("asset detail sidebar photo preview stays compact", () => {
   assert.match(source, /h-32/)
   assert.doesNotMatch(source, /flex aspect-\[4\/3\] w-full items-center/)
 })
+
+test("asset detail evidence is a drawer, not a duplicate gallery section", () => {
+  const source = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
+
+  assert.match(source, /<AssetEvidenceDrawer/)
+  assert.match(source, /const evidenceDrawerItems = allEvidenceItems\.map/)
+  assert.doesNotMatch(source, /id: "evidence"/)
+  assert.doesNotMatch(source, /<section id="evidence"/)
+  assert.doesNotMatch(source, /<SummaryPill/)
+})

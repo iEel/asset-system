@@ -47,6 +47,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Transfer an asset.
 - [ ] Upload and preview asset evidence.
 - [ ] On Asset Detail, confirm model/asset preview photos stay compact in the side rail, the `รูปและไฟล์` section initially shows only the preview set, and expanding/collapsing extra photos or files keeps preview, download, and delete actions available.
+- [ ] On Asset Detail, open the Evidence Center from the top action row and confirm it works as a drawer-based file index with source filters instead of a duplicate page section; the Timeline remains the place to review event history.
 
 ## auditor
 

@@ -1056,6 +1056,7 @@
     "evidenceTotal": "หลักฐานทั้งหมด",
     "evidenceImages": "รูปภาพ",
     "evidenceDocuments": "เอกสาร/ไฟล์อื่น",
+    "openEvidenceFile": "เปิดไฟล์หลักฐาน",
     "evidenceGroupAsset": "ทะเบียน",
     "evidenceGroupModel": "รูปแบบรุ่น",
     "evidenceGroupPurchase": "จัดซื้อ",
