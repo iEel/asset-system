@@ -63,6 +63,21 @@ export function summarizeAssetCrossScope(assets: AssetCrossScopeInput[]) {
   )
 }
 
+export function collectAssetCrossScopePreviewIds<T extends AssetCrossScopeInput & { id: string }>(
+  assets: T[],
+  limit: number
+) {
+  if (limit <= 0) return []
+
+  const ids: string[] = []
+  for (const asset of assets) {
+    if (!assetMatchesCrossScopeFilter(asset, "all")) continue
+    ids.push(asset.id)
+    if (ids.length >= limit) break
+  }
+  return ids
+}
+
 export function getAssetCrossScopeFlagLabels(
   flags: AssetCrossScopeFlags,
   labels: { custodianCompany: string; custodianBranch: string; locationBranch: string }

@@ -723,7 +723,7 @@ function AssetFilters({
         </div>
       ) : null}
       <form className="space-y-3" action={`/${locale}/assets`}>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-5">
           <label className="col-span-2">
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{labels.search}</span>
             <input
@@ -770,24 +770,26 @@ function AssetFilters({
             <span>{labels.advancedFilters}</span>
             <span className="text-xs font-normal text-muted-foreground">{labels.advancedFiltersHelp}</span>
           </summary>
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="grid gap-3 sm:grid-cols-2 lg:col-span-2" aria-label={labels.assetStateFilterGroup}>
-              <FilterSelect name="statusId" label={labels.status} defaultValue={filters.statusId} help={assetStatusHelp}>
-                <option value="">{labels.all}</option>
-                {statuses.map((status) => (
-                  <option key={status.id} value={status.id}>
-                    {status.nameTh}
-                  </option>
-                ))}
-              </FilterSelect>
-              <FilterSelect name="conditionId" label={labels.condition} defaultValue={filters.conditionId} help={assetConditionHelp}>
-                <option value="">{labels.all}</option>
-                {conditions.map((condition) => (
-                  <option key={condition.id} value={condition.id}>
-                    {condition.nameTh}
-                  </option>
-                ))}
-              </FilterSelect>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="lg:col-span-2">
+              <div className="grid gap-3 sm:grid-cols-2 lg:col-span-2" aria-label={labels.assetStateFilterGroup}>
+                <FilterSelect name="statusId" label={labels.status} defaultValue={filters.statusId} help={assetStatusHelp}>
+                  <option value="">{labels.all}</option>
+                  {statuses.map((status) => (
+                    <option key={status.id} value={status.id}>
+                      {status.nameTh}
+                    </option>
+                  ))}
+                </FilterSelect>
+                <FilterSelect name="conditionId" label={labels.condition} defaultValue={filters.conditionId} help={assetConditionHelp}>
+                  <option value="">{labels.all}</option>
+                  {conditions.map((condition) => (
+                    <option key={condition.id} value={condition.id}>
+                      {condition.nameTh}
+                    </option>
+                  ))}
+                </FilterSelect>
+              </div>
             </div>
             <FilterSelect name="ownershipType" label={labels.ownershipType} defaultValue={filters.ownershipType}>
               <option value="">{labels.all}</option>

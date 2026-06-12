@@ -30,6 +30,7 @@ Use this checklist before go-live, before a production schema change, and before
 - [ ] Restore test completed.
 - [ ] Prisma schema and migration approach are documented.
 - [ ] Production schema changes have an approved rollback or restore plan.
+- [ ] If the release includes `prisma/manual-migrations/*.sql`, each required script has been run against Production after backup and approval. For the performance-index pass, run `prisma/manual-migrations/2026-06-12-add-performance-indexes.sql` with `npx prisma db execute --file ...`.
 
 ## Uploads And Evidence
 

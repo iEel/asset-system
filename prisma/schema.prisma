@@ -108,7 +108,7 @@ model Employee {
   reportedMaintenanceTickets  MaintenanceTicket[] @relation("MaintenanceReportedBy")
   assignedMaintenanceTickets  MaintenanceTicket[] @relation("MaintenanceAssignedTo")
   inspectedMaintenanceTickets MaintenanceTicket[] @relation("MaintenanceInspectedBy")
-  assignedMaintenancePlans     MaintenancePlan[]   @relation("MaintenancePlanAssignedTo")
+  assignedMaintenancePlans    MaintenancePlan[]   @relation("MaintenancePlanAssignedTo")
   assignedAuditFindings       AuditFinding[]      @relation("AuditFindingActionOwner")
   requestedDisposals          DisposalRequest[]   @relation("DisposalRequestedBy")
   approvedDisposals           DisposalRequest[]   @relation("DisposalApprover")
@@ -116,6 +116,9 @@ model Employee {
   user                        User?
   auditRounds                 AuditRound[]
 
+  @@index([isActive, companyId, branchId], map: "IX_employees_isActive_companyId_branchId")
+  @@index([departmentId], map: "IX_employees_departmentId")
+  @@index([managerId], map: "IX_employees_managerId")
   @@map("employees")
 }
 
@@ -144,6 +147,8 @@ model Location {
   currentAssets Asset[]      @relation("AssetCurrentLocation")
   auditRounds   AuditRound[]
 
+  @@index([isActive, branchId], map: "IX_locations_isActive_branchId")
+  @@index([parentId], map: "IX_locations_parentId")
   @@map("locations")
 }
 
@@ -240,54 +245,54 @@ model AssetCondition {
 // ============================================================
 
 model Asset {
-  id                String         @id @default(uuid())
-  assetTag          String         @unique @db.NVarChar(50)
-  name              String         @db.NVarChar(200)
-  categoryId        String
-  category          AssetCategory  @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  brandId           String?
-  brand             AssetBrand?    @relation(fields: [brandId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  modelId           String?
-  model             AssetModel?    @relation(fields: [modelId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  serialNumber      String?        @db.NVarChar(100)
-  licenseTotalSeats Int?
-  licenseUsedSeats  Int?
+  id                     String         @id @default(uuid())
+  assetTag               String         @unique @db.NVarChar(50)
+  name                   String         @db.NVarChar(200)
+  categoryId             String
+  category               AssetCategory  @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  brandId                String?
+  brand                  AssetBrand?    @relation(fields: [brandId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  modelId                String?
+  model                  AssetModel?    @relation(fields: [modelId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  serialNumber           String?        @db.NVarChar(100)
+  licenseTotalSeats      Int?
+  licenseUsedSeats       Int?
   licenseAssignedAssetId String?
-  licenseAssignedAsset   Asset?    @relation("LicenseAssignedAsset", fields: [licenseAssignedAssetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  assignedLicenses        Asset[]   @relation("LicenseAssignedAsset")
-  companyId         String
-  company           Company        @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  branchId          String
-  branch            Branch         @relation(fields: [branchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  ownershipType     String         @default("personal") @db.NVarChar(30)
-  departmentId      String?
-  department        Department?    @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  custodianId       String?
-  custodian         Employee?      @relation("AssetCustodian", fields: [custodianId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  homeLocationId    String?
-  homeLocation      Location?      @relation("AssetHomeLocation", fields: [homeLocationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  currentLocationId String
-  currentLocation   Location       @relation("AssetCurrentLocation", fields: [currentLocationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  statusId          String
-  status            AssetStatus    @relation(fields: [statusId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  conditionId       String
-  condition         AssetCondition @relation(fields: [conditionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  purchaseDate      DateTime?
-  purchasePrice     Decimal?       @db.Decimal(18, 2)
-  supplierId        String?
-  supplier          Supplier?      @relation(fields: [supplierId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  warrantyStartDate DateTime?
-  warrantyEndDate   DateTime?
-  fixedAssetCode    String?        @db.NVarChar(50)
-  poNumber          String?        @db.NVarChar(50)
-  invoiceNumber     String?        @db.NVarChar(50)
-  remark            String?        @db.NVarChar(Max)
-  customFieldsJson  String?        @db.NVarChar(Max) // JSON snapshot of custom fields
-  isActive          Boolean        @default(true)
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  createdBy         String?        @db.NVarChar(100)
-  updatedBy         String?        @db.NVarChar(100)
+  licenseAssignedAsset   Asset?         @relation("LicenseAssignedAsset", fields: [licenseAssignedAssetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assignedLicenses       Asset[]        @relation("LicenseAssignedAsset")
+  companyId              String
+  company                Company        @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  branchId               String
+  branch                 Branch         @relation(fields: [branchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ownershipType          String         @default("personal") @db.NVarChar(30)
+  departmentId           String?
+  department             Department?    @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  custodianId            String?
+  custodian              Employee?      @relation("AssetCustodian", fields: [custodianId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  homeLocationId         String?
+  homeLocation           Location?      @relation("AssetHomeLocation", fields: [homeLocationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  currentLocationId      String
+  currentLocation        Location       @relation("AssetCurrentLocation", fields: [currentLocationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  statusId               String
+  status                 AssetStatus    @relation(fields: [statusId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  conditionId            String
+  condition              AssetCondition @relation(fields: [conditionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  purchaseDate           DateTime?
+  purchasePrice          Decimal?       @db.Decimal(18, 2)
+  supplierId             String?
+  supplier               Supplier?      @relation(fields: [supplierId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  warrantyStartDate      DateTime?
+  warrantyEndDate        DateTime?
+  fixedAssetCode         String?        @db.NVarChar(50)
+  poNumber               String?        @db.NVarChar(50)
+  invoiceNumber          String?        @db.NVarChar(50)
+  remark                 String?        @db.NVarChar(Max)
+  customFieldsJson       String?        @db.NVarChar(Max) // JSON snapshot of custom fields
+  isActive               Boolean        @default(true)
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  createdBy              String?        @db.NVarChar(100)
+  updatedBy              String?        @db.NVarChar(100)
 
   customFieldValues     CustomFieldValue[]
   movements             AssetMovement[]
@@ -305,8 +310,21 @@ model Asset {
   auditScanHistory      AuditScanHistory[]
   labelPrints           AssetLabelPrint[]
 
-  @@map("assets")
   @@index([licenseAssignedAssetId])
+  @@index([isActive, createdAt], map: "IX_assets_isActive_createdAt")
+  @@index([isActive, companyId, branchId], map: "IX_assets_isActive_companyId_branchId")
+  @@index([isActive, categoryId, modelId], map: "IX_assets_isActive_categoryId_modelId")
+  @@index([isActive, brandId], map: "IX_assets_isActive_brandId")
+  @@index([isActive, statusId, conditionId], map: "IX_assets_isActive_statusId_conditionId")
+  @@index([isActive, ownershipType], map: "IX_assets_isActive_ownershipType")
+  @@index([isActive, custodianId], map: "IX_assets_isActive_custodianId")
+  @@index([isActive, currentLocationId], map: "IX_assets_isActive_currentLocationId")
+  @@index([departmentId], map: "IX_assets_departmentId")
+  @@index([supplierId], map: "IX_assets_supplierId")
+  @@index([purchaseDate], map: "IX_assets_purchaseDate")
+  @@index([warrantyEndDate], map: "IX_assets_warrantyEndDate")
+  @@index([serialNumber], map: "IX_assets_serialNumber")
+  @@map("assets")
 }
 
 model AssetLabelPrintBatch {
@@ -515,6 +533,8 @@ model AssetMovement {
   performedAt   DateTime @default(now())
   remark        String?  @db.NVarChar(Max)
 
+  @@index([assetId, performedAt], map: "IX_asset_movements_assetId_performedAt")
+  @@index([referenceType, referenceId], map: "IX_asset_movements_referenceType_referenceId")
   @@map("asset_movements")
 }
 
@@ -556,6 +576,8 @@ model AuditRound {
   findings    AuditFinding[]
   scanHistory AuditScanHistory[]
 
+  @@index([isActive, status], map: "IX_audit_rounds_isActive_status")
+  @@index([startDate, endDate], map: "IX_audit_rounds_startDate_endDate")
   @@map("audit_rounds")
 }
 
@@ -592,6 +614,9 @@ model AuditItem {
   scanHistory AuditScanHistory[]
 
   @@unique([auditRoundId, assetId])
+  @@index([auditRoundId, auditStatus], map: "IX_audit_items_auditRoundId_auditStatus")
+  @@index([assetId], map: "IX_audit_items_assetId")
+  @@index([lastScanAt], map: "IX_audit_items_lastScanAt")
   @@map("audit_items")
 }
 
@@ -625,6 +650,10 @@ model AuditFinding {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
+  @@index([reviewStatus, actionStatus, actionDueDate], map: "IX_audit_findings_reviewStatus_actionStatus_actionDueDate")
+  @@index([auditRoundId, reviewStatus], map: "IX_audit_findings_auditRoundId_reviewStatus")
+  @@index([assetId], map: "IX_audit_findings_assetId")
+  @@index([actionOwnerId], map: "IX_audit_findings_actionOwnerId")
   @@map("audit_findings")
 }
 
@@ -645,6 +674,9 @@ model AuditScanHistory {
   rawPayload     String?    @db.NVarChar(Max)
   remark         String?    @db.NVarChar(Max)
 
+  @@index([auditRoundId, scannedAt], map: "IX_audit_scan_history_auditRoundId_scannedAt")
+  @@index([assetId, scannedAt], map: "IX_audit_scan_history_assetId_scannedAt")
+  @@index([auditItemId], map: "IX_audit_scan_history_auditItemId")
   @@map("audit_scan_history")
 }
 
@@ -673,6 +705,9 @@ model MaintenancePlan {
   updatedAt       DateTime  @updatedAt
   isActive        Boolean   @default(true)
 
+  @@index([isActive, nextDueDate], map: "IX_maintenance_plans_isActive_nextDueDate")
+  @@index([assetId], map: "IX_maintenance_plans_assetId")
+  @@index([assignedToId], map: "IX_maintenance_plans_assignedToId")
   @@map("maintenance_plans")
 }
 
@@ -709,6 +744,10 @@ model MaintenanceTicket {
   updatedAt     DateTime  @updatedAt
   isActive      Boolean   @default(true)
 
+  @@index([isActive, repairStatus, dueDate], map: "IX_maintenance_tickets_isActive_repairStatus_dueDate")
+  @@index([assetId, reportedDate], map: "IX_maintenance_tickets_assetId_reportedDate")
+  @@index([assignedToId], map: "IX_maintenance_tickets_assignedToId")
+  @@index([reportedById], map: "IX_maintenance_tickets_reportedById")
   @@map("maintenance_tickets")
 }
 
@@ -746,6 +785,9 @@ model DisposalRequest {
   updatedAt          DateTime  @updatedAt
   isActive           Boolean   @default(true)
 
+  @@index([isActive, requestStatus, requestDate], map: "IX_disposal_requests_isActive_requestStatus_requestDate")
+  @@index([assetId], map: "IX_disposal_requests_assetId")
+  @@index([requestedById], map: "IX_disposal_requests_requestedById")
   @@map("disposal_requests")
 }
 
@@ -794,6 +836,8 @@ model Attachment {
   uploadedAt   DateTime @default(now())
   isActive     Boolean  @default(true)
 
+  @@index([assetId, isActive, uploadedAt], map: "IX_attachments_assetId_isActive_uploadedAt")
+  @@index([module, referenceId, isActive, uploadedAt], map: "IX_attachments_module_referenceId_isActive_uploadedAt")
   @@map("attachments")
 }
 
@@ -889,6 +933,10 @@ model SystemLog {
   remark    String?  @db.NVarChar(500)
   createdAt DateTime @default(now())
 
+  @@index([createdAt], map: "IX_system_logs_createdAt")
+  @@index([module, action, createdAt], map: "IX_system_logs_module_action_createdAt")
+  @@index([recordId], map: "IX_system_logs_recordId")
+  @@index([userId, createdAt], map: "IX_system_logs_userId_createdAt")
   @@map("system_logs")
 }
 

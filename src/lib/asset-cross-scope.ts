@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import {
   assetMatchesCrossScopeFilter,
+  collectAssetCrossScopePreviewIds,
   getAssetCrossScopeFlagLabels,
   getAssetCrossScopeFlags,
   normalizeAssetCrossScopeFilter,
@@ -9,7 +10,16 @@ import {
   type AssetCrossScopeFilter,
 } from "./asset-cross-scope-filter.ts"
 
-const assetCrossScopeSelect = {
+const assetCrossScopeCandidateSelect = {
+  id: true,
+  companyId: true,
+  branchId: true,
+  custodian: { select: { companyId: true, branchId: true } },
+  homeLocation: { select: { branchId: true } },
+  currentLocation: { select: { branchId: true } },
+} satisfies Prisma.AssetSelect
+
+const assetCrossScopeRowSelect = {
   id: true,
   assetTag: true,
   name: true,
@@ -45,7 +55,8 @@ const assetCrossScopeSelect = {
   },
 } satisfies Prisma.AssetSelect
 
-type AssetCrossScopeRecord = Prisma.AssetGetPayload<{ select: typeof assetCrossScopeSelect }>
+type AssetCrossScopeCandidate = Prisma.AssetGetPayload<{ select: typeof assetCrossScopeCandidateSelect }>
+type AssetCrossScopeRecord = Prisma.AssetGetPayload<{ select: typeof assetCrossScopeRowSelect }>
 
 export type AssetCrossScopeSummaryRow = {
   id: string
@@ -78,9 +89,17 @@ export async function applyAssetCrossScopeFilter(where: Prisma.AssetWhereInput, 
 export async function buildAssetCrossScopeSummary(where: Prisma.AssetWhereInput, limit = 8) {
   const assets = await getAssetCrossScopeCandidates(where)
   const summary = summarizeAssetCrossScope(assets)
-  const rows = assets
-    .filter((asset) => assetMatchesCrossScopeFilter(asset, "all"))
-    .slice(0, limit)
+  const previewIds = collectAssetCrossScopePreviewIds(assets, limit)
+  const rowAssets = previewIds.length > 0
+    ? await prisma.asset.findMany({
+        where: { id: { in: previewIds } },
+        select: assetCrossScopeRowSelect,
+      })
+    : []
+  const rowById = new Map(rowAssets.map((asset) => [asset.id, asset]))
+  const rows = previewIds
+    .map((id) => rowById.get(id))
+    .filter((asset): asset is AssetCrossScopeRecord => Boolean(asset))
     .map(toAssetCrossScopeSummaryRow)
 
   return { ...summary, rows }
@@ -103,10 +122,10 @@ export function assetCrossScopeLinkQueryValue(filter: AssetCrossScopeFilter) {
   return filter
 }
 
-async function getAssetCrossScopeCandidates(where: Prisma.AssetWhereInput) {
+async function getAssetCrossScopeCandidates(where: Prisma.AssetWhereInput): Promise<AssetCrossScopeCandidate[]> {
   return prisma.asset.findMany({
     where,
-    select: assetCrossScopeSelect,
+    select: assetCrossScopeCandidateSelect,
     orderBy: { assetTag: "asc" },
   })
 }

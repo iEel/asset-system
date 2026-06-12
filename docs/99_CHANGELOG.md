@@ -12,6 +12,7 @@
 | Asset Detail photo evidence UX | Asset Detail now keeps model/asset side-rail previews compact and keeps the `รูปทรัพย์สิน` working area thumbnail-first with expand/collapse controls for checklist and direct asset attachments. A tested helper limits visible photo, checklist, and file items before expansion. |
 | Dashboard shell hash-anchor scroll | Dashboard pages now keep hash-anchor navigation inside the `<main>` scroll container and reset accidental scroll on the outer fixed shell. Asset Detail shortcuts such as `หมายเหตุ` and `ตรวจนับ` no longer leave a large blank bottom area pinned in the viewport, and the notes section was moved before short tail workflow sections to reduce blank-tail anchor cases. |
 | Asset Import/Export history | `/th/asset-management/import-export` now formats the import-history hidden asset count with the `next-intl` `{count}` variable at render time instead of passing `importHistoryMoreAssets` as a static label string, preventing `FORMATTING_ERROR` on the Import/Export page while preserving the existing import history and rollback preview behavior. |
+| Performance Phase 1-2 | Added mapped SQL Server hot-path indexes in `prisma/schema.prisma` plus the idempotent production script `prisma/manual-migrations/2026-06-12-add-performance-indexes.sql`. Cross-scope summary loading now uses minimal candidate rows and only loads full detail for bounded preview rows, reducing payload for 2,000-5,000 asset datasets while preserving existing cross-scope behavior. |
 
 ---
 

@@ -262,12 +262,19 @@ sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/
 ถ้าเป็น DB เดิมที่มีข้อมูลจริง:
 
 ```bash
-sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma db push'
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma generate'
+```
+
+ถ้า release มีไฟล์ manual migration เช่น performance index script ให้รันหลัง backup/approval และก่อน build:
+
+```bash
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma db execute --file prisma/manual-migrations/2026-06-12-add-performance-indexes.sql'
 ```
 
 หมายเหตุ:
 
-- ปัจจุบัน repo นี้ใช้ `prisma db push` เป็นหลัก ยังไม่มี migration history production-grade
+- ปัจจุบัน repo นี้ยังไม่ assume `prisma migrate` production-grade กับ SQL Server; schema change บน DB เดิมให้ใช้ reviewed manual SQL migration หรือ process ที่ผ่าน approval
+- Manual migration ใน `prisma/manual-migrations/` ต้องเป็น idempotent และใช้ชื่อ index/constraint ตรงกับ `map:` ใน `prisma/schema.prisma`
 - Production schema changes ต้องมี backup, change approval, rollback/restore plan, และหลักฐานการทดสอบก่อนรันกับข้อมูลจริง
 - ห้ามรัน `npm run cleanup:test-data -- --apply` บน production
 - ถ้ามีข้อมูลจริงแล้ว ให้ backup SQL Server และ `/var/www/asset-system/uploads` ก่อน deploy ทุกครั้ง
@@ -781,7 +788,7 @@ sudo -u assetapp git -c safe.directory=/var/www/asset-system/app pull --ff-only 
 หลัง pull ให้ตรวจว่าไฟล์สำคัญเปลี่ยนหรือไม่:
 
 ```bash
-sudo -u assetapp git -c safe.directory=/var/www/asset-system/app diff --name-only "$OLD_HEAD"..HEAD -- package.json package-lock.json prisma/schema.prisma DEPLOYMENT_UBUNTU_CLOUDFLARE.md
+sudo -u assetapp git -c safe.directory=/var/www/asset-system/app diff --name-only "$OLD_HEAD"..HEAD -- package.json package-lock.json prisma/schema.prisma prisma/manual-migrations DEPLOYMENT_UBUNTU_CLOUDFLARE.md
 ```
 
 ถ้า `package.json` หรือ `package-lock.json` ไม่อยู่ในผลลัพธ์ ให้ข้าม `npm ci` เพื่อไม่แตะ dependency tree โดยไม่จำเป็น ถ้ามีไฟล์ใดไฟล์หนึ่งเปลี่ยน ให้รัน:
@@ -790,11 +797,11 @@ sudo -u assetapp git -c safe.directory=/var/www/asset-system/app diff --name-onl
 sudo -u assetapp npm ci
 ```
 
-ถ้า `prisma/schema.prisma` ไม่อยู่ในผลลัพธ์ ให้ข้าม Prisma/db schema update ถ้า schema เปลี่ยน ให้ backup database และขอ approval ก่อน แล้วค่อยรันคำสั่งที่จำเป็น:
+ถ้า `prisma/schema.prisma` และ `prisma/manual-migrations/` ไม่อยู่ในผลลัพธ์ ให้ข้าม Prisma/db schema update ถ้า schema หรือ manual migration เปลี่ยน ให้ backup database และขอ approval ก่อน แล้วค่อยรันคำสั่งที่จำเป็น:
 
 ```bash
 sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma generate'
-sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma db push'
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma db execute --file prisma/manual-migrations/2026-06-12-add-performance-indexes.sql'
 ```
 
 Build production:

@@ -3,6 +3,7 @@ import test from "node:test"
 
 import {
   assetMatchesCrossScopeFilter,
+  collectAssetCrossScopePreviewIds,
   getAssetCrossScopeFlags,
   normalizeAssetCrossScopeFilter,
   summarizeAssetCrossScope,
@@ -79,4 +80,17 @@ test("matches and summarizes cross-scope assets without double-counting all", ()
     custodianBranch: 2,
     locationBranch: 1,
   })
+})
+
+test("collects only the bounded cross-scope preview ids in source order", () => {
+  const assets = [
+    { ...baseAsset, id: "normal" },
+    { ...baseAsset, id: "custodian-company", custodian: { companyId: "company-grandlink", branchId: "branch-grandlink" } },
+    { ...baseAsset, id: "custodian-branch", custodian: { companyId: "company-sonic", branchId: "branch-pinthong" } },
+    { ...baseAsset, id: "location", currentLocation: { branchId: "branch-pinthong" } },
+  ]
+
+  assert.deepEqual(collectAssetCrossScopePreviewIds(assets, 2), ["custodian-company", "custodian-branch"])
+  assert.deepEqual(collectAssetCrossScopePreviewIds(assets, 10), ["custodian-company", "custodian-branch", "location"])
+  assert.deepEqual(collectAssetCrossScopePreviewIds(assets, 0), [])
 })
