@@ -8,6 +8,7 @@
 
 | Area | Update |
 |---|---|
+| Page-level skeleton loading | Added shared skeleton loading UI in `src/components/ui/page-skeleton.tsx` plus App Router `loading.tsx` fallbacks for the authenticated dashboard shell, `/dashboard`, and `/assets`. Slow Dashboard and Asset Register navigations now show muted page-shaped skeletons instead of blank/stalled transitions while server data resolves; business logic and data queries are unchanged. |
 | Performance timing instrumentation | Added opt-in server timing logs behind `PERFORMANCE_TIMING=1` / `PERFORMANCE_LOGGING=1` for Dashboard, Asset Register, Asset Detail, Reports, Audit Rounds, and Audit Scan data groups. Logs use `[performance]` JSON entries with route labels, duration, success/failure, and small non-sensitive metadata so slow navigation can be diagnosed without changing workflow behavior. Dashboard timing now also breaks `dashboard.initial-data` into `dashboard.kpi-counts`, `dashboard.recent-activity`, `dashboard.urgent-work`, `dashboard.approval-inbox`, `dashboard.cross-scope`, and `dashboard.monthly-trends` for follow-up bottleneck isolation. |
 
 ---

@@ -1,6 +1,6 @@
 # Asset Management System - Feature List
 
-Last updated: 2026-06-11
+Last updated: 2026-06-13
 
 This feature list is based on the current repository documents and source code, not only on the original plan. It focuses on features that are represented by the current docs, routes, API endpoints, Prisma schema, and component/library structure.
 
@@ -42,6 +42,7 @@ The system is an enterprise asset management web application for registering ass
 | Exports | Excel and PDF exports, including Thai font support |
 | Scanning | QR and barcode scanning helpers for asset labels and serial numbers |
 | Mobile support | Mobile responsive QA documented across core field workflows |
+| Loading UX | Shared page skeletons plus App Router `loading.tsx` fallbacks for authenticated dashboard pages, with route-specific skeletons for Dashboard and Asset Register |
 | PWA | App manifest and install icons for mobile Add to Home Screen |
 
 ## Main Navigation And Pages

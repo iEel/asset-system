@@ -25,6 +25,14 @@
 - Sidebar navigation may scroll inside its own nav container when the menu is taller than the viewport.
 - Sidebar navigation is filtered with `src/lib/navigation-permissions.ts` before rendering so users do not see menu items they cannot open.
 
+## Loading UI And Streaming
+
+- Authenticated dashboard routes use Next.js App Router `loading.tsx` boundaries for page-level fallback UI while server data resolves.
+- `src/app/[locale]/(dashboard)/loading.tsx` is the generic authenticated-shell fallback. Route-specific fallbacks currently exist for `src/app/[locale]/(dashboard)/dashboard/loading.tsx` and `src/app/[locale]/(dashboard)/assets/loading.tsx`.
+- Shared loading shapes live in `src/components/ui/page-skeleton.tsx`. Reuse `PageSkeleton`, `DashboardPageSkeleton`, or `AssetRegisterPageSkeleton` before introducing new one-off loading UI.
+- Loading UI should match the final page structure with muted cards, filters, and table/list rows. Keep spinner-only loading for small button/search/upload actions.
+- `loading.tsx` is below the same route segment layout, so runtime data fetched inside a layout can still block before the fallback is visible. Keep heavy route-specific data fetching in pages or nested server components where the loading boundary can cover it.
+
 ## API Protection Pattern
 
 API routes should use the established helpers from `src/lib/auth-utils.ts`:
