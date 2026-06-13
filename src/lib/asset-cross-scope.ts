@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import {
   assetMatchesCrossScopeFilter,
@@ -57,6 +57,12 @@ const assetCrossScopeRowSelect = {
 
 type AssetCrossScopeCandidate = Prisma.AssetGetPayload<{ select: typeof assetCrossScopeCandidateSelect }>
 type AssetCrossScopeRecord = Prisma.AssetGetPayload<{ select: typeof assetCrossScopeRowSelect }>
+type DashboardAssetCrossScopeCountsRow = {
+  all: number | bigint | null
+  custodianCompany: number | bigint | null
+  custodianBranch: number | bigint | null
+  locationBranch: number | bigint | null
+}
 
 export type AssetCrossScopeSummaryRow = {
   id: string
@@ -105,6 +111,68 @@ export async function buildAssetCrossScopeSummary(where: Prisma.AssetWhereInput,
   return { ...summary, rows }
 }
 
+export async function buildDashboardAssetCrossScopeSummary(limit = 5) {
+  const previewLimit = Math.max(0, Math.floor(limit))
+  const [countRows, previewRows] = await Promise.all([
+    prisma.$queryRaw<DashboardAssetCrossScopeCountsRow[]>`
+      SELECT
+        SUM(CASE WHEN (
+          (e.[id] IS NOT NULL AND (e.[companyId] <> a.[companyId] OR e.[branchId] <> a.[branchId]))
+          OR (hl.[id] IS NOT NULL AND hl.[branchId] <> a.[branchId])
+          OR cl.[branchId] <> a.[branchId]
+        ) THEN 1 ELSE 0 END) AS [all],
+        SUM(CASE WHEN e.[id] IS NOT NULL AND e.[companyId] <> a.[companyId] THEN 1 ELSE 0 END) AS [custodianCompany],
+        SUM(CASE WHEN e.[id] IS NOT NULL AND e.[branchId] <> a.[branchId] THEN 1 ELSE 0 END) AS [custodianBranch],
+        SUM(CASE WHEN (
+          (hl.[id] IS NOT NULL AND hl.[branchId] <> a.[branchId])
+          OR cl.[branchId] <> a.[branchId]
+        ) THEN 1 ELSE 0 END) AS [locationBranch]
+      FROM [assets] a
+      LEFT JOIN [employees] e ON e.[id] = a.[custodianId]
+      LEFT JOIN [locations] hl ON hl.[id] = a.[homeLocationId]
+      INNER JOIN [locations] cl ON cl.[id] = a.[currentLocationId]
+      WHERE a.[isActive] = 1
+    `,
+    previewLimit > 0
+      ? prisma.$queryRaw<Array<{ id: string }>>`
+          SELECT TOP (${previewLimit}) a.[id]
+          FROM [assets] a
+          LEFT JOIN [employees] e ON e.[id] = a.[custodianId]
+          LEFT JOIN [locations] hl ON hl.[id] = a.[homeLocationId]
+          INNER JOIN [locations] cl ON cl.[id] = a.[currentLocationId]
+          WHERE a.[isActive] = 1
+            AND (
+              (e.[id] IS NOT NULL AND (e.[companyId] <> a.[companyId] OR e.[branchId] <> a.[branchId]))
+              OR (hl.[id] IS NOT NULL AND hl.[branchId] <> a.[branchId])
+              OR cl.[branchId] <> a.[branchId]
+            )
+          ORDER BY a.[assetTag] ASC
+        `
+      : Promise.resolve([]),
+  ])
+  const counts = countRows[0]
+  const previewIds = previewRows.map((row) => row.id)
+  const rowAssets = previewIds.length > 0
+    ? await prisma.asset.findMany({
+        where: { id: { in: previewIds } },
+        select: assetCrossScopeRowSelect,
+      })
+    : []
+  const rowById = new Map(rowAssets.map((asset) => [asset.id, asset]))
+  const rows = previewIds
+    .map((id) => rowById.get(id))
+    .filter((asset): asset is AssetCrossScopeRecord => Boolean(asset))
+    .map(toAssetCrossScopeSummaryRow)
+
+  return {
+    all: normalizeCrossScopeCount(counts?.all),
+    custodianCompany: normalizeCrossScopeCount(counts?.custodianCompany),
+    custodianBranch: normalizeCrossScopeCount(counts?.custodianBranch),
+    locationBranch: normalizeCrossScopeCount(counts?.locationBranch),
+    rows,
+  }
+}
+
 export function getAssetCrossScopeRecordFlags(asset: AssetCrossScopeRecord) {
   return getAssetCrossScopeFlags(asset)
 }
@@ -128,6 +196,10 @@ async function getAssetCrossScopeCandidates(where: Prisma.AssetWhereInput): Prom
     select: assetCrossScopeCandidateSelect,
     orderBy: { assetTag: "asc" },
   })
+}
+
+function normalizeCrossScopeCount(value: number | bigint | null | undefined) {
+  return Number(value ?? 0)
 }
 
 function toAssetCrossScopeSummaryRow(asset: AssetCrossScopeRecord): AssetCrossScopeSummaryRow {

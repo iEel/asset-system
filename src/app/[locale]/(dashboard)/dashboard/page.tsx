@@ -21,11 +21,12 @@ import { getApprovalInboxAccess, getApprovalInboxCounts, type ApprovalInboxCount
 import { buildDashboardActionCardKeys, type DashboardActionCardKey } from "@/lib/dashboard-action-cards"
 import { shouldUseEmployeeHome } from "@/lib/default-home"
 import { prisma } from "@/lib/db"
-import { buildAssetCrossScopeSummary, type AssetCrossScopeSummaryRow } from "@/lib/asset-cross-scope"
+import { buildDashboardAssetCrossScopeSummary, type AssetCrossScopeSummaryRow } from "@/lib/asset-cross-scope"
 import { getAssetCrossScopeFlagLabels, type AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
 import { buildSystemLogRecordLabels } from "@/lib/system-log-record-labels"
 import { buildSystemLogPresentation, type SystemLogPresentation } from "@/lib/system-log-presenter"
 import { cn } from "@/lib/utils"
+import { withPerformanceTiming } from "@/lib/performance-timing"
 
 type DashboardPageProps = {
   params: Promise<{ locale: string }>
@@ -74,80 +75,110 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   const monthRange = getMonthRange(new Date())
   const approvalInboxAccess = user ? getApprovalInboxAccess(user) : null
   const emptyApprovalInboxCounts: ApprovalInboxCounts = { total: 0, disposal: 0, maintenance: 0, audit: 0 }
+  const dashboardTimingMeta = { route: "/dashboard", locale, approvalInbox: Boolean(approvalInboxAccess?.canAnyApproval) }
 
   const [
-    totalAssets,
-    inUse,
-    ready,
-    pendingRepair,
-    warrantyExpiring,
+    [totalAssets, inUse, ready, pendingRepair, warrantyExpiring],
     recentLogs,
-    overdueMaintenance,
-    pendingAuditFindings,
-    pendingDisposals,
-    approvedDisposals,
+    [overdueMaintenance, pendingAuditFindings, pendingDisposals, approvedDisposals],
     approvalInboxCounts,
     crossScopeSummary,
-    currentMonthAssets,
-    previousMonthAssets,
-    currentMonthMaintenance,
-    previousMonthMaintenance,
-    currentMonthAuditFindings,
-    previousMonthAuditFindings,
-    currentMonthDisposals,
-    previousMonthDisposals,
-  ] = await Promise.all([
-    prisma.asset.count({ where: { isActive: true } }),
-    prisma.asset.count({
-      where: {
-        isActive: true,
-        status: { OR: [{ name: { contains: "In Use" } }, { nameTh: { contains: "ใช้งาน" } }] },
-      },
-    }),
-    prisma.asset.count({
-      where: {
-        isActive: true,
-        status: { OR: [{ name: { contains: "Ready" } }, { nameTh: { contains: "พร้อม" } }] },
-      },
-    }),
-    prisma.asset.count({
-      where: {
-        isActive: true,
-        status: { OR: [{ name: { contains: "Repair" } }, { nameTh: { contains: "ซ่อม" } }] },
-      },
-    }),
-    prisma.asset.count({
-      where: {
-        isActive: true,
-        warrantyEndDate: { gte: new Date(), lte: warrantyThreshold },
-      },
-    }),
-    prisma.systemLog.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 8,
-      include: { user: { select: { displayName: true, username: true } } },
-    }),
-    prisma.maintenanceTicket.count({
-      where: {
-        isActive: true,
-        dueDate: { lt: today },
-        repairStatus: { in: ["open", "reported", "accepted", "in_progress", "waiting_parts", "waiting_vendor", "completed"] },
-      },
-    }),
-    prisma.auditFinding.count({ where: { reviewStatus: "pending" } }),
-    prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "pending" } }),
-    prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "approved" } }),
-    user && approvalInboxAccess?.canAnyApproval ? getApprovalInboxCounts(user) : Promise.resolve(emptyApprovalInboxCounts),
-    buildAssetCrossScopeSummary({ isActive: true }, 5),
-    prisma.asset.count({ where: { isActive: true, createdAt: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
-    prisma.asset.count({ where: { isActive: true, createdAt: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
-    prisma.maintenanceTicket.count({ where: { isActive: true, reportedDate: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
-    prisma.maintenanceTicket.count({ where: { isActive: true, reportedDate: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
-    prisma.auditFinding.count({ where: { reportedAt: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
-    prisma.auditFinding.count({ where: { reportedAt: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
-    prisma.disposalRequest.count({ where: { isActive: true, requestDate: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
-    prisma.disposalRequest.count({ where: { isActive: true, requestDate: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
-  ])
+    [
+      currentMonthAssets,
+      previousMonthAssets,
+      currentMonthMaintenance,
+      previousMonthMaintenance,
+      currentMonthAuditFindings,
+      previousMonthAuditFindings,
+      currentMonthDisposals,
+      previousMonthDisposals,
+    ],
+  ] = await withPerformanceTiming(
+    "dashboard.initial-data",
+    () => Promise.all([
+      withPerformanceTiming(
+        "dashboard.kpi-counts",
+        () => Promise.all([
+          prisma.asset.count({ where: { isActive: true } }),
+          prisma.asset.count({
+            where: {
+              isActive: true,
+              status: { OR: [{ name: { contains: "In Use" } }, { nameTh: { contains: "ใช้งาน" } }] },
+            },
+          }),
+          prisma.asset.count({
+            where: {
+              isActive: true,
+              status: { OR: [{ name: { contains: "Ready" } }, { nameTh: { contains: "พร้อม" } }] },
+            },
+          }),
+          prisma.asset.count({
+            where: {
+              isActive: true,
+              status: { OR: [{ name: { contains: "Repair" } }, { nameTh: { contains: "ซ่อม" } }] },
+            },
+          }),
+          prisma.asset.count({
+            where: {
+              isActive: true,
+              warrantyEndDate: { gte: new Date(), lte: warrantyThreshold },
+            },
+          }),
+        ]),
+        dashboardTimingMeta
+      ),
+      withPerformanceTiming(
+        "dashboard.recent-activity",
+        () => prisma.systemLog.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 8,
+          include: { user: { select: { displayName: true, username: true } } },
+        }),
+        { ...dashboardTimingMeta, limit: 8 }
+      ),
+      withPerformanceTiming(
+        "dashboard.urgent-work",
+        () => Promise.all([
+          prisma.maintenanceTicket.count({
+            where: {
+              isActive: true,
+              dueDate: { lt: today },
+              repairStatus: { in: ["open", "reported", "accepted", "in_progress", "waiting_parts", "waiting_vendor", "completed"] },
+            },
+          }),
+          prisma.auditFinding.count({ where: { reviewStatus: "pending" } }),
+          prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "pending" } }),
+          prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "approved" } }),
+        ]),
+        dashboardTimingMeta
+      ),
+      withPerformanceTiming(
+        "dashboard.approval-inbox",
+        () => user && approvalInboxAccess?.canAnyApproval ? getApprovalInboxCounts(user) : Promise.resolve(emptyApprovalInboxCounts),
+        dashboardTimingMeta
+      ),
+      withPerformanceTiming(
+        "dashboard.cross-scope",
+        () => buildDashboardAssetCrossScopeSummary(),
+        { ...dashboardTimingMeta, limit: 5 }
+      ),
+      withPerformanceTiming(
+        "dashboard.monthly-trends",
+        () => Promise.all([
+          prisma.asset.count({ where: { isActive: true, createdAt: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
+          prisma.asset.count({ where: { isActive: true, createdAt: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
+          prisma.maintenanceTicket.count({ where: { isActive: true, reportedDate: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
+          prisma.maintenanceTicket.count({ where: { isActive: true, reportedDate: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
+          prisma.auditFinding.count({ where: { reportedAt: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
+          prisma.auditFinding.count({ where: { reportedAt: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
+          prisma.disposalRequest.count({ where: { isActive: true, requestDate: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
+          prisma.disposalRequest.count({ where: { isActive: true, requestDate: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
+        ]),
+        dashboardTimingMeta
+      ),
+    ]),
+    dashboardTimingMeta
+  )
 
   const crossScopeTotal = crossScopeSummary.all
   const crossScopeAssetsHref = buildDashboardCrossScopeHref(locale, "all")

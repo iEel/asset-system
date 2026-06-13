@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-06-13
+
+| Area | Update |
+|---|---|
+| Performance timing instrumentation | Added opt-in server timing logs behind `PERFORMANCE_TIMING=1` / `PERFORMANCE_LOGGING=1` for Dashboard, Asset Register, Asset Detail, Reports, Audit Rounds, and Audit Scan data groups. Logs use `[performance]` JSON entries with route labels, duration, success/failure, and small non-sensitive metadata so slow navigation can be diagnosed without changing workflow behavior. Dashboard timing now also breaks `dashboard.initial-data` into `dashboard.kpi-counts`, `dashboard.recent-activity`, `dashboard.urgent-work`, `dashboard.approval-inbox`, `dashboard.cross-scope`, and `dashboard.monthly-trends` for follow-up bottleneck isolation. |
+
+---
+
 ## 2026-06-12
 
 | Area | Update |
@@ -12,7 +20,7 @@
 | Asset Detail photo evidence UX | Asset Detail now keeps model/asset side-rail previews compact and keeps the `รูปทรัพย์สิน` working area thumbnail-first with expand/collapse controls for checklist and direct asset attachments. A tested helper limits visible photo, checklist, and file items before expansion. |
 | Dashboard shell hash-anchor scroll | Dashboard pages now keep hash-anchor navigation inside the `<main>` scroll container and reset accidental scroll on the outer fixed shell. Asset Detail shortcuts such as `หมายเหตุ` and `ตรวจนับ` no longer leave a large blank bottom area pinned in the viewport, and the notes section was moved before short tail workflow sections to reduce blank-tail anchor cases. |
 | Asset Import/Export history | `/th/asset-management/import-export` now formats the import-history hidden asset count with the `next-intl` `{count}` variable at render time instead of passing `importHistoryMoreAssets` as a static label string, preventing `FORMATTING_ERROR` on the Import/Export page while preserving the existing import history and rollback preview behavior. |
-| Performance Phase 1-2 | Added mapped SQL Server hot-path indexes in `prisma/schema.prisma` plus the idempotent production script `prisma/manual-migrations/2026-06-12-add-performance-indexes.sql`. Cross-scope summary loading now uses minimal candidate rows and only loads full detail for bounded preview rows, reducing payload for 2,000-5,000 asset datasets while preserving existing cross-scope behavior. |
+| Performance Phase 1-2 | Added mapped SQL Server hot-path indexes in `prisma/schema.prisma` plus the idempotent production script `prisma/manual-migrations/2026-06-12-add-performance-indexes.sql`. Cross-scope summary loading now uses minimal candidate rows and only loads full detail for bounded preview rows, reducing payload for 2,000-5,000 asset datasets while preserving existing cross-scope behavior. Dashboard cross-scope counts now use a dedicated SQL Server aggregate query with a bounded 5-row preview instead of loading every active candidate into Node during `/dashboard` render. |
 
 ---
 

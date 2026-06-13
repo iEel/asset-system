@@ -5,10 +5,16 @@ import { AuditScanForm } from "@/components/audit/audit-scan-form"
 import { getAuditRoundOptions } from "@/lib/audit-options"
 import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
 import { normalizeAuditRoundDetailReturnTo } from "@/lib/operational-return-navigation"
+import { withPerformanceTiming } from "@/lib/performance-timing"
 
 type AuditScanPageProps = {
   params: Promise<{ locale: string; id: string }>
   searchParams: Promise<{ returnTo?: string | string[] }>
+}
+
+type ChecklistSettingRow = {
+  key: string
+  value: string | null
 }
 
 export default async function AuditScanPage({ params, searchParams }: AuditScanPageProps) {
@@ -16,41 +22,49 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
   const rawSearchParams = await searchParams
   await requirePagePermission(locale, "audit", "edit")
 
-  const [round, options] = await Promise.all([
-    prisma.auditRound.findFirst({
-      where: { id, isActive: true },
-      select: {
-        id: true,
-        name: true,
-        auditNo: true,
-        items: {
-          orderBy: [{ auditStatus: "asc" }, { createdAt: "desc" }],
-          include: {
-            asset: {
-              select: {
-                id: true,
-                assetTag: true,
-                name: true,
-                categoryId: true,
-                ownershipType: true,
+  const [round, options] = await withPerformanceTiming(
+    "audit-scan.initial-data",
+    () => Promise.all([
+      prisma.auditRound.findFirst({
+        where: { id, isActive: true },
+        select: {
+          id: true,
+          name: true,
+          auditNo: true,
+          items: {
+            orderBy: [{ auditStatus: "asc" }, { createdAt: "desc" }],
+            include: {
+              asset: {
+                select: {
+                  id: true,
+                  assetTag: true,
+                  name: true,
+                  categoryId: true,
+                  ownershipType: true,
+                },
               },
             },
           },
         },
-      },
-    }),
-    getAuditRoundOptions(),
-  ])
+      }),
+      getAuditRoundOptions(),
+    ]),
+    { route: "/audit/rounds/[id]/scan", locale }
+  )
   if (!round) notFound()
   const returnToHref = normalizeAuditRoundDetailReturnTo(locale, round.id, rawSearchParams.returnTo)
 
   const categoryIds = Array.from(new Set(round.items.map((item) => item.asset.categoryId).filter(Boolean)))
-  const checklistSettings = categoryIds.length > 0
-    ? await prisma.systemSetting.findMany({
-        where: { key: { in: categoryIds.map(categoryPhotoChecklistKey) } },
-        select: { key: true, value: true },
-      })
-    : []
+  const checklistSettings = await withPerformanceTiming<ChecklistSettingRow[]>(
+    "audit-scan.checklist-data",
+    () => categoryIds.length > 0
+      ? prisma.systemSetting.findMany({
+          where: { key: { in: categoryIds.map(categoryPhotoChecklistKey) } },
+          select: { key: true, value: true },
+        })
+      : Promise.resolve<ChecklistSettingRow[]>([]),
+    { route: "/audit/rounds/[id]/scan", locale, itemCount: round.items.length, categoryCount: categoryIds.length }
+  )
   const checklistByCategoryId = new Map(
     checklistSettings.map((setting) => [setting.key.replace("asset_category_photo_checklist:", ""), parsePhotoChecklist(setting.value)])
   )

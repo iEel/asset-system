@@ -19,6 +19,7 @@ import { FilterPanel } from "@/components/ui/filter-panel"
 import { ActionButton } from "@/components/ui/action-button"
 import { getFieldControlClasses } from "@/lib/design-system"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
+import { withPerformanceTiming } from "@/lib/performance-timing"
 
 type AssetsPageProps = {
   params: Promise<{ locale: string }>
@@ -82,6 +83,13 @@ type AssetFilterLabels = {
   conditionHelpMissing: string
 }
 
+type AssetModelPhotoPreview = {
+  id: string
+  referenceId: string
+  originalName: string
+  fileType: string
+}
+
 export default async function AssetsPage({ params, searchParams }: AssetsPageProps) {
   const { locale } = await params
   const rawSearchParams = await searchParams
@@ -91,102 +99,117 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   const tCommon = await getTranslations("common")
   const filters = parseAssetListParams(rawSearchParams)
   const where = await applyAssetCrossScopeFilter(buildAssetWhere(filters), filters.crossScope)
-  const [assets, total, companies, branches, categories, statuses, conditions, locations, employees, selectedBrand, selectedModel] = await Promise.all([
-    prisma.asset.findMany({
-      where,
-      include: {
-        category: { select: { code: true, name: true } },
-        company: { select: { code: true, nameTh: true } },
-        branch: { select: { code: true, name: true } },
-        custodian: { select: { code: true, fullNameTh: true } },
-        currentLocation: { select: { code: true, name: true } },
-        status: { select: { nameTh: true, colorCode: true } },
-        condition: { select: { nameTh: true, colorCode: true } },
-        attachments: {
-          where: {
-            isActive: true,
-            module: "asset",
-            fileType: { startsWith: "image/" },
+  const [assets, total, companies, branches, categories, statuses, conditions, locations, employees, selectedBrand, selectedModel] = await withPerformanceTiming(
+    "assets.initial-data",
+    () => Promise.all([
+      prisma.asset.findMany({
+        where,
+        include: {
+          category: { select: { code: true, name: true } },
+          company: { select: { code: true, nameTh: true } },
+          branch: { select: { code: true, name: true } },
+          custodian: { select: { code: true, fullNameTh: true } },
+          currentLocation: { select: { code: true, name: true } },
+          status: { select: { nameTh: true, colorCode: true } },
+          condition: { select: { nameTh: true, colorCode: true } },
+          attachments: {
+            where: {
+              isActive: true,
+              module: "asset",
+              fileType: { startsWith: "image/" },
+            },
+            select: { id: true, originalName: true, fileType: true },
+            orderBy: { uploadedAt: "desc" },
+            take: 1,
           },
-          select: { id: true, originalName: true, fileType: true },
-          orderBy: { uploadedAt: "desc" },
-          take: 1,
-        },
-        model: {
-          select: {
-            id: true,
-            name: true,
+          model: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-      },
-      orderBy: buildAssetOrderBy(filters),
-      skip: (filters.page - 1) * filters.pageSize,
-      take: filters.pageSize,
-    }),
-    prisma.asset.count({ where }),
-    prisma.company.findMany({
-      where: { isActive: true },
-      select: { id: true, code: true, nameTh: true },
-      orderBy: { code: "asc" },
-    }),
-    prisma.branch.findMany({
-      where: { isActive: true },
-      select: { id: true, code: true, name: true, companyId: true, company: { select: { code: true } } },
-      orderBy: { code: "asc" },
-    }),
-    prisma.assetCategory.findMany({
-      where: { isActive: true },
-      select: { id: true, code: true, name: true },
-      orderBy: { code: "asc" },
-    }),
-    prisma.assetStatus.findMany({
-      where: { isActive: true },
-      select: { id: true, name: true, nameTh: true },
-      orderBy: { sortOrder: "asc" },
-    }),
-    prisma.assetCondition.findMany({
-      where: { isActive: true },
-      select: { id: true, nameTh: true },
-      orderBy: { sortOrder: "asc" },
-    }),
-    prisma.location.findMany({
-      where: { isActive: true },
-      select: { id: true, code: true, name: true },
-      orderBy: { code: "asc" },
-    }),
-    prisma.employee.findMany({
-      where: { isActive: true },
-      select: { id: true, code: true, fullNameTh: true },
-      orderBy: { code: "asc" },
-    }),
-    filters.brandId
-      ? prisma.assetBrand.findUnique({
-          where: { id: filters.brandId },
-          select: { name: true },
-        })
-      : Promise.resolve(null),
-    filters.modelId
-      ? prisma.assetModel.findUnique({
-          where: { id: filters.modelId },
-          select: { name: true, brand: { select: { name: true } } },
-        })
-      : Promise.resolve(null),
-  ])
+        orderBy: buildAssetOrderBy(filters),
+        skip: (filters.page - 1) * filters.pageSize,
+        take: filters.pageSize,
+      }),
+      prisma.asset.count({ where }),
+      prisma.company.findMany({
+        where: { isActive: true },
+        select: { id: true, code: true, nameTh: true },
+        orderBy: { code: "asc" },
+      }),
+      prisma.branch.findMany({
+        where: { isActive: true },
+        select: { id: true, code: true, name: true, companyId: true, company: { select: { code: true } } },
+        orderBy: { code: "asc" },
+      }),
+      prisma.assetCategory.findMany({
+        where: { isActive: true },
+        select: { id: true, code: true, name: true },
+        orderBy: { code: "asc" },
+      }),
+      prisma.assetStatus.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, nameTh: true },
+        orderBy: { sortOrder: "asc" },
+      }),
+      prisma.assetCondition.findMany({
+        where: { isActive: true },
+        select: { id: true, nameTh: true },
+        orderBy: { sortOrder: "asc" },
+      }),
+      prisma.location.findMany({
+        where: { isActive: true },
+        select: { id: true, code: true, name: true },
+        orderBy: { code: "asc" },
+      }),
+      prisma.employee.findMany({
+        where: { isActive: true },
+        select: { id: true, code: true, fullNameTh: true },
+        orderBy: { code: "asc" },
+      }),
+      filters.brandId
+        ? prisma.assetBrand.findUnique({
+            where: { id: filters.brandId },
+            select: { name: true },
+          })
+        : Promise.resolve(null),
+      filters.modelId
+        ? prisma.assetModel.findUnique({
+            where: { id: filters.modelId },
+            select: { name: true, brand: { select: { name: true } } },
+          })
+        : Promise.resolve(null),
+    ]),
+    {
+      route: "/assets",
+      locale,
+      page: filters.page,
+      pageSize: filters.pageSize,
+      hasSearch: Boolean(filters.search),
+      crossScope: filters.crossScope || "none",
+    }
+  )
   const modelIds = Array.from(
     new Set(assets.map((asset) => asset.model?.id).filter((modelId): modelId is string => Boolean(modelId)))
   )
-  const modelPhotos = modelIds.length
-    ? await prisma.attachment.findMany({
-        where: {
-          module: "asset_model",
-          referenceId: { in: modelIds },
-          isActive: true,
-          fileType: { startsWith: "image/" },
-        },
-        select: { id: true, referenceId: true, originalName: true, fileType: true },
-        orderBy: { uploadedAt: "desc" },
-      })
-    : []
+  const modelPhotos = await withPerformanceTiming<AssetModelPhotoPreview[]>(
+    "assets.model-photos",
+    () => modelIds.length
+      ? prisma.attachment.findMany({
+          where: {
+            module: "asset_model",
+            referenceId: { in: modelIds },
+            isActive: true,
+            fileType: { startsWith: "image/" },
+          },
+          select: { id: true, referenceId: true, originalName: true, fileType: true },
+          orderBy: { uploadedAt: "desc" },
+        })
+      : Promise.resolve<AssetModelPhotoPreview[]>([]),
+    { route: "/assets", locale, modelCount: modelIds.length }
+  )
   const modelPhotoByModelId = new Map<string, (typeof modelPhotos)[number]>()
   for (const photo of modelPhotos) {
     if (!modelPhotoByModelId.has(photo.referenceId)) {

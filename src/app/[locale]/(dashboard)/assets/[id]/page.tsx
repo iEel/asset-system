@@ -49,6 +49,7 @@ import { hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset
 import { canCorrectAssetStatus } from "@/lib/asset-lifecycle-exception-policy"
 import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
 import { appendReturnTo, normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
+import { withPerformanceTiming } from "@/lib/performance-timing"
 import {
   compactMovementDetails,
   createHealthItem,
@@ -110,121 +111,125 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const tBrandModel = await getTranslations("brandModel")
   const tMaintenance = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
-  const [asset, qrBaseUrlSetting, readyStatus] = await Promise.all([
-    prisma.asset.findFirst({
-      where: { id, isActive: true },
-      include: {
-        category: { select: { code: true, name: true } },
-        brand: { select: { name: true } },
-        model: { select: { id: true, name: true, specs: true } },
-        company: { select: { code: true, nameTh: true } },
-        branch: { select: { code: true, name: true } },
-        department: { select: { code: true, name: true } },
-        custodian: { select: { code: true, fullNameTh: true, email: true } },
-        homeLocation: { select: { code: true, name: true } },
-        currentLocation: { select: { code: true, name: true } },
-        status: { select: { name: true, nameTh: true, colorCode: true } },
-        condition: { select: { name: true, nameTh: true, colorCode: true } },
-        supplier: { select: { code: true, name: true } },
-        movements: {
-          orderBy: { performedAt: "desc" },
-          take: 20,
-        },
-        checkouts: {
-          orderBy: { checkoutDate: "desc" },
-          include: {
-            custodian: { select: { code: true, fullNameTh: true } },
-            checkin: {
-              include: {
-                returnByEmployee: { select: { code: true, fullNameTh: true } },
-                receiveByEmployee: { select: { code: true, fullNameTh: true } },
+  const [asset, qrBaseUrlSetting, readyStatus] = await withPerformanceTiming(
+    "asset-detail.initial-data",
+    () => Promise.all([
+      prisma.asset.findFirst({
+        where: { id, isActive: true },
+        include: {
+          category: { select: { code: true, name: true } },
+          brand: { select: { name: true } },
+          model: { select: { id: true, name: true, specs: true } },
+          company: { select: { code: true, nameTh: true } },
+          branch: { select: { code: true, name: true } },
+          department: { select: { code: true, name: true } },
+          custodian: { select: { code: true, fullNameTh: true, email: true } },
+          homeLocation: { select: { code: true, name: true } },
+          currentLocation: { select: { code: true, name: true } },
+          status: { select: { name: true, nameTh: true, colorCode: true } },
+          condition: { select: { name: true, nameTh: true, colorCode: true } },
+          supplier: { select: { code: true, name: true } },
+          movements: {
+            orderBy: { performedAt: "desc" },
+            take: 20,
+          },
+          checkouts: {
+            orderBy: { checkoutDate: "desc" },
+            include: {
+              custodian: { select: { code: true, fullNameTh: true } },
+              checkin: {
+                include: {
+                  returnByEmployee: { select: { code: true, fullNameTh: true } },
+                  receiveByEmployee: { select: { code: true, fullNameTh: true } },
+                },
               },
             },
           },
-        },
-        attachments: {
-          where: { isActive: true },
-          orderBy: { uploadedAt: "desc" },
-        },
-        purchaseDocumentLinks: {
-          orderBy: { linkedAt: "desc" },
-          include: {
-            purchaseDocument: {
-              include: {
-                supplier: { select: { code: true, name: true } },
+          attachments: {
+            where: { isActive: true },
+            orderBy: { uploadedAt: "desc" },
+          },
+          purchaseDocumentLinks: {
+            orderBy: { linkedAt: "desc" },
+            include: {
+              purchaseDocument: {
+                include: {
+                  supplier: { select: { code: true, name: true } },
+                },
               },
             },
           },
-        },
-        parentComponents: {
-          orderBy: { installedAt: "desc" },
-          include: {
-            componentAsset: {
-              select: { id: true, assetTag: true, name: true, serialNumber: true },
+          parentComponents: {
+            orderBy: { installedAt: "desc" },
+            include: {
+              componentAsset: {
+                select: { id: true, assetTag: true, name: true, serialNumber: true },
+              },
+            },
+          },
+          installedInLinks: {
+            where: { status: "installed", removedAt: null },
+            orderBy: { installedAt: "desc" },
+            include: {
+              parentAsset: {
+                select: { id: true, assetTag: true, name: true, serialNumber: true },
+              },
+              componentAsset: {
+                select: { id: true, assetTag: true, name: true, serialNumber: true },
+              },
+            },
+          },
+          maintenanceTickets: {
+            where: { isActive: true },
+            orderBy: { reportedDate: "desc" },
+            take: 10,
+            include: {
+              reportedBy: { select: { code: true, fullNameTh: true } },
+            },
+          },
+          auditItems: {
+            orderBy: [{ lastScanAt: "desc" }, { createdAt: "desc" }],
+            take: 10,
+            include: {
+              auditRound: { select: { id: true, auditNo: true, name: true } },
+            },
+          },
+          auditFindings: {
+            orderBy: { reportedAt: "desc" },
+            take: 20,
+            include: {
+              auditRound: { select: { auditNo: true, name: true } },
+            },
+          },
+          disposalRequests: {
+            where: { isActive: true },
+            orderBy: { requestDate: "desc" },
+            take: 20,
+          },
+          assignedLicenses: {
+            where: { isActive: true },
+            orderBy: { assetTag: "asc" },
+            select: {
+              id: true,
+              assetTag: true,
+              name: true,
+              licenseTotalSeats: true,
+              licenseUsedSeats: true,
             },
           },
         },
-        installedInLinks: {
-          where: { status: "installed", removedAt: null },
-          orderBy: { installedAt: "desc" },
-          include: {
-            parentAsset: {
-              select: { id: true, assetTag: true, name: true, serialNumber: true },
-            },
-            componentAsset: {
-              select: { id: true, assetTag: true, name: true, serialNumber: true },
-            },
-          },
-        },
-        maintenanceTickets: {
-          where: { isActive: true },
-          orderBy: { reportedDate: "desc" },
-          take: 10,
-          include: {
-            reportedBy: { select: { code: true, fullNameTh: true } },
-          },
-        },
-        auditItems: {
-          orderBy: [{ lastScanAt: "desc" }, { createdAt: "desc" }],
-          take: 10,
-          include: {
-            auditRound: { select: { id: true, auditNo: true, name: true } },
-          },
-        },
-        auditFindings: {
-          orderBy: { reportedAt: "desc" },
-          take: 20,
-          include: {
-            auditRound: { select: { auditNo: true, name: true } },
-          },
-        },
-        disposalRequests: {
-          where: { isActive: true },
-          orderBy: { requestDate: "desc" },
-          take: 20,
-        },
-        assignedLicenses: {
-          where: { isActive: true },
-          orderBy: { assetTag: "asc" },
-          select: {
-            id: true,
-            assetTag: true,
-            name: true,
-            licenseTotalSeats: true,
-            licenseUsedSeats: true,
-          },
-        },
-      },
-    }),
-    prisma.systemSetting.findUnique({
-      where: { key: assetQrPublicBaseUrlKey },
-      select: { value: true },
-    }),
-    prisma.assetStatus.findFirst({
-      where: { isActive: true, OR: [{ name: "Ready" }, { nameTh: "พร้อมใช้งาน" }] },
-      select: { id: true },
-    }),
-  ])
+      }),
+      prisma.systemSetting.findUnique({
+        where: { key: assetQrPublicBaseUrlKey },
+        select: { value: true },
+      }),
+      prisma.assetStatus.findFirst({
+        where: { isActive: true, OR: [{ name: "Ready" }, { nameTh: "พร้อมใช้งาน" }] },
+        select: { id: true },
+      }),
+    ]),
+    { route: "/assets/[id]", locale }
+  )
 
   if (!asset) notFound()
 
@@ -251,10 +256,14 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     ],
   }
 
-  const installedComponentAssetIds = await prisma.assetComponent.findMany({
-    where: { status: "installed", removedAt: null },
-    select: { componentAssetId: true },
-  })
+  const installedComponentAssetIds = await withPerformanceTiming(
+    "asset-detail.relationship-data",
+    () => prisma.assetComponent.findMany({
+      where: { status: "installed", removedAt: null },
+      select: { componentAssetId: true },
+    }),
+    { route: "/assets/[id]", locale }
+  )
   const unavailableComponentIds = new Set([
     asset.id,
     ...installedComponentAssetIds.map((component) => component.componentAssetId),
@@ -293,50 +302,62 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const maintenanceTicketIds = asset.maintenanceTickets.map((ticket) => ticket.id)
   const auditFindingIds = asset.auditFindings.map((finding) => finding.id)
   const disposalRequestIds = asset.disposalRequests.map((request) => request.id)
-  const [purchaseDocumentAttachments, componentAttachments, componentUsers, maintenanceAttachments, auditFindingAttachments, disposalAttachments] = await Promise.all([
-    purchaseDocumentIds.length > 0
-      ? prisma.attachment.findMany({
-          where: { module: "purchase_document", referenceId: { in: purchaseDocumentIds }, isActive: true },
-          orderBy: { uploadedAt: "desc" },
-        })
-      : [],
-    componentLinkIds.length > 0
-      ? prisma.attachment.findMany({
-          where: { module: { in: ["asset_component_install", "asset_component_remove"] }, referenceId: { in: componentLinkIds }, isActive: true },
-          orderBy: { uploadedAt: "asc" },
-        })
-      : [],
-    componentUserIds.length > 0
-      ? prisma.user.findMany({
-          where: { id: { in: componentUserIds } },
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            email: true,
-            employee: { select: { code: true, fullNameTh: true } },
-          },
-        })
-      : [],
-    maintenanceTicketIds.length > 0
-      ? prisma.attachment.findMany({
-          where: { module: "maintenance", referenceId: { in: maintenanceTicketIds }, isActive: true },
-          orderBy: { uploadedAt: "desc" },
-        })
-      : [],
-    auditFindingIds.length > 0
-      ? prisma.attachment.findMany({
-          where: { module: "audit_finding", referenceId: { in: auditFindingIds }, isActive: true },
-          orderBy: { uploadedAt: "desc" },
-        })
-      : [],
-    disposalRequestIds.length > 0
-      ? prisma.attachment.findMany({
-          where: { module: "disposal", referenceId: { in: disposalRequestIds }, isActive: true },
-          orderBy: { uploadedAt: "desc" },
-        })
-      : [],
-  ])
+  const [purchaseDocumentAttachments, componentAttachments, componentUsers, maintenanceAttachments, auditFindingAttachments, disposalAttachments] = await withPerformanceTiming(
+    "asset-detail.evidence-data",
+    () => Promise.all([
+      purchaseDocumentIds.length > 0
+        ? prisma.attachment.findMany({
+            where: { module: "purchase_document", referenceId: { in: purchaseDocumentIds }, isActive: true },
+            orderBy: { uploadedAt: "desc" },
+          })
+        : [],
+      componentLinkIds.length > 0
+        ? prisma.attachment.findMany({
+            where: { module: { in: ["asset_component_install", "asset_component_remove"] }, referenceId: { in: componentLinkIds }, isActive: true },
+            orderBy: { uploadedAt: "asc" },
+          })
+        : [],
+      componentUserIds.length > 0
+        ? prisma.user.findMany({
+            where: { id: { in: componentUserIds } },
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              email: true,
+              employee: { select: { code: true, fullNameTh: true } },
+            },
+          })
+        : [],
+      maintenanceTicketIds.length > 0
+        ? prisma.attachment.findMany({
+            where: { module: "maintenance", referenceId: { in: maintenanceTicketIds }, isActive: true },
+            orderBy: { uploadedAt: "desc" },
+          })
+        : [],
+      auditFindingIds.length > 0
+        ? prisma.attachment.findMany({
+            where: { module: "audit_finding", referenceId: { in: auditFindingIds }, isActive: true },
+            orderBy: { uploadedAt: "desc" },
+          })
+        : [],
+      disposalRequestIds.length > 0
+        ? prisma.attachment.findMany({
+            where: { module: "disposal", referenceId: { in: disposalRequestIds }, isActive: true },
+            orderBy: { uploadedAt: "desc" },
+          })
+        : [],
+    ]),
+    {
+      route: "/assets/[id]",
+      locale,
+      purchaseDocuments: purchaseDocumentIds.length,
+      components: componentLinkIds.length,
+      maintenanceTickets: maintenanceTicketIds.length,
+      auditFindings: auditFindingIds.length,
+      disposalRequests: disposalRequestIds.length,
+    }
+  )
   const componentUserLabels = new Map(componentUsers.map((user) => [user.id, formatUserLabel(user)]))
   const componentAttachmentsByReference = new Map<string, typeof componentAttachments>()
   for (const attachment of componentAttachments) {
@@ -397,50 +418,61 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     ...asset.checkouts.map((checkout) => checkout.checkin?.returnByEmployeeId),
     ...asset.checkouts.map((checkout) => checkout.checkin?.receiveByEmployeeId),
   ])
-  const [operationAttachments, checkoutDepartments, checkoutLocations, checkoutParentAssets, movementUsers, movementEmployees] = await Promise.all([
-    checkoutIds.length > 0 || checkinIds.length > 0
-      ? prisma.attachment.findMany({
-          where: {
-            isActive: true,
-            OR: [
-              { module: { in: ["checkout_photo_before", "checkout_receiver_signature"] }, referenceId: { in: checkoutIds } },
-              { module: { in: ["checkin_photo_after", "checkin_return_signature", "checkin_receive_signature"] }, referenceId: { in: checkinIds } },
-            ],
-          },
-          orderBy: { uploadedAt: "asc" },
-        })
-      : [],
-    prisma.department.findMany({
-      where: { id: { in: uniqueTruthy(asset.checkouts.map((checkout) => checkout.departmentId)) } },
-      select: { id: true, code: true, name: true },
-    }),
-    prisma.location.findMany({
-      where: { id: { in: uniqueTruthy(asset.checkouts.map((checkout) => checkout.locationId)) } },
-      select: { id: true, code: true, name: true },
-    }),
-    prisma.asset.findMany({
-      where: { id: { in: uniqueTruthy(asset.checkouts.map((checkout) => checkout.parentAssetId)) } },
-      select: { id: true, assetTag: true, name: true },
-    }),
-    movementActorIds.length > 0
-      ? prisma.user.findMany({
-          where: { id: { in: movementActorIds } },
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            email: true,
-            employee: { select: { code: true, fullNameTh: true } },
-          },
-        })
-      : [],
-    movementEmployeeIds.length > 0
-      ? prisma.employee.findMany({
-          where: { id: { in: movementEmployeeIds } },
-          select: { id: true, code: true, fullNameTh: true },
-        })
-      : [],
-  ])
+  const [operationAttachments, checkoutDepartments, checkoutLocations, checkoutParentAssets, movementUsers, movementEmployees] = await withPerformanceTiming(
+    "asset-detail.operation-data",
+    () => Promise.all([
+      checkoutIds.length > 0 || checkinIds.length > 0
+        ? prisma.attachment.findMany({
+            where: {
+              isActive: true,
+              OR: [
+                { module: { in: ["checkout_photo_before", "checkout_receiver_signature"] }, referenceId: { in: checkoutIds } },
+                { module: { in: ["checkin_photo_after", "checkin_return_signature", "checkin_receive_signature"] }, referenceId: { in: checkinIds } },
+              ],
+            },
+            orderBy: { uploadedAt: "asc" },
+          })
+        : [],
+      prisma.department.findMany({
+        where: { id: { in: uniqueTruthy(asset.checkouts.map((checkout) => checkout.departmentId)) } },
+        select: { id: true, code: true, name: true },
+      }),
+      prisma.location.findMany({
+        where: { id: { in: uniqueTruthy(asset.checkouts.map((checkout) => checkout.locationId)) } },
+        select: { id: true, code: true, name: true },
+      }),
+      prisma.asset.findMany({
+        where: { id: { in: uniqueTruthy(asset.checkouts.map((checkout) => checkout.parentAssetId)) } },
+        select: { id: true, assetTag: true, name: true },
+      }),
+      movementActorIds.length > 0
+        ? prisma.user.findMany({
+            where: { id: { in: movementActorIds } },
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              email: true,
+              employee: { select: { code: true, fullNameTh: true } },
+            },
+          })
+        : [],
+      movementEmployeeIds.length > 0
+        ? prisma.employee.findMany({
+            where: { id: { in: movementEmployeeIds } },
+            select: { id: true, code: true, fullNameTh: true },
+          })
+        : [],
+    ]),
+    {
+      route: "/assets/[id]",
+      locale,
+      checkouts: checkoutIds.length,
+      checkins: checkinIds.length,
+      movementActors: movementActorIds.length,
+      movementEmployees: movementEmployeeIds.length,
+    }
+  )
   const operationAttachmentsByReference = new Map<string, typeof operationAttachments>()
   for (const attachment of operationAttachments) {
     operationAttachmentsByReference.set(attachment.referenceId, [

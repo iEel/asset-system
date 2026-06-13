@@ -8,7 +8,8 @@ const dashboardMessages = (locale: "th" | "en") => JSON.parse(readFileSync(`mess
 test("dashboard exposes cross-scope asset KPI, action card, and detail panel", () => {
   const source = dashboardPage()
 
-  assert.match(source, /buildAssetCrossScopeSummary\(\{ isActive: true \}, 5\)/)
+  assert.match(source, /buildDashboardAssetCrossScopeSummary\(\)/)
+  assert.doesNotMatch(source, /buildAssetCrossScopeSummary\(\{ isActive: true \}, 5\)/)
   assert.match(source, /crossScopeTotal/)
   assert.match(source, /crossScopeActionCard/)
   assert.match(source, /crossScopeCards/)

@@ -10,6 +10,7 @@ import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { withPerformanceTiming } from "@/lib/performance-timing"
 
 type AuditRoundsPageProps = {
   params: Promise<{ locale: string }>
@@ -71,75 +72,83 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
   const searchText = search.trim()
   const activeView: AuditRoundView = auditRoundViewValues.includes(view as AuditRoundView) ? (view as AuditRoundView) : "all"
   const currentYear = new Date().getFullYear()
-  const [rounds, activeAssets, coveredItems, currentYearRoundCount, openItemStatusCounts, openFollowUpCount] = await Promise.all([
-    prisma.auditRound.findMany({
-      where: {
-        isActive: true,
-        ...(searchText
-          ? {
-              OR: [
-                { auditNo: { contains: searchText } },
-                { name: { contains: searchText } },
-                { scopeCompany: { code: { contains: searchText } } },
-                { scopeBranch: { code: { contains: searchText } } },
-                { scopeLocation: { code: { contains: searchText } } },
-              ],
-            }
-          : {}),
-      },
-      include: {
-        scopeCompany: { select: { code: true, nameTh: true } },
-        scopeBranch: { select: { code: true, name: true } },
-        scopeLocation: { select: { code: true, name: true } },
-        _count: { select: { items: true, findings: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.asset.findMany({
-      where: { isActive: true },
-      select: {
-        id: true,
-        categoryId: true,
-        departmentId: true,
-        category: { select: { code: true, name: true } },
-        department: { select: { code: true, name: true } },
-      },
-    }),
-    prisma.auditItem.findMany({
-      where: { auditRound: { isActive: true, auditYear: currentYear } },
-      distinct: ["assetId"],
-      select: { assetId: true },
-    }),
-    prisma.auditRound.count({ where: { isActive: true, auditYear: currentYear } }),
-    prisma.auditItem.groupBy({
-      by: ["auditStatus"],
-      where: { auditRound: { isActive: true, status: { not: "closed" } } },
-      _count: { _all: true },
-    }),
-    prisma.auditFinding.count({
-      where: {
-        auditRound: { isActive: true, status: { not: "closed" } },
-        OR: [{ reviewStatus: "pending" }, { actionStatus: { in: ["planned", "in_progress"] } }],
-      },
-    }),
-  ])
+  const [rounds, activeAssets, coveredItems, currentYearRoundCount, openItemStatusCounts, openFollowUpCount] = await withPerformanceTiming(
+    "audit-rounds.initial-data",
+    () => Promise.all([
+      prisma.auditRound.findMany({
+        where: {
+          isActive: true,
+          ...(searchText
+            ? {
+                OR: [
+                  { auditNo: { contains: searchText } },
+                  { name: { contains: searchText } },
+                  { scopeCompany: { code: { contains: searchText } } },
+                  { scopeBranch: { code: { contains: searchText } } },
+                  { scopeLocation: { code: { contains: searchText } } },
+                ],
+              }
+            : {}),
+        },
+        include: {
+          scopeCompany: { select: { code: true, nameTh: true } },
+          scopeBranch: { select: { code: true, name: true } },
+          scopeLocation: { select: { code: true, name: true } },
+          _count: { select: { items: true, findings: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.asset.findMany({
+        where: { isActive: true },
+        select: {
+          id: true,
+          categoryId: true,
+          departmentId: true,
+          category: { select: { code: true, name: true } },
+          department: { select: { code: true, name: true } },
+        },
+      }),
+      prisma.auditItem.findMany({
+        where: { auditRound: { isActive: true, auditYear: currentYear } },
+        distinct: ["assetId"],
+        select: { assetId: true },
+      }),
+      prisma.auditRound.count({ where: { isActive: true, auditYear: currentYear } }),
+      prisma.auditItem.groupBy({
+        by: ["auditStatus"],
+        where: { auditRound: { isActive: true, status: { not: "closed" } } },
+        _count: { _all: true },
+      }),
+      prisma.auditFinding.count({
+        where: {
+          auditRound: { isActive: true, status: { not: "closed" } },
+          OR: [{ reviewStatus: "pending" }, { actionStatus: { in: ["planned", "in_progress"] } }],
+        },
+      }),
+    ]),
+    { route: "/audit/rounds", locale, view: activeView, hasSearch: Boolean(searchText) }
+  )
   const roundIds = rounds.map((round) => round.id)
   const [statusCounts, findingWorkCounts] = roundIds.length
-    ? await Promise.all([
-        prisma.auditItem.groupBy({
-          by: ["auditRoundId", "auditStatus"],
-          where: { auditRoundId: { in: roundIds } },
-          _count: { _all: true },
-        }),
-        prisma.auditFinding.groupBy({
-          by: ["auditRoundId"],
-          where: {
-            auditRoundId: { in: roundIds },
-            OR: [{ reviewStatus: "pending" }, { actionStatus: { in: ["planned", "in_progress"] } }],
-          },
-          _count: { _all: true },
-        }),
-      ])
+    ? await withPerformanceTiming(
+        "audit-rounds.progress-data",
+        () => Promise.all([
+          prisma.auditItem.groupBy({
+            by: ["auditRoundId", "auditStatus"],
+            where: { auditRoundId: { in: roundIds } },
+            _count: { _all: true },
+          }),
+          prisma.auditFinding.groupBy({
+            by: ["auditRoundId"],
+            where: {
+              auditRoundId: { in: roundIds },
+              OR: [{ reviewStatus: "pending" }, { actionStatus: { in: ["planned", "in_progress"] } }],
+            },
+            _count: { _all: true },
+          }),
+        ]),
+        { route: "/audit/rounds", locale, roundCount: roundIds.length }
+      )
     : [[], []]
   const progressByRoundId = new Map<string, { pending: number; processed: number }>()
   for (const row of statusCounts) {

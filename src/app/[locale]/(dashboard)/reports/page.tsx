@@ -17,6 +17,7 @@ import { MetricCard } from "@/components/ui/metric-card"
 import { FilterPanel } from "@/components/ui/filter-panel"
 import { ActionButton } from "@/components/ui/action-button"
 import { getActionButtonClasses, getFieldControlClasses } from "@/lib/design-system"
+import { withPerformanceTiming } from "@/lib/performance-timing"
 
 type ReportsPageProps = {
   params: Promise<{ locale: string }>
@@ -69,112 +70,143 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     costRepairGroups,
     depreciationPolicySetting,
     crossScopeSummary,
-  ] = await Promise.all([
-    prisma.asset.count({ where: assetWhere }),
-    prisma.asset.aggregate({ where: assetWhere, _sum: { purchasePrice: true } }),
-    prisma.asset.groupBy({ by: ["statusId"], where: assetWhere, _count: { _all: true } }),
-    prisma.asset.groupBy({ by: ["categoryId"], where: assetWhere, _count: { _all: true } }),
-    prisma.asset.groupBy({ by: ["companyId"], where: assetWhere, _count: { _all: true } }),
-    prisma.asset.groupBy({ by: ["branchId"], where: assetWhere, _count: { _all: true } }),
-    prisma.asset.groupBy({ by: ["departmentId"], where: { ...assetWhere, departmentId: { not: null } }, _count: { _all: true } }),
-    prisma.asset.groupBy({ by: ["ownershipType"], where: assetWhere, _count: { _all: true } }),
-    prisma.asset.count({ where: { AND: [assetWhere, assetMissingResponsibilityWhere] } }),
-    prisma.asset.count({ where: { AND: [assetWhere, { OR: [{ serialNumber: null }, { serialNumber: "" }] }] } }),
-    prisma.asset.count({
-      where: {
-        AND: [
-          assetWhere,
-          { ownershipType: { not: "software_license" } },
-          { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
-        ],
-      },
-    }),
-    prisma.asset.count({ where: { AND: [assetWhere, { warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } }] } }),
-    prisma.company.findMany({ where: { isActive: true }, select: { id: true, code: true, nameTh: true }, orderBy: { code: "asc" } }),
-    prisma.branch.findMany({ where: { isActive: true }, select: { id: true, code: true, name: true, company: { select: { code: true } } }, orderBy: { code: "asc" } }),
-    prisma.assetCategory.findMany({ where: { isActive: true }, select: { id: true, code: true, name: true }, orderBy: { code: "asc" } }),
-    prisma.assetStatus.findMany({ where: { isActive: true }, select: { id: true, nameTh: true }, orderBy: { nameTh: "asc" } }),
-    prisma.assetCondition.findMany({ where: { isActive: true }, select: { id: true, nameTh: true }, orderBy: { nameTh: "asc" } }),
-    prisma.asset.findMany({
-      where: assetWhere,
-      take: 10,
-      orderBy: { createdAt: "desc" },
-      include: {
-        category: { select: { code: true, name: true } },
-        branch: { select: { code: true, name: true } },
-        department: { select: { code: true, name: true } },
-        custodian: { select: { code: true, fullNameTh: true } },
-        status: { select: { nameTh: true } },
-      },
-    }),
-    prisma.asset.findMany({
-      where: {
-        AND: [
-          assetWhere,
-          {
-            OR: [
-              assetMissingResponsibilityWhere,
-              { serialNumber: null },
-              { serialNumber: "" },
-              {
-                AND: [
-                  { ownershipType: { not: "software_license" } },
-                  { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
-                ],
-              },
-              { warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } },
-            ],
-          },
-        ],
-      },
-      take: 8,
-      orderBy: { updatedAt: "desc" },
-      include: {
-        category: { select: { code: true, name: true } },
-        branch: { select: { code: true, name: true } },
-        department: { select: { code: true, name: true } },
-        custodian: { select: { code: true, fullNameTh: true } },
-        installedInLinks: { where: { status: "installed", removedAt: null }, select: { id: true }, take: 1 },
-        attachments: { where: { module: "asset", fileType: { startsWith: "image/" }, isActive: true }, select: { id: true }, take: 1 },
-      },
-    }),
-    prisma.asset.groupBy({ by: ["custodianId"], where: { ...assetWhere, custodianId: { not: null } }, _count: { _all: true }, orderBy: { _count: { custodianId: "desc" } }, take: 5 }),
-    prisma.asset.groupBy({ by: ["currentLocationId"], where: assetWhere, _count: { _all: true }, orderBy: { _count: { currentLocationId: "desc" } }, take: 5 }),
-    prisma.maintenanceTicket.groupBy({ by: ["assetId"], where: { isActive: true }, _count: { _all: true }, _sum: { repairCost: true }, orderBy: { _count: { assetId: "desc" } }, take: 5 }),
-    prisma.asset.count({ where: { AND: [assetWhere, { movements: { none: { performedAt: { gte: daysAgo(180) } } } }] } }),
-    prisma.asset.findMany({
-      where: assetWhere,
-      select: {
-        id: true,
-        assetTag: true,
-        name: true,
-        ownershipType: true,
-        purchasePrice: true,
-        purchaseDate: true,
-        category: { select: { code: true, name: true } },
-      },
-    }),
-    prisma.maintenanceTicket.groupBy({
-      by: ["assetId"],
-      where: { isActive: true, asset: assetWhere },
-      _count: { _all: true },
-      _sum: { repairCost: true },
-    }),
-    prisma.systemSetting.findUnique({ where: { key: depreciationPolicySettingKey }, select: { value: true } }),
-    buildAssetCrossScopeSummary(baseAssetWhere, 8),
-  ])
-  const [custodianOptions, locationOptions, repairAssets] = await Promise.all([
-    prisma.employee.findMany({ where: { id: { in: byCustodian.map((item) => item.custodianId).filter((id): id is string => Boolean(id)) } }, select: { id: true, code: true, fullNameTh: true } }),
-    prisma.location.findMany({ where: { id: { in: byLocation.map((item) => item.currentLocationId) } }, select: { id: true, code: true, name: true } }),
-    prisma.asset.findMany({ where: { id: { in: repairGroups.map((item) => item.assetId) } }, select: { id: true, assetTag: true, name: true } }),
-  ])
-  const [statuses, categories, companies, branches, departments] = await Promise.all([
-    prisma.assetStatus.findMany({ where: { id: { in: byStatus.map((item) => item.statusId) } }, select: { id: true, nameTh: true } }),
-    prisma.assetCategory.findMany({ where: { id: { in: byCategory.map((item) => item.categoryId) } }, select: { id: true, code: true, name: true } }),
-    prisma.company.findMany({ where: { id: { in: byCompany.map((item) => item.companyId) } }, select: { id: true, code: true, nameTh: true } }),
-    prisma.branch.findMany({ where: { id: { in: byBranch.map((item) => item.branchId) } }, select: { id: true, code: true, name: true, company: { select: { code: true } } } }),
-    prisma.department.findMany({ where: { id: { in: byDepartment.map((item) => item.departmentId).filter((id): id is string => Boolean(id)) } }, select: { id: true, code: true, name: true } }),
-  ])
+  ] = await withPerformanceTiming(
+    "reports.initial-data",
+    () => Promise.all([
+      prisma.asset.count({ where: assetWhere }),
+      prisma.asset.aggregate({ where: assetWhere, _sum: { purchasePrice: true } }),
+      prisma.asset.groupBy({ by: ["statusId"], where: assetWhere, _count: { _all: true } }),
+      prisma.asset.groupBy({ by: ["categoryId"], where: assetWhere, _count: { _all: true } }),
+      prisma.asset.groupBy({ by: ["companyId"], where: assetWhere, _count: { _all: true } }),
+      prisma.asset.groupBy({ by: ["branchId"], where: assetWhere, _count: { _all: true } }),
+      prisma.asset.groupBy({ by: ["departmentId"], where: { ...assetWhere, departmentId: { not: null } }, _count: { _all: true } }),
+      prisma.asset.groupBy({ by: ["ownershipType"], where: assetWhere, _count: { _all: true } }),
+      prisma.asset.count({ where: { AND: [assetWhere, assetMissingResponsibilityWhere] } }),
+      prisma.asset.count({ where: { AND: [assetWhere, { OR: [{ serialNumber: null }, { serialNumber: "" }] }] } }),
+      prisma.asset.count({
+        where: {
+          AND: [
+            assetWhere,
+            { ownershipType: { not: "software_license" } },
+            { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
+          ],
+        },
+      }),
+      prisma.asset.count({ where: { AND: [assetWhere, { warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } }] } }),
+      prisma.company.findMany({ where: { isActive: true }, select: { id: true, code: true, nameTh: true }, orderBy: { code: "asc" } }),
+      prisma.branch.findMany({ where: { isActive: true }, select: { id: true, code: true, name: true, company: { select: { code: true } } }, orderBy: { code: "asc" } }),
+      prisma.assetCategory.findMany({ where: { isActive: true }, select: { id: true, code: true, name: true }, orderBy: { code: "asc" } }),
+      prisma.assetStatus.findMany({ where: { isActive: true }, select: { id: true, nameTh: true }, orderBy: { nameTh: "asc" } }),
+      prisma.assetCondition.findMany({ where: { isActive: true }, select: { id: true, nameTh: true }, orderBy: { nameTh: "asc" } }),
+      prisma.asset.findMany({
+        where: assetWhere,
+        take: 10,
+        orderBy: { createdAt: "desc" },
+        include: {
+          category: { select: { code: true, name: true } },
+          branch: { select: { code: true, name: true } },
+          department: { select: { code: true, name: true } },
+          custodian: { select: { code: true, fullNameTh: true } },
+          status: { select: { nameTh: true } },
+        },
+      }),
+      prisma.asset.findMany({
+        where: {
+          AND: [
+            assetWhere,
+            {
+              OR: [
+                assetMissingResponsibilityWhere,
+                { serialNumber: null },
+                { serialNumber: "" },
+                {
+                  AND: [
+                    { ownershipType: { not: "software_license" } },
+                    { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
+                  ],
+                },
+                { warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } },
+              ],
+            },
+          ],
+        },
+        take: 8,
+        orderBy: { updatedAt: "desc" },
+        include: {
+          category: { select: { code: true, name: true } },
+          branch: { select: { code: true, name: true } },
+          department: { select: { code: true, name: true } },
+          custodian: { select: { code: true, fullNameTh: true } },
+          installedInLinks: { where: { status: "installed", removedAt: null }, select: { id: true }, take: 1 },
+          attachments: { where: { module: "asset", fileType: { startsWith: "image/" }, isActive: true }, select: { id: true }, take: 1 },
+        },
+      }),
+      prisma.asset.groupBy({ by: ["custodianId"], where: { ...assetWhere, custodianId: { not: null } }, _count: { _all: true }, orderBy: { _count: { custodianId: "desc" } }, take: 5 }),
+      prisma.asset.groupBy({ by: ["currentLocationId"], where: assetWhere, _count: { _all: true }, orderBy: { _count: { currentLocationId: "desc" } }, take: 5 }),
+      prisma.maintenanceTicket.groupBy({ by: ["assetId"], where: { isActive: true }, _count: { _all: true }, _sum: { repairCost: true }, orderBy: { _count: { assetId: "desc" } }, take: 5 }),
+      prisma.asset.count({ where: { AND: [assetWhere, { movements: { none: { performedAt: { gte: daysAgo(180) } } } }] } }),
+      prisma.asset.findMany({
+        where: assetWhere,
+        select: {
+          id: true,
+          assetTag: true,
+          name: true,
+          ownershipType: true,
+          purchasePrice: true,
+          purchaseDate: true,
+          category: { select: { code: true, name: true } },
+        },
+      }),
+      prisma.maintenanceTicket.groupBy({
+        by: ["assetId"],
+        where: { isActive: true, asset: assetWhere },
+        _count: { _all: true },
+        _sum: { repairCost: true },
+      }),
+      prisma.systemSetting.findUnique({ where: { key: depreciationPolicySettingKey }, select: { value: true } }),
+      buildAssetCrossScopeSummary(baseAssetWhere, 8),
+    ]),
+    {
+      route: "/reports",
+      locale,
+      hasSearch: Boolean(filters.search),
+      crossScope: filters.crossScope || "none",
+    }
+  )
+  const [custodianOptions, locationOptions, repairAssets] = await withPerformanceTiming(
+    "reports.lookup-data",
+    () => Promise.all([
+      prisma.employee.findMany({ where: { id: { in: byCustodian.map((item) => item.custodianId).filter((id): id is string => Boolean(id)) } }, select: { id: true, code: true, fullNameTh: true } }),
+      prisma.location.findMany({ where: { id: { in: byLocation.map((item) => item.currentLocationId) } }, select: { id: true, code: true, name: true } }),
+      prisma.asset.findMany({ where: { id: { in: repairGroups.map((item) => item.assetId) } }, select: { id: true, assetTag: true, name: true } }),
+    ]),
+    {
+      route: "/reports",
+      locale,
+      custodians: byCustodian.length,
+      locations: byLocation.length,
+      repairs: repairGroups.length,
+    }
+  )
+  const [statuses, categories, companies, branches, departments] = await withPerformanceTiming(
+    "reports.dimension-labels",
+    () => Promise.all([
+      prisma.assetStatus.findMany({ where: { id: { in: byStatus.map((item) => item.statusId) } }, select: { id: true, nameTh: true } }),
+      prisma.assetCategory.findMany({ where: { id: { in: byCategory.map((item) => item.categoryId) } }, select: { id: true, code: true, name: true } }),
+      prisma.company.findMany({ where: { id: { in: byCompany.map((item) => item.companyId) } }, select: { id: true, code: true, nameTh: true } }),
+      prisma.branch.findMany({ where: { id: { in: byBranch.map((item) => item.branchId) } }, select: { id: true, code: true, name: true, company: { select: { code: true } } } }),
+      prisma.department.findMany({ where: { id: { in: byDepartment.map((item) => item.departmentId).filter((id): id is string => Boolean(id)) } }, select: { id: true, code: true, name: true } }),
+    ]),
+    {
+      route: "/reports",
+      locale,
+      statuses: byStatus.length,
+      categories: byCategory.length,
+      companies: byCompany.length,
+      branches: byBranch.length,
+      departments: byDepartment.length,
+    }
+  )
 
   const statusMap = new Map(statuses.map((status) => [status.id, status.nameTh]))
   const categoryMap = new Map(categories.map((category) => [category.id, `${category.code} - ${category.name}`]))
