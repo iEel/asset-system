@@ -20,15 +20,16 @@ if (scopes.length === 0) {
 
 const token = `ams_${randomBytes(32).toString("base64url")}`
 const tokenHash = createHash("sha256").update(token).digest("hex")
-const clientConfig = {
-  clientId,
-  name,
-  tokenHash,
-  scopes,
-  enabled: true,
-}
+const tokenPreview = buildTokenPreview(token)
 
 console.log("Integration API token generated.")
+console.log("")
+console.log("Normal workflow:")
+console.log("Create, rotate, enable, and disable clients in Admin > Integration API.")
+console.log("")
+console.log("Manual recovery/troubleshooting output only:")
+console.log("Use this data only for controlled SQL repair or emergency client recovery.")
+console.log("This script prints to the terminal and does not write files or secrets to disk.")
 console.log("")
 console.log("Plain token (show once; store in the calling system secret manager):")
 console.log(token)
@@ -36,11 +37,11 @@ console.log("")
 console.log("Token hash:")
 console.log(tokenHash)
 console.log("")
-console.log("INTEGRATION_API_CLIENTS entry:")
-console.log(JSON.stringify([clientConfig], null, 2))
+console.log("Token preview:")
+console.log(tokenPreview)
 console.log("")
-console.log("Example:")
-console.log(`set INTEGRATION_API_CLIENTS=${JSON.stringify([clientConfig])}`)
+console.log("Client metadata for manual SQL:")
+console.log(JSON.stringify({ clientId, displayName: name, scopes, enabled: true }, null, 2))
 
 function parseArgs(argv) {
   const result = {}
@@ -53,4 +54,12 @@ function parseArgs(argv) {
     result[rawKey] = value ?? ""
   }
   return result
+}
+
+function buildTokenPreview(token) {
+  const prefix = token.startsWith("ams_") ? "ams_" : ""
+  const body = prefix ? token.slice(prefix.length) : token
+  const start = body.slice(0, 4)
+  const end = body.slice(-4)
+  return `${prefix}${start}...${end}`.slice(0, 20)
 }

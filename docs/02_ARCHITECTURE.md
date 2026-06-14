@@ -40,7 +40,7 @@ API routes should use the established helpers from `src/lib/auth-utils.ts`:
 - `requireAuth()` for authenticated access.
 - `requirePermission(user, module, action)` for RBAC-protected actions.
 - Custom helpers such as attachment permission and scheduler authorization where needed.
-- External system integrations use a separate read-only surface under `/api/integrations/v1`. These routes use `requireIntegrationClient()` / `requireIntegrationScope()` from `src/lib/integration-auth.ts` with hashed Bearer tokens from `INTEGRATION_API_CLIENTS`, stable DTOs, request IDs, and audit logging. Do not expose existing UI/session API routes directly to external systems.
+- External system integrations use a separate read-only surface under `/api/integrations/v1`. These routes use `requireIntegrationClient()` / `requireIntegrationScope()` from `src/lib/integration-auth.ts` with hashed Bearer tokens stored in the `integration_api_clients` database table, stable DTOs, request IDs, and audit logging. Token lifecycle management belongs in `Admin > Integration API` and the `/api/admin/integration-clients` admin routes; do not expose existing UI/session API routes directly to external systems.
 
 The route inventory and expected RBAC snippets are tracked in `src/lib/rbac-route-matrix.ts` and covered by tests.
 

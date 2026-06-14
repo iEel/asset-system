@@ -270,6 +270,11 @@ export const integrationClientCreateSchema = z.object({
   - no `.env` token edit required after this phase.
   - production must apply `2026-06-14-add-integration-api-clients.sql`.
   - existing database connection env remains unchanged.
+- [ ] Task 6 focused verification command:
+
+```powershell
+node --test tests/integration-openapi.test.ts
+```
 
 ## Task 7: Verification And Commit Protocol
 

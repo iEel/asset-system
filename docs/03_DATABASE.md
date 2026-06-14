@@ -20,7 +20,7 @@
 - Maintenance: `MaintenancePlan`, `MaintenanceTicket`
 - Disposal: `DisposalRequest`
 - Admin/RBAC: `User`, `Role`, `Permission`, `UserRole`, `RolePermission`
-- System: `SystemLog`, `SystemSetting`, `Notification`, `NotificationUserState`
+- System: `SystemLog`, `SystemSetting`, `Notification`, `NotificationUserState`, `IntegrationApiClient`
 
 ## Asset Organization And Custody Semantics
 
@@ -55,6 +55,8 @@ Use placeholders in committed documentation and keep real values in environment 
 - `DB_PASSWORD=<DB_PASSWORD>`
 - `DATABASE_URL="sqlserver://<DB_SERVER>;instanceName=<DB_INSTANCE>;port=1433;database=<DB_NAME>;user=<DB_USER>;password=<DB_PASSWORD>;encrypt=true;trustServerCertificate=true"`
 
+These `.env` database connection settings are unchanged by Integration API token management. Normal Integration API client create, rotate, disable, and enable operations are stored in `integration_api_clients` through `Admin > Integration API`; no token lifecycle update belongs in `.env`.
+
 ## Migration Policy
 
 - Development/Test may use `npx prisma db push` when rebuilding or aligning a non-production database.
@@ -63,6 +65,7 @@ Use placeholders in committed documentation and keep real values in environment 
 - Production schema changes require a rollback plan or a tested restore procedure.
 - Production schema changes that need deterministic SQL should be stored under `prisma/manual-migrations/` and executed with `npx prisma db execute --file <script>` after approval.
 - `prisma/manual-migrations/2026-06-12-add-performance-indexes.sql` is the current production performance-index script. Its index names match the `@@index(..., map: "...")` names in `prisma/schema.prisma`, so rerunning the script is safe and future schema checks do not create differently named duplicate indexes.
+- `prisma/manual-migrations/2026-06-14-add-integration-api-clients.sql` adds the `integration_api_clients` table for DB-backed Integration API token clients. Apply it in production after backup/approval and before deploying or using the admin token manager.
 - Do not assume Prisma migrate support until it is validated against this project's SQL Server setup.
 
 ## Operational Notes

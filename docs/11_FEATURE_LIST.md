@@ -61,7 +61,7 @@ Current authenticated pages exist under `src/app/[locale]/(dashboard)`:
 | Disposal | `/disposal`, `/disposal/{id}` |
 | Reports | `/reports` |
 | Master Data | companies, branches, departments, employees, locations, categories, brands/models, suppliers |
-| Admin | users, roles, approvals, data quality, storage, readiness, logs, settings, access denied |
+| Admin | users, roles, approvals, data quality, storage, readiness, logs, settings, Integration API clients, access denied |
 | Print Views | asset labels, bulk labels, handover forms, return forms, maintenance print, disposal print |
 | Public QR Resolver | `/q/a/{assetId}` redirects printed QR codes to asset detail through the configured public base URL or proxy headers |
 
@@ -83,7 +83,7 @@ The Prisma schema contains current models for:
 - Supplier: `Supplier`
 - Files: `Attachment`
 - Auth/RBAC: `User`, `Role`, `Permission`, `UserRole`, `RolePermission`
-- System: `SystemLog`, `SystemSetting`, `Notification`, `NotificationUserState`
+- System: `SystemLog`, `SystemSetting`, `Notification`, `NotificationUserState`, `IntegrationApiClient`
 
 Important data semantics:
 
@@ -268,6 +268,7 @@ Implemented status lifecycle and enforcement from docs/code:
 | Approvals | Approval inbox/history for workflow-controlled operations |
 | Data quality | Configurable asset data quality rules and admin page |
 | Storage governance | Missing/orphan file review and archive action for orphan files |
+| Integration API client management | `Admin > Integration API` creates, rotates, disables, and enables DB-backed read-only integration clients. Plain tokens are shown once on create/rotate; only token hashes and previews are stored. |
 | Readiness | Production readiness page covering env, upload scanner, scheduler, backup-oriented checks |
 | System logs | Readable system log presentation with record labels and before/after summaries |
 | Notifications | Notification center, notification states, digest scheduler endpoint |
@@ -285,7 +286,7 @@ Implemented status lifecycle and enforcement from docs/code:
 | Upload storage | Files stored under configured `UPLOAD_DIR`; attachments are private and no-store |
 | Security headers | Centralized browser security headers and service-worker headers |
 | Audit trail | Sensitive operations are expected to write system logs/audit records |
-| Integration API foundation | Read-only `/api/integrations/v1` surface with hashed Bearer token clients, request IDs, scopes, audit logging, health check, asset lookup/list DTOs, incremental asset change feed, reference-code endpoints, authenticated OpenAPI JSON, and local token/hash generation tooling |
+| Integration API foundation | Read-only `/api/integrations/v1` surface with DB-backed hashed Bearer token clients in `integration_api_clients`, `Admin > Integration API` token lifecycle controls, request IDs, scopes, audit logging, health check, asset lookup/list DTOs, incremental asset change feed, reference-code endpoints, authenticated OpenAPI JSON, and recovery token/hash generation tooling |
 | Secret policy | `.env*` ignored; committed docs use placeholders only |
 | Backup/restore | Runbook and production readiness checklist cover DB/file backup and restore tests |
 | Guarded cleanup | Test-data cleanup script is dry-run/guarded by explicit flags |
@@ -325,7 +326,7 @@ Current API route groups include:
 - `api/audit-rounds`, `api/audit-items`, `api/audit-findings` for audit lifecycle, scan, exports, findings, review, attachments.
 - `api/maintenance-tickets` and `api/maintenance-plans` for repair/PM workflows.
 - `api/disposal-requests` for disposal request, attachments, decision/execution/export.
-- `api/admin` for users, roles, settings, LDAP test/sync, storage governance.
+- `api/admin` for users, roles, settings, LDAP test/sync, storage governance, and Integration API client lifecycle management.
 - Master-data APIs for companies, branches, departments, employees, locations, categories, brands, models, suppliers.
 - `api/attachments` for controlled file preview/download/delete.
 - `api/search` for permission-aware global search.

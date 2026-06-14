@@ -55,7 +55,7 @@ export function parseIntegrationClients(raw = process.env.INTEGRATION_API_CLIENT
 
 export async function requireIntegrationClient(
   request: Request,
-  clients = parseIntegrationClients()
+  clients?: IntegrationClient[]
 ): Promise<IntegrationAuthContext> {
   return authenticateIntegrationRequest(request, undefined, clients)
 }
@@ -63,7 +63,7 @@ export async function requireIntegrationClient(
 export async function requireIntegrationScope(
   request: Request,
   requiredScope: IntegrationScope,
-  clients = parseIntegrationClients()
+  clients?: IntegrationClient[]
 ): Promise<IntegrationAuthContext> {
   return authenticateIntegrationRequest(request, requiredScope, clients)
 }
@@ -71,7 +71,7 @@ export async function requireIntegrationScope(
 export async function authenticateIntegrationRequest(
   request: Request,
   requiredScope?: IntegrationScope,
-  clients = parseIntegrationClients()
+  clients?: IntegrationClient[]
 ): Promise<IntegrationAuthContext> {
   const requestId = getRequestId(request)
   const token = extractBearerToken(request.headers)
@@ -79,7 +79,9 @@ export async function authenticateIntegrationRequest(
     throw new IntegrationApiError(401, "INTEGRATION_UNAUTHORIZED", "Missing integration bearer token")
   }
 
-  const client = findIntegrationClientByToken(token, clients)
+  const client = clients
+    ? findIntegrationClientByToken(token, clients.filter((candidate) => candidate.enabled))
+    : await findDbIntegrationClientByToken(token, request)
   if (!client) {
     throw new IntegrationApiError(401, "INTEGRATION_UNAUTHORIZED", "Invalid integration bearer token")
   }
@@ -174,6 +176,11 @@ function extractBearerToken(headers: Headers) {
 function findIntegrationClientByToken(token: string, clients: IntegrationClient[]) {
   const tokenHash = hashIntegrationToken(token)
   return clients.find((client) => safeHashEquals(tokenHash, client.tokenHash)) ?? null
+}
+
+async function findDbIntegrationClientByToken(token: string, request: Request) {
+  const { findEnabledIntegrationClientByToken } = await import("./integration-client-store.ts")
+  return findEnabledIntegrationClientByToken(token, request)
 }
 
 function safeHashEquals(left: string, right: string) {

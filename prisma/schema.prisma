@@ -940,6 +940,27 @@ model SystemLog {
   @@map("system_logs")
 }
 
+model IntegrationApiClient {
+  id            String    @id @default(uuid()) @db.NVarChar(100)
+  clientId      String    @unique(map: "UX_integration_api_clients_clientId") @db.NVarChar(100)
+  displayName   String    @db.NVarChar(200)
+  tokenHash     String    @unique(map: "UX_integration_api_clients_tokenHash") @db.NVarChar(64)
+  tokenPreview  String    @db.NVarChar(30)
+  scopesJson    String    @db.NVarChar(Max)
+  enabled       Boolean   @default(true)
+  createdBy     String?   @db.NVarChar(100)
+  createdAt     DateTime  @default(now())
+  updatedBy     String?   @db.NVarChar(100)
+  updatedAt     DateTime  @updatedAt
+  lastUsedAt    DateTime?
+  lastUsedIp    String?   @db.NVarChar(50)
+  lastRotatedAt DateTime?
+
+  @@index([enabled, clientId], map: "IX_integration_api_clients_enabled_clientId")
+  @@index([lastUsedAt], map: "IX_integration_api_clients_lastUsedAt")
+  @@map("integration_api_clients")
+}
+
 model SystemSetting {
   id          String   @id @default(uuid())
   key         String   @unique @db.NVarChar(100)

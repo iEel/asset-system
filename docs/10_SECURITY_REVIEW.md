@@ -48,7 +48,7 @@ Result: 3 tests passed.
 - Critical routes are checked for expected `requireAuth` and permission snippets.
 - Search and notification routes use authenticated user context and permission-aware filtering.
 - Scheduler endpoints support bearer-token authorization for systemd-triggered work and require interactive admin permission otherwise.
-- External system integration routes are isolated under `/api/integrations/v1` and use `requireIntegrationClient()` / `requireIntegrationScope()` instead of user sessions. Integration tokens must be generated outside committed source, stored as SHA-256 hashes in `INTEGRATION_API_CLIENTS`, scoped to read-only capabilities, and logged through the audit trail with request IDs. Do not reuse scheduler tokens for this purpose.
+- External system integration routes are isolated under `/api/integrations/v1` and use `requireIntegrationClient()` / `requireIntegrationScope()` instead of user sessions. Integration tokens are managed in `Admin > Integration API`, stored in `integration_api_clients` only as SHA-256 hashes plus non-secret previews, scoped to read-only capabilities, and logged through the audit trail with request IDs. Plain tokens are returned only in the one-time create/rotate response and must not appear in list/detail responses, audit logs, or committed files afterward. Do not reuse scheduler tokens for this purpose.
 
 ## File Upload And Attachment Access
 
@@ -89,7 +89,9 @@ Integration asset DTOs should stay minimal. They may expose operational identifi
 
 Integration change-feed and reference endpoints are also read-only. Change-feed cursors should contain only sync position data (`updatedAt` and asset id), and reference endpoints should expose compact code/name metadata only. Keep incremental sync endpoints bounded by server-side `limit` caps and audit the request summary rather than payload contents.
 
-The authenticated OpenAPI endpoint is intentionally behind `integration:read` instead of being public. Token generation is local tooling only: `npm run integration:token` prints the plain token once and the server-side SHA-256 hash, but must not write generated secrets into repository files.
+The authenticated OpenAPI endpoint is intentionally behind `integration:read` instead of being public. Routine token lifecycle work uses the DB-backed admin UI for create, rotate, disable, and enable. Local token generation through `npm run integration:token` is recovery/troubleshooting tooling only: it prints a plain token, SHA-256 hash, token preview, and manual metadata, but must not write generated secrets into repository files.
+
+Emergency Integration API access removal should disable the affected client in the UI or set `integration_api_clients.enabled = 0` through controlled SQL. If the deployed code is rolled back to a version that does not use this table, roll back the code before removing the table.
 
 ## Follow-Up Recommendations
 

@@ -33,6 +33,7 @@ import {
   Truck,
   History,
   Inbox,
+  KeyRound,
   Rocket,
   X,
 } from "lucide-react"
@@ -174,6 +175,7 @@ export function Sidebar({
           icon: <FileCheck2 size={18} />,
         },
         { labelKey: "dataQuality", href: `/${locale}/admin/data-quality`, permission: { module: "setting", action: "view" }, icon: <ShieldAlert size={18} /> },
+        { labelKey: "integrationApi", href: `/${locale}/admin/integrations`, permission: { module: "setting", action: "view" }, icon: <KeyRound size={18} /> },
         { labelKey: "fileStorage", href: `/${locale}/admin/storage`, permission: { module: "setting", action: "view" }, icon: <Database size={18} /> },
         { labelKey: "productionReadiness", href: `/${locale}/admin/readiness`, permission: { module: "setting", action: "view" }, icon: <Rocket size={18} /> },
         { labelKey: "systemLog", href: `/${locale}/admin/logs`, permission: { module: "system", action: "view" }, icon: <History size={18} /> },

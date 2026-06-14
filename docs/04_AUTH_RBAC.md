@@ -67,21 +67,8 @@ Use these helpers consistently:
 - `hasPermission(user, module, action)` when a route supports multiple permitted branches.
 - Attachment download and preview must check the attachment module permission before serving content.
 - Scheduler endpoints must use scheduler authorization tokens.
-- Read-only external integration endpoints live under `/api/integrations/v1` and must use `requireIntegrationClient()` or `requireIntegrationScope()`. Integration clients authenticate with `Authorization: Bearer <token>` where the server stores only SHA-256 token hashes in `INTEGRATION_API_CLIENTS`. Supported scopes start with `asset:read`, `reference:read`, and `integration:read`; do not reuse normal user sessions or scheduler tokens for partner/system API access.
-
-Example `INTEGRATION_API_CLIENTS` shape:
-
-```json
-[
-  {
-    "clientId": "erp-readonly",
-    "name": "ERP Read-only",
-    "tokenHash": "sha256-hex-placeholder",
-    "scopes": ["asset:read", "reference:read", "integration:read"],
-    "enabled": true
-  }
-]
-```
+- Read-only external integration endpoints live under `/api/integrations/v1` and must use `requireIntegrationClient()` or `requireIntegrationScope()`. Integration clients authenticate with `Authorization: Bearer <token>` where the server stores only SHA-256 token hashes in `integration_api_clients`. Supported scopes start with `asset:read`, `reference:read`, and `integration:read`; do not reuse normal user sessions or scheduler tokens for partner/system API access.
+- Integration API client lifecycle management lives in `Admin > Integration API` and `/api/admin/integration-clients`. Viewing clients requires `setting:view`; create, rotate, disable, and enable require `setting:edit`. Plain tokens are returned once on create/rotate, while admin lists expose only `tokenPreview`.
 
 `GET /api/integrations/v1/health` verifies a token and returns the integration API version, authenticated `clientId`, scopes, and request ID.
 
@@ -106,7 +93,7 @@ Integration metadata endpoints require `integration:read`:
 
 - `GET /api/integrations/v1/openapi`
 
-Use `npm run integration:token -- --client-id <id> --scopes asset:read,reference:read,integration:read` to generate a plain token for the calling system and a SHA-256 hash for `INTEGRATION_API_CLIENTS`. The script prints secrets to the terminal only and does not write them to disk.
+Use `npm run integration:token -- --client-id <id> --scopes asset:read,reference:read,integration:read` only for controlled SQL recovery or troubleshooting. The normal workflow is `Admin > Integration API`; the script prints recovery data to the terminal only and does not write secrets to disk.
 
 ## Regression Coverage
 
