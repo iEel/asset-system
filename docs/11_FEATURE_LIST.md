@@ -1,6 +1,6 @@
 # Asset Management System - Feature List
 
-Last updated: 2026-06-13
+Last updated: 2026-06-14
 
 This feature list is based on the current repository documents and source code, not only on the original plan. It focuses on features that are represented by the current docs, routes, API endpoints, Prisma schema, and component/library structure.
 
@@ -285,7 +285,7 @@ Implemented status lifecycle and enforcement from docs/code:
 | Upload storage | Files stored under configured `UPLOAD_DIR`; attachments are private and no-store |
 | Security headers | Centralized browser security headers and service-worker headers |
 | Audit trail | Sensitive operations are expected to write system logs/audit records |
-| Integration API foundation | Read-only `/api/integrations/v1` surface with hashed Bearer token clients, request IDs, scopes, audit logging, health check, and asset lookup/list DTOs |
+| Integration API foundation | Read-only `/api/integrations/v1` surface with hashed Bearer token clients, request IDs, scopes, audit logging, health check, asset lookup/list DTOs, incremental asset change feed, and reference-code endpoints |
 | Secret policy | `.env*` ignored; committed docs use placeholders only |
 | Backup/restore | Runbook and production readiness checklist cover DB/file backup and restore tests |
 | Guarded cleanup | Test-data cleanup script is dry-run/guarded by explicit flags |
@@ -331,7 +331,7 @@ Current API route groups include:
 - `api/search` for permission-aware global search.
 - `api/notifications` and `api/notifications/digest`.
 - `api/reports/assets-overview/export`.
-- `api/integrations/v1` for read-only external-system integration. Current endpoints include `GET /api/integrations/v1/health`, `GET /api/integrations/v1/assets`, and `GET /api/integrations/v1/assets/{assetTag}`. Asset DTOs are intentionally separate from UI/session APIs and omit sensitive purchase/accounting/supplier/evidence fields.
+- `api/integrations/v1` for read-only external-system integration. Current endpoints include `GET /api/integrations/v1/health`, `GET /api/integrations/v1/assets`, `GET /api/integrations/v1/assets/{assetTag}`, `GET /api/integrations/v1/assets/changes`, and reference endpoints for statuses, companies, branches, and locations. Asset DTOs are intentionally separate from UI/session APIs and omit sensitive purchase/accounting/supplier/evidence fields.
 
 ## Current Go-Live Decisions Still Open
 

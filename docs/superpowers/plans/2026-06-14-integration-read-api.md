@@ -55,10 +55,10 @@
 - Update docs/handoff/changelog.
 - Test: `tests/integration-reference.test.ts`
 
-- [ ] Write failing tests for reference DTOs and cursor encoding/decoding.
-- [ ] Implement `updatedSince` change feed with bounded pagination and stable cursor.
-- [ ] Implement safe reference endpoints under `reference:read`.
-- [ ] Update docs and commit/push Phase 3 only.
+- [x] Write failing tests for reference DTOs and cursor encoding/decoding.
+- [x] Implement `updatedSince` change feed with bounded pagination and stable cursor.
+- [x] Implement safe reference endpoints under `reference:read`.
+- [x] Update docs and commit/push Phase 3 only.
 
 ### Task 4: Hardening And Handoff
 

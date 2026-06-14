@@ -87,6 +87,8 @@ Read-only Integration API calls should also write summary audit records with cli
 
 Integration asset DTOs should stay minimal. They may expose operational identifiers such as Asset Tag, Serial Number, status, condition, owner branch, current location, and current custodian code/name, but should not expose purchase price, supplier, PO, invoice, file attachments, photos, or accounting/depreciation details unless a future explicit scope and review are added.
 
+Integration change-feed and reference endpoints are also read-only. Change-feed cursors should contain only sync position data (`updatedAt` and asset id), and reference endpoints should expose compact code/name metadata only. Keep incremental sync endpoints bounded by server-side `limit` caps and audit the request summary rather than payload contents.
+
 ## Follow-Up Recommendations
 
 - Keep asset lifecycle policy tests aligned with any new operational status, correction workflow, or privileged exception workflow.

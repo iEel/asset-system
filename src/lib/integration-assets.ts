@@ -15,6 +15,18 @@ export type IntegrationAssetListParams = {
   limit: number
 }
 
+export type IntegrationAssetChangeParams = {
+  updatedSince: Date | null
+  cursor: IntegrationChangeCursor | null
+  includeInactive: boolean
+  limit: number
+}
+
+export type IntegrationChangeCursor = {
+  updatedAt: string
+  id: string
+}
+
 export const integrationAssetSelect = {
   id: true,
   assetTag: true,
@@ -114,6 +126,57 @@ export function buildIntegrationAssetOrderBy(_filters: IntegrationAssetListParam
   return [{ updatedAt: "desc" }, { assetTag: "asc" }]
 }
 
+export function parseIntegrationAssetChangeParams(input: URLSearchParams | Record<string, unknown>): IntegrationAssetChangeParams {
+  const getValue = (key: string) => (input instanceof URLSearchParams ? input.get(key) : input[key])
+  const updatedSinceValue = clean(getValue("updatedSince"))
+  const updatedSince = updatedSinceValue ? parseDate(updatedSinceValue) : null
+  const limitValue = Number(getValue("limit") ?? 100) || 100
+
+  return {
+    updatedSince,
+    cursor: decodeIntegrationChangeCursor(clean(getValue("cursor"))),
+    includeInactive: clean(getValue("includeInactive")).toLowerCase() !== "false",
+    limit: Math.min(500, Math.max(1, limitValue)),
+  }
+}
+
+export function buildIntegrationAssetChangeWhere(filters: IntegrationAssetChangeParams): Prisma.AssetWhereInput {
+  const and: Prisma.AssetWhereInput[] = []
+  if (!filters.includeInactive) and.push({ isActive: true })
+  if (filters.updatedSince) and.push({ updatedAt: { gte: filters.updatedSince } })
+  if (filters.cursor) {
+    const cursorUpdatedAt = new Date(filters.cursor.updatedAt)
+    and.push({
+      OR: [
+        { updatedAt: { gt: cursorUpdatedAt } },
+        { updatedAt: cursorUpdatedAt, id: { gt: filters.cursor.id } },
+      ],
+    })
+  }
+  return and.length > 0 ? { AND: and } : {}
+}
+
+export function buildIntegrationAssetChangeOrderBy(): Prisma.AssetOrderByWithRelationInput[] {
+  return [{ updatedAt: "asc" }, { id: "asc" }]
+}
+
+export function encodeIntegrationChangeCursor(cursor: IntegrationChangeCursor) {
+  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url")
+}
+
+export function decodeIntegrationChangeCursor(value: string): IntegrationChangeCursor | null {
+  if (!value) return null
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as Partial<IntegrationChangeCursor>
+    if (!parsed.updatedAt || !parsed.id) return null
+    const updatedAt = parseDate(parsed.updatedAt)
+    if (!updatedAt) return null
+    return { updatedAt: updatedAt.toISOString(), id: parsed.id }
+  } catch {
+    return null
+  }
+}
+
 export function toIntegrationAssetDto(asset: IntegrationAssetRecord) {
   return {
     id: asset.id,
@@ -160,6 +223,11 @@ export function toIntegrationAssetDto(asset: IntegrationAssetRecord) {
 
 function clean(value: unknown) {
   return String(value ?? "").trim()
+}
+
+function parseDate(value: string) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
 }
 
 function formatBranchDto(branch: { code: string; name: string; company?: { code: string } | null }) {

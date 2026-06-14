@@ -89,8 +89,18 @@ Read-only Asset endpoints require `asset:read`:
 
 - `GET /api/integrations/v1/assets`
 - `GET /api/integrations/v1/assets/{assetTag}`
+- `GET /api/integrations/v1/assets/changes?updatedSince=...`
 
-The asset list supports bounded `limit`/`page` and filters such as `q`, `assetTag`, `serialNumber`, `employeeCode`, `companyCode`, `branchCode`, `locationCode`, `status`, and `condition`. Responses use a stable DTO and intentionally omit purchase price, supplier, PO, invoice, attachments, photos, and other sensitive workflow evidence.
+The asset list supports bounded `limit`/`page` and filters such as `q`, `assetTag`, `serialNumber`, `employeeCode`, `companyCode`, `branchCode`, `locationCode`, `status`, and `condition`. The change feed requires `updatedSince`, orders by `updatedAt` and `id`, and returns a bounded `nextCursor` plus `highWaterMark` for incremental sync jobs. Responses use a stable DTO and intentionally omit purchase price, supplier, PO, invoice, attachments, photos, and other sensitive workflow evidence.
+
+Read-only Reference endpoints require `reference:read`:
+
+- `GET /api/integrations/v1/reference/statuses`
+- `GET /api/integrations/v1/reference/companies`
+- `GET /api/integrations/v1/reference/branches`
+- `GET /api/integrations/v1/reference/locations`
+
+Reference endpoints expose compact operational codes/names only. Branches can be filtered by `companyCode`; locations can be filtered by `companyCode` and `branchCode` to disambiguate repeated branch/location labels across companies.
 
 ## Regression Coverage
 
