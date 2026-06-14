@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-06-14
+
+| Area | Update |
+|---|---|
+| Integration API Phase 1 | Added the read-only external Integration API foundation under `/api/integrations/v1`: hashed Bearer-token clients from `INTEGRATION_API_CLIENTS`, scoped auth helpers, request IDs, audit-log summaries, custom route-inventory classification, and `GET /api/integrations/v1/health` for token validation. Existing UI/session APIs and scheduler tokens remain separate. |
+
+---
+
 ## 2026-06-13
 
 | Area | Update |

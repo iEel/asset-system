@@ -48,6 +48,7 @@ Result: 3 tests passed.
 - Critical routes are checked for expected `requireAuth` and permission snippets.
 - Search and notification routes use authenticated user context and permission-aware filtering.
 - Scheduler endpoints support bearer-token authorization for systemd-triggered work and require interactive admin permission otherwise.
+- External system integration routes are isolated under `/api/integrations/v1` and use `requireIntegrationClient()` / `requireIntegrationScope()` instead of user sessions. Integration tokens must be generated outside committed source, stored as SHA-256 hashes in `INTEGRATION_API_CLIENTS`, scoped to read-only capabilities, and logged through the audit trail with request IDs. Do not reuse scheduler tokens for this purpose.
 
 ## File Upload And Attachment Access
 
@@ -81,6 +82,8 @@ Production should not use a broad SQL Server admin user. Use a dedicated applica
 ## Audit Log Coverage
 
 Sensitive data-changing workflows reviewed during previous implementation passes include audit logging for major actions such as asset operations, disposal, maintenance, admin settings, and readable system-log presentation. New routes that mutate business records should add audit logging as part of their acceptance criteria.
+
+Read-only Integration API calls should also write summary audit records with client ID, route, status, request ID, and result count. Never log Bearer tokens or large response payloads.
 
 ## Follow-Up Recommendations
 

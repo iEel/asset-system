@@ -67,6 +67,23 @@ Use these helpers consistently:
 - `hasPermission(user, module, action)` when a route supports multiple permitted branches.
 - Attachment download and preview must check the attachment module permission before serving content.
 - Scheduler endpoints must use scheduler authorization tokens.
+- Read-only external integration endpoints live under `/api/integrations/v1` and must use `requireIntegrationClient()` or `requireIntegrationScope()`. Integration clients authenticate with `Authorization: Bearer <token>` where the server stores only SHA-256 token hashes in `INTEGRATION_API_CLIENTS`. Supported scopes start with `asset:read`, `reference:read`, and `integration:read`; do not reuse normal user sessions or scheduler tokens for partner/system API access.
+
+Example `INTEGRATION_API_CLIENTS` shape:
+
+```json
+[
+  {
+    "clientId": "erp-readonly",
+    "name": "ERP Read-only",
+    "tokenHash": "sha256-hex-placeholder",
+    "scopes": ["asset:read", "reference:read", "integration:read"],
+    "enabled": true
+  }
+]
+```
+
+`GET /api/integrations/v1/health` verifies a token and returns the integration API version, authenticated `clientId`, scopes, and request ID.
 
 ## Regression Coverage
 

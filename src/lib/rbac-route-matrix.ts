@@ -27,6 +27,8 @@ export const publicApiRouteExceptions: ApiRouteInventoryException[] = [
 
 export const customAuthApiRouteSnippets = [
   "isSchedulerAuthorized(",
+  "requireIntegrationClient(",
+  "requireIntegrationScope(",
   "requireAttachmentPermission(",
   "hasPermission(",
 ] as const
