@@ -70,7 +70,7 @@
 - Update docs/handoff/changelog.
 - Test: `tests/integration-openapi.test.ts`
 
-- [ ] Write failing tests for OpenAPI route source, token generation script registration, and docs references.
-- [ ] Add authenticated OpenAPI JSON endpoint and local token/hash generation script.
-- [ ] Document env configuration, rotation, scopes, examples, UAT, and production notes.
-- [ ] Update docs and commit/push Phase 4 only.
+- [x] Write failing tests for OpenAPI route source, token generation script registration, and docs references.
+- [x] Add authenticated OpenAPI JSON endpoint and local token/hash generation script.
+- [x] Document env configuration, rotation, scopes, examples, UAT, and production notes.
+- [x] Update docs and commit/push Phase 4 only.

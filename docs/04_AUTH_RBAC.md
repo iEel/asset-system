@@ -102,6 +102,12 @@ Read-only Reference endpoints require `reference:read`:
 
 Reference endpoints expose compact operational codes/names only. Branches can be filtered by `companyCode`; locations can be filtered by `companyCode` and `branchCode` to disambiguate repeated branch/location labels across companies.
 
+Integration metadata endpoints require `integration:read`:
+
+- `GET /api/integrations/v1/openapi`
+
+Use `npm run integration:token -- --client-id <id> --scopes asset:read,reference:read,integration:read` to generate a plain token for the calling system and a SHA-256 hash for `INTEGRATION_API_CLIENTS`. The script prints secrets to the terminal only and does not write them to disk.
+
 ## Regression Coverage
 
 The RBAC route matrix lives in `src/lib/rbac-route-matrix.ts` and should be kept in sync when API routes are added. Run:

@@ -89,6 +89,8 @@ Integration asset DTOs should stay minimal. They may expose operational identifi
 
 Integration change-feed and reference endpoints are also read-only. Change-feed cursors should contain only sync position data (`updatedAt` and asset id), and reference endpoints should expose compact code/name metadata only. Keep incremental sync endpoints bounded by server-side `limit` caps and audit the request summary rather than payload contents.
 
+The authenticated OpenAPI endpoint is intentionally behind `integration:read` instead of being public. Token generation is local tooling only: `npm run integration:token` prints the plain token once and the server-side SHA-256 hash, but must not write generated secrets into repository files.
+
 ## Follow-Up Recommendations
 
 - Keep asset lifecycle policy tests aligned with any new operational status, correction workflow, or privileged exception workflow.

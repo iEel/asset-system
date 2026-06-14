@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "node scripts/run-tests.mjs",
     "verify": "node scripts/verify.mjs",
+    "integration:token": "node scripts/generate-integration-token.mjs",
     "ldap:sync": "node scripts/ldap-sync.mjs",
     "ldap:sync:scheduled": "node scripts/ldap-sync.mjs --scheduled",
     "pm:generate-due": "node scripts/generate-due-pm.mjs",
