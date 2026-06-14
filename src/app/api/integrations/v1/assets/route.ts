@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       prisma.asset.findMany({
         where,
         select: integrationAssetSelect,
-        orderBy: buildIntegrationAssetOrderBy(filters),
+        orderBy: buildIntegrationAssetOrderBy(),
         skip: (filters.page - 1) * filters.limit,
         take: filters.limit,
       }),

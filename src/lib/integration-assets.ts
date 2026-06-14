@@ -122,7 +122,7 @@ export function buildIntegrationAssetWhere(filters: IntegrationAssetListParams):
   }
 }
 
-export function buildIntegrationAssetOrderBy(_filters: IntegrationAssetListParams): Prisma.AssetOrderByWithRelationInput[] {
+export function buildIntegrationAssetOrderBy(): Prisma.AssetOrderByWithRelationInput[] {
   return [{ updatedAt: "desc" }, { assetTag: "asc" }]
 }
 

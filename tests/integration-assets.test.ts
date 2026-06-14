@@ -66,7 +66,7 @@ test("builds safe Prisma where/order inputs for integration asset lists", () => 
       { custodian: { code: { contains: "apc" } } },
     ],
   })
-  assert.deepEqual(buildIntegrationAssetOrderBy(filters), [{ updatedAt: "desc" }, { assetTag: "asc" }])
+  assert.deepEqual(buildIntegrationAssetOrderBy(), [{ updatedAt: "desc" }, { assetTag: "asc" }])
 })
 
 test("maps assets to a stable integration DTO without sensitive accounting or supplier data", () => {
