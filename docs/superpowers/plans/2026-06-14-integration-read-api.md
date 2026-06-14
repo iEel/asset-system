@@ -38,10 +38,10 @@
 - Update docs/handoff/changelog.
 - Test: `tests/integration-assets.test.ts`
 
-- [ ] Write failing tests for safe DTO mapping and list filter parsing.
-- [ ] Implement read-only asset list/detail endpoints under `asset:read`.
-- [ ] Keep purchase/accounting/supplier/document/photo data out of DTOs.
-- [ ] Update docs and commit/push Phase 2 only.
+- [x] Write failing tests for safe DTO mapping and list filter parsing.
+- [x] Implement read-only asset list/detail endpoints under `asset:read`.
+- [x] Keep purchase/accounting/supplier/document/photo data out of DTOs.
+- [x] Update docs and commit/push Phase 2 only.
 
 ### Task 3: Reference And Change Feed
 

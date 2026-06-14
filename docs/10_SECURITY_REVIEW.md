@@ -85,6 +85,8 @@ Sensitive data-changing workflows reviewed during previous implementation passes
 
 Read-only Integration API calls should also write summary audit records with client ID, route, status, request ID, and result count. Never log Bearer tokens or large response payloads.
 
+Integration asset DTOs should stay minimal. They may expose operational identifiers such as Asset Tag, Serial Number, status, condition, owner branch, current location, and current custodian code/name, but should not expose purchase price, supplier, PO, invoice, file attachments, photos, or accounting/depreciation details unless a future explicit scope and review are added.
+
 ## Follow-Up Recommendations
 
 - Keep asset lifecycle policy tests aligned with any new operational status, correction workflow, or privileged exception workflow.

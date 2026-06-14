@@ -9,6 +9,7 @@
 | Area | Update |
 |---|---|
 | Integration API Phase 1 | Added the read-only external Integration API foundation under `/api/integrations/v1`: hashed Bearer-token clients from `INTEGRATION_API_CLIENTS`, scoped auth helpers, request IDs, audit-log summaries, custom route-inventory classification, and `GET /api/integrations/v1/health` for token validation. Existing UI/session APIs and scheduler tokens remain separate. |
+| Integration API Phase 2 | Added read-only `asset:read` endpoints `GET /api/integrations/v1/assets` and `GET /api/integrations/v1/assets/{assetTag}`. The list supports bounded paging and filters for Asset Tag, Serial Number, current custodian employee code, owner company/branch, current location, status, and condition. Responses use a stable operational DTO and omit purchase price, supplier, PO, invoice, attachments/photos, and accounting/depreciation fields. |
 
 ---
 

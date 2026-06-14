@@ -85,6 +85,13 @@ Example `INTEGRATION_API_CLIENTS` shape:
 
 `GET /api/integrations/v1/health` verifies a token and returns the integration API version, authenticated `clientId`, scopes, and request ID.
 
+Read-only Asset endpoints require `asset:read`:
+
+- `GET /api/integrations/v1/assets`
+- `GET /api/integrations/v1/assets/{assetTag}`
+
+The asset list supports bounded `limit`/`page` and filters such as `q`, `assetTag`, `serialNumber`, `employeeCode`, `companyCode`, `branchCode`, `locationCode`, `status`, and `condition`. Responses use a stable DTO and intentionally omit purchase price, supplier, PO, invoice, attachments, photos, and other sensitive workflow evidence.
+
 ## Regression Coverage
 
 The RBAC route matrix lives in `src/lib/rbac-route-matrix.ts` and should be kept in sync when API routes are added. Run:
