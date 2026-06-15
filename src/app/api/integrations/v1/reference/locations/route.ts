@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
       action: "integration_reference_locations",
       route: "/api/integrations/v1/reference/locations",
       status: 200,
+      query: { companyCode, branchCode },
       resultCount: locations.length,
     })
 

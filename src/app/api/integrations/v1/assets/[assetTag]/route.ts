@@ -34,6 +34,9 @@ export async function GET(
       action: "integration_asset_detail",
       route: "/api/integrations/v1/assets/{assetTag}",
       status: 200,
+      target: {
+        assetTag: asset.assetTag,
+      },
       resultCount: 1,
     })
 

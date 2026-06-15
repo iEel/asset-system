@@ -29,6 +29,11 @@ export type CreateIntegrationClientInput = {
   enabled?: unknown
 }
 
+export type UpdateIntegrationClientInput = {
+  displayName: unknown
+  scopes: unknown
+}
+
 type IntegrationApiClientRecord = Pick<
   PrismaIntegrationApiClient,
   | "id"
@@ -147,6 +152,15 @@ export async function listIntegrationClients(): Promise<IntegrationClientDto[]> 
   return records.map(toIntegrationClientDto)
 }
 
+export async function getIntegrationClientById(id: string): Promise<IntegrationClientDto | null> {
+  const { prisma } = await import("./db.ts")
+  const record = await prisma.integrationApiClient.findUnique({
+    where: { id },
+  })
+
+  return record ? toIntegrationClientDto(record) : null
+}
+
 export async function createIntegrationClient(
   input: CreateIntegrationClientInput,
   actorId: string
@@ -174,6 +188,27 @@ export async function createIntegrationClient(
   })
 
   return { client: toIntegrationClientDto(record), token }
+}
+
+export async function updateIntegrationClient(
+  id: string,
+  input: UpdateIntegrationClientInput,
+  actorId: string
+): Promise<IntegrationClientDto> {
+  const displayName = normalizeText(input.displayName, "displayName")
+  const scopesJson = serializeIntegrationScopes(input.scopes)
+
+  const { prisma } = await import("./db.ts")
+  const record = await prisma.integrationApiClient.update({
+    where: { id },
+    data: {
+      displayName,
+      scopesJson,
+      updatedBy: actorId,
+    },
+  })
+
+  return toIntegrationClientDto(record)
 }
 
 export async function rotateIntegrationClient(

@@ -48,7 +48,7 @@ Result: 3 tests passed.
 - Critical routes are checked for expected `requireAuth` and permission snippets.
 - Search and notification routes use authenticated user context and permission-aware filtering.
 - Scheduler endpoints support bearer-token authorization for systemd-triggered work and require interactive admin permission otherwise.
-- External system integration routes are isolated under `/api/integrations/v1` and use `requireIntegrationClient()` / `requireIntegrationScope()` instead of user sessions. Integration tokens are managed in `Admin > Integration API`, stored in `integration_api_clients` only as SHA-256 hashes plus non-secret previews, scoped to read-only capabilities, and logged through the audit trail with request IDs. Plain tokens are returned only in the one-time create/rotate response and must not appear in list/detail responses, audit logs, or committed files afterward. Do not reuse scheduler tokens for this purpose.
+- External system integration routes are isolated under `/api/integrations/v1` and use `requireIntegrationClient()` / `requireIntegrationScope()` instead of user sessions. Integration tokens are managed in `Admin > Integration API`, stored in `integration_api_clients` only as SHA-256 hashes plus non-secret previews, scoped to read-only capabilities, and logged through the audit trail with request IDs. Plain tokens are returned only in the one-time create/rotate response and must not appear in list/detail responses, audit logs, or committed files afterward. Client display-name/scope edits are audited with safe old/new values only, and adding scopes to an existing client requires confirmation because the existing token gains access immediately. Do not reuse scheduler tokens for this purpose.
 
 ## File Upload And Attachment Access
 
@@ -83,13 +83,13 @@ Production should not use a broad SQL Server admin user. Use a dedicated applica
 
 Sensitive data-changing workflows reviewed during previous implementation passes include audit logging for major actions such as asset operations, disposal, maintenance, admin settings, and readable system-log presentation. New routes that mutate business records should add audit logging as part of their acceptance criteria.
 
-Read-only Integration API calls should also write summary audit records with client ID, route, status, request ID, and result count. Never log Bearer tokens or large response payloads.
+Read-only Integration API calls should also write summary audit records with client ID, route, status, request ID, query/target metadata, and bounded response counts. Never log Bearer tokens or large response payloads.
 
 Integration asset DTOs should stay minimal. They may expose operational identifiers such as Asset Tag, Serial Number, status, condition, owner branch, current location, and current custodian code/name, but should not expose purchase price, supplier, PO, invoice, file attachments, photos, or accounting/depreciation details unless a future explicit scope and review are added.
 
 Integration change-feed and reference endpoints are also read-only. Change-feed cursors should contain only sync position data (`updatedAt` and asset id), and reference endpoints should expose compact code/name metadata only. Keep incremental sync endpoints bounded by server-side `limit` caps and audit the request summary rather than payload contents.
 
-The authenticated OpenAPI endpoint is intentionally behind `integration:read` instead of being public. Routine token lifecycle work uses the DB-backed admin UI for create, rotate, disable, and enable. Local token generation through `npm run integration:token` is recovery/troubleshooting tooling only: it prints a plain token, SHA-256 hash, token preview, and manual metadata, but must not write generated secrets into repository files.
+The authenticated OpenAPI endpoint is intentionally behind `integration:read` instead of being public. Routine token lifecycle work uses the DB-backed admin UI for create, edit scopes, rotate, disable, and enable. Local token generation through `npm run integration:token` is recovery/troubleshooting tooling only: it prints a plain token, SHA-256 hash, token preview, and manual metadata, but must not write generated secrets into repository files.
 
 Emergency Integration API access removal should disable the affected client in the UI or set `integration_api_clients.enabled = 0` through controlled SQL. If the deployed code is rolled back to a version that does not use this table, roll back the code before removing the table.
 

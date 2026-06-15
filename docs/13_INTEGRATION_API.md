@@ -18,10 +18,11 @@ Integration clients are managed in the database table `integration_api_clients`.
 
 - Create a client with a unique client ID, display name, and least-privilege scopes.
 - Copy the plain token from the one-time create response into the external system secret manager.
+- Edit the display name or allowed scopes when an approved integration changes. Adding a new scope to an existing token requires confirmation because the current token can use the newly allowed endpoint immediately.
 - Rotate a client when a token may be exposed or on the agreed rotation schedule. The old token stops working immediately, and the new plain token is shown once.
 - Disable a client to revoke access. Enable only after confirming the client is still approved.
 
-The app stores only `tokenHash` and `tokenPreview`; it never stores the plain token. Admin API routes for this workflow live under `/api/admin/integration-clients`.
+The app stores only `tokenHash` and `tokenPreview`; it never stores the plain token. Admin API routes for this workflow live under `/api/admin/integration-clients`. Client changes are audited with safe old/new values such as client ID, display name, scopes, enabled state, and token preview only.
 
 Normal token lifecycle work requires no `.env` changes; `.env` database connection settings stay unchanged.
 
@@ -33,7 +34,7 @@ Keep `npm run integration:token` available for controlled SQL recovery or troubl
 npm run integration:token -- --client-id erp-readonly --name "ERP Read-only" --scopes asset:read,reference:read,integration:read
 ```
 
-The script prints a plain token, SHA-256 hash, token preview, and manual client metadata to the terminal. It does not write secrets to disk. Prefer the admin UI for routine create/rotate/disable/enable work because the UI writes the database row and shows the one-time token response safely.
+The script prints a plain token, SHA-256 hash, token preview, and manual client metadata to the terminal. It does not write secrets to disk. Prefer the admin UI for routine create/edit-scope/rotate/disable/enable work because the UI writes the database row, audits changes, and shows the one-time token response safely.
 
 ## Endpoints
 
@@ -258,7 +259,8 @@ Use `companyCode` and `branchCode` filters to disambiguate repeated branch or lo
 6. Verify `assets/changes` requires `updatedSince` and returns stable `nextCursor`/`highWaterMark`.
 7. Rotate the client and verify the old token fails while the new token succeeds.
 8. Disable the client and verify all Integration API calls fail for that token.
-9. Confirm system logs record request summaries with client ID, route, status, request ID, and result count without logging Bearer tokens or response payloads.
+9. Edit the client scopes from `Admin > Integration API`, confirm scope expansion when adding a scope, and verify the system log records old/new safe scope values without token hashes.
+10. Confirm Integration API request logs record summaries with client ID, route, status, request ID, query/target metadata, and bounded response counts without logging Bearer tokens or response payloads.
 
 ## Production Notes
 
@@ -266,7 +268,8 @@ Use `companyCode` and `branchCode` filters to disambiguate repeated branch or lo
 - Apply `prisma/manual-migrations/2026-06-14-add-integration-api-clients.sql` after backup and approval before deploying or using the DB-backed token manager in production.
 - Keep existing database connection settings unchanged.
 - Use separate `clientId` values per external system.
-- Start with least-privilege scopes and rotate tokens from `Admin > Integration API`, then update the external system with the one-time token.
+- Start with least-privilege scopes. Scope changes can be made from `Admin > Integration API`; adding scopes affects the existing token immediately and is audited with old/new safe values.
+- Rotate tokens from `Admin > Integration API`, then update the external system with the one-time token.
 - Emergency disable is available from the admin UI. If the UI is unavailable, use controlled SQL to set `integration_api_clients.enabled = 0` for the affected client or all clients.
 - If rolling back to code that does not use `integration_api_clients`, roll back the application before removing the table.
 - Keep rate limits and network allowlisting at the reverse proxy/firewall layer until an app-level rate limiter is explicitly designed.

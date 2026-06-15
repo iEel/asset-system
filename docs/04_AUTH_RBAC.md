@@ -68,7 +68,7 @@ Use these helpers consistently:
 - Attachment download and preview must check the attachment module permission before serving content.
 - Scheduler endpoints must use scheduler authorization tokens.
 - Read-only external integration endpoints live under `/api/integrations/v1` and must use `requireIntegrationClient()` or `requireIntegrationScope()`. Integration clients authenticate with `Authorization: Bearer <token>` where the server stores only SHA-256 token hashes in `integration_api_clients`. Supported scopes start with `asset:read`, `reference:read`, and `integration:read`; do not reuse normal user sessions or scheduler tokens for partner/system API access.
-- Integration API client lifecycle management lives in `Admin > Integration API` and `/api/admin/integration-clients`. Viewing clients requires `setting:view`; create, rotate, disable, and enable require `setting:edit`. Plain tokens are returned once on create/rotate, while admin lists expose only `tokenPreview`.
+- Integration API client lifecycle management lives in `Admin > Integration API` and `/api/admin/integration-clients`. Viewing clients requires `setting:view`; create, edit display name/scopes, rotate, disable, and enable require `setting:edit`. Plain tokens are returned once on create/rotate, while admin lists expose only `tokenPreview`. Scope expansion on an existing client requires confirmation because the current token can use the newly allowed endpoint immediately.
 
 `GET /api/integrations/v1/health` verifies a token and returns the integration API version, authenticated `clientId`, scopes, and request ID.
 

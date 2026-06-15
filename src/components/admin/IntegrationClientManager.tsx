@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { AlertTriangle, CheckCircle2, Copy, KeyRound, Loader2, Plus, RotateCw, ShieldOff } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Copy, KeyRound, Loader2, Pencil, Plus, RotateCw, ShieldOff, X } from "lucide-react"
 
 type IntegrationClient = {
   id: string
@@ -51,9 +51,13 @@ type Labels = {
   tokenAcknowledgement: string
   dismissToken: string
   rotate: string
+  editScopes: string
+  saveScopes: string
+  cancel: string
   enable: string
   disable: string
   confirmRotate: string
+  confirmScopeExpansion: string
   confirmEnable: string
   confirmDisable: string
   loading: string
@@ -88,6 +92,10 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
   const [oneTimeToken, setOneTimeToken] = useState<OneTimeToken | null>(null)
   const [tokenAcknowledgement, setTokenAcknowledgement] = useState(false)
   const [copyFeedback, setCopyFeedback] = useState<CopyFeedback | null>(null)
+  const [editingClient, setEditingClient] = useState<IntegrationClient | null>(null)
+  const [editDisplayName, setEditDisplayName] = useState("")
+  const [editScopes, setEditScopes] = useState<string[]>([])
+  const [updatingClient, setUpdatingClient] = useState(false)
 
   const summary = useMemo(() => {
     const active = clients.filter((client) => client.enabled).length
@@ -135,6 +143,35 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
     })
   }
 
+  function openEditClient(client: IntegrationClient) {
+    setEditingClient(client)
+    setEditDisplayName(client.displayName)
+    setEditScopes(client.scopes)
+    setError(null)
+  }
+
+  function closeEditClient() {
+    if (updatingClient) return
+    setEditingClient(null)
+    setEditDisplayName("")
+    setEditScopes([])
+  }
+
+  function toggleEditScope(scope: string) {
+    setEditScopes((current) => {
+      if (current.includes(scope)) {
+        const next = current.filter((item) => item !== scope)
+        return next.length > 0 ? next : current
+      }
+      return [...current, scope]
+    })
+  }
+
+  function confirmScopeExpansion(client: IntegrationClient, nextScopes: string[]) {
+    const hasNewScope = nextScopes.some((scope) => !client.scopes.includes(scope))
+    return !hasNewScope || window.confirm(labels.confirmScopeExpansion)
+  }
+
   async function createClient(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSaving(true)
@@ -158,6 +195,32 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
       setError(createError instanceof Error ? createError.message : labels.createFailed)
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function updateEditingClient(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!editingClient) return
+    if (!confirmScopeExpansion(editingClient, editScopes)) return
+
+    setUpdatingClient(true)
+    setMutatingId(editingClient.id)
+    setError(null)
+    try {
+      const response = await fetch(`/api/admin/integration-clients/${editingClient.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName: editDisplayName, scopes: editScopes }),
+      })
+      if (!response.ok) throw new Error(labels.actionFailed)
+      const payload = (await response.json()) as { data: IntegrationClient }
+      setClients((current) => current.map((client) => (client.id === payload.data.id ? payload.data : client)))
+      closeEditClient()
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : labels.actionFailed)
+    } finally {
+      setUpdatingClient(false)
+      setMutatingId(null)
     }
   }
 
@@ -286,6 +349,87 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
         </div>
       ) : null}
 
+      {editingClient ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form
+            onSubmit={updateEditingClient}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="integration-client-edit-title"
+            className="w-full max-w-xl rounded-lg border border-border bg-surface p-4 shadow-xl"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 id="integration-client-edit-title" className="text-lg font-semibold text-foreground">
+                  {labels.editScopes}
+                </h2>
+                <p className="mt-1 truncate font-mono text-xs text-muted-foreground">{editingClient.clientId}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeEditClient}
+                disabled={updatingClient}
+                className="inline-flex h-10 min-h-11 w-10 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label={labels.cancel}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-4">
+              <label className="grid gap-1.5 text-sm font-medium text-foreground">
+                {labels.displayName}
+                <input
+                  value={editDisplayName}
+                  onChange={(event) => setEditDisplayName(event.target.value)}
+                  required
+                  maxLength={200}
+                  className="h-10 min-h-11 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </label>
+              <fieldset>
+                <legend className="mb-2 text-sm font-medium text-foreground">{labels.scopes}</legend>
+                <div className="grid gap-2">
+                  {scopeOptions.map((scope) => (
+                    <label
+                      key={scope.value}
+                      className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                    >
+                      <span>{labels[scope.labelKey]}</span>
+                      <input
+                        type="checkbox"
+                        checked={editScopes.includes(scope.value)}
+                        onChange={() => toggleEditScope(scope.value)}
+                        className="h-4 w-4 rounded border-border"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            </div>
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeEditClient}
+                disabled={updatingClient}
+                className="inline-flex h-10 min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {labels.cancel}
+              </button>
+              <button
+                type="submit"
+                disabled={updatingClient || editScopes.length === 0}
+                className="inline-flex h-10 min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {updatingClient ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
+                {labels.saveScopes}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
           <Plus className="h-5 w-5 text-primary" />
@@ -384,6 +528,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
                       client={client}
                       labels={labels}
                       busy={mutatingId === client.id}
+                      onEdit={() => openEditClient(client)}
                       onRotate={() => rotateClient(client)}
                       onEnable={() => setClientEnabled(client, true)}
                       onDisable={() => setClientEnabled(client, false)}
@@ -399,6 +544,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
                   client={client}
                   labels={labels}
                   busy={mutatingId === client.id}
+                  onEdit={() => openEditClient(client)}
                   onRotate={() => rotateClient(client)}
                   onEnable={() => setClientEnabled(client, true)}
                   onDisable={() => setClientEnabled(client, false)}
@@ -416,6 +562,7 @@ function ClientRow({
   client,
   labels,
   busy,
+  onEdit,
   onRotate,
   onEnable,
   onDisable,
@@ -423,6 +570,7 @@ function ClientRow({
   client: IntegrationClient
   labels: Labels
   busy: boolean
+  onEdit: () => void
   onRotate: () => void
   onEnable: () => void
   onDisable: () => void
@@ -442,7 +590,16 @@ function ClientRow({
       <td className="px-4 py-3 font-mono text-xs text-foreground">{client.tokenPreview}</td>
       <td className="px-4 py-3 text-muted-foreground">{formatDate(client.lastUsedAt, labels.noLastUsed)}</td>
       <td className="px-4 py-3">
-        <ActionButtons client={client} labels={labels} busy={busy} onRotate={onRotate} onEnable={onEnable} onDisable={onDisable} alignEnd />
+        <ActionButtons
+          client={client}
+          labels={labels}
+          busy={busy}
+          onEdit={onEdit}
+          onRotate={onRotate}
+          onEnable={onEnable}
+          onDisable={onDisable}
+          alignEnd
+        />
       </td>
     </tr>
   )
@@ -452,6 +609,7 @@ function ClientCard({
   client,
   labels,
   busy,
+  onEdit,
   onRotate,
   onEnable,
   onDisable,
@@ -459,6 +617,7 @@ function ClientCard({
   client: IntegrationClient
   labels: Labels
   busy: boolean
+  onEdit: () => void
   onRotate: () => void
   onEnable: () => void
   onDisable: () => void
@@ -487,7 +646,15 @@ function ClientCard({
         </div>
       </div>
       <div className="mt-4">
-        <ActionButtons client={client} labels={labels} busy={busy} onRotate={onRotate} onEnable={onEnable} onDisable={onDisable} />
+        <ActionButtons
+          client={client}
+          labels={labels}
+          busy={busy}
+          onEdit={onEdit}
+          onRotate={onRotate}
+          onEnable={onEnable}
+          onDisable={onDisable}
+        />
       </div>
     </div>
   )
@@ -536,6 +703,7 @@ function ActionButtons({
   client,
   labels,
   busy,
+  onEdit,
   onRotate,
   onEnable,
   onDisable,
@@ -544,6 +712,7 @@ function ActionButtons({
   client: IntegrationClient
   labels: Labels
   busy: boolean
+  onEdit: () => void
   onRotate: () => void
   onEnable: () => void
   onDisable: () => void
@@ -551,6 +720,15 @@ function ActionButtons({
 }) {
   return (
     <div className={`flex flex-wrap gap-2 ${alignEnd ? "justify-end" : ""}`}>
+      <button
+        type="button"
+        onClick={onEdit}
+        disabled={busy}
+        className="inline-flex h-10 min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Pencil className="h-4 w-4" />
+        {labels.editScopes}
+      </button>
       <button
         type="button"
         onClick={onRotate}

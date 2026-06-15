@@ -20,6 +20,19 @@ export type IntegrationAuthContext = {
   requestId: string
 }
 
+type IntegrationAuditPrimitive = string | number | boolean
+
+export type IntegrationApiAuditValueParams = {
+  clientId: string
+  route: string
+  method: string
+  status: number
+  requestId: string
+  query?: Record<string, unknown>
+  target?: Record<string, unknown>
+  response?: Record<string, unknown>
+}
+
 export class IntegrationApiError extends Error {
   readonly status: number
   readonly code: string
@@ -117,25 +130,50 @@ export async function logIntegrationApiAccess(params: {
   action: string
   route: string
   status: number
+  query?: Record<string, unknown>
+  target?: Record<string, unknown>
+  response?: Record<string, unknown>
   resultCount?: number
 }) {
   const { logAudit } = await import("./audit-log.ts")
+  const response = { ...(params.response ?? {}) }
+  if (params.resultCount !== undefined) response.resultCount = params.resultCount
+
   await logAudit({
     action: params.action,
     module: "integration_api",
     recordId: params.context.client.clientId,
-    newValue: {
+    newValue: buildIntegrationApiAuditValue({
       clientId: params.context.client.clientId,
       route: params.route,
       method: params.request.method,
       status: params.status,
-      resultCount: params.resultCount ?? null,
       requestId: params.context.requestId,
-    },
+      query: params.query,
+      target: params.target,
+      response,
+    }),
     ipAddress: getForwardedFor(params.request),
     userAgent: params.request.headers.get("user-agent") ?? undefined,
     remark: "read-only integration api",
   })
+}
+
+export function buildIntegrationApiAuditValue(params: IntegrationApiAuditValueParams): Record<string, IntegrationAuditPrimitive> {
+  const auditValue: Record<string, IntegrationAuditPrimitive> = {
+    clientId: params.clientId,
+    operation: "read",
+    route: params.route,
+    method: params.method,
+    status: params.status,
+    requestId: params.requestId,
+  }
+
+  appendAuditValues(auditValue, "target", params.target)
+  appendAuditValues(auditValue, "query", params.query)
+  appendAuditValues(auditValue, "response", params.response)
+
+  return auditValue
 }
 
 function normalizeIntegrationClient(item: unknown): IntegrationClient | null {
@@ -203,4 +241,26 @@ function getRequestId(request: Request) {
 
 function getForwardedFor(request: Request) {
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || undefined
+}
+
+function appendAuditValues(
+  auditValue: Record<string, IntegrationAuditPrimitive>,
+  prefix: string,
+  values?: Record<string, unknown>
+) {
+  if (!values) return
+  for (const [key, value] of Object.entries(values)) {
+    const normalized = normalizeAuditValue(value)
+    if (normalized === null) continue
+    auditValue[`${prefix}.${key}`] = normalized
+  }
+}
+
+function normalizeAuditValue(value: unknown): IntegrationAuditPrimitive | null {
+  if (value === null || value === undefined || value === "") return null
+  if (value instanceof Date) return value.toISOString()
+  if (typeof value === "boolean") return value
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string") return value.length > 200 ? `${value.slice(0, 197)}...` : value
+  return null
 }

@@ -46,6 +46,17 @@ export async function GET(request: NextRequest) {
       action: "integration_asset_changes",
       route: "/api/integrations/v1/assets/changes",
       status: 200,
+      query: {
+        updatedSince: filters.updatedSince,
+        cursor: filters.cursor?.id,
+        includeInactive: filters.includeInactive,
+        limit: filters.limit,
+      },
+      response: {
+        hasMore,
+        highWaterMark: lastAsset?.updatedAt ?? filters.updatedSince,
+        nextCursor,
+      },
       resultCount: assets.length,
     })
 

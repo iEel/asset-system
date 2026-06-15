@@ -39,6 +39,21 @@ export async function GET(request: NextRequest) {
       action: "integration_asset_list",
       route: "/api/integrations/v1/assets",
       status: 200,
+      query: {
+        q: filters.q,
+        assetTag: filters.assetTag,
+        serialNumber: filters.serialNumber,
+        employeeCode: filters.employeeCode,
+        companyCode: filters.companyCode,
+        branchCode: filters.branchCode,
+        locationCode: filters.locationCode,
+        status: filters.status,
+        condition: filters.condition,
+        includeInactive: filters.includeInactive,
+        page: filters.page,
+        limit: filters.limit,
+      },
+      response: { total },
       resultCount: assets.length,
     })
 

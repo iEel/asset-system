@@ -5,6 +5,7 @@ export type SystemLogQuickFilterKey =
   | "asset_import"
   | "asset_batch"
   | "notification_digest"
+  | "integration_api"
 
 export type ResolvedSystemLogQuickFilterKey = SystemLogQuickFilterKey | "custom"
 
@@ -44,6 +45,11 @@ export const systemLogQuickFilters: SystemLogQuickFilter[] = [
     module: "notification",
     action: "deliver_notification_digest",
     labelKey: "quickFilterNotificationDigest",
+  },
+  {
+    key: "integration_api",
+    module: "integration_api",
+    labelKey: "quickFilterIntegrationApi",
   },
 ]
 

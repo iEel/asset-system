@@ -7,7 +7,7 @@ function readRequiredFile(filePath: string) {
   return readFileSync(filePath, "utf8")
 }
 
-function extractExportedHandler(source: string, method: "GET" | "POST") {
+function extractExportedHandler(source: string, method: "GET" | "POST" | "PATCH") {
   const match = new RegExp(`export\\s+async\\s+function\\s+${method}\\b`).exec(source)
   assert.notEqual(match, null, `route should export async function ${method}`)
 
@@ -50,6 +50,20 @@ test("admin integration client create route requires setting edit permission, au
   assert.match(handler, /logAudit\(/)
   assert.match(handler, /create_client/)
   assert.match(handler, /token/)
+  assertNoTokenHashInHandler(handler)
+})
+
+test("admin integration client update route requires setting edit permission, audits scope changes, and redacts token hashes", () => {
+  const source = readRequiredFile("src/app/api/admin/integration-clients/[id]/route.ts")
+  const handler = extractExportedHandler(source, "PATCH")
+
+  assert.match(handler, /requireAuth\(\)/)
+  assert.match(handler, /requirePermission\(user,\s*"setting",\s*"edit"\)/)
+  assert.match(handler, /updateIntegrationClient\(/)
+  assert.match(handler, /logAudit\(/)
+  assert.match(handler, /update_client_scopes/)
+  assert.match(handler, /oldValue/)
+  assert.match(handler, /newValue/)
   assertNoTokenHashInHandler(handler)
 })
 
@@ -114,6 +128,9 @@ test("integration client manager keeps one-time tokens in React state only and s
   assert.match(source, /"use client"/)
   assert.match(source, /useState<OneTimeToken \| null>\(null\)/)
   assert.match(source, /\/api\/admin\/integration-clients/)
+  assert.match(source, /method:\s*"PATCH"/)
+  assert.match(source, /editingClient/)
+  assert.match(source, /confirmScopeExpansion/)
   assert.match(source, /\/rotate/)
   assert.match(source, /\/enable/)
   assert.match(source, /\/disable/)
@@ -171,9 +188,13 @@ test("English and Thai messages include integration API navigation and page labe
       "tokenAcknowledgement",
       "dismissToken",
       "rotate",
+      "editScopes",
+      "saveScopes",
+      "cancel",
       "enable",
       "disable",
       "confirmRotate",
+      "confirmScopeExpansion",
       "confirmEnable",
       "confirmDisable",
       "loading",

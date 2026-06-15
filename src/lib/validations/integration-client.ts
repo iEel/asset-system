@@ -13,4 +13,10 @@ export const integrationClientCreateSchema = z.object({
   scopes: z.array(integrationScopeSchema).min(1),
 })
 
+export const integrationClientUpdateSchema = z.object({
+  displayName: z.string().trim().min(1).max(200),
+  scopes: z.array(integrationScopeSchema).min(1),
+})
+
 export type IntegrationClientCreateInput = z.infer<typeof integrationClientCreateSchema>
+export type IntegrationClientUpdateInput = z.infer<typeof integrationClientUpdateSchema>

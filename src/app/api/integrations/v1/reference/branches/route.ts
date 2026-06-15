@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
       action: "integration_reference_branches",
       route: "/api/integrations/v1/reference/branches",
       status: 200,
+      query: { companyCode },
       resultCount: branches.length,
     })
 

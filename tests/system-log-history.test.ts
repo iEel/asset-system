@@ -21,6 +21,8 @@ test("exposes LDAP sync as a first-class system log quick filter", () => {
   assert.equal(buildSystemLogFilterHref("th", "all"), "/th/admin/logs")
   assert.equal(buildSystemLogFilterHref("th", "ldap_sync"), "/th/admin/logs?module=employee&action=ldap_sync")
   assert.equal(resolveSystemLogQuickFilter({ module: "employee", action: "ldap_sync" }), "ldap_sync")
+  assert.equal(buildSystemLogFilterHref("th", "integration_api"), "/th/admin/logs?module=integration_api")
+  assert.equal(resolveSystemLogQuickFilter({ module: "integration_api" }), "integration_api")
   assert.equal(resolveSystemLogQuickFilter({ module: "asset", action: "delete" }), "custom")
 })
 
@@ -77,4 +79,6 @@ test("settings and system log pages expose the LDAP sync history path", () => {
   assert.equal(en.systemSettingsPage.ldapSyncHistoryTitle, "Recent Sync History")
   assert.equal(th.systemLogPage.quickFilterLdapSync, "LDAP Sync")
   assert.equal(en.systemLogPage.quickFilterLdapSync, "LDAP Sync")
+  assert.equal(th.systemLogPage.quickFilterIntegrationApi, "Integration API")
+  assert.equal(en.systemLogPage.quickFilterIntegrationApi, "Integration API")
 })
