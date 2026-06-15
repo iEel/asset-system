@@ -108,7 +108,10 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
         return (await response.json()) as { data?: IntegrationClient[] }
       })
       .then((payload) => {
-        if (!cancelled) setClients(payload.data ?? [])
+        if (!cancelled) {
+          setClients(payload.data ?? [])
+          setError(null)
+        }
       })
       .catch((loadError) => {
         if (!cancelled) setError(loadError instanceof Error ? loadError.message : labels.loadFailed)
