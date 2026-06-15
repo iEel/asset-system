@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/next-with-env-port.mjs dev",
-    "build": "next build",
+    "build": "npm run prisma:generate && next build",
     "start": "node scripts/next-with-env-port.mjs start",
     "lint": "eslint",
     "test": "node scripts/run-tests.mjs",
     "verify": "node scripts/verify.mjs",
+    "prisma:generate": "prisma generate",
     "integration:token": "node scripts/generate-integration-token.mjs",
     "ldap:sync": "node scripts/ldap-sync.mjs",
     "ldap:sync:scheduled": "node scripts/ldap-sync.mjs --scheduled",
