@@ -30,7 +30,6 @@ import { extractAssetLookupCandidatesFromScanValue } from "@/lib/asset-qr"
 import { startNativeAssetQrScanner, type NativeAssetQrScannerRuntime } from "@/lib/asset-qr-scanner"
 import { normalizeAssetOwnershipType, requiresCustodian } from "@/lib/asset-ownership"
 import {
-  environmentCameraId,
   getFallbackCameraAfterEnvironmentFailure,
   resolvePreferredCameraSelection,
   type PreferredCameraSelection,
@@ -132,16 +131,14 @@ export function AuditScanForm({
   const [scannerLoading, setScannerLoading] = useState(false)
   const [cameraReadiness, setCameraReadiness] = useState<CameraReadiness>("checking")
   const [cameraErrorText, setCameraErrorText] = useState("")
-  const [cameras, setCameras] = useState<CameraDevice[]>([])
-  const [selectedCameraId, setSelectedCameraId] = useState("")
   const [scanText, setScanText] = useState("")
   const [scanSource, setScanSource] = useState<"manual" | "qr">("manual")
   const [lastResult, setLastResult] = useState<string | null>(null)
   const [lastDecodedText, setLastDecodedText] = useState("")
   const [auditPhotoLabel, setAuditPhotoLabel] = useState("")
   const [queuedAuditPhotos, setQueuedAuditPhotos] = useState<QueuedAuditPhoto[]>([])
-  const [continuousScan, setContinuousScan] = useState(true)
-  const [fastMode, setFastMode] = useState(true)
+  const continuousScan = true
+  const fastMode = true
   const [showDetailedFields, setShowDetailedFields] = useState(false)
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null)
   const [recentScans, setRecentScans] = useState<AuditRecentScan[]>([])
@@ -211,6 +208,13 @@ export function AuditScanForm({
       })
       .slice(0, 12)
   }, [assetPickerQuery, items, optionLabelMaps, pendingItems])
+  const manualScanSuggestions = useMemo(() => {
+    const query = scanText.trim()
+    const exactScanMatchCandidates = extractAssetLookupCandidatesFromScanValue(scanText)
+    if (scanSource !== "manual" || selectedItem || query.length < 2) return []
+    if (exactScanMatchCandidates.some((candidate) => assetLookup.has(candidate))) return []
+    return buildManualScanSuggestions(query, items, optionLabelMaps)
+  }, [assetLookup, items, optionLabelMaps, scanSource, scanText, selectedItem])
   const scanReturnHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${roundId}/scan`, backHref)
   const pendingListHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${roundId}/pending`, scanReturnHref)
   const pendingCount = pendingItems.length
@@ -253,11 +257,13 @@ export function AuditScanForm({
         ? t("offlineQueueFailedHelp", { count: failedOfflineQueueCount })
         : t("offlineQueueHelp")
   const hasCameraIssue = Boolean(cameraErrorText || cameraReadiness === "unavailable")
-  const shouldShowCameraUtilities = cameras.length > 1 || torchAvailable || Boolean(lastDecodedText) || hasCameraIssue
+  const shouldShowCameraUtilities = Boolean(lastDecodedText) || hasCameraIssue
   const shouldShowCameraPanel = scannerRunning || scannerLoading || shouldShowCameraUtilities
   const scanEntryPanelClass = !selectedItem && !scanFeedback
     ? "border-primary/30 bg-primary/5 shadow-sm ring-1 ring-primary/10"
     : "border-border bg-background"
+  const showFallbackPicker = assetPickerExpanded
+  const shouldShowRemarkField = Boolean(selectedItem)
 
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -287,6 +293,35 @@ export function AuditScanForm({
     window.setTimeout(() => {
       document.getElementById("audit-scan-input-panel")?.scrollIntoView({ behavior: "smooth", block: "center" })
     }, 0)
+  }
+
+  function selectManualScanSuggestion(item: AuditScanItem) {
+    setField("assetId", item.assetId)
+    setScanText(getReadableAuditScanValue(item))
+    setScanSource("manual")
+    setOutOfScopeAsset(null)
+    setAssetPickerExpanded(false)
+    showScanFeedback({
+      status: "found",
+      title: t("feedbackFoundTitle"),
+      description: item.label,
+    }, "manual")
+    toast.success(t("assetSelected"))
+    window.setTimeout(() => {
+      document.getElementById("audit-scan-input-panel")?.scrollIntoView({ behavior: "smooth", block: "center" })
+    }, 0)
+  }
+
+  function handleManualScanAction() {
+    if (manualScanSuggestions.length === 1) {
+      selectManualScanSuggestion(manualScanSuggestions[0])
+      return
+    }
+    if (manualScanSuggestions.length > 1) {
+      toast.info(t("manualSuggestionPickOne"))
+      return
+    }
+    void selectScannedAsset(scanText, "manual")
   }
 
   function togglePendingQueue() {
@@ -430,7 +465,7 @@ export function AuditScanForm({
     return offlineStorageRef.current
   }
 
-  async function startScanner(requestedCameraId = selectedCameraId) {
+  async function startScanner(requestedCameraId?: string) {
     if (!isCameraAccessSupported()) {
       setCameraReadiness("unavailable")
       setCameraErrorText(t("cameraUnsupported"))
@@ -444,7 +479,6 @@ export function AuditScanForm({
     try {
       const { Html5Qrcode } = await import("html5-qrcode")
       const availableCameras = (await Html5Qrcode.getCameras()) as CameraDevice[]
-      setCameras(availableCameras)
       if (availableCameras.length === 0) {
         setCameraReadiness("unavailable")
         setCameraErrorText(t("cameraNotFound"))
@@ -453,7 +487,6 @@ export function AuditScanForm({
       }
 
       const cameraSelection = resolvePreferredCameraSelection(availableCameras, requestedCameraId)
-      setSelectedCameraId(cameraSelection.selectedCameraId)
 
       const handleScanSuccess = (decodedText: string) => {
         const normalizedText = decodedText.trim()
@@ -479,7 +512,6 @@ export function AuditScanForm({
       } catch (startError) {
         const fallbackCamera = getFallbackCameraAfterEnvironmentFailure(cameraSelection, availableCameras)
         if (!fallbackCamera) throw startError
-        setSelectedCameraId(fallbackCamera.id)
         await startWithSelection(resolvePreferredCameraSelection([fallbackCamera], fallbackCamera.id))
       }
       setScannerRunning(true)
@@ -508,16 +540,6 @@ export function AuditScanForm({
     }
   }
 
-  async function handleCameraChange(cameraId: string) {
-    setSelectedCameraId(cameraId)
-    if (!scannerRunning) return
-
-    await stopScanner()
-    window.setTimeout(() => {
-      void startScanner(cameraId)
-    }, 0)
-  }
-
   async function selectScannedAsset(rawValue: string, source: "manual" | "qr") {
     const normalizedValues = extractAssetLookupCandidatesFromScanValue(rawValue)
     const matchedItem = normalizedValues.map((value) => assetLookup.get(value)).find(Boolean)
@@ -528,6 +550,7 @@ export function AuditScanForm({
         setValues((current) => ({ ...current, assetId: "" }))
         setScanText(foundAsset.assetTag || foundAsset.title)
         setScanSource(source)
+        setAssetPickerExpanded(false)
         showScanFeedback({
           status: "out_of_scope",
           title: t("feedbackOutOfScopeTitle"),
@@ -552,6 +575,7 @@ export function AuditScanForm({
     setApplyCorrections(false)
     setScanText(getReadableAuditScanValue(matchedItem))
     setScanSource(source)
+    setAssetPickerExpanded(false)
     showScanFeedback({
       status: "found",
       title: t("feedbackFoundTitle"),
@@ -896,7 +920,10 @@ export function AuditScanForm({
               <Field label={t("scanInput")}>
                 <input
                   value={scanText}
-                  onChange={(event) => setScanText(event.target.value)}
+                  onChange={(event) => {
+                    setScanText(event.target.value)
+                    setScanSource("manual")
+                  }}
                   placeholder={t("scanInputPlaceholder")}
                   className="h-12 w-full rounded-md border border-border bg-surface px-3 text-base outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
@@ -905,37 +932,39 @@ export function AuditScanForm({
               <div className="grid grid-cols-2 gap-2 lg:w-[15rem] lg:pt-[1.625rem]">
                 <button
                   type="button"
-                  onClick={() => void selectScannedAsset(scanText, "manual")}
-                  className="inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                >
-                  <Keyboard className="h-4 w-4" />
-                  {t("manualScanAction")}
-                </button>
-                <button
-                  type="button"
                   onClick={() => void (scannerRunning ? stopScanner() : startScanner())}
                   disabled={scannerLoading}
-                  className="inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
+                  className={`inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md border px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 ${
+                    scannerRunning
+                      ? "border-border bg-surface text-foreground hover:bg-accent"
+                      : "border-primary bg-primary text-white hover:bg-primary/90"
+                  }`}
                 >
                   {scannerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : scannerRunning ? <X className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
                   {scannerRunning ? t("stopCamera") : t("startCamera")}
                 </button>
+                <button
+                  type="button"
+                  onClick={handleManualScanAction}
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                >
+                  <Keyboard className="h-4 w-4" />
+                  {t("manualScanAction")}
+                </button>
               </div>
             </div>
-            <AuditScanOptionStrip
-              continuousScan={continuousScan}
-              onContinuousScanChange={setContinuousScan}
-              fastMode={fastMode}
-              onFastModeChange={(checked) => {
-                setFastMode(checked)
-                setShowDetailedFields(!checked)
-              }}
-              t={t}
-            />
+            {manualScanSuggestions.length > 0 ? (
+              <ManualScanSuggestionList
+                items={manualScanSuggestions}
+                onSelect={selectManualScanSuggestion}
+                optionLabelMaps={optionLabelMaps}
+                t={t}
+              />
+            ) : null}
             {shouldShowCameraPanel ? (
               <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
                 <div
-                  className={`relative isolate aspect-[4/3] min-h-0 w-full max-w-full overflow-hidden rounded-md border border-border bg-surface sm:min-h-[22rem] ${scannerRunning || scannerLoading ? "block" : "hidden"}`}
+                  className={`relative isolate aspect-square sm:aspect-[4/3] w-full max-w-full overflow-hidden rounded-md border border-border bg-surface sm:min-h-[22rem] ${scannerRunning || scannerLoading ? "block" : "hidden"}`}
                 >
                   <div id="audit-qr-reader" className="w-full [&_video]:!h-auto [&_video]:!w-full" />
                   {scannerRunning ? <AuditQrScannerOverlay /> : null}
@@ -965,26 +994,8 @@ export function AuditScanForm({
                 </div>
                 {shouldShowCameraUtilities ? (
                   <div className="rounded-md border border-border bg-surface p-3 text-sm text-muted-foreground">
-                    {cameras.length > 1 ? (
-                      <label className="block">
-                        <span className="mb-1.5 block text-xs font-medium text-foreground">{t("cameraDevice")}</span>
-                        <select
-                          value={selectedCameraId}
-                          disabled={scannerLoading}
-                          onChange={(event) => void handleCameraChange(event.target.value)}
-                          className="min-h-11 w-full rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60 sm:h-9 sm:min-h-0"
-                        >
-                          <option value={environmentCameraId}>{t("cameraRear")}</option>
-                          {cameras.map((camera, index) => (
-                            <option key={camera.id} value={camera.id}>
-                              {camera.label || t("cameraDeviceFallback", { index: index + 1 })}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ) : null}
                     {lastDecodedText ? (
-                      <div className="mt-3 rounded-md bg-background p-2 text-xs">
+                      <div className="rounded-md bg-background p-2 text-xs">
                         <div className="font-medium text-foreground">{t("lastDecoded")}</div>
                         <div className="mt-1 break-all">{lastDecodedText}</div>
                       </div>
@@ -1000,6 +1011,29 @@ export function AuditScanForm({
               </div>
             ) : null}
           </div>
+
+          {!showFallbackPicker ? (
+            <div className="md:col-span-2 -mt-2">
+              <button
+                type="button"
+                aria-expanded={assetPickerExpanded}
+                aria-controls="audit-asset-fallback-picker"
+                onClick={() => assetPickerExpanded ? setAssetPickerExpanded(false) : setAssetPickerExpanded(true)}
+                className="inline-flex min-h-10 w-full items-center justify-between gap-3 rounded-md border border-dashed border-border bg-background px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:w-auto sm:min-w-[18rem]"
+              >
+                <span className="inline-flex min-w-0 items-center gap-2">
+                  <ListChecks className="h-4 w-4 shrink-0 text-primary" />
+                  <span className="truncate font-medium text-foreground">{t("assetPickerTitle")}</span>
+                </span>
+                <span className="inline-flex shrink-0 items-center gap-2">
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                    {pendingCount.toLocaleString("th-TH")}
+                  </span>
+                  <ChevronDown className="h-4 w-4" />
+                </span>
+              </button>
+            </div>
+          ) : null}
 
           {recentScans.length > 0 ? (
             <RecentScansPanel recentScans={recentScans} t={t} />
@@ -1018,18 +1052,20 @@ export function AuditScanForm({
             />
           ) : null}
 
-          <AssetFallbackPicker
-            expanded={assetPickerExpanded}
-            items={filteredAssetPickerItems}
-            query={assetPickerQuery}
-            selectedAssetId={values.assetId}
-            total={items.length}
-            onExpandedChange={setAssetPickerExpanded}
-            onQueryChange={setAssetPickerQuery}
-            onSelect={selectAssetFromFallback}
-            optionLabelMaps={optionLabelMaps}
-            t={t}
-          />
+          {showFallbackPicker ? (
+            <AssetFallbackPicker
+              expanded={assetPickerExpanded}
+              items={filteredAssetPickerItems}
+              query={assetPickerQuery}
+              selectedAssetId={values.assetId}
+              total={items.length}
+              onExpandedChange={setAssetPickerExpanded}
+              onQueryChange={setAssetPickerQuery}
+              onSelect={selectAssetFromFallback}
+              optionLabelMaps={optionLabelMaps}
+              t={t}
+            />
+          ) : null}
 
           {selectedItem && (
             <div className="md:col-span-2 rounded-md border border-primary/25 bg-primary/5 p-4">
@@ -1246,11 +1282,13 @@ export function AuditScanForm({
             </div>
           )}
 
-          <div className="md:col-span-2">
-            <Field label={t("remark")}>
-              <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
-            </Field>
-          </div>
+          {shouldShowRemarkField && (
+            <div className="md:col-span-2">
+              <Field label={t("remark")}>
+                <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+              </Field>
+            </div>
+          )}
           <div className={`sticky bottom-0 z-10 -mx-4 justify-end border-t border-border bg-surface/95 p-3 backdrop-blur md:col-span-2 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none ${submitBarVisibility}`}>
             <button type="submit" disabled={saving || !selectedItem || (fastMode && !showDetailedFields)} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-base font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -1305,80 +1343,6 @@ export function AuditScanForm({
 type AuditScanTranslator = {
   (key: string): string
   (key: string, values: Record<string, string | number | Date>): string
-}
-
-function AuditScanOptionStrip({
-  continuousScan,
-  onContinuousScanChange,
-  fastMode,
-  onFastModeChange,
-  t,
-}: {
-  continuousScan: boolean
-  onContinuousScanChange: (checked: boolean) => void
-  fastMode: boolean
-  onFastModeChange: (checked: boolean) => void
-  t: AuditScanTranslator
-}) {
-  return (
-    <div role="group" aria-label={t("scanOptions")} className="mt-2 rounded-md border border-border/80 bg-background p-2">
-      <div className="grid gap-2 sm:grid-cols-2">
-        <ScanOptionToggle
-          checked={fastMode}
-          label={t("fastMode")}
-          description={fastMode ? t("fastModeCompactHelp") : t("detailModeCompactHelp")}
-          statusLabel={fastMode ? t("fastModeOn") : t("detailModeOn")}
-          onChange={onFastModeChange}
-        />
-        <ScanOptionToggle
-          checked={continuousScan}
-          label={t("continuousScan")}
-          description={t("continuousScanHelp")}
-          statusLabel={continuousScan ? t("fastModeOn") : t("scanOptionOff")}
-          onChange={onContinuousScanChange}
-        />
-      </div>
-    </div>
-  )
-}
-
-function ScanOptionToggle({
-  checked,
-  label,
-  description,
-  statusLabel,
-  onChange,
-}: {
-  checked: boolean
-  label: string
-  description: string
-  statusLabel: string
-  onChange: (checked: boolean) => void
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      title={description}
-      onClick={() => onChange(!checked)}
-      className="flex min-h-10 w-full items-center justify-between gap-2 rounded-md border border-border bg-surface px-3 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
-    >
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-semibold">{label}</span>
-        <span className="sr-only">{description}</span>
-      </span>
-      <span className="hidden shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground sm:inline-flex">
-        {statusLabel}
-      </span>
-      <span
-        aria-hidden="true"
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? "bg-primary" : "bg-muted-foreground/30"}`}
-      >
-        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
-      </span>
-    </button>
-  )
 }
 
 function ScanResultPanel({
@@ -1477,6 +1441,58 @@ function RecentScanCompactRow({ scan, t }: { scan: AuditRecentScan; t: AuditScan
         {meta.label}
       </span>
       <span className="shrink-0 text-muted-foreground">{formatRecentScanTime(scan.at)}</span>
+    </div>
+  )
+}
+
+function ManualScanSuggestionList({
+  items,
+  onSelect,
+  optionLabelMaps,
+  t,
+}: {
+  items: AuditScanItem[]
+  onSelect: (item: AuditScanItem) => void
+  optionLabelMaps: OptionLabelMaps
+  t: AuditScanTranslator
+}) {
+  const contextLabels = {
+    location: t("pendingQueueLocation"),
+    custodian: t("pendingQueueCustodian"),
+    department: t("pendingQueueDepartment"),
+    none: t("none"),
+  }
+
+  return (
+    <div className="mt-3 rounded-md border border-border bg-surface p-3">
+      <div className="flex items-start gap-2">
+        <Search className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-foreground">{t("manualSuggestionTitle")}</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">{t("manualSuggestionHelp")}</div>
+        </div>
+      </div>
+      <div className="mt-3 grid gap-2">
+        {items.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onSelect(item)}
+            className="w-full rounded-md border border-border bg-background p-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-foreground">{item.assetTag}</div>
+                <div className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.label}</div>
+              </div>
+              <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                {t("manualSuggestionSelect")}
+              </span>
+            </div>
+            <ContextChipList rows={buildPendingQueueContext(item, optionLabelMaps, contextLabels)} />
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -1778,7 +1794,7 @@ function AuditQrScannerOverlay() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">
       <div
-        className="absolute left-1/2 top-1/2 aspect-square h-[66%] max-h-56 -translate-x-1/2 -translate-y-1/2"
+        className="absolute left-1/2 top-1/2 aspect-square h-[78%] max-h-72 sm:max-h-80 -translate-x-1/2 -translate-y-1/2"
         style={{ boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.42)" }}
       >
         <span className="absolute left-0 top-0 h-10 w-10 border-l-4 border-t-4 border-white" />
@@ -1832,6 +1848,20 @@ function buildAssetLookup(items: AuditScanItem[]) {
     lookup.set(item.label.toLowerCase(), item)
   }
   return lookup
+}
+
+function buildManualScanSuggestions(query: string, items: AuditScanItem[], maps: OptionLabelMaps) {
+  const normalizedQuery = query.trim().toLocaleLowerCase("th-TH")
+  if (normalizedQuery.length < 2) return []
+
+  return items
+    .filter((item) => buildAssetPickerSearchText(item, maps).toLocaleLowerCase("th-TH").includes(normalizedQuery))
+    .sort((a, b) => {
+      const pendingScore = Number(a.auditStatus !== "pending") - Number(b.auditStatus !== "pending")
+      if (pendingScore !== 0) return pendingScore
+      return a.assetTag.localeCompare(b.assetTag, "th-TH")
+    })
+    .slice(0, 5)
 }
 
 function buildOptionLabelMap(options: Option[]) {

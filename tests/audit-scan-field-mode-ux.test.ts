@@ -81,6 +81,17 @@ test("audit scan hides normal camera status and only surfaces camera issues", ()
   assert.match(form, /t\("cameraHelp"\)/)
 })
 
+test("audit scan uses a larger mobile QR camera target", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+
+  assert.match(form, /relative isolate aspect-square sm:aspect-\[4\/3\]/)
+  assert.match(form, /id="audit-qr-reader"/)
+  assert.match(form, /function AuditQrScannerOverlay/)
+  assert.match(form, /aspect-square h-\[78%\] max-h-72 sm:max-h-80/)
+  assert.doesNotMatch(form, /aspect-\[4\/3\] min-h-0/)
+  assert.doesNotMatch(form, /aspect-square h-\[66%\] max-h-56/)
+})
+
 test("audit scan field-mode UX copy is translated", () => {
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
@@ -158,42 +169,31 @@ test("audit scan phase 1 shows readable result semantics and recent scans", () =
   }
 })
 
-test("audit scan phase 1 compacts fast mode and separates result from recent scans", () => {
+test("audit scan keeps rear-camera fast walking defaults without exposing mode switches", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
-  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
-  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
-  assert.match(form, /function AuditScanOptionStrip/)
-  assert.match(form, /function ScanOptionToggle/)
-  assert.match(form, /continuousScan=\{continuousScan\}/)
-  assert.match(form, /onContinuousScanChange=\{setContinuousScan\}/)
-  assert.match(form, /onFastModeChange=\{\(checked\) =>/)
-  assert.match(form, /role="switch"/)
-  assert.match(form, /aria-checked=\{checked\}/)
-  assert.match(form, /role="group"/)
-  assert.match(form, /aria-label=\{t\("scanOptions"\)\}/)
-  assert.match(form, /grid gap-2 sm:grid-cols-2/)
-  assert.match(form, /min-h-10/)
-  assert.match(form, /translate-x-5/)
-  assert.match(form, /fastModeCompactHelp/)
-  assert.match(form, /detailModeCompactHelp/)
-  assert.doesNotMatch(form, /<label className="mt-3 flex[^"]*border-info\/30(?:(?!<\/label>)[\s\S])*checked=\{continuousScan\}/)
-  assert.doesNotMatch(form, /border-b border-border\/80 px-3 py-2 text-xs font-semibold/)
-  assert.doesNotMatch(form, /aria-pressed=\{checked\}/)
-  assert.doesNotMatch(form, /const Icon = checked \? CheckCircle2 : X/)
+  assert.match(form, /const continuousScan = true/)
+  assert.match(form, /const fastMode = true/)
+  assert.match(form, /resolvePreferredCameraSelection\(availableCameras, requestedCameraId\)/)
+  assert.match(form, /getFallbackCameraAfterEnvironmentFailure\(cameraSelection, availableCameras\)/)
+  assert.doesNotMatch(form, /function AuditScanOptionStrip/)
+  assert.doesNotMatch(form, /function ScanOptionToggle/)
+  assert.doesNotMatch(form, /setContinuousScan/)
+  assert.doesNotMatch(form, /setFastMode/)
+  assert.doesNotMatch(form, /role="switch"/)
+  assert.doesNotMatch(form, /aria-checked=\{checked\}/)
+  assert.doesNotMatch(form, /aria-label=\{t\("scanOptions"\)\}/)
+  assert.doesNotMatch(form, /t\("fastMode"\)/)
+  assert.doesNotMatch(form, /t\("continuousScan"\)/)
+  assert.doesNotMatch(form, /t\("cameraDevice"\)/)
+  assert.doesNotMatch(form, /t\("cameraRear"\)/)
+  assert.doesNotMatch(form, /selectedCameraId/)
+  assert.doesNotMatch(form, /handleCameraChange/)
   assert.match(form, /ScanResultPanel feedback=\{scanFeedback\} t=\{t\}/)
   assert.match(form, /<RecentScansPanel recentScans=\{recentScans\} t=\{t\} \/>/)
   assert.match(form, /const visibleScans = recentScans\.slice\(0, 3\)/)
   assert.doesNotMatch(form, /<ScanFeedbackCard feedback=\{scanFeedback\}/)
   assert.doesNotMatch(form, /<RecentScanList recentScans=\{recentScans\}/)
-
-  for (const messages of [th, en]) {
-    assert.equal(typeof messages.auditScan.scanOptions, "string")
-    assert.equal(typeof messages.auditScan.fastModeCompactHelp, "string")
-    assert.equal(typeof messages.auditScan.detailModeCompactHelp, "string")
-    assert.equal(typeof messages.auditScan.fastModeOn, "string")
-    assert.equal(typeof messages.auditScan.detailModeOn, "string")
-  }
 })
 
 test("audit scan phase 2 emphasizes scan entry and exposes pending queue access", () => {
@@ -274,7 +274,7 @@ test("audit scan mobile-first field workflow compacts scan setup and moves list 
   assert.doesNotMatch(form, /ScanResultPanel feedback=\{scanFeedback\} recentScans=\{recentScans\}/)
 
   assert.match(form, /scanEntryPanelClass/)
-  assert.match(form, /grid gap-2 sm:grid-cols-2/)
+  assert.match(form, /grid grid-cols-2 gap-2 lg:w-\[15rem\]/)
   assert.match(form, /min-h-10/)
 
   for (const messages of [th, en]) {
@@ -287,6 +287,44 @@ test("audit scan mobile-first field workflow compacts scan setup and moves list 
     assert.equal(typeof messages.auditScan.pendingQueueLocation, "string")
     assert.equal(typeof messages.auditScan.pendingQueueCustodian, "string")
     assert.equal(typeof messages.auditScan.pendingQueueDepartment, "string")
+  }
+})
+
+test("audit scan initial mobile state prioritizes scanning before fallback and notes", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+
+  assert.match(form, /const showFallbackPicker = assetPickerExpanded/)
+  assert.match(form, /showFallbackPicker \? \(\s*<AssetFallbackPicker/)
+  assert.match(form, /const shouldShowRemarkField = Boolean\(selectedItem\)/)
+  assert.match(form, /shouldShowRemarkField && \(/)
+  assert.match(form, /border-primary bg-primary text-white/)
+  assert.match(form, /assetPickerExpanded \? setAssetPickerExpanded\(false\) : setAssetPickerExpanded\(true\)/)
+  assert.doesNotMatch(form, /<AssetFallbackPicker[\s\S]*?\/>\s*\n\s*\{selectedItem && \(/)
+})
+
+test("audit scan manual entry supports partial suggestions without changing QR exact lookup", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(form, /const manualScanSuggestions = useMemo/)
+  assert.match(form, /scanSource !== "manual"/)
+  assert.match(form, /query\.length < 2/)
+  assert.match(form, /exactScanMatchCandidates\.some\(\(candidate\) => assetLookup\.has\(candidate\)\)/)
+  assert.match(form, /function buildManualScanSuggestions/)
+  assert.match(form, /function ManualScanSuggestionList/)
+  assert.match(form, /function handleManualScanAction/)
+  assert.match(form, /manualScanSuggestions\.length === 1/)
+  assert.match(form, /manualScanSuggestions\.length > 1/)
+  assert.match(form, /onSelect=\{selectManualScanSuggestion\}/)
+  assert.match(form, /setScanSource\("manual"\)/)
+  assert.match(form, /selectScannedAsset\(decodedText, "qr"\)/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditScan.manualSuggestionTitle, "string")
+    assert.equal(typeof messages.auditScan.manualSuggestionHelp, "string")
+    assert.equal(typeof messages.auditScan.manualSuggestionSelect, "string")
+    assert.equal(typeof messages.auditScan.manualSuggestionPickOne, "string")
   }
 })
 

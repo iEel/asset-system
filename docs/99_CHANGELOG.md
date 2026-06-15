@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-06-15
+
+| Area | Update |
+|---|---|
+| Audit Scan manual partial search | `/th/audit/rounds/{id}/scan` now shows manual-only partial suggestions after two typed characters, searching current-round audit items by Asset Tag, label, expected location, custodian, and department. A single match can be selected quickly, multiple matches require explicit row selection, and QR scans continue to use exact/raw-value lookup with unchanged audit item, scan history, finding, offline queue, permission, and SOD behavior. |
+
+---
+
 ## 2026-06-14
 
 | Area | Update |
