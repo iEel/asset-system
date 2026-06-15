@@ -53,16 +53,200 @@ All endpoints require `Authorization: Bearer <token>`.
 
 Asset DTOs intentionally exclude purchase price, supplier, PO, invoice, accounting/depreciation fields, attachments, and photos.
 
-## Examples
+## Quick Start
 
 ```powershell
 $token = "<plain-token-from-secret-manager>"
-curl -H "Authorization: Bearer $token" https://asset.company.com/api/integrations/v1/health
-curl -H "Authorization: Bearer $token" "https://asset.company.com/api/integrations/v1/assets?employeeCode=4079&limit=50"
-curl -H "Authorization: Bearer $token" "https://asset.company.com/api/integrations/v1/assets/changes?updatedSince=2026-06-14T00:00:00.000Z"
+
+Invoke-RestMethod `
+  -Uri "https://asset.company.com/api/integrations/v1/health" `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+Use the response from `/health` to confirm the token's `clientId` and scopes before wiring the token into another system.
+
+### PowerShell Notes
+
+On Windows PowerShell and PowerShell 7, prefer `Invoke-RestMethod` for API checks. If you use curl syntax, call `curl.exe` explicitly because `curl` can be an alias, and always quote URLs that contain `&` query parameters.
+
+```powershell
+$token = "<plain-token-from-secret-manager>"
+
+Invoke-RestMethod `
+  -Uri "http://localhost:3000/api/integrations/v1/assets?employeeCode=8171&limit=100" `
+  -Headers @{ Authorization = "Bearer $token" }
+
+curl.exe -H "Authorization: Bearer $token" `
+  "https://asset.company.com/api/integrations/v1/assets?employeeCode=8171&limit=100"
+```
+
+## Available API Calls
+
+### Health And Metadata
+
+```powershell
+Invoke-RestMethod `
+  -Uri "https://asset.company.com/api/integrations/v1/health" `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+Use `/health` for token validation. It returns `ok`, API version, authenticated `clientId`, granted scopes, and `requestId`.
+
+```powershell
+Invoke-RestMethod `
+  -Uri "https://asset.company.com/api/integrations/v1/openapi" `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+Use `/openapi` when another system needs the machine-readable API contract. The token must include `integration:read`.
+
+### Asset List
+
+```powershell
+Invoke-RestMethod `
+  -Uri "https://asset.company.com/api/integrations/v1/assets?limit=50&page=1" `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+Supported filters:
+
+| Query parameter | Meaning |
+|---|---|
+| `q` | Search Asset Tag, asset name, Serial Number, fixed asset code, or current custodian employee code |
+| `assetTag` | Partial Asset Tag match |
+| `serialNumber` | Partial Serial Number match |
+| `employeeCode` | Current custodian employee code |
+| `companyCode` | Asset owner company code |
+| `branchCode` | Asset owner branch code |
+| `locationCode` | Current location code |
+| `status` | Status code or Thai status name |
+| `condition` | Condition code or Thai condition name |
+| `includeInactive` | `true` includes inactive assets; default is active assets only |
+| `page` | Page number, starting at `1` |
+| `limit` | Page size, capped at `100`; default is `50` |
+
+The list response contains `data` and `meta`:
+
+```json
+{
+  "data": [
+    {
+      "assetTag": "SNI-EQU-25-0220",
+      "name": "Notebook Asus ExpertBook",
+      "serialNumber": "T3NXCV...",
+      "custodian": {
+        "employeeCode": "8171",
+        "name": "Thanapong Wanmana"
+      },
+      "currentLocation": {
+        "code": "IT_FL1",
+        "name": "IT ชั้น 1"
+      },
+      "status": {
+        "code": "In Use",
+        "nameTh": "ใช้งานอยู่"
+      },
+      "condition": {
+        "code": "New",
+        "nameTh": "ใหม่"
+      }
+    }
+  ],
+  "meta": {
+    "requestId": "<request-id>",
+    "total": 1,
+    "page": 1,
+    "limit": 50
+  }
+}
+```
+
+### Common Asset Queries
+
+Find assets currently held by an employee:
+
+```powershell
+Invoke-RestMethod `
+  -Uri "https://asset.company.com/api/integrations/v1/assets?employeeCode=8171&limit=100" `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+Find one asset by exact Asset Tag:
+
+```powershell
+Invoke-RestMethod `
+  -Uri "https://asset.company.com/api/integrations/v1/assets/SNI-EQU-25-0220" `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+Find assets by Serial Number:
+
+```powershell
+Invoke-RestMethod `
+  -Uri "https://asset.company.com/api/integrations/v1/assets?serialNumber=T3NXCV&limit=50" `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+Find assets by owner company, branch, and location:
+
+```powershell
+Invoke-RestMethod `
+  -Uri "https://asset.company.com/api/integrations/v1/assets?companyCode=SONIC&branchCode=SathuPradit&locationCode=IT_FL1&limit=100" `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+### Incremental Asset Sync
+
+```powershell
+Invoke-RestMethod `
+  -Uri "https://asset.company.com/api/integrations/v1/assets/changes?updatedSince=2026-06-14T00:00:00.000Z&limit=100" `
+  -Headers @{ Authorization = "Bearer $token" }
 ```
 
 For incremental sync, call `assets/changes` with the last stored `highWaterMark`. If `hasMore` is true, call again with the returned `nextCursor` until `hasMore` is false, then store the final `highWaterMark`.
+
+Supported change-feed parameters:
+
+| Query parameter | Meaning |
+|---|---|
+| `updatedSince` | Required ISO timestamp for the lower bound |
+| `cursor` | Cursor returned by the previous response when `hasMore` is true |
+| `includeInactive` | `false` limits sync to active assets only; default includes inactive assets |
+| `limit` | Page size, capped at `500`; default is `100` |
+
+### Reference Data
+
+Reference endpoints require `reference:read` and return compact active records for dropdown/code mapping.
+
+```powershell
+Invoke-RestMethod `
+  -Uri "https://asset.company.com/api/integrations/v1/reference/statuses" `
+  -Headers @{ Authorization = "Bearer $token" }
+
+Invoke-RestMethod `
+  -Uri "https://asset.company.com/api/integrations/v1/reference/companies" `
+  -Headers @{ Authorization = "Bearer $token" }
+
+Invoke-RestMethod `
+  -Uri "https://asset.company.com/api/integrations/v1/reference/branches?companyCode=SONIC" `
+  -Headers @{ Authorization = "Bearer $token" }
+
+Invoke-RestMethod `
+  -Uri "https://asset.company.com/api/integrations/v1/reference/locations?companyCode=SONIC&branchCode=SathuPradit" `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+Use `companyCode` and `branchCode` filters to disambiguate repeated branch or location labels across companies.
+
+## Errors
+
+| Status | Meaning |
+|---|---|
+| `400` | Missing or invalid request parameter, for example `updatedSince` on the change feed |
+| `401` | Missing, unknown, or disabled Bearer token |
+| `403` | Token is valid but does not include the required scope |
+| `404` | Requested asset was not found |
+| `500` | Unexpected server error; use `requestId` for log lookup |
 
 ## UAT
 
