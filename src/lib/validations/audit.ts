@@ -54,6 +54,7 @@ export const auditScanSchema = z.object({
 export const auditFindingReviewSchema = z.object({
   action: z.enum(["approve", "reject"]),
   reviewRemark: optionalText,
+  confirmConflict: z.boolean().optional().default(false),
 })
 
 const optionalDate = z.preprocess(

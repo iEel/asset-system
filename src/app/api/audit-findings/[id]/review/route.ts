@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { auditFindingActionPlanSchema, auditFindingCloseSchema, auditFindingReviewSchema } from "@/lib/validations/audit"
 import { auditSegregationErrors, isSameAuditActor } from "@/lib/audit-segregation"
+import { buildAuditFindingConflictPayload, hasAuditFindingConflict } from "@/lib/audit-finding-conflict"
 
 type ReviewContext = {
   params: Promise<{ id: string }>
@@ -109,6 +110,31 @@ export async function POST(request: NextRequest, context: ReviewContext) {
       return NextResponse.json({ error: auditSegregationErrors.reviewOwnFinding }, { status: 403 })
     }
 
+    const reviewFieldName = fieldByFindingType[finding.findingType]
+    if (input.action === "approve" && reviewFieldName && finding.asset && !input.confirmConflict) {
+      const currentValue = finding.asset[reviewFieldName]
+      if (
+        hasAuditFindingConflict({
+          assetUpdatedAt: finding.asset.updatedAt,
+          findingReportedAt: finding.reportedAt,
+          currentValue,
+          expectedValue: finding.expectedValue,
+          actualValue: finding.actualValue,
+        })
+      ) {
+        return NextResponse.json(
+          buildAuditFindingConflictPayload({
+            assetUpdatedAt: finding.asset.updatedAt,
+            findingReportedAt: finding.reportedAt,
+            currentValue,
+            expectedValue: finding.expectedValue,
+            actualValue: finding.actualValue,
+          }),
+          { status: 409 }
+        )
+      }
+    }
+
     const reviewedFinding = await prisma.$transaction(async (tx) => {
       if (input.action === "approve") {
         if (finding.findingType === "not_found") {
@@ -201,6 +227,7 @@ export async function POST(request: NextRequest, context: ReviewContext) {
       newValue: {
         reviewStatus: reviewedFinding.reviewStatus,
         actionTaken: reviewedFinding.actionTaken,
+        conflictConfirmed: input.confirmConflict || undefined,
       },
       remark: input.reviewRemark ?? undefined,
     })

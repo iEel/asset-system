@@ -12,6 +12,7 @@ import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding
 import { formatDateTime } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { DataFreshnessBanner } from "@/components/ui/data-freshness-banner"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { isSameAuditActor } from "@/lib/audit-segregation"
 import {
@@ -39,6 +40,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
 
   const t = await getTranslations("auditFinding")
   const tCommon = await getTranslations("common")
+  const pageLoadedAt = new Date()
   const searchText = search.trim()
   const status = resolveAuditFindingStatus(statusParam)
   const today = getAuditFindingToday()
@@ -154,6 +156,19 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
         createLabel={t("backToRounds")}
       />
 
+      <DataFreshnessBanner
+        loadedAtIso={pageLoadedAt.toISOString()}
+        loadedAtLabel={formatDateTime(pageLoadedAt)}
+        labels={{
+          freshTitle: t("freshnessFreshTitle"),
+          freshHelp: t("freshnessFreshHelp"),
+          staleTitle: t("freshnessStaleTitle"),
+          staleHelp: t("freshnessStaleHelp"),
+          refresh: t("freshnessRefresh"),
+          refreshing: t("freshnessRefreshing"),
+        }}
+      />
+
       <section className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
         <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -240,12 +255,16 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
           ) : (
             findings.map((finding) => {
               const resolutionState = resolveFindingState(finding, today)
+              const assetLabel = finding.asset ? `${finding.asset.assetTag} - ${finding.asset.name}` : finding.auditRound.auditNo
+              const findingTypeLabel = t(`type_${finding.findingType}`)
+              const expectedValue = formatFindingValue(finding.findingType, finding.expectedValue, valueLabels)
+              const actualValue = formatFindingValue(finding.findingType, finding.actualValue, valueLabels)
 
               return (
                 <div key={finding.id} className="rounded-md border border-border bg-background p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="font-semibold text-foreground">{finding.asset ? `${finding.asset.assetTag} - ${finding.asset.name}` : finding.auditRound.auditNo}</div>
+                      <div className="font-semibold text-foreground">{assetLabel}</div>
                       <div className="mt-1 text-xs text-muted-foreground">{formatDateTime(finding.reportedAt)}</div>
                     </div>
                     <ResolutionStateBadge state={resolutionState} labels={resolutionStateLabels} />
@@ -256,12 +275,12 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                   </div>
                   <div className="mt-3 grid gap-2 text-sm">
                     <Info label={t("auditRound")} value={`${finding.auditRound.auditNo} · ${finding.auditRound.name}`} />
-                    <Info label={t("findingType")} value={t(`type_${finding.findingType}`)} />
+                    <Info label={t("findingType")} value={findingTypeLabel} />
                     <FindingComparison
                       expectedLabel={t("systemValue")}
                       actualLabel={t("foundValue")}
-                      expectedValue={formatFindingValue(finding.findingType, finding.expectedValue, valueLabels)}
-                      actualValue={formatFindingValue(finding.findingType, finding.actualValue, valueLabels)}
+                      expectedValue={expectedValue}
+                      actualValue={actualValue}
                     />
                     <Info label={t("actionOwner")} value={finding.actionOwnerId ? (employeeLabelById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : "-"} />
                     <Info label={t("actionDueDate")} value={formatDateTime(finding.actionDueDate)} />
@@ -276,6 +295,10 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     {canEdit || canApprove ? (
                       <AuditFindingReviewActions
                         findingId={finding.id}
+                        assetLabel={assetLabel}
+                        findingTypeLabel={findingTypeLabel}
+                        expectedValue={expectedValue}
+                        actualValue={actualValue}
                         reviewStatus={finding.reviewStatus}
                         actionStatus={finding.actionStatus}
                         actionPlan={finding.actionPlan}
@@ -336,6 +359,10 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
               ) : (
                 findings.map((finding) => {
                   const resolutionState = resolveFindingState(finding, today)
+                  const assetLabel = finding.asset ? `${finding.asset.assetTag} - ${finding.asset.name}` : finding.auditRound.auditNo
+                  const findingTypeLabel = t(`type_${finding.findingType}`)
+                  const expectedValue = formatFindingValue(finding.findingType, finding.expectedValue, valueLabels)
+                  const actualValue = formatFindingValue(finding.findingType, finding.actualValue, valueLabels)
 
                   return (
                     <ClickableTableRow
@@ -351,15 +378,15 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                         <div className="text-xs text-muted-foreground">{finding.auditRound.name}</div>
                       </td>
                       <td className="min-w-64 px-4 py-3 text-foreground">
-                        {finding.asset ? `${finding.asset.assetTag} - ${finding.asset.name}` : "-"}
+                        {finding.asset ? assetLabel : "-"}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{t(`type_${finding.findingType}`)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{findingTypeLabel}</td>
                       <td className="min-w-80 px-4 py-3">
                         <FindingComparison
                           expectedLabel={t("systemValue")}
                           actualLabel={t("foundValue")}
-                          expectedValue={formatFindingValue(finding.findingType, finding.expectedValue, valueLabels)}
-                          actualValue={formatFindingValue(finding.findingType, finding.actualValue, valueLabels)}
+                          expectedValue={expectedValue}
+                          actualValue={actualValue}
                         />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
@@ -381,6 +408,10 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                         {canEdit || canApprove ? (
                           <AuditFindingReviewActions
                             findingId={finding.id}
+                            assetLabel={assetLabel}
+                            findingTypeLabel={findingTypeLabel}
+                            expectedValue={expectedValue}
+                            actualValue={actualValue}
                             reviewStatus={finding.reviewStatus}
                             actionStatus={finding.actionStatus}
                             actionPlan={finding.actionPlan}

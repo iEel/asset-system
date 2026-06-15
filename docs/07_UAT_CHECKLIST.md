@@ -80,6 +80,8 @@ Use this checklist with realistic master data and at least one asset in each imp
 
 - [ ] Review audit findings.
 - [ ] Open `/th/audit/findings` and confirm the resolution summary cards, quick filters, system-vs-found comparison, and Excel/PDF exports use the same selected queue.
+- [ ] Confirm `/th/audit/findings` shows only compact loaded-at metadata during normal use and switches to a stale-data warning after the configured stale period.
+- [ ] If master asset data changes after a finding is reported, approving a correctable finding shows a conflict warning and requires explicit confirmation before applying the correction.
 - [ ] Approve or resolve a finding.
 - [ ] Confirm segregation-of-duties guard blocks self-review where applicable.
 - [ ] Review round progress.

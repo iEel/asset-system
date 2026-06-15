@@ -3,15 +3,26 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { CalendarClock, Check, FileUp, Loader2, X } from "lucide-react"
+import { AlertTriangle, CalendarClock, Check, FileUp, Loader2, X } from "lucide-react"
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 
 type EmployeeOption = { id: string; label: string }
+type ReviewAction = "approve" | "reject"
+type ReviewConflictPayload = {
+  code?: string
+  error?: string
+  assetUpdatedAt?: string
+  findingReportedAt?: string
+}
 
 export function AuditFindingReviewActions({
   findingId,
+  assetLabel,
+  findingTypeLabel,
+  expectedValue,
+  actualValue,
   reviewStatus,
   actionStatus,
   actionPlan,
@@ -23,6 +34,10 @@ export function AuditFindingReviewActions({
   reviewBlockedReason,
 }: {
   findingId: string
+  assetLabel: string
+  findingTypeLabel: string
+  expectedValue?: string | null
+  actualValue?: string | null
   reviewStatus: string
   actionStatus: string
   actionPlan?: string | null
@@ -34,28 +49,33 @@ export function AuditFindingReviewActions({
   reviewBlockedReason?: string
 }) {
   const t = useTranslations("auditFinding")
-  const [reviewing, setReviewing] = useState<"approve" | "reject" | null>(null)
+  const router = useRouter()
+  const [reviewing, setReviewing] = useState<ReviewAction | null>(null)
+  const [reviewModalAction, setReviewModalAction] = useState<ReviewAction | null>(null)
   const [planOpen, setPlanOpen] = useState(false)
   const [closeOpen, setCloseOpen] = useState(false)
 
-  async function review(action: "approve" | "reject") {
-    const promptValue = window.prompt(action === "approve" ? t("approveRemark") : t("rejectRemark"))
-    if (promptValue === null) return
-    const reviewRemark = promptValue.trim()
-
+  async function review(action: ReviewAction, reviewRemark: string, confirmConflict = false) {
     setReviewing(action)
     try {
       const response = await fetch(`/api/audit-findings/${findingId}/review`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, reviewRemark }),
+        body: JSON.stringify({ action, reviewRemark, confirmConflict }),
       })
       const payload = await response.json().catch(() => null)
+      if (response.status === 409) {
+        return payload as ReviewConflictPayload
+      }
       if (!response.ok) throw new Error(payload?.error ?? "Error")
       toast.success(action === "approve" ? t("approvedSuccess") : t("rejectedSuccess"))
-      window.location.reload()
+      setReviewModalAction(null)
+      router.refresh()
+      return null
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error")
+      return null
+    } finally {
       setReviewing(null)
     }
   }
@@ -71,7 +91,7 @@ export function AuditFindingReviewActions({
         <>
           <button
             type="button"
-            onClick={() => review("approve")}
+            onClick={() => setReviewModalAction("approve")}
             disabled={reviewing !== null}
             title={t("approve")}
             className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-success transition-colors hover:bg-success/10 disabled:opacity-50 sm:h-8 sm:min-h-0"
@@ -81,7 +101,7 @@ export function AuditFindingReviewActions({
           </button>
           <button
             type="button"
-            onClick={() => review("reject")}
+            onClick={() => setReviewModalAction("reject")}
             disabled={reviewing !== null}
             title={t("reject")}
             className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-danger transition-colors hover:bg-danger/10 disabled:opacity-50 sm:h-8 sm:min-h-0"
@@ -128,8 +148,136 @@ export function AuditFindingReviewActions({
           onClose={() => setCloseOpen(false)}
         />
       ) : null}
+      {reviewModalAction ? (
+        <ReviewDecisionModal
+          action={reviewModalAction}
+          assetLabel={assetLabel}
+          findingTypeLabel={findingTypeLabel}
+          expectedValue={expectedValue}
+          actualValue={actualValue}
+          reviewing={reviewing === reviewModalAction}
+          onClose={() => setReviewModalAction(null)}
+          onReview={review}
+        />
+      ) : null}
     </div>
   )
+}
+
+function ReviewDecisionModal({
+  action,
+  assetLabel,
+  findingTypeLabel,
+  expectedValue,
+  actualValue,
+  reviewing,
+  onClose,
+  onReview,
+}: {
+  action: ReviewAction
+  assetLabel: string
+  findingTypeLabel: string
+  expectedValue?: string | null
+  actualValue?: string | null
+  reviewing: boolean
+  onClose: () => void
+  onReview: (action: ReviewAction, reviewRemark: string, confirmConflict?: boolean) => Promise<ReviewConflictPayload | null>
+}) {
+  const t = useTranslations("auditFinding")
+  const tCommon = useTranslations("common")
+  const [reviewRemark, setReviewRemark] = useState("")
+  const [conflict, setConflict] = useState<ReviewConflictPayload | null>(null)
+
+  async function submit(confirmConflict = false) {
+    const nextConflict = await onReview(action, reviewRemark.trim(), confirmConflict)
+    if (nextConflict?.code === "asset_updated_after_finding") {
+      setConflict(nextConflict)
+    }
+  }
+
+  return (
+    <Modal title={t(`reviewDecisionTitle_${action}`)} onClose={onClose}>
+      <div className="space-y-4">
+        <div className="rounded-lg border border-border bg-background p-4">
+          <div className="text-sm font-semibold text-foreground">{assetLabel}</div>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <ReviewPreviewField label={t("findingType")} value={findingTypeLabel} />
+            <ReviewPreviewField label={t("systemValue")} value={expectedValue || "-"} />
+            <ReviewPreviewField label={t("foundValue")} value={actualValue || "-"} strong />
+          </div>
+        </div>
+
+        <div className={`rounded-lg border p-4 text-sm ${action === "approve" ? "border-warning/30 bg-warning/10 text-warning" : "border-danger/30 bg-danger/10 text-danger"}`}>
+          <div className="font-semibold">{t(`reviewDecisionImpactTitle_${action}`)}</div>
+          <p className="mt-1 leading-relaxed">{t(`reviewDecisionHelp_${action}`)}</p>
+        </div>
+
+        {conflict ? (
+          <div className="rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+            <div className="flex items-start gap-2 font-semibold">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-none" />
+              <span>{t("reviewConflictTitle")}</span>
+            </div>
+            <p className="mt-2 leading-relaxed text-foreground">{t("reviewConflictHelp")}</p>
+            <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+              <ReviewPreviewField label={t("reviewConflictFindingAt")} value={formatClientDateTime(conflict.findingReportedAt)} />
+              <ReviewPreviewField label={t("reviewConflictAssetUpdatedAt")} value={formatClientDateTime(conflict.assetUpdatedAt)} />
+            </div>
+          </div>
+        ) : null}
+
+        <label>
+          <span className="mb-1.5 block text-sm font-medium text-foreground">{t(`reviewRemarkLabel_${action}`)}</span>
+          <textarea
+            value={reviewRemark}
+            rows={3}
+            maxLength={4000}
+            onChange={(event) => setReviewRemark(event.target.value)}
+            className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+        </label>
+
+        <div className="flex flex-col justify-end gap-2 sm:flex-row">
+          <button type="button" onClick={onClose} className="min-h-11 rounded-md border border-border px-4 text-sm font-medium sm:h-10 sm:min-h-0">
+            {tCommon("cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={() => submit(Boolean(conflict))}
+            disabled={reviewing}
+            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium text-white disabled:opacity-50 sm:h-10 sm:min-h-0 ${
+              action === "approve" ? "bg-primary" : "bg-danger"
+            }`}
+          >
+            {reviewing ? <Loader2 className="h-4 w-4 animate-spin" /> : action === "approve" ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+            {conflict ? t("reviewConfirmConflict") : t(`reviewSubmit_${action}`)}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+function ReviewPreviewField({ label, value, strong = false }: { label: string; value?: string | null; strong?: boolean }) {
+  return (
+    <div className="min-w-0 rounded-md border border-border bg-surface px-3 py-2">
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div className={`mt-1 break-words text-sm ${strong ? "font-semibold text-foreground" : "text-foreground"}`}>{value || "-"}</div>
+    </div>
+  )
+}
+
+function formatClientDateTime(value?: string) {
+  if (!value) return "-"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "-"
+  return date.toLocaleString("th-TH", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
 }
 
 function ActionPlanModal({

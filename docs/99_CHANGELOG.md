@@ -1203,6 +1203,7 @@ await logAudit({
 189. Audit Findings Resolution Center Phase 1 on `/audit/findings` with summary queue cards for pending review/open action/overdue/closed work, URL-backed resolution filters shared by Excel/PDF exports via `buildAuditFindingWhere`, clearer system-vs-found comparison blocks, resolution-state badges, and regression coverage without changing schema or review/action/closure/SOD logic
 190. Asset Register return-to-list navigation with sanitized `returnTo` forwarding from list row/action links into detail, edit, and clone flows; Asset Detail now has an explicit Back action, and Asset Form save/cancel returns to the originating register page/filter/sort/search state instead of resetting to page 1
 191. Audit Scan result semantics and mobile Phase 2 layout: successful scans now present `บันทึกพบตรง`, `บันทึกข้อมูลไม่ตรง / Finding`, `ถ่ายรูปหลักฐาน`, and `สแกนต่อ / กรอกเอง` instead of a primary Not Found action; out-of-round assets are Out-of-scope, unregistered QR values are Unknown Asset, Found Later uses the existing recovery logic, and mobile scan pages use a compact sticky progress header plus a bottom post-scan action bar without changing audit business logic
+192. Audit Findings workflow Phase 2 polish on `/audit/findings` with quiet loaded-at metadata, stale-data warning only when needed, approve/reject decision modal, system-vs-found impact copy, and master-data conflict guard requiring explicit confirmation before applying correctable finding updates when the asset changed after the finding was reported
 
 ---
 

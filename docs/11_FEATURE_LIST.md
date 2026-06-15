@@ -189,7 +189,7 @@ Implemented status lifecycle and enforcement from docs/code:
 | Not-found workflow | Mark pending items as not found from the pending list/zone queue without changing asset status to Lost automatically |
 | Pending audit queue shortcut | Audit Scan can open an inline preview of pending items from the current round with expected location/custodian/department context on each card, while the full pending list remains the not-found workflow surface |
 | Evidence photos | Matched scans can save without photos; mismatched actual field data requires at least one free-form evidence photo, with multiple queued photos and optional grouping tags |
-| Findings Resolution Center | `/audit/findings` summarizes pending review, open action, overdue, and closed queues; shows system-vs-found comparison, resolution-state badges, review/action/closure controls, evidence attachments, batch actions, and filtered Excel/PDF exports |
+| Audit Findings workflow | `/audit/findings` summarizes pending review, open action, overdue, and closed queues; shows system-vs-found comparison, resolution-state badges, quiet loaded-at metadata with stale warning, approve/reject decision modal, master-data conflict guard before correction, review/action/closure controls, evidence attachments, batch actions, and filtered Excel/PDF exports |
 | Findings follow-up context | Disposal follow-up links from findings preserve the active findings queue/search as sanitized return context |
 | Reconciliation | Approve/reject findings with movement/audit trail and segregation controls |
 | Close-round controls | Close-round workflow with protection documented in lifecycle/workflow docs |
