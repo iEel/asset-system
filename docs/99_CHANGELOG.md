@@ -10,6 +10,7 @@
 |---|---|
 | Integration API operations UX | `Admin > Integration API` now shows per-client operational usage derived from existing `system_logs`: 24-hour/7-day request counts, 7-day error count, top endpoint, latest error, and a scope-aware Copy PowerShell action that uses a token placeholder instead of exposing the one-time secret. This is read-only UI/reporting behavior and requires no new migration beyond the existing DB-backed token manager table. |
 | Asset Batch Create row overrides | `/th/assets/new` batch mode now keeps the row grid compact by default and lets operators opt into row-level custodian, department, current location, home location, and remark columns when a batch is spread across holders or sites. Blank row override fields fall back to shared batch values, preserving the fast same-site workflow while supporting CCTV/camera/device batches across many locations. |
+| Asset Label queue scope UX | `/th/asset-management/labels` now summarizes the current queue-add scope as all assets, company, branch, or location before the filter controls, so operators can add label batches by company/branch without drilling into the long location list. The pre-search "type at least two characters" message is now a compact hint under the search input instead of a large empty-state panel. |
 
 ---
 

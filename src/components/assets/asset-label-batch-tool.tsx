@@ -80,9 +80,16 @@ type AssetLabelBatchToolProps = {
     serial: string
     recentQueueTitle: string
     recentQueueHelp: string
-    addAllRecent: string
+    addFilteredQueue: string
+    addFilteredQueueUnavailable: string
     recentQueueEmpty: string
     all: string
+    queueScopeTitle: string
+    queueScopeHelp: string
+    queueScopeCompany: string
+    queueScopeBranch: string
+    queueScopeLocation: string
+    queueScopeAll: string
     labelQueueFiltersTitle: string
     queueModeLabel: string
     queueModeUnprinted: string
@@ -156,6 +163,10 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
         label: getLocationOptionLabel(location, queueFilters.companyId, queueFilters.branchId),
       })),
     [filterOptions.locations, queueFilters.branchId, queueFilters.companyId]
+  )
+  const queueScopeSummary = useMemo(
+    () => getQueueScopeSummary(queueFilters, filterOptions, labels),
+    [filterOptions, labels, queueFilters]
   )
   const canLoadMoreQueue = recentAssets.length >= queuePageSize && queuePageSize < 100
 
@@ -298,37 +309,40 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                   className="h-11 w-full rounded-md border border-border bg-background pl-10 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
               </div>
+              {trimmedQuery.length < 2 ? (
+                <p className="mt-2 text-xs text-muted-foreground">{labels.minChars}</p>
+              ) : null}
             </label>
 
-            <div className="mt-4 overflow-hidden rounded-md border border-border">
-              {trimmedQuery.length < 2 ? (
-                <div className="p-6 text-center text-sm text-muted-foreground">{labels.minChars}</div>
-              ) : loading ? (
-                <div className="flex items-center gap-2 p-5 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {labels.loading}
-                </div>
-              ) : visibleResults.length === 0 ? (
-                <div className="p-6 text-center text-sm text-muted-foreground">{labels.noResults}</div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {visibleResults.map((asset) => (
-                    <button
-                      key={asset.id}
-                      type="button"
-                      disabled={selectedIds.has(asset.id)}
-                      onClick={() => addAsset(asset)}
-                      className="flex min-h-11 w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                        <Plus className="h-4 w-4" />
-                      </span>
-                      <AssetLabelSearchResult asset={asset} serialLabel={labels.serial} printLabels={labels} />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {trimmedQuery.length >= 2 ? (
+              <div className="mt-3 overflow-hidden rounded-md border border-border">
+                {loading ? (
+                  <div className="flex items-center gap-2 p-5 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {labels.loading}
+                  </div>
+                ) : visibleResults.length === 0 ? (
+                  <div className="p-6 text-center text-sm text-muted-foreground">{labels.noResults}</div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {visibleResults.map((asset) => (
+                      <button
+                        key={asset.id}
+                        type="button"
+                        disabled={selectedIds.has(asset.id)}
+                        onClick={() => addAsset(asset)}
+                        className="flex min-h-11 w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                          <Plus className="h-4 w-4" />
+                        </span>
+                        <AssetLabelSearchResult asset={asset} serialLabel={labels.serial} printLabels={labels} />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
           </section>
 
           <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
@@ -340,18 +354,35 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">{labels.recentQueueHelp}</p>
               </div>
-              <button
-                type="button"
-                disabled={recentAssets.length === 0}
-                onClick={addRecentAssets}
-                className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-1 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {labels.addAllRecent}
-              </button>
             </div>
 
-            <div className="mt-4 rounded-md border border-border bg-background p-3">
+            <div className="mt-4 rounded-md border border-primary/20 bg-primary/5 p-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-primary">{labels.queueScopeTitle}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                    <span className="rounded-full bg-surface px-2 py-0.5 font-medium text-primary ring-1 ring-primary/20">
+                      {queueScopeSummary.label}
+                    </span>
+                    <span className="min-w-0 break-words text-foreground">{queueScopeSummary.detail}</span>
+                  </div>
+                  {queueScopeSummary.detail !== labels.queueScopeHelp ? (
+                    <p className="mt-1 text-xs text-muted-foreground">{labels.queueScopeHelp}</p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  disabled={recentAssets.length === 0}
+                  onClick={addRecentAssets}
+                  className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-1 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-secondary sm:w-auto"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  {recentAssets.length === 0 ? labels.addFilteredQueueUnavailable : labels.addFilteredQueue}
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-md border border-border bg-background p-3">
               <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
                   <Filter className="h-4 w-4 text-primary" />
@@ -636,6 +667,41 @@ function queueSortOptions(labels: AssetLabelBatchToolProps["labels"]): SelectOpt
     { id: "location", label: labels.queueSortLocation },
     { id: "category", label: labels.queueSortCategory },
   ]
+}
+
+function getQueueScopeSummary(
+  filters: QueueFilters,
+  options: AssetLabelBatchToolProps["filterOptions"],
+  labels: AssetLabelBatchToolProps["labels"]
+) {
+  if (filters.locationId !== "all") {
+    const location = options.locations.find((item) => item.id === filters.locationId)
+    return {
+      label: labels.queueScopeLocation,
+      detail: location ? getLocationOptionLabel(location, filters.companyId, filters.branchId) : labels.queueScopeAll,
+    }
+  }
+
+  if (filters.branchId !== "all") {
+    const branch = options.branches.find((item) => item.id === filters.branchId)
+    return {
+      label: labels.queueScopeBranch,
+      detail: branch?.label ?? labels.queueScopeAll,
+    }
+  }
+
+  if (filters.companyId !== "all") {
+    const company = options.companies.find((item) => item.id === filters.companyId)
+    return {
+      label: labels.queueScopeCompany,
+      detail: company?.label ?? labels.queueScopeAll,
+    }
+  }
+
+  return {
+    label: labels.queueScopeAll,
+    detail: labels.queueScopeHelp,
+  }
 }
 
 function getLocationOptionLabel(location: SelectOption, companyId: string, branchId: string) {

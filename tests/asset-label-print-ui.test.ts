@@ -101,3 +101,34 @@ test("label tool messages include queue filter and print ordering labels", () =>
     assert.equal(typeof messages.labelPrintedBadge, "string")
   }
 })
+
+test("label search pre-query guidance stays compact under the input", () => {
+  const source = readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8")
+
+  assert.match(source, /<p className="mt-2 text-xs text-muted-foreground">\{labels\.minChars\}<\/p>/)
+  assert.doesNotMatch(source, /<div className="p-6 text-center text-sm text-muted-foreground">\{labels\.minChars\}<\/div>/)
+})
+
+test("label queue presents company and branch print scope before location filtering", () => {
+  const source = readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8")
+  const page = readFileSync("src/app/[locale]/(dashboard)/asset-management/labels/page.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(source, /queueScopeSummary/)
+  assert.match(source, /getQueueScopeSummary/)
+  assert.match(source, /addFilteredQueue/)
+  assert.match(source, /addFilteredQueueUnavailable/)
+  assert.match(page, /queueScopeTitle:\s*t\("queueScopeTitle"\)/)
+
+  for (const messages of [th.assetTools, en.assetTools]) {
+    assert.equal(typeof messages.queueScopeTitle, "string")
+    assert.equal(typeof messages.queueScopeHelp, "string")
+    assert.equal(typeof messages.queueScopeCompany, "string")
+    assert.equal(typeof messages.queueScopeBranch, "string")
+    assert.equal(typeof messages.queueScopeLocation, "string")
+    assert.equal(typeof messages.queueScopeAll, "string")
+    assert.equal(typeof messages.addFilteredQueue, "string")
+    assert.equal(typeof messages.addFilteredQueueUnavailable, "string")
+  }
+})
