@@ -2,6 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { AlertTriangle, CheckCircle2, Copy, KeyRound, Loader2, Pencil, Plus, RotateCw, ShieldOff, X } from "lucide-react"
+import {
+  buildIntegrationPowerShellExamples,
+  type IntegrationClientOperationSummary,
+  type IntegrationPowerShellExample,
+} from "@/lib/integration-client-operations"
 
 type IntegrationClient = {
   id: string
@@ -15,6 +20,7 @@ type IntegrationClient = {
   lastUsedAt: string | null
   lastUsedIp: string | null
   lastRotatedAt: string | null
+  operations: IntegrationClientOperationSummary
 }
 
 type OneTimeToken = {
@@ -70,6 +76,15 @@ type Labels = {
   noLastUsed: string
   lastUsed: string
   tokenPreview: string
+  operations: string
+  requests24h: string
+  requests7d: string
+  errors7d: string
+  topEndpoint: string
+  latestError: string
+  noOperationalData: string
+  copyPowerShell: string
+  powerShellCopied: string
   status: string
   actions: string
 }
@@ -96,6 +111,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
   const [editDisplayName, setEditDisplayName] = useState("")
   const [editScopes, setEditScopes] = useState<string[]>([])
   const [updatingClient, setUpdatingClient] = useState(false)
+  const [exampleCopyFeedback, setExampleCopyFeedback] = useState<CopyFeedback | null>(null)
 
   const summary = useMemo(() => {
     const active = clients.filter((client) => client.enabled).length
@@ -104,6 +120,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
       active,
       disabled: clients.length - active,
       lastUsed,
+      requests7d: clients.reduce((sum, client) => sum + client.operations.requestCount7d, 0),
     }
   }, [clients])
 
@@ -271,6 +288,16 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
     }
   }
 
+  async function copyPowerShellExample(example: IntegrationPowerShellExample) {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable")
+      await navigator.clipboard.writeText(example.command)
+      setExampleCopyFeedback({ tone: "success", message: labels.powerShellCopied })
+    } catch {
+      setExampleCopyFeedback({ tone: "error", message: labels.error })
+    }
+  }
+
   function dismissToken() {
     if (!tokenAcknowledgement) return
     setOneTimeToken(null)
@@ -280,10 +307,11 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
 
   return (
     <div className="space-y-4">
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <SummaryCard icon={<CheckCircle2 className="h-5 w-5" />} label={labels.summaryActive} value={summary.active} tone="success" />
         <SummaryCard icon={<ShieldOff className="h-5 w-5" />} label={labels.summaryDisabled} value={summary.disabled} tone="muted" />
         <SummaryCard icon={<KeyRound className="h-5 w-5" />} label={labels.summaryLastUsed} value={summary.lastUsed} tone="primary" />
+        <SummaryCard icon={<Copy className="h-5 w-5" />} label={labels.requests7d} value={summary.requests7d} tone="primary" />
       </section>
 
       {oneTimeToken ? (
@@ -491,7 +519,19 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
 
       <section className="rounded-lg border border-border bg-surface shadow-sm">
         <div className="flex items-center justify-between gap-3 border-b border-border p-4">
-          <h2 className="font-semibold text-foreground">{labels.clientsTitle}</h2>
+          <div className="min-w-0">
+            <h2 className="font-semibold text-foreground">{labels.clientsTitle}</h2>
+            {exampleCopyFeedback ? (
+              <div
+                role="status"
+                className={`mt-1 text-sm ${
+                  exampleCopyFeedback.tone === "success" ? "text-success" : "text-danger"
+                }`}
+              >
+                {exampleCopyFeedback.message}
+              </div>
+            ) : null}
+          </div>
           {loading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
         </div>
         {loading ? (
@@ -510,7 +550,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
         ) : (
           <>
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[760px] text-left text-sm">
+              <table className="w-full min-w-[1040px] text-left text-sm">
                 <thead className="border-b border-border bg-muted/50 text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3 font-medium">{labels.clientId}</th>
@@ -518,6 +558,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
                     <th className="px-4 py-3 font-medium">{labels.scopes}</th>
                     <th className="px-4 py-3 font-medium">{labels.tokenPreview}</th>
                     <th className="px-4 py-3 font-medium">{labels.lastUsed}</th>
+                    <th className="px-4 py-3 font-medium">{labels.operations}</th>
                     <th className="px-4 py-3 text-right font-medium">{labels.actions}</th>
                   </tr>
                 </thead>
@@ -532,6 +573,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
                       onRotate={() => rotateClient(client)}
                       onEnable={() => setClientEnabled(client, true)}
                       onDisable={() => setClientEnabled(client, false)}
+                      onCopyPowerShell={copyPowerShellExample}
                     />
                   ))}
                 </tbody>
@@ -548,6 +590,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
                   onRotate={() => rotateClient(client)}
                   onEnable={() => setClientEnabled(client, true)}
                   onDisable={() => setClientEnabled(client, false)}
+                  onCopyPowerShell={copyPowerShellExample}
                 />
               ))}
             </div>
@@ -566,6 +609,7 @@ function ClientRow({
   onRotate,
   onEnable,
   onDisable,
+  onCopyPowerShell,
 }: {
   client: IntegrationClient
   labels: Labels
@@ -574,6 +618,7 @@ function ClientRow({
   onRotate: () => void
   onEnable: () => void
   onDisable: () => void
+  onCopyPowerShell: (example: IntegrationPowerShellExample) => void
 }) {
   return (
     <tr className="align-top">
@@ -589,6 +634,9 @@ function ClientRow({
       </td>
       <td className="px-4 py-3 font-mono text-xs text-foreground">{client.tokenPreview}</td>
       <td className="px-4 py-3 text-muted-foreground">{formatDate(client.lastUsedAt, labels.noLastUsed)}</td>
+      <td className="px-4 py-3">
+        <OperationsPanel client={client} labels={labels} onCopyPowerShell={onCopyPowerShell} />
+      </td>
       <td className="px-4 py-3">
         <ActionButtons
           client={client}
@@ -613,6 +661,7 @@ function ClientCard({
   onRotate,
   onEnable,
   onDisable,
+  onCopyPowerShell,
 }: {
   client: IntegrationClient
   labels: Labels
@@ -621,6 +670,7 @@ function ClientCard({
   onRotate: () => void
   onEnable: () => void
   onDisable: () => void
+  onCopyPowerShell: (example: IntegrationPowerShellExample) => void
 }) {
   return (
     <div className="rounded-md border border-border bg-background p-4">
@@ -644,6 +694,7 @@ function ClientCard({
           <span className="text-muted-foreground">{labels.lastUsed}: </span>
           <span className="text-foreground">{formatDate(client.lastUsedAt, labels.noLastUsed)}</span>
         </div>
+        <OperationsPanel client={client} labels={labels} onCopyPowerShell={onCopyPowerShell} />
       </div>
       <div className="mt-4">
         <ActionButtons
@@ -655,6 +706,81 @@ function ClientCard({
           onEnable={onEnable}
           onDisable={onDisable}
         />
+      </div>
+    </div>
+  )
+}
+
+function OperationsPanel({
+  client,
+  labels,
+  onCopyPowerShell,
+}: {
+  client: IntegrationClient
+  labels: Labels
+  onCopyPowerShell: (example: IntegrationPowerShellExample) => void
+}) {
+  const operations = client.operations
+  const example = getPrimaryPowerShellExample(client)
+  const hasOperationalData = operations.requestCountTotal > 0
+
+  return (
+    <div className="grid min-w-[220px] gap-2">
+      <div className="grid grid-cols-3 gap-1.5">
+        <OperationMetric label={labels.requests24h} value={operations.requestCount24h} />
+        <OperationMetric label={labels.requests7d} value={operations.requestCount7d} />
+        <OperationMetric label={labels.errors7d} value={operations.errorCount7d} tone={operations.errorCount7d > 0 ? "danger" : "muted"} />
+      </div>
+
+      {hasOperationalData && operations.topEndpoint ? (
+        <div className="min-w-0 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">{labels.topEndpoint}: </span>
+          <span className="break-all font-mono" title={operations.topEndpoint.route}>
+            {operations.topEndpoint.route}
+          </span>
+          <span className="ml-1">({operations.topEndpoint.count.toLocaleString()})</span>
+        </div>
+      ) : (
+        <div className="text-xs text-muted-foreground">{labels.noOperationalData}</div>
+      )}
+
+      {operations.latestError ? (
+        <div className="rounded-md border border-danger/20 bg-danger/5 px-2 py-1 text-xs text-danger">
+          <span className="font-medium">{labels.latestError}: </span>
+          <span className="font-mono">
+            {operations.latestError.status} {operations.latestError.route}
+          </span>
+        </div>
+      ) : null}
+
+      {example ? (
+        <button
+          type="button"
+          onClick={() => onCopyPowerShell(example)}
+          className="inline-flex h-9 w-fit items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        >
+          <Copy className="h-3.5 w-3.5" />
+          {labels.copyPowerShell}
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
+function OperationMetric({
+  label,
+  value,
+  tone = "muted",
+}: {
+  label: string
+  value: number
+  tone?: "muted" | "danger"
+}) {
+  return (
+    <div className="rounded-md border border-border bg-background px-2 py-1">
+      <div className="text-[11px] leading-4 text-muted-foreground">{label}</div>
+      <div className={`text-sm font-semibold ${tone === "danger" ? "text-danger" : "text-foreground"}`}>
+        {value.toLocaleString()}
       </div>
     </div>
   )
@@ -697,6 +823,12 @@ function ScopeList({ scopes }: { scopes: string[] }) {
       ))}
     </div>
   )
+}
+
+function getPrimaryPowerShellExample(client: IntegrationClient) {
+  const baseUrl = typeof window === "undefined" ? "https://asset.company.com" : window.location.origin
+  const examples = buildIntegrationPowerShellExamples(client, baseUrl)
+  return examples.find((example) => example.key !== "health") ?? examples[0] ?? null
 }
 
 function ActionButtons({

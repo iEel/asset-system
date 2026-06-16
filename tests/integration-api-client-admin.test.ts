@@ -158,6 +158,18 @@ test("integration client manager exposes the allowed read scopes and safe defaul
   assert.doesNotMatch(source, /asset:write|reference:write|integration:write/)
 })
 
+test("integration client manager shows operational API usage and copyable PowerShell examples", () => {
+  const source = readRequiredFile("src/components/admin/IntegrationClientManager.tsx")
+
+  assert.match(source, /buildIntegrationPowerShellExamples/)
+  assert.match(source, /client\.operations/)
+  assert.match(source, /labels\.operations/)
+  assert.match(source, /labels\.requests7d/)
+  assert.match(source, /labels\.latestError/)
+  assert.match(source, /labels\.copyPowerShell/)
+  assert.match(source, /navigator\.clipboard\.writeText\(example\.command\)/)
+})
+
 test("English and Thai messages include integration API navigation and page labels", () => {
   for (const locale of ["en", "th"] as const) {
     const messages = JSON.parse(readRequiredFile(`messages/${locale}.json`))
@@ -200,6 +212,15 @@ test("English and Thai messages include integration API navigation and page labe
       "loading",
       "error",
       "noLastUsed",
+      "operations",
+      "requests24h",
+      "requests7d",
+      "errors7d",
+      "topEndpoint",
+      "latestError",
+      "noOperationalData",
+      "copyPowerShell",
+      "powerShellCopied",
     ]) {
       assert.equal(typeof messages.integrationApiPage[key], "string", `${locale} integrationApiPage.${key} should exist`)
     }

@@ -3374,6 +3374,15 @@
     "noLastUsed": "ยังไม่เคยใช้",
     "lastUsed": "ใช้งานล่าสุด",
     "tokenPreview": "ตัวอย่าง token",
+    "operations": "การใช้งาน",
+    "requests24h": "24 ชม.",
+    "requests7d": "7 วัน",
+    "errors7d": "Error 7 วัน",
+    "topEndpoint": "Endpoint ที่เรียกบ่อย",
+    "latestError": "Error ล่าสุด",
+    "noOperationalData": "ยังไม่มี log การเรียกใช้",
+    "copyPowerShell": "Copy PowerShell",
+    "powerShellCopied": "คัดลอกตัวอย่าง PowerShell แล้ว",
     "status": "สถานะ",
     "actions": "การทำงาน"
   }

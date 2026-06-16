@@ -1,6 +1,11 @@
 import { randomBytes } from "node:crypto"
 import type { IntegrationApiClient as PrismaIntegrationApiClient } from "@prisma/client"
 import { hashIntegrationToken, type IntegrationClient, type IntegrationScope } from "./integration-auth.ts"
+import {
+  buildIntegrationClientOperationSummaries,
+  emptyIntegrationOperationSummary,
+  type IntegrationClientOperationSummary,
+} from "./integration-client-operations.ts"
 
 export const INTEGRATION_SCOPES = ["asset:read", "reference:read", "integration:read"] as const
 
@@ -20,6 +25,7 @@ export type IntegrationClientDto = {
   lastUsedAt: Date | null
   lastUsedIp: string | null
   lastRotatedAt: Date | null
+  operations: IntegrationClientOperationSummary
 }
 
 export type CreateIntegrationClientInput = {
@@ -109,7 +115,10 @@ export function parseIntegrationScopesJson(value: unknown): IntegrationScope[] {
   return normalizeIntegrationScopes(parsed)
 }
 
-export function toIntegrationClientDto(record: IntegrationApiClientRecord): IntegrationClientDto {
+export function toIntegrationClientDto(
+  record: IntegrationApiClientRecord,
+  operations: IntegrationClientOperationSummary = emptyIntegrationOperationSummary()
+): IntegrationClientDto {
   return {
     id: record.id,
     clientId: record.clientId,
@@ -124,6 +133,7 @@ export function toIntegrationClientDto(record: IntegrationApiClientRecord): Inte
     lastUsedAt: record.lastUsedAt,
     lastUsedIp: record.lastUsedIp,
     lastRotatedAt: record.lastRotatedAt,
+    operations,
   }
 }
 
@@ -149,7 +159,25 @@ export async function listIntegrationClients(): Promise<IntegrationClientDto[]> 
     orderBy: [{ createdAt: "desc" }, { clientId: "asc" }],
   })
 
-  return records.map(toIntegrationClientDto)
+  if (records.length === 0) return []
+
+  const logs = await prisma.systemLog.findMany({
+    where: {
+      module: "integration_api",
+      recordId: { in: records.map((record) => record.clientId) },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 5000,
+    select: {
+      module: true,
+      recordId: true,
+      createdAt: true,
+      newValue: true,
+    },
+  })
+  const operationSummaries = buildIntegrationClientOperationSummaries(logs)
+
+  return records.map((record) => toIntegrationClientDto(record, operationSummaries[record.clientId]))
 }
 
 export async function getIntegrationClientById(id: string): Promise<IntegrationClientDto | null> {

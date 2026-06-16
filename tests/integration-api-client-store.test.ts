@@ -74,6 +74,14 @@ test("converts database records to API DTOs without exposing tokenHash", () => {
   assert.equal(dto.clientId, "wms")
   assert.equal(dto.displayName, "Warehouse Management")
   assert.deepEqual(dto.scopes, ["asset:read"])
+  assert.deepEqual(dto.operations, {
+    requestCount24h: 0,
+    requestCount7d: 0,
+    requestCountTotal: 0,
+    errorCount7d: 0,
+    topEndpoint: null,
+    latestError: null,
+  })
   assert.equal("tokenPreview" in dto, true)
   assert.equal("tokenHash" in dto, false)
 })

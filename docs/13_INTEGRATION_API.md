@@ -26,6 +26,8 @@ The app stores only `tokenHash` and `tokenPreview`; it never stores the plain to
 
 Normal token lifecycle work requires no `.env` changes; `.env` database connection settings stay unchanged.
 
+The `Admin > Integration API` client list also shows an operations summary derived from existing `system_logs` rows where `module = integration_api`. It shows recent request counts, 7-day errors, the top endpoint, and the latest error without storing response payloads or tokens. The Copy PowerShell action generates a scope-aware command with a `<paste token for clientId>` placeholder; it never reconstructs or exposes the plain token after the one-time create/rotate response.
+
 ## Manual Recovery Tool
 
 Keep `npm run integration:token` available for controlled SQL recovery or troubleshooting only:
@@ -261,6 +263,7 @@ Use `companyCode` and `branchCode` filters to disambiguate repeated branch or lo
 8. Disable the client and verify all Integration API calls fail for that token.
 9. Edit the client scopes from `Admin > Integration API`, confirm scope expansion when adding a scope, and verify the system log records old/new safe scope values without token hashes.
 10. Confirm Integration API request logs record summaries with client ID, route, status, request ID, query/target metadata, and bounded response counts without logging Bearer tokens or response payloads.
+11. Reopen `Admin > Integration API` and confirm the client operations panel reflects recent request/error activity and copies a PowerShell example with a token placeholder rather than the real secret.
 
 ## Production Notes
 
@@ -272,5 +275,6 @@ Use `companyCode` and `branchCode` filters to disambiguate repeated branch or lo
 - Rotate tokens from `Admin > Integration API`, then update the external system with the one-time token.
 - Emergency disable is available from the admin UI. If the UI is unavailable, use controlled SQL to set `integration_api_clients.enabled = 0` for the affected client or all clients.
 - If rolling back to code that does not use `integration_api_clients`, roll back the application before removing the table.
+- Operations UX on the client list is read-only and derived from audit logs; it requires no schema change beyond the existing `integration_api_clients` table and `system_logs`.
 - Keep rate limits and network allowlisting at the reverse proxy/firewall layer until an app-level rate limiter is explicitly designed.
 - Do not expand DTOs with accounting, supplier, or evidence fields without a separate security and business review.

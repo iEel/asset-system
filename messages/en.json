@@ -3374,6 +3374,15 @@
     "noLastUsed": "Never used",
     "lastUsed": "Last used",
     "tokenPreview": "Token preview",
+    "operations": "Operations",
+    "requests24h": "24h",
+    "requests7d": "7d",
+    "errors7d": "7d errors",
+    "topEndpoint": "Top endpoint",
+    "latestError": "Latest error",
+    "noOperationalData": "No API call logs yet",
+    "copyPowerShell": "Copy PowerShell",
+    "powerShellCopied": "PowerShell example copied",
     "status": "Status",
     "actions": "Actions"
   }
