@@ -8,10 +8,24 @@ test("batch asset rows show legacy asset tag before serial number in edit and re
   assertOrdered(
     source,
     [
+      '{t("batchOptionalColumns")}',
+      'batchOptionalColumnKeys',
+      '<BatchOptionalColumnToggle',
+    ],
+    "batch optional column controls"
+  )
+
+  assertOrdered(
+    source,
+    [
       '<div className="grid gap-3 md:hidden">',
       'Field label={t("batchAssetTag")}',
       'Field label={t("batchSerialNumber")}',
-      'SearchableSelect label={t("batchCustodian")}',
+      'showRowCustodian ?',
+      'showRowDepartment ?',
+      'showRowCurrentLocation ?',
+      'showRowHomeLocation ?',
+      'showRowRemark ?',
     ],
     "mobile batch row card"
   )
@@ -19,10 +33,13 @@ test("batch asset rows show legacy asset tag before serial number in edit and re
   assertOrdered(
     source,
     [
-      '<table className="min-w-[900px] w-full text-sm">',
+      '<table className="min-w-[760px] w-full text-sm">',
       '<th className="w-56 px-3 py-2">{t("batchAssetTag")}</th>',
       '<th className="w-56 px-3 py-2">{t("batchSerialNumber")}</th>',
-      '<th className="w-64 px-3 py-2">{t("batchCustodian")}</th>',
+      'showRowCustodian ? <th className="w-64 px-3 py-2">{t("batchCustodian")}</th> : null',
+      'showRowDepartment ? <th className="w-64 px-3 py-2">{t("batchDepartment")}</th> : null',
+      'showRowCurrentLocation ? <th className="w-72 px-3 py-2">{t("batchCurrentLocation")}</th> : null',
+      'showRowHomeLocation ? <th className="w-72 px-3 py-2">{t("batchHomeLocation")}</th> : null',
     ],
     "desktop batch row table"
   )
@@ -30,10 +47,13 @@ test("batch asset rows show legacy asset tag before serial number in edit and re
   assertOrdered(
     source,
     [
-      '<table className="w-full min-w-[760px] text-sm">',
+      '<table className="w-full min-w-[1100px] text-sm">',
       '<th className="px-3 py-2">{t("batchAssetTag")}</th>',
       '<th className="px-3 py-2">{t("batchSerialNumber")}</th>',
       '<th className="px-3 py-2">{t("batchCustodian")}</th>',
+      '<th className="px-3 py-2">{t("batchDepartment")}</th>',
+      '<th className="px-3 py-2">{t("batchCurrentLocation")}</th>',
+      '<th className="px-3 py-2">{t("batchHomeLocation")}</th>',
     ],
     "batch review table"
   )

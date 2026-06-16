@@ -4,7 +4,7 @@
 
 - Add a single asset from `/assets/new`.
 - Clone an existing asset from Asset Register or Asset Detail when adding another similar asset. The clone flow opens `/assets/new?cloneFrom={assetId}`, copies shared master, ownership, location, purchase, warranty, custom-field, and linked purchase-document data, but leaves Asset Tag, Serial Number, and FA/accounting code blank for the new record.
-- Add a batch of assets from the same page using shared purchase/master data plus row-level serial/manual asset tag/custodian/remark data.
+- Add a batch of assets from the same page using shared purchase/master data plus row-level serial/manual asset tag data by default. When a batch contains assets spread across holders, departments, or sites, open the optional row columns for custodian, department, current location, home location, and remark; blank row fields fall back to the shared batch values.
 - Single and batch create auto-select the model when the selected category and brand uniquely match one active model; users can still choose a specific model when more than one exists.
 - Import legacy assets from Excel through the import/export tools.
 - Asset tags may be manually entered for legacy assets or auto-generated when left blank.

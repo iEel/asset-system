@@ -20,7 +20,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Add a single asset.
 - [ ] On single asset create/edit, scroll through the long form and confirm Save/Cancel remain visible in the fixed bottom action bar without covering the final fields.
 - [ ] Clone an existing asset from Asset Register or Asset Detail, confirm the create form shows the clone banner, copies shared details, and leaves Asset Tag, Serial Number, and FA/accounting code blank before saving.
-- [ ] Add assets by batch.
+- [ ] Add assets by batch with shared values only, then repeat with optional row columns enabled for custodian, department, current location, home location, and remark; confirm blank row overrides use the shared values while filled row overrides save per asset.
 - [ ] On single and batch asset create/edit, enable cross-branch location mode, choose a home/current location under a different branch, confirm the warning appears, branch labels distinguish repeated location codes, and the generated Asset Tag still follows the owner company/branch.
 - [ ] Create a new asset category with no custom-field template and confirm it saves without a Prisma nested-write error.
 - [ ] Enter a manual asset tag for a legacy asset.

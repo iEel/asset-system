@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-06-16
+
+| Area | Update |
+|---|---|
+| Asset Batch Create row overrides | `/th/assets/new` batch mode now keeps the row grid compact by default and lets operators opt into row-level custodian, department, current location, home location, and remark columns when a batch is spread across holders or sites. Blank row override fields fall back to shared batch values, preserving the fast same-site workflow while supporting CCTV/camera/device batches across many locations. |
+
+---
+
 ## 2026-06-15
 
 | Area | Update |

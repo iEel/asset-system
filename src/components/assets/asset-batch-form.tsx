@@ -62,6 +62,18 @@ type DuplicateCheckResult = {
   duplicateCount: number
 }
 
+type BatchOptionalColumnKey = "custodian" | "department" | "currentLocation" | "homeLocation" | "remark"
+
+const batchOptionalColumnKeys: BatchOptionalColumnKey[] = ["custodian", "department", "currentLocation", "homeLocation", "remark"]
+
+const emptyRowColumns: Record<BatchOptionalColumnKey, boolean> = {
+  custodian: false,
+  department: false,
+  currentLocation: false,
+  homeLocation: false,
+  remark: false,
+}
+
 const emptyCommon: BatchCommonValues = {
   name: "",
   categoryId: "",
@@ -111,6 +123,7 @@ export function AssetBatchForm({
   const tCommon = useTranslations("common")
   const [common, setCommon] = useState<BatchCommonValues>(emptyCommon)
   const [rows, setRows] = useState<BatchRow[]>(() => createAssetBatchRows())
+  const [visibleRowColumns, setVisibleRowColumns] = useState<Record<BatchOptionalColumnKey, boolean>>(emptyRowColumns)
   const [selectedPurchaseDocumentIds, setSelectedPurchaseDocumentIds] = useState<string[]>([])
   const [nameManuallyEdited, setNameManuallyEdited] = useState(false)
   const [reviewing, setReviewing] = useState(false)
@@ -143,11 +156,17 @@ export function AssetBatchForm({
     return Boolean(employee?.companyId && common.companyId && employee.companyId !== common.companyId)
   })
   const filteredLocations = allowCrossBranchLocation ? locations : locations.filter((location) => location.branchId === common.branchId)
+  const rowLocationOptions = filteredLocations.map((location) => ({
+    ...location,
+    label: getLocationOptionLabel(location, allowCrossBranchLocation, branches),
+  }))
   const selectedHomeLocation = locations.find((location) => location.id === common.homeLocationId)
   const selectedCurrentLocation = locations.find((location) => location.id === common.currentLocationId)
+  const selectedRowLocations = rows.flatMap((row) => [row.currentLocationId, row.homeLocationId].filter(Boolean))
   const hasCrossBranchLocation =
     isCrossBranchLocation(selectedHomeLocation, common.branchId) ||
-    isCrossBranchLocation(selectedCurrentLocation, common.branchId)
+    isCrossBranchLocation(selectedCurrentLocation, common.branchId) ||
+    selectedRowLocations.some((id) => isCrossBranchLocation(locations.find((location) => location.id === id), common.branchId))
   const filteredModels = models.filter(
     (model) => (!common.categoryId || model.categoryId === common.categoryId) && (!common.brandId || model.brandId === common.brandId)
   )
@@ -170,6 +189,21 @@ export function AssetBatchForm({
     [rows]
   )
   const previewRows = useMemo(() => buildAssetBatchPreviewRows(rows), [rows])
+  const rowOverrideCounts = useMemo(
+    () => ({
+      custodian: rows.filter((row) => row.custodianId.trim()).length,
+      department: rows.filter((row) => row.departmentId.trim()).length,
+      currentLocation: rows.filter((row) => row.currentLocationId.trim()).length,
+      homeLocation: rows.filter((row) => row.homeLocationId.trim()).length,
+      remark: rows.filter((row) => row.remark.trim()).length,
+    }),
+    [rows]
+  )
+  const showRowCustodian = visibleRowColumns.custodian || rowOverrideCounts.custodian > 0
+  const showRowDepartment = visibleRowColumns.department || rowOverrideCounts.department > 0
+  const showRowCurrentLocation = visibleRowColumns.currentLocation || rowOverrideCounts.currentLocation > 0
+  const showRowHomeLocation = visibleRowColumns.homeLocation || rowOverrideCounts.homeLocation > 0
+  const showRowRemark = visibleRowColumns.remark || rowOverrideCounts.remark > 0
   const hasClientDuplicates = duplicateValues.serialNumbers.length > 0 || duplicateValues.assetTags.length > 0
   const scannerLabels = {
     start: t("scanSerialNumber"),
@@ -203,6 +237,10 @@ export function AssetBatchForm({
   function clearDuplicateCheck() {
     setDuplicateCheckMessage("")
     setDuplicateCheckStatus(null)
+  }
+
+  function toggleRowColumn(key: BatchOptionalColumnKey) {
+    setVisibleRowColumns((current) => ({ ...current, [key]: !current[key] }))
   }
 
   function withSuggestedName(nextCommon: BatchCommonValues) {
@@ -278,7 +316,7 @@ export function AssetBatchForm({
       homeLocationId: "",
       currentLocationId: "",
     }))
-    setRows((current) => current.map((row) => ({ ...row, custodianId: "", departmentId: "" })))
+    setRows((current) => current.map((row) => ({ ...row, custodianId: "", departmentId: "", currentLocationId: "", homeLocationId: "" })))
   }
 
   function handleBranchChange(branchId: string) {
@@ -291,7 +329,7 @@ export function AssetBatchForm({
       homeLocationId: "",
       currentLocationId: "",
     }))
-    setRows((current) => current.map((row) => ({ ...row, custodianId: "" })))
+    setRows((current) => current.map((row) => ({ ...row, custodianId: "", currentLocationId: "", homeLocationId: "" })))
   }
 
   function handleCrossCompanyCustodianToggle(checked: boolean) {
@@ -306,7 +344,7 @@ export function AssetBatchForm({
     setRows((current) =>
       current.map((row) => {
         const custodian = employees.find((employee) => employee.id === row.custodianId)
-        if (employeeMatchesBatchScope(custodian, common)) return row
+        if (employeeMatchesBatchScope(custodian, { ...common, departmentId: row.departmentId || common.departmentId })) return row
         return { ...row, custodianId: "" }
       })
     )
@@ -335,6 +373,17 @@ export function AssetBatchForm({
         currentLocationId: nextCurrentLocationId,
       }
     })
+    setRows((current) =>
+      current.map((row) => {
+        const homeLocation = locations.find((location) => location.id === row.homeLocationId)
+        const currentLocation = locations.find((location) => location.id === row.currentLocationId)
+        return {
+          ...row,
+          homeLocationId: locationMatchesAssetBranch(homeLocation, common.branchId) ? row.homeLocationId : "",
+          currentLocationId: locationMatchesAssetBranch(currentLocation, common.branchId) ? row.currentLocationId : "",
+        }
+      })
+    )
   }
 
   function employeeMatchesBatchScope(employee: ScopedEmployeeOption | undefined, scope: BatchCommonValues) {
@@ -361,10 +410,39 @@ export function AssetBatchForm({
     return !location.branchId || location.branchId === branchId
   }
 
+  function getRowEmployeeOptions(row: BatchRow) {
+    if (allowCrossCompanyCustodian) return employees
+    const rowDepartment = departments.find((department) => department.id === row.departmentId)
+    return employees.filter((employee) =>
+      optionMatchesOrganizationScope(employee, {
+        companyId: common.companyId,
+        branchId: common.branchId,
+        branchCode: selectedBranch?.code,
+        departmentId: row.departmentId || common.departmentId,
+        departmentCode: rowDepartment?.code ?? selectedDepartment?.code,
+      })
+    )
+  }
+
   function getLocationOptionLabel(location: ScopedLocationOption, includeBranch: boolean, branchOptions: AssetBatchFormProps["branches"]) {
     if (!includeBranch || !location.branchId) return location.label
     const branch = branchOptions.find((item) => item.id === location.branchId)
     return branch ? `${location.label} (${branch.label})` : location.label
+  }
+
+  function getOptionalColumnLabel(key: BatchOptionalColumnKey) {
+    switch (key) {
+      case "custodian":
+        return t("batchCustodian")
+      case "department":
+        return t("batchDepartment")
+      case "currentLocation":
+        return t("batchCurrentLocation")
+      case "homeLocation":
+        return t("batchHomeLocation")
+      case "remark":
+        return t("batchRemark")
+    }
   }
 
   function handleAddRow() {
@@ -722,6 +800,26 @@ export function AssetBatchForm({
             </button>
           </div>
 
+          <div className="md:col-span-2 rounded-md border border-border bg-muted/20 p-3">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-foreground">{t("batchOptionalColumns")}</div>
+                <p className="mt-1 text-xs text-muted-foreground">{t("batchOptionalColumnsHelp")}</p>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {batchOptionalColumnKeys.map((key) => (
+                <BatchOptionalColumnToggle
+                  key={key}
+                  label={getOptionalColumnLabel(key)}
+                  active={visibleRowColumns[key] || rowOverrideCounts[key] > 0}
+                  count={rowOverrideCounts[key]}
+                  onClick={() => toggleRowColumn(key)}
+                />
+              ))}
+            </div>
+          </div>
+
           {hasClientDuplicates ? (
             <div className="md:col-span-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
               {t("duplicateWarning")}
@@ -769,24 +867,40 @@ export function AssetBatchForm({
                     <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
                     <p className="mt-1 text-[11px] text-muted-foreground">{t("batchPasteSerialHint")}</p>
                   </Field>
-                  <SearchableSelect label={t("batchCustodian")} value={row.custodianId} options={filteredEmployees} placeholder={t("selectCustodian")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "custodianId", value)} />
-                  <Field label={t("batchRemark")}>
-                    <input value={row.remark} onChange={(event) => setRowField(row.clientId, "remark", event.target.value)} className={inputClassName} />
-                  </Field>
+                  {showRowCustodian ? (
+                    <SearchableSelect label={t("batchCustodian")} value={row.custodianId} options={getRowEmployeeOptions(row)} placeholder={t("batchUseSharedCustodian")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "custodianId", value)} />
+                  ) : null}
+                  {showRowDepartment ? (
+                    <SearchableSelect label={t("batchDepartment")} value={row.departmentId} options={filteredDepartments} placeholder={t("batchUseSharedDepartment")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "departmentId", value)} />
+                  ) : null}
+                  {showRowCurrentLocation ? (
+                    <SearchableSelect label={t("batchCurrentLocation")} value={row.currentLocationId} options={rowLocationOptions} placeholder={t("batchUseSharedCurrentLocation")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "currentLocationId", value)} />
+                  ) : null}
+                  {showRowHomeLocation ? (
+                    <SearchableSelect label={t("batchHomeLocation")} value={row.homeLocationId} options={rowLocationOptions} placeholder={t("batchUseSharedHomeLocation")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "homeLocationId", value)} />
+                  ) : null}
+                  {showRowRemark ? (
+                    <Field label={t("batchRemark")}>
+                      <input value={row.remark} onChange={(event) => setRowField(row.clientId, "remark", event.target.value)} placeholder={t("batchUseSharedRemark")} className={inputClassName} />
+                    </Field>
+                  ) : null}
                 </div>
               </div>
             ))}
           </div>
 
           <div className="hidden overflow-x-auto rounded-md border border-border md:col-span-2 md:block">
-            <table className="min-w-[900px] w-full text-sm">
+            <table className="min-w-[760px] w-full text-sm">
               <thead className="bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
                 <tr>
                   <th className="w-16 px-3 py-2">{t("batchRowNo")}</th>
                   <th className="w-56 px-3 py-2">{t("batchAssetTag")}</th>
                   <th className="w-56 px-3 py-2">{t("batchSerialNumber")}</th>
-                  <th className="w-64 px-3 py-2">{t("batchCustodian")}</th>
-                  <th className="w-64 px-3 py-2">{t("batchRemark")}</th>
+                  {showRowCustodian ? <th className="w-64 px-3 py-2">{t("batchCustodian")}</th> : null}
+                  {showRowDepartment ? <th className="w-64 px-3 py-2">{t("batchDepartment")}</th> : null}
+                  {showRowCurrentLocation ? <th className="w-72 px-3 py-2">{t("batchCurrentLocation")}</th> : null}
+                  {showRowHomeLocation ? <th className="w-72 px-3 py-2">{t("batchHomeLocation")}</th> : null}
+                  {showRowRemark ? <th className="w-64 px-3 py-2">{t("batchRemark")}</th> : null}
                   <th className="w-16 px-3 py-2 text-right">
                     <span className="sr-only">{t("batchRowActions")}</span>
                   </th>
@@ -804,12 +918,31 @@ export function AssetBatchForm({
                       <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
                       <p className="mt-1 text-[11px] text-muted-foreground">{t("batchPasteSerialHint")}</p>
                     </td>
-                    <td className="px-3 py-3">
-                      <SearchableSelect label="" value={row.custodianId} options={filteredEmployees} placeholder={t("selectCustodian")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "custodianId", value)} />
-                    </td>
-                    <td className="px-3 py-3">
-                      <input value={row.remark} onChange={(event) => setRowField(row.clientId, "remark", event.target.value)} className={inputClassName} />
-                    </td>
+                    {showRowCustodian ? (
+                      <td className="px-3 py-3">
+                        <SearchableSelect label="" value={row.custodianId} options={getRowEmployeeOptions(row)} placeholder={t("batchUseSharedCustodian")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "custodianId", value)} />
+                      </td>
+                    ) : null}
+                    {showRowDepartment ? (
+                      <td className="px-3 py-3">
+                        <SearchableSelect label="" value={row.departmentId} options={filteredDepartments} placeholder={t("batchUseSharedDepartment")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "departmentId", value)} />
+                      </td>
+                    ) : null}
+                    {showRowCurrentLocation ? (
+                      <td className="px-3 py-3">
+                        <SearchableSelect label="" value={row.currentLocationId} options={rowLocationOptions} placeholder={t("batchUseSharedCurrentLocation")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "currentLocationId", value)} />
+                      </td>
+                    ) : null}
+                    {showRowHomeLocation ? (
+                      <td className="px-3 py-3">
+                        <SearchableSelect label="" value={row.homeLocationId} options={rowLocationOptions} placeholder={t("batchUseSharedHomeLocation")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "homeLocationId", value)} />
+                      </td>
+                    ) : null}
+                    {showRowRemark ? (
+                      <td className="px-3 py-3">
+                        <input value={row.remark} onChange={(event) => setRowField(row.clientId, "remark", event.target.value)} placeholder={t("batchUseSharedRemark")} className={inputClassName} />
+                      </td>
+                    ) : null}
                     <td className="px-3 py-3 text-right">
                       <button
                         type="button"
@@ -846,13 +979,16 @@ export function AssetBatchForm({
               <SummaryItem label={t("batchCurrentCount", { count: rows.length })} value={String(rows.length)} />
             </div>
             <div className="mt-4 max-h-80 max-w-full overflow-auto rounded-md border border-border bg-background">
-              <table className="w-full min-w-[760px] text-sm">
+              <table className="w-full min-w-[1100px] text-sm">
                 <thead className="bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2">{t("batchRowNo")}</th>
                     <th className="px-3 py-2">{t("batchAssetTag")}</th>
                     <th className="px-3 py-2">{t("batchSerialNumber")}</th>
                     <th className="px-3 py-2">{t("batchCustodian")}</th>
+                    <th className="px-3 py-2">{t("batchDepartment")}</th>
+                    <th className="px-3 py-2">{t("batchCurrentLocation")}</th>
+                    <th className="px-3 py-2">{t("batchHomeLocation")}</th>
                     <th className="px-3 py-2">{t("batchRemark")}</th>
                   </tr>
                 </thead>
@@ -865,7 +1001,10 @@ export function AssetBatchForm({
                         {row.assetTagSource === "manual" ? <span className="ml-2 text-xs text-muted-foreground">{t("batchReviewManualAssetTag")}</span> : null}
                       </td>
                       <td className="px-3 py-2">{row.serialNumber || "-"}</td>
-                      <td className="px-3 py-2">{employees.find((employee) => employee.id === row.custodianId)?.label ?? "-"}</td>
+                      <td className="px-3 py-2">{employees.find((employee) => employee.id === (row.custodianId || common.custodianId))?.label ?? "-"}</td>
+                      <td className="px-3 py-2">{departments.find((department) => department.id === (row.departmentId || common.departmentId))?.label ?? "-"}</td>
+                      <td className="px-3 py-2">{locations.find((location) => location.id === (row.currentLocationId || common.currentLocationId))?.label ?? "-"}</td>
+                      <td className="px-3 py-2">{locations.find((location) => location.id === (row.homeLocationId || common.homeLocationId))?.label ?? "-"}</td>
                       <td className="px-3 py-2">{row.remark || "-"}</td>
                     </tr>
                   ))}
@@ -958,6 +1097,38 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="mt-1 text-sm font-semibold text-foreground">{value}</div>
     </div>
+  )
+}
+
+function BatchOptionalColumnToggle({
+  label,
+  active,
+  count,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  count: number
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+        active
+          ? "border-primary bg-primary/10 text-primary hover:bg-primary/15"
+          : "border-border bg-background text-foreground hover:bg-accent"
+      }`}
+      aria-pressed={active}
+    >
+      <span>{label}</span>
+      {count > 0 ? (
+        <span className="rounded-full bg-background px-2 py-0.5 text-xs text-muted-foreground">
+          {count}
+        </span>
+      ) : null}
+    </button>
   )
 }
 

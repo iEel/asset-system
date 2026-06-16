@@ -21,6 +21,8 @@ export type AssetBatchEditableRow = {
   serialNumber: string
   custodianId: string
   departmentId: string
+  currentLocationId: string
+  homeLocationId: string
   remark: string
 }
 
@@ -30,6 +32,9 @@ export type AssetBatchPreviewRow = {
   assetTag: string
   assetTagSource: "manual" | "auto"
   custodianId: string
+  departmentId: string
+  currentLocationId: string
+  homeLocationId: string
   remark: string
 }
 
@@ -90,8 +95,8 @@ export function buildAssetBatchCreateItems({
       serialNumber: nullableText(row.serialNumber),
       custodianId: nullableText(row.custodianId) ?? common.custodianId ?? null,
       departmentId: nullableText(row.departmentId) ?? common.departmentId ?? null,
-      homeLocationId: common.homeLocationId ?? null,
-      currentLocationId: common.currentLocationId,
+      homeLocationId: nullableText(row.homeLocationId) ?? common.homeLocationId ?? null,
+      currentLocationId: nullableText(row.currentLocationId) ?? common.currentLocationId,
       fixedAssetCode: common.fixedAssetCode ?? null,
       remark: nullableText(row.remark) ?? common.remark ?? null,
     }
@@ -110,6 +115,8 @@ export function createAssetBatchRows(count = defaultAssetBatchRowCount, idPrefix
     assetTag: "",
     custodianId: "",
     departmentId: "",
+    currentLocationId: "",
+    homeLocationId: "",
     remark: "",
   }))
 }
@@ -124,6 +131,9 @@ export function buildAssetBatchPreviewRows(rows: AssetBatchEditableRow[]): Asset
       assetTag,
       assetTagSource: assetTag ? "manual" : "auto",
       custodianId: row.custodianId.trim(),
+      departmentId: row.departmentId.trim(),
+      currentLocationId: row.currentLocationId.trim(),
+      homeLocationId: row.homeLocationId.trim(),
       remark: row.remark.trim(),
     }
   })

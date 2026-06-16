@@ -56,7 +56,7 @@ test("assetBatchCreateSchema accepts common asset data and row-specific serials"
   const parsed = assetBatchCreateSchema.parse({
     common: validCommon,
     rows: [
-      { clientId: "row-1", serialNumber: "SN-001", assetTag: "LEGACY-COM-001", custodianId: "", currentLocationId: "" },
+      { clientId: "row-1", serialNumber: "SN-001", assetTag: "LEGACY-COM-001", custodianId: "", departmentId: "department-row", currentLocationId: "location-row", homeLocationId: "home-row" },
       { clientId: "row-2", serialNumber: "SN-002", assetTag: "", custodianId: "", currentLocationId: "" },
     ],
     purchaseDocumentIds: ["doc-1"],
@@ -64,6 +64,9 @@ test("assetBatchCreateSchema accepts common asset data and row-specific serials"
 
   assert.equal(parsed.rows.length, 2)
   assert.equal(parsed.rows[0].assetTag, "LEGACY-COM-001")
+  assert.equal(parsed.rows[0].departmentId, "department-row")
+  assert.equal(parsed.rows[0].currentLocationId, "location-row")
+  assert.equal(parsed.rows[0].homeLocationId, "home-row")
   assert.equal(parsed.common.name, "Desktop Computer Dell Optiplex")
   assert.equal(parsed.common.currentLocationId, "location-store")
   assert.deepEqual(parsed.purchaseDocumentIds, ["doc-1"])
@@ -103,6 +106,9 @@ test("buildAssetBatchCreateItems overlays row values on common asset data", () =
         serialNumber: "SN-001",
         assetTag: "SNI-COM-26-0001",
         custodianId: "emp-1",
+        departmentId: "department-row",
+        currentLocationId: "location-row-current",
+        homeLocationId: "location-row-home",
       },
       {
         clientId: "row-2",
@@ -119,13 +125,15 @@ test("buildAssetBatchCreateItems overlays row values on common asset data", () =
   assert.equal(items[0].assetTag, "SNI-COM-26-0001")
   assert.equal(items[0].serialNumber, "SN-001")
   assert.equal(items[0].custodianId, "emp-1")
-  assert.equal(items[0].currentLocationId, "location-store")
+  assert.equal(items[0].departmentId, "department-row")
+  assert.equal(items[0].currentLocationId, "location-row-current")
+  assert.equal(items[0].homeLocationId, "location-row-home")
   assert.equal(items[1].assetTag, "SNI-COM-26-0002")
   assert.equal(items[1].currentLocationId, "location-store")
   assert.equal(items[1].remark, "Keep in IT stock")
 })
 
-test("buildAssetBatchCreateItems always uses shared location and fixed asset code", () => {
+test("buildAssetBatchCreateItems falls back to shared row defaults and fixed asset code", () => {
   const items = buildAssetBatchCreateItems({
     common: { ...validCommon, fixedAssetCode: "FA-SHARED" },
     rows: [
@@ -134,6 +142,7 @@ test("buildAssetBatchCreateItems always uses shared location and fixed asset cod
         serialNumber: "SN-001",
         assetTag: "SNI-COM-26-0001",
         currentLocationId: "location-row-ignored",
+        homeLocationId: "location-home-row",
         fixedAssetCode: "FA-ROW-IGNORED",
       },
       {
@@ -145,17 +154,19 @@ test("buildAssetBatchCreateItems always uses shared location and fixed asset cod
     generatedAssetTags: [],
   })
 
-  assert.equal(items[0].currentLocationId, "location-store")
+  assert.equal(items[0].currentLocationId, "location-row-ignored")
+  assert.equal(items[0].homeLocationId, "location-home-row")
   assert.equal(items[0].fixedAssetCode, "FA-SHARED")
   assert.equal(items[1].currentLocationId, "location-store")
+  assert.equal(items[1].homeLocationId, "location-store")
   assert.equal(items[1].fixedAssetCode, "FA-SHARED")
 })
 
-test("createAssetBatchRows starts with two editable rows and omits shared-only fields", () => {
+test("createAssetBatchRows starts with two editable rows and empty optional override fields", () => {
   assert.equal(defaultAssetBatchRowCount, 2)
   assert.deepEqual(createAssetBatchRows(undefined, "qa-row"), [
-    { clientId: "qa-row-1", serialNumber: "", assetTag: "", custodianId: "", departmentId: "", remark: "" },
-    { clientId: "qa-row-2", serialNumber: "", assetTag: "", custodianId: "", departmentId: "", remark: "" },
+    { clientId: "qa-row-1", serialNumber: "", assetTag: "", custodianId: "", departmentId: "", currentLocationId: "", homeLocationId: "", remark: "" },
+    { clientId: "qa-row-2", serialNumber: "", assetTag: "", custodianId: "", departmentId: "", currentLocationId: "", homeLocationId: "", remark: "" },
   ])
 })
 
@@ -209,12 +220,12 @@ test("buildAssetBatchDuplicateMessage explains duplicate fields clearly", () => 
 test("buildAssetBatchPreviewRows marks manual and auto-generated asset tag sources", () => {
   assert.deepEqual(
     buildAssetBatchPreviewRows([
-      { clientId: "row-1", serialNumber: "SN-001", assetTag: "SNI-EQU-16-0031", custodianId: "emp-1", remark: "" },
-      { clientId: "row-2", serialNumber: "", assetTag: "", custodianId: "", remark: "Keep spare" },
+      { clientId: "row-1", serialNumber: "SN-001", assetTag: "SNI-EQU-16-0031", custodianId: "emp-1", departmentId: "dept-1", currentLocationId: "loc-1", homeLocationId: "home-1", remark: "" },
+      { clientId: "row-2", serialNumber: "", assetTag: "", custodianId: "", departmentId: "", currentLocationId: "", homeLocationId: "", remark: "Keep spare" },
     ]),
     [
-      { rowNo: 1, serialNumber: "SN-001", assetTag: "SNI-EQU-16-0031", assetTagSource: "manual", custodianId: "emp-1", remark: "" },
-      { rowNo: 2, serialNumber: "", assetTag: "", assetTagSource: "auto", custodianId: "", remark: "Keep spare" },
+      { rowNo: 1, serialNumber: "SN-001", assetTag: "SNI-EQU-16-0031", assetTagSource: "manual", custodianId: "emp-1", departmentId: "dept-1", currentLocationId: "loc-1", homeLocationId: "home-1", remark: "" },
+      { rowNo: 2, serialNumber: "", assetTag: "", assetTagSource: "auto", custodianId: "", departmentId: "", currentLocationId: "", homeLocationId: "", remark: "Keep spare" },
     ]
   )
 })
