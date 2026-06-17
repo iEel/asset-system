@@ -1,6 +1,6 @@
 # Asset Management System - Feature List
 
-Last updated: 2026-06-16
+Last updated: 2026-06-17
 
 This feature list is based on the current repository documents and source code, not only on the original plan. It focuses on features that are represented by the current docs, routes, API endpoints, Prisma schema, and component/library structure.
 
@@ -125,7 +125,7 @@ Important data semantics:
 |---|---|
 | Label profiles | Configurable 12mm, 18mm, 24mm, and custom tape profiles |
 | Brother label support | Label text/QR optimized for Brother tape workflows; docs note PT-E550W 18mm driver setup |
-| Label templates | Primary/secondary/tertiary text templates and QR size/layout settings |
+| Label templates | Primary/secondary/tertiary text templates, QR size/layout settings, `{labelAssetName}` print-only compact asset-name token, and a Label / QR segmented control for `ย่ออัตโนมัติ` versus `ชื่อเต็ม` so operators can remove category prefixes from suggested names without changing master asset names |
 | Public QR Base URL | Production QR links use public HTTPS base URL; print UI warns for localhost/private/relative targets |
 | Single label print | Asset detail print route |
 | Bulk label print | Label management page and bulk print route with queue filters for print status, company, branch, category, location, created date, and selected-label sort order |

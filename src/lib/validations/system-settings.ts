@@ -43,6 +43,7 @@ const assetLabelSpacingKeys = new Set<string>([
   ...assetLabelTapeSizes.map((size) => `asset_label_${size}_gap_mm`),
 ])
 const assetLabelLayoutKeys = new Set<string>(assetLabelTapeSizes.map((size) => `asset_label_${size}_layout`))
+const assetLabelBooleanKeys = new Set<string>(["asset_label_compact_asset_name_enabled"])
 const operationDocumentTemplateKeys = new Set<string>([checkoutDocumentTemplateKey, checkinDocumentTemplateKey])
 const notificationRuleKeys = new Set<string>(notificationRuleSettingKeys)
 const retentionPolicyKeys = new Set<string>(retentionPolicySettingKeys)
@@ -141,6 +142,14 @@ export const systemSettingsUpdateSchema = z.object({
       context.addIssue({
         code: "custom",
         message: "Asset label layout is not supported",
+        path: ["settings", index, "value"],
+      })
+    }
+
+    if (assetLabelBooleanKeys.has(setting.key) && setting.value !== "true" && setting.value !== "false") {
+      context.addIssue({
+        code: "custom",
+        message: "Asset label toggle values must be true or false",
         path: ["settings", index, "value"],
       })
     }

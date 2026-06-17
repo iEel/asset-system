@@ -4,10 +4,19 @@
 
 ---
 
+## 2026-06-17
+
+| Area | Update |
+|---|---|
+| Asset Label compact names | `{labelAssetName}` now supports the print-only compact asset name used by label templates. `Admin > Settings > Label / QR` exposes the label-name mode as a two-choice segmented control (`ย่ออัตโนมัติ` / `ชื่อเต็ม`) with a primary-color active state and checkmark, so admins can quickly see whether labels will strip category prefixes from suggested asset names. The setting changes label output only and does not add a separate label-name field or alter `Asset.name` / `{assetName}`. |
+
+---
+
 ## 2026-06-16
 
 | Area | Update |
 |---|---|
+| Asset Label compact names | Label / QR settings now include an optional compact asset-name toggle and `{labelAssetName}` token. The token is computed only at print time, can remove the category prefix from suggested asset names for tape labels, and leaves the full master `Asset.name` / `{assetName}` unchanged. |
 | Integration API operations UX | `Admin > Integration API` now shows per-client operational usage derived from existing `system_logs`: 24-hour/7-day request counts, 7-day error count, top endpoint, latest error, and a scope-aware Copy PowerShell action that uses a token placeholder instead of exposing the one-time secret. This is read-only UI/reporting behavior and requires no new migration beyond the existing DB-backed token manager table. |
 | Asset Batch Create row overrides | `/th/assets/new` batch mode now keeps the row grid compact by default and lets operators opt into row-level custodian, department, current location, home location, and remark columns when a batch is spread across holders or sites. Blank row override fields fall back to shared batch values, preserving the fast same-site workflow while supporting CCTV/camera/device batches across many locations. |
 | Asset Label queue scope UX | `/th/asset-management/labels` now summarizes the current queue-add scope as all assets, company, branch, or location before the filter controls, so operators can add label batches by company/branch without drilling into the long location list. The pre-search "type at least two characters" message is now a compact hint under the search input instead of a large empty-state panel. |

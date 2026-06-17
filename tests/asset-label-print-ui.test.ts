@@ -29,6 +29,53 @@ test("label print pages provide tape size placeholder to translated printer guid
   }
 })
 
+test("label print template settings expose compact printable asset names", () => {
+  const template = readFileSync("src/lib/asset-label-template.ts", "utf8")
+  const defaults = readFileSync("src/lib/system-setting-defaults.ts", "utf8")
+  const validation = readFileSync("src/lib/validations/system-settings.ts", "utf8")
+  const form = readFileSync("src/components/admin/system-settings-form.tsx", "utf8")
+  const settingsPage = readFileSync("src/app/[locale]/(dashboard)/admin/settings/page.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(template, /"labelAssetName"/)
+  assert.match(defaults, /asset_label_compact_asset_name_enabled/)
+  assert.match(defaults, /asset_label_18_secondary_template", value: "\{labelAssetName\}"/)
+  assert.match(validation, /asset_label_compact_asset_name_enabled/)
+  assert.match(form, /labels\.compactLabelAssetName/)
+  assert.match(form, /labels\.compactLabelAssetNameDescription/)
+  assert.match(form, /asset_label_compact_asset_name_enabled/)
+  assert.match(form, /<LabelAssetNameModeField[\s\S]*label=\{labels\.compactLabelAssetName\}/)
+  assert.match(form, /compactLabelAssetNameShort/)
+  assert.match(form, /compactLabelAssetNameFull/)
+  assert.match(form, /aria-pressed=\{isActive\}/)
+  assert.match(form, /Check/)
+  assert.match(form, /bg-primary text-white/)
+  assert.match(form, /focus-visible:ring-2 focus-visible:ring-primary/)
+  assert.doesNotMatch(form, /role="switch"/)
+  assert.doesNotMatch(form, /<InlineToggleField[\s\S]*label=\{labels\.compactLabelAssetName\}/)
+  assert.doesNotMatch(form, /<ToggleField[\s\S]*label=\{labels\.compactLabelAssetName\}/)
+  assert.match(settingsPage, /compactLabelAssetName:\s*t\("compactLabelAssetName"\)/)
+  assert.match(settingsPage, /compactLabelAssetNameDescription:\s*t\("compactLabelAssetNameDescription"\)/)
+  assert.match(settingsPage, /compactLabelAssetNameShort:\s*t\("compactLabelAssetNameShort"\)/)
+  assert.match(settingsPage, /compactLabelAssetNameFull:\s*t\("compactLabelAssetNameFull"\)/)
+
+  assert.equal(th.systemSettingsPage.compactLabelAssetName, "ชื่อทรัพย์สินบน Label")
+  assert.equal(
+    th.systemSettingsPage.compactLabelAssetNameDescription,
+    "เลือกว่าจะย่อชื่อที่ระบบแนะนำเฉพาะตอนพิมพ์ หรือใช้ชื่อทรัพย์สินเต็ม"
+  )
+  assert.equal(th.systemSettingsPage.compactLabelAssetNameShort, "ย่ออัตโนมัติ")
+  assert.equal(th.systemSettingsPage.compactLabelAssetNameFull, "ชื่อเต็ม")
+  assert.equal(en.systemSettingsPage.compactLabelAssetName, "Asset name on labels")
+  assert.equal(
+    en.systemSettingsPage.compactLabelAssetNameDescription,
+    "Choose whether labels shorten suggested names at print time or use the full asset name."
+  )
+  assert.equal(en.systemSettingsPage.compactLabelAssetNameShort, "Shorten automatically")
+  assert.equal(en.systemSettingsPage.compactLabelAssetNameFull, "Full name")
+})
+
 test("label batch tool exposes queue filters and print-order controls", () => {
   const source = readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8")
 

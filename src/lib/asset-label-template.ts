@@ -1,5 +1,6 @@
 export const assetLabelSettingKeys = [
   "asset_label_default_tape_size",
+  "asset_label_compact_asset_name_enabled",
   "asset_label_12_width_mm",
   "asset_label_12_height_mm",
   "asset_label_12_qr_size",
@@ -83,7 +84,7 @@ export const assetLabelPresets: Record<
     marginMm: 1.5,
     gapMm: 1.5,
     layout: "qr-left",
-    lines: ["{assetTag}", "{assetName}", "{serialNumber}"],
+    lines: ["{assetTag}", "{labelAssetName}", "{serialNumber}"],
   },
   "24": {
     label: "24 mm",
@@ -109,6 +110,7 @@ export const assetLabelPresets: Record<
 
 export type AssetLabelTemplates = {
   defaultTapeSize: AssetLabelTapeSize
+  compactAssetNameEnabled: boolean
   tapes: Record<
     AssetLabelTapeSize,
     {
@@ -126,6 +128,7 @@ export type AssetLabelTemplates = {
 export type AssetLabelTokenValues = {
   assetTag: string
   assetName: string
+  labelAssetName: string
   serialNumber: string
   category: string
   company: string
@@ -137,6 +140,7 @@ export type AssetLabelTokenValues = {
 export const assetLabelTemplateTokens = [
   "assetTag",
   "assetName",
+  "labelAssetName",
   "serialNumber",
   "category",
   "company",
@@ -147,6 +151,7 @@ export const assetLabelTemplateTokens = [
 
 export const defaultAssetLabelTemplates: AssetLabelTemplates = {
   defaultTapeSize: "18",
+  compactAssetNameEnabled: true,
   tapes: {
     "12": presetToTemplate("12"),
     "18": presetToTemplate("18"),
@@ -159,15 +164,47 @@ export function parseAssetLabelTemplates(values: Record<string, string | undefin
   const defaultTapeSize = assetLabelTapeSizes.includes(values.asset_label_default_tape_size as AssetLabelTapeSize)
     ? values.asset_label_default_tape_size as AssetLabelTapeSize
     : "18"
+  const compactAssetNameEnabled = booleanOrDefault(values.asset_label_compact_asset_name_enabled, true)
 
   return {
     defaultTapeSize,
+    compactAssetNameEnabled,
     tapes: {
       "12": parseTape(values, "12"),
-      "18": parseTape(values, "18"),
+      "18": parseTape(values, "18", { compactAssetNameEnabled }),
       "24": parseTape(values, "24"),
       custom: parseTape(values, "custom"),
     },
+  }
+}
+
+export type AssetLabelTokenSource = {
+  assetTag: string
+  assetName: string
+  serialNumber?: string | null
+  category: string
+  company: string
+  branch: string
+  location: string
+  scanHint: string
+}
+
+export function buildAssetLabelTokenValues(
+  source: AssetLabelTokenSource,
+  options: { compactAssetNameEnabled?: boolean } = {}
+): AssetLabelTokenValues {
+  const assetName = source.assetName.trim()
+
+  return {
+    assetTag: source.assetTag,
+    assetName,
+    labelAssetName: buildPrintableAssetName(assetName, source.category, options.compactAssetNameEnabled ?? true),
+    serialNumber: source.serialNumber?.trim() ?? "",
+    category: source.category,
+    company: source.company,
+    branch: source.branch,
+    location: source.location,
+    scanHint: source.scanHint,
   }
 }
 
@@ -192,8 +229,50 @@ function numberOrDefault(value: string | undefined, fallback: number) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
 }
 
+function booleanOrDefault(value: string | undefined, fallback: boolean) {
+  if (value === "true") return true
+  if (value === "false") return false
+  return fallback
+}
+
 function formatMm(value: number) {
   return Number.isInteger(value) ? String(value) : String(value)
+}
+
+function buildPrintableAssetName(assetName: string, category: string, compactAssetNameEnabled: boolean) {
+  const trimmedAssetName = assetName.trim()
+  if (!compactAssetNameEnabled || !trimmedAssetName) return trimmedAssetName
+
+  for (const candidate of getCategoryNameCandidates(category)) {
+    if (!startsWithCandidate(trimmedAssetName, candidate)) continue
+
+    const remaining = trimmedAssetName
+      .slice(candidate.length)
+      .replace(/^[\s\-–—:|/]+/, "")
+      .trim()
+    if (remaining) return remaining
+  }
+
+  return trimmedAssetName
+}
+
+function getCategoryNameCandidates(category: string) {
+  return Array.from(
+    new Set(
+      [category, ...category.split(/\s+-\s+/)]
+        .map((part) => part.trim())
+        .filter(Boolean)
+    )
+  ).sort((left, right) => right.length - left.length)
+}
+
+function startsWithCandidate(value: string, candidate: string) {
+  const normalizedValue = value.toLocaleLowerCase("th-TH")
+  const normalizedCandidate = candidate.toLocaleLowerCase("th-TH")
+  if (!normalizedValue.startsWith(normalizedCandidate)) return false
+
+  const nextCharacter = value[candidate.length]
+  return !nextCharacter || !/[\p{Letter}\p{Number}]/u.test(nextCharacter)
 }
 
 function presetToTemplate(size: AssetLabelTapeSize): AssetLabelTemplates["tapes"][AssetLabelTapeSize] {
@@ -209,12 +288,17 @@ function presetToTemplate(size: AssetLabelTapeSize): AssetLabelTemplates["tapes"
   }
 }
 
-function parseTape(values: Record<string, string | undefined>, size: AssetLabelTapeSize) {
+function parseTape(
+  values: Record<string, string | undefined>,
+  size: AssetLabelTapeSize,
+  options: { compactAssetNameEnabled?: boolean } = {}
+) {
   const fallback = defaultAssetLabelTemplates.tapes[size]
   const prefix = `asset_label_${size}`
   const layout = assetLabelLayouts.includes(values[`${prefix}_layout`] as AssetLabelLayout)
     ? values[`${prefix}_layout`] as AssetLabelLayout
     : fallback.layout
+  const secondaryTemplate = values[`${prefix}_secondary_template`] ?? fallback.lines[1]
 
   return {
     widthMm: numberOrDefault(values[`${prefix}_width_mm`], fallback.widthMm),
@@ -225,8 +309,20 @@ function parseTape(values: Record<string, string | undefined>, size: AssetLabelT
     layout,
     lines: [
       values[`${prefix}_primary_template`] ?? fallback.lines[0],
-      values[`${prefix}_secondary_template`] ?? fallback.lines[1],
+      normalizeLegacyAssetNameLine(size, secondaryTemplate, options.compactAssetNameEnabled ?? false),
       values[`${prefix}_tertiary_template`] ?? fallback.lines[2],
     ] as [string, string, string],
   }
+}
+
+function normalizeLegacyAssetNameLine(
+  size: AssetLabelTapeSize,
+  template: string,
+  compactAssetNameEnabled: boolean
+) {
+  if (size === "18" && compactAssetNameEnabled && template.trim() === "{assetName}") {
+    return "{labelAssetName}"
+  }
+
+  return template
 }

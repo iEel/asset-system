@@ -7,6 +7,7 @@ import { QRCodeSVG } from "qrcode.react"
 import { isLikelyLocalAssetQrValue } from "@/lib/asset-qr"
 import {
   assetLabelTapeSizes,
+  buildAssetLabelTokenValues,
   defaultAssetLabelTemplates,
   formatAssetLabelPageSize,
   getAssetLabelTapePrinterSize,
@@ -309,7 +310,12 @@ export function AssetLabelPrint({
             {assets.map((asset) => (
               <div key={asset.assetTag} className="asset-label-preview-frame">
                 <div className="asset-label-preview-inner">
-                  <AssetLabelItem asset={asset} config={config} scanHint={translations.scanHint} />
+                  <AssetLabelItem
+                    asset={asset}
+                    config={config}
+                    scanHint={translations.scanHint}
+                    compactAssetNameEnabled={labelTemplates.compactAssetNameEnabled}
+                  />
                 </div>
               </div>
             ))}
@@ -324,21 +330,23 @@ function AssetLabelItem({
   asset,
   config,
   scanHint,
+  compactAssetNameEnabled,
 }: {
   asset: AssetLabelPrintItem
   config: AssetLabelTemplates["tapes"][AssetLabelTapeSize]
   scanHint: string
+  compactAssetNameEnabled: boolean
 }) {
-  const values = {
+  const values = buildAssetLabelTokenValues({
     assetTag: asset.assetTag,
     assetName: asset.name,
-    serialNumber: asset.serialNumber ?? "",
+    serialNumber: asset.serialNumber,
     category: asset.category,
     company: asset.company,
     branch: asset.branch,
     location: asset.location,
     scanHint,
-  }
+  }, { compactAssetNameEnabled })
   const lines = config.lines.map((line) => renderAssetLabelTemplate(line, values).trim()).filter(Boolean)
 
   const isSmallTape = config.heightMm <= 12
@@ -354,7 +362,7 @@ function AssetLabelItem({
     </div>
   )
   const text = (
-    <div className="min-w-0 text-black">
+    <div className="min-w-0 overflow-hidden text-black">
       <div className={primaryClass}>{lines[0] || asset.assetTag}</div>
       {lines.slice(1).map((line, index) => (
         <div key={`${asset.assetTag}-${index}-${line}`} className={secondaryClass}>
@@ -374,7 +382,7 @@ function AssetLabelItem({
         }
         style={
           config.layout === "qr-left"
-            ? { gridTemplateColumns: "auto 1fr", gap: `${config.gapMm}mm` }
+            ? { gridTemplateColumns: "auto minmax(0, 1fr)", gap: `${config.gapMm}mm` }
             : { gap: `${config.gapMm}mm` }
         }
       >

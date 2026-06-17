@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, ArrowRight, ExternalLink, History, Loader2, Pencil, PlugZap, Plus, Save, Search, Trash2, X } from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, ExternalLink, History, Loader2, Pencil, PlugZap, Plus, Save, Search, Trash2, X } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
 import { DepreciationPolicyBuilder } from "@/components/admin/depreciation-policy-builder"
@@ -160,6 +160,10 @@ type SystemSettingsFormProps = {
     invalidFormatTemplate: string
     labelPrintTemplate: string
     labelPrintTemplateDescription: string
+    compactLabelAssetName: string
+    compactLabelAssetNameDescription: string
+    compactLabelAssetNameShort: string
+    compactLabelAssetNameFull: string
     publicQrBaseUrl: string
     publicQrBaseUrlDescription: string
     publicQrBaseUrlPlaceholder: string
@@ -1140,7 +1144,7 @@ export function SystemSettingsForm({
               <div className="mt-2 text-xs text-muted-foreground">{labels.publicQrResolverPath}: /q/a/{"{assetId}"}</div>
             </div>
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-[minmax(220px,330px)_minmax(300px,420px)] md:items-start">
             <Field label={labels.defaultTapeSize} htmlFor="asset-label-default-tape-size">
               <select
                 id="asset-label-default-tape-size"
@@ -1155,6 +1159,14 @@ export function SystemSettingsForm({
                 ))}
               </select>
             </Field>
+            <LabelAssetNameModeField
+              label={labels.compactLabelAssetName}
+              description={labels.compactLabelAssetNameDescription}
+              compactLabel={labels.compactLabelAssetNameShort}
+              fullLabel={labels.compactLabelAssetNameFull}
+              compactEnabled={getValue("asset_label_compact_asset_name_enabled") === "true"}
+              onChange={(compactEnabled) => setBooleanValue("asset_label_compact_asset_name_enabled", compactEnabled)}
+            />
           </div>
           <div className="grid gap-4 xl:grid-cols-2">
             {assetLabelTapeSizes.map((size) => (
@@ -2445,16 +2457,21 @@ function WizardStep({ number, title, children }: { number: number; title: string
 
 function ToggleField({
   label,
+  description,
   checked,
   onChange,
 }: {
   label: string
+  description?: string
   checked: boolean
   onChange: (checked: boolean) => void
 }) {
   return (
     <label className="flex min-h-10 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground">
-      <span>{label}</span>
+      <span className="min-w-0">
+        <span className="block">{label}</span>
+        {description ? <span className="mt-1 block text-xs font-normal leading-5 text-muted-foreground">{description}</span> : null}
+      </span>
       <input
         type="checkbox"
         checked={checked}
@@ -2593,6 +2610,55 @@ function Metric({ label, value }: { label: string; value: number }) {
     <div className="rounded-md border border-border px-3 py-2">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="mt-1 text-xl font-semibold text-foreground">{value}</div>
+    </div>
+  )
+}
+
+function LabelAssetNameModeField({
+  label,
+  description,
+  compactLabel,
+  fullLabel,
+  compactEnabled,
+  onChange,
+}: {
+  label: string
+  description: string
+  compactLabel: string
+  fullLabel: string
+  compactEnabled: boolean
+  onChange: (compactEnabled: boolean) => void
+}) {
+  const options = [
+    { value: true, label: compactLabel },
+    { value: false, label: fullLabel },
+  ]
+
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-medium text-foreground">{label}</div>
+      <div className="inline-flex rounded-md border border-border bg-muted/20 p-1" role="group" aria-label={label}>
+        {options.map((option) => {
+          const isActive = compactEnabled === option.value
+          return (
+            <button
+              key={String(option.value)}
+              type="button"
+              aria-pressed={isActive}
+              onClick={() => onChange(option.value)}
+              className={`inline-flex h-8 items-center justify-center gap-1.5 rounded px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                isActive
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-muted-foreground hover:bg-background hover:text-foreground"
+              }`}
+            >
+              {isActive ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
+              {option.label}
+            </button>
+          )
+        })}
+      </div>
+      <p className="text-xs leading-5 text-muted-foreground">{description}</p>
     </div>
   )
 }
@@ -2751,6 +2817,7 @@ function LabelPreviewPanel({
   const values = {
     assetTag: "AST-HQ-COM-0001",
     assetName: "Notebook Dell Latitude",
+    labelAssetName: templates.compactAssetNameEnabled ? "Dell Latitude" : "Notebook Dell Latitude",
     serialNumber: "SN123456789",
     category: "Notebook",
     company: "Demo Co.",
