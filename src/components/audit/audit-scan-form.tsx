@@ -107,6 +107,20 @@ type OutOfScopeAsset = {
     custodian: string | null
   }
 }
+type AuditScanLookupResponse =
+  | {
+      status: "in_round"
+      asset: OutOfScopeAsset
+      item?: { assetId: string }
+    }
+  | {
+      status: "out_of_scope"
+      asset: OutOfScopeAsset
+    }
+  | {
+      status: "unknown_asset"
+      candidates?: string[]
+    }
 
 export function AuditScanForm({
   locale,
@@ -544,17 +558,36 @@ export function AuditScanForm({
     const normalizedValues = extractAssetLookupCandidatesFromScanValue(rawValue)
     const matchedItem = normalizedValues.map((value) => assetLookup.get(value)).find(Boolean)
     if (!matchedItem) {
-      const foundAsset = await findOutOfScopeAsset(rawValue)
-      if (foundAsset) {
-        setOutOfScopeAsset(foundAsset)
+      const lookup = await lookupScannedAsset(rawValue, source)
+      if (lookup?.status === "in_round" && lookup.item?.assetId) {
+        const lookedUpItem = items.find((item) => item.assetId === lookup.item?.assetId)
+        if (lookedUpItem) {
+          setValues((current) => ({ ...current, assetId: lookedUpItem.assetId }))
+          setOutOfScopeAsset(null)
+          setApplyCorrections(false)
+          setScanText(getReadableAuditScanValue(lookedUpItem))
+          setScanSource(source)
+          setAssetPickerExpanded(false)
+          showScanFeedback({
+            status: "found",
+            title: t("feedbackFoundTitle"),
+            description: lookedUpItem.label,
+          }, source)
+          toast.success(t("assetSelected"))
+          if (source === "qr" && !continuousScan) void stopScanner()
+          return true
+        }
+      }
+      if (lookup?.status === "out_of_scope") {
+        setOutOfScopeAsset(lookup.asset)
         setValues((current) => ({ ...current, assetId: "" }))
-        setScanText(foundAsset.assetTag || foundAsset.title)
+        setScanText(lookup.asset.assetTag || lookup.asset.title)
         setScanSource(source)
         setAssetPickerExpanded(false)
         showScanFeedback({
           status: "out_of_scope",
           title: t("feedbackOutOfScopeTitle"),
-          description: `${foundAsset.title} - ${foundAsset.subtitle}`,
+          description: `${lookup.asset.title} - ${lookup.asset.subtitle}`,
         }, source)
         toast.warning(t("outOfScopeFound"))
         if (!continuousScan) void stopScanner()
@@ -586,19 +619,14 @@ export function AuditScanForm({
     return true
   }
 
-  async function findOutOfScopeAsset(rawValue: string) {
-    const candidates = extractAssetLookupCandidatesFromScanValue(rawValue)
-    for (const candidate of candidates) {
-      if (candidate.length < 2) continue
-      const response = await fetch(`/api/search?q=${encodeURIComponent(candidate)}`)
-      if (!response.ok) continue
-      const payload = await response.json().catch(() => null)
-      const results = Array.isArray(payload?.results) ? payload.results : []
-      const exactMatch = results.find((result: OutOfScopeAsset) => result.id.toLowerCase() === candidate || result.assetTag.toLowerCase() === candidate)
-      if (exactMatch) return exactMatch as OutOfScopeAsset
-      if (results[0]) return results[0] as OutOfScopeAsset
-    }
-    return null
+  async function lookupScannedAsset(rawValue: string, source: "manual" | "qr") {
+    const response = await fetch(`/api/audit-rounds/${roundId}/scan-lookup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rawValue, scanSource: source }),
+    })
+    if (!response.ok) return null
+    return (await response.json().catch(() => null)) as AuditScanLookupResponse | null
   }
 
   async function recordOutOfScopeAsset() {

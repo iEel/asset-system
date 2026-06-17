@@ -114,6 +114,11 @@ export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
     checks: [{ module: "audit", action: "edit" }],
   },
   {
+    filePath: "src/app/api/audit-rounds/[id]/scan-lookup/route.ts",
+    label: "Audit scan lookup",
+    checks: [{ module: "audit", action: "edit" }],
+  },
+  {
     filePath: "src/app/api/audit-findings/[id]/review/route.ts",
     label: "Audit finding review",
     checks: [{ module: "audit", action: "approve" }],

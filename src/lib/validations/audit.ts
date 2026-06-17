@@ -51,6 +51,11 @@ export const auditScanSchema = z.object({
   remark: optionalText,
 })
 
+export const auditScanLookupSchema = z.object({
+  rawValue: z.string().trim().min(1),
+  scanSource: z.enum(["manual", "qr"]).default("manual"),
+})
+
 export const auditFindingReviewSchema = z.object({
   action: z.enum(["approve", "reject"]),
   reviewRemark: optionalText,
@@ -79,6 +84,7 @@ export const auditMarkNotFoundSchema = z.object({
 
 export type AuditRoundInput = z.infer<typeof auditRoundSchema>
 export type AuditScanInput = z.infer<typeof auditScanSchema>
+export type AuditScanLookupInput = z.infer<typeof auditScanLookupSchema>
 export type AuditFindingReviewInput = z.infer<typeof auditFindingReviewSchema>
 export type AuditFindingActionPlanInput = z.infer<typeof auditFindingActionPlanSchema>
 export type AuditFindingCloseInput = z.infer<typeof auditFindingCloseSchema>

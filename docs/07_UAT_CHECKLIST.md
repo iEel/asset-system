@@ -70,6 +70,8 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] In fast walking mode, choose `บันทึกพบตรง` and confirm the result saves without requiring a photo.
 - [ ] Choose `บันทึกข้อมูลไม่ตรง / Finding`, change at least one actual field, and confirm the page requires at least one evidence photo before saving.
 - [ ] Scan an asset that exists in the system but is outside the round and confirm it is shown as Out-of-scope, not as Not Found.
+- [ ] Scan a printed Asset Label QR whose value is `/q/a/{assetId}` for an active asset outside the round and confirm the scan lookup resolves the asset by ID, shows the out-of-scope action card, and does not show `ไม่พบทรัพย์สินในระบบ`.
+- [ ] Confirm the out-of-scope lookup itself does not create audit history/finding rows until the user confirms the out-of-scope save action.
 - [ ] Scan or enter an unknown QR/asset code and confirm it is shown as an unknown asset/not found in system, not as a not-found audit item.
 - [ ] Record not-found result from the pending list or zone queue for an expected item that cannot be physically located.
 - [ ] If an item previously marked not found is later scanned, confirm the found-later recovery flow resolves it through the existing audit scan behavior.
