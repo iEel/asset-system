@@ -14,7 +14,20 @@ type NativeCodeTorchConstraintSet = MediaTrackConstraintSet & {
 type NativeCodeTorchCapabilities = MediaTrackCapabilities & {
   torch?: boolean
 }
+type NativeCodeZoomRange = {
+  min?: number
+  max?: number
+  step?: number
+}
+type NativeCodeZoomCapabilities = MediaTrackCapabilities & {
+  zoom?: NativeCodeZoomRange
+}
+type NativeCodeZoomSettings = MediaTrackSettings & {
+  zoom?: number
+}
 
+const ASSET_QR_CAMERA_WIDTH = 4096
+const ASSET_QR_CAMERA_HEIGHT = 3072
 const SERIAL_CODE_CANVAS_WIDTH = 1600
 const SERIAL_CODE_CANVAS_HEIGHT = 480
 const SERIAL_CODE_SCAN_REGIONS = [
@@ -42,10 +55,17 @@ type NativeCodeTorchController = {
   isEnabled: () => boolean
   setEnabled: (enabled: boolean) => Promise<boolean>
 }
+type NativeCodeZoomController = {
+  isAvailable: () => boolean
+  getZoom: () => number
+  getSupportedLevels: () => number[]
+  setZoom: (zoom: number) => Promise<boolean>
+}
 
 export type NativeAssetQrScannerRuntime = {
   stop: () => void
   torch?: NativeCodeTorchController
+  zoom?: NativeCodeZoomController
 }
 
 export type NativeSerialCodeScannerRuntime = NativeAssetQrScannerRuntime
@@ -154,8 +174,8 @@ function buildNativeCodeVideoConstraints(
 
   return {
     ...baseConstraints,
-    width: { ideal: 1280 },
-    height: { ideal: 960 },
+    width: { ideal: ASSET_QR_CAMERA_WIDTH },
+    height: { ideal: ASSET_QR_CAMERA_HEIGHT },
     frameRate: { ideal: 30 },
     aspectRatio: { ideal: 1.333 },
     advanced,
@@ -177,6 +197,7 @@ async function startNativeCodeScanner({
     audio: false,
   })
   const torchController = createNativeCodeTorchController(stream)
+  let zoomController: NativeCodeZoomController | undefined
   const video = document.createElement("video")
   let timeoutId: number | undefined
   let stopped = false
@@ -208,6 +229,7 @@ async function startNativeCodeScanner({
     await playPromise
     if (scanMode === "asset-qr") {
       await tuneAssetQrMediaStream(stream)
+      zoomController = createNativeCodeZoomController(stream)
     } else {
       await tuneSerialCodeMediaStream(stream)
     }
@@ -245,7 +267,7 @@ async function startNativeCodeScanner({
     }
 
     timeoutId = window.setTimeout(() => void scanNativeFrame(), 100)
-    return { stop, torch: torchController }
+    return { stop, torch: torchController, zoom: zoomController }
   } catch (error) {
     stop()
     throw error
@@ -270,6 +292,35 @@ function createNativeCodeTorchController(stream: MediaStream): NativeCodeTorchCo
         return true
       } catch {
         torchEnabled = false
+        return false
+      }
+    },
+  }
+}
+
+function createNativeCodeZoomController(stream: MediaStream): NativeCodeZoomController | undefined {
+  const track = stream.getVideoTracks()[0]
+  if (!track || typeof track.getCapabilities !== "function" || typeof track.applyConstraints !== "function") return undefined
+
+  const capabilities = track.getCapabilities() as NativeCodeZoomCapabilities
+  const range = getNativeCodeZoomRange(capabilities.zoom)
+  if (!range) return undefined
+
+  const supportedLevels = [2, 3].filter((level) => level >= range.min && level <= range.max)
+  if (supportedLevels.length === 0) return undefined
+
+  let currentZoom = clampNativeCodeZoom(getNativeCodeZoomSetting(track) ?? range.min, range)
+  return {
+    isAvailable: () => true,
+    getZoom: () => currentZoom,
+    getSupportedLevels: () => [2, 3].filter((level) => level >= range.min && level <= range.max),
+    async setZoom(zoom: number) {
+      const nextZoom = clampNativeCodeZoom(zoom, range)
+      try {
+        await track.applyConstraints({ advanced: [{ zoom: nextZoom } as NativeCodeCameraTuningConstraintSet] } as MediaTrackConstraints)
+        currentZoom = nextZoom
+        return true
+      } catch {
         return false
       }
     },
@@ -527,6 +578,8 @@ async function tuneNativeCodeMediaStream(stream: MediaStream, scanMode: NativeCo
     if (supportsStringCapability(capabilities.whiteBalanceMode, "continuous")) advanced.push({ whiteBalanceMode: "continuous" })
     if (scanMode === "serial-code") return applyNativeCodeTrackConstraints(track, advanced)
 
+    await applyNativeCodeTrackConstraints(track, [], buildMaxNativeCodeResolutionConstraints(capabilities)).catch(() => undefined)
+
     const zoom = capabilities.zoom
     if (typeof zoom === "object" && zoom !== null && "min" in zoom && "max" in zoom) {
       const min = typeof zoom.min === "number" ? zoom.min : 1
@@ -539,10 +592,59 @@ async function tuneNativeCodeMediaStream(stream: MediaStream, scanMode: NativeCo
   }
 }
 
-async function applyNativeCodeTrackConstraints(track: MediaStreamTrack, advanced: NativeCodeCameraTuningConstraintSet[]) {
+async function applyNativeCodeTrackConstraints(
+  track: MediaStreamTrack,
+  advanced: NativeCodeCameraTuningConstraintSet[],
+  baseConstraints?: MediaTrackConstraints
+) {
+  const constraints: MediaTrackConstraints = { ...(baseConstraints ?? {}) }
   if (advanced.length > 0) {
-    await track.applyConstraints({ advanced } as MediaTrackConstraints)
+    constraints.advanced = advanced
   }
+  if (Object.keys(constraints).length > 0) {
+    await track.applyConstraints(constraints)
+  }
+}
+
+function buildMaxNativeCodeResolutionConstraints(capabilities: MediaTrackCapabilities & Record<string, unknown>) {
+  const constraints: MediaTrackConstraints = {}
+  const width = getNativeCodeCapabilityMax(capabilities.width)
+  const height = getNativeCodeCapabilityMax(capabilities.height)
+
+  if (width) constraints.width = { ideal: width }
+  if (height) constraints.height = { ideal: height }
+
+  return Object.keys(constraints).length > 0 ? constraints : undefined
+}
+
+function getNativeCodeZoomRange(zoom: unknown) {
+  if (typeof zoom !== "object" || zoom === null || !("min" in zoom) || !("max" in zoom)) return undefined
+
+  const min = typeof zoom.min === "number" ? zoom.min : 1
+  const max = typeof zoom.max === "number" ? zoom.max : min
+  const step = "step" in zoom && typeof zoom.step === "number" && zoom.step > 0 ? zoom.step : undefined
+  if (max <= min) return undefined
+
+  return { min, max, step }
+}
+
+function getNativeCodeZoomSetting(track: MediaStreamTrack) {
+  if (typeof track.getSettings !== "function") return undefined
+  const settings = track.getSettings() as NativeCodeZoomSettings
+  return typeof settings.zoom === "number" ? settings.zoom : undefined
+}
+
+function clampNativeCodeZoom(zoom: number, range: Required<Pick<NativeCodeZoomRange, "min" | "max">> & { step?: number }) {
+  const clamped = Math.min(range.max, Math.max(range.min, zoom))
+  if (!range.step) return clamped
+
+  const steps = Math.round((clamped - range.min) / range.step)
+  return Math.min(range.max, Math.max(range.min, range.min + steps * range.step))
+}
+
+function getNativeCodeCapabilityMax(value: unknown) {
+  if (typeof value === "object" && value !== null && "max" in value && typeof value.max === "number") return value.max
+  return undefined
 }
 
 function supportsStringCapability(value: unknown, expected: string) {

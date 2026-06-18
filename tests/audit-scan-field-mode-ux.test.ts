@@ -357,3 +357,26 @@ test("audit scan flashlight is a progressive camera enhancement", () => {
     assert.equal(typeof messages.auditScan.torchUnsupported, "string")
   }
 })
+
+test("audit scan exposes 2x and 3x zoom controls in the existing camera panel", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(form, /zoomAvailable/)
+  assert.match(form, /zoomLevel/)
+  assert.match(form, /function resetZoomState/)
+  assert.match(form, /function syncZoomState\(scanner: NativeAssetQrScannerRuntime \| null\)/)
+  assert.match(form, /async function setScannerZoom\(level: number\)/)
+  assert.match(form, /qrReaderRef\.current\?\.zoom/)
+  assert.match(form, /\[2, 3\]\.map\(\(level\) =>/)
+  assert.match(form, /aria-label=\{t\("zoomCamera", \{ level \}\)\}/)
+  assert.match(form, /t\("zoomUnsupported"\)/)
+  assert.doesNotMatch(form, /function AuditScanOptionStrip/)
+  assert.doesNotMatch(form, /role="switch"/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditScan.zoomCamera, "string")
+    assert.equal(typeof messages.auditScan.zoomUnsupported, "string")
+  }
+})

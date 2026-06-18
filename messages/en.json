@@ -1864,6 +1864,8 @@
     "torchOn": "Turn flashlight on",
     "torchOff": "Turn flashlight off",
     "torchUnsupported": "This device does not support browser flashlight control",
+    "zoomCamera": "Zoom {level}x",
+    "zoomUnsupported": "This device does not support browser camera zoom control",
     "assetSelected": "Asset selected",
     "assetNotInRound": "This asset is not in the audit round",
     "unknownAsset": "This asset was not found in the system",

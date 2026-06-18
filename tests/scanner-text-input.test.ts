@@ -18,21 +18,34 @@ test("asset QR scanner decodes the full viewfinder without CSS distortion", () =
   assert.doesNotMatch(source, /qrbox: getResponsiveSquareQrBox/)
   assert.match(source, /scanMode === "asset-qr"\s+\?\s+"w-full \[&_video\]:!h-auto \[&_video\]:!w-full"/)
   assert.doesNotMatch(source, /\[&_video\]:!object-(?:fill|cover)/)
-  assert.match(helper, /width: \{ ideal: 1280 \}/)
-  assert.match(helper, /height: \{ ideal: 960 \}/)
+  assert.match(helper, /ASSET_QR_CAMERA_WIDTH = 4096/)
+  assert.match(helper, /ASSET_QR_CAMERA_HEIGHT = 3072/)
+  assert.match(helper, /width: \{ ideal: ASSET_QR_CAMERA_WIDTH \}/)
+  assert.match(helper, /height: \{ ideal: ASSET_QR_CAMERA_HEIGHT \}/)
   assert.match(helper, /aspectRatio: \{ ideal: 1\.333 \}/)
 })
 
-test("asset QR scanner requests focus-friendly camera constraints and tuning", () => {
+test("asset QR scanner requests high-resolution focus-friendly camera constraints and tuning", () => {
   const helper = readFileSync("src/lib/asset-qr-scanner.ts", "utf8")
 
   assert.match(helper, /function buildAssetQrVideoConstraints/)
-  assert.match(helper, /width: \{ ideal: 1280 \}/)
-  assert.match(helper, /height: \{ ideal: 960 \}/)
+  assert.match(helper, /width: \{ ideal: ASSET_QR_CAMERA_WIDTH \}/)
+  assert.match(helper, /height: \{ ideal: ASSET_QR_CAMERA_HEIGHT \}/)
   assert.match(helper, /focusMode: "continuous"/)
   assert.match(helper, /exposureMode: "continuous"/)
   assert.match(helper, /await tuneAssetQrMediaStream\(stream\)/)
   assert.match(helper, /zoom: Math\.min/)
+})
+
+test("asset QR scanner exposes 2x and 3x zoom controls when the camera supports zoom", () => {
+  const helper = readFileSync("src/lib/asset-qr-scanner.ts", "utf8")
+
+  assert.match(helper, /type NativeCodeZoomController/)
+  assert.match(helper, /zoom\?: NativeCodeZoomController/)
+  assert.match(helper, /function createNativeCodeZoomController/)
+  assert.match(helper, /getSupportedLevels: \(\) => \[2, 3\]\.filter/)
+  assert.match(helper, /async setZoom\(zoom: number\)/)
+  assert.match(helper, /track\.applyConstraints\(\{ advanced: \[\{ zoom: nextZoom \}/)
 })
 
 test("asset QR scanner avoids mobile native detector and mirror flip retries", () => {

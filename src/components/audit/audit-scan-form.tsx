@@ -172,6 +172,9 @@ export function AuditScanForm({
   const [torchAvailable, setTorchAvailable] = useState(false)
   const [torchEnabled, setTorchEnabled] = useState(false)
   const [torchUpdating, setTorchUpdating] = useState(false)
+  const [zoomAvailable, setZoomAvailable] = useState(false)
+  const [zoomLevel, setZoomLevel] = useState(0)
+  const [zoomUpdating, setZoomUpdating] = useState(false)
   const qrReaderRef = useRef<NativeAssetQrScannerRuntime | null>(null)
   const offlineStorageRef = useRef<AuditOfflineQueueStorage | null>(null)
   const lastDecodedRef = useRef<{ value: string; at: number } | null>(null)
@@ -460,11 +463,25 @@ export function AuditScanForm({
     setTorchUpdating(false)
   }
 
+  function resetZoomState() {
+    setZoomAvailable(false)
+    setZoomLevel(0)
+    setZoomUpdating(false)
+  }
+
   function syncTorchState(scanner: NativeAssetQrScannerRuntime | null) {
     const available = Boolean(scanner?.torch?.isAvailable())
     setTorchAvailable(available)
     setTorchEnabled(available ? Boolean(scanner?.torch?.isEnabled()) : false)
     setTorchUpdating(false)
+  }
+
+  function syncZoomState(scanner: NativeAssetQrScannerRuntime | null) {
+    const zoom = scanner?.zoom
+    const available = Boolean(zoom?.isAvailable() && zoom.getSupportedLevels().length > 0)
+    setZoomAvailable(available)
+    setZoomLevel(available && zoom ? zoom.getZoom() : 0)
+    setZoomUpdating(false)
   }
 
   async function toggleTorch() {
@@ -488,6 +505,29 @@ export function AuditScanForm({
       setTorchEnabled(nextValue)
     } finally {
       setTorchUpdating(false)
+    }
+  }
+
+  async function setScannerZoom(level: number) {
+    const zoom = qrReaderRef.current?.zoom
+    if (!zoom?.isAvailable()) {
+      resetZoomState()
+      toast.warning(t("zoomUnsupported"))
+      return
+    }
+
+    setZoomUpdating(true)
+    try {
+      const applied = await zoom.setZoom(level)
+      if (!applied) {
+        resetZoomState()
+        toast.warning(t("zoomUnsupported"))
+        return
+      }
+      setZoomAvailable(true)
+      setZoomLevel(zoom.getZoom())
+    } finally {
+      setZoomUpdating(false)
     }
   }
 
@@ -549,6 +589,7 @@ export function AuditScanForm({
     setScannerLoading(true)
     setCameraErrorText("")
     resetTorchState()
+    resetZoomState()
     try {
       const { Html5Qrcode } = await import("html5-qrcode")
       const availableCameras = (await Html5Qrcode.getCameras()) as CameraDevice[]
@@ -578,6 +619,7 @@ export function AuditScanForm({
         })
         qrReaderRef.current = scanner
         syncTorchState(scanner)
+        syncZoomState(scanner)
       }
 
       try {
@@ -594,6 +636,7 @@ export function AuditScanForm({
       toast.error(message)
       qrReaderRef.current = null
       resetTorchState()
+      resetZoomState()
     } finally {
       setScannerLoading(false)
     }
@@ -610,6 +653,7 @@ export function AuditScanForm({
       qrReaderRef.current = null
       setScannerRunning(false)
       resetTorchState()
+      resetZoomState()
     }
   }
 
@@ -1069,6 +1113,28 @@ export function AuditScanForm({
                 >
                   <div id="audit-qr-reader" className="w-full [&_video]:!h-auto [&_video]:!w-full" />
                   {scannerRunning ? <AuditQrScannerOverlay /> : null}
+                  {scannerRunning && zoomAvailable ? (
+                    <div className="absolute left-3 top-3 z-20 inline-flex min-h-11 items-center gap-1 rounded-md border border-white/50 bg-slate-950/70 p-1 shadow-sm">
+                      {[2, 3].map((level) => (
+                        <button
+                          key={level}
+                          type="button"
+                          onClick={() => void setScannerZoom(level)}
+                          disabled={zoomUpdating}
+                          aria-pressed={Math.abs(zoomLevel - level) < 0.05}
+                          aria-label={t("zoomCamera", { level })}
+                          title={t("zoomCamera", { level })}
+                          className={`inline-flex min-h-9 min-w-11 items-center justify-center rounded px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60 ${
+                            Math.abs(zoomLevel - level) < 0.05
+                              ? "bg-white text-slate-950"
+                              : "text-white hover:bg-white/15"
+                          }`}
+                        >
+                          {level}x
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   {scannerRunning && torchAvailable ? (
                     <button
                       type="button"

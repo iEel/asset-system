@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-06-18
+
+| Area | Update |
+|---|---|
+| Audit Scan camera zoom | Asset QR scanning now requests high-resolution 4096x3072/30fps ideal camera constraints, best-effort applies the camera track's maximum reported resolution, and exposes 2x/3x zoom buttons in the existing Audit Scan preview when the browser reports zoom support. Unsupported devices hide the zoom controls, and audit workflow, scan history, findings, offline queue, permissions, and SOD behavior remain unchanged. |
+
+---
+
 ## 2026-06-17
 
 | Area | Update |
