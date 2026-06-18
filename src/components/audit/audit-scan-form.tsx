@@ -173,6 +173,7 @@ export function AuditScanForm({
   const [torchEnabled, setTorchEnabled] = useState(false)
   const [torchUpdating, setTorchUpdating] = useState(false)
   const [zoomAvailable, setZoomAvailable] = useState(false)
+  const [zoomLevels, setZoomLevels] = useState<number[]>([])
   const [zoomLevel, setZoomLevel] = useState(0)
   const [zoomUpdating, setZoomUpdating] = useState(false)
   const qrReaderRef = useRef<NativeAssetQrScannerRuntime | null>(null)
@@ -465,6 +466,7 @@ export function AuditScanForm({
 
   function resetZoomState() {
     setZoomAvailable(false)
+    setZoomLevels([])
     setZoomLevel(0)
     setZoomUpdating(false)
   }
@@ -478,8 +480,10 @@ export function AuditScanForm({
 
   function syncZoomState(scanner: NativeAssetQrScannerRuntime | null) {
     const zoom = scanner?.zoom
-    const available = Boolean(zoom?.isAvailable() && zoom.getSupportedLevels().length > 0)
+    const levels = zoom?.getSupportedLevels() ?? []
+    const available = Boolean(zoom?.isAvailable() && levels.length > 0)
     setZoomAvailable(available)
+    setZoomLevels(available && zoom ? zoom.getSupportedLevels() : [])
     setZoomLevel(available && zoom ? zoom.getZoom() : 0)
     setZoomUpdating(false)
   }
@@ -525,6 +529,7 @@ export function AuditScanForm({
         return
       }
       setZoomAvailable(true)
+      setZoomLevels(zoom.getSupportedLevels())
       setZoomLevel(zoom.getZoom())
     } finally {
       setZoomUpdating(false)
@@ -1115,7 +1120,7 @@ export function AuditScanForm({
                   {scannerRunning ? <AuditQrScannerOverlay /> : null}
                   {scannerRunning && zoomAvailable ? (
                     <div className="absolute left-3 top-3 z-20 inline-flex min-h-11 items-center gap-1 rounded-md border border-white/50 bg-slate-950/70 p-1 shadow-sm">
-                      {[2, 3].map((level) => (
+                      {zoomLevels.map((level) => (
                         <button
                           key={level}
                           type="button"

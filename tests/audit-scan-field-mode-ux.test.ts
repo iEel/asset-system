@@ -358,18 +358,22 @@ test("audit scan flashlight is a progressive camera enhancement", () => {
   }
 })
 
-test("audit scan exposes 2x and 3x zoom controls in the existing camera panel", () => {
+test("audit scan exposes 1x, 2x and 3x zoom controls in the existing camera panel", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
   assert.match(form, /zoomAvailable/)
+  assert.match(form, /zoomLevels/)
   assert.match(form, /zoomLevel/)
   assert.match(form, /function resetZoomState/)
+  assert.match(form, /setZoomLevels\(\[\]\)/)
   assert.match(form, /function syncZoomState\(scanner: NativeAssetQrScannerRuntime \| null\)/)
+  assert.match(form, /setZoomLevels\(available && zoom \? zoom\.getSupportedLevels\(\) : \[\]\)/)
   assert.match(form, /async function setScannerZoom\(level: number\)/)
   assert.match(form, /qrReaderRef\.current\?\.zoom/)
-  assert.match(form, /\[2, 3\]\.map\(\(level\) =>/)
+  assert.match(form, /zoomLevels\.map\(\(level\) =>/)
+  assert.doesNotMatch(form, /\[2, 3\]\.map\(\(level\) =>/)
   assert.match(form, /aria-label=\{t\("zoomCamera", \{ level \}\)\}/)
   assert.match(form, /t\("zoomUnsupported"\)/)
   assert.doesNotMatch(form, /function AuditScanOptionStrip/)

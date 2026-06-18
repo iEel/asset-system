@@ -37,13 +37,15 @@ test("asset QR scanner requests high-resolution focus-friendly camera constraint
   assert.match(helper, /zoom: Math\.min/)
 })
 
-test("asset QR scanner exposes 2x and 3x zoom controls when the camera supports zoom", () => {
+test("asset QR scanner exposes base, 2x and 3x zoom controls when the camera supports zoom", () => {
   const helper = readFileSync("src/lib/asset-qr-scanner.ts", "utf8")
 
   assert.match(helper, /type NativeCodeZoomController/)
   assert.match(helper, /zoom\?: NativeCodeZoomController/)
   assert.match(helper, /function createNativeCodeZoomController/)
-  assert.match(helper, /getSupportedLevels: \(\) => \[2, 3\]\.filter/)
+  assert.match(helper, /function buildNativeCodeZoomLevels/)
+  assert.match(helper, /const supportedLevels = buildNativeCodeZoomLevels\(range\)/)
+  assert.match(helper, /getSupportedLevels: \(\) => \[\.\.\.supportedLevels\]/)
   assert.match(helper, /async setZoom\(zoom: number\)/)
   assert.match(helper, /track\.applyConstraints\(\{ advanced: \[\{ zoom: nextZoom \}/)
 })

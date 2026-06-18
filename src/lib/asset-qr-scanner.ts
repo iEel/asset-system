@@ -306,14 +306,14 @@ function createNativeCodeZoomController(stream: MediaStream): NativeCodeZoomCont
   const range = getNativeCodeZoomRange(capabilities.zoom)
   if (!range) return undefined
 
-  const supportedLevels = [2, 3].filter((level) => level >= range.min && level <= range.max)
-  if (supportedLevels.length === 0) return undefined
+  const supportedLevels = buildNativeCodeZoomLevels(range)
+  if (supportedLevels.length <= 1) return undefined
 
   let currentZoom = clampNativeCodeZoom(getNativeCodeZoomSetting(track) ?? range.min, range)
   return {
     isAvailable: () => true,
     getZoom: () => currentZoom,
-    getSupportedLevels: () => [2, 3].filter((level) => level >= range.min && level <= range.max),
+    getSupportedLevels: () => [...supportedLevels],
     async setZoom(zoom: number) {
       const nextZoom = clampNativeCodeZoom(zoom, range)
       try {
@@ -325,6 +325,15 @@ function createNativeCodeZoomController(stream: MediaStream): NativeCodeZoomCont
       }
     },
   }
+}
+
+function buildNativeCodeZoomLevels(range: Required<Pick<NativeCodeZoomRange, "min" | "max">> & { step?: number }) {
+  const requestedLevels = [range.min, 2, 3]
+  const levels = requestedLevels
+    .filter((level) => level >= range.min && level <= range.max)
+    .map((level) => clampNativeCodeZoom(level, range))
+
+  return Array.from(new Set(levels)).sort((a, b) => a - b)
 }
 
 async function waitForNativeCodeVideo(video: HTMLVideoElement) {
