@@ -8,6 +8,7 @@
 
 | Area | Update |
 |---|---|
+| Asset Scan/Search camera utilities | `/th/asset-management/scan` now shows supported flashlight and 1x/2x/3x zoom controls inside the existing Asset QR camera preview, plus clearer opening-camera feedback. Scanned QR resolver matches still auto-open the asset detail page, manual search behavior is unchanged, and unsupported browsers/devices hide unavailable camera controls. |
 | Audit Scan camera zoom | Asset QR scanning now requests high-resolution 4096x3072/30fps ideal camera constraints, best-effort applies the camera track's maximum reported resolution, and exposes 1x/2x/3x zoom buttons in the existing Audit Scan preview when the browser reports zoom support so users can return to unzoomed without restarting the camera. Unsupported devices hide the zoom controls, and audit workflow, scan history, findings, offline queue, permissions, and SOD behavior remain unchanged. |
 
 ---

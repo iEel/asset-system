@@ -131,7 +131,7 @@ Important data semantics:
 | Bulk label print | Label management page and bulk print route with queue filters for print status, company, branch, category, location, created date, and selected-label sort order |
 | Label queue UX | Queue scope summary and "add by current filter" action support all/company/branch/location batches, branch and location filter options include hierarchy context, ad hoc search guidance is compact under the search input, and asset display names de-duplicate brand/model text already present in the asset name |
 | Print tracking | Label print batch and print history models exist in schema; current behavior records the print batch when the print page executes |
-| Asset scan/search | QR-first scanner page for printed asset labels |
+| Asset scan/search | QR-first scanner page for printed asset labels with auto-open detail routing, flashlight support where available, and 1x/2x/3x camera zoom controls for small QR labels |
 | QR resolver | `/q/a/{assetId}` resolves printed QR labels to the correct localized asset detail |
 | Serial/barcode scanning | Reusable scanner input supports manufacturer serial/barcode capture paths documented in handoff/workflows |
 | Mobile camera guidance | Rear-camera preference, undistorted preview, scan guide overlays, native-resolution decode paths |

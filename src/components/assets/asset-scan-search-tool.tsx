@@ -42,6 +42,12 @@ type AssetScanSearchToolProps = {
       cameraRear: string
       scanning: string
       scanned: string
+      cameraOpening: string
+      torchOn: string
+      torchOff: string
+      torchUnsupported: string
+      zoomCamera: string
+      zoomUnsupported: string
     }
   }
 }

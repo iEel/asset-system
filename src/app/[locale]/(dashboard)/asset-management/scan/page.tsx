@@ -40,6 +40,12 @@ export default async function AssetScanPage({ params }: AssetScanPageProps) {
           cameraRear: t("cameraRear"),
           scanning: t("scanning"),
           scanned: t("scanned"),
+          cameraOpening: t("cameraOpening"),
+          torchOn: t("torchOn"),
+          torchOff: t("torchOff"),
+          torchUnsupported: t("torchUnsupported"),
+          zoomCamera: t("zoomCamera"),
+          zoomUnsupported: t("zoomUnsupported"),
         },
       }}
     />

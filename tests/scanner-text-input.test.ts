@@ -50,6 +50,28 @@ test("asset QR scanner exposes base, 2x and 3x zoom controls when the camera sup
   assert.match(helper, /track\.applyConstraints\(\{ advanced: \[\{ zoom: nextZoom \}/)
 })
 
+test("asset QR scanner input exposes progressive flashlight and zoom controls", () => {
+  const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8")
+
+  assert.match(source, /Flashlight/)
+  assert.match(source, /FlashlightOff/)
+  assert.match(source, /torchAvailable/)
+  assert.match(source, /torchEnabled/)
+  assert.match(source, /zoomAvailable/)
+  assert.match(source, /zoomLevels/)
+  assert.match(source, /function resetCameraUtilityState/)
+  assert.match(source, /function syncCameraUtilityState\(runtime: NativeAssetQrScannerRuntime \| NativeSerialCodeScannerRuntime \| null\)/)
+  assert.match(source, /async function toggleTorch/)
+  assert.match(source, /async function setScannerZoom\(level: number\)/)
+  assert.match(source, /scanMode === "asset-qr" && scannerRunning && zoomAvailable/)
+  assert.match(source, /scanMode === "asset-qr" && scannerRunning && torchAvailable/)
+  assert.match(source, /zoomLevels\.map\(\(level\) =>/)
+  assert.match(source, /formatScannerZoomLabel\(labels\.zoomCamera, level\)/)
+  assert.match(source, /labels\.torchUnsupported/)
+  assert.match(source, /labels\.zoomUnsupported/)
+  assert.match(source, /labels\.cameraOpening/)
+})
+
 test("asset QR scanner avoids mobile native detector and mirror flip retries", () => {
   const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8")
 
