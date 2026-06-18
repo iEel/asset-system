@@ -16,6 +16,13 @@ type Mismatch = {
   actualValue: string | null
 }
 
+type ActualValues = {
+  departmentId: string | null
+  locationId: string
+  custodianId: string | null
+  conditionId: string | null
+}
+
 const resultByFindingType: Record<string, string> = {
   wrong_location: "wrong_location",
   wrong_custodian: "wrong_custodian",
@@ -79,6 +86,40 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
       })
       if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
 
+      const actual = {
+        departmentId: optionalActualValue(input.actualDepartmentId, asset.departmentId),
+        locationId: input.actualLocationId ?? asset.currentLocationId,
+        custodianId: optionalActualValue(input.actualCustodianId, asset.custodianId),
+        conditionId: optionalActualValue(input.actualConditionId, asset.conditionId),
+      }
+      const fieldFindings = buildOutOfScopeFieldFindings(asset, actual)
+      const fieldFindingTypes = fieldFindings.map((finding) => finding.type)
+      const evidenceAttachmentIds = Array.from(new Set(input.evidenceAttachmentIds))
+      if (fieldFindings.length > 0 && evidenceAttachmentIds.length === 0) {
+        return NextResponse.json({ error: "Evidence attachment is required for changed out-of-scope actual fields" }, { status: 400 })
+      }
+      const evidenceAttachments =
+        evidenceAttachmentIds.length > 0
+          ? await prisma.attachment.findMany({
+              where: {
+                id: { in: evidenceAttachmentIds },
+                assetId: asset.id,
+                module: "asset",
+                isActive: true,
+                uploadedBy: user.id,
+              },
+              select: {
+                fileName: true,
+                originalName: true,
+                fileType: true,
+                fileSize: true,
+                filePath: true,
+              },
+            })
+          : []
+      if (evidenceAttachments.length !== evidenceAttachmentIds.length) {
+        return NextResponse.json({ error: "Evidence attachment is invalid for this asset" }, { status: 400 })
+      }
       const scannedAt = new Date()
       const outOfScopeItem = await prisma.$transaction(async (tx) => {
         const createdItem = await tx.auditItem.create({
@@ -91,10 +132,10 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
             expectedLocationId: asset.currentLocationId,
             expectedCustodianId: asset.custodianId,
             expectedConditionId: asset.conditionId,
-            actualDepartmentId: input.actualDepartmentId ?? asset.departmentId,
-            actualLocationId: input.actualLocationId ?? asset.currentLocationId,
-            actualCustodianId: input.actualCustodianId ?? asset.custodianId,
-            actualConditionId: input.actualConditionId ?? asset.conditionId,
+            actualDepartmentId: actual.departmentId,
+            actualLocationId: actual.locationId,
+            actualCustodianId: actual.custodianId,
+            actualConditionId: actual.conditionId,
             auditStatus: "reviewed",
             auditResult: "out_of_scope",
             findingRequired: true,
@@ -114,14 +155,14 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
             assetId: asset.id,
             scannedBy: user.id,
             scannedAt,
-            scanLocationId: input.actualLocationId ?? asset.currentLocationId,
+            scanLocationId: actual.locationId,
             scanSource: input.scanSource,
-            rawPayload: JSON.stringify({ ...input, outOfScope: true }),
+            rawPayload: JSON.stringify({ ...input, actual, outOfScope: true }),
             remark: input.remark,
           },
         })
 
-        await tx.auditFinding.create({
+        const outOfScopeFinding = await tx.auditFinding.create({
           data: {
             auditRoundId: id,
             auditItemId: createdItem.id,
@@ -131,10 +172,10 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
             actualValue: JSON.stringify({
               assetTag: asset.assetTag,
               assetName: asset.name,
-              locationId: input.actualLocationId ?? asset.currentLocationId,
-              custodianId: input.actualCustodianId ?? asset.custodianId,
-              departmentId: input.actualDepartmentId ?? asset.departmentId,
-              conditionId: input.actualConditionId ?? asset.conditionId,
+              locationId: actual.locationId,
+              custodianId: actual.custodianId,
+              departmentId: actual.departmentId,
+              conditionId: actual.conditionId,
             }),
             remark: input.remark,
             reportedBy: user.id,
@@ -142,6 +183,43 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
             actionTaken: "out_of_scope_detected_by_audit_scan",
           },
         })
+
+        const evidenceFindingIds = [outOfScopeFinding.id]
+        for (const fieldFinding of fieldFindings) {
+          const createdFieldFinding = await tx.auditFinding.create({
+            data: {
+              auditRoundId: id,
+              auditItemId: createdItem.id,
+              assetId: asset.id,
+              findingType: fieldFinding.type,
+              expectedValue: fieldFinding.expectedValue,
+              actualValue: fieldFinding.actualValue,
+              reportedBy: user.id,
+              reviewStatus: "pending",
+              remark: input.remark,
+              actionTaken: "out_of_scope_actual_field_reported",
+            },
+          })
+          evidenceFindingIds.push(createdFieldFinding.id)
+        }
+
+        if (evidenceAttachments.length > 0) {
+          await tx.attachment.createMany({
+            data: evidenceFindingIds.flatMap((findingId) =>
+              evidenceAttachments.map((attachment) => ({
+                assetId: asset.id,
+                module: "audit_finding",
+                referenceId: findingId,
+                fileName: attachment.fileName,
+                originalName: attachment.originalName,
+                fileType: attachment.fileType,
+                fileSize: attachment.fileSize,
+                filePath: attachment.filePath,
+                uploadedBy: user.id,
+              }))
+            ),
+          })
+        }
 
         return createdItem
       })
@@ -151,7 +229,7 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
         action: "scan_out_of_scope",
         module: "audit",
         recordId: outOfScopeItem.id,
-        newValue: { auditRoundId: id, assetId: asset.id, auditResult: "out_of_scope" },
+        newValue: { auditRoundId: id, assetId: asset.id, auditResult: "out_of_scope", fieldFindingTypes },
         remark: input.remark ?? undefined,
       })
 
@@ -168,10 +246,10 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
     }
 
     const actual = {
-      departmentId: input.actualDepartmentId ?? item.expectedDepartmentId,
+      departmentId: optionalActualValue(input.actualDepartmentId, item.expectedDepartmentId),
       locationId: input.actualLocationId ?? item.expectedLocationId,
-      custodianId: input.actualCustodianId ?? item.expectedCustodianId,
-      conditionId: input.actualConditionId ?? item.expectedConditionId,
+      custodianId: optionalActualValue(input.actualCustodianId, item.expectedCustodianId),
+      conditionId: optionalActualValue(input.actualConditionId, item.expectedConditionId),
     }
     const mismatches = getMismatches(item, actual, item.asset.ownershipType)
     const auditResult = mismatches.length === 0 ? "found" : mismatches.length === 1 ? resultByFindingType[mismatches[0].type] : "need_review"
@@ -401,6 +479,57 @@ function getMismatches(
   addMismatch(mismatches, "wrong_condition", item.expectedConditionId, actual.conditionId)
 
   return mismatches
+}
+
+function buildOutOfScopeFieldFindings(
+  asset: {
+    departmentId: string | null
+    currentLocationId: string
+    custodianId: string | null
+    conditionId: string | null
+    ownershipType?: string | null
+  },
+  actual: ActualValues
+) {
+  const normalizedOwnershipType = normalizeAssetOwnershipType(asset.ownershipType)
+  const candidates = [
+    {
+      findingType: "wrong_location",
+      expectedValue: asset.currentLocationId,
+      actualValue: actual.locationId,
+      shouldCheck: normalizedOwnershipType !== "software_license",
+    },
+    {
+      findingType: "wrong_custodian",
+      expectedValue: asset.custodianId,
+      actualValue: actual.custodianId,
+      shouldCheck: requiresCustodian(normalizedOwnershipType),
+    },
+    {
+      findingType: "wrong_department",
+      expectedValue: asset.departmentId,
+      actualValue: actual.departmentId,
+      shouldCheck: true,
+    },
+    {
+      findingType: "wrong_condition",
+      expectedValue: asset.conditionId,
+      actualValue: actual.conditionId,
+      shouldCheck: true,
+    },
+  ]
+
+  return candidates
+    .filter((candidate) => candidate.shouldCheck && (candidate.expectedValue ?? null) !== (candidate.actualValue ?? null))
+    .map((candidate) => ({
+      type: candidate.findingType,
+      expectedValue: candidate.expectedValue,
+      actualValue: candidate.actualValue,
+    }))
+}
+
+function optionalActualValue(value: string | null | undefined, fallback: string | null) {
+  return value === undefined ? fallback : value
 }
 
 function addMismatch(mismatches: Mismatch[], type: string, expectedValue: string | null, actualValue: string | null) {

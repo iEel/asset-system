@@ -1902,7 +1902,7 @@
     "openDetailedScan": "Check Details",
     "outOfScopeFound": "Asset found outside this audit scope",
     "outOfScopeTitle": "Out-of-scope Asset",
-    "outOfScopeHelp": "Record this item to create a finding for review so the owner can decide whether to add it, transfer it, or update master data.",
+    "outOfScopeHelp": "Record the actual values found on site to create findings for review. Master asset data is not changed until an authorized reviewer approves the mismatched fields.",
     "recordOutOfScope": "Record Out of Scope",
     "outOfScopeSaved": "Out-of-scope asset recorded",
     "progress": "Audit progress",

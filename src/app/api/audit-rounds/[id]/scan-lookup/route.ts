@@ -15,6 +15,11 @@ type AuditScanLookupAsset = {
   name: string
   serialNumber: string | null
   fixedAssetCode: string | null
+  currentLocationId: string
+  custodianId: string | null
+  departmentId: string | null
+  conditionId: string | null
+  ownershipType: string | null
   category: { code: string; name: string }
   custodian: { code: string; fullNameTh: string } | null
   currentLocation: { code: string; name: string }
@@ -56,6 +61,11 @@ export async function POST(request: NextRequest, context: AuditScanLookupContext
         name: true,
         serialNumber: true,
         fixedAssetCode: true,
+        currentLocationId: true,
+        custodianId: true,
+        departmentId: true,
+        conditionId: true,
+        ownershipType: true,
         category: { select: { code: true, name: true } },
         custodian: { select: { code: true, fullNameTh: true } },
         currentLocation: { select: { code: true, name: true } },
@@ -105,6 +115,11 @@ function buildAuditScanLookupAsset(asset: AuditScanLookupAsset) {
     subtitle: asset.name,
     serialNumber: asset.serialNumber,
     fixedAssetCode: asset.fixedAssetCode,
+    currentLocationId: asset.currentLocationId,
+    custodianId: asset.custodianId,
+    departmentId: asset.departmentId,
+    conditionId: asset.conditionId,
+    ownershipType: asset.ownershipType,
     status: {
       label: asset.status.nameTh,
       colorCode: asset.status.colorCode,

@@ -48,6 +48,7 @@ export const auditScanSchema = z.object({
   actualConditionId: optionalText,
   scanSource: z.enum(["manual", "qr"]).default("manual"),
   applyCorrections: z.boolean().default(false),
+  evidenceAttachmentIds: z.array(z.string().trim().min(1)).default([]),
   remark: optionalText,
 })
 

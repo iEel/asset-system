@@ -187,6 +187,7 @@ Implemented status lifecycle and enforcement from docs/code:
 | Found/mismatch/not found | Handles found, mismatch, out-of-scope, unknown asset, not-found, and found-later cases |
 | Scan result semantics | Successful scan results do not show Not Found as a primary action; assets outside the round are Out-of-scope, unknown codes are Unknown Asset, and Found Later reuses the existing recovery logic |
 | Audit scan lookup | `POST /api/audit-rounds/{id}/scan-lookup` resolves printed QR asset IDs, Asset Tags, Serial Numbers, and fixed asset codes under `audit:edit` before the UI decides whether a scanned value is in-round, out-of-scope, or unknown |
+| Out-of-scope actual fields | Field auditors can record actual location, custodian, department, and condition for out-of-scope assets; changed values become reviewable field findings before master data updates |
 | Not-found workflow | Mark pending items as not found from the pending list/zone queue without changing asset status to Lost automatically |
 | Pending audit queue shortcut | Audit Scan can open an inline preview of pending items from the current round with expected location/custodian/department context on each card, while the full pending list remains the not-found workflow surface |
 | Evidence photos | Matched scans can save without photos; mismatched actual field data requires at least one free-form evidence photo, with multiple queued photos and optional grouping tags |

@@ -1902,7 +1902,7 @@
     "openDetailedScan": "ตรวจรายละเอียด",
     "outOfScopeFound": "พบทรัพย์สินนอก Scope ของรอบนี้",
     "outOfScopeTitle": "ทรัพย์สินนอก Scope",
-    "outOfScopeHelp": "บันทึกรายการนี้เพื่อสร้าง Finding รอ Review และให้ผู้รับผิดชอบตัดสินใจว่าจะเพิ่มเข้ารอบ โอนย้าย หรือปรับข้อมูลหลัก",
+    "outOfScopeHelp": "บันทึกค่าที่พบจริงเพื่อสร้าง Finding รอ Review ระบบจะไม่แก้ข้อมูลหลักของทรัพย์สินจนกว่าผู้มีสิทธิ์จะอนุมัติรายการไม่ตรง",
     "recordOutOfScope": "บันทึกเป็นนอก Scope",
     "outOfScopeSaved": "บันทึกทรัพย์สินนอก Scope สำเร็จ",
     "progress": "ความคืบหน้ารอบตรวจ",

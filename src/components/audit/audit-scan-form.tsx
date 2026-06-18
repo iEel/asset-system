@@ -102,6 +102,11 @@ type OutOfScopeAsset = {
   assetTag: string
   title: string
   subtitle: string
+  currentLocationId: string
+  custodianId: string | null
+  departmentId: string | null
+  conditionId: string | null
+  ownershipType?: string | null
   meta: {
     location: string
     custodian: string | null
@@ -249,13 +254,20 @@ export function AuditScanForm({
         }
       )
     : []
-  const requiresMismatchPhoto = Boolean(isDetailedScanVisible && mismatchPreview.length > 0)
-  const selectedAuditPhotoChecklist = selectedItem?.photoChecklist
+  const outOfScopeActualValues = outOfScopeAsset ? getOutOfScopeActualValues(values, outOfScopeAsset) : null
+  const requiresOutOfScopeMismatchPhoto = Boolean(
+    outOfScopeAsset &&
+      outOfScopeActualValues &&
+      hasOutOfScopeActualMismatch(outOfScopeAsset, outOfScopeActualValues)
+  )
+  const requiresMismatchPhoto = Boolean(isDetailedScanVisible && mismatchPreview.length > 0) || requiresOutOfScopeMismatchPhoto
+  const shouldShowAuditPhotoEvidence = Boolean(selectedItem || outOfScopeAsset)
+  const selectedAuditPhotoChecklist = selectedItem?.photoChecklist ?? []
   const generalAuditPhotoLabel = t("generalAuditPhotoLabel")
   const auditPhotoTagOptions = useMemo(
     () => [
       generalAuditPhotoLabel,
-      ...(selectedAuditPhotoChecklist ?? []).filter((item) => item && item !== generalAuditPhotoLabel),
+      ...selectedAuditPhotoChecklist.filter((item) => item && item !== generalAuditPhotoLabel),
     ],
     [generalAuditPhotoLabel, selectedAuditPhotoChecklist]
   )
@@ -277,7 +289,7 @@ export function AuditScanForm({
     ? "border-primary/30 bg-primary/5 shadow-sm ring-1 ring-primary/10"
     : "border-border bg-background"
   const showFallbackPicker = assetPickerExpanded
-  const shouldShowRemarkField = Boolean(selectedItem)
+  const shouldShowRemarkField = Boolean(selectedItem || outOfScopeAsset)
 
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -287,11 +299,60 @@ export function AuditScanForm({
     }
   }
 
+  function resetAuditPhotoQueue() {
+    setQueuedAuditPhotos([])
+    setAuditPhotoLabel("")
+  }
+
+  function clearAuditScanTarget() {
+    setValues({
+      assetId: "",
+      actualLocationId: "",
+      actualCustodianId: "",
+      actualDepartmentId: "",
+      actualConditionId: "",
+      remark: "",
+    })
+    setOutOfScopeAsset(null)
+    setApplyCorrections(false)
+    setShowDetailedFields(false)
+    resetAuditPhotoQueue()
+  }
+
+  function selectInRoundAuditItem(item: AuditScanItem) {
+    setValues((current) => ({
+      ...current,
+      assetId: item.assetId,
+      actualLocationId: item.expectedLocationId ?? "",
+      actualCustodianId: item.expectedCustodianId ?? "",
+      actualDepartmentId: item.expectedDepartmentId ?? "",
+      actualConditionId: item.expectedConditionId ?? "",
+    }))
+    setOutOfScopeAsset(null)
+    setApplyCorrections(false)
+    setShowDetailedFields(false)
+    resetAuditPhotoQueue()
+  }
+
+  function selectOutOfScopeAuditAsset(asset: OutOfScopeAsset) {
+    setOutOfScopeAsset(asset)
+    setValues((current) => ({
+      ...current,
+      assetId: "",
+      actualLocationId: asset.currentLocationId,
+      actualCustodianId: asset.custodianId ?? "",
+      actualDepartmentId: asset.departmentId ?? "",
+      actualConditionId: asset.conditionId ?? "",
+    }))
+    setApplyCorrections(false)
+    setShowDetailedFields(false)
+    resetAuditPhotoQueue()
+  }
+
   function selectPendingQueueItem(item: AuditScanItem) {
-    setField("assetId", item.assetId)
+    selectInRoundAuditItem(item)
     setScanText(getReadableAuditScanValue(item))
     setScanSource("manual")
-    setOutOfScopeAsset(null)
     setShowPendingQueue(false)
     window.setTimeout(() => {
       document.getElementById("audit-scan-input-panel")?.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -299,10 +360,9 @@ export function AuditScanForm({
   }
 
   function selectAssetFromFallback(item: AuditScanItem) {
-    setField("assetId", item.assetId)
+    selectInRoundAuditItem(item)
     setScanText(getReadableAuditScanValue(item))
     setScanSource("manual")
-    setOutOfScopeAsset(null)
     setAssetPickerExpanded(false)
     window.setTimeout(() => {
       document.getElementById("audit-scan-input-panel")?.scrollIntoView({ behavior: "smooth", block: "center" })
@@ -310,10 +370,9 @@ export function AuditScanForm({
   }
 
   function selectManualScanSuggestion(item: AuditScanItem) {
-    setField("assetId", item.assetId)
+    selectInRoundAuditItem(item)
     setScanText(getReadableAuditScanValue(item))
     setScanSource("manual")
-    setOutOfScopeAsset(null)
     setAssetPickerExpanded(false)
     showScanFeedback({
       status: "found",
@@ -562,9 +621,7 @@ export function AuditScanForm({
       if (lookup?.status === "in_round" && lookup.item?.assetId) {
         const lookedUpItem = items.find((item) => item.assetId === lookup.item?.assetId)
         if (lookedUpItem) {
-          setValues((current) => ({ ...current, assetId: lookedUpItem.assetId }))
-          setOutOfScopeAsset(null)
-          setApplyCorrections(false)
+          selectInRoundAuditItem(lookedUpItem)
           setScanText(getReadableAuditScanValue(lookedUpItem))
           setScanSource(source)
           setAssetPickerExpanded(false)
@@ -579,8 +636,7 @@ export function AuditScanForm({
         }
       }
       if (lookup?.status === "out_of_scope") {
-        setOutOfScopeAsset(lookup.asset)
-        setValues((current) => ({ ...current, assetId: "" }))
+        selectOutOfScopeAuditAsset(lookup.asset)
         setScanText(lookup.asset.assetTag || lookup.asset.title)
         setScanSource(source)
         setAssetPickerExpanded(false)
@@ -593,7 +649,7 @@ export function AuditScanForm({
         if (!continuousScan) void stopScanner()
         return false
       }
-      setOutOfScopeAsset(null)
+      clearAuditScanTarget()
       showScanFeedback({
         status: "unknown_asset",
         title: t("feedbackUnknownAssetTitle"),
@@ -603,9 +659,7 @@ export function AuditScanForm({
       return false
     }
 
-    setValues((current) => ({ ...current, assetId: matchedItem.assetId }))
-    setOutOfScopeAsset(null)
-    setApplyCorrections(false)
+    selectInRoundAuditItem(matchedItem)
     setScanText(getReadableAuditScanValue(matchedItem))
     setScanSource(source)
     setAssetPickerExpanded(false)
@@ -631,22 +685,30 @@ export function AuditScanForm({
 
   async function recordOutOfScopeAsset() {
     if (!outOfScopeAsset) return
+    const outOfScopeActualValues = getOutOfScopeActualValues(values, outOfScopeAsset)
+    if (hasOutOfScopeActualMismatch(outOfScopeAsset, outOfScopeActualValues) && queuedAuditPhotos.length === 0) {
+      toast.error(t("auditPhotoRequiredForMismatch"))
+      return
+    }
     setSaving(true)
     try {
+      const evidenceAttachmentIds = queuedAuditPhotos.length > 0 ? await uploadQueuedAuditPhotos(outOfScopeAsset.id) : []
       const response = await fetch(`/api/audit-rounds/${roundId}/scan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           assetId: outOfScopeAsset.id,
+          actualLocationId: outOfScopeActualValues.actualLocationId,
+          actualCustodianId: outOfScopeActualValues.actualCustodianId,
+          actualDepartmentId: outOfScopeActualValues.actualDepartmentId,
+          actualConditionId: outOfScopeActualValues.actualConditionId,
+          evidenceAttachmentIds,
           scanSource,
           remark: values.remark,
         }),
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok && response.status !== 202) throw new Error(payload?.error ?? tCommon("error"))
-      for (const photo of queuedAuditPhotos) {
-        await uploadAuditPhoto(outOfScopeAsset.id, photo.file, photo.label)
-      }
       toast.success(t("outOfScopeSaved"))
       showScanFeedback({
         status: "mismatch",
@@ -656,6 +718,7 @@ export function AuditScanForm({
       setOutOfScopeAsset(null)
       setScanText("")
       setQueuedAuditPhotos([])
+      setAuditPhotoLabel("")
       setValues({
         assetId: "",
         actualLocationId: "",
@@ -843,6 +906,16 @@ export function AuditScanForm({
       const result = await response.json().catch(() => null)
       throw new Error(result?.error ?? t("auditPhotoUploadFailed"))
     }
+
+    return (await response.json()) as { id: string }
+  }
+
+  async function uploadQueuedAuditPhotos(assetId: string) {
+    const uploadedAttachments: Array<{ id: string }> = []
+    for (const photo of queuedAuditPhotos) {
+      uploadedAttachments.push(await uploadAuditPhoto(assetId, photo.file, photo.label))
+    }
+    return uploadedAttachments.map((attachment) => attachment.id)
   }
 
   return (
@@ -1164,13 +1237,35 @@ export function AuditScanForm({
 
           {outOfScopeAsset && (
             <div className="md:col-span-2 rounded-md border border-warning/40 bg-warning/10 p-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <div className="text-sm font-semibold text-warning">{t("outOfScopeTitle")}</div>
-                  <div className="mt-1 text-lg font-semibold text-foreground">{outOfScopeAsset.title} - {outOfScopeAsset.subtitle}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{outOfScopeAsset.meta.location}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{outOfScopeAsset.meta.custodian ?? t("none")}</div>
+              <div>
+                <div className="text-sm font-semibold text-warning">{t("outOfScopeTitle")}</div>
+                <div className="mt-1 text-lg font-semibold text-foreground">{outOfScopeAsset.title} - {outOfScopeAsset.subtitle}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{outOfScopeAsset.meta.location}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{outOfScopeAsset.meta.custodian ?? t("none")}</div>
+              </div>
+              <div className="mt-4 border-t border-warning/30 pt-4">
+                <div className="text-sm font-semibold text-foreground">{t("actualDataTitle")}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{t("outOfScopeHelp")}</div>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  {normalizeAssetOwnershipType(outOfScopeAsset.ownershipType) !== "software_license" ? (
+                    <Select label={t("actualLocation")} value={values.actualLocationId || outOfScopeAsset.currentLocationId || ""} required onChange={(value) => setField("actualLocationId", value)}>
+                      <OptionList options={options.locations} />
+                    </Select>
+                  ) : null}
+                  {requiresCustodian(outOfScopeAsset.ownershipType) ? (
+                    <Select label={t("actualCustodian")} value={values.actualCustodianId} onChange={(value) => setField("actualCustodianId", value)}>
+                      <OptionList emptyLabel={t("none")} options={options.employees} />
+                    </Select>
+                  ) : null}
+                  <Select label={t("actualDepartment")} value={values.actualDepartmentId} onChange={(value) => setField("actualDepartmentId", value)}>
+                    <OptionList emptyLabel={t("none")} options={options.departments} />
+                  </Select>
+                  <Select label={t("actualCondition")} value={values.actualConditionId} onChange={(value) => setField("actualConditionId", value)}>
+                    <OptionList emptyLabel={t("none")} options={options.conditions} />
+                  </Select>
                 </div>
+              </div>
+              <div className="mt-4 flex justify-end">
                 <button
                   type="button"
                   onClick={recordOutOfScopeAsset}
@@ -1181,7 +1276,6 @@ export function AuditScanForm({
                   {t("recordOutOfScope")}
                 </button>
               </div>
-              <p className="mt-3 text-sm text-muted-foreground">{t("outOfScopeHelp")}</p>
             </div>
           )}
 
@@ -1197,14 +1291,14 @@ export function AuditScanForm({
                 </Select>
               ) : null}
               {selectedItem && requiresCustodian(selectedItem.ownershipType) ? (
-                <Select label={t("actualCustodian")} value={values.actualCustodianId || selectedItem.expectedCustodianId || ""} onChange={(value) => setField("actualCustodianId", value)}>
+                <Select label={t("actualCustodian")} value={values.actualCustodianId} onChange={(value) => setField("actualCustodianId", value)}>
                   <OptionList emptyLabel={t("none")} options={options.employees} />
                 </Select>
               ) : null}
-              <Select label={t("actualDepartment")} value={values.actualDepartmentId || selectedItem?.expectedDepartmentId || ""} onChange={(value) => setField("actualDepartmentId", value)}>
+              <Select label={t("actualDepartment")} value={values.actualDepartmentId} onChange={(value) => setField("actualDepartmentId", value)}>
                 <OptionList emptyLabel={t("none")} options={options.departments} />
               </Select>
-              <Select label={t("actualCondition")} value={values.actualConditionId || selectedItem?.expectedConditionId || ""} onChange={(value) => setField("actualConditionId", value)}>
+              <Select label={t("actualCondition")} value={values.actualConditionId} onChange={(value) => setField("actualConditionId", value)}>
                 <OptionList emptyLabel={t("none")} options={options.conditions} />
               </Select>
 
@@ -1236,7 +1330,7 @@ export function AuditScanForm({
             </>
           )}
 
-          {selectedItem && (
+          {shouldShowAuditPhotoEvidence && (
             <div id="audit-photo-evidence" className="scroll-mt-24 md:col-span-2 rounded-md border border-border bg-background p-4">
               <div className="mb-3 text-sm font-semibold text-foreground">{t("auditPhotoEvidence")}</div>
               <p className="mb-3 text-sm text-muted-foreground">
@@ -1856,10 +1950,42 @@ function getActualValues(
 ) {
   return {
     actualLocationId: values.actualLocationId || selectedItem.expectedLocationId,
-    actualCustodianId: values.actualCustodianId || selectedItem.expectedCustodianId || "",
-    actualDepartmentId: values.actualDepartmentId || selectedItem.expectedDepartmentId || "",
-    actualConditionId: values.actualConditionId || selectedItem.expectedConditionId || "",
+    actualCustodianId: values.actualCustodianId,
+    actualDepartmentId: values.actualDepartmentId,
+    actualConditionId: values.actualConditionId,
   }
+}
+
+function getOutOfScopeActualValues(
+  values: {
+    actualLocationId: string
+    actualCustodianId: string
+    actualDepartmentId: string
+    actualConditionId: string
+  },
+  asset: OutOfScopeAsset
+) {
+  return {
+    actualLocationId: values.actualLocationId || asset.currentLocationId || "",
+    actualCustodianId: values.actualCustodianId,
+    actualDepartmentId: values.actualDepartmentId,
+    actualConditionId: values.actualConditionId,
+  }
+}
+
+function hasOutOfScopeActualMismatch(
+  asset: OutOfScopeAsset,
+  actualValues: ReturnType<typeof getOutOfScopeActualValues>
+) {
+  const ownershipType = normalizeAssetOwnershipType(asset.ownershipType)
+  const locationMismatch =
+    ownershipType !== "software_license" && actualValues.actualLocationId !== asset.currentLocationId
+  const custodianMismatch =
+    requiresCustodian(asset.ownershipType) && (actualValues.actualCustodianId || null) !== asset.custodianId
+  const departmentMismatch = (actualValues.actualDepartmentId || null) !== asset.departmentId
+  const conditionMismatch = (actualValues.actualConditionId || null) !== asset.conditionId
+
+  return locationMismatch || custodianMismatch || departmentMismatch || conditionMismatch
 }
 
 function emptyToNull<T extends Record<string, string>>(values: T): { [K in keyof T]: string | null } {

@@ -295,7 +295,7 @@ test("audit scan initial mobile state prioritizes scanning before fallback and n
 
   assert.match(form, /const showFallbackPicker = assetPickerExpanded/)
   assert.match(form, /showFallbackPicker \? \(\s*<AssetFallbackPicker/)
-  assert.match(form, /const shouldShowRemarkField = Boolean\(selectedItem\)/)
+  assert.match(form, /const shouldShowRemarkField = Boolean\(selectedItem \|\| outOfScopeAsset\)/)
   assert.match(form, /shouldShowRemarkField && \(/)
   assert.match(form, /border-primary bg-primary text-white/)
   assert.match(form, /assetPickerExpanded \? setAssetPickerExpanded\(false\) : setAssetPickerExpanded\(true\)/)

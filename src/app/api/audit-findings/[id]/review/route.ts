@@ -137,6 +137,21 @@ export async function POST(request: NextRequest, context: ReviewContext) {
 
     const reviewedFinding = await prisma.$transaction(async (tx) => {
       if (input.action === "approve") {
+        if (finding.findingType === "out_of_scope") {
+          const reviewed = await tx.auditFinding.update({
+            where: { id },
+            data: {
+              reviewStatus: "approved",
+              reviewedBy: user.id,
+              reviewedAt: new Date(),
+              reviewRemark: input.reviewRemark,
+              actionTaken: "out_of_scope_confirmed_no_master_update",
+            },
+          })
+          await updateAuditItemReviewState(tx, finding.auditItemId)
+          return reviewed
+        }
+
         if (finding.findingType === "not_found") {
           const reviewed = await tx.auditFinding.update({
             where: { id },
