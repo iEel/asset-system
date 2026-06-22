@@ -25,6 +25,20 @@ test("audit scan form renders installed component panel and confirmation actions
   assert.match(form, /componentStatusConfirmedWithParent/)
 })
 
+test("audit scan form preserves and renders component context for out-of-scope assets", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+
+  assert.match(form, /type AuditLookupComponent/)
+  assert.match(form, /components:\s*AuditLookupComponent\[\]/)
+  assert.match(form, /installedIn:\s*AuditLookupInstalledInParent\[\]/)
+  assert.match(form, /function normalizeOutOfScopeAuditAsset/)
+  assert.match(form, /components:\s*normalizeAuditLookupComponents\(asset\.components/)
+  assert.match(form, /installedIn:\s*normalizeAuditLookupInstalledIn\(asset\.installedIn/)
+  assert.match(form, /outOfScopeAsset\.installedIn\.length > 0/)
+  assert.match(form, /outOfScopeAsset\.components\.length > 0/)
+  assert.match(form, /components=\{outOfScopeAsset\.components\}/)
+})
+
 test("audit scan component UI copy is translated", () => {
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))

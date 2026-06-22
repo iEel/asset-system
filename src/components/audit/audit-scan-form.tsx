@@ -118,6 +118,23 @@ type QueuedAuditPhoto = {
 }
 
 const MAX_RECENT_AUDIT_SCANS = 8
+type AuditLookupAuditItem = {
+  id: string
+  assetId: string
+  auditStatus: string
+  auditResult: string | null
+}
+type AuditLookupComponent = {
+  assetId: string
+  assetTag: string
+  name: string
+  componentRole: string
+  slotNo: string | null
+  auditItem: AuditLookupAuditItem | null
+}
+type AuditLookupInstalledInParent = AuditInstalledInParent & {
+  auditItem: AuditLookupAuditItem | null
+}
 type OutOfScopeAsset = {
   id: string
   assetTag: string
@@ -132,16 +149,22 @@ type OutOfScopeAsset = {
     location: string
     custodian: string | null
   }
+  components: AuditScanComponent[]
+  installedIn: AuditInstalledInParent[]
+}
+type AuditLookupAsset = Omit<OutOfScopeAsset, "components" | "installedIn"> & {
+  components: AuditLookupComponent[]
+  installedIn: AuditLookupInstalledInParent[]
 }
 type AuditScanLookupResponse =
   | {
       status: "in_round"
-      asset: OutOfScopeAsset
+      asset: AuditLookupAsset
       item?: { assetId: string }
     }
   | {
       status: "out_of_scope"
-      asset: OutOfScopeAsset
+      asset: AuditLookupAsset
     }
   | {
       status: "unknown_asset"
@@ -359,15 +382,16 @@ export function AuditScanForm({
     resetAuditPhotoQueue()
   }
 
-  function selectOutOfScopeAuditAsset(asset: OutOfScopeAsset) {
-    setOutOfScopeAsset(asset)
+  function selectOutOfScopeAuditAsset(asset: AuditLookupAsset) {
+    const normalizedAsset = normalizeOutOfScopeAuditAsset(asset)
+    setOutOfScopeAsset(normalizedAsset)
     setValues((current) => ({
       ...current,
       assetId: "",
-      actualLocationId: asset.currentLocationId,
-      actualCustodianId: asset.custodianId ?? "",
-      actualDepartmentId: asset.departmentId ?? "",
-      actualConditionId: asset.conditionId ?? "",
+      actualLocationId: normalizedAsset.currentLocationId,
+      actualCustodianId: normalizedAsset.custodianId ?? "",
+      actualDepartmentId: normalizedAsset.departmentId ?? "",
+      actualConditionId: normalizedAsset.conditionId ?? "",
     }))
     setApplyCorrections(false)
     setShowDetailedFields(false)
@@ -1447,6 +1471,36 @@ export function AuditScanForm({
                 <div className="mt-1 text-sm text-muted-foreground">{outOfScopeAsset.meta.location}</div>
                 <div className="mt-1 text-sm text-muted-foreground">{outOfScopeAsset.meta.custodian ?? t("none")}</div>
               </div>
+              {outOfScopeAsset.installedIn.length > 0 ? (
+                <div className="mt-3 grid gap-2">
+                  {outOfScopeAsset.installedIn.map((parent) => (
+                    <div key={parent.parentAssetId} className="flex flex-col gap-2 rounded-md border border-info/30 bg-info/10 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-start gap-2">
+                        <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-info" />
+                        <div className="min-w-0">
+                          <div className="font-medium text-foreground">
+                            {t("installedInParentNotice", { assetTag: parent.assetTag, role: parent.componentRole })}
+                          </div>
+                          <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                            {parent.name}{parent.slotNo ? ` - ${parent.slotNo}` : ""}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {outOfScopeAsset.components.length > 0 ? (
+                <AuditComponentPanel
+                  components={outOfScopeAsset.components}
+                  saving={saving}
+                  componentActionsDisabled={true}
+                  onScanComponent={scanComponentQr}
+                  onConfirmWithParent={confirmComponentWithParent}
+                  onMarkMissing={markComponentMissing}
+                  t={t}
+                />
+              ) : null}
               <div className="mt-4 border-t border-warning/30 pt-4">
                 <div className="text-sm font-semibold text-foreground">{t("actualDataTitle")}</div>
                 <div className="mt-1 text-sm text-muted-foreground">{t("outOfScopeHelp")}</div>
@@ -1774,6 +1828,7 @@ function RecentScanCompactRow({ scan, t }: { scan: AuditRecentScan; t: AuditScan
 function AuditComponentPanel({
   components,
   saving,
+  componentActionsDisabled = false,
   onScanComponent,
   onConfirmWithParent,
   onMarkMissing,
@@ -1781,6 +1836,7 @@ function AuditComponentPanel({
 }: {
   components: AuditScanComponent[]
   saving: boolean
+  componentActionsDisabled?: boolean
   onScanComponent: (component: AuditScanComponent) => void
   onConfirmWithParent: (component: AuditScanComponent) => void
   onMarkMissing: (component: AuditScanComponent) => void
@@ -1806,7 +1862,7 @@ function AuditComponentPanel({
         {components.map((component) => {
           const statusMeta = getAuditComponentStatusMeta(component, t)
           const isConfirmedWithParent = component.auditResult === "confirmed_with_parent"
-          const isActionDisabled = saving || !component.auditItemId
+          const isActionDisabled = saving || componentActionsDisabled || !component.auditItemId
 
           return (
             <div key={component.assetId} className="rounded-md border border-border bg-background p-3">
@@ -1866,6 +1922,37 @@ function AuditComponentPanel({
       </div>
     </div>
   )
+}
+
+function normalizeOutOfScopeAuditAsset(asset: AuditLookupAsset): OutOfScopeAsset {
+  return {
+    ...asset,
+    components: normalizeAuditLookupComponents(asset.components),
+    installedIn: normalizeAuditLookupInstalledIn(asset.installedIn),
+  }
+}
+
+function normalizeAuditLookupComponents(components: AuditLookupComponent[]): AuditScanComponent[] {
+  return components.map((component) => ({
+    assetId: component.assetId,
+    assetTag: component.assetTag,
+    name: component.name,
+    componentRole: component.componentRole,
+    slotNo: component.slotNo,
+    auditItemId: component.auditItem?.id ?? null,
+    auditStatus: component.auditItem?.auditStatus ?? "out_of_round",
+    auditResult: component.auditItem?.auditResult ?? null,
+  }))
+}
+
+function normalizeAuditLookupInstalledIn(installedIn: AuditLookupInstalledInParent[]): AuditInstalledInParent[] {
+  return installedIn.map((parent) => ({
+    parentAssetId: parent.parentAssetId,
+    assetTag: parent.assetTag,
+    name: parent.name,
+    componentRole: parent.componentRole,
+    slotNo: parent.slotNo,
+  }))
 }
 
 function isAuditComponentChecked(component: AuditScanComponent) {
