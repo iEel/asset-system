@@ -22,6 +22,9 @@
 - Admin/RBAC: `User`, `Role`, `Permission`, `UserRole`, `RolePermission`
 - System: `SystemLog`, `SystemSetting`, `Notification`, `NotificationUserState`, `IntegrationApiClient`
 
+- Audit rounds treat installed component assets as first-class `AuditItem` rows. `AssetComponent` remains the relationship source; no audit-specific component relationship table is added.
+- Parent-to-component master-data sync updates only supported ownership/location fields and records `AssetMovement` rows on each component asset.
+
 ## Asset Organization And Custody Semantics
 
 - `Asset.companyId` and `Asset.branchId` represent the asset owner/tag/reporting scope, not necessarily the current human holder's organization.

@@ -179,6 +179,7 @@ Implemented status lifecycle and enforcement from docs/code:
 | Audit return navigation | Round detail, pending, and scan links preserve the originating rounds view/search through sanitized internal `returnTo` targets; scan/pending return to the round detail and round detail returns to the filtered rounds list |
 | Candidate preview | Preview audit candidates before creating a round |
 | Expected list | Audit items generated from scope and start as pending |
+| Component asset audit | Audit round preview/create automatically includes active installed component assets for selected parents; Audit Scan shows component status under the parent and supports explicit confirmed-with-parent component verification |
 | Audit detail | Progress metrics and expected item list |
 | Audit scan | QR/manual scan, scan-first entry focus, manual partial suggestions in the scan panel, searchable manual item picker, system data comparison panel, sticky single-source progress header with photo-queue badge and collapsible pending queue shortcut, pending-list return-to-scan navigation, focused scan-result card, compact recent-scan panel, default fast/continuous walking behavior without extra mode switches, fast `บันทึกพบตรง` save path, detailed `บันทึกข้อมูลไม่ตรง / Finding` path, photo evidence, and mobile bottom action bar after scan selection |
 | Continuous mobile scan | Uses asset QR decoder while keeping audit workflow on the audit scan page |
