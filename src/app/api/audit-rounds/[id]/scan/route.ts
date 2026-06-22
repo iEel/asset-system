@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { normalizeAssetOwnershipType, requiresCustodian } from "@/lib/asset-ownership"
+import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
+import {
+  buildComponentConfirmationFindingActions,
+  isRetryableComponentConfirmationTransactionError,
+} from "@/lib/audit-component-confirmation"
 import { auditScanSchema } from "@/lib/validations/audit"
 
 type AuditScanContext = {
@@ -68,7 +74,15 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
         },
       },
     })
+    const componentConfirmationRemark = input.componentConfirmationReason ?? input.remark
+    if (input.confirmedWithParentAssetId && !componentConfirmationRemark) {
+      return NextResponse.json({ error: "Component confirmation reason is required" }, { status: 400 })
+    }
+
     if (!item) {
+      if (input.confirmedWithParentAssetId) {
+        return NextResponse.json({ error: "Component is not included in this audit round" }, { status: 400 })
+      }
       const asset = await prisma.asset.findFirst({
         where: { id: input.assetId, isActive: true },
         select: {
@@ -245,6 +259,161 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
       )
     }
 
+    if (input.confirmedWithParentAssetId) {
+      const parentAssetId = input.confirmedWithParentAssetId
+      const confirmationRemark = componentConfirmationRemark as string
+      const actual = {
+        departmentId: optionalActualValue(input.actualDepartmentId, item.expectedDepartmentId),
+        locationId: input.actualLocationId ?? item.expectedLocationId,
+        custodianId: optionalActualValue(input.actualCustodianId, item.expectedCustodianId),
+        conditionId: optionalActualValue(input.actualConditionId, item.expectedConditionId),
+      }
+      const mismatches = getMismatches(item, actual, item.asset.ownershipType)
+      const scannedAt = new Date()
+
+      const result = await runComponentConfirmationTransaction(async (tx) => {
+        const componentLink = await assertComponentInstalledUnderParent(tx, parentAssetId, item.assetId)
+
+        await tx.auditScanHistory.create({
+          data: {
+            auditRoundId: id,
+            auditItemId: item.id,
+            assetId: item.assetId,
+            scannedBy: user.id,
+            scannedAt,
+            scanLocationId: actual.locationId,
+            scanSource: input.scanSource,
+            rawPayload: JSON.stringify({
+              ...input,
+              actual,
+              confirmedWithParent: true,
+              parentAssetId: componentLink.parentAssetId,
+              parentAssetTag: componentLink.parentAsset.assetTag,
+            }),
+            remark: confirmationRemark,
+          },
+        })
+
+        const currentMismatchTypes = mismatches.map((mismatch) => mismatch.type)
+        const existingPendingFindings = await tx.auditFinding.findMany({
+          where: {
+            auditItemId: item.id,
+            reviewStatus: "pending",
+            ...(currentMismatchTypes.length > 0
+              ? { OR: [{ findingType: { in: currentMismatchTypes } }, { actionTaken: "component_confirmed_with_parent_mismatch" }] }
+              : { actionTaken: "component_confirmed_with_parent_mismatch" }),
+          },
+          select: { id: true, findingType: true },
+        })
+        const findingActions = buildComponentConfirmationFindingActions(existingPendingFindings, mismatches)
+
+        for (const action of findingActions.update) {
+          await tx.auditFinding.update({
+            where: { id: action.findingId },
+            data: {
+              expectedValue: action.mismatch.expectedValue,
+              actualValue: action.mismatch.actualValue,
+              remark: confirmationRemark,
+              reportedBy: user.id,
+              actionTaken: "component_confirmed_with_parent_mismatch",
+            },
+          })
+        }
+
+        for (const mismatch of findingActions.create) {
+          await tx.auditFinding.create({
+            data: {
+              auditRoundId: id,
+              auditItemId: item.id,
+              assetId: item.assetId,
+              findingType: mismatch.type,
+              expectedValue: mismatch.expectedValue,
+              actualValue: mismatch.actualValue,
+              remark: confirmationRemark,
+              reportedBy: user.id,
+              reviewStatus: "pending",
+              actionTaken: "component_confirmed_with_parent_mismatch",
+            },
+          })
+        }
+
+        for (const action of findingActions.reject) {
+          await tx.auditFinding.update({
+            where: { id: action.findingId },
+            data: {
+              reviewStatus: "rejected",
+              reviewedBy: user.id,
+              reviewedAt: scannedAt,
+              reviewRemark: confirmationRemark,
+              actionTaken: "component_confirmed_with_parent_mismatch_resolved",
+            },
+          })
+        }
+
+        const resolvedNotFound = await tx.auditFinding.updateMany({
+          where: {
+            auditItemId: item.id,
+            findingType: "not_found",
+            reviewStatus: "pending",
+          },
+          data: {
+            reviewStatus: "rejected",
+            reviewedBy: user.id,
+            reviewedAt: scannedAt,
+            reviewRemark: confirmationRemark ?? "Component confirmed with parent by later audit scan",
+            actionTaken: "found_later_by_component_confirmation",
+          },
+        })
+
+        const pendingFindingCount = await tx.auditFinding.count({
+          where: { auditItemId: item.id, reviewStatus: "pending" },
+        })
+        const updatedItem = await tx.auditItem.update({
+          where: { id: item.id },
+          data: {
+            actualDepartmentId: actual.departmentId,
+            actualLocationId: actual.locationId,
+            actualCustodianId: actual.custodianId,
+            actualConditionId: actual.conditionId,
+            auditStatus: "scanned",
+            auditResult: "confirmed_with_parent",
+            findingRequired: pendingFindingCount > 0,
+            reconcileStatus: pendingFindingCount > 0 ? "pending" : null,
+            scannedAt: item.scannedAt ?? scannedAt,
+            scannedBy: item.scannedBy ?? user.id,
+            lastScanAt: scannedAt,
+            scanCount: { increment: 1 },
+            remark: confirmationRemark,
+          },
+        })
+
+        return { item: updatedItem, componentLink, resolvedNotFoundFinding: resolvedNotFound.count > 0 }
+      })
+
+      await logAudit({
+        userId: user.id,
+        action: "component_confirmed_with_parent",
+        module: "audit",
+        recordId: item.id,
+        newValue: {
+          auditRoundId: id,
+          assetId: item.assetId,
+          parentAssetId: result.componentLink.parentAssetId,
+          parentAssetTag: result.componentLink.parentAsset.assetTag,
+          mismatches,
+        },
+        remark: confirmationRemark,
+      })
+
+      return NextResponse.json({
+        item: result.item,
+        auditResult: "confirmed_with_parent",
+        mismatches,
+        appliedCorrections: [],
+        resolvedNotFoundFinding: result.resolvedNotFoundFinding,
+      })
+    }
+
     const actual = {
       departmentId: optionalActualValue(input.actualDepartmentId, item.expectedDepartmentId),
       locationId: input.actualLocationId ?? item.expectedLocationId,
@@ -412,6 +581,24 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
               updatedBy: user.id,
             },
           })
+
+          const confirmedComponentIds = await getConfirmedComponentAssetIds(tx, id, item.assetId)
+          if (confirmedComponentIds.length > 0) {
+            await syncInstalledComponentsWithParent(tx, {
+              parentAssetId: item.assetId,
+              changes: {
+                currentLocationId: assetUpdateData.currentLocationId,
+                custodianId: assetUpdateData.custodianId,
+              },
+              movementType: "parent_audit_confirmation_sync",
+              referenceType: "audit_scan",
+              referenceId: item.id,
+              performedBy: user.id,
+              reason: "Parent audit scan correction",
+              remark: input.remark,
+              restrictToAssetIds: confirmedComponentIds,
+            })
+          }
         }
       }
 
@@ -545,4 +732,70 @@ function getCurrentAssetValue(
   if (findingType === "wrong_location") return asset.currentLocationId
   if (findingType === "wrong_custodian") return asset.custodianId
   return null
+}
+
+const componentConfirmationTransactionMaxAttempts = 3
+
+async function runComponentConfirmationTransaction<T>(operation: (tx: Prisma.TransactionClient) => Promise<T>) {
+  for (let attempt = 1; attempt <= componentConfirmationTransactionMaxAttempts; attempt += 1) {
+    try {
+      return await prisma.$transaction(operation, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      })
+    } catch (error) {
+      if (attempt >= componentConfirmationTransactionMaxAttempts || !isRetryableComponentConfirmationTransactionError(error)) {
+        throw error
+      }
+    }
+  }
+
+  throw new Error("Component confirmation transaction retry failed")
+}
+
+async function assertComponentInstalledUnderParent(
+  tx: { assetComponent: Prisma.TransactionClient["assetComponent"] },
+  parentAssetId: string,
+  componentAssetId: string
+) {
+  const componentLink = await tx.assetComponent.findFirst({
+    where: {
+      parentAssetId,
+      componentAssetId,
+      status: "installed",
+      removedAt: null,
+    },
+    select: {
+      parentAssetId: true,
+      parentAsset: { select: { assetTag: true, name: true } },
+    },
+  })
+  if (!componentLink) {
+    throw new Error("Component is no longer installed under the selected parent asset")
+  }
+  return componentLink
+}
+
+async function getConfirmedComponentAssetIds(
+  tx: { assetComponent: Prisma.TransactionClient["assetComponent"]; auditItem: Prisma.TransactionClient["auditItem"] },
+  auditRoundId: string,
+  parentAssetId: string
+) {
+  const links = await tx.assetComponent.findMany({
+    where: { parentAssetId, status: "installed", removedAt: null },
+    select: { componentAssetId: true },
+  })
+  const componentAssetIds = links.map((link) => link.componentAssetId)
+  if (componentAssetIds.length === 0) return []
+
+  const confirmedItems = await tx.auditItem.findMany({
+    where: {
+      auditRoundId,
+      assetId: { in: componentAssetIds },
+      auditStatus: { in: ["scanned", "reconciled"] },
+      auditResult: { in: ["found", "confirmed_with_parent"] },
+    },
+    select: { assetId: true },
+  })
+
+  return confirmedItems.map((item) => item.assetId)
 }

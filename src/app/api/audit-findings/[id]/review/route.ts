@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { auditFindingActionPlanSchema, auditFindingCloseSchema, auditFindingReviewSchema } from "@/lib/validations/audit"
 import { auditSegregationErrors, isSameAuditActor } from "@/lib/audit-segregation"
+import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { buildAuditFindingConflictPayload, hasAuditFindingConflict } from "@/lib/audit-finding-conflict"
 
 type ReviewContext = {
@@ -184,14 +185,15 @@ export async function POST(request: NextRequest, context: ReviewContext) {
           return reviewed
         }
 
+        const approvedActualValue = finding.actualValue
         const assetUpdateData =
           fieldName === "currentLocationId"
-            ? { currentLocationId: finding.actualValue as string, updatedBy: user.id }
+            ? { currentLocationId: approvedActualValue as string, updatedBy: user.id }
             : fieldName === "conditionId"
-              ? { conditionId: finding.actualValue as string, updatedBy: user.id }
+              ? { conditionId: approvedActualValue as string, updatedBy: user.id }
               : fieldName === "custodianId"
-                ? { custodianId: finding.actualValue, updatedBy: user.id }
-                : { departmentId: finding.actualValue, updatedBy: user.id }
+                ? { custodianId: approvedActualValue, updatedBy: user.id }
+                : { departmentId: approvedActualValue, updatedBy: user.id }
 
         await tx.asset.update({
           where: { id: finding.assetId },
@@ -211,6 +213,27 @@ export async function POST(request: NextRequest, context: ReviewContext) {
             remark: input.reviewRemark,
           },
         })
+
+        if (fieldName !== "conditionId") {
+          const confirmedComponentIds = await getConfirmedComponentAssetIds(tx, finding.auditRoundId, finding.assetId)
+          if (confirmedComponentIds.length > 0) {
+            await syncInstalledComponentsWithParent(tx, {
+              parentAssetId: finding.assetId,
+              changes: {
+                currentLocationId: fieldName === "currentLocationId" ? finding.actualValue : undefined,
+                custodianId: fieldName === "custodianId" ? finding.actualValue : undefined,
+                departmentId: fieldName === "departmentId" ? finding.actualValue : undefined,
+              },
+              movementType: "parent_audit_finding_sync",
+              referenceType: "audit_finding",
+              referenceId: finding.id,
+              performedBy: user.id,
+              reason: "Parent audit finding approved",
+              remark: input.reviewRemark,
+              restrictToAssetIds: confirmedComponentIds,
+            })
+          }
+        }
 
       }
 
@@ -254,6 +277,27 @@ export async function POST(request: NextRequest, context: ReviewContext) {
 }
 
 type ReviewTransaction = Prisma.TransactionClient
+
+async function getConfirmedComponentAssetIds(tx: ReviewTransaction, auditRoundId: string, parentAssetId: string) {
+  const links = await tx.assetComponent.findMany({
+    where: { parentAssetId, status: "installed", removedAt: null },
+    select: { componentAssetId: true },
+  })
+  const componentAssetIds = links.map((link) => link.componentAssetId)
+  if (componentAssetIds.length === 0) return []
+
+  const confirmedItems = await tx.auditItem.findMany({
+    where: {
+      auditRoundId,
+      assetId: { in: componentAssetIds },
+      auditStatus: { in: ["scanned", "reconciled"] },
+      auditResult: { in: ["found", "confirmed_with_parent"] },
+    },
+    select: { assetId: true },
+  })
+
+  return confirmedItems.map((item) => item.assetId)
+}
 
 async function updateAuditItemReviewState(tx: ReviewTransaction, auditItemId: string) {
   const findings = await tx.auditFinding.findMany({

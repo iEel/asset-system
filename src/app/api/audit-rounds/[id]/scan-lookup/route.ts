@@ -24,6 +24,16 @@ type AuditScanLookupAsset = {
   custodian: { code: string; fullNameTh: string } | null
   currentLocation: { code: string; name: string }
   status: { name: string; nameTh: string; colorCode: string | null }
+  parentComponents: Array<{
+    componentRole: string
+    slotNo: string | null
+    componentAsset: { id: string; assetTag: string; name: string }
+  }>
+  installedInLinks: Array<{
+    componentRole: string
+    slotNo: string | null
+    parentAsset: { id: string; assetTag: string; name: string }
+  }>
 }
 
 export async function POST(request: NextRequest, context: AuditScanLookupContext) {
@@ -70,6 +80,22 @@ export async function POST(request: NextRequest, context: AuditScanLookupContext
         custodian: { select: { code: true, fullNameTh: true } },
         currentLocation: { select: { code: true, name: true } },
         status: { select: { name: true, nameTh: true, colorCode: true } },
+        parentComponents: {
+          where: { status: "installed", removedAt: null },
+          select: {
+            componentRole: true,
+            slotNo: true,
+            componentAsset: { select: { id: true, assetTag: true, name: true } },
+          },
+        },
+        installedInLinks: {
+          where: { status: "installed", removedAt: null },
+          select: {
+            componentRole: true,
+            slotNo: true,
+            parentAsset: { select: { id: true, assetTag: true, name: true } },
+          },
+        },
       },
       orderBy: [{ updatedAt: "desc" }, { assetTag: "asc" }],
     })
@@ -88,9 +114,20 @@ export async function POST(request: NextRequest, context: AuditScanLookupContext
       },
     })
 
+    const relatedAssetIds = [
+      ...asset.parentComponents.map((component) => component.componentAsset.id),
+      ...asset.installedInLinks.map((link) => link.parentAsset.id),
+    ]
+    const relatedAuditItems = relatedAssetIds.length
+      ? await prisma.auditItem.findMany({
+          where: { auditRoundId: id, assetId: { in: relatedAssetIds } },
+          select: { id: true, assetId: true, auditStatus: true, auditResult: true },
+        })
+      : []
+
     const payload = {
       candidates,
-      asset: buildAuditScanLookupAsset(asset),
+      asset: buildAuditScanLookupAsset(asset, relatedAuditItems),
     }
 
     if (!item) {
@@ -103,10 +140,14 @@ export async function POST(request: NextRequest, context: AuditScanLookupContext
   }
 }
 
-function buildAuditScanLookupAsset(asset: AuditScanLookupAsset) {
+function buildAuditScanLookupAsset(
+  asset: AuditScanLookupAsset,
+  relatedAuditItems: Array<{ id: string; assetId: string; auditStatus: string; auditResult: string | null }>
+) {
   const location = `${asset.currentLocation.code} - ${asset.currentLocation.name}`
   const category = `${asset.category.code} - ${asset.category.name}`
   const custodian = asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : null
+  const auditItemByAssetId = new Map(relatedAuditItems.map((item) => [item.assetId, item]))
 
   return {
     id: asset.id,
@@ -125,5 +166,28 @@ function buildAuditScanLookupAsset(asset: AuditScanLookupAsset) {
       colorCode: asset.status.colorCode,
     },
     meta: { custodian, location, category },
+    components: buildAuditComponentLookupContext(asset.parentComponents, auditItemByAssetId),
+    installedIn: asset.installedInLinks.map((link) => ({
+      parentAssetId: link.parentAsset.id,
+      assetTag: link.parentAsset.assetTag,
+      name: link.parentAsset.name,
+      componentRole: link.componentRole,
+      slotNo: link.slotNo,
+      auditItem: auditItemByAssetId.get(link.parentAsset.id) ?? null,
+    })),
   }
+}
+
+function buildAuditComponentLookupContext(
+  components: AuditScanLookupAsset["parentComponents"],
+  auditItemByAssetId: Map<string, { id: string; assetId: string; auditStatus: string; auditResult: string | null }>
+) {
+  return components.map((component) => ({
+    assetId: component.componentAsset.id,
+    assetTag: component.componentAsset.assetTag,
+    name: component.componentAsset.name,
+    componentRole: component.componentRole,
+    slotNo: component.slotNo,
+    auditItem: auditItemByAssetId.get(component.componentAsset.id) ?? null,
+  }))
 }
