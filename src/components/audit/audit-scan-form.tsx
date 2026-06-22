@@ -48,6 +48,25 @@ import {
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 
 type Option = { id: string; label: string }
+type AuditScanComponent = {
+  assetId: string
+  assetTag: string
+  name: string
+  componentRole: string
+  slotNo: string | null
+  auditItemId: string | null
+  auditStatus: string
+  auditResult: string | null
+}
+
+type AuditInstalledInParent = {
+  parentAssetId: string
+  assetTag: string
+  name: string
+  componentRole: string
+  slotNo: string | null
+}
+
 type AuditScanItem = {
   id: string
   assetId: string
@@ -61,6 +80,8 @@ type AuditScanItem = {
   expectedConditionId: string | null
   ownershipType?: string | null
   photoChecklist: string[]
+  components: AuditScanComponent[]
+  installedIn: AuditInstalledInParent[]
 }
 
 type AuditScanOptions = {
@@ -266,12 +287,12 @@ export function AuditScanForm({
   )
   const requiresMismatchPhoto = Boolean(isDetailedScanVisible && mismatchPreview.length > 0) || requiresOutOfScopeMismatchPhoto
   const shouldShowAuditPhotoEvidence = Boolean(selectedItem || outOfScopeAsset)
-  const selectedAuditPhotoChecklist = selectedItem?.photoChecklist ?? []
+  const selectedAuditPhotoChecklist = selectedItem?.photoChecklist
   const generalAuditPhotoLabel = t("generalAuditPhotoLabel")
   const auditPhotoTagOptions = useMemo(
     () => [
       generalAuditPhotoLabel,
-      ...selectedAuditPhotoChecklist.filter((item) => item && item !== generalAuditPhotoLabel),
+      ...(selectedAuditPhotoChecklist ?? []).filter((item) => item && item !== generalAuditPhotoLabel),
     ],
     [generalAuditPhotoLabel, selectedAuditPhotoChecklist]
   )
@@ -387,6 +408,13 @@ export function AuditScanForm({
     window.setTimeout(() => {
       document.getElementById("audit-scan-input-panel")?.scrollIntoView({ behavior: "smooth", block: "center" })
     }, 0)
+  }
+
+  function scanComponentQr(component: AuditScanComponent) {
+    const scanValue = component.assetTag || component.assetId
+    setScanText(scanValue)
+    setScanSource("manual")
+    void selectScannedAsset(scanValue, "manual")
   }
 
   function handleManualScanAction() {
@@ -857,6 +885,82 @@ export function AuditScanForm({
     }
   }
 
+  async function confirmComponentWithParent(component: AuditScanComponent) {
+    if (!selectedItem) return
+    if (!component.auditItemId) {
+      toast.error(t("componentOutOfRound"))
+      return
+    }
+
+    setSaving(true)
+    try {
+      const actualValues = getActualValues(values, selectedItem)
+      const response = await fetch(`/api/audit-rounds/${roundId}/scan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assetId: component.assetId,
+          actualLocationId: actualValues.actualLocationId,
+          actualCustodianId: actualValues.actualCustodianId,
+          actualDepartmentId: actualValues.actualDepartmentId,
+          actualConditionId: actualValues.actualConditionId,
+          scanSource: "manual",
+          confirmedWithParentAssetId: selectedItem.assetId,
+          componentConfirmationReason: values.remark || t("componentConfirmedWithParentReason", { assetTag: selectedItem.assetTag }),
+          remark: values.remark,
+        }),
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      toast.success(t("componentConfirmedWithParentSuccess"))
+      showScanFeedback({
+        status: "saved",
+        title: t("componentConfirmedWithParentSuccess"),
+        description: `${component.assetTag} - ${component.name}`,
+      })
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : tCommon("error"))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function markComponentMissing(component: AuditScanComponent) {
+    if (!selectedItem) return
+    if (!component.auditItemId) {
+      toast.error(t("componentOutOfRound"))
+      return
+    }
+
+    const promptValue = window.prompt(t("componentMissingRemark"))
+    if (promptValue === null) return
+
+    const remark = promptValue.trim() || t("componentMissingDefaultRemark", { assetTag: selectedItem.assetTag })
+
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/audit-items/${component.auditItemId}/mark-not-found`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ remark }),
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      toast.success(t("componentMissingSaved"))
+      showScanFeedback({
+        status: "mismatch",
+        title: t("componentMissingSaved"),
+        description: `${component.assetTag} - ${component.name}`,
+      })
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : tCommon("error"))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function queueOfflineScan(payload: AuditOfflineScanPayload, label: string) {
     if (typeof window === "undefined") return
     await addQueuedAuditScanAsync(getAuditOfflineStorage(), roundId, payload, {
@@ -1265,6 +1369,35 @@ export function AuditScanForm({
                   ))}
                 </div>
               </div>
+              {selectedItem.installedIn.length > 0 ? (
+                <div className="mt-3 grid gap-2">
+                  {selectedItem.installedIn.map((parent) => (
+                    <div key={parent.parentAssetId} className="flex flex-col gap-2 rounded-md border border-info/30 bg-info/10 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-start gap-2">
+                        <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-info" />
+                        <div className="min-w-0">
+                          <div className="font-medium text-foreground">
+                            {t("installedInParentNotice", { assetTag: parent.assetTag, role: parent.componentRole })}
+                          </div>
+                          <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                            {parent.name}{parent.slotNo ? ` - ${parent.slotNo}` : ""}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {selectedItem.components.length > 0 ? (
+                <AuditComponentPanel
+                  components={selectedItem.components}
+                  saving={saving}
+                  onScanComponent={scanComponentQr}
+                  onConfirmWithParent={confirmComponentWithParent}
+                  onMarkMissing={markComponentMissing}
+                  t={t}
+                />
+              ) : null}
             </div>
           )}
 
@@ -1636,6 +1769,146 @@ function RecentScanCompactRow({ scan, t }: { scan: AuditRecentScan; t: AuditScan
       <span className="shrink-0 text-muted-foreground">{formatRecentScanTime(scan.at)}</span>
     </div>
   )
+}
+
+function AuditComponentPanel({
+  components,
+  saving,
+  onScanComponent,
+  onConfirmWithParent,
+  onMarkMissing,
+  t,
+}: {
+  components: AuditScanComponent[]
+  saving: boolean
+  onScanComponent: (component: AuditScanComponent) => void
+  onConfirmWithParent: (component: AuditScanComponent) => void
+  onMarkMissing: (component: AuditScanComponent) => void
+  t: AuditScanTranslator
+}) {
+  const checkedCount = components.filter(isAuditComponentChecked).length
+
+  return (
+    <div className="mt-4 rounded-md border border-border bg-surface p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <ListChecks className="h-4 w-4 text-primary" />
+            {t("componentsPanelTitle")}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">{t("componentsPanelHelp")}</div>
+        </div>
+        <span className="inline-flex w-fit shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+          {t("componentsCheckedCount", { checked: checkedCount, total: components.length })}
+        </span>
+      </div>
+      <div className="mt-3 grid gap-2">
+        {components.map((component) => {
+          const statusMeta = getAuditComponentStatusMeta(component, t)
+          const isConfirmedWithParent = component.auditResult === "confirmed_with_parent"
+          const isActionDisabled = saving || !component.auditItemId
+
+          return (
+            <div key={component.assetId} className="rounded-md border border-border bg-background p-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="truncate text-sm font-semibold text-foreground">{component.assetTag}</div>
+                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${statusMeta.className}`}>
+                      {statusMeta.label}
+                    </span>
+                  </div>
+                  <div className="mt-1 line-clamp-2 text-sm text-muted-foreground">{component.name}</div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      {component.componentRole}
+                    </span>
+                    {component.slotNo ? (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                        {component.slotNo}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="grid shrink-0 gap-2 sm:grid-cols-3 lg:min-w-[28rem]">
+                  <button
+                    type="button"
+                    onClick={() => onScanComponent(component)}
+                    disabled={saving}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
+                  >
+                    <ScanLine className="h-4 w-4" />
+                    {t("componentScanQr")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onConfirmWithParent(component)}
+                    disabled={isActionDisabled || isConfirmedWithParent}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
+                  >
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                    {t("componentConfirmWithParent")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onMarkMissing(component)}
+                    disabled={isActionDisabled}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 text-sm font-medium text-warning transition-colors hover:bg-warning/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
+                  >
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
+                    {t("componentMissing")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function isAuditComponentChecked(component: AuditScanComponent) {
+  return Boolean(
+    component.auditItemId &&
+      component.auditStatus !== "pending" &&
+      component.auditStatus !== "out_of_round"
+  )
+}
+
+function getAuditComponentStatusMeta(component: AuditScanComponent, t: AuditScanTranslator) {
+  if (!component.auditItemId || component.auditStatus === "out_of_round") {
+    return {
+      label: t("componentStatusOutOfRound"),
+      className: "border-border bg-muted text-muted-foreground",
+    }
+  }
+
+  if (component.auditResult === "confirmed_with_parent") {
+    return {
+      label: t("componentStatusConfirmedWithParent"),
+      className: "border-info/30 bg-info/10 text-info",
+    }
+  }
+
+  if (component.auditResult && component.auditResult !== "found") {
+    return {
+      label: t("componentStatusMismatch"),
+      className: "border-warning/30 bg-warning/10 text-warning",
+    }
+  }
+
+  if (component.auditStatus === "pending") {
+    return {
+      label: t("componentStatusPending"),
+      className: "border-warning/30 bg-warning/10 text-warning",
+    }
+  }
+
+  return {
+    label: t("componentStatusScanned"),
+    className: "border-success/30 bg-success/10 text-success",
+  }
 }
 
 function ManualScanSuggestionList({

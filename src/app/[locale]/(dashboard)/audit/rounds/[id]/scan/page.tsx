@@ -41,6 +41,22 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
                   name: true,
                   categoryId: true,
                   ownershipType: true,
+                  parentComponents: {
+                    where: { status: "installed", removedAt: null },
+                    select: {
+                      componentRole: true,
+                      slotNo: true,
+                      componentAsset: { select: { id: true, assetTag: true, name: true } },
+                    },
+                  },
+                  installedInLinks: {
+                    where: { status: "installed", removedAt: null },
+                    select: {
+                      componentRole: true,
+                      slotNo: true,
+                      parentAsset: { select: { id: true, assetTag: true, name: true } },
+                    },
+                  },
                 },
               },
             },
@@ -68,6 +84,7 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
   const checklistByCategoryId = new Map(
     checklistSettings.map((setting) => [setting.key.replace("asset_category_photo_checklist:", ""), parsePhotoChecklist(setting.value)])
   )
+  const auditItemByAssetId = new Map(round.items.map((item) => [item.assetId, item]))
 
   return (
     <AuditScanForm
@@ -88,6 +105,14 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
         expectedConditionId: item.expectedConditionId,
         ownershipType: item.asset.ownershipType,
         photoChecklist: checklistByCategoryId.get(item.asset.categoryId) ?? [],
+        components: buildAuditScanComponentRows(item.asset.parentComponents, auditItemByAssetId),
+        installedIn: item.asset.installedInLinks.map((link) => ({
+          parentAssetId: link.parentAsset.id,
+          assetTag: link.parentAsset.assetTag,
+          name: link.parentAsset.name,
+          componentRole: link.componentRole,
+          slotNo: link.slotNo,
+        })),
       }))}
       options={{
         locations: options.locations,
@@ -97,4 +122,27 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
       }}
     />
   )
+}
+
+function buildAuditScanComponentRows(
+  components: Array<{
+    componentRole: string
+    slotNo: string | null
+    componentAsset: { id: string; assetTag: string; name: string }
+  }>,
+  auditItemByAssetId: Map<string, { id: string; assetId: string; auditStatus: string; auditResult: string | null }>
+) {
+  return components.map((component) => {
+    const auditItem = auditItemByAssetId.get(component.componentAsset.id)
+    return {
+      assetId: component.componentAsset.id,
+      assetTag: component.componentAsset.assetTag,
+      name: component.componentAsset.name,
+      componentRole: component.componentRole,
+      slotNo: component.slotNo,
+      auditItemId: auditItem?.id ?? null,
+      auditStatus: auditItem?.auditStatus ?? "out_of_round",
+      auditResult: auditItem?.auditResult ?? null,
+    }
+  })
 }
