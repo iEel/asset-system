@@ -5,6 +5,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { assetCheckinSchema } from "@/lib/validations/asset-operations"
+import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { isValidCheckinReturnStatus } from "@/lib/asset-status-flow"
 import { generateCheckinDocumentNo } from "@/lib/operation-document-number"
 import {
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
       }
     }
 
-    const checkin = await prisma.$transaction(async (tx) => {
+    const { record: checkin, componentSync } = await prisma.$transaction(async (tx) => {
       const documentNo = await generateCheckinDocumentNo(tx, input.returnDate)
       const record = await tx.assetCheckin.create({
         data: {
@@ -127,6 +128,20 @@ export async function POST(request: NextRequest, context: CheckinContext) {
         },
       })
 
+      const componentSync = await syncInstalledComponentsWithParent(tx, {
+        parentAssetId: id,
+        changes: {
+          currentLocationId: input.nextLocationId,
+          custodianId: null,
+        },
+        movementType: "parent_checkin_sync",
+        referenceType: "checkin",
+        referenceId: record.id,
+        performedBy: user.id,
+        reason: "Parent asset checkin",
+        remark: input.remark,
+      })
+
       if (input.createMaintenance) {
         const repairNo = await generateRepairNo(tx)
         const problem = input.maintenanceProblem ?? buildMaintenanceProblem(input)
@@ -159,7 +174,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
         })
       }
 
-      return record
+      return { record, componentSync }
     })
 
     await logAudit({
@@ -168,7 +183,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
       module: "asset",
       recordId: id,
       oldValue: asset,
-      newValue: { ...input, checkinId: checkin.id },
+      newValue: { ...input, checkinId: checkin.id, componentSync },
     })
 
     return NextResponse.json(checkin, { status: 201 })

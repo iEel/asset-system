@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { assetBulkUpdateSchema } from "@/lib/validations/asset-operations"
+import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,6 +46,10 @@ export async function POST(request: NextRequest) {
         ...(input.toLocationId ? { currentLocationId: input.toLocationId } : {}),
         ...(input.toCustodianId ? { custodianId: input.toCustodianId } : {}),
         updatedBy: user.id,
+      }
+      const componentSyncChanges = {
+        ...(input.toLocationId ? { currentLocationId: input.toLocationId } : {}),
+        ...(input.toCustodianId ? { custodianId: input.toCustodianId } : {}),
       }
 
       for (const asset of assets) {
@@ -89,6 +94,23 @@ export async function POST(request: NextRequest) {
         await tx.assetMovement.createMany({ data: movementRows })
       }
 
+      const componentSync = { updated: 0, skipped: 0, movements: 0 }
+      for (const asset of assets) {
+        const result = await syncInstalledComponentsWithParent(tx, {
+          parentAssetId: asset.id,
+          changes: componentSyncChanges,
+          movementType: "parent_bulk_update_sync",
+          referenceType: "bulk_update",
+          referenceId: "bulk_update",
+          performedBy: user.id,
+          reason: input.reason,
+          remark: input.remark,
+        })
+        componentSync.updated += result.updated
+        componentSync.skipped += result.skipped
+        componentSync.movements += result.movements
+      }
+
       await tx.systemLog.createMany({
         data: assets.map((asset) => ({
           userId: user.id,
@@ -109,7 +131,7 @@ export async function POST(request: NextRequest) {
         })),
       })
 
-      return { updated: assets.length, movements: movementRows.length }
+      return { updated: assets.length, movements: movementRows.length, componentSync }
     })
 
     return NextResponse.json(result)

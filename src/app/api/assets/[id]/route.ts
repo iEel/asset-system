@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { syncInstalledComponentsWithParent, type ComponentSyncChanges } from "@/lib/asset-component-sync"
 import { getAssetRegisterStatusChangeError } from "@/lib/asset-lifecycle-exception-policy"
 import { assetSchema } from "@/lib/validations/asset"
 
@@ -76,21 +78,35 @@ export async function PUT(request: NextRequest, context: AssetRouteContext) {
 
     await assertUniqueSerial(input.serialNumber, id)
 
-    const asset = await prisma.asset.update({
-      where: { id },
-      data: {
-        ...input,
-        assetTag: input.assetTag ?? existing.assetTag,
-        updatedBy: user.id,
-      },
-      include: assetInclude,
-    })
+    const { asset, componentSync } = await prisma.$transaction(async (tx) => {
+      const asset = await tx.asset.update({
+        where: { id },
+        data: {
+          ...input,
+          assetTag: input.assetTag ?? existing.assetTag,
+          updatedBy: user.id,
+        },
+        include: assetInclude,
+      })
 
-    await logAssetMovements({
-      userId: user.id,
-      assetId: asset.id,
-      existing,
-      input,
+      await createAssetMovementRows(tx, {
+        userId: user.id,
+        assetId: asset.id,
+        existing,
+        input,
+      })
+
+      const componentSync = await syncInstalledComponentsWithParent(tx, {
+        parentAssetId: asset.id,
+        changes: buildRegisterComponentSyncChanges(input),
+        movementType: "parent_register_update_sync",
+        referenceType: "asset",
+        referenceId: asset.id,
+        performedBy: user.id,
+        reason: "Parent asset register update",
+      })
+
+      return { asset, componentSync }
     })
 
     await logAudit({
@@ -99,7 +115,7 @@ export async function PUT(request: NextRequest, context: AssetRouteContext) {
       module: "asset",
       recordId: asset.id,
       oldValue: existing,
-      newValue: input,
+      newValue: { ...input, componentSync },
     })
 
     return NextResponse.json(asset)
@@ -162,50 +178,95 @@ export async function DELETE(_request: NextRequest, context: AssetRouteContext) 
   }
 }
 
-async function logAssetMovements({
-  userId,
-  assetId,
-  existing,
-  input,
-}: {
-  userId: string
-  assetId: string
-  existing: {
-    ownershipType: string
-    licenseTotalSeats: number | null
-    licenseUsedSeats: number | null
-    licenseAssignedAssetId: string | null
-    currentLocationId: string
-    custodianId: string | null
-    departmentId: string | null
-    statusId: string
-    conditionId: string
+type NullableRegisterField = "departmentId" | "custodianId"
+
+type RegisterComponentSyncInput = {
+  branchId: string
+  currentLocationId: string
+  departmentId?: string | null
+  custodianId?: string | null
+}
+
+type RegisterMovementInput = {
+  departmentId?: string | null
+  custodianId?: string | null
+}
+
+type MovementCandidate = readonly [movementType: string, fromValue: string | null, toValue: string | null]
+
+function hasOwnNullableField(input: RegisterMovementInput, field: NullableRegisterField) {
+  return Object.prototype.hasOwnProperty.call(input, field)
+}
+
+function buildRegisterComponentSyncChanges(input: RegisterComponentSyncInput): ComponentSyncChanges {
+  const changes: ComponentSyncChanges = {
+    branchId: input.branchId,
+    currentLocationId: input.currentLocationId,
   }
-  input: {
-    ownershipType: string
-    licenseTotalSeats?: number | null
-    licenseUsedSeats?: number | null
-    licenseAssignedAssetId?: string | null
-    currentLocationId: string
-    custodianId?: string | null
-    departmentId?: string | null
-    statusId: string
-    conditionId: string
+
+  if (hasOwnNullableField(input, "departmentId")) changes.departmentId = input.departmentId ?? null
+  if (hasOwnNullableField(input, "custodianId")) changes.custodianId = input.custodianId ?? null
+
+  return changes
+}
+
+function buildNullableMovementCandidate(
+  movementType: string,
+  existingValue: string | null,
+  input: RegisterMovementInput,
+  field: NullableRegisterField
+): MovementCandidate | null {
+  return hasOwnNullableField(input, field) ? [movementType, existingValue, input[field] ?? null] : null
+}
+
+async function createAssetMovementRows(
+  tx: Pick<Prisma.TransactionClient, "assetMovement">,
+  {
+    userId,
+    assetId,
+    existing,
+    input,
+  }: {
+    userId: string
+    assetId: string
+    existing: {
+      ownershipType: string
+      licenseTotalSeats: number | null
+      licenseUsedSeats: number | null
+      licenseAssignedAssetId: string | null
+      currentLocationId: string
+      custodianId: string | null
+      departmentId: string | null
+      statusId: string
+      conditionId: string
+    }
+    input: {
+      ownershipType: string
+      licenseTotalSeats?: number | null
+      licenseUsedSeats?: number | null
+      licenseAssignedAssetId?: string | null
+      currentLocationId: string
+      custodianId?: string | null
+      departmentId?: string | null
+      statusId: string
+      conditionId: string
+    }
   }
-}) {
-  const candidates = [
+) {
+  const candidates: Array<MovementCandidate | null> = [
     ["ownership_type_change", existing.ownershipType, input.ownershipType],
     ["license_total_seats_change", existing.licenseTotalSeats == null ? null : String(existing.licenseTotalSeats), input.licenseTotalSeats == null ? null : String(input.licenseTotalSeats)],
     ["license_used_seats_change", existing.licenseUsedSeats == null ? null : String(existing.licenseUsedSeats), input.licenseUsedSeats == null ? null : String(input.licenseUsedSeats)],
     ["license_assigned_asset_change", existing.licenseAssignedAssetId, input.licenseAssignedAssetId ?? null],
     ["location_change", existing.currentLocationId, input.currentLocationId],
-    ["custodian_change", existing.custodianId, input.custodianId ?? null],
-    ["department_change", existing.departmentId, input.departmentId ?? null],
+    buildNullableMovementCandidate("custodian_change", existing.custodianId, input, "custodianId"),
+    buildNullableMovementCandidate("department_change", existing.departmentId, input, "departmentId"),
     ["status_change", existing.statusId, input.statusId],
     ["condition_change", existing.conditionId, input.conditionId],
-  ] as const
+  ]
 
   const data = candidates
+    .filter((candidate): candidate is MovementCandidate => candidate !== null)
     .filter(([, fromValue, toValue]) => fromValue !== toValue)
     .map(([movementType, fromValue, toValue]) => ({
       assetId,
@@ -219,6 +280,6 @@ async function logAssetMovements({
     }))
 
   if (data.length > 0) {
-    await prisma.assetMovement.createMany({ data })
+    await tx.assetMovement.createMany({ data })
   }
 }

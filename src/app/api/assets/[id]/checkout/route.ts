@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { getAssetOperationStatusError } from "@/lib/asset-operation-policy"
+import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { assetCheckoutSchema } from "@/lib/validations/asset-operations"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
 import { generateCheckoutDocumentNo } from "@/lib/operation-document-number"
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
     const nextCustodianId = input.checkoutType === "user" ? input.custodianId : asset.custodianId
     const nextDepartmentId = input.checkoutType === "department" ? input.departmentId : asset.departmentId
 
-    const checkout = await prisma.$transaction(async (tx) => {
+    const { record: checkout, componentSync } = await prisma.$transaction(async (tx) => {
       const documentNo = await generateCheckoutDocumentNo(tx, input.checkoutDate)
       const record = await tx.assetCheckout.create({
         data: {
@@ -114,7 +115,22 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
         },
       })
 
-      return record
+      const componentSync = await syncInstalledComponentsWithParent(tx, {
+        parentAssetId: id,
+        changes: {
+          currentLocationId: nextLocationId,
+          custodianId: nextCustodianId,
+          departmentId: nextDepartmentId,
+        },
+        movementType: "parent_checkout_sync",
+        referenceType: "checkout",
+        referenceId: record.id,
+        performedBy: user.id,
+        reason: "Parent asset checkout",
+        remark: input.remark,
+      })
+
+      return { record, componentSync }
     })
 
     await logAudit({
@@ -123,7 +139,7 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
       module: "asset",
       recordId: id,
       oldValue: asset,
-      newValue: { ...input, checkoutId: checkout.id },
+      newValue: { ...input, checkoutId: checkout.id, componentSync },
     })
 
     return NextResponse.json(checkout, { status: 201 })

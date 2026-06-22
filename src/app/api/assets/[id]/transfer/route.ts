@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { getAssetOperationStatusError } from "@/lib/asset-operation-policy"
+import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { assetTransferSchema } from "@/lib/validations/asset-operations"
 
 type TransferContext = {
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest, context: TransferContext) {
       departmentId: input.toDepartmentId ?? asset.departmentId,
     }
 
-    const updatedAsset = await prisma.$transaction(async (tx) => {
+    const { record: updatedAsset, componentSync } = await prisma.$transaction(async (tx) => {
       const record = await tx.asset.update({
         where: { id },
         data: {
@@ -75,7 +76,22 @@ export async function POST(request: NextRequest, context: TransferContext) {
         },
       })
 
-      return record
+      const componentSync = await syncInstalledComponentsWithParent(tx, {
+        parentAssetId: id,
+        changes: {
+          currentLocationId: toSnapshot.locationId,
+          custodianId: toSnapshot.custodianId,
+          departmentId: toSnapshot.departmentId,
+        },
+        movementType: "parent_transfer_sync",
+        referenceType: "transfer",
+        referenceId: id,
+        performedBy: user.id,
+        reason: input.reason,
+        remark: input.remark,
+      })
+
+      return { record, componentSync }
     })
 
     await logAudit({
@@ -84,7 +100,7 @@ export async function POST(request: NextRequest, context: TransferContext) {
       module: "asset",
       recordId: id,
       oldValue: fromSnapshot,
-      newValue: { ...toSnapshot, reason: input.reason, remark: input.remark },
+      newValue: { ...toSnapshot, reason: input.reason, remark: input.remark, componentSync },
     })
 
     return NextResponse.json(updatedAsset)

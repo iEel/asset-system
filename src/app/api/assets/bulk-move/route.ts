@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { assetBulkMoveSchema } from "@/lib/validations/asset-operations"
+import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,6 +59,23 @@ export async function POST(request: NextRequest) {
         })),
       })
 
+      const componentSync = { updated: 0, skipped: 0, movements: 0 }
+      for (const asset of assets) {
+        const result = await syncInstalledComponentsWithParent(tx, {
+          parentAssetId: asset.id,
+          changes: { currentLocationId: input.toLocationId },
+          movementType: "parent_bulk_move_sync",
+          referenceType: "bulk_move",
+          referenceId: "bulk_move",
+          performedBy: user.id,
+          reason: input.reason,
+          remark: input.remark,
+        })
+        componentSync.updated += result.updated
+        componentSync.skipped += result.skipped
+        componentSync.movements += result.movements
+      }
+
       await tx.systemLog.createMany({
         data: assets.map((asset) => ({
           userId: user.id,
@@ -74,7 +92,7 @@ export async function POST(request: NextRequest) {
         })),
       })
 
-      return { updated: assets.length }
+      return { updated: assets.length, componentSync }
     })
 
     return NextResponse.json(result)
