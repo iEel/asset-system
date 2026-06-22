@@ -52,3 +52,11 @@ test("audit scan and finding review sync only supported audit fields to confirme
   assert.doesNotMatch(scanRoute, /branchId:\s*actual/)
   assert.doesNotMatch(reviewRoute, /conditionId:\s*finding\.actualValue[\s\S]*syncInstalledComponentsWithParent/)
 })
+
+test("audit scan route requires component confirmation parent to be in the same round", () => {
+  const route = readFileSync("src/app/api/audit-rounds/[id]/scan/route.ts", "utf8")
+
+  assert.match(route, /assertComponentInstalledUnderParent\(tx, id, parentAssetId, item\.assetId\)/)
+  assert.match(route, /auditRoundId_assetId:\s*\{\s*auditRoundId,\s*assetId:\s*parentAssetId\s*\}/)
+  assert.match(route, /Component parent is not included in this audit round/)
+})

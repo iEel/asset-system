@@ -5,6 +5,7 @@ import { errorResponse } from "@/lib/api-response"
 import { createAuditWorkbook, finalizeAuditWorksheet, toExcelDate, workbookResponse } from "@/lib/audit-excel"
 import { styleWorksheetHeader } from "@/lib/asset-excel"
 import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
+import { isSuccessfulAuditResult } from "@/lib/audit-result-summary"
 
 type AuditVarianceExportContext = {
   params: Promise<{ id: string }>
@@ -64,7 +65,7 @@ export async function GET(_request: NextRequest, context: AuditVarianceExportCon
       { header: "Count", key: "count", width: 14 },
     ]
     const pendingItems = items.filter((item) => item.auditStatus === "pending").length
-    const matchedItems = items.filter((item) => item.auditResult === "found").length
+    const matchedItems = items.filter((item) => isSuccessfulAuditResult(item.auditResult)).length
     const notFoundItems = items.filter((item) => item.auditResult === "not_found").length
     const pendingReview = findings.filter((finding) => finding.reviewStatus === "pending").length
     const openActions = findings.filter((finding) => ["planned", "in_progress"].includes(finding.actionStatus)).length

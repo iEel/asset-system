@@ -18,6 +18,7 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import { isSameAuditActor } from "@/lib/audit-segregation"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { countSuccessfulAuditResultRows, isVarianceAuditResult } from "@/lib/audit-result-summary"
 
 type AuditRoundDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -98,13 +99,13 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const scannedCount = statusCounts
     .filter((row) => row.auditStatus !== "pending")
     .reduce((sum, row) => sum + row._count._all, 0)
-  const foundCount = resultCounts.find((row) => row.auditResult === "found")?._count._all ?? 0
+  const foundCount = countSuccessfulAuditResultRows(resultCounts)
   const notFoundCount = resultCounts.find((row) => row.auditResult === "not_found")?._count._all ?? 0
   const wrongLocationCount = findingTypeCounts.find((row) => row.findingType === "wrong_location")?._count._all ?? 0
   const wrongCustodianCount = findingTypeCounts.find((row) => row.findingType === "wrong_custodian")?._count._all ?? 0
   const wrongConditionCount = findingTypeCounts.find((row) => row.findingType === "wrong_condition")?._count._all ?? 0
   const mismatchCount = resultCounts
-    .filter((row) => row.auditResult && row.auditResult !== "found" && row.auditResult !== "not_found" && row.auditResult !== "out_of_scope")
+    .filter((row) => isVarianceAuditResult(row.auditResult))
     .reduce((sum, row) => sum + row._count._all, 0)
   const progress = round._count.items > 0 ? Math.round(((round._count.items - pendingCount) / round._count.items) * 100) : 0
   const closeChecklist = [

@@ -272,7 +272,7 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
       const scannedAt = new Date()
 
       const result = await runComponentConfirmationTransaction(async (tx) => {
-        const componentLink = await assertComponentInstalledUnderParent(tx, parentAssetId, item.assetId)
+        const componentLink = await assertComponentInstalledUnderParent(tx, id, parentAssetId, item.assetId)
 
         await tx.auditScanHistory.create({
           data: {
@@ -753,7 +753,8 @@ async function runComponentConfirmationTransaction<T>(operation: (tx: Prisma.Tra
 }
 
 async function assertComponentInstalledUnderParent(
-  tx: { assetComponent: Prisma.TransactionClient["assetComponent"] },
+  tx: { assetComponent: Prisma.TransactionClient["assetComponent"]; auditItem: Prisma.TransactionClient["auditItem"] },
+  auditRoundId: string,
   parentAssetId: string,
   componentAssetId: string
 ) {
@@ -772,6 +773,15 @@ async function assertComponentInstalledUnderParent(
   if (!componentLink) {
     throw new Error("Component is no longer installed under the selected parent asset")
   }
+
+  const parentAuditItem = await tx.auditItem.findUnique({
+    where: { auditRoundId_assetId: { auditRoundId, assetId: parentAssetId } },
+    select: { id: true },
+  })
+  if (!parentAuditItem) {
+    throw new Error("Component parent is not included in this audit round")
+  }
+
   return componentLink
 }
 
