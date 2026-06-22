@@ -76,6 +76,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Scan an asset that exists in the system but is outside the round and confirm it is shown as Out-of-scope, not as Not Found.
 - [ ] Scan a printed Asset Label QR whose value is `/q/a/{assetId}` for an active asset outside the round and confirm the scan lookup resolves the asset by ID, shows the out-of-scope action card, and does not show `ไม่พบทรัพย์สินในระบบ`.
 - [ ] Confirm the out-of-scope lookup itself does not create audit history/finding rows until the user confirms the out-of-scope save action.
+- [ ] Scan an asset outside the audit round that has installed components, such as `SNI-EQU-20-0290` in a seeded/test environment, and confirm the out-of-scope action card shows the component panel with each component row. Component QR scan buttons should remain available, while `ยืนยันกับตัวหลัก` and `ไม่พบ` stay disabled for components that have no audit item in the current round.
 - [ ] Scan an asset outside the audit round, change its actual location or custodian, attach evidence, and confirm the save creates an out-of-scope record plus reviewable field mismatch findings.
 - [ ] Confirm the asset master data does not change immediately after the out-of-scope scan save.
 - [ ] Approve the field mismatch finding as an audit reviewer and confirm the master asset data and movement log update only after approval.

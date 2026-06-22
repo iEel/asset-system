@@ -7,6 +7,7 @@
 ## 2026-06-22
 
 - Added audit component asset workflow: audit rounds include active installed components for selected parent assets, Audit Scan shows component status under the parent, and component confirmations update the component's own audit item.
+- Audit Scan now preserves component context on out-of-scope asset lookup responses, so an out-of-round parent asset still shows its installed component rows with component QR scan actions and disabled in-round-only component actions.
 - Added parent-to-component master-data sync for supported movement fields with component movement logs, while keeping condition/status and audit branch changes out of automatic sync.
 
 ---
