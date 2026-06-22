@@ -4,7 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { auditRoundSchema } from "@/lib/validations/audit"
-import { generateAuditNo, getAuditRoundCandidateAssets, selectAuditSample } from "@/lib/audit-round"
+import { generateAuditNo, getAuditRoundSelection } from "@/lib/audit-round"
 
 const roundInclude = {
   scopeCompany: { select: { code: true, nameTh: true } },
@@ -52,8 +52,8 @@ export async function POST(request: NextRequest) {
     requirePermission(user, "audit", "create")
 
     const input = auditRoundSchema.parse(await request.json())
-    const candidateAssets = await getAuditRoundCandidateAssets(input)
-    const assets = selectAuditSample(candidateAssets, input.sampleRate)
+    const selection = await getAuditRoundSelection(input)
+    const assets = selection.selectedAssets
     if (assets.length === 0) {
       return NextResponse.json({ error: "No assets found in audit scope" }, { status: 400 })
     }
@@ -103,10 +103,24 @@ export async function POST(request: NextRequest) {
       action: "create",
       module: "audit",
       recordId: round.id,
-      newValue: { ...input, auditNo, matchedAssets: candidateAssets.length, generatedItems: assets.length },
+      newValue: {
+        ...input,
+        auditNo,
+        matchedAssets: selection.matchedAssets,
+        generatedItems: assets.length,
+        componentItems: selection.componentItems,
+      },
     })
 
-    return NextResponse.json({ ...round, matchedAssets: candidateAssets.length, generatedItems: assets.length }, { status: 201 })
+    return NextResponse.json(
+      {
+        ...round,
+        matchedAssets: selection.matchedAssets,
+        generatedItems: assets.length,
+        componentItems: selection.componentItems,
+      },
+      { status: 201 }
+    )
   } catch (error) {
     return errorResponse(error, 400)
   }

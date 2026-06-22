@@ -23,9 +23,16 @@ type AuditRoundOptions = {
 type AuditRoundPreview = {
   matchedAssets: number
   sampledAssets: number
+  componentItems?: number
   sampleRate: number
   riskPreset: string
-  previewAssets: Array<{ id: string; assetTag: string; name: string }>
+  previewAssets: Array<{
+    id: string
+    assetTag: string
+    name: string
+    includedVia?: "direct" | "component"
+    parentAssetTag?: string | null
+  }>
 }
 
 const riskPresetValues = ["all", "data_quality", "high_value", "stale_movement", "repair_history", "license_expiring"] as const
@@ -57,6 +64,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
     status: "draft",
   })
   const statusOptions = filterAuditStatusOptions(options.statuses, values.includeClosedAssets)
+  const componentItems = preview?.componentItems ?? 0
 
   function setField(field: string, value: string | boolean) {
     setPreview(null)
@@ -178,12 +186,18 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
             </div>
             {preview ? (
               <div className="mt-4 rounded-md border border-primary/30 bg-primary/5 p-4">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                   <PreviewMetric label={t("previewMatched")} value={String(preview.matchedAssets)} />
                   <PreviewMetric label={t("previewSampled")} value={String(preview.sampledAssets)} />
+                  <PreviewMetric label={t("previewComponentItems")} value={String(componentItems)} />
                   <PreviewMetric label={t("previewSampleRate")} value={`${preview.sampleRate}%`} />
                   <PreviewMetric label={t("previewRisk")} value={t(`riskPreset_${preview.riskPreset}`)} />
                 </div>
+                {componentItems > 0 ? (
+                  <p className="mt-3 rounded-md border border-info/30 bg-info/10 px-3 py-2 text-xs text-info">
+                    {t("previewComponentHelp", { count: componentItems })}
+                  </p>
+                ) : null}
                 <div className="mt-4">
                   <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("previewAssets")}</div>
                   {preview.previewAssets.length > 0 ? (
@@ -192,6 +206,11 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
                         <div key={asset.id} className="rounded-md border border-border bg-surface px-3 py-2">
                           <div className="text-sm font-semibold text-foreground">{asset.assetTag}</div>
                           <div className="mt-0.5 truncate text-xs text-muted-foreground">{asset.name}</div>
+                          {asset.includedVia === "component" && asset.parentAssetTag ? (
+                            <div className="mt-1 text-xs font-medium text-info">
+                              {t("previewComponentFromParent", { assetTag: asset.parentAssetTag })}
+                            </div>
+                          ) : null}
                         </div>
                       ))}
                     </div>

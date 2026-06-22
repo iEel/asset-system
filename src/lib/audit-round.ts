@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
+import { selectAuditComponentCandidates } from "@/lib/audit-component-round"
 import { buildAuditAssetWhere, selectAuditSample } from "./audit-round-scope.ts"
 import type { AuditRoundInput } from "@/lib/validations/audit"
 
@@ -27,6 +28,25 @@ export async function getAuditRoundCandidateAssets(input: AuditRoundInput) {
   })
 }
 
+export async function getAuditRoundSelection(input: AuditRoundInput) {
+  const candidateAssets = await getAuditRoundCandidateAssets(input)
+  const componentLinks = candidateAssets.length
+    ? await prisma.assetComponent.findMany({
+        where: {
+          parentAssetId: { in: candidateAssets.map((asset) => asset.id) },
+          status: "installed",
+          removedAt: null,
+          componentAsset: { isActive: true },
+        },
+        select: {
+          parentAssetId: true,
+          componentAsset: { select: auditRoundAssetSelect },
+        },
+      })
+    : []
+
+  return selectAuditComponentCandidates(candidateAssets, componentLinks, input.sampleRate)
+}
 
 export async function generateAuditNo(auditYear: number) {
   const prefix = `AUD-${auditYear}-`

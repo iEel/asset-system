@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
-import { getAuditRoundCandidateAssets, selectAuditSample } from "@/lib/audit-round"
+import { getAuditRoundSelection } from "@/lib/audit-round"
 import { auditRoundSchema } from "@/lib/validations/audit"
 
 export async function POST(request: NextRequest) {
@@ -14,18 +14,20 @@ export async function POST(request: NextRequest) {
       ...payload,
       name: typeof payload?.name === "string" && payload.name.trim() ? payload.name : "Audit preview",
     })
-    const candidateAssets = await getAuditRoundCandidateAssets(input)
-    const sampledAssets = selectAuditSample(candidateAssets, input.sampleRate)
+    const selection = await getAuditRoundSelection(input)
 
     return NextResponse.json({
-      matchedAssets: candidateAssets.length,
-      sampledAssets: sampledAssets.length,
+      matchedAssets: selection.matchedAssets,
+      sampledAssets: selection.selectedAssets.length,
+      componentItems: selection.componentItems,
       sampleRate: input.sampleRate,
       riskPreset: input.riskPreset,
-      previewAssets: sampledAssets.slice(0, 8).map((asset) => ({
-        id: asset.id,
-        assetTag: asset.assetTag,
-        name: asset.name,
+      previewAssets: selection.selectedItems.slice(0, 8).map((item) => ({
+        id: item.asset.id,
+        assetTag: item.asset.assetTag,
+        name: item.asset.name,
+        includedVia: item.includedVia,
+        parentAssetTag: item.parentAssetTag ?? null,
       })),
     })
   } catch (error) {
