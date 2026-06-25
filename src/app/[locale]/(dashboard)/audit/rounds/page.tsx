@@ -49,10 +49,18 @@ type AuditRoundInsight = {
   pending: number
   processed: number
   followUps: number
+  outOfScope: number
   hasMismatch: boolean
   readyToClose: boolean
 }
 
+type RoundWorkflowLink = {
+  key: "pending" | "review" | "out_of_scope"
+  label: string
+  count: number
+  href: string
+  tone: "warning" | "danger" | "info"
+}
 type ActionPanelItem = {
   label: string
   help: string
@@ -129,7 +137,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
     { route: "/audit/rounds", locale, view: activeView, hasSearch: Boolean(searchText) }
   )
   const roundIds = rounds.map((round) => round.id)
-  const [statusCounts, findingWorkCounts] = roundIds.length
+  const [statusCounts, findingWorkCounts, outOfScopeWorkCounts] = roundIds.length
     ? await withPerformanceTiming(
         "audit-rounds.progress-data",
         () => Promise.all([
@@ -146,10 +154,15 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
             },
             _count: { _all: true },
           }),
+          prisma.auditScanHistory.groupBy({
+            by: ["auditRoundId"],
+            where: { auditRoundId: { in: roundIds }, auditItemId: null },
+            _count: { _all: true },
+          }),
         ]),
         { route: "/audit/rounds", locale, roundCount: roundIds.length }
       )
-    : [[], []]
+    : [[], [], []]
   const progressByRoundId = new Map<string, { pending: number; processed: number }>()
   for (const row of statusCounts) {
     const current = progressByRoundId.get(row.auditRoundId) ?? { pending: 0, processed: 0 }
@@ -161,7 +174,8 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
     progressByRoundId.set(row.auditRoundId, current)
   }
   const followUpsByRoundId = new Map(findingWorkCounts.map((row) => [row.auditRoundId, row._count._all]))
-  const insightsByRoundId = buildAuditRoundInsights(rounds, progressByRoundId, followUpsByRoundId)
+  const outOfScopeByRoundId = new Map(outOfScopeWorkCounts.map((row) => [row.auditRoundId, row._count._all]))
+  const insightsByRoundId = buildAuditRoundInsights(rounds, progressByRoundId, followUpsByRoundId, outOfScopeByRoundId)
   const filteredRounds = filterRoundsByView(rounds, insightsByRoundId, activeView)
   const pendingRounds = rounds.filter((round) => (insightsByRoundId.get(round.id)?.pending ?? 0) > 0 && round.status !== "closed")
   const reviewRounds = rounds.filter((round) => (insightsByRoundId.get(round.id)?.followUps ?? 0) > 0)
@@ -328,10 +342,22 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                 pending: progress.pending,
                 processed: progress.processed,
                 followUps: 0,
+                outOfScope: 0,
                 hasMismatch: round._count.findings > 0,
                 readyToClose: false,
               }
-              const roundDetailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
+                            const roundDetailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
+              const workflowLinks = buildAuditRoundWorkflowLinks({
+                locale,
+                roundId: round.id,
+                returnTo: auditRoundsReturnHref,
+                insight,
+                labels: {
+                  pending: t("roundActionPending"),
+                  review: t("roundActionReview"),
+                  outOfScope: t("roundActionOutOfScope"),
+                },
+              })
 
               return (
                 <article key={round.id} className="min-w-0 rounded-md border border-border bg-background p-3">
@@ -371,6 +397,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                       pendingLabel={t("pending")}
                     />
                   </div>
+                  <RoundWorkflowLinks links={workflowLinks} />
                   <Link
                     href={roundDetailHref}
                     className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
@@ -411,12 +438,24 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                     pending: progress.pending,
                     processed: progress.processed,
                     followUps: 0,
+                    outOfScope: 0,
                     hasMismatch: round._count.findings > 0,
                     readyToClose: false,
                   }
-                  const roundDetailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
+                                const roundDetailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
+              const workflowLinks = buildAuditRoundWorkflowLinks({
+                locale,
+                roundId: round.id,
+                returnTo: auditRoundsReturnHref,
+                insight,
+                labels: {
+                  pending: t("roundActionPending"),
+                  review: t("roundActionReview"),
+                  outOfScope: t("roundActionOutOfScope"),
+                },
+              })
 
-                  return (
+              return (
                     <ClickableTableRow
                       key={round.id}
                       href={roundDetailHref}
@@ -455,13 +494,16 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                         />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
-                        <Link
-                          href={roundDetailHref}
-                          title={tCommon("view")}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Link>
+                        <div className="flex min-w-0 justify-end gap-2">
+                          <RoundWorkflowLinks links={workflowLinks} compact />
+                          <Link
+                            href={roundDetailHref}
+                            title={tCommon("view")}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                        </div>
                       </td>
                     </ClickableTableRow>
                   )
@@ -558,6 +600,33 @@ function QuickFilterBar({
   )
 }
 
+function RoundWorkflowLinks({ links, compact = false }: { links: RoundWorkflowLink[]; compact?: boolean }) {
+  if (links.length === 0) return null
+
+  return (
+    <div className={`mt-3 flex flex-wrap gap-2 ${compact ? "mt-0 justify-end" : ""}`}>
+      {links.map((link) => {
+        const toneClass =
+          link.tone === "danger"
+            ? "border-danger/30 bg-danger/10 text-danger hover:bg-danger/15"
+            : link.tone === "info"
+              ? "border-info/30 bg-info/10 text-info hover:bg-info/15"
+              : "border-warning/30 bg-warning/10 text-warning hover:bg-warning/15"
+
+        return (
+          <Link
+            key={link.key}
+            href={link.href}
+            className={`inline-flex h-8 items-center gap-1 rounded-md border px-2 text-xs font-medium transition-colors ${toneClass}`}
+          >
+            <span>{link.label}</span>
+            <span className="tabular-nums">{link.count}</span>
+          </Link>
+        )
+      })}
+    </div>
+  )
+}
 function ReadyToCloseBadge({
   status,
   insight,
@@ -705,17 +774,20 @@ function buildAuditRoundInsights(
   rounds: AuditRoundListItem[],
   progressByRoundId: Map<string, { pending: number; processed: number }>,
   followUpsByRoundId: Map<string, number>,
+  outOfScopeByRoundId: Map<string, number>,
 ) {
   const insights = new Map<string, AuditRoundInsight>()
 
   for (const round of rounds) {
     const progress = progressByRoundId.get(round.id) ?? { pending: round._count.items, processed: 0 }
     const followUps = followUpsByRoundId.get(round.id) ?? 0
+    const outOfScope = outOfScopeByRoundId.get(round.id) ?? 0
     const hasMismatch = round._count.findings > 0
     insights.set(round.id, {
       pending: progress.pending,
       processed: progress.processed,
       followUps,
+      outOfScope,
       hasMismatch,
       readyToClose: round.status !== "closed" && progress.pending === 0 && followUps === 0,
     })
@@ -724,6 +796,53 @@ function buildAuditRoundInsights(
   return insights
 }
 
+function buildAuditRoundWorkflowLinks({
+  locale,
+  roundId,
+  returnTo,
+  insight,
+  labels,
+}: {
+  locale: string
+  roundId: string
+  returnTo: string
+  insight: AuditRoundInsight
+  labels: { pending: string; review: string; outOfScope: string }
+}): RoundWorkflowLink[] {
+  const links: RoundWorkflowLink[] = []
+
+  if (insight.pending > 0) {
+    links.push({
+      key: "pending",
+      label: labels.pending,
+      count: insight.pending,
+      href: appendOperationalReturnTo(`/${locale}/audit/rounds/${roundId}/pending`, returnTo),
+      tone: "warning",
+    })
+  }
+
+  if (insight.followUps > 0) {
+    links.push({
+      key: "review",
+      label: labels.review,
+      count: insight.followUps,
+      href: appendOperationalReturnTo(`/${locale}/audit/findings?status=pending&roundId=${roundId}`, returnTo),
+      tone: "danger",
+    })
+  }
+
+  if (insight.outOfScope > 0) {
+    links.push({
+      key: "out_of_scope",
+      label: labels.outOfScope,
+      count: insight.outOfScope,
+      href: `/${locale}/audit/rounds/${roundId}?result=out_of_scope&returnTo=${encodeURIComponent(returnTo)}#audit-result-list`,
+      tone: "info",
+    })
+  }
+
+  return links
+}
 function filterRoundsByView<T extends AuditRoundListItem>(
   rounds: T[],
   insightsByRoundId: Map<string, AuditRoundInsight>,

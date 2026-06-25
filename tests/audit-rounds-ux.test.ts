@@ -17,6 +17,21 @@ test("audit rounds page exposes action-first workflow controls", () => {
   assert.match(page, /t\("readyToClose"\)/)
 })
 
+
+test("audit rounds list exposes per-round workflow shortcuts", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/page.tsx", "utf8")
+
+  assert.match(page, /prisma\.auditScanHistory\.groupBy/)
+  assert.match(page, /outOfScopeByRoundId/)
+  assert.match(page, /buildAuditRoundWorkflowLinks/)
+  assert.match(page, /RoundWorkflowLinks/)
+  assert.match(page, /roundActionPending/)
+  assert.match(page, /roundActionReview/)
+  assert.match(page, /roundActionOutOfScope/)
+  assert.match(page, /result=out_of_scope/)
+  assert.match(page, /audit\/findings\?status=pending&roundId=/)
+  assert.match(page, /audit\/rounds\/\$\{roundId\}\/pending/)
+})
 test("audit rounds quick filters preserve scroll position", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/page.tsx", "utf8")
 
@@ -44,5 +59,8 @@ test("audit rounds UX copy is translated", () => {
     assert.equal(typeof messages.auditRound.readyToClose, "string")
     assert.equal(typeof messages.auditRound.blockedPendingItems, "string")
     assert.equal(typeof messages.auditRound.blockedPendingReview, "string")
+    assert.equal(typeof messages.auditRound.roundActionPending, "string")
+    assert.equal(typeof messages.auditRound.roundActionReview, "string")
+    assert.equal(typeof messages.auditRound.roundActionOutOfScope, "string")
   }
 })
