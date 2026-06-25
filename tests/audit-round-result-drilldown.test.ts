@@ -103,6 +103,20 @@ test("audit round item display labels use translation keys instead of raw values
   assert.equal(getAuditRoundItemResultLabelKey("unexpected"), null)
 })
 
+
+test("audit round result drilldown copy is translated", () => {
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditRound.resultListFilteredTitle, "string")
+    assert.equal(typeof messages.auditRound.resultListFilteredHelp, "string")
+    assert.equal(typeof messages.auditRound.emptyResultFilterTitle, "string")
+    assert.equal(typeof messages.auditRound.emptyResultFilterHelp, "string")
+    assert.equal(typeof messages.auditRound.emptyResultSearchTitle, "string")
+    assert.equal(typeof messages.auditRound.emptyResultSearchHelp, "string")
+  }
+})
 test("audit round detail page exposes clickable result dashboard and paginated result list", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", "utf8")
 
@@ -114,6 +128,12 @@ test("audit round detail page exposes clickable result dashboard and paginated r
   assert.match(page, /href=\{item\.count > 0 \? item\.href : undefined\}/)
   assert.match(page, /openFindingReview/)
   assert.match(page, /viewPendingReviewAssets/)
+  assert.match(page, /resultListTitle/)
+  assert.match(page, /resultListDescription/)
+  assert.match(page, /emptyResultTitle/)
+  assert.match(page, /emptyResultDescription/)
+  assert.match(page, /resultFindingReviewHref/)
+  assert.match(page, /findingType/)
   assert.match(page, /id="audit-result-list"/)
   assert.match(page, /AuditRoundResultPagination/)
   assert.match(page, /resultItems\.map/)

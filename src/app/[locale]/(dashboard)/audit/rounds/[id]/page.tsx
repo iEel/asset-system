@@ -241,6 +241,33 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const outOfScopeResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "out_of_scope", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const pendingReviewResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "pending_review", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const pendingReviewFindingsHref = `/${locale}/audit/findings?status=pending&roundId=${round.id}`
+  const hasResultBucketFilter = resultListState.result !== "all"
+  const hasResultListSearch = Boolean(resultListState.search)
+  const selectedResultLabel = resultFilterLabels[resultListState.result]
+  const resultListTitle = hasResultBucketFilter ? t("resultListFilteredTitle", { result: selectedResultLabel }) : t("expectedAssets")
+  const resultListDescription = hasResultBucketFilter ? t("resultListFilteredHelp", { result: selectedResultLabel }) : t("resultListHelp")
+  const emptyResultTitle = hasResultBucketFilter
+    ? t("emptyResultFilterTitle", { result: selectedResultLabel })
+    : hasResultListSearch
+      ? t("emptyResultSearchTitle")
+      : t("emptyAssetsTitle")
+  const emptyResultDescription = hasResultBucketFilter
+    ? t("emptyResultFilterHelp")
+    : hasResultListSearch
+      ? t("emptyResultSearchHelp")
+      : t("emptyAssetsHelp")
+  const findingReviewTypeByResult: Partial<Record<AuditRoundResultFilter, string>> = {
+    wrong_location: "wrong_location",
+    wrong_custodian: "wrong_custodian",
+    wrong_condition: "wrong_condition",
+  }
+  const resultFindingReviewType = findingReviewTypeByResult[resultListState.result]
+  const resultFindingReviewHref =
+    resultListState.result === "pending_review"
+      ? pendingReviewFindingsHref
+      : resultFindingReviewType
+        ? `/${locale}/audit/findings?status=pending&roundId=${round.id}&findingType=${resultFindingReviewType}`
+        : null
   const resultSummaryGroups = buildAuditRoundResultSummaryGroups([
     { result: "found", count: foundCount },
     { result: "wrong_location", count: wrongLocationCount },
@@ -422,14 +449,20 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       <section id="audit-result-list" className="scroll-mt-24">
         <div className="mb-4 flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-sm lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h2 className="text-base font-semibold text-foreground">{t("expectedAssets")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("resultListHelp")}</p>
+            <h2 className="text-base font-semibold text-foreground">{resultListTitle}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{resultListDescription}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge label={resultFilterLabels[resultListState.result]} status={resultListState.result} size="sm" />
             <span className="rounded-md border border-border bg-background px-3 py-1 text-sm text-muted-foreground">
               {resultListTotal} {t("items")}
             </span>
+            {resultFindingReviewHref ? (
+              <Link href={resultFindingReviewHref} className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent">
+                <FileText className="h-4 w-4" />
+                {t("openFindingReview")}
+              </Link>
+            ) : null}
             {resultListState.result !== "all" || resultListState.search ? (
               <Link href={allResultHref} className="inline-flex h-9 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent">
                 {t("viewAll")}
@@ -450,8 +483,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             {resultRows.length === 0 ? (
               <ActionEmptyState
                 icon={<ScanLine className="h-6 w-6" />}
-                title={t("emptyAssetsTitle")}
-                description={t("emptyAssetsHelp")}
+                title={emptyResultTitle}
+                description={emptyResultDescription}
                 actionHref={allResultHref}
                 actionLabel={t("viewAll")}
               />
@@ -495,8 +528,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                     <td colSpan={6} className="px-4 py-6">
                       <ActionEmptyState
                         icon={<ScanLine className="h-6 w-6" />}
-                        title={t("emptyAssetsTitle")}
-                        description={t("emptyAssetsHelp")}
+                        title={emptyResultTitle}
+                        description={emptyResultDescription}
                         actionHref={allResultHref}
                         actionLabel={t("viewAll")}
                       />
