@@ -12,6 +12,7 @@ test("builds approval inbox items from pending workflow records", () => {
       maintenanceCloseRequired: true,
       minApprovers: 1,
       segregationRequired: true,
+      slaDays: 3,
     },
     disposalRequests: [
       {
@@ -78,6 +79,7 @@ test("respects approval policy toggles", () => {
       maintenanceCloseRequired: false,
       minApprovers: 1,
       segregationRequired: true,
+      slaDays: 3,
     },
     disposalRequests: [
       {

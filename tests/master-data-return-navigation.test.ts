@@ -36,7 +36,8 @@ test("master data list edit and create links carry the current list URL as retur
 
     assert.match(source, new RegExp(`const ${item.returnVar} = `))
     assert.match(source, new RegExp(`appendMasterDataReturnTo\\(\`/\\$\\{locale\\}/master-data/${item.section}/new\`, ${item.returnVar}\\)`))
-    assert.match(source, new RegExp(`appendMasterDataReturnTo\\(\`/\\$\\{locale\\}/master-data/${item.section}/\\$\\{${item.editId ?? `${item.entity}\\.id`}\\}/edit\`, ${item.returnVar}\\)`))
+    const editId = "editId" in item ? item.editId : `${item.entity}\\.id`
+    assert.match(source, new RegExp(`appendMasterDataReturnTo\\(\`/\\$\\{locale\\}/master-data/${item.section}/\\$\\{${editId}\\}/edit\`, ${item.returnVar}\\)`))
   }
 
   for (const item of detailSections) {

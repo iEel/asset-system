@@ -13,7 +13,7 @@ test("performance timing is disabled unless explicitly enabled", async () => {
     async () => "ok",
     { route: "/assets" },
     {
-      env: {},
+      env: { NODE_ENV: "test" },
       logger: (entry) => entries.push(entry),
       now: () => 100,
     }
@@ -21,7 +21,7 @@ test("performance timing is disabled unless explicitly enabled", async () => {
 
   assert.equal(result, "ok")
   assert.deepEqual(entries, [])
-  assert.equal(isPerformanceTimingEnabled({}), false)
+  assert.equal(isPerformanceTimingEnabled({ NODE_ENV: "test" }), false)
 })
 
 test("performance timing logs duration and metadata when enabled", async () => {
@@ -33,7 +33,7 @@ test("performance timing logs duration and metadata when enabled", async () => {
     async () => ({ rows: 3 }),
     { route: "/reports", pageSize: 25 },
     {
-      env: { PERFORMANCE_TIMING: "true" },
+      env: { NODE_ENV: "test", PERFORMANCE_TIMING: "true" },
       logger: (entry) => entries.push(entry),
       now: () => times.shift() ?? 47.8,
     }
@@ -48,7 +48,7 @@ test("performance timing logs duration and metadata when enabled", async () => {
     ok: true,
     meta: { route: "/reports", pageSize: 25 },
   })
-  assert.equal(isPerformanceTimingEnabled({ PERFORMANCE_TIMING: "1" }), true)
+  assert.equal(isPerformanceTimingEnabled({ NODE_ENV: "test", PERFORMANCE_TIMING: "1" }), true)
 })
 
 test("performance timing logs failed operations and rethrows the original error", async () => {
@@ -65,7 +65,7 @@ test("performance timing logs failed operations and rethrows the original error"
         },
         { route: "/dashboard" },
         {
-          env: { PERFORMANCE_TIMING: "1" },
+          env: { NODE_ENV: "test", PERFORMANCE_TIMING: "1" },
           logger: (entry) => entries.push(entry),
           now: () => times.shift() ?? 260.4,
         }

@@ -19,8 +19,8 @@ test("category delete route checks active asset and model references before soft
   const source = readFileSync("src/app/api/categories/[id]/route.ts", "utf8")
   const deleteHandler = source.slice(source.indexOf("export async function DELETE"))
 
-  assert.match(deleteHandler, /include:\s*\{\s*_count:\s*\{\s*select:\s*\{\s*assets:\s*true,\s*models:\s*true/s)
-  assert.match(deleteHandler, /getCategoryDeleteBlockReason\(\{\s*assets:\s*existing\._count\.assets,\s*models:\s*existing\._count\.models/s)
+  assert.match(deleteHandler, /include:[\s\S]*_count:[\s\S]*select:[\s\S]*assets:\s*true,[\s\S]*models:\s*true/)
+  assert.match(deleteHandler, /getCategoryDeleteBlockReason\(\{[\s\S]*assets:\s*existing\._count\.assets,[\s\S]*models:\s*existing\._count\.models/)
   assert.match(deleteHandler, /return NextResponse\.json\(\{ error: blockReason \}, \{ status: 409 \}\)/)
 })
 
@@ -29,7 +29,7 @@ test("category update route only applies the delete guard when deactivating a ca
   const putHandler = source.slice(source.indexOf("export async function PUT"), source.indexOf("function normalizeFieldOptions"))
 
   assert.match(putHandler, /if \(!input\.isActive\) \{/)
-  assert.match(putHandler, /const blockReason = getCategoryDeleteBlockReason\(\{\s*assets:\s*existing\._count\.assets,\s*models:\s*existing\._count\.models/s)
+  assert.match(putHandler, /const blockReason = getCategoryDeleteBlockReason\(\{[\s\S]*assets:\s*existing\._count\.assets,[\s\S]*models:\s*existing\._count\.models/)
   assert.match(putHandler, /return NextResponse\.json\(\{ error: blockReason \}, \{ status: 409 \}\)/)
 })
 

@@ -105,16 +105,21 @@ test("summarizes and filters approval decision log items", () => {
   assert.deepEqual(filterApprovalDecisionLogItems(items, "all", "close").map((item) => item.id), ["audit-close", "maintenance-close"])
 })
 
-function makeLog(input: Partial<ApprovalDecisionLogSource> & { id: string; action: string; module: string }): ApprovalDecisionLogSource {
+function makeLog(input: Partial<Omit<ApprovalDecisionLogSource, "oldValue" | "newValue">> & { id: string; action: string; module: string; oldValue?: unknown; newValue?: unknown }): ApprovalDecisionLogSource {
   return {
     id: input.id,
     action: input.action,
     module: input.module,
     recordId: input.recordId ?? input.id,
-    oldValue: input.oldValue ? JSON.stringify(input.oldValue) : null,
-    newValue: input.newValue ? JSON.stringify(input.newValue) : null,
+    oldValue: stringifyLogValue(input.oldValue),
+    newValue: stringifyLogValue(input.newValue),
     remark: input.remark ?? null,
     createdAt: input.createdAt ?? new Date("2026-05-18T03:00:00.000Z"),
     user: input.user ?? { username: "approver", displayName: "Approver One" },
   }
+}
+
+function stringifyLogValue(value: unknown) {
+  if (value == null) return null
+  return typeof value === "string" ? value : JSON.stringify(value)
 }

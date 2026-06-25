@@ -40,7 +40,7 @@ test("asset register table exposes persisted column presets", () => {
 
   assert.match(source, /assetRegisterColumnStorageKey/)
   assert.match(source, /window\.localStorage\.getItem\(assetRegisterColumnStorageKey\)/)
-  assert.match(source, /window\.localStorage\.setItem\(\s*assetRegisterColumnStorageKey/s)
+  assert.match(source, /window\.localStorage\.setItem\([\s\S]*assetRegisterColumnStorageKey/)
   assert.match(source, /applyColumnPreset/)
   assert.match(source, /columnPresetOperations/)
   assert.match(source, /columnPresetAccounting/)
@@ -143,7 +143,7 @@ test("asset register summarizes active filters and provides a clear all action",
   assert.match(source, /activeFilterChips/)
   assert.match(source, /data-asset-active-filters/)
   assert.match(source, /clearAllFilters/)
-  assert.match(source, /buildAssetQueryString\(filters, \{\s*search: "",\s*companyId: "",\s*branchId: ""/s)
+  assert.match(source, /buildAssetQueryString\(filters, \{[\s\S]*search: "",[\s\S]*companyId: "",[\s\S]*branchId: ""/)
 })
 
 test("asset register desktop table exposes horizontal scroll affordance", () => {

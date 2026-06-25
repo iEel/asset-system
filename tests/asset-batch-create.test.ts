@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import type { z } from "zod"
 
 import {
   buildAssetBatchReceiptCsv,
@@ -17,7 +18,9 @@ import {
 } from "../src/lib/asset-batch-create.ts"
 import { assetBatchCreateSchema } from "../src/lib/validations/asset-batch.ts"
 
-const validCommon = {
+type AssetBatchCreateFormInput = z.input<typeof assetBatchCreateSchema>
+
+const validCommonInput: AssetBatchCreateFormInput["common"] = {
   name: "Desktop Computer Dell Optiplex",
   categoryId: "category-1",
   brandId: "brand-1",
@@ -47,6 +50,10 @@ const validCommon = {
   isActive: true,
 }
 
+const validCommon = assetBatchCreateSchema.parse({
+  common: validCommonInput,
+  rows: [{ clientId: "fixture-row-1" }, { clientId: "fixture-row-2" }],
+}).common
 test("asset batch summary audit record id fits the system log column", () => {
   assert.equal(assetBatchCreateAuditRecordId, "asset_batch_create")
   assert.ok(assetBatchCreateAuditRecordId.length <= 100)
@@ -54,7 +61,7 @@ test("asset batch summary audit record id fits the system log column", () => {
 
 test("assetBatchCreateSchema accepts common asset data and row-specific serials", () => {
   const parsed = assetBatchCreateSchema.parse({
-    common: validCommon,
+    common: validCommonInput,
     rows: [
       { clientId: "row-1", serialNumber: "SN-001", assetTag: "LEGACY-COM-001", custodianId: "", departmentId: "department-row", currentLocationId: "location-row", homeLocationId: "home-row" },
       { clientId: "row-2", serialNumber: "SN-002", assetTag: "", custodianId: "", currentLocationId: "" },
@@ -76,7 +83,7 @@ test("assetBatchCreateSchema rejects a single-row batch", () => {
   assert.throws(
     () =>
       assetBatchCreateSchema.parse({
-        common: validCommon,
+        common: validCommonInput,
         rows: [{ clientId: "row-1", serialNumber: "SN-001" }],
       }),
     /Batch create requires at least 2 rows/
@@ -87,7 +94,7 @@ test("assetBatchCreateSchema caps a batch at 100 rows", () => {
   assert.throws(
     () =>
       assetBatchCreateSchema.parse({
-        common: validCommon,
+        common: validCommonInput,
         rows: Array.from({ length: 101 }, (_, index) => ({
           clientId: `row-${index + 1}`,
           serialNumber: `SN-${index + 1}`,
@@ -143,7 +150,6 @@ test("buildAssetBatchCreateItems falls back to shared row defaults and fixed ass
         assetTag: "SNI-COM-26-0001",
         currentLocationId: "location-row-ignored",
         homeLocationId: "location-home-row",
-        fixedAssetCode: "FA-ROW-IGNORED",
       },
       {
         clientId: "row-2",

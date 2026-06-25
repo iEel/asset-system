@@ -100,8 +100,10 @@ test("stores queued audit scans with photo evidence and sync status in async sto
   )
 
   assert.equal(queued.syncStatus, "pending")
-  assert.equal(queued.photos.length, 1)
-  assert.equal(queued.photos[0].fileName, "front.jpg")
+  const queuedPhotos = queued.photos
+  assert.ok(queuedPhotos)
+  assert.equal(queuedPhotos.length, 1)
+  assert.equal(queuedPhotos[0].fileName, "front.jpg")
   assert.deepEqual(await loadQueuedAuditScansAsync(storage, roundId), [queued])
 
   await removeQueuedAuditScanAsync(storage, roundId, queued.id)
