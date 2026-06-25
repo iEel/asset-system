@@ -22,9 +22,12 @@ import { countSuccessfulAuditResultRows, isVarianceAuditResult } from "@/lib/aud
 import { paginationRange } from "@/lib/master-data-query"
 import {
   auditRoundResultPageSizeOptions,
+  buildAuditRoundResultSummaryGroups,
   buildAuditRoundItemWhere,
   buildAuditRoundResultListHref,
   buildAuditRoundScanHistoryWhere,
+  getAuditRoundItemResultLabelKey,
+  getAuditRoundItemStatusLabelKey,
   isAuditRoundScanHistoryResultFilter,
   parseAuditRoundResultListParams,
   type AuditRoundResultFilter,
@@ -209,15 +212,26 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     ? outOfScopeScanRows.map((history) => ({
         id: history.id,
         asset: history.asset,
-        auditStatus: t("outOfScope"),
-        auditResult: formatDateTime(history.scannedAt),
+        auditStatus: "out_of_scope",
+        auditStatusLabel: t("outOfScope"),
+        auditResult: "out_of_scope",
+        auditResultLabel: formatDateTime(history.scannedAt),
+        auditResultTone: "info" as const,
       }))
-    : resultItems.map((item) => ({
-        id: item.id,
-        asset: item.asset,
-        auditStatus: item.auditStatus,
-        auditResult: item.auditResult ?? "-",
-      }))
+    : resultItems.map((item) => {
+        const statusLabelKey = getAuditRoundItemStatusLabelKey(item.auditStatus)
+        const resultLabelKey = getAuditRoundItemResultLabelKey(item.auditResult)
+        const auditResult = item.auditResult ?? "pending"
+        return {
+          id: item.id,
+          asset: item.asset,
+          auditStatus: item.auditStatus,
+          auditStatusLabel: statusLabelKey ? t(statusLabelKey) : item.auditStatus,
+          auditResult,
+          auditResultLabel: item.auditResult ? (resultLabelKey ? t(resultLabelKey) : item.auditResult) : "-",
+          auditResultTone: item.auditResult === "found" || item.auditResult === "confirmed_with_parent" ? ("success" as const) : item.auditResult === "not_found" ? ("danger" as const) : ("muted" as const),
+        }
+      })
   const allResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "all", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const foundResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "found", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const wrongLocationResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "wrong_location", returnTo: returnToHref, pageSize: resultListState.pageSize })
@@ -227,6 +241,26 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const outOfScopeResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "out_of_scope", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const pendingReviewResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "pending_review", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const pendingReviewFindingsHref = `/${locale}/audit/findings?status=pending&roundId=${round.id}`
+  const resultSummaryGroups = buildAuditRoundResultSummaryGroups([
+    { result: "found", count: foundCount },
+    { result: "wrong_location", count: wrongLocationCount },
+    { result: "wrong_custodian", count: wrongCustodianCount },
+    { result: "wrong_condition", count: wrongConditionCount },
+    { result: "not_found", count: notFoundCount },
+    { result: "out_of_scope", count: outOfScopeCount },
+    { result: "pending_review", count: pendingReviewCount },
+  ])
+  const resultSummaryItemConfig = {
+    found: { label: t("found"), tone: "success" as const, href: foundResultHref, actionLabel: t("viewResultItems") },
+    wrong_location: { label: t("wrongLocation"), tone: "warning" as const, href: wrongLocationResultHref, actionLabel: t("viewResultItems") },
+    wrong_custodian: { label: t("wrongCustodian"), tone: "warning" as const, href: wrongCustodianResultHref, actionLabel: t("viewResultItems") },
+    wrong_condition: { label: t("wrongCondition"), tone: "warning" as const, href: wrongConditionResultHref, actionLabel: t("viewResultItems") },
+    not_found: { label: t("notFound"), tone: "danger" as const, href: notFoundResultHref, actionLabel: t("viewResultItems") },
+    out_of_scope: { label: t("outOfScope"), tone: "info" as const, href: outOfScopeResultHref, actionLabel: t("viewResultItems") },
+    pending_review: { label: t("pendingReview"), tone: "muted" as const, href: pendingReviewResultHref, actionLabel: t("viewPendingReviewAssets") },
+  }
+  const resultNormalGroup = resultSummaryGroups.normal.map((item) => ({ ...item, ...resultSummaryItemConfig[item.result] }))
+  const resultNeedsReviewGroup = resultSummaryGroups.needsReview.map((item) => ({ ...item, ...resultSummaryItemConfig[item.result] }))
 
   return (
     <div className="pb-24 md:pb-0">
@@ -290,7 +324,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         actions={[
           { href: scanHref, label: t("scan"), icon: <ScanLine className="h-4 w-4" />, primary: true },
           { href: pendingHref, label: t("pendingAssets"), icon: <AlertTriangle className="h-4 w-4" /> },
-          { href: pendingReviewFindingsHref, label: t("pendingReview"), icon: <FileText className="h-4 w-4" /> },
+          { href: pendingReviewFindingsHref, label: t("openFindingReview"), icon: <FileText className="h-4 w-4" /> },
           { href: returnToHref, label: tCommon("back"), icon: <Download className="h-4 w-4" /> },
         ]}
       />
@@ -324,14 +358,41 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
           <h2 className="text-base font-semibold text-foreground">{t("resultDashboard")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("resultDashboardHelp")}</p>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-          <DashboardCard label={t("found")} value={foundCount} tone="success" href={foundResultHref} active={resultListState.result === "found"} actionLabel={t("viewResultItems")} />
-          <DashboardCard label={t("wrongLocation")} value={wrongLocationCount} tone="warning" href={wrongLocationResultHref} active={resultListState.result === "wrong_location"} actionLabel={t("viewResultItems")} />
-          <DashboardCard label={t("wrongCustodian")} value={wrongCustodianCount} tone="warning" href={wrongCustodianResultHref} active={resultListState.result === "wrong_custodian"} actionLabel={t("viewResultItems")} />
-          <DashboardCard label={t("wrongCondition")} value={wrongConditionCount} tone="warning" href={wrongConditionResultHref} active={resultListState.result === "wrong_condition"} actionLabel={t("viewResultItems")} />
-          <DashboardCard label={t("notFound")} value={notFoundCount} tone="danger" href={notFoundResultHref} active={resultListState.result === "not_found"} actionLabel={t("viewResultItems")} />
-          <DashboardCard label={t("outOfScope")} value={outOfScopeCount} tone="info" href={outOfScopeResultHref} active={resultListState.result === "out_of_scope"} actionLabel={t("viewResultItems")} />
-          <DashboardCard label={t("pendingReview")} value={pendingReviewCount} tone="muted" href={pendingReviewResultHref} active={resultListState.result === "pending_review"} actionLabel={t("viewResultItems")} />
+        <div className="grid gap-4 lg:grid-cols-[minmax(220px,0.65fr)_1fr]">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">{t("resultNormalGroup")}</h3>
+            <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              {resultNormalGroup.map((item) => (
+                <DashboardCard
+                  key={item.result}
+                  label={item.label}
+                  value={item.count}
+                  tone={item.tone}
+                  href={item.count > 0 ? item.href : undefined}
+                  active={resultListState.result === item.result}
+                  actionLabel={item.count > 0 ? item.actionLabel : undefined}
+                  disabled={!item.actionable}
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">{t("resultNeedsReviewGroup")}</h3>
+            <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {resultNeedsReviewGroup.map((item) => (
+                <DashboardCard
+                  key={item.result}
+                  label={item.label}
+                  value={item.count}
+                  tone={item.tone}
+                  href={item.count > 0 ? item.href : undefined}
+                  active={resultListState.result === item.result}
+                  actionLabel={item.count > 0 ? item.actionLabel : undefined}
+                  disabled={!item.actionable}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -409,8 +470,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                     />
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <StatusBadge label={item.auditStatus} status={item.auditStatus} size="xs" />
-                    <StatusBadge label={item.auditResult ?? "-"} status={item.auditResult ?? "pending"} size="xs" />
+                    <StatusBadge label={item.auditStatusLabel} status={item.auditStatus} size="xs" />
+                    <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} size="xs" />
                   </div>
                 </article>
               ))
@@ -456,8 +517,12 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                       <td className="min-w-56 px-4 py-3 text-muted-foreground">
                         {item.asset.custodian ? `${item.asset.custodian.code} - ${item.asset.custodian.fullNameTh}` : "-"}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{item.auditStatus}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{item.auditResult ?? "-"}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                        <StatusBadge label={item.auditStatusLabel} status={item.auditStatus} size="xs" />
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                        <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} size="xs" />
+                      </td>
                     </ClickableTableRow>
                   ))
                 )}
@@ -503,6 +568,7 @@ function DashboardCard({
   href,
   active = false,
   actionLabel,
+  disabled = false,
 }: {
   label: string
   value: number
@@ -510,9 +576,12 @@ function DashboardCard({
   href?: string
   active?: boolean
   actionLabel?: string
+  disabled?: boolean
 }) {
-  const className =
-    tone === "success"
+  const toneClass =
+    disabled
+      ? "border-border bg-muted/40 text-muted-foreground"
+      : tone === "success"
       ? "border-success/30 bg-success/10 text-success"
       : tone === "warning"
         ? "border-warning/30 bg-warning/10 text-warning"
@@ -532,13 +601,13 @@ function DashboardCard({
 
   if (href) {
     return (
-      <Link href={href} className={`block rounded-md border px-3 py-3 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${className} ${activeClassName}`}>
+      <Link href={href} className={`block rounded-md border px-3 py-3 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${toneClass} ${activeClassName}`}>
         {content}
       </Link>
     )
   }
 
-  return <div className={`rounded-md border px-3 py-3 ${className}`}>{content}</div>
+  return <div className={`rounded-md border px-3 py-3 ${toneClass}`}>{content}</div>
 }
 
 function AuditRoundResultPagination({

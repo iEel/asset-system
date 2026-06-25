@@ -30,6 +30,66 @@ type AuditRoundResultListParams = {
 
 export const auditRoundResultPageSizeOptions = [25, 50, 100] as const
 
+export type AuditRoundResultSummaryInput = {
+  result: Exclude<AuditRoundResultFilter, "all">
+  count: number
+}
+
+export type AuditRoundResultSummaryItem = AuditRoundResultSummaryInput & {
+  actionable: boolean
+}
+
+const auditRoundNormalResultOrder: Array<AuditRoundResultSummaryInput["result"]> = ["found"]
+const auditRoundNeedsReviewResultOrder: Array<AuditRoundResultSummaryInput["result"]> = [
+  "wrong_location",
+  "wrong_custodian",
+  "wrong_condition",
+  "not_found",
+  "out_of_scope",
+  "pending_review",
+]
+
+const auditRoundItemStatusLabelKeys: Record<string, "pending" | "scanned"> = {
+  pending: "pending",
+  scanned: "scanned",
+}
+
+const auditRoundItemResultLabelKeys: Record<string, "found" | "confirmedWithParent" | "notFound" | "mismatch"> = {
+  found: "found",
+  confirmed_with_parent: "confirmedWithParent",
+  not_found: "notFound",
+  mismatch: "mismatch",
+}
+
+export function buildAuditRoundResultSummaryGroups(items: AuditRoundResultSummaryInput[]) {
+  const byResult = new Map(items.map((item) => [item.result, item]))
+  return {
+    normal: buildAuditRoundResultSummaryItems(auditRoundNormalResultOrder, byResult),
+    needsReview: buildAuditRoundResultSummaryItems(auditRoundNeedsReviewResultOrder, byResult).sort((left, right) => {
+      if (left.actionable === right.actionable) return 0
+      return left.actionable ? -1 : 1
+    }),
+  }
+}
+
+export function getAuditRoundItemStatusLabelKey(status: string | null | undefined) {
+  return status ? (auditRoundItemStatusLabelKeys[status] ?? null) : null
+}
+
+export function getAuditRoundItemResultLabelKey(result: string | null | undefined) {
+  return result ? (auditRoundItemResultLabelKeys[result] ?? null) : null
+}
+
+function buildAuditRoundResultSummaryItems(
+  order: Array<AuditRoundResultSummaryInput["result"]>,
+  byResult: Map<AuditRoundResultSummaryInput["result"], AuditRoundResultSummaryInput>,
+): AuditRoundResultSummaryItem[] {
+  return order.map((result) => {
+    const count = byResult.get(result)?.count ?? 0
+    return { result, count, actionable: count > 0 }
+  })
+}
+
 export function resolveAuditRoundResultFilter(value?: string | string[] | null): AuditRoundResultFilter {
   const raw = Array.isArray(value) ? value[0] : value
   return auditRoundResultFilterValues.includes(raw as AuditRoundResultFilter) ? (raw as AuditRoundResultFilter) : "all"
