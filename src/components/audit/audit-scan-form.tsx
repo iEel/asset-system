@@ -105,6 +105,12 @@ type ScanFeedback = {
   status: "found" | "mismatch" | "out_of_scope" | "unknown_asset" | "saved" | "found_later" | "offline_queued"
   title: string
   description: string
+  assetId?: string
+  assetTag?: string
+}
+type LastAuditResult = {
+  status: ScanFeedback["status"]
+  label: string
 }
 type AuditRecentScan = ScanFeedback & {
   id: string
@@ -196,7 +202,7 @@ export function AuditScanForm({
   const [cameraErrorText, setCameraErrorText] = useState("")
   const [scanText, setScanText] = useState("")
   const [scanSource, setScanSource] = useState<"manual" | "qr">("manual")
-  const [lastResult, setLastResult] = useState<string | null>(null)
+  const [lastResult, setLastResult] = useState<LastAuditResult | null>(null)
   const [lastDecodedText, setLastDecodedText] = useState("")
   const [auditPhotoLabel, setAuditPhotoLabel] = useState("")
   const [queuedAuditPhotos, setQueuedAuditPhotos] = useState<QueuedAuditPhoto[]>([])
@@ -427,6 +433,8 @@ export function AuditScanForm({
       status: "found",
       title: t("feedbackFoundTitle"),
       description: item.label,
+      assetId: item.assetId,
+      assetTag: item.assetTag,
     }, "manual")
     toast.success(t("assetSelected"))
     window.setTimeout(() => {
@@ -508,6 +516,38 @@ export function AuditScanForm({
   function showScanFeedback(feedback: ScanFeedback, source: "manual" | "qr" = scanSource) {
     setScanFeedback(feedback)
     pushRecentScan(feedback, source)
+  }
+
+  function editRecentScan(scan: AuditRecentScan) {
+    const normalizedAssetTag = scan.assetTag?.trim().toLocaleLowerCase("th-TH") ?? ""
+    const targetItem = items.find((item) => {
+      if (scan.assetId && item.assetId === scan.assetId) return true
+      return Boolean(normalizedAssetTag && item.assetTag.trim().toLocaleLowerCase("th-TH") === normalizedAssetTag)
+    })
+
+    if (!targetItem) {
+      const fallbackValue = scan.assetTag || scan.assetId
+      if (fallbackValue) void selectScannedAsset(fallbackValue, "manual")
+      return
+    }
+
+    selectInRoundAuditItem(targetItem)
+    setScanText(getReadableAuditScanValue(targetItem))
+    setScanSource("manual")
+    setAssetPickerExpanded(false)
+    setShowPendingQueue(false)
+    setShowDetailedFields(true)
+    setScanFeedback({
+      status: "found",
+      title: t("feedbackFoundTitle"),
+      description: targetItem.label,
+      assetId: targetItem.assetId,
+      assetTag: targetItem.assetTag,
+    })
+    toast.success(t("assetSelected"))
+    window.setTimeout(() => {
+      document.getElementById("audit-scan-input-panel")?.scrollIntoView({ behavior: "smooth", block: "center" })
+    }, 0)
   }
 
   function resetTorchState() {
@@ -730,6 +770,8 @@ export function AuditScanForm({
             status: "found",
             title: t("feedbackFoundTitle"),
             description: lookedUpItem.label,
+            assetId: lookedUpItem.assetId,
+            assetTag: lookedUpItem.assetTag,
           }, source)
           toast.success(t("assetSelected"))
           if (source === "qr" && !continuousScan) void stopScanner()
@@ -745,6 +787,8 @@ export function AuditScanForm({
           status: "out_of_scope",
           title: t("feedbackOutOfScopeTitle"),
           description: `${lookup.asset.title} - ${lookup.asset.subtitle}`,
+          assetId: lookup.asset.id,
+          assetTag: lookup.asset.assetTag,
         }, source)
         toast.warning(t("outOfScopeFound"))
         if (!continuousScan) void stopScanner()
@@ -768,6 +812,8 @@ export function AuditScanForm({
       status: "found",
       title: t("feedbackFoundTitle"),
       description: matchedItem.label,
+      assetId: matchedItem.assetId,
+      assetTag: matchedItem.assetTag,
     }, source)
     toast.success(t("assetSelected"))
     if (source === "qr" && !continuousScan) void stopScanner()
@@ -815,6 +861,8 @@ export function AuditScanForm({
         status: "mismatch",
         title: t("feedbackOutOfScopeSavedTitle"),
         description: `${outOfScopeAsset.title} - ${outOfScopeAsset.subtitle}`,
+        assetId: outOfScopeAsset.id,
+        assetTag: outOfScopeAsset.assetTag,
       })
       setOutOfScopeAsset(null)
       setScanText("")
@@ -873,7 +921,8 @@ export function AuditScanForm({
       for (const photo of queuedAuditPhotos) {
         await uploadAuditPhoto(values.assetId, photo.file, photo.label)
       }
-      setLastResult(payload.auditResult ?? null)
+      const feedbackStatus = payload.resolvedNotFoundFinding ? "found_later" : payload.auditResult === "found" ? "saved" : "mismatch"
+      setLastResult({ status: feedbackStatus, label: selectedItem.label })
       const successMessage =
         payload.resolvedNotFoundFinding
           ? t("foundAfterNotFoundSuccess")
@@ -883,9 +932,11 @@ export function AuditScanForm({
             ? t("foundSuccess")
             : t("mismatchSuccess")
       showScanFeedback({
-        status: payload.resolvedNotFoundFinding ? "found_later" : payload.auditResult === "found" ? "saved" : "mismatch",
+        status: feedbackStatus,
         title: successMessage,
         description: selectedItem.label,
+        assetId: selectedItem.assetId,
+        assetTag: selectedItem.assetTag,
       })
       toast.success(successMessage)
       setValues({
@@ -941,6 +992,8 @@ export function AuditScanForm({
         status: "saved",
         title: t("componentConfirmedWithParentSuccess"),
         description: `${component.assetTag} - ${component.name}`,
+        assetId: component.assetId,
+        assetTag: component.assetTag,
       })
       router.refresh()
     } catch (error) {
@@ -976,6 +1029,8 @@ export function AuditScanForm({
         status: "mismatch",
         title: t("componentMissingSaved"),
         description: `${component.assetTag} - ${component.name}`,
+        assetId: component.assetId,
+        assetTag: component.assetTag,
       })
       router.refresh()
     } catch (error) {
@@ -995,6 +1050,7 @@ export function AuditScanForm({
       status: "offline_queued",
       title: t("offlineQueuedTitle"),
       description: label,
+      assetId: payload.assetId,
     })
     toast.warning(queuedAuditPhotos.length > 0 ? t("offlineQueuedWithPhotos") : t("offlineQueued"))
     setValues({
@@ -1109,7 +1165,7 @@ export function AuditScanForm({
         {lastResult && (
           <div className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm text-muted-foreground">
             <CheckCircle2 className="h-4 w-4 text-success" />
-            {t("lastResult")}: {lastResult}
+            <span className="break-words">{formatLastAuditResult(lastResult, t)}</span>
           </div>
         )}
       </div>
@@ -1336,7 +1392,11 @@ export function AuditScanForm({
           ) : null}
 
           {recentScans.length > 0 ? (
-            <RecentScansPanel recentScans={recentScans} t={t} />
+            <RecentScansPanel
+              recentScans={recentScans}
+              onEditScan={editRecentScan}
+              t={t}
+            />
           ) : null}
 
           {showPendingQueue ? (
@@ -1760,9 +1820,11 @@ function ScanResultPanel({
 
 function RecentScansPanel({
   recentScans,
+  onEditScan,
   t,
 }: {
   recentScans: AuditRecentScan[]
+  onEditScan: (scan: AuditRecentScan) => void
   t: AuditScanTranslator
 }) {
   const visibleScans = recentScans.slice(0, 3)
@@ -1796,13 +1858,13 @@ function RecentScansPanel({
       </button>
       <div className="mt-2 grid gap-1.5">
         {visibleScans.map((scan) => (
-          <RecentScanCompactRow key={scan.id} scan={scan} t={t} />
+          <RecentScanCompactRow key={scan.id} scan={scan} onEditScan={onEditScan} t={t} />
         ))}
       </div>
       {olderScans.length > 0 ? (
         <div id="audit-recent-scans-list" hidden={!recentScansExpanded} className="mt-1.5 grid gap-1.5">
           {olderScans.map((scan) => (
-            <RecentScanCompactRow key={scan.id} scan={scan} t={t} />
+            <RecentScanCompactRow key={scan.id} scan={scan} onEditScan={onEditScan} t={t} />
           ))}
         </div>
       ) : null}
@@ -1810,17 +1872,41 @@ function RecentScansPanel({
   )
 }
 
-function RecentScanCompactRow({ scan, t }: { scan: AuditRecentScan; t: AuditScanTranslator }) {
+function RecentScanCompactRow({
+  scan,
+  onEditScan,
+  t,
+}: {
+  scan: AuditRecentScan
+  onEditScan: (scan: AuditRecentScan) => void
+  t: AuditScanTranslator
+}) {
   const meta = getScanFeedbackMeta(scan.status, t)
+  const canEdit = Boolean(scan.assetId || scan.assetTag)
 
   return (
-    <div className="flex items-center gap-2 rounded-md bg-background px-2 py-1.5 text-xs">
-      <span className={`h-2 w-2 shrink-0 rounded-full ${meta.dotClass}`} />
-      <span className="min-w-0 flex-1 truncate font-medium text-foreground">{scan.title}</span>
-      <span className={`shrink-0 rounded-full px-2 py-0.5 font-semibold ${meta.chipClass}`}>
-        {meta.label}
-      </span>
-      <span className="shrink-0 text-muted-foreground">{formatRecentScanTime(scan.at)}</span>
+    <div className="grid gap-2 rounded-md border border-border bg-surface px-3 py-2 text-xs sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <span className={`h-2 w-2 shrink-0 rounded-full ${meta.dotClass}`} />
+          <span className="min-w-0 flex-1 truncate font-medium text-foreground">{scan.title}</span>
+          <span className={`shrink-0 rounded-full px-2 py-0.5 font-semibold ${meta.chipClass}`}>
+            {meta.label}
+          </span>
+          <span className="shrink-0 text-muted-foreground">{formatRecentScanTime(scan.at)}</span>
+        </div>
+        <div className="mt-1 truncate text-muted-foreground">{scan.description}</div>
+      </div>
+      {canEdit ? (
+        <button
+          type="button"
+          onClick={() => onEditScan(scan)}
+          className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-background px-2.5 font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <Keyboard className="h-3.5 w-3.5" />
+          {t("recentScansEdit")}
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -2273,6 +2359,11 @@ function ContextChipList({ rows }: { rows: PendingQueueContextRow[] }) {
       ))}
     </div>
   )
+}
+
+function formatLastAuditResult(result: LastAuditResult, t: AuditScanTranslator) {
+  const meta = getScanFeedbackMeta(result.status, t)
+  return t("lastResultWithAsset", { asset: result.label, result: meta.label })
 }
 
 function getScanFeedbackMeta(status: ScanFeedback["status"], t: AuditScanTranslator) {
