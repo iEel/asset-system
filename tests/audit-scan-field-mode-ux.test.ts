@@ -176,6 +176,22 @@ test("audit scan phase 1 shows readable result semantics and recent scans", () =
     assert.equal(typeof messages.auditScan.feedbackStatusOfflineQueued, "string")
   }
 })
+test("audit scan recent scans are seeded from persisted scan history", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/scan/page.tsx", "utf8")
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+
+  assert.match(page, /AUDIT_SCAN_HISTORY_LIMIT = 8/)
+  assert.match(page, /prisma\.auditScanHistory\.findMany/)
+  assert.match(page, /orderBy: \{ scannedAt: "desc" \}/)
+  assert.match(page, /take: AUDIT_SCAN_HISTORY_LIMIT/)
+  assert.match(page, /auditItem: \{ select: \{ auditResult: true \} \}/)
+  assert.match(page, /asset: \{ select: \{ id: true, assetTag: true, name: true \} \}/)
+  assert.match(page, /buildInitialRecentScanRows\(scanHistory\)/)
+  assert.match(page, /initialRecentScans=\{initialRecentScans\}/)
+
+  assert.match(form, /initialRecentScans = \[\]/)
+  assert.match(form, /const \[recentScans, setRecentScans\] = useState<AuditRecentScan\[\]>\(\(\) => initialRecentScans\.slice\(0, MAX_RECENT_AUDIT_SCANS\)\)/)
+})
 
 test("audit scan keeps rear-camera fast walking defaults without exposing mode switches", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")

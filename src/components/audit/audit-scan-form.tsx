@@ -112,7 +112,7 @@ type LastAuditResult = {
   status: ScanFeedback["status"]
   label: string
 }
-type AuditRecentScan = ScanFeedback & {
+export type AuditRecentScan = ScanFeedback & {
   id: string
   source: "manual" | "qr"
   at: number
@@ -184,6 +184,7 @@ export function AuditScanForm({
   backHref,
   items,
   options,
+  initialRecentScans = [],
 }: {
   locale: string
   roundId: string
@@ -191,6 +192,7 @@ export function AuditScanForm({
   backHref: string
   items: AuditScanItem[]
   options: AuditScanOptions
+  initialRecentScans?: AuditRecentScan[]
 }) {
   const router = useRouter()
   const t = useTranslations("auditScan")
@@ -210,7 +212,7 @@ export function AuditScanForm({
   const fastMode = true
   const [showDetailedFields, setShowDetailedFields] = useState(false)
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null)
-  const [recentScans, setRecentScans] = useState<AuditRecentScan[]>([])
+  const [recentScans, setRecentScans] = useState<AuditRecentScan[]>(() => initialRecentScans.slice(0, MAX_RECENT_AUDIT_SCANS))
   const [showPendingQueue, setShowPendingQueue] = useState(false)
   const [pendingQueueExpanded, setPendingQueueExpanded] = useState(true)
   const [assetPickerExpanded, setAssetPickerExpanded] = useState(false)
@@ -1895,7 +1897,7 @@ function RecentScanCompactRow({
           </span>
           <span className="shrink-0 text-muted-foreground">{formatRecentScanTime(scan.at)}</span>
         </div>
-        <div className="mt-1 truncate text-muted-foreground">{scan.description}</div>
+        {scan.description ? <div className="mt-1 truncate text-muted-foreground">{scan.description}</div> : null}
       </div>
       {canEdit ? (
         <button

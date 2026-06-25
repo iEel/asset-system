@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
-import { AuditScanForm } from "@/components/audit/audit-scan-form"
+import { AuditScanForm, type AuditRecentScan } from "@/components/audit/audit-scan-form"
 import { getAuditRoundOptions } from "@/lib/audit-options"
 import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
 import { normalizeAuditRoundDetailReturnTo } from "@/lib/operational-return-navigation"
@@ -17,12 +17,22 @@ type ChecklistSettingRow = {
   value: string | null
 }
 
+type AuditScanHistoryRow = {
+  id: string
+  scanSource: string
+  scannedAt: Date
+  auditItem: { auditResult: string | null } | null
+  asset: { id: string; assetTag: string; name: string }
+}
+
+const AUDIT_SCAN_HISTORY_LIMIT = 8
+
 export default async function AuditScanPage({ params, searchParams }: AuditScanPageProps) {
   const { locale, id } = await params
   const rawSearchParams = await searchParams
   await requirePagePermission(locale, "audit", "edit")
 
-  const [round, options] = await withPerformanceTiming(
+  const [round, options, scanHistory] = await withPerformanceTiming(
     "audit-scan.initial-data",
     () => Promise.all([
       prisma.auditRound.findFirst({
@@ -64,6 +74,18 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
         },
       }),
       getAuditRoundOptions(),
+      prisma.auditScanHistory.findMany({
+        where: { auditRoundId: id },
+        orderBy: { scannedAt: "desc" },
+        take: AUDIT_SCAN_HISTORY_LIMIT,
+        select: {
+          id: true,
+          scanSource: true,
+          scannedAt: true,
+          auditItem: { select: { auditResult: true } },
+          asset: { select: { id: true, assetTag: true, name: true } },
+        },
+      }),
     ]),
     { route: "/audit/rounds/[id]/scan", locale }
   )
@@ -85,6 +107,7 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
     checklistSettings.map((setting) => [setting.key.replace("asset_category_photo_checklist:", ""), parsePhotoChecklist(setting.value)])
   )
   const auditItemByAssetId = new Map(round.items.map((item) => [item.assetId, item]))
+  const initialRecentScans = buildInitialRecentScanRows(scanHistory)
 
   return (
     <AuditScanForm
@@ -120,8 +143,31 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
         employees: options.employees,
         conditions: options.conditions,
       }}
+      initialRecentScans={initialRecentScans}
     />
   )
+}
+
+function buildInitialRecentScanRows(scanHistory: AuditScanHistoryRow[]): AuditRecentScan[] {
+  return scanHistory.map((history) => {
+    const label = `${history.asset.assetTag} - ${history.asset.name}`
+    return {
+      id: `history-${history.id}`,
+      status: getInitialRecentScanStatus(history.auditItem?.auditResult ?? null, Boolean(history.auditItem)),
+      title: label,
+      description: "",
+      assetId: history.asset.id,
+      assetTag: history.asset.assetTag,
+      source: history.scanSource === "qr" ? "qr" : "manual",
+      at: history.scannedAt.getTime(),
+    }
+  })
+}
+
+function getInitialRecentScanStatus(auditResult: string | null, hasAuditItem: boolean): AuditRecentScan["status"] {
+  if (!hasAuditItem || auditResult === "out_of_scope") return "out_of_scope"
+  if (!auditResult || auditResult === "found" || auditResult === "confirmed_with_parent") return "saved"
+  return "mismatch"
 }
 
 function buildAuditScanComponentRows(
