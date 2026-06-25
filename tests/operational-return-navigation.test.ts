@@ -57,11 +57,12 @@ test("audit rounds preserve list context across round detail, scan, and pending 
   assert.match(roundsSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{pendingRounds\[0\]\.id\}\/scan`, auditRoundsReturnHref\)/)
   assert.match(roundsSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/findings\?status=pending`, auditRoundsReturnHref\)/)
 
-  assert.match(detailSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
+  assert.match(detailSource, /searchParams: Promise<\{[^}]*returnTo\?: string \| string\[\][^}]*result\?: string \| string\[\][^}]*pageSize\?: string \| string\[\][^}]*\}>/)
   assert.match(detailSource, /normalizeOperationalReturnTo\(locale, "audit-rounds", rawSearchParams\.returnTo\)/)
   assert.match(detailSource, /const roundDetailReturnHref = appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}`, returnToHref\)/)
   assert.match(detailSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}\/pending`, roundDetailReturnHref\)/)
   assert.match(detailSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}\/scan`, roundDetailReturnHref\)/)
+  assert.match(detailSource, /buildAuditRoundResultListHref\(\{ locale, roundId: round\.id, result: "found", returnTo: returnToHref/)
 
   assert.match(pendingSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
   assert.match(pendingSource, /normalizeAuditRoundWorkflowReturnTo\(locale, round\.id, rawSearchParams\.returnTo\)/)
@@ -75,7 +76,9 @@ test("audit rounds preserve list context across round detail, scan, and pending 
 test("audit findings preserve resolution context for disposal follow-up links", () => {
   const source = readFileSync("src/app/[locale]/(dashboard)/audit/findings/page.tsx", "utf8")
 
-  assert.match(source, /const auditFindingsReturnHref = buildAuditFindingsHref\(locale, status, searchText\)/)
+  assert.match(source, /const auditFindingsReturnHref = buildAuditFindingsHref\(locale, status, searchText, \{ roundId, findingType \}\)/)
+  assert.match(source, /const \{ search = "", status: statusParam = "pending", roundId: roundIdParam = "", findingType: findingTypeParam = "" \} = await searchParams/)
+  assert.match(source, /hiddenInputs=\{\{ status, \.\.\.\(roundId \? \{ roundId \} : \{\}\), \.\.\.\(findingType \? \{ findingType \} : \{\}\) \}\}/)
   assert.match(source, /appendOperationalReturnTo\(`\/\$\{locale\}\/disposal\?assetId=\$\{finding\.asset\.id\}&reason=/)
   assert.match(source, /auditFindingsReturnHref\)/)
 })

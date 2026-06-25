@@ -1766,6 +1766,8 @@
     "pendingReview": "รอ Review",
     "resultDashboard": "สรุปผลตรวจนับ",
     "resultDashboardHelp": "ภาพรวมรายการที่พบตรง รายการไม่ตรง รายการไม่พบ และสิ่งที่ยังต้องให้ผู้ตรวจสอบ Review",
+    "viewResultItems": "ดูรายการ",
+    "resultListHelp": "เลือกตัวเลขด้านบนเพื่อดูรายการทรัพย์สินที่อยู่ในกลุ่มนั้น พร้อมค้นหาและแบ่งหน้าเมื่อข้อมูลมีจำนวนมาก",
     "closeChecklist": "Checklist ก่อนปิดรอบตรวจ",
     "closeChecklistHelp": "ระบบจะอนุญาตให้ปิดรอบเมื่อไม่มีรายการรอตรวจ ไม่มี Finding รอ Review และไม่มีแผนแก้ไขค้าง",
     "closePendingItems": "รายการรอตรวจ",

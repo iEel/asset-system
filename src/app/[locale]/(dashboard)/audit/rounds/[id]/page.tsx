@@ -4,8 +4,8 @@ import { getTranslations } from "next-intl/server"
 import { AlertTriangle, Download, FileText, ScanLine } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
-import { ColumnHeader } from "@/components/master-data/master-data-layout"
-import { formatDate } from "@/lib/utils"
+import { ColumnHeader, MasterDataSearch } from "@/components/master-data/master-data-layout"
+import { formatDate, formatDateTime } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 import { AuditRoundCloseButton } from "@/components/audit/audit-round-close-button"
@@ -19,10 +19,21 @@ import { isSameAuditActor } from "@/lib/audit-segregation"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { countSuccessfulAuditResultRows, isVarianceAuditResult } from "@/lib/audit-result-summary"
+import { paginationRange } from "@/lib/master-data-query"
+import {
+  auditRoundResultPageSizeOptions,
+  buildAuditRoundItemWhere,
+  buildAuditRoundResultListHref,
+  buildAuditRoundScanHistoryWhere,
+  isAuditRoundScanHistoryResultFilter,
+  parseAuditRoundResultListParams,
+  type AuditRoundResultFilter,
+  type AuditRoundResultListState,
+} from "@/lib/audit-round-result-filters"
 
 type AuditRoundDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
-  searchParams: Promise<{ returnTo?: string | string[] }>
+  searchParams: Promise<{ returnTo?: string | string[]; result?: string | string[]; search?: string | string[]; page?: string | string[]; pageSize?: string | string[] }>
 }
 
 export default async function AuditRoundDetailPage({ params, searchParams }: AuditRoundDetailPageProps) {
@@ -33,7 +44,26 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const t = await getTranslations("auditRound")
   const tCommon = await getTranslations("common")
 
-  const [round, statusCounts, resultCounts, findingTypeCounts, pendingReviewCount, outOfScopeCount, openActionCount, evidenceItems] = await Promise.all([
+  const resultListState = parseAuditRoundResultListParams(rawSearchParams)
+  const resultListOffset = (resultListState.page - 1) * resultListState.pageSize
+  const isOutOfScopeResultList = isAuditRoundScanHistoryResultFilter(resultListState.result)
+  const resultItemWhere = buildAuditRoundItemWhere({ roundId: id, result: resultListState.result, search: resultListState.search })
+  const resultScanHistoryWhere = buildAuditRoundScanHistoryWhere({ roundId: id, search: resultListState.search })
+
+  const [
+    round,
+    statusCounts,
+    resultCounts,
+    findingTypeCounts,
+    pendingReviewCount,
+    outOfScopeCount,
+    openActionCount,
+    evidenceItems,
+    resultItems,
+    resultItemTotal,
+    outOfScopeScanRows,
+    outOfScopeScanTotal,
+  ] = await Promise.all([
     prisma.auditRound.findFirst({
       where: { id, isActive: true },
       include: {
@@ -90,6 +120,47 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         },
       },
     }),
+    isOutOfScopeResultList
+      ? Promise.resolve([])
+      : prisma.auditItem.findMany({
+          where: resultItemWhere,
+          skip: resultListOffset,
+          take: resultListState.pageSize,
+          orderBy: [{ auditStatus: "asc" }, { createdAt: "desc" }],
+          include: {
+            asset: {
+              select: {
+                id: true,
+                assetTag: true,
+                name: true,
+                currentLocation: { select: { code: true, name: true } },
+                custodian: { select: { code: true, fullNameTh: true } },
+                condition: { select: { nameTh: true } },
+              },
+            },
+          },
+        }),
+    isOutOfScopeResultList ? Promise.resolve(0) : prisma.auditItem.count({ where: resultItemWhere }),
+    isOutOfScopeResultList
+      ? prisma.auditScanHistory.findMany({
+          where: resultScanHistoryWhere,
+          skip: resultListOffset,
+          take: resultListState.pageSize,
+          orderBy: { scannedAt: "desc" },
+          include: {
+            asset: {
+              select: {
+                id: true,
+                assetTag: true,
+                name: true,
+                currentLocation: { select: { code: true, name: true } },
+                custodian: { select: { code: true, fullNameTh: true } },
+              },
+            },
+          },
+        })
+      : Promise.resolve([]),
+    isOutOfScopeResultList ? prisma.auditScanHistory.count({ where: resultScanHistoryWhere }) : Promise.resolve(0),
   ])
   if (!round) notFound()
 
@@ -123,6 +194,39 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const roundDetailReturnHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, returnToHref)
   const pendingHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/pending`, roundDetailReturnHref)
   const scanHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/scan`, roundDetailReturnHref)
+  const resultFilterLabels: Record<AuditRoundResultFilter, string> = {
+    all: t("viewAll"),
+    found: t("found"),
+    wrong_location: t("wrongLocation"),
+    wrong_custodian: t("wrongCustodian"),
+    wrong_condition: t("wrongCondition"),
+    not_found: t("notFound"),
+    out_of_scope: t("outOfScope"),
+    pending_review: t("pendingReview"),
+  }
+  const resultListTotal = isOutOfScopeResultList ? outOfScopeScanTotal : resultItemTotal
+  const resultRows = isOutOfScopeResultList
+    ? outOfScopeScanRows.map((history) => ({
+        id: history.id,
+        asset: history.asset,
+        auditStatus: t("outOfScope"),
+        auditResult: formatDateTime(history.scannedAt),
+      }))
+    : resultItems.map((item) => ({
+        id: item.id,
+        asset: item.asset,
+        auditStatus: item.auditStatus,
+        auditResult: item.auditResult ?? "-",
+      }))
+  const allResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "all", returnTo: returnToHref, pageSize: resultListState.pageSize })
+  const foundResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "found", returnTo: returnToHref, pageSize: resultListState.pageSize })
+  const wrongLocationResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "wrong_location", returnTo: returnToHref, pageSize: resultListState.pageSize })
+  const wrongCustodianResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "wrong_custodian", returnTo: returnToHref, pageSize: resultListState.pageSize })
+  const wrongConditionResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "wrong_condition", returnTo: returnToHref, pageSize: resultListState.pageSize })
+  const notFoundResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "not_found", returnTo: returnToHref, pageSize: resultListState.pageSize })
+  const outOfScopeResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "out_of_scope", returnTo: returnToHref, pageSize: resultListState.pageSize })
+  const pendingReviewResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "pending_review", returnTo: returnToHref, pageSize: resultListState.pageSize })
+  const pendingReviewFindingsHref = `/${locale}/audit/findings?status=pending&roundId=${round.id}`
 
   return (
     <div className="pb-24 md:pb-0">
@@ -186,7 +290,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         actions={[
           { href: scanHref, label: t("scan"), icon: <ScanLine className="h-4 w-4" />, primary: true },
           { href: pendingHref, label: t("pendingAssets"), icon: <AlertTriangle className="h-4 w-4" /> },
-          { href: `/${locale}/audit/findings?status=pending`, label: t("pendingReview"), icon: <FileText className="h-4 w-4" /> },
+          { href: pendingReviewFindingsHref, label: t("pendingReview"), icon: <FileText className="h-4 w-4" /> },
           { href: returnToHref, label: tCommon("back"), icon: <Download className="h-4 w-4" /> },
         ]}
       />
@@ -221,13 +325,13 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
           <p className="mt-1 text-sm text-muted-foreground">{t("resultDashboardHelp")}</p>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-          <DashboardCard label={t("found")} value={foundCount} tone="success" />
-          <DashboardCard label={t("wrongLocation")} value={wrongLocationCount} tone="warning" />
-          <DashboardCard label={t("wrongCustodian")} value={wrongCustodianCount} tone="warning" />
-          <DashboardCard label={t("wrongCondition")} value={wrongConditionCount} tone="warning" />
-          <DashboardCard label={t("notFound")} value={notFoundCount} tone="danger" />
-          <DashboardCard label={t("outOfScope")} value={outOfScopeCount} tone="info" />
-          <DashboardCard label={t("pendingReview")} value={pendingReviewCount} tone="muted" />
+          <DashboardCard label={t("found")} value={foundCount} tone="success" href={foundResultHref} active={resultListState.result === "found"} actionLabel={t("viewResultItems")} />
+          <DashboardCard label={t("wrongLocation")} value={wrongLocationCount} tone="warning" href={wrongLocationResultHref} active={resultListState.result === "wrong_location"} actionLabel={t("viewResultItems")} />
+          <DashboardCard label={t("wrongCustodian")} value={wrongCustodianCount} tone="warning" href={wrongCustodianResultHref} active={resultListState.result === "wrong_custodian"} actionLabel={t("viewResultItems")} />
+          <DashboardCard label={t("wrongCondition")} value={wrongConditionCount} tone="warning" href={wrongConditionResultHref} active={resultListState.result === "wrong_condition"} actionLabel={t("viewResultItems")} />
+          <DashboardCard label={t("notFound")} value={notFoundCount} tone="danger" href={notFoundResultHref} active={resultListState.result === "not_found"} actionLabel={t("viewResultItems")} />
+          <DashboardCard label={t("outOfScope")} value={outOfScopeCount} tone="info" href={outOfScopeResultHref} active={resultListState.result === "out_of_scope"} actionLabel={t("viewResultItems")} />
+          <DashboardCard label={t("pendingReview")} value={pendingReviewCount} tone="muted" href={pendingReviewResultHref} active={resultListState.result === "pending_review"} actionLabel={t("viewResultItems")} />
         </div>
       </section>
 
@@ -254,90 +358,122 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         </div>
       ) : null}
 
-      <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-        <div className="border-b border-border px-4 py-3">
-          <h2 className="text-base font-semibold text-foreground">{t("expectedAssets")}</h2>
+      <section id="audit-result-list" className="scroll-mt-24">
+        <div className="mb-4 flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-sm lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">{t("expectedAssets")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("resultListHelp")}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge label={resultFilterLabels[resultListState.result]} status={resultListState.result} size="sm" />
+            <span className="rounded-md border border-border bg-background px-3 py-1 text-sm text-muted-foreground">
+              {resultListTotal} {t("items")}
+            </span>
+            {resultListState.result !== "all" || resultListState.search ? (
+              <Link href={allResultHref} className="inline-flex h-9 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent">
+                {t("viewAll")}
+              </Link>
+            ) : null}
+          </div>
         </div>
-        <div className={`${getMobileCardListClasses()} p-3`}>
-          {round.items.length === 0 ? (
-            <ActionEmptyState
-              icon={<ScanLine className="h-6 w-6" />}
-              title={t("emptyAssetsTitle")}
-              description={t("emptyAssetsHelp")}
-              actionHref={`/${locale}/audit/rounds`}
-              actionLabel={tCommon("back")}
-            />
-          ) : (
-            round.items.map((item) => (
-              <article key={item.id} className="min-w-0 rounded-md border border-border bg-background p-3">
-                <Link href={`/${locale}/assets/${item.asset.id}`} className="break-words text-sm font-semibold text-foreground hover:text-primary">
-                  {item.asset.assetTag}
-                </Link>
-                <p className="mt-1 line-clamp-2 text-sm text-foreground">{item.asset.name}</p>
-                <div className="mt-3 grid gap-2 text-sm">
-                  <MobileAuditDetailField label={t("expectedLocation")} value={`${item.asset.currentLocation.code} - ${item.asset.currentLocation.name}`} />
-                  <MobileAuditDetailField
-                    label={t("expectedCustodian")}
-                    value={item.asset.custodian ? `${item.asset.custodian.code} - ${item.asset.custodian.fullNameTh}` : "-"}
-                  />
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <StatusBadge label={item.auditStatus} status={item.auditStatus} size="xs" />
-                  <StatusBadge label={item.auditResult ?? "-"} status={item.auditResult ?? "pending"} size="xs" />
-                </div>
-              </article>
-            ))
-          )}
-        </div>
-        <div className={`${getDesktopTableOnlyClasses()} overflow-x-auto`}>
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <ColumnHeader>{t("assetTag")}</ColumnHeader>
-                <ColumnHeader>{t("assetName")}</ColumnHeader>
-                <ColumnHeader>{t("expectedLocation")}</ColumnHeader>
-                <ColumnHeader>{t("expectedCustodian")}</ColumnHeader>
-                <ColumnHeader>{t("status")}</ColumnHeader>
-                <ColumnHeader>{t("result")}</ColumnHeader>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {round.items.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-6">
-                    <ActionEmptyState
-                      icon={<ScanLine className="h-6 w-6" />}
-                      title={t("emptyAssetsTitle")}
-                      description={t("emptyAssetsHelp")}
-                      actionHref={`/${locale}/audit/rounds`}
-                      actionLabel={tCommon("back")}
+
+        <MasterDataSearch
+          action={`/${locale}/audit/rounds/${round.id}`}
+          defaultValue={resultListState.search}
+          placeholder={tCommon("search")}
+          submitLabel={tCommon("search")}
+          hiddenInputs={{ result: resultListState.result, page: 1, pageSize: resultListState.pageSize, returnTo: returnToHref }}
+        />
+        <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+          <div className={`${getMobileCardListClasses()} p-3`}>
+            {resultRows.length === 0 ? (
+              <ActionEmptyState
+                icon={<ScanLine className="h-6 w-6" />}
+                title={t("emptyAssetsTitle")}
+                description={t("emptyAssetsHelp")}
+                actionHref={allResultHref}
+                actionLabel={t("viewAll")}
+              />
+            ) : (
+              resultRows.map((item) => (
+                <article key={item.id} className="min-w-0 rounded-md border border-border bg-background p-3">
+                  <Link href={`/${locale}/assets/${item.asset.id}`} className="break-words text-sm font-semibold text-foreground hover:text-primary">
+                    {item.asset.assetTag}
+                  </Link>
+                  <p className="mt-1 line-clamp-2 text-sm text-foreground">{item.asset.name}</p>
+                  <div className="mt-3 grid gap-2 text-sm">
+                    <MobileAuditDetailField label={t("expectedLocation")} value={`${item.asset.currentLocation.code} - ${item.asset.currentLocation.name}`} />
+                    <MobileAuditDetailField
+                      label={t("expectedCustodian")}
+                      value={item.asset.custodian ? `${item.asset.custodian.code} - ${item.asset.custodian.fullNameTh}` : "-"}
                     />
-                  </td>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <StatusBadge label={item.auditStatus} status={item.auditStatus} size="xs" />
+                    <StatusBadge label={item.auditResult ?? "-"} status={item.auditResult ?? "pending"} size="xs" />
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+          <div className={`${getDesktopTableOnlyClasses()} overflow-x-auto`}>
+            <table className="min-w-full divide-y divide-border text-sm">
+              <thead className="bg-muted/40">
+                <tr>
+                  <ColumnHeader>{t("assetTag")}</ColumnHeader>
+                  <ColumnHeader>{t("assetName")}</ColumnHeader>
+                  <ColumnHeader>{t("expectedLocation")}</ColumnHeader>
+                  <ColumnHeader>{t("expectedCustodian")}</ColumnHeader>
+                  <ColumnHeader>{t("status")}</ColumnHeader>
+                  <ColumnHeader>{t("result")}</ColumnHeader>
                 </tr>
-              ) : (
-                round.items.map((item) => (
-                  <ClickableTableRow
-                    key={item.id}
-                    href={`/${locale}/assets/${item.asset.id}`}
-                    label={`${tCommon("view")}: ${item.asset.assetTag}`}
-                  >
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{item.asset.assetTag}</td>
-                    <td className="min-w-56 px-4 py-3 text-foreground">{item.asset.name}</td>
-                    <td className="min-w-56 px-4 py-3 text-muted-foreground">
-                      {item.asset.currentLocation.code} - {item.asset.currentLocation.name}
+              </thead>
+              <tbody className="divide-y divide-border">
+                {resultRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-6">
+                      <ActionEmptyState
+                        icon={<ScanLine className="h-6 w-6" />}
+                        title={t("emptyAssetsTitle")}
+                        description={t("emptyAssetsHelp")}
+                        actionHref={allResultHref}
+                        actionLabel={t("viewAll")}
+                      />
                     </td>
-                    <td className="min-w-56 px-4 py-3 text-muted-foreground">
-                      {item.asset.custodian ? `${item.asset.custodian.code} - ${item.asset.custodian.fullNameTh}` : "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{item.auditStatus}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{item.auditResult ?? "-"}</td>
-                  </ClickableTableRow>
-                ))
-              )}
-            </tbody>
-          </table>
+                  </tr>
+                ) : (
+                  resultRows.map((item) => (
+                    <ClickableTableRow
+                      key={item.id}
+                      href={`/${locale}/assets/${item.asset.id}`}
+                      label={`${tCommon("view")}: ${item.asset.assetTag}`}
+                    >
+                      <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{item.asset.assetTag}</td>
+                      <td className="min-w-56 px-4 py-3 text-foreground">{item.asset.name}</td>
+                      <td className="min-w-56 px-4 py-3 text-muted-foreground">
+                        {item.asset.currentLocation.code} - {item.asset.currentLocation.name}
+                      </td>
+                      <td className="min-w-56 px-4 py-3 text-muted-foreground">
+                        {item.asset.custodian ? `${item.asset.custodian.code} - ${item.asset.custodian.fullNameTh}` : "-"}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{item.auditStatus}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{item.auditResult ?? "-"}</td>
+                    </ClickableTableRow>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <AuditRoundResultPagination
+            locale={locale}
+            roundId={round.id}
+            state={resultListState}
+            total={resultListTotal}
+            returnTo={returnToHref}
+            labels={{ rowsPerPage: tCommon("rowsPerPage"), page: tCommon("page"), of: tCommon("of"), previous: tCommon("previous"), next: tCommon("next") }}
+          />
         </div>
-      </div>
+      </section>
     </div>
   )
 }
@@ -364,10 +500,16 @@ function DashboardCard({
   label,
   value,
   tone,
+  href,
+  active = false,
+  actionLabel,
 }: {
   label: string
   value: number
   tone: "success" | "warning" | "danger" | "info" | "muted"
+  href?: string
+  active?: boolean
+  actionLabel?: string
 }) {
   const className =
     tone === "success"
@@ -379,11 +521,81 @@ function DashboardCard({
           : tone === "info"
             ? "border-info/30 bg-info/10 text-info"
             : "border-border bg-background text-muted-foreground"
-
-  return (
-    <div className={`rounded-md border px-3 py-3 ${className}`}>
+  const activeClassName = active ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
+  const content = (
+    <>
       <div className="text-xs font-medium">{label}</div>
       <div className="mt-2 text-2xl font-bold">{value}</div>
+      {actionLabel ? <div className="mt-2 text-xs font-semibold underline-offset-2">{actionLabel}</div> : null}
+    </>
+  )
+
+  if (href) {
+    return (
+      <Link href={href} className={`block rounded-md border px-3 py-3 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${className} ${activeClassName}`}>
+        {content}
+      </Link>
+    )
+  }
+
+  return <div className={`rounded-md border px-3 py-3 ${className}`}>{content}</div>
+}
+
+function AuditRoundResultPagination({
+  locale,
+  roundId,
+  state,
+  total,
+  returnTo,
+  labels,
+}: {
+  locale: string
+  roundId: string
+  state: AuditRoundResultListState
+  total: number
+  returnTo: string
+  labels: { rowsPerPage: string; page: string; of: string; previous: string; next: string }
+}) {
+  const { start, end, totalPages } = paginationRange(state.page, state.pageSize, total)
+  const previousPage = Math.max(1, state.page - 1)
+  const nextPage = Math.min(totalPages, state.page + 1)
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-border px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        {start}-{end} {labels.of} {total}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span>{labels.rowsPerPage}</span>
+        {auditRoundResultPageSizeOptions.map((pageSize) => (
+          <Link
+            key={pageSize}
+            href={buildAuditRoundResultListHref({ locale, roundId, result: state.result, returnTo, search: state.search, page: 1, pageSize })}
+            className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md border px-2 transition-colors ${
+              state.pageSize === pageSize ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface hover:bg-accent"
+            }`}
+          >
+            {pageSize}
+          </Link>
+        ))}
+        <span className="px-2">
+          {labels.page} {Math.min(state.page, totalPages)} {labels.of} {totalPages}
+        </span>
+        <Link
+          href={buildAuditRoundResultListHref({ locale, roundId, result: state.result, returnTo, search: state.search, page: previousPage, pageSize: state.pageSize })}
+          aria-disabled={state.page <= 1}
+          className={`inline-flex h-8 items-center rounded-md border border-border px-3 transition-colors ${state.page <= 1 ? "pointer-events-none opacity-50" : "hover:bg-accent"}`}
+        >
+          {labels.previous}
+        </Link>
+        <Link
+          href={buildAuditRoundResultListHref({ locale, roundId, result: state.result, returnTo, search: state.search, page: nextPage, pageSize: state.pageSize })}
+          aria-disabled={state.page >= totalPages}
+          className={`inline-flex h-8 items-center rounded-md border border-border px-3 transition-colors ${state.page >= totalPages ? "pointer-events-none opacity-50" : "hover:bg-accent"}`}
+        >
+          {labels.next}
+        </Link>
+      </div>
     </div>
   )
 }

@@ -15,9 +15,11 @@ export async function GET(request: NextRequest) {
     requirePermission(user, "audit", "export")
 
     const search = request.nextUrl.searchParams.get("search")?.trim()
+    const roundId = request.nextUrl.searchParams.get("roundId")?.trim()
+    const findingType = request.nextUrl.searchParams.get("findingType")?.trim()
     const status = resolveAuditFindingStatus(request.nextUrl.searchParams.get("status")?.trim())
     const findings = await prisma.auditFinding.findMany({
-      where: buildAuditFindingWhere({ status, search }),
+      where: buildAuditFindingWhere({ status, search, roundId, findingType }),
       include: {
         auditRound: { select: { auditNo: true, name: true } },
         asset: { select: { assetTag: true, name: true } },

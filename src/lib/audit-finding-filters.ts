@@ -34,10 +34,14 @@ export function getAuditFindingToday(now = new Date()) {
 export function buildAuditFindingWhere({
   status,
   search,
+  roundId,
+  findingType,
   now = new Date(),
 }: {
   status?: string | null
   search?: string | null
+  roundId?: string | null
+  findingType?: string | null
   now?: Date
 }): Prisma.AuditFindingWhereInput {
   const resolvedStatus = resolveAuditFindingStatus(status)
@@ -54,6 +58,9 @@ export function buildAuditFindingWhere({
   } else if (auditFindingReviewStatuses.includes(resolvedStatus as (typeof auditFindingReviewStatuses)[number])) {
     where.reviewStatus = resolvedStatus
   }
+
+  if (roundId) where.auditRoundId = roundId
+  if (findingType) where.findingType = findingType
 
   if (searchText) {
     where.OR = [

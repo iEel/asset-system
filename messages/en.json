@@ -1766,6 +1766,8 @@
     "pendingReview": "Pending Review",
     "resultDashboard": "Audit Result Summary",
     "resultDashboardHelp": "Overview of matched assets, mismatches, not-found items, and records still waiting for review.",
+    "viewResultItems": "View items",
+    "resultListHelp": "Select a summary count above to review the assets in that bucket, with search and pagination for large rounds.",
     "closeChecklist": "Close Round Checklist",
     "closeChecklistHelp": "The round can be closed only when no assets are pending, no findings are waiting for review, and no action plans remain open.",
     "closePendingItems": "Pending Assets",

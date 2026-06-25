@@ -2,6 +2,8 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
+import { buildAuditFindingWhere } from "../src/lib/audit-finding-filters.ts"
+
 test("audit findings page exposes the findings workflow", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/findings/page.tsx", "utf8")
 
@@ -73,5 +75,58 @@ test("audit finding resolution copy is translated", () => {
     assert.equal(typeof messages.auditFinding.resolutionStateOpenAction, "string")
     assert.equal(typeof messages.auditFinding.resolutionStateOverdue, "string")
     assert.equal(typeof messages.auditFinding.resolutionStateClosed, "string")
+  }
+})
+
+test("audit finding filters can drill into a specific round and finding type", () => {
+  assert.deepEqual(
+    buildAuditFindingWhere({
+      status: "all",
+      search: "",
+      roundId: "round-1",
+      findingType: "wrong_location",
+    }),
+    {
+      auditRoundId: "round-1",
+      findingType: "wrong_location",
+    }
+  )
+
+  assert.deepEqual(
+    buildAuditFindingWhere({
+      status: "pending",
+      search: "SNI-EQU",
+      roundId: "round-1",
+      findingType: "wrong_custodian",
+    }),
+    {
+      reviewStatus: "pending",
+      auditRoundId: "round-1",
+      findingType: "wrong_custodian",
+      OR: [
+        { findingType: { contains: "SNI-EQU" } },
+        { auditRound: { auditNo: { contains: "SNI-EQU" } } },
+        { auditRound: { name: { contains: "SNI-EQU" } } },
+        { asset: { assetTag: { contains: "SNI-EQU" } } },
+        { asset: { name: { contains: "SNI-EQU" } } },
+      ],
+    }
+  )
+})
+
+test("audit findings page and exports preserve round drilldown filters", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/audit/findings/page.tsx", "utf8")
+  const excelRoute = readFileSync("src/app/api/audit-findings/export/route.ts", "utf8")
+  const pdfRoute = readFileSync("src/app/api/audit-findings/export-pdf/route.ts", "utf8")
+
+  assert.match(page, /roundId\?: string/)
+  assert.match(page, /findingType\?: string/)
+  assert.match(page, /exportParams\.set\("roundId", roundId\)/)
+  assert.match(page, /exportParams\.set\("findingType", findingType\)/)
+
+  for (const route of [excelRoute, pdfRoute]) {
+    assert.match(route, /const roundId = request\.nextUrl\.searchParams\.get\("roundId"\)/)
+    assert.match(route, /const findingType = request\.nextUrl\.searchParams\.get\("findingType"\)/)
+    assert.match(route, /buildAuditFindingWhere\(\{ status, search, roundId, findingType \}\)/)
   }
 })

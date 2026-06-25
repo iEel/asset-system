@@ -27,12 +27,12 @@ import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 
 type AuditFindingsPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string; status?: string }>
+  searchParams: Promise<{ search?: string; status?: string; roundId?: string; findingType?: string }>
 }
 
 export default async function AuditFindingsPage({ params, searchParams }: AuditFindingsPageProps) {
   const { locale } = await params
-  const { search = "", status: statusParam = "pending" } = await searchParams
+  const { search = "", status: statusParam = "pending", roundId: roundIdParam = "", findingType: findingTypeParam = "" } = await searchParams
   const user = await requirePagePermission(locale, "audit", "view")
   const canEdit = hasPermission(user, "audit", "edit")
   const canApprove = hasPermission(user, "audit", "approve")
@@ -42,15 +42,19 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   const tCommon = await getTranslations("common")
   const pageLoadedAt = new Date()
   const searchText = search.trim()
+  const roundId = roundIdParam.trim()
+  const findingType = findingTypeParam.trim()
   const status = resolveAuditFindingStatus(statusParam)
   const today = getAuditFindingToday()
-  const auditFindingsReturnHref = buildAuditFindingsHref(locale, status, searchText)
+  const auditFindingsReturnHref = buildAuditFindingsHref(locale, status, searchText, { roundId, findingType })
   const exportParams = new URLSearchParams()
   if (searchText) exportParams.set("search", searchText)
+  if (roundId) exportParams.set("roundId", roundId)
+  if (findingType) exportParams.set("findingType", findingType)
   exportParams.set("status", status)
   const [findings, employees, pendingReviewCount, openActionCount, overdueCount, closedCount] = await Promise.all([
     prisma.auditFinding.findMany({
-      where: buildAuditFindingWhere({ status, search: searchText, now: today }),
+      where: buildAuditFindingWhere({ status, search: searchText, roundId, findingType, now: today }),
       include: {
         auditRound: { select: { id: true, auditNo: true, name: true } },
         auditItem: { select: { auditStatus: true, reconcileStatus: true } },
@@ -66,10 +70,10 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
           orderBy: { code: "asc" },
         })
       : Promise.resolve([]),
-    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "pending", search: searchText, now: today }) }),
-    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "action_open", search: searchText, now: today }) }),
-    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "overdue", search: searchText, now: today }) }),
-    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "closed", search: searchText, now: today }) }),
+    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "pending", search: searchText, roundId, findingType, now: today }) }),
+    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "action_open", search: searchText, roundId, findingType, now: today }) }),
+    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "overdue", search: searchText, roundId, findingType, now: today }) }),
+    prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "closed", search: searchText, roundId, findingType, now: today }) }),
   ])
   const findingIds = findings.map((finding) => finding.id)
   const attachmentCounts = findingIds.length
@@ -144,7 +148,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   const resolutionFilters = auditFindingResolutionStatuses.map((item) => ({
     value: item,
     label: resolutionFilterLabels[item],
-    href: buildAuditFindingsHref(locale, item, searchText),
+    href: buildAuditFindingsHref(locale, item, searchText, { roundId, findingType }),
   }))
 
   return (
@@ -181,7 +185,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
           {resolutionSummaryItems.map((item) => (
             <ResolutionMetric
               key={item.status}
-              href={buildAuditFindingsHref(locale, item.status, searchText)}
+              href={buildAuditFindingsHref(locale, item.status, searchText, { roundId, findingType })}
               active={status === item.status}
               label={item.label}
               help={item.help}
@@ -198,6 +202,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
         defaultValue={searchText}
         placeholder={tCommon("search")}
         submitLabel={tCommon("search")}
+        hiddenInputs={{ status, ...(roundId ? { roundId } : {}), ...(findingType ? { findingType } : {}) }}
       />
 
       <section className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
@@ -555,10 +560,17 @@ function ResolutionStateBadge({ state, labels }: { state: ResolutionState; label
   return <StatusBadge label={labels[state]} tone={toneByState[state]} size="xs" />
 }
 
-function buildAuditFindingsHref(locale: string, status: AuditFindingResolutionStatus, searchText: string) {
+function buildAuditFindingsHref(
+  locale: string,
+  status: AuditFindingResolutionStatus,
+  searchText: string,
+  filters: { roundId?: string; findingType?: string } = {}
+) {
   const params = new URLSearchParams()
   params.set("status", status)
   if (searchText) params.set("search", searchText)
+  if (filters.roundId) params.set("roundId", filters.roundId)
+  if (filters.findingType) params.set("findingType", filters.findingType)
   return `/${locale}/audit/findings?${params.toString()}`
 }
 
