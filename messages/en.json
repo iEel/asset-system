@@ -2188,6 +2188,14 @@
     "clearSearch": "Clear search",
     "markNotFound": "Mark Not Found",
     "notFoundRemark": "Remark for not found item",
+    "notFoundDialogTitle": "Mark asset as not found",
+    "notFoundDialogDescription": "Record this expected asset as not found for reviewer follow-up. A remark and evidence photo are optional.",
+    "notFoundRemarkOptional": "Remark (optional)",
+    "notFoundRemarkPlaceholder": "Add location checked, contact person, or other context if useful.",
+    "notFoundEvidenceTitle": "Add evidence photo (optional)",
+    "notFoundEvidenceBrowse": "Tap to take or choose a photo",
+    "notFoundEvidenceSelected": "Evidence photo queued",
+    "notFoundConfirm": "Confirm not found",
     "notFoundSuccess": "Not Found saved and a pending finding was created"
   },
   "reportsPage": {

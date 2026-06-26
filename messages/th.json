@@ -2188,6 +2188,14 @@
     "clearSearch": "ล้างคำค้น",
     "markNotFound": "บันทึกไม่พบ",
     "notFoundRemark": "หมายเหตุสำหรับรายการที่ไม่พบ",
+    "notFoundDialogTitle": "บันทึกทรัพย์สินนี้ว่าไม่พบ",
+    "notFoundDialogDescription": "บันทึกรายการรอตรวจนี้เป็นไม่พบเพื่อส่งให้ผู้ตรวจสอบดำเนินการต่อ โดยหมายเหตุและรูปหลักฐานไม่บังคับ",
+    "notFoundRemarkOptional": "หมายเหตุ (ไม่บังคับ)",
+    "notFoundRemarkPlaceholder": "ระบุจุดที่ตรวจแล้ว ผู้ติดต่อ หรือข้อมูลประกอบอื่นถ้ามี",
+    "notFoundEvidenceTitle": "เพิ่มรูปหลักฐาน (ไม่บังคับ)",
+    "notFoundEvidenceBrowse": "แตะเพื่อถ่ายหรือเลือกรูป",
+    "notFoundEvidenceSelected": "เพิ่มรูปหลักฐานแล้ว",
+    "notFoundConfirm": "ยืนยันว่าไม่พบ",
     "notFoundSuccess": "บันทึก Not Found และสร้าง Finding รอ Review สำเร็จ"
   },
   "reportsPage": {

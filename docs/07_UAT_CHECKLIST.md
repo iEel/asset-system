@@ -81,7 +81,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Confirm the asset master data does not change immediately after the out-of-scope scan save.
 - [ ] Approve the field mismatch finding as an audit reviewer and confirm the master asset data and movement log update only after approval.
 - [ ] Scan or enter an unknown QR/asset code and confirm it is shown as an unknown asset/not found in system, not as a not-found audit item.
-- [ ] Record not-found result from the pending list or zone queue for an expected item that cannot be physically located.
+- [ ] Record not-found result from the pending list or zone queue for an expected item that cannot be physically located. On mobile, confirm the action opens an in-app dialog instead of a browser prompt, allows saving without a remark, optionally accepts an evidence photo, and creates the pending not-found Finding for review.
 - [ ] If an item previously marked not found is later scanned, confirm the found-later recovery flow resolves it through the existing audit scan behavior.
 - [ ] Attach multiple free-form audit evidence photos, confirm the optional tag selector includes general evidence plus checklist labels, and confirm all queued photos remain listed before saving.
 - [ ] Retry offline/resume queue if available in the test device.
