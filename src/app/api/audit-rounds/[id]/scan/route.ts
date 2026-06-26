@@ -607,7 +607,7 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
 
     await logAudit({
       userId: user.id,
-      action: "scan",
+      action: input.resultCorrection ? "scan_result_corrected" : "scan",
       module: "audit",
       recordId: item.id,
       oldValue: {
@@ -622,6 +622,7 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
         mismatches,
         appliedCorrections: correctionMismatches,
         resolvedNotFoundFinding,
+        resultCorrection: input.resultCorrection,
       },
       remark: input.remark ?? undefined,
     })

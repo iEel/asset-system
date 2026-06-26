@@ -6,6 +6,7 @@ export type AuditOfflineScanPayload = {
   actualConditionId: string | null
   scanSource: "manual" | "qr"
   applyCorrections: boolean
+  resultCorrection: boolean
   remark: string | null
 }
 

@@ -78,6 +78,10 @@ type AuditScanItem = {
   expectedLocationId: string
   expectedCustodianId: string | null
   expectedConditionId: string | null
+  actualDepartmentId: string | null
+  actualLocationId: string | null
+  actualCustodianId: string | null
+  actualConditionId: string | null
   ownershipType?: string | null
   photoChecklist: string[]
   components: AuditScanComponent[]
@@ -218,6 +222,7 @@ export function AuditScanForm({
   const [assetPickerExpanded, setAssetPickerExpanded] = useState(false)
   const [assetPickerQuery, setAssetPickerQuery] = useState("")
   const [outOfScopeAsset, setOutOfScopeAsset] = useState<OutOfScopeAsset | null>(null)
+  const [editingScanResult, setEditingScanResult] = useState<{ assetId: string; label: string; auditResult: string | null } | null>(null)
   const [applyCorrections, setApplyCorrections] = useState(false)
   const [offlineQueue, setOfflineQueue] = useState<QueuedAuditScan[]>([])
   const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine))
@@ -352,6 +357,7 @@ export function AuditScanForm({
     if (field === "assetId") {
       setApplyCorrections(false)
       setShowDetailedFields(false)
+      setEditingScanResult(null)
     }
   }
 
@@ -372,21 +378,22 @@ export function AuditScanForm({
     setOutOfScopeAsset(null)
     setApplyCorrections(false)
     setShowDetailedFields(false)
+    setEditingScanResult(null)
     resetAuditPhotoQueue()
   }
 
-  function selectInRoundAuditItem(item: AuditScanItem) {
+  function selectInRoundAuditItem(item: AuditScanItem, options: { mode?: "scan" | "edit" } = {}) {
+    const editMode = options.mode === "edit"
+    const actualValues = editMode ? getEditableAuditValues(item) : getExpectedAuditValues(item)
     setValues((current) => ({
       ...current,
       assetId: item.assetId,
-      actualLocationId: item.expectedLocationId ?? "",
-      actualCustodianId: item.expectedCustodianId ?? "",
-      actualDepartmentId: item.expectedDepartmentId ?? "",
-      actualConditionId: item.expectedConditionId ?? "",
+      ...actualValues,
     }))
     setOutOfScopeAsset(null)
     setApplyCorrections(false)
-    setShowDetailedFields(false)
+    setShowDetailedFields(editMode)
+    setEditingScanResult(editMode ? { assetId: item.assetId, label: item.label, auditResult: item.auditResult } : null)
     resetAuditPhotoQueue()
   }
 
@@ -403,6 +410,7 @@ export function AuditScanForm({
     }))
     setApplyCorrections(false)
     setShowDetailedFields(false)
+    setEditingScanResult(null)
     resetAuditPhotoQueue()
   }
 
@@ -533,7 +541,7 @@ export function AuditScanForm({
       return
     }
 
-    selectInRoundAuditItem(targetItem)
+    selectInRoundAuditItem(targetItem, { mode: "edit" })
     setScanText(getReadableAuditScanValue(targetItem))
     setScanSource("manual")
     setAssetPickerExpanded(false)
@@ -904,6 +912,7 @@ export function AuditScanForm({
       ...emptyToNull(actualValues),
       scanSource,
       applyCorrections: !quickMatched && applyCorrections && correctionMismatchCount > 0,
+      resultCorrection: Boolean(editingScanResult),
       remark: values.remark || null,
     }
     try {
@@ -954,6 +963,7 @@ export function AuditScanForm({
       setApplyCorrections(false)
       setShowDetailedFields(false)
       setScanSource("manual")
+      setEditingScanResult(null)
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))
@@ -1068,6 +1078,7 @@ export function AuditScanForm({
     setApplyCorrections(false)
     setShowDetailedFields(false)
     setScanSource("manual")
+    setEditingScanResult(null)
   }
 
   async function retryOfflineQueue() {
@@ -1087,6 +1098,7 @@ export function AuditScanForm({
             actualConditionId: queued.actualConditionId,
             scanSource: queued.scanSource,
             applyCorrections: queued.applyCorrections,
+            resultCorrection: Boolean(queued.resultCorrection),
             remark: queued.remark,
           }),
         })
@@ -1245,6 +1257,28 @@ export function AuditScanForm({
             <ScanResultPanel feedback={scanFeedback} t={t} />
           )}
 
+          {editingScanResult ? (
+            <div className="md:col-span-2 rounded-md border border-info/30 bg-info/10 p-3 text-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 font-semibold text-foreground">
+                    <RefreshCcw className="h-4 w-4 text-info" />
+                    {t("editSavedResultTitle")}
+                  </div>
+                  <div className="mt-1 break-words text-muted-foreground">
+                    {t("editSavedResultHelp", { asset: editingScanResult.label })}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearAuditScanTarget}
+                  className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                >
+                  {t("editSavedResultCancel")}
+                </button>
+              </div>
+            </div>
+          ) : null}
           <div id="audit-scan-input-panel" className={`scroll-mt-24 md:col-span-2 rounded-md border p-3 sm:p-4 ${scanEntryPanelClass}`}>
             {!selectedItem && !scanFeedback ? (
               <div className="mb-2 flex flex-col gap-1">
@@ -2460,6 +2494,25 @@ function toAuditOfflinePhoto(photo: QueuedAuditPhoto): AuditOfflinePhoto {
     fileType: photo.file.type || "application/octet-stream",
     fileSize: photo.file.size,
     blob: photo.file,
+  }
+}
+
+function getExpectedAuditValues(item: AuditScanItem) {
+  return {
+    actualLocationId: item.expectedLocationId ?? "",
+    actualCustodianId: item.expectedCustodianId ?? "",
+    actualDepartmentId: item.expectedDepartmentId ?? "",
+    actualConditionId: item.expectedConditionId ?? "",
+  }
+}
+
+function getEditableAuditValues(item: AuditScanItem) {
+  if (item.auditStatus === "pending" && !item.auditResult) return getExpectedAuditValues(item)
+  return {
+    actualLocationId: item.actualLocationId ?? item.expectedLocationId ?? "",
+    actualCustodianId: item.actualCustodianId ?? "",
+    actualDepartmentId: item.actualDepartmentId ?? "",
+    actualConditionId: item.actualConditionId ?? "",
   }
 }
 

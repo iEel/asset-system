@@ -138,3 +138,32 @@ test("audit round detail page exposes clickable result dashboard and paginated r
   assert.match(page, /AuditRoundResultPagination/)
   assert.match(page, /resultItems\.map/)
 })
+
+test("audit round detail export links preserve the active result bucket and search", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", "utf8")
+
+  assert.match(page, /buildAuditRoundExportHref/)
+  assert.match(page, /auditRoundExportHref/)
+  assert.match(page, /auditRoundExportPdfHref/)
+  assert.match(page, /resultListState\.result/)
+  assert.match(page, /resultListState\.search/)
+  assert.match(page, /href=\{auditRoundExportHref\}/)
+  assert.match(page, /href=\{auditRoundExportPdfHref\}/)
+})
+
+test("audit round result exports use the same filters as the on-screen result list", () => {
+  const excelRoute = readFileSync("src/app/api/audit-rounds/[id]/export/route.ts", "utf8")
+  const pdfRoute = readFileSync("src/app/api/audit-rounds/[id]/export-pdf/route.ts", "utf8")
+
+  for (const route of [excelRoute, pdfRoute]) {
+    assert.match(route, /request: NextRequest/)
+    assert.match(route, /request\.nextUrl\.searchParams/)
+    assert.match(route, /resolveAuditRoundResultFilter/)
+    assert.match(route, /buildAuditRoundItemWhere/)
+    assert.match(route, /buildAuditRoundScanHistoryWhere/)
+    assert.match(route, /isAuditRoundScanHistoryResultFilter/)
+    assert.match(route, /auditScanHistory\.findMany/)
+    assert.match(route, /auditItem\.findMany/)
+    assert.match(route, /out_of_scope/)
+  }
+})

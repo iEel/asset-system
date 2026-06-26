@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-06-25
+
+| Area | Update |
+|---|---|
+| Audit round workflow shortcuts | `/th/audit/rounds` now adds per-round quick links for pending expected assets, pending findings review, and out-of-scope scans so large rounds are actionable from the summary list instead of showing counts only. |
+| Audit result filtered exports | Audit round detail Excel/PDF result exports now preserve the active result bucket and search text, and the export routes use the same result-list filters as the on-screen table, including out-of-scope scan history rows. |
+| Audit scan result corrections | Recent scan edit now reloads the saved actual values instead of resetting to expected values, shows a correction banner with cancel action, sends `resultCorrection`, and logs correction saves as `scan_result_corrected` while retaining scan history and Audit Trail context. |
+
+---
+
 ## 2026-06-22
 
 - Added audit component asset workflow: audit rounds include active installed components for selected parent assets, Audit Scan shows component status under the parent, and component confirmations update the component's own audit item.

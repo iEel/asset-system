@@ -57,6 +57,7 @@ test("stores and removes queued audit scans by round", () => {
       actualConditionId: "cond-1",
       scanSource: "qr",
       applyCorrections: false,
+      resultCorrection: false,
       remark: "offline",
     },
     new Date("2026-05-20T10:00:00.000Z")
@@ -82,6 +83,7 @@ test("stores queued audit scans with photo evidence and sync status in async sto
       actualConditionId: "cond-2",
       scanSource: "manual",
       applyCorrections: true,
+      resultCorrection: true,
       remark: "with photos",
     },
     {

@@ -408,3 +408,39 @@ test("audit scan exposes 1x, 2x and 3x zoom controls in the existing camera pane
     assert.equal(typeof messages.auditScan.zoomUnsupported, "string")
   }
 })
+
+test("audit scan edit result reloads saved actual values and records correction context", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/scan/page.tsx", "utf8")
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const route = readFileSync("src/app/api/audit-rounds/[id]/scan/route.ts", "utf8")
+  const validation = readFileSync("src/lib/validations/audit.ts", "utf8")
+  const offlineQueue = readFileSync("src/lib/audit-offline-queue.ts", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(page, /actualDepartmentId: item\.actualDepartmentId/)
+  assert.match(page, /actualLocationId: item\.actualLocationId/)
+  assert.match(page, /actualCustodianId: item\.actualCustodianId/)
+  assert.match(page, /actualConditionId: item\.actualConditionId/)
+
+  assert.match(form, /actualDepartmentId: string \| null/)
+  assert.match(form, /actualLocationId: string \| null/)
+  assert.match(form, /editingScanResult/)
+  assert.match(form, /getEditableAuditValues/)
+  assert.match(form, /selectInRoundAuditItem\(targetItem, \{ mode: "edit" \}\)/)
+  assert.match(form, /resultCorrection: Boolean\(editingScanResult\)/)
+  assert.match(form, /t\("editSavedResultTitle"\)/)
+  assert.match(form, /t\("editSavedResultHelp"/)
+  assert.match(form, /t\("editSavedResultCancel"\)/)
+
+  assert.match(validation, /resultCorrection: z\.boolean\(\)\.default\(false\)/)
+  assert.match(route, /input\.resultCorrection \? "scan_result_corrected" : "scan"/)
+  assert.match(route, /resultCorrection: input\.resultCorrection/)
+  assert.match(offlineQueue, /resultCorrection: boolean/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditScan.editSavedResultTitle, "string")
+    assert.equal(typeof messages.auditScan.editSavedResultHelp, "string")
+    assert.equal(typeof messages.auditScan.editSavedResultCancel, "string")
+  }
+})

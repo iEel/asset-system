@@ -241,6 +241,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const outOfScopeResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "out_of_scope", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const pendingReviewResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "pending_review", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const pendingReviewFindingsHref = `/${locale}/audit/findings?status=pending&roundId=${round.id}`
+  const auditRoundExportHref = buildAuditRoundExportHref({ roundId: round.id, endpoint: "export", state: resultListState })
+  const auditRoundExportPdfHref = buildAuditRoundExportHref({ roundId: round.id, endpoint: "export-pdf", state: resultListState })
   const hasResultBucketFilter = resultListState.result !== "all"
   const hasResultListSearch = Boolean(resultListState.search)
   const selectedResultLabel = resultFilterLabels[resultListState.result]
@@ -310,14 +312,14 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
           <StatusBadge label={round.status} status={round.status} />
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
             <a
-              href={`/api/audit-rounds/${round.id}/export`}
+              href={auditRoundExportHref}
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
             >
               <Download className="h-4 w-4" />
               {t("exportResult")}
             </a>
             <a
-              href={`/api/audit-rounds/${round.id}/export-pdf`}
+              href={auditRoundExportPdfHref}
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
             >
               <FileText className="h-4 w-4" />
@@ -700,6 +702,22 @@ function AuditRoundResultPagination({
       </div>
     </div>
   )
+}
+
+function buildAuditRoundExportHref({
+  roundId,
+  endpoint,
+  state,
+}: {
+  roundId: string
+  endpoint: "export" | "export-pdf"
+  state: Pick<AuditRoundResultListState, "result" | "search">
+}) {
+  const params = new URLSearchParams()
+  if (state.result !== "all") params.set("result", state.result)
+  if (state.search.trim()) params.set("search", state.search.trim())
+  const query = params.toString()
+  return `/api/audit-rounds/${roundId}/${endpoint}${query ? `?${query}` : ""}`
 }
 
 async function getEvidenceSummary({
