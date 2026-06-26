@@ -1984,7 +1984,7 @@ function RecentScansPanel({
         </span>
         <span className="inline-flex shrink-0 items-center gap-2">
           <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
-            {recentScans.length.toLocaleString("th-TH")}/{MAX_RECENT_AUDIT_SCANS}
+            {t("recentScansCount", { count: recentScans.length })}
           </span>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
             {t(recentScansExpanded ? "recentScansCollapse" : "recentScansExpand")}

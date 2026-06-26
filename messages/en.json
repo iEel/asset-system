@@ -1921,6 +1921,7 @@
     "scanResult": "Scan result",
     "recentScansTitle": "Recent scans",
     "recentScansHelp": "Review recent reads while walking.",
+    "recentScansCount": "Showing {count, plural, one {# recent item} other {# recent items}}",
     "recentScansEdit": "Edit result",
     "recentScansExpand": "Show list",
     "recentScansCollapse": "Hide list",

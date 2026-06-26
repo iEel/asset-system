@@ -1921,6 +1921,7 @@
     "scanResult": "ผลสแกน",
     "recentScansTitle": "สแกนล่าสุด",
     "recentScansHelp": "ตรวจย้อนหลังระหว่างเดินตรวจ",
+    "recentScansCount": "แสดง {count} รายการล่าสุด",
     "recentScansEdit": "แก้ไขผลตรวจ",
     "recentScansExpand": "เปิดรายการ",
     "recentScansCollapse": "พับรายการ",

@@ -266,10 +266,12 @@ test("audit scan phase 1 shows readable result semantics and recent scans", () =
   assert.match(form, /t\("feedbackStatusFound"\)/)
   assert.match(form, /t\("recentScansTitle"\)/)
   assert.match(form, /t\("recentScansHelp"\)/)
+  assert.match(form, /t\("recentScansCount", \{ count: recentScans\.length \}\)/)
 
   for (const messages of [th, en]) {
     assert.equal(typeof messages.auditScan.recentScansTitle, "string")
     assert.equal(typeof messages.auditScan.recentScansHelp, "string")
+    assert.equal(typeof messages.auditScan.recentScansCount, "string")
     assert.equal(typeof messages.auditScan.recentScansEdit, "string")
     assert.equal(typeof messages.auditScan.lastResultWithAsset, "string")
     assert.equal(typeof messages.auditScan.feedbackStatusFound, "string")
@@ -389,7 +391,10 @@ test("audit scan recent scans collapse hides every scan row", () => {
 
   assert.doesNotMatch(panel, /const visibleScans = recentScans\.slice\(0, 3\)/)
   assert.doesNotMatch(panel, /const olderScans = recentScans\.slice\(3\)/)
+  assert.doesNotMatch(panel, /\/\{MAX_RECENT_AUDIT_SCANS\}/)
+  assert.doesNotMatch(panel, /MAX_RECENT_AUDIT_SCANS/)
   assert.match(panel, /id="audit-recent-scans-list"[\s\S]*hidden=\{!recentScansExpanded\}[\s\S]*recentScans\.map/)
+  assert.match(panel, /t\("recentScansCount", \{ count: recentScans\.length \}\)/)
   assert.match(panel, /t\(recentScansExpanded \? "recentScansCollapse" : "recentScansExpand"\)/)
 })
 
