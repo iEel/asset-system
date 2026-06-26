@@ -27,14 +27,14 @@ test("audit scan primary actions use field-audit wording instead of not-found la
 
   assert.match(th.auditScan.dataMatches, /บันทึกพบตรง/)
   assert.match(th.auditScan.dataMismatch, /Finding|ข้อมูลไม่ตรง/)
-  assert.match(th.auditScan.captureEvidenceAction, /ถ่ายรูปหลักฐาน/)
+  assert.match(th.auditScan.changeTargetAction, /เปลี่ยน|สแกนใหม่/)
   assert.match(th.auditScan.manualScanAction, /กรอกเอง|ใช้รหัส/)
   assert.match(th.auditScan.feedbackUnknownAssetTitle, /ไม่พบ.*ระบบ/)
   assert.match(th.auditScan.feedbackOutOfScopeTitle, /นอก Scope/)
 
   assert.match(en.auditScan.dataMatches, /Save matched/)
   assert.match(en.auditScan.dataMismatch, /finding|mismatch/i)
-  assert.match(en.auditScan.captureEvidenceAction, /evidence/i)
+  assert.match(en.auditScan.changeTargetAction, /change|scan again/i)
   assert.match(en.auditScan.manualScanAction, /manual|code/i)
   assert.match(en.auditScan.feedbackUnknownAssetTitle, /Unknown asset/)
   assert.match(en.auditScan.feedbackOutOfScopeTitle, /Out of scope/)

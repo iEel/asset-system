@@ -138,6 +138,89 @@ test("audit scan layout keeps progress metrics in one place", () => {
   assert.match(en.auditScan.continueOrManualAction, /scan|manual/i)
 })
 
+
+test("audit scan mobile action bar prioritizes matched save as the full-width primary action", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+
+  assert.match(form, /showMobileQuickActionBar/)
+  assert.match(form, /grid max-w-6xl grid-cols-3/)
+  assert.match(form, /const mobileMatchedActionClassName = "[^"]*col-span-3/)
+  assert.match(form, /className=\{mobileMatchedActionClassName\}/)
+  assert.match(form, /onClick=\{openMismatchDetails\}[\s\S]*className="[^"]*border-warning/)
+  assert.match(form, /onClick=\{handleChangeAuditTarget\}/)
+  assert.match(form, /t\("changeTargetAction"\)/)
+  assert.doesNotMatch(form, /onClick=\{scrollToAuditPhotoEvidence\}/)
+})
+test("audit scan locks the scanned target and pauses the QR scanner before saving", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(form, /const scanTargetLocked = Boolean\(selectedItem \|\| outOfScopeAsset\)/)
+  assert.match(form, /targetLockedBadge/)
+  assert.match(form, /void stopScanner\(\)[\s\S]*void selectScannedAsset\(decodedText, "qr"\)/)
+  assert.match(form, /stopAfterSuccess: true/)
+  assert.doesNotMatch(form, /stopAfterSuccess: false/)
+  assert.doesNotMatch(form, /source === "qr" && !continuousScan/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditScan.targetLockedBadge, "string")
+    assert.equal(typeof messages.auditScan.targetLockedHelp, "string")
+  }
+})
+
+test("audit scan mobile resolver removes the evidence-scroll action", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  const barStart = form.indexOf("aria-label={t(\"mobileActionBar\")}")
+  const barEnd = form.indexOf("</div>\n      ) : null}", barStart)
+  assert.ok(barStart > -1, "mobile action bar should exist")
+  assert.ok(barEnd > barStart, "mobile action bar block should be readable")
+  const bar = form.slice(barStart, barEnd)
+
+  assert.match(bar, /onClick=\{handleQuickMatchedScan\}/)
+  assert.match(bar, /onClick=\{openMismatchDetails\}/)
+  assert.match(bar, /onClick=\{handleChangeAuditTarget\}/)
+  assert.match(bar, /t\("changeTargetAction"\)/)
+  assert.doesNotMatch(bar, /scrollToAuditPhotoEvidence/)
+  assert.doesNotMatch(bar, /captureEvidenceAction/)
+  assert.doesNotMatch(form, /function scrollToAuditPhotoEvidence/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditScan.changeTargetAction, "string")
+  }
+})
+
+test("audit scan mismatch flow embeds required evidence instead of using a scroll shortcut", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(form, /const shouldShowAuditPhotoEvidence = Boolean\(outOfScopeAsset \|\| isDetailedScanVisible \|\| queuedAuditPhotos\.length > 0\)/)
+  assert.match(form, /const evidenceRequirementSatisfied = !requiresMismatchPhoto \|\| queuedAuditPhotos\.length > 0/)
+  assert.match(form, /t\("auditPhotoRequiredCounter", \{ count: queuedAuditPhotos\.length \}\)/)
+  assert.match(form, /!evidenceRequirementSatisfied[\s\S]*border-warning\/40 bg-warning\/10/)
+  assert.match(form, /disabled=\{saving \|\| !selectedItem \|\| \(fastMode && !showDetailedFields\) \|\| !evidenceRequirementSatisfied\}/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditScan.auditPhotoRequiredCounter, "string")
+    assert.equal(typeof messages.auditScan.auditPhotoRequirementMet, "string")
+  }
+})
+
+test("audit scan compacts the sticky progress header after an asset is selected", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+
+  assert.match(form, /const compactProgressHeader = Boolean\(selectedItem \|\| outOfScopeAsset\)/)
+  assert.match(form, /compactProgressHeader \? "mb-3/)
+  assert.match(form, /compactProgressHeader \? \(/)
+  assert.match(form, /processedCount\.toLocaleString\("th-TH"\)/)
+  assert.match(form, /items\.length\.toLocaleString\("th-TH"\)/)
+  assert.match(form, /pendingCount\.toLocaleString\("th-TH"\)/)
+  assert.match(form, /queuedAuditPhotos\.length\.toLocaleString\("th-TH"\)/)
+  assert.match(form, /!compactProgressHeader \? \(/)
+})
 test("audit scan phase 1 shows readable result semantics and recent scans", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
@@ -193,10 +276,11 @@ test("audit scan recent scans are seeded from persisted scan history", () => {
   assert.match(form, /const \[recentScans, setRecentScans\] = useState<AuditRecentScan\[\]>\(\(\) => initialRecentScans\.slice\(0, MAX_RECENT_AUDIT_SCANS\)\)/)
 })
 
-test("audit scan keeps rear-camera fast walking defaults without exposing mode switches", () => {
+test("audit scan keeps rear-camera fast defaults and locks QR results without exposing mode switches", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
 
-  assert.match(form, /const continuousScan = true/)
+  assert.match(form, /stopAfterSuccess: true/)
+  assert.match(form, /void stopScanner\(\)[\s\S]*void selectScannedAsset\(decodedText, "qr"\)/)
   assert.match(form, /const fastMode = true/)
   assert.match(form, /resolvePreferredCameraSelection\(availableCameras, requestedCameraId\)/)
   assert.match(form, /getFallbackCameraAfterEnvironmentFailure\(cameraSelection, availableCameras\)/)
@@ -215,8 +299,8 @@ test("audit scan keeps rear-camera fast walking defaults without exposing mode s
   assert.doesNotMatch(form, /handleCameraChange/)
   assert.match(form, /ScanResultPanel feedback=\{scanFeedback\} t=\{t\}/)
   assert.match(form, /<RecentScansPanel[\s\S]*recentScans=\{recentScans\}[\s\S]*onEditScan=\{editRecentScan\}/)
-  assert.match(form, /const visibleScans = recentScans\.slice\(0, 3\)/)
   assert.doesNotMatch(form, /<ScanFeedbackCard feedback=\{scanFeedback\}/)
+  assert.match(form, /id="audit-recent-scans-list"[\s\S]*recentScans\.map/)
   assert.doesNotMatch(form, /<RecentScanList recentScans=\{recentScans\}/)
 })
 
@@ -272,6 +356,19 @@ test("audit scan pending queue and recent scans are collapsible", () => {
     assert.equal(typeof messages.auditScan.recentScansExpand, "string")
     assert.equal(typeof messages.auditScan.recentScansCollapse, "string")
   }
+})
+test("audit scan recent scans collapse hides every scan row", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const panelStart = form.indexOf("function RecentScansPanel")
+  const rowStart = form.indexOf("function RecentScanCompactRow")
+  assert.ok(panelStart > -1, "RecentScansPanel should exist")
+  assert.ok(rowStart > panelStart, "RecentScanCompactRow should follow RecentScansPanel")
+  const panel = form.slice(panelStart, rowStart)
+
+  assert.doesNotMatch(panel, /const visibleScans = recentScans\.slice\(0, 3\)/)
+  assert.doesNotMatch(panel, /const olderScans = recentScans\.slice\(3\)/)
+  assert.match(panel, /id="audit-recent-scans-list"[\s\S]*hidden=\{!recentScansExpanded\}[\s\S]*recentScans\.map/)
+  assert.match(panel, /t\(recentScansExpanded \? "recentScansCollapse" : "recentScansExpand"\)/)
 })
 
 test("audit scan mobile-first field workflow compacts scan setup and moves list work into searchable panels", () => {

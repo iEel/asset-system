@@ -218,7 +218,6 @@ export function AuditScanForm({
   const [lastDecodedText, setLastDecodedText] = useState("")
   const [auditPhotoLabel, setAuditPhotoLabel] = useState("")
   const [queuedAuditPhotos, setQueuedAuditPhotos] = useState<QueuedAuditPhoto[]>([])
-  const continuousScan = true
   const fastMode = true
   const [showDetailedFields, setShowDetailedFields] = useState(() => Boolean(initialEditItem))
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null)
@@ -300,9 +299,13 @@ export function AuditScanForm({
   const pendingListHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${roundId}/pending`, scanReturnHref)
   const pendingCount = pendingItems.length
   const processedCount = items.length - pendingCount
+  const compactProgressHeader = Boolean(selectedItem || outOfScopeAsset)
+  const scanTargetLocked = Boolean(selectedItem || outOfScopeAsset)
   const isDetailedScanVisible = Boolean(selectedItem && (!fastMode || showDetailedFields))
   const showMobileQuickActionBar = Boolean(selectedItem && fastMode && !showDetailedFields)
   const submitBarVisibility = selectedItem ? (showMobileQuickActionBar ? "hidden md:flex" : "flex") : "hidden md:flex"
+  const mobileMatchedActionClassName = "col-span-3 inline-flex min-h-14 items-center justify-center gap-2 rounded-md bg-success px-3 py-2 text-base font-semibold text-white transition-colors hover:bg-success/90 disabled:opacity-50"
+  const mobileSecondaryActionClassName = "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-2 py-2 text-xs font-medium leading-tight text-foreground transition-colors hover:bg-accent"
   const systemDataRows = selectedItem
     ? buildSystemDataRows(
         selectedItem,
@@ -323,7 +326,8 @@ export function AuditScanForm({
       hasOutOfScopeActualMismatch(outOfScopeAsset, outOfScopeActualValues)
   )
   const requiresMismatchPhoto = Boolean(isDetailedScanVisible && mismatchPreview.length > 0) || requiresOutOfScopeMismatchPhoto
-  const shouldShowAuditPhotoEvidence = Boolean(selectedItem || outOfScopeAsset)
+  const evidenceRequirementSatisfied = !requiresMismatchPhoto || queuedAuditPhotos.length > 0
+  const shouldShowAuditPhotoEvidence = Boolean(outOfScopeAsset || isDetailedScanVisible || queuedAuditPhotos.length > 0)
   const selectedAuditPhotoChecklist = selectedItem?.photoChecklist
   const generalAuditPhotoLabel = t("generalAuditPhotoLabel")
   const auditPhotoTagOptions = useMemo(
@@ -503,12 +507,17 @@ export function AuditScanForm({
     setShowDetailedFields(true)
   }
 
-  function scrollToAuditPhotoEvidence() {
-    document.getElementById("audit-photo-evidence")?.scrollIntoView({ behavior: "smooth", block: "center" })
-  }
 
   function scrollToAuditScanInput() {
     document.getElementById("audit-scan-input-panel")?.scrollIntoView({ behavior: "smooth", block: "center" })
+  }
+
+  function handleChangeAuditTarget() {
+    void stopScanner()
+    clearAuditScanTarget()
+    setScanText("")
+    setScanSource("manual")
+    window.setTimeout(scrollToAuditScanInput, 0)
   }
 
   function pushRecentScan(feedback: ScanFeedback, source: "manual" | "qr" = scanSource) {
@@ -716,6 +725,7 @@ export function AuditScanForm({
         if (lastDecodedRef.current?.value === normalizedText && now - lastDecodedRef.current.at < 1500) return
         lastDecodedRef.current = { value: normalizedText, at: now }
         setLastDecodedText(decodedText)
+        void stopScanner()
         void selectScannedAsset(decodedText, "qr")
       }
       const startWithSelection = async (selection: PreferredCameraSelection) => {
@@ -723,7 +733,7 @@ export function AuditScanForm({
           readerId: "audit-qr-reader",
           cameraSelection: selection,
           onScanSuccess: handleScanSuccess,
-          stopAfterSuccess: false,
+          stopAfterSuccess: true,
         })
         qrReaderRef.current = scanner
         syncTorchState(scanner)
@@ -785,7 +795,6 @@ export function AuditScanForm({
             assetTag: lookedUpItem.assetTag,
           }, source)
           toast.success(t("assetSelected"))
-          if (source === "qr" && !continuousScan) void stopScanner()
           return true
         }
       }
@@ -802,7 +811,6 @@ export function AuditScanForm({
           assetTag: lookup.asset.assetTag,
         }, source)
         toast.warning(t("outOfScopeFound"))
-        if (!continuousScan) void stopScanner()
         return false
       }
       clearAuditScanTarget()
@@ -827,7 +835,6 @@ export function AuditScanForm({
       assetTag: matchedItem.assetTag,
     }, source)
     toast.success(t("assetSelected"))
-    if (source === "qr" && !continuousScan) void stopScanner()
     return true
   }
 
@@ -1185,31 +1192,58 @@ export function AuditScanForm({
         )}
       </div>
 
-      <div className="sticky top-0 z-20 mb-4 rounded-lg border border-border bg-surface/95 p-3 shadow-sm backdrop-blur">
-        <AuditProgressBar
-          compact
-          total={items.length}
-          processed={processedCount}
-          pending={pendingCount}
-          label={t("progress")}
-          processedLabel={t("scannedQueue")}
-          pendingLabel={t("pendingQueue")}
-        />
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className="rounded-full border border-border bg-background px-2 py-1">
-            {t("photoQueue")}: <span className="font-semibold text-foreground">{queuedAuditPhotos.length}</span>
-          </span>
-          <button
-            type="button"
-            onClick={togglePendingQueue}
-            aria-expanded={showPendingQueue}
-            aria-controls="audit-pending-queue-panel"
-            className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-border bg-background px-2 py-1 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <ListChecks className="h-3.5 w-3.5" />
-            {t("pendingQueueQuickAction", { count: pendingCount })}
-          </button>
-        </div>
+      <div className={`sticky top-0 z-20 border border-border bg-surface/95 shadow-sm backdrop-blur ${compactProgressHeader ? "mb-3 rounded-md p-2" : "mb-4 rounded-lg p-3"}`}>
+        {compactProgressHeader ? (
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="rounded-full border border-border bg-background px-2 py-1">
+              {t("scannedQueue")}: <span className="font-semibold text-foreground">{processedCount.toLocaleString("th-TH")}/{items.length.toLocaleString("th-TH")}</span>
+            </span>
+            <span className="rounded-full border border-border bg-background px-2 py-1">
+              {t("pendingQueue")}: <span className="font-semibold text-foreground">{pendingCount.toLocaleString("th-TH")}</span>
+            </span>
+            <span className="rounded-full border border-border bg-background px-2 py-1">
+              {t("photoQueue")}: <span className="font-semibold text-foreground">{queuedAuditPhotos.length.toLocaleString("th-TH")}</span>
+            </span>
+            <button
+              type="button"
+              onClick={togglePendingQueue}
+              aria-expanded={showPendingQueue}
+              aria-controls="audit-pending-queue-panel"
+              className="inline-flex min-h-8 flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-background px-2 py-1 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex-none"
+            >
+              <ListChecks className="h-3.5 w-3.5" />
+              {t("pendingQueueQuickAction", { count: pendingCount })}
+            </button>
+          </div>
+        ) : null}
+        {!compactProgressHeader ? (
+          <>
+            <AuditProgressBar
+              compact
+              total={items.length}
+              processed={processedCount}
+              pending={pendingCount}
+              label={t("progress")}
+              processedLabel={t("scannedQueue")}
+              pendingLabel={t("pendingQueue")}
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="rounded-full border border-border bg-background px-2 py-1">
+                {t("photoQueue")}: <span className="font-semibold text-foreground">{queuedAuditPhotos.length}</span>
+              </span>
+              <button
+                type="button"
+                onClick={togglePendingQueue}
+                aria-expanded={showPendingQueue}
+                aria-controls="audit-pending-queue-panel"
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-border bg-background px-2 py-1 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <ListChecks className="h-3.5 w-3.5" />
+                {t("pendingQueueQuickAction", { count: pendingCount })}
+              </button>
+            </div>
+          </>
+        ) : null}
       </div>
 
       {offlineQueue.length > 0 ? (
@@ -1468,9 +1502,16 @@ export function AuditScanForm({
             <div className="md:col-span-2 rounded-md border border-primary/25 bg-primary/5 p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-primary">{t("currentTarget")}</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="text-xs font-semibold text-primary">{t("currentTarget")}</div>
+                    {scanTargetLocked ? (
+                      <span className="inline-flex min-h-7 items-center rounded-md border border-success/30 bg-success/10 px-2 py-1 text-xs font-semibold text-success">
+                        {t("targetLockedBadge")}
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="mt-1 break-words text-lg font-semibold text-foreground">{selectedItem.label}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{t("currentTargetHelp")}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">{scanTargetLocked ? t("targetLockedHelp") : t("currentTargetHelp")}</div>
                 </div>
                 <div className="shrink-0 rounded-md border border-primary/20 bg-surface px-3 py-2 text-xs font-medium text-primary">
                   {t("systemDataTitle")}
@@ -1549,11 +1590,11 @@ export function AuditScanForm({
                   </button>
                   <button
                     type="button"
-                    onClick={scrollToAuditPhotoEvidence}
+                    onClick={handleChangeAuditTarget}
                     className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent"
                   >
-                    <ImagePlus className="h-4 w-4" />
-                    {t("captureEvidenceAction")}
+                    <RefreshCcw className="h-4 w-4" />
+                    {t("changeTargetAction")}
                   </button>
                 </div>
               </div>
@@ -1563,7 +1604,14 @@ export function AuditScanForm({
           {outOfScopeAsset && (
             <div className="md:col-span-2 rounded-md border border-warning/40 bg-warning/10 p-4">
               <div>
-                <div className="text-sm font-semibold text-warning">{t("outOfScopeTitle")}</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="text-sm font-semibold text-warning">{t("outOfScopeTitle")}</div>
+                  {scanTargetLocked ? (
+                    <span className="inline-flex min-h-7 items-center rounded-md border border-success/30 bg-success/10 px-2 py-1 text-xs font-semibold text-success">
+                      {t("targetLockedBadge")}
+                    </span>
+                  ) : null}
+                </div>
                 <div className="mt-1 text-lg font-semibold text-foreground">{outOfScopeAsset.title} - {outOfScopeAsset.subtitle}</div>
                 <div className="mt-1 text-sm text-muted-foreground">{outOfScopeAsset.meta.location}</div>
                 <div className="mt-1 text-sm text-muted-foreground">{outOfScopeAsset.meta.custodian ?? t("none")}</div>
@@ -1687,10 +1735,26 @@ export function AuditScanForm({
 
           {shouldShowAuditPhotoEvidence && (
             <div id="audit-photo-evidence" className="scroll-mt-24 md:col-span-2 rounded-md border border-border bg-background p-4">
-              <div className="mb-3 text-sm font-semibold text-foreground">{t("auditPhotoEvidence")}</div>
-              <p className="mb-3 text-sm text-muted-foreground">
-                {requiresMismatchPhoto ? t("auditPhotoRequiredForMismatch") : t("auditPhotoOptionalForMatch")}
-              </p>
+              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-foreground">{t("auditPhotoEvidence")}</div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {requiresMismatchPhoto ? t("auditPhotoRequiredForMismatch") : t("auditPhotoOptionalForMatch")}
+                  </p>
+                </div>
+                {requiresMismatchPhoto ? (
+                  <span
+                    className={[
+                      "inline-flex min-h-8 shrink-0 items-center rounded-md border px-2.5 py-1 text-xs font-semibold",
+                      !evidenceRequirementSatisfied
+                        ? "border-warning/40 bg-warning/10 text-warning"
+                        : "border-success/30 bg-success/10 text-success",
+                    ].join(" ")}
+                  >
+                    {evidenceRequirementSatisfied ? t("auditPhotoRequirementMet") : t("auditPhotoRequiredCounter", { count: queuedAuditPhotos.length })}
+                  </span>
+                ) : null}
+              </div>
               <div className="mb-3 rounded-md border border-border bg-surface p-3">
                 <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <div className="text-sm font-semibold text-foreground">{t("selectAuditPhotoType")}</div>
@@ -1767,7 +1831,7 @@ export function AuditScanForm({
             </div>
           )}
           <div className={`sticky bottom-0 z-10 -mx-4 justify-end border-t border-border bg-surface/95 p-3 backdrop-blur md:col-span-2 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none ${submitBarVisibility}`}>
-            <button type="submit" disabled={saving || !selectedItem || (fastMode && !showDetailedFields)} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-base font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto">
+            <button type="submit" disabled={saving || !selectedItem || (fastMode && !showDetailedFields) || !evidenceRequirementSatisfied} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-base font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {t("submitScan")}
             </button>
@@ -1776,12 +1840,12 @@ export function AuditScanForm({
       </section>
       {showMobileQuickActionBar ? (
         <div aria-label={t("mobileActionBar")} className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 px-3 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-lg backdrop-blur md:hidden">
-          <div className="mx-auto grid max-w-6xl grid-cols-2 gap-2">
+          <div className="mx-auto grid max-w-6xl grid-cols-3 gap-2">
             <button
               type="button"
               onClick={handleQuickMatchedScan}
               disabled={saving}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-success px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-success/90 disabled:opacity-50"
+              className={mobileMatchedActionClassName}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               <span>{t("dataMatches")}</span>
@@ -1789,26 +1853,18 @@ export function AuditScanForm({
             <button
               type="button"
               onClick={openMismatchDetails}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 py-2 text-sm font-semibold text-warning transition-colors hover:bg-warning/10"
+              className="col-span-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 py-2 text-sm font-semibold text-warning transition-colors hover:bg-warning/10"
             >
               <AlertTriangle className="h-4 w-4" />
               <span>{t("dataMismatch")}</span>
             </button>
             <button
               type="button"
-              onClick={scrollToAuditPhotoEvidence}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              onClick={handleChangeAuditTarget}
+              className={mobileSecondaryActionClassName}
             >
-              <ImagePlus className="h-4 w-4" />
-              <span>{t("captureEvidenceAction")}</span>
-            </button>
-            <button
-              type="button"
-              onClick={scrollToAuditScanInput}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-            >
-              <Keyboard className="h-4 w-4" />
-              <span>{t("continueOrManualAction")}</span>
+              <RefreshCcw className="h-4 w-4" />
+              <span>{t("changeTargetAction")}</span>
             </button>
           </div>
         </div>
@@ -1864,8 +1920,6 @@ function RecentScansPanel({
   onEditScan: (scan: AuditRecentScan) => void
   t: AuditScanTranslator
 }) {
-  const visibleScans = recentScans.slice(0, 3)
-  const olderScans = recentScans.slice(3)
   const [recentScansExpanded, setRecentScansExpanded] = useState(false)
 
   return (
@@ -1885,26 +1939,17 @@ function RecentScansPanel({
           <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
             {recentScans.length.toLocaleString("th-TH")}/{MAX_RECENT_AUDIT_SCANS}
           </span>
-          {olderScans.length > 0 ? (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
-              {t(recentScansExpanded ? "recentScansCollapse" : "recentScansExpand")}
-              <ChevronDown className={`h-4 w-4 transition-transform ${recentScansExpanded ? "rotate-180" : ""}`} />
-            </span>
-          ) : null}
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+            {t(recentScansExpanded ? "recentScansCollapse" : "recentScansExpand")}
+            <ChevronDown className={`h-4 w-4 transition-transform ${recentScansExpanded ? "rotate-180" : ""}`} />
+          </span>
         </span>
       </button>
-      <div className="mt-2 grid gap-1.5">
-        {visibleScans.map((scan) => (
+      <div id="audit-recent-scans-list" hidden={!recentScansExpanded} className="mt-2 grid gap-1.5">
+        {recentScans.map((scan) => (
           <RecentScanCompactRow key={scan.id} scan={scan} onEditScan={onEditScan} t={t} />
         ))}
       </div>
-      {olderScans.length > 0 ? (
-        <div id="audit-recent-scans-list" hidden={!recentScansExpanded} className="mt-1.5 grid gap-1.5">
-          {olderScans.map((scan) => (
-            <RecentScanCompactRow key={scan.id} scan={scan} onEditScan={onEditScan} t={t} />
-          ))}
-        </div>
-      ) : null}
     </div>
   )
 }
