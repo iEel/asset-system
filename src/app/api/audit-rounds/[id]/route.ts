@@ -3,7 +3,9 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { getAuditRoundReadOnlyError, isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
 import { auditSegregationErrors, isSameAuditActor } from "@/lib/audit-segregation"
+import { auditRoundCancelSchema } from "@/lib/validations/audit"
 
 type AuditRoundContext = {
   params: Promise<{ id: string }>
@@ -56,7 +58,7 @@ export async function PATCH(request: NextRequest, context: AuditRoundContext) {
     const { id } = await context.params
     const body = await request.json().catch(() => ({}))
     const action = typeof body?.action === "string" ? body.action : ""
-    if (action !== "close") {
+    if (action !== "close" && action !== "cancel") {
       return NextResponse.json({ error: "Unsupported audit round action" }, { status: 400 })
     }
 
@@ -65,7 +67,41 @@ export async function PATCH(request: NextRequest, context: AuditRoundContext) {
       select: { id: true, status: true, createdBy: true },
     })
     if (!round) return NextResponse.json({ error: "Audit round not found" }, { status: 404 })
-    if (round.status === "closed") return NextResponse.json({ error: "Audit round is already closed" }, { status: 400 })
+
+    if (action === "cancel") {
+      if (isAuditRoundReadOnlyStatus(round.status)) {
+        return NextResponse.json({ error: getAuditRoundReadOnlyError(round.status) }, { status: 400 })
+      }
+
+      const input = auditRoundCancelSchema.parse(body)
+      const impact = await getCancellationImpact(id)
+      const cancelledAt = new Date()
+      const updatedRound = await prisma.auditRound.update({
+        where: { id },
+        data: {
+          status: "cancelled",
+          cancelledAt: cancelledAt,
+          cancelledBy: user.id,
+          cancelReason: input.reason,
+          updatedBy: user.id,
+        },
+      })
+
+      await logAudit({
+        userId: user.id,
+        action: "cancel",
+        module: "audit",
+        recordId: id,
+        oldValue: { status: round.status },
+        newValue: { status: updatedRound.status, cancelledAt: cancelledAt, impact },
+        remark: input.reason,
+      })
+
+      return NextResponse.json({ ...updatedRound, impact })
+    }
+
+    const readOnlyError = getAuditRoundReadOnlyError(round.status)
+    if (readOnlyError) return NextResponse.json({ error: readOnlyError }, { status: 400 })
     if (isSameAuditActor(user.id, round.createdBy)) {
       return NextResponse.json({ error: auditSegregationErrors.closeOwnRound }, { status: 403 })
     }
@@ -144,4 +180,17 @@ async function getCloseChecklist(auditRoundId: string) {
     openActions,
     canClose: pendingItems === 0 && pendingFindings === 0 && openActions === 0,
   }
+}
+
+async function getCancellationImpact(auditRoundId: string) {
+  const [pendingItems, processedItems, pendingFindings, approvedFindings, openActions, scanHistoryRows] = await Promise.all([
+    prisma.auditItem.count({ where: { auditRoundId, auditStatus: "pending" } }),
+    prisma.auditItem.count({ where: { auditRoundId, auditStatus: { not: "pending" } } }),
+    prisma.auditFinding.count({ where: { auditRoundId, reviewStatus: "pending" } }),
+    prisma.auditFinding.count({ where: { auditRoundId, reviewStatus: "approved" } }),
+    prisma.auditFinding.count({ where: { auditRoundId, actionStatus: { in: ["planned", "in_progress", "done"] } } }),
+    prisma.auditScanHistory.count({ where: { auditRoundId } }),
+  ])
+
+  return { pendingItems, processedItems, pendingFindings, approvedFindings, openActions, scanHistoryRows }
 }

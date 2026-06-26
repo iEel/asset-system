@@ -10,6 +10,7 @@ import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { auditRoundCoverageWhere, auditRoundOperationalWhere, isAuditRoundOperationalStatus } from "@/lib/audit-round-status"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 
 type AuditRoundsPageProps = {
@@ -35,7 +36,7 @@ type CoverageGap = {
   percent: number
 }
 
-const auditRoundViewValues = ["all", "open", "pending", "review", "mismatch", "readyToClose"] as const
+const auditRoundViewValues = ["all", "open", "pending", "review", "mismatch", "readyToClose", "cancelled"] as const
 type AuditRoundView = (typeof auditRoundViewValues)[number]
 
 type AuditRoundListItem = {
@@ -117,19 +118,19 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
         },
       }),
       prisma.auditItem.findMany({
-        where: { auditRound: { isActive: true, auditYear: currentYear } },
+        where: { auditRound: { isActive: true, auditYear: currentYear, status: auditRoundCoverageWhere } },
         distinct: ["assetId"],
         select: { assetId: true },
       }),
-      prisma.auditRound.count({ where: { isActive: true, auditYear: currentYear } }),
+      prisma.auditRound.count({ where: { isActive: true, auditYear: currentYear, status: auditRoundCoverageWhere } }),
       prisma.auditItem.groupBy({
         by: ["auditStatus"],
-        where: { auditRound: { isActive: true, status: { not: "closed" } } },
+        where: { auditRound: { isActive: true, status: auditRoundOperationalWhere } },
         _count: { _all: true },
       }),
       prisma.auditFinding.count({
         where: {
-          auditRound: { isActive: true, status: { not: "closed" } },
+          auditRound: { isActive: true, status: auditRoundOperationalWhere },
           OR: [{ reviewStatus: "pending" }, { actionStatus: { in: ["planned", "in_progress"] } }],
         },
       }),
@@ -177,8 +178,8 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
   const outOfScopeByRoundId = new Map(outOfScopeWorkCounts.map((row) => [row.auditRoundId, row._count._all]))
   const insightsByRoundId = buildAuditRoundInsights(rounds, progressByRoundId, followUpsByRoundId, outOfScopeByRoundId)
   const filteredRounds = filterRoundsByView(rounds, insightsByRoundId, activeView)
-  const pendingRounds = rounds.filter((round) => (insightsByRoundId.get(round.id)?.pending ?? 0) > 0 && round.status !== "closed")
-  const reviewRounds = rounds.filter((round) => (insightsByRoundId.get(round.id)?.followUps ?? 0) > 0)
+  const pendingRounds = rounds.filter((round) => (insightsByRoundId.get(round.id)?.pending ?? 0) > 0 && isAuditRoundOperationalStatus(round.status))
+  const reviewRounds = rounds.filter((round) => (insightsByRoundId.get(round.id)?.followUps ?? 0) > 0 && isAuditRoundOperationalStatus(round.status))
   const readyRounds = rounds.filter((round) => insightsByRoundId.get(round.id)?.readyToClose)
   const viewLabels: Record<AuditRoundView, string> = {
     all: t("viewAll"),
@@ -187,6 +188,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
     review: t("viewReview"),
     mismatch: t("viewMismatch"),
     readyToClose: t("viewReadyToClose"),
+    cancelled: t("viewCancelled"),
   }
   const auditRoundsReturnHref = buildAuditRoundsHref(locale, activeView, searchText)
   const quickFilters = auditRoundViewValues.map((value) => ({
@@ -346,10 +348,11 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                 hasMismatch: round._count.findings > 0,
                 readyToClose: false,
               }
-                            const roundDetailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
+              const roundDetailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
               const workflowLinks = buildAuditRoundWorkflowLinks({
                 locale,
                 roundId: round.id,
+                status: round.status,
                 returnTo: auditRoundsReturnHref,
                 insight,
                 labels: {
@@ -369,7 +372,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                       <p className="mt-1 line-clamp-2 text-sm text-foreground">{round.name}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      <AuditStatusBadge status={round.status} />
+                      <AuditStatusBadge status={round.status} label={getAuditRoundStatusLabel(round.status, t)} />
                       <ReadyToCloseBadge
                         status={round.status}
                         insight={insight}
@@ -442,20 +445,21 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                     hasMismatch: round._count.findings > 0,
                     readyToClose: false,
                   }
-                                const roundDetailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
-              const workflowLinks = buildAuditRoundWorkflowLinks({
-                locale,
-                roundId: round.id,
-                returnTo: auditRoundsReturnHref,
-                insight,
-                labels: {
-                  pending: t("roundActionPending"),
-                  review: t("roundActionReview"),
-                  outOfScope: t("roundActionOutOfScope"),
-                },
-              })
+                  const roundDetailHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, auditRoundsReturnHref)
+                  const workflowLinks = buildAuditRoundWorkflowLinks({
+                    locale,
+                    roundId: round.id,
+                    status: round.status,
+                    returnTo: auditRoundsReturnHref,
+                    insight,
+                    labels: {
+                      pending: t("roundActionPending"),
+                      review: t("roundActionReview"),
+                      outOfScope: t("roundActionOutOfScope"),
+                    },
+                  })
 
-              return (
+                  return (
                     <ClickableTableRow
                       key={round.id}
                       href={roundDetailHref}
@@ -469,7 +473,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
                         <div className="flex flex-col items-start gap-1">
-                          <AuditStatusBadge status={round.status} />
+                          <AuditStatusBadge status={round.status} label={getAuditRoundStatusLabel(round.status, t)} />
                           <ReadyToCloseBadge
                             status={round.status}
                             insight={insight}
@@ -636,7 +640,7 @@ function ReadyToCloseBadge({
   insight: AuditRoundInsight
   labels: { ready: string; pending: string; review: string }
 }) {
-  if (status === "closed") return null
+  if (!isAuditRoundOperationalStatus(status)) return null
   if (insight.readyToClose) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-1 text-xs font-medium text-success">
@@ -703,71 +707,73 @@ function CoverageGapList({
         <div className="rounded-md border border-border bg-surface px-3 py-4 text-sm text-muted-foreground">{emptyLabel}</div>
       ) : (
         <>
-        <div className="grid gap-2 sm:hidden">
-          {rows.map((row) => (
-            <div key={row.id} className="rounded-md border border-border bg-surface p-3">
-              <div className="break-words text-sm font-medium text-foreground">
-                {row.href ? (
-                  <Link href={row.href} className="text-primary hover:underline">
-                    {row.label}
-                  </Link>
-                ) : (
-                  row.label
-                )}
+          <div className="grid gap-2 sm:hidden">
+            {rows.map((row) => (
+              <div key={row.id} className="rounded-md border border-border bg-surface p-3">
+                <div className="break-words text-sm font-medium text-foreground">
+                  {row.href ? (
+                    <Link href={row.href} className="text-primary hover:underline">
+                      {row.label}
+                    </Link>
+                  ) : (
+                    row.label
+                  )}
+                </div>
+                <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                  <MobileAuditField label={labels.missing} value={String(row.missing)} />
+                  <MobileAuditField label={labels.total} value={String(row.total)} />
+                  <MobileAuditField label={labels.rate} value={`${row.percent}%`} />
+                </div>
               </div>
-              <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                <MobileAuditField label={labels.missing} value={String(row.missing)} />
-                <MobileAuditField label={labels.total} value={String(row.total)} />
-                <MobileAuditField label={labels.rate} value={`${row.percent}%`} />
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="hidden overflow-x-auto sm:block">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-xs text-muted-foreground">
-                <th className="px-2 py-2 text-left font-medium">{labels.group}</th>
-                <th className="px-2 py-2 text-right font-medium">{labels.missing}</th>
-                <th className="px-2 py-2 text-right font-medium">{labels.total}</th>
-                <th className="px-2 py-2 text-right font-medium">{labels.rate}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id} className="border-b border-border/60 last:border-0">
-                  <td className="min-w-44 px-2 py-2 font-medium text-foreground">
-                    {row.href ? (
-                      <Link href={row.href} className="text-primary hover:underline">
-                        {row.label}
-                      </Link>
-                    ) : (
-                      row.label
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-2 py-2 text-right font-semibold text-warning">{row.missing}</td>
-                  <td className="whitespace-nowrap px-2 py-2 text-right text-muted-foreground">{row.total}</td>
-                  <td className="whitespace-nowrap px-2 py-2 text-right text-muted-foreground">{row.percent}%</td>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto sm:block">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs text-muted-foreground">
+                  <th className="px-2 py-2 text-left font-medium">{labels.group}</th>
+                  <th className="px-2 py-2 text-right font-medium">{labels.missing}</th>
+                  <th className="px-2 py-2 text-right font-medium">{labels.total}</th>
+                  <th className="px-2 py-2 text-right font-medium">{labels.rate}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id} className="border-b border-border/60 last:border-0">
+                    <td className="min-w-44 px-2 py-2 font-medium text-foreground">
+                      {row.href ? (
+                        <Link href={row.href} className="text-primary hover:underline">
+                          {row.label}
+                        </Link>
+                      ) : (
+                        row.label
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-2 text-right font-semibold text-warning">{row.missing}</td>
+                    <td className="whitespace-nowrap px-2 py-2 text-right text-muted-foreground">{row.total}</td>
+                    <td className="whitespace-nowrap px-2 py-2 text-right text-muted-foreground">{row.percent}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
     </div>
   )
 }
 
-function AuditStatusBadge({ status }: { status: string }) {
+function AuditStatusBadge({ status, label = status }: { status: string; label?: string }) {
   const className =
     status === "open"
       ? "bg-info/10 text-info"
       : status === "closed"
         ? "bg-muted text-muted-foreground"
-        : "bg-warning/10 text-warning"
+        : status === "cancelled"
+          ? "bg-danger/10 text-danger"
+          : "bg-warning/10 text-warning"
 
-  return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${className}`}>{status}</span>
+  return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${className}`}>{label}</span>
 }
 
 function buildAuditRoundInsights(
@@ -789,7 +795,7 @@ function buildAuditRoundInsights(
       followUps,
       outOfScope,
       hasMismatch,
-      readyToClose: round.status !== "closed" && progress.pending === 0 && followUps === 0,
+      readyToClose: isAuditRoundOperationalStatus(round.status) && progress.pending === 0 && followUps === 0,
     })
   }
 
@@ -800,15 +806,19 @@ function buildAuditRoundWorkflowLinks({
   locale,
   roundId,
   returnTo,
+  status,
   insight,
   labels,
 }: {
   locale: string
   roundId: string
+  status: string
   returnTo: string
   insight: AuditRoundInsight
   labels: { pending: string; review: string; outOfScope: string }
 }): RoundWorkflowLink[] {
+  if (!isAuditRoundOperationalStatus(status)) return []
+
   const links: RoundWorkflowLink[] = []
 
   if (insight.pending > 0) {
@@ -851,7 +861,9 @@ function filterRoundsByView<T extends AuditRoundListItem>(
   return rounds.filter((round) => {
     const insight = insightsByRoundId.get(round.id)
     if (activeView === "all") return true
-    if (activeView === "open") return round.status !== "closed"
+    if (activeView === "cancelled") return round.status === "cancelled"
+    if (activeView === "open") return isAuditRoundOperationalStatus(round.status)
+    if (!isAuditRoundOperationalStatus(round.status)) return false
     if (activeView === "pending") return (insight?.pending ?? 0) > 0
     if (activeView === "review") return (insight?.followUps ?? 0) > 0
     if (activeView === "mismatch") return insight?.hasMismatch ?? (round._count.findings > 0)
@@ -859,6 +871,14 @@ function filterRoundsByView<T extends AuditRoundListItem>(
 
     return true
   })
+}
+
+function getAuditRoundStatusLabel(status: string, t: Awaited<ReturnType<typeof getTranslations>>) {
+  if (status === "draft") return t("statusDraft")
+  if (status === "open") return t("statusOpen")
+  if (status === "closed") return t("statusClosed")
+  if (status === "cancelled") return t("statusCancelled")
+  return status
 }
 
 function buildAuditRoundsHref(locale: string, view: AuditRoundView, searchText: string) {

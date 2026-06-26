@@ -50,10 +50,12 @@ export async function GET(request: NextRequest, context: AuditExportContext) {
 
     const round = await prisma.auditRound.findFirst({
       where: { id, isActive: true },
-      select: { id: true, auditNo: true, name: true },
+      select: { id: true, auditNo: true, name: true, status: true },
     })
     if (!round) return NextResponse.json({ error: "Audit round not found" }, { status: 404 })
-
+    if (round.status === "cancelled") {
+      return NextResponse.json({ error: "Audit round is cancelled" }, { status: 400 })
+    }
     const rows = isOutOfScopeExport
       ? await buildOutOfScopeExportRows(id, search)
       : await buildAuditItemExportRows(id, result, search)

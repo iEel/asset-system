@@ -566,6 +566,9 @@ model AuditRound {
   startDate         DateTime
   endDate           DateTime
   status            String          @default("draft") @db.NVarChar(20)
+  cancelledAt       DateTime?
+  cancelledBy       String?         @db.NVarChar(100)
+  cancelReason      String?         @db.NVarChar(Max)
   createdBy         String          @db.NVarChar(100)
   updatedBy         String?         @db.NVarChar(100)
   createdAt         DateTime        @default(now())

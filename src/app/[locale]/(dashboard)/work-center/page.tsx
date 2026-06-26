@@ -31,6 +31,7 @@ import {
   type WorkCenterUserScope,
 } from "@/lib/work-center-view"
 import { formatDateTime } from "@/lib/utils"
+import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
 
 type WorkCenterPageProps = {
   params: Promise<{ locale: string }>
@@ -138,22 +139,22 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
     userScope,
   )
   const pendingAuditFindingWhere = applyAuditFindingWorkCenterScope(
-    { reviewStatus: "pending" },
+    { reviewStatus: "pending", auditRound: { isActive: true, status: auditRoundOperationalWhere } },
     isMineView,
     userScope,
   )
   const openAuditActionWhere = applyAuditFindingWorkCenterScope(
-    { actionStatus: { in: ["planned", "in_progress"] } },
+    { actionStatus: { in: ["planned", "in_progress"] }, auditRound: { isActive: true, status: auditRoundOperationalWhere } },
     isMineView,
     userScope,
   )
   const auditItemWhere = applyAuditFindingWorkCenterScope(
-    { OR: [{ reviewStatus: "pending" }, { actionStatus: { in: ["planned", "in_progress"] } }] },
+    { auditRound: { isActive: true, status: auditRoundOperationalWhere }, OR: [{ reviewStatus: "pending" }, { actionStatus: { in: ["planned", "in_progress"] } }] },
     isMineView,
     userScope,
   )
   const pendingAuditItemsWhere = applyAuditItemWorkCenterScope(
-    { auditStatus: "pending", auditRound: { isActive: true, status: { not: "closed" } } },
+    { auditStatus: "pending", auditRound: { isActive: true, status: auditRoundOperationalWhere } },
     isMineView,
     userScope,
   )

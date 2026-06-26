@@ -196,6 +196,7 @@ Implemented status lifecycle and enforcement from docs/code:
 | Findings follow-up context | Disposal follow-up links from findings preserve the active findings queue/search as sanitized return context |
 | Reconciliation | Approve/reject findings with movement/audit trail and segregation controls |
 | Close-round controls | Close-round workflow with protection documented in lifecycle/workflow docs |
+| Audit round cancellation | Cancel incorrect/test audit rounds with a required reason; cancelled rounds become read-only historical records, preserve prior audit work without rollback, and are excluded from operational queues/current coverage |
 | Exports | Audit result Excel/PDF, findings Excel/PDF, variance export |
 | Labels | User-facing labels resolve expected/actual references instead of raw ids where supported |
 

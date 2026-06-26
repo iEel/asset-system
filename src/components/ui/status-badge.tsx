@@ -6,6 +6,7 @@ const statusToneMap: Record<string, StatusTone> = {
   active: "success",
   approved: "primary",
   closed: "success",
+  cancelled: "danger",
   completed: "success",
   disposed: "success",
   done: "primary",

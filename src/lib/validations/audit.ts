@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { optionalText } from "@/lib/validations/shared"
 
-const auditStatuses = ["draft", "open", "closed"] as const
+const auditStatuses = ["draft", "open", "closed", "cancelled"] as const
 export const auditRiskPresets = [
   "all",
   "data_quality",
@@ -60,6 +60,10 @@ export const auditScanLookupSchema = z.object({
   scanSource: z.enum(["manual", "qr"]).default("manual"),
 })
 
+export const auditRoundCancelSchema = z.object({
+  reason: z.string().trim().min(1).max(4000),
+})
+
 export const auditFindingReviewSchema = z.object({
   action: z.enum(["approve", "reject"]),
   reviewRemark: optionalText,
@@ -87,6 +91,7 @@ export const auditMarkNotFoundSchema = z.object({
 })
 
 export type AuditRoundInput = z.infer<typeof auditRoundSchema>
+export type AuditRoundCancelInput = z.infer<typeof auditRoundCancelSchema>
 export type AuditScanInput = z.infer<typeof auditScanSchema>
 export type AuditScanLookupInput = z.infer<typeof auditScanLookupSchema>
 export type AuditFindingReviewInput = z.infer<typeof auditFindingReviewSchema>

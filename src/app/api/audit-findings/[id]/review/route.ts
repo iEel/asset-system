@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { getAuditRoundReadOnlyError } from "@/lib/audit-round-status"
 import { auditFindingActionPlanSchema, auditFindingCloseSchema, auditFindingReviewSchema } from "@/lib/validations/audit"
 import { auditSegregationErrors, isSameAuditActor } from "@/lib/audit-segregation"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
@@ -39,10 +40,15 @@ export async function POST(request: NextRequest, context: ReviewContext) {
       where: { id },
       include: {
         auditItem: true,
+        auditRound: { select: { status: true } },
         asset: true,
       },
     })
     if (!finding) return NextResponse.json({ error: "Audit finding not found" }, { status: 404 })
+    const readOnlyError = getAuditRoundReadOnlyError(finding.auditRound.status)
+    if (readOnlyError) {
+      return NextResponse.json({ error: readOnlyError }, { status: 400 })
+    }
 
     if (actionType === "plan") {
       const input = auditFindingActionPlanSchema.parse(body)

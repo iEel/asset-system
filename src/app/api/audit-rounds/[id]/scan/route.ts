@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { getAuditRoundReadOnlyError } from "@/lib/audit-round-status"
 import { normalizeAssetOwnershipType, requiresCustodian } from "@/lib/asset-ownership"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import {
@@ -55,8 +56,9 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
       select: { id: true, status: true },
     })
     if (!round) return NextResponse.json({ error: "Audit round not found" }, { status: 404 })
-    if (round.status === "closed") {
-      return NextResponse.json({ error: "Audit round is closed" }, { status: 400 })
+    const readOnlyError = getAuditRoundReadOnlyError(round.status)
+    if (readOnlyError) {
+      return NextResponse.json({ error: readOnlyError }, { status: 400 })
     }
 
     const item = await prisma.auditItem.findUnique({

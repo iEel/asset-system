@@ -18,6 +18,7 @@
 | Audit Scan recent-read count copy | The `สแกนล่าสุด` header now says `แสดง {count} รายการล่าสุด` instead of `{count}/8`, making the badge read as recent-read history rather than audit-round progress. |
 | Audit Pending mobile queue | The full round pending list at `/audit/rounds/{id}/pending` now has a mobile card layout, Asset Tag/name/location/custodian search, and per-item actions to scan that pending asset, view the asset detail, or mark it not found while preserving the scan workflow return context. |
 | Audit Pending not-found dialog | The pending-list `บันทึกไม่พบ` action now uses an in-app mobile dialog instead of `window.prompt`, allows saving without a remark, optionally accepts an evidence photo, and the mark-not-found API preserves JSON clients while also accepting multipart evidence attached to the audit finding. |
+| Audit round cancellation | Audit rounds can now be cancelled with an auditable reason. Cancellation preserves audit items, scan history, findings, evidence, logs, and already-applied asset corrections without rollback, makes the round read-only, and removes it from operational queues/current coverage while keeping historical detail visible. |
 
 ---
 

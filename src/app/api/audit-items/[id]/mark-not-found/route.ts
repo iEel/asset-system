@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { getAuditRoundReadOnlyError } from "@/lib/audit-round-status"
 import { auditMarkNotFoundSchema, type AuditMarkNotFoundInput } from "@/lib/validations/audit"
 import { scanWrittenUploadFile } from "@/lib/upload-server"
 import { getUploadRoot, sanitizeFileName, validateUploadFile, validateUploadFileContent } from "@/lib/uploads"
@@ -44,8 +45,9 @@ export async function POST(request: NextRequest, context: MarkNotFoundContext) {
       },
     })
     if (!item) return NextResponse.json({ error: "Audit item not found" }, { status: 404 })
-    if (item.auditRound.status === "closed") {
-      return NextResponse.json({ error: "Audit round is closed" }, { status: 400 })
+    const readOnlyError = getAuditRoundReadOnlyError(item.auditRound.status)
+    if (readOnlyError) {
+      return NextResponse.json({ error: readOnlyError }, { status: 400 })
     }
     if (item.auditStatus !== "pending") {
       return NextResponse.json({ error: "Only pending audit items can be marked as not found" }, { status: 400 })

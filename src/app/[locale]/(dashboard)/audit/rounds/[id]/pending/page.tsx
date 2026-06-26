@@ -11,6 +11,7 @@ import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo, normalizeAuditRoundDetailReturnTo, normalizeAuditRoundWorkflowReturnTo } from "@/lib/operational-return-navigation"
+import { isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
 
 type AuditPendingPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -44,6 +45,7 @@ export default async function AuditPendingPage({ params, searchParams }: AuditPe
       id: true,
       auditNo: true,
       name: true,
+      status: true,
       items: {
         where: {
           auditStatus: "pending",
@@ -96,7 +98,7 @@ export default async function AuditPendingPage({ params, searchParams }: AuditPe
       },
     },
   })
-  if (!round) notFound()
+  if (!round || isAuditRoundReadOnlyStatus(round.status)) notFound()
   const returnToHref = normalizeAuditRoundWorkflowReturnTo(locale, round.id, rawSearchParams.returnTo)
   const scanReturnToHref = resolveAuditPendingScanReturnTo(locale, round.id, returnToHref)
   const clearSearchHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/pending`, returnToHref)

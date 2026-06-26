@@ -37,10 +37,12 @@ export async function GET(_request: NextRequest, context: AuditVarianceExportCon
     const { id } = await context.params
     const round = await prisma.auditRound.findFirst({
       where: { id, isActive: true },
-      select: { id: true, auditNo: true, name: true },
+      select: { id: true, auditNo: true, name: true, status: true },
     })
     if (!round) return NextResponse.json({ error: "Audit round not found" }, { status: 404 })
-
+    if (round.status === "cancelled") {
+      return NextResponse.json({ error: "Audit round is cancelled" }, { status: 400 })
+    }
     const [items, findings, outOfScopeCount] = await Promise.all([
       prisma.auditItem.findMany({
         where: { auditRoundId: id },

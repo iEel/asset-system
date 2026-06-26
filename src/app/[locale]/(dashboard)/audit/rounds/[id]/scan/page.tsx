@@ -6,6 +6,7 @@ import { getAuditRoundOptions } from "@/lib/audit-options"
 import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
 import { normalizeAuditRoundDetailReturnTo } from "@/lib/operational-return-navigation"
 import { withPerformanceTiming } from "@/lib/performance-timing"
+import { isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
 
 type AuditScanPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -41,6 +42,7 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
           id: true,
           name: true,
           auditNo: true,
+          status: true,
           items: {
             orderBy: [{ auditStatus: "asc" }, { createdAt: "desc" }],
             include: {
@@ -89,7 +91,7 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
     ]),
     { route: "/audit/rounds/[id]/scan", locale }
   )
-  if (!round) notFound()
+  if (!round || isAuditRoundReadOnlyStatus(round.status)) notFound()
   const returnToHref = normalizeAuditRoundDetailReturnTo(locale, round.id, rawSearchParams.returnTo)
 
   const categoryIds = Array.from(new Set(round.items.map((item) => item.asset.categoryId).filter(Boolean)))

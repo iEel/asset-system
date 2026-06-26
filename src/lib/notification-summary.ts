@@ -3,6 +3,7 @@ import { hasPermission, type SessionUser } from "@/lib/auth-utils"
 import { buildNotificationSummaryItems } from "@/lib/notification-summary-items"
 import { buildActiveNotificationSummary, mergeNotificationItemsWithStates } from "@/lib/notification-center"
 import { getApprovalInboxCounts } from "@/lib/approval-inbox-query"
+import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
 import {
   notificationAuditActionDueSoonDaysKey,
   notificationLicenseExpiryDaysKey,
@@ -60,12 +61,13 @@ export async function getNotificationCenter(user: SessionUser, locale: string) {
         })
       : Promise.resolve(0),
     canAudit && approvalInboxCounts.audit === 0
-      ? prisma.auditFinding.count({ where: { reviewStatus: "pending" } })
+      ? prisma.auditFinding.count({ where: { reviewStatus: "pending", auditRound: { isActive: true, status: auditRoundOperationalWhere } } })
       : Promise.resolve(0),
     canAudit
       ? prisma.auditFinding.count({
           where: {
             actionStatus: { in: openAuditActionStatuses },
+            auditRound: { isActive: true, status: auditRoundOperationalWhere },
             OR: [
               { actionDueDate: null },
               { actionDueDate: { gt: addDays(today, rules[notificationAuditActionDueSoonDaysKey]) } },
@@ -77,6 +79,7 @@ export async function getNotificationCenter(user: SessionUser, locale: string) {
       ? prisma.auditFinding.count({
           where: {
             actionStatus: { in: openAuditActionStatuses },
+            auditRound: { isActive: true, status: auditRoundOperationalWhere },
             actionDueDate: { lte: addDays(today, rules[notificationAuditActionDueSoonDaysKey]) },
           },
         })

@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client"
+import { auditRoundCoverageWhere, auditRoundOperationalWhere } from "@/lib/audit-round-status"
 
 export const auditFindingResolutionStatuses = [
   "pending",
@@ -23,6 +24,10 @@ export function resolveAuditFindingStatus(status?: string | null): AuditFindingR
 
 export function isOpenAuditFindingActionStatus(status: string | null | undefined) {
   return openAuditFindingActionStatuses.includes(status as (typeof openAuditFindingActionStatuses)[number])
+}
+
+function isOperationalAuditFindingStatus(status: AuditFindingResolutionStatus) {
+  return status === "pending" || status === "action_open" || status === "overdue"
 }
 
 export function getAuditFindingToday(now = new Date()) {
@@ -59,7 +64,13 @@ export function buildAuditFindingWhere({
     where.reviewStatus = resolvedStatus
   }
 
-  if (roundId) where.auditRoundId = roundId
+  if (roundId) {
+    where.auditRoundId = roundId
+  } else if (isOperationalAuditFindingStatus(resolvedStatus)) {
+    where.auditRound = { isActive: true, status: auditRoundOperationalWhere }
+  } else {
+    where.auditRound = { isActive: true, status: auditRoundCoverageWhere }
+  }
   if (findingType) where.findingType = findingType
 
   if (searchText) {

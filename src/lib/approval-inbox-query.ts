@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import { hasPermission, type SessionUser } from "@/lib/auth-utils"
 import { buildApprovalInboxItems, summarizeApprovalInbox } from "@/lib/approval-inbox"
 import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
+import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
 
 export type ApprovalInboxAccess = {
   canApproveDisposal: boolean
@@ -46,7 +47,7 @@ export async function getApprovalInboxSnapshot(user: SessionUser, locale: string
       : Promise.resolve([]),
     access.canApproveAudit
       ? prisma.auditFinding.findMany({
-          where: { reviewStatus: "pending", reportedBy: { not: user.id } },
+          where: { reviewStatus: "pending", reportedBy: { not: user.id }, auditRound: { isActive: true, status: auditRoundOperationalWhere } },
           include: {
             auditRound: { select: { auditNo: true } },
             asset: { select: { assetTag: true } },
@@ -111,7 +112,7 @@ export async function getApprovalInboxCounts(user: SessionUser): Promise<Approva
       ? prisma.maintenanceTicket.count({ where: { isActive: true, repairStatus: "completed" } })
       : Promise.resolve(0),
     access.canApproveAudit
-      ? prisma.auditFinding.count({ where: { reviewStatus: "pending", reportedBy: { not: user.id } } })
+      ? prisma.auditFinding.count({ where: { reviewStatus: "pending", reportedBy: { not: user.id }, auditRound: { isActive: true, status: auditRoundOperationalWhere } } })
       : Promise.resolve(0),
     access.canApproveAudit && policy.auditCloseRequired
       ? getReadyAuditRoundCloseCount(user.id)
@@ -150,7 +151,7 @@ async function getWorkflowApprovalPolicy() {
 
 async function getAuditRoundsReadyToClose(currentUserId: string) {
   const rounds = await prisma.auditRound.findMany({
-    where: { isActive: true, status: { not: "closed" }, createdBy: { not: currentUserId } },
+    where: { isActive: true, status: auditRoundOperationalWhere, createdBy: { not: currentUserId } },
     select: { id: true, auditNo: true, name: true, createdBy: true, updatedAt: true },
     orderBy: { updatedAt: "desc" },
     take: 100,
@@ -162,7 +163,7 @@ async function getAuditRoundsReadyToClose(currentUserId: string) {
 
 async function getReadyAuditRoundCloseCount(currentUserId: string) {
   const rounds = await prisma.auditRound.findMany({
-    where: { isActive: true, status: { not: "closed" }, createdBy: { not: currentUserId } },
+    where: { isActive: true, status: auditRoundOperationalWhere, createdBy: { not: currentUserId } },
     select: { id: true },
   })
   const readyRoundIds = await getReadyAuditRoundIds(rounds.map((round) => round.id))

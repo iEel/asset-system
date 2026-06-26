@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
+import { getAuditRoundReadOnlyError } from "@/lib/audit-round-status"
 import { extractAssetLookupCandidatesFromScanValue } from "@/lib/asset-qr"
 import { auditScanLookupSchema } from "@/lib/validations/audit"
 
@@ -50,6 +51,10 @@ export async function POST(request: NextRequest, context: AuditScanLookupContext
       select: { id: true, status: true },
     })
     if (!round) return NextResponse.json({ error: "Audit round not found" }, { status: 404 })
+    const readOnlyError = getAuditRoundReadOnlyError(round.status)
+    if (readOnlyError) {
+      return NextResponse.json({ error: readOnlyError }, { status: 400 })
+    }
 
     if (candidates.length === 0) {
       return NextResponse.json({ status: "unknown_asset", candidates })

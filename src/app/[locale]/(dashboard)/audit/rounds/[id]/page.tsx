@@ -8,6 +8,7 @@ import { ColumnHeader, MasterDataSearch } from "@/components/master-data/master-
 import { formatDate, formatDateTime } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
+import { AuditRoundCancelButton } from "@/components/audit/audit-round-cancel-button"
 import { AuditRoundCloseButton } from "@/components/audit/audit-round-close-button"
 import { hasPermission } from "@/lib/auth-utils"
 import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
@@ -19,6 +20,7 @@ import { isSameAuditActor } from "@/lib/audit-segregation"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { countSuccessfulAuditResultRows, isVarianceAuditResult } from "@/lib/audit-result-summary"
+import { isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
 import { buildAuditCorrectionHistoryByItemId, type AuditCorrectionHistoryItem } from "@/lib/audit-correction-history"
 import { paginationRange } from "@/lib/master-data-query"
 import {
@@ -62,6 +64,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     pendingReviewCount,
     outOfScopeCount,
     openActionCount,
+    approvedFindingCount,
+    scanHistoryCount,
     evidenceItems,
     resultItems,
     resultItemTotal,
@@ -129,6 +133,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     prisma.auditFinding.count({ where: { auditRoundId: id, reviewStatus: "pending" } }),
     prisma.auditScanHistory.count({ where: { auditRoundId: id, auditItemId: null } }),
     prisma.auditFinding.count({ where: { auditRoundId: id, actionStatus: { in: ["planned", "in_progress", "done"] } } }),
+    prisma.auditFinding.count({ where: { auditRoundId: id, reviewStatus: "approved" } }),
+    prisma.auditScanHistory.count({ where: { auditRoundId: id } }),
     prisma.auditItem.findMany({
       where: { auditRoundId: id },
       select: {
@@ -232,6 +238,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   )
 
   const isRoundCreator = isSameAuditActor(user.id, round.createdBy)
+  const isRoundReadOnly = isAuditRoundReadOnlyStatus(round.status)
+  const canExportRound = round.status !== "cancelled"
   const pendingCount = statusCounts.find((row) => row.auditStatus === "pending")?._count._all ?? 0
   const processedCount = Math.max(round._count.items - pendingCount, 0)
   const scannedCount = statusCounts
@@ -322,7 +330,15 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     { label: t("closeOpenActions"), value: openActionCount, ok: openActionCount === 0, href: openActionFindingsHref, actionLabel: t("checklistDrilldown") },
     { label: t("closeSeparateApprover"), value: isRoundCreator ? 1 : 0, ok: !isRoundCreator },
   ]
-  const canCloseRound = round.status !== "closed" && closeChecklist.every((item) => item.ok)
+  const canCloseRound = !isRoundReadOnly && closeChecklist.every((item) => item.ok)
+  const cancelImpact = {
+    pendingItems: pendingCount,
+    processedItems: processedCount,
+    pendingFindings: pendingReviewCount,
+    approvedFindings: approvedFindingCount,
+    openActions: openActionCount,
+    scanHistoryRows: scanHistoryCount,
+  }
   const auditRoundExportHref = buildAuditRoundExportHref({ roundId: round.id, endpoint: "export", state: resultListState })
   const auditRoundExportPdfHref = buildAuditRoundExportHref({ roundId: round.id, endpoint: "export-pdf", state: resultListState })
   const hasResultBucketFilter = resultListState.result !== "all"
@@ -391,54 +407,86 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:items-end">
-          <StatusBadge label={round.status} status={round.status} />
+          <StatusBadge label={getAuditRoundStatusLabel(round.status, t)} status={round.status} />
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-            <a
-              href={auditRoundExportHref}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
-            >
-              <Download className="h-4 w-4" />
-              {t("exportResult")}
-            </a>
-            <a
-              href={auditRoundExportPdfHref}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
-            >
-              <FileText className="h-4 w-4" />
-              {t("exportResultPdf")}
-            </a>
-            <a
-              href={`/api/audit-rounds/${round.id}/variance-export`}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
-            >
-              <Download className="h-4 w-4" />
-              {t("exportVariance")}
-            </a>
-            <Link
-              href={pendingHref}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
-            >
-              <AlertTriangle className="h-4 w-4" />
-              {t("pendingAssets")}
-            </Link>
-            <Link
-              href={scanHref}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0 sm:w-auto"
-            >
-              <ScanLine className="h-4 w-4" />
-              {t("scan")}
-            </Link>
+            {canExportRound ? (
+              <>
+                <a
+                  href={auditRoundExportHref}
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
+                >
+                  <Download className="h-4 w-4" />
+                  {t("exportResult")}
+                </a>
+                <a
+                  href={auditRoundExportPdfHref}
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
+                >
+                  <FileText className="h-4 w-4" />
+                  {t("exportResultPdf")}
+                </a>
+                <a
+                  href={`/api/audit-rounds/${round.id}/variance-export`}
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
+                >
+                  <Download className="h-4 w-4" />
+                  {t("exportVariance")}
+                </a>
+              </>
+            ) : null}
+            {!isRoundReadOnly ? (
+              <>
+                <Link
+                  href={pendingHref}
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  {t("pendingAssets")}
+                </Link>
+                <Link
+                  href={scanHref}
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0 sm:w-auto"
+                >
+                  <ScanLine className="h-4 w-4" />
+                  {t("scan")}
+                </Link>
+              </>
+            ) : null}
           </div>
         </div>
       </div>
-      <MobileActionBar
-        actions={[
-          { href: scanHref, label: t("scan"), icon: <ScanLine className="h-4 w-4" />, primary: true },
-          { href: pendingHref, label: t("pendingAssets"), icon: <AlertTriangle className="h-4 w-4" /> },
-          { href: pendingReviewFindingsHref, label: t("openFindingReview"), icon: <FileText className="h-4 w-4" /> },
-          { href: returnToHref, label: tCommon("back"), icon: <Download className="h-4 w-4" /> },
-        ]}
-      />
+      {!isRoundReadOnly ? (
+        <MobileActionBar
+          actions={[
+            { href: scanHref, label: t("scan"), icon: <ScanLine className="h-4 w-4" />, primary: true },
+            { href: pendingHref, label: t("pendingAssets"), icon: <AlertTriangle className="h-4 w-4" /> },
+            { href: pendingReviewFindingsHref, label: t("openFindingReview"), icon: <FileText className="h-4 w-4" /> },
+            { href: returnToHref, label: tCommon("back"), icon: <Download className="h-4 w-4" /> },
+          ]}
+        />
+      ) : null}
+
+      {round.status === "cancelled" ? (
+        <section className="mb-6 rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-danger shadow-sm">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+            <div className="min-w-0">
+              <h2 className="font-semibold text-foreground">{t("statusCancelled")}</h2>
+              <p className="mt-1 text-danger">{t("cancelledReadOnlyNotice")}</p>
+              <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="font-medium text-foreground">{t("cancelledAt")}</dt>
+                  <dd className="mt-1 break-words text-danger">{formatDateTime(round.cancelledAt)}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-foreground">{t("cancelReason")}</dt>
+                  <dd className="mt-1 break-words text-danger">{round.cancelReason || "-"}</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
         <Metric label={t("totalExpected")} value={round._count.items} />
@@ -520,13 +568,20 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         </div>
       </section>
 
-      {canApprove ? (
-        <div className="mb-6">
+      {canApprove && !isRoundReadOnly ? (
+        <div className="mb-6 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
           <AuditRoundCloseButton
             roundId={round.id}
             disabled={!canCloseRound}
             checklist={closeChecklist}
           />
+          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm lg:min-w-72 lg:self-start">
+            <h2 className="text-base font-semibold text-foreground">{t("cancelRound")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("cancelDialogHelp")}</p>
+            <div className="mt-4">
+              <AuditRoundCancelButton roundId={round.id} impact={cancelImpact} />
+            </div>
+          </section>
         </div>
       ) : null}
 
@@ -541,7 +596,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             <span className="rounded-md border border-border bg-background px-3 py-1 text-sm text-muted-foreground">
               {resultListTotal} {t("items")}
             </span>
-            {resultFindingReviewHref ? (
+            {resultFindingReviewHref && !isRoundReadOnly ? (
               <Link href={resultFindingReviewHref} className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent">
                 <FileText className="h-4 w-4" />
                 {t("openFindingReview")}
@@ -607,11 +662,13 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                     <StatusBadge label={item.auditStatusLabel} status={item.auditStatus} size="xs" />
                     <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} size="xs" />
                   </div>
-                  <div className="mt-3 flex justify-end">
-                    <Link href={item.editHref} className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent">
-                      {t("editScanResult")}
-                    </Link>
-                  </div>
+                  {!isRoundReadOnly ? (
+                    <div className="mt-3 flex justify-end">
+                      <Link href={item.editHref} className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+                        {t("editScanResult")}
+                      </Link>
+                    </div>
+                  ) : null}
                 </article>
               ))
             )}
@@ -683,13 +740,17 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                         <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} size="xs" />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
-                        <Link
-                          href={item.editHref}
-                          data-no-row-click
-                          className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-                        >
-                          {t("editScanResult")}
-                        </Link>
+                        {!isRoundReadOnly ? (
+                          <Link
+                            href={item.editHref}
+                            data-no-row-click
+                            className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                          >
+                            {t("editScanResult")}
+                          </Link>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </td>
                     </ClickableTableRow>
                   ))
@@ -857,6 +918,14 @@ function buildAuditRoundComponentRelationshipLines(asset: AuditRoundComponentRel
 
 function formatAuditCorrectionFields(correction: AuditCorrectionHistoryItem, t: AuditRoundTranslator) {
   return correction.changedFields.map((field) => t(`correctionField_${field}`)).join(", ")
+}
+
+function getAuditRoundStatusLabel(status: string, t: AuditRoundTranslator) {
+  if (status === "draft") return t("statusDraft")
+  if (status === "open") return t("statusOpen")
+  if (status === "closed") return t("statusClosed")
+  if (status === "cancelled") return t("statusCancelled")
+  return status
 }
 
 function buildAuditRoundScanEditHref({

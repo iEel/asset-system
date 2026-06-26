@@ -21,6 +21,7 @@ import { getApprovalInboxAccess, getApprovalInboxCounts, type ApprovalInboxCount
 import { buildDashboardActionCardKeys, type DashboardActionCardKey } from "@/lib/dashboard-action-cards"
 import { shouldUseEmployeeHome } from "@/lib/default-home"
 import { prisma } from "@/lib/db"
+import { auditRoundCoverageWhere, auditRoundOperationalWhere } from "@/lib/audit-round-status"
 import { buildDashboardAssetCrossScopeSummary, type AssetCrossScopeSummaryRow } from "@/lib/asset-cross-scope"
 import { getAssetCrossScopeFlagLabels, type AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
 import { buildSystemLogRecordLabels } from "@/lib/system-log-record-labels"
@@ -146,7 +147,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
               repairStatus: { in: ["open", "reported", "accepted", "in_progress", "waiting_parts", "waiting_vendor", "completed"] },
             },
           }),
-          prisma.auditFinding.count({ where: { reviewStatus: "pending" } }),
+          prisma.auditFinding.count({ where: { reviewStatus: "pending", auditRound: { isActive: true, status: auditRoundOperationalWhere } } }),
           prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "pending" } }),
           prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "approved" } }),
         ]),
@@ -169,8 +170,8 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
           prisma.asset.count({ where: { isActive: true, createdAt: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
           prisma.maintenanceTicket.count({ where: { isActive: true, reportedDate: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
           prisma.maintenanceTicket.count({ where: { isActive: true, reportedDate: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
-          prisma.auditFinding.count({ where: { reportedAt: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
-          prisma.auditFinding.count({ where: { reportedAt: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
+          prisma.auditFinding.count({ where: { reportedAt: { gte: monthRange.currentStart, lt: monthRange.nextStart }, auditRound: { isActive: true, status: auditRoundCoverageWhere } } }),
+          prisma.auditFinding.count({ where: { reportedAt: { gte: monthRange.previousStart, lt: monthRange.currentStart }, auditRound: { isActive: true, status: auditRoundCoverageWhere } } }),
           prisma.disposalRequest.count({ where: { isActive: true, requestDate: { gte: monthRange.currentStart, lt: monthRange.nextStart } } }),
           prisma.disposalRequest.count({ where: { isActive: true, requestDate: { gte: monthRange.previousStart, lt: monthRange.currentStart } } }),
         ]),
