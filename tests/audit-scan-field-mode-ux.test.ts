@@ -209,6 +209,28 @@ test("audit scan mismatch flow embeds required evidence instead of using a scrol
   }
 })
 
+test("audit scan evidence queue shows mobile photo previews and finding attachment status", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(form, /type QueuedAuditPhoto = \{[\s\S]*previewUrl: string \| null/)
+  assert.match(form, /URL\.createObjectURL\(file\)/)
+  assert.match(form, /URL\.revokeObjectURL\(previewUrl\)/)
+  assert.match(form, /auditPhotoPreviewUrlsRef\.current/)
+  assert.match(form, /role=\{photo\.previewUrl \? "img" : undefined\}/)
+  assert.match(form, /aria-label=\{photo\.previewUrl \? t\("queuedPhotoPreviewAlt", \{ name: photo\.file\.name \}\) : undefined\}/)
+  assert.match(form, /backgroundImage: `url\(\$\{photo\.previewUrl\}\)`/)
+  assert.match(form, /requiresMismatchPhoto \? t\("queuedPhotoFindingAttachment"\) : t\("queuedPhotoAuditAttachment"\)/)
+  assert.match(form, /t\("queuedPhotoReadyForFinding"\)/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditScan.queuedPhotoPreviewAlt, "string")
+    assert.equal(typeof messages.auditScan.queuedPhotoFindingAttachment, "string")
+    assert.equal(typeof messages.auditScan.queuedPhotoAuditAttachment, "string")
+    assert.equal(typeof messages.auditScan.queuedPhotoReadyForFinding, "string")
+  }
+})
 test("audit scan compacts the sticky progress header after an asset is selected", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
 

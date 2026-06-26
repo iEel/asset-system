@@ -72,7 +72,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Scan or manually enter several audit items and confirm the current `ผลสแกน` card stays focused on the current result, while the separate compact `สแกนล่าสุด` panel opens the full recent-read list and collapses to hide every recent row/edit action with readable matched/mismatch/out-of-scope/unknown/found-later/offline-queued labels when expanded.
 - [ ] Record found/matched result.
 - [ ] In fast walking mode, choose `บันทึกพบตรง` and confirm the result saves without requiring a photo.
-- [ ] Choose `บันทึกข้อมูลไม่ตรง / Finding`, change at least one actual field, and confirm the inline evidence section appears in the mismatch flow, shows the required-photo counter, and blocks saving until at least one evidence photo is queued.
+- [ ] Choose `บันทึกข้อมูลไม่ตรง / Finding`, change at least one actual field, and confirm the inline evidence section appears in the mismatch flow, shows the required-photo counter, shows queued photo thumbnails with filename/tag and `จะถูกแนบกับ Finding นี้`, and blocks saving until at least one evidence photo is queued.
 - [ ] Scan an asset that exists in the system but is outside the round and confirm it is shown as Out-of-scope, not as Not Found.
 - [ ] Scan a printed Asset Label QR whose value is `/q/a/{assetId}` for an active asset outside the round and confirm the scan lookup resolves the asset by ID, shows the out-of-scope action card, and does not show `ไม่พบทรัพย์สินในระบบ`.
 - [ ] Confirm the out-of-scope lookup itself does not create audit history/finding rows until the user confirms the out-of-scope save action.

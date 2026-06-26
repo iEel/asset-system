@@ -125,6 +125,7 @@ type QueuedAuditPhoto = {
   id: string
   label: string
   file: File
+  previewUrl: string | null
 }
 
 const MAX_RECENT_AUDIT_SCANS = 8
@@ -243,6 +244,7 @@ export function AuditScanForm({
   const qrReaderRef = useRef<NativeAssetQrScannerRuntime | null>(null)
   const offlineStorageRef = useRef<AuditOfflineQueueStorage | null>(null)
   const lastDecodedRef = useRef<{ value: string; at: number } | null>(null)
+  const auditPhotoPreviewUrlsRef = useRef<Set<string>>(new Set())
   const [values, setValues] = useState(() => createInitialAuditScanValues(initialSelectedItem, initialMode))
 
   const selectedItem = useMemo(() => items.find((item) => item.assetId === values.assetId), [items, values.assetId])
@@ -366,8 +368,28 @@ export function AuditScanForm({
     }
   }
 
+  function createQueuedAuditPhoto(file: File, index: number): QueuedAuditPhoto {
+    const previewUrl = createAuditPhotoPreviewUrl(file)
+    if (previewUrl) auditPhotoPreviewUrlsRef.current.add(previewUrl)
+    return {
+      id: `${Date.now()}-${file.name}-${index}`,
+      label: effectiveAuditPhotoLabel,
+      file,
+      previewUrl,
+    }
+  }
+
+  function revokeAuditPhotoPreviewUrl(previewUrl: string | null) {
+    if (!previewUrl || typeof URL === "undefined") return
+    URL.revokeObjectURL(previewUrl)
+    auditPhotoPreviewUrlsRef.current.delete(previewUrl)
+  }
+
   function resetAuditPhotoQueue() {
-    setQueuedAuditPhotos([])
+    setQueuedAuditPhotos((current) => {
+      current.forEach((photo) => revokeAuditPhotoPreviewUrl(photo.previewUrl))
+      return []
+    })
     setAuditPhotoLabel("")
   }
 
@@ -491,16 +513,16 @@ export function AuditScanForm({
     if (files.length === 0) return
     setQueuedAuditPhotos((current) => [
       ...current,
-      ...files.map((file, index) => ({
-        id: `${Date.now()}-${file.name}-${current.length + index}`,
-        label: effectiveAuditPhotoLabel,
-        file,
-      })),
+      ...files.map((file, index) => createQueuedAuditPhoto(file, current.length + index)),
     ])
   }
 
   function removeQueuedAuditPhoto(id: string) {
-    setQueuedAuditPhotos((current) => current.filter((photo) => photo.id !== id))
+    setQueuedAuditPhotos((current) => {
+      const removedPhoto = current.find((photo) => photo.id === id)
+      if (removedPhoto) revokeAuditPhotoPreviewUrl(removedPhoto.previewUrl)
+      return current.filter((photo) => photo.id !== id)
+    })
   }
 
   function openMismatchDetails() {
@@ -660,6 +682,16 @@ export function AuditScanForm({
       const scanner = qrReaderRef.current
       if (!scanner) return
       scanner.stop()
+    }
+  }, [])
+
+  useEffect(() => {
+    const previewUrls = auditPhotoPreviewUrlsRef.current
+    return () => {
+      previewUrls.forEach((previewUrl) => {
+        if (typeof URL !== "undefined") URL.revokeObjectURL(previewUrl)
+      })
+      previewUrls.clear()
     }
   }, [])
 
@@ -884,8 +916,7 @@ export function AuditScanForm({
       })
       setOutOfScopeAsset(null)
       setScanText("")
-      setQueuedAuditPhotos([])
-      setAuditPhotoLabel("")
+      resetAuditPhotoQueue()
       setValues({
         assetId: "",
         actualLocationId: "",
@@ -966,8 +997,7 @@ export function AuditScanForm({
         actualConditionId: "",
         remark: "",
       })
-      setQueuedAuditPhotos([])
-      setAuditPhotoLabel("")
+      resetAuditPhotoQueue()
       setApplyCorrections(false)
       setShowDetailedFields(false)
       setScanSource("manual")
@@ -1081,8 +1111,7 @@ export function AuditScanForm({
       actualConditionId: "",
       remark: "",
     })
-    setQueuedAuditPhotos([])
-    setAuditPhotoLabel("")
+    resetAuditPhotoQueue()
     setApplyCorrections(false)
     setShowDetailedFields(false)
     setScanSource("manual")
@@ -1796,16 +1825,34 @@ export function AuditScanForm({
               />
               {queuedAuditPhotos.length > 0 && (
                 <div className="mt-3 rounded-md border border-border bg-surface p-3">
-                  <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
-                    <ImagePlus className="h-4 w-4 text-primary" />
-                    {t("queuedPhotos", { count: queuedAuditPhotos.length })}
+                  <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <ImagePlus className="h-4 w-4 text-primary" />
+                      {t("queuedPhotos", { count: queuedAuditPhotos.length })}
+                    </div>
+                    {requiresMismatchPhoto ? (
+                      <span className="inline-flex min-h-7 items-center rounded-md border border-info/30 bg-info/10 px-2 py-1 text-xs font-semibold text-info">
+                        {t("queuedPhotoReadyForFinding")}
+                      </span>
+                    ) : null}
                   </div>
-                  <div className="space-y-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
                     {queuedAuditPhotos.map((photo) => (
-                      <div key={photo.id} className="flex items-center justify-between gap-3 rounded-md bg-background px-3 py-2 text-sm">
+                      <div key={photo.id} className="grid grid-cols-[4rem_minmax(0,1fr)_auto] items-center gap-3 rounded-md bg-background px-3 py-2 text-sm">
+                        <div
+                          role={photo.previewUrl ? "img" : undefined}
+                          aria-label={photo.previewUrl ? t("queuedPhotoPreviewAlt", { name: photo.file.name }) : undefined}
+                          className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-md border border-border bg-muted bg-cover bg-center text-muted-foreground"
+                          style={photo.previewUrl ? { backgroundImage: `url(${photo.previewUrl})` } : undefined}
+                        >
+                          {photo.previewUrl ? null : <ImagePlus className="h-5 w-5" />}
+                        </div>
                         <div className="min-w-0">
                           <div className="truncate font-medium text-foreground">{photo.file.name}</div>
                           <div className="truncate text-xs text-muted-foreground">{photo.label || t("unlabeledPhoto")}</div>
+                          <div className="mt-1 text-xs text-info">
+                            {requiresMismatchPhoto ? t("queuedPhotoFindingAttachment") : t("queuedPhotoAuditAttachment")}
+                          </div>
                         </div>
                         <button
                           type="button"
@@ -2530,6 +2577,11 @@ function AuditQrScannerOverlay() {
       </div>
     </div>
   )
+}
+
+function createAuditPhotoPreviewUrl(file: File) {
+  if (!file.type.startsWith("image/") || typeof URL === "undefined") return null
+  return URL.createObjectURL(file)
 }
 
 function toAuditOfflinePhoto(photo: QueuedAuditPhoto): AuditOfflinePhoto {
