@@ -54,7 +54,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Create or open an assigned audit round.
 - [ ] Preview audit-round candidates before creation.
 - [ ] Create an audit round where a selected parent asset has installed components; confirm preview shows the component count and the created round has separate audit items for the parent and components.
-- [ ] Scan the parent asset and confirm the scan page shows installed components with their own statuses. Confirming a component with parent should save immediately without requiring a note, update only the component audit item, and show `ยืนยันกับทรัพย์สินหลัก`.
+- [ ] Scan the parent asset and confirm the scan page shows installed components with their own statuses. Confirming a component with parent should save immediately without requiring a note, update only the component audit item, and show `ยืนยันกับทรัพย์สินหลัก`. For a component that cannot be scanned, tap `ไม่พบ` and confirm an in-app dialog opens, allows saving without a remark, optionally accepts an evidence photo, and creates/updates the component not-found finding for review.
 - [ ] Move or transfer a parent asset with installed components and confirm active installed components receive supported field updates plus component movement rows.
 - [ ] Scan an expected asset.
 - [ ] On a mobile device, confirm `/th/audit/rounds/{id}/scan` can scan the same printed Asset Label QR, pauses the camera after the QR read, locks the selected audit item with the `ล็อกเป้าหมายแล้ว` badge, keeps the raw QR URL only in the latest-decoded panel, and does not navigate away from the audit workflow.
@@ -89,7 +89,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 ## audit_reviewer
 
 - [ ] Review audit findings.
-- [ ] Open `/th/audit/findings` and confirm the resolution summary cards, quick filters, system-vs-found comparison, and Excel/PDF exports use the same selected queue.
+- [ ] Open `/th/audit/findings` and confirm the resolution summary cards, quick filters, system-vs-found comparison, evidence attachment links, and Excel/PDF exports use the same selected queue.
 - [ ] Confirm `/th/audit/findings` shows only compact loaded-at metadata during normal use and switches to a stale-data warning after the configured stale period.
 - [ ] If master asset data changes after a finding is reported, approving a correctable finding shows a conflict warning and requires explicit confirmation before applying the correction.
 - [ ] Approve or resolve a finding.

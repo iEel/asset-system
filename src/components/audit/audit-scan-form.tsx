@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import {
@@ -209,6 +209,9 @@ export function AuditScanForm({
   const initialSelectedItem = initialAssetId ? items.find((item) => item.assetId === initialAssetId) : undefined
   const initialEditItem = initialMode === "edit" ? initialSelectedItem : null
   const [saving, setSaving] = useState(false)
+  const [componentMissingDraft, setComponentMissingDraft] = useState<AuditScanComponent | null>(null)
+  const [componentMissingRemark, setComponentMissingRemark] = useState("")
+  const [componentMissingEvidenceFile, setComponentMissingEvidenceFile] = useState<File | null>(null)
   const [scannerRunning, setScannerRunning] = useState(false)
   const [scannerLoading, setScannerLoading] = useState(false)
   const [cameraReadiness, setCameraReadiness] = useState<CameraReadiness>("checking")
@@ -1053,24 +1056,43 @@ export function AuditScanForm({
     }
   }
 
-  async function markComponentMissing(component: AuditScanComponent) {
+  function openComponentMissingDialog(component: AuditScanComponent) {
     if (!selectedItem) return
     if (!component.auditItemId) {
       toast.error(t("componentOutOfRound"))
       return
     }
 
-    const promptValue = window.prompt(t("componentMissingRemark"))
-    if (promptValue === null) return
+    setComponentMissingDraft(component)
+    setComponentMissingRemark("")
+    setComponentMissingEvidenceFile(null)
+  }
 
-    const remark = promptValue.trim() || t("componentMissingDefaultRemark", { assetTag: selectedItem.assetTag })
+  function resetComponentMissingDialog() {
+    setComponentMissingDraft(null)
+    setComponentMissingRemark("")
+    setComponentMissingEvidenceFile(null)
+  }
+
+  function closeComponentMissingDialog() {
+    if (saving) return
+    resetComponentMissingDialog()
+  }
+
+  async function submitComponentMissing(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!selectedItem || !componentMissingDraft?.auditItemId) return
+
+    const component = componentMissingDraft
+    const body = new FormData()
+    body.append("remark", componentMissingRemark.trim() || t("componentMissingDefaultRemark", { assetTag: selectedItem.assetTag }))
+    if (componentMissingEvidenceFile) body.append("evidence", componentMissingEvidenceFile)
 
     setSaving(true)
     try {
       const response = await fetch(`/api/audit-items/${component.auditItemId}/mark-not-found`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ remark }),
+        body,
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
@@ -1082,6 +1104,7 @@ export function AuditScanForm({
         assetId: component.assetId,
         assetTag: component.assetTag,
       })
+      resetComponentMissingDialog()
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))
@@ -1585,7 +1608,7 @@ export function AuditScanForm({
                   saving={saving}
                   onScanComponent={scanComponentQr}
                   onConfirmWithParent={confirmComponentWithParent}
-                  onMarkMissing={markComponentMissing}
+                  onMarkMissing={openComponentMissingDialog}
                   t={t}
                 />
               ) : null}
@@ -1671,7 +1694,7 @@ export function AuditScanForm({
                   componentActionsDisabled={true}
                   onScanComponent={scanComponentQr}
                   onConfirmWithParent={confirmComponentWithParent}
-                  onMarkMissing={markComponentMissing}
+                  onMarkMissing={openComponentMissingDialog}
                   t={t}
                 />
               ) : null}
@@ -1885,6 +1908,80 @@ export function AuditScanForm({
           </div>
         </form>
       </section>
+
+      {componentMissingDraft ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center sm:p-4">
+          <form
+            onSubmit={submitComponentMissing}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="component-missing-dialog-title"
+            className="w-full max-w-lg rounded-md border border-border bg-background p-4 shadow-lg"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 id="component-missing-dialog-title" className="text-base font-semibold text-foreground">
+                  {t("componentMissingDialogTitle")}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {t("componentMissingDialogDescription", { asset: `${componentMissingDraft.assetTag} - ${componentMissingDraft.name}` })}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeComponentMissingDialog}
+                disabled={saving}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                aria-label={tCommon("cancel")}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-4 grid gap-3">
+              <label className="grid gap-1 text-sm">
+                <span className="font-medium text-foreground">{t("componentMissingRemarkOptional")}</span>
+                <textarea
+                  value={componentMissingRemark}
+                  onChange={(event) => setComponentMissingRemark(event.target.value)}
+                  disabled={saving}
+                  rows={3}
+                  placeholder={t("componentMissingRemarkPlaceholder")}
+                  className="min-h-24 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+                />
+              </label>
+              <FileDropzone
+                file={componentMissingEvidenceFile}
+                onFileChange={setComponentMissingEvidenceFile}
+                disabled={saving}
+                accept="image/*"
+                capture="environment"
+                title={t("componentMissingEvidenceTitle")}
+                hint={t("componentMissingEvidenceSelected")}
+                browseLabel={t("componentMissingEvidenceBrowse")}
+              />
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={closeComponentMissingDialog}
+                disabled={saving}
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+              >
+                {tCommon("cancel")}
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-semibold text-white transition-colors hover:bg-warning/90 disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
+                {t("componentMissingConfirm")}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
       {showMobileQuickActionBar ? (
         <div aria-label={t("mobileActionBar")} className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 px-3 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-lg backdrop-blur md:hidden">
           <div className="mx-auto grid max-w-6xl grid-cols-3 gap-2">

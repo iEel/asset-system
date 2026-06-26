@@ -10,6 +10,7 @@ import { AuditFindingReviewActions } from "@/components/audit/audit-finding-revi
 import { AuditFindingsBatchActions } from "@/components/audit/audit-findings-batch-actions"
 import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
 import { formatDateTime } from "@/lib/utils"
+import { formatFileSize } from "@/lib/uploads"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { DataFreshnessBanner } from "@/components/ui/data-freshness-banner"
@@ -28,6 +29,14 @@ import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 type AuditFindingsPageProps = {
   params: Promise<{ locale: string }>
   searchParams: Promise<{ search?: string; status?: string; roundId?: string; findingType?: string }>
+}
+
+type AuditFindingEvidenceAttachment = {
+  id: string
+  originalName: string
+  fileType: string
+  fileSize: number
+  uploadedAt: Date
 }
 
 export default async function AuditFindingsPage({ params, searchParams }: AuditFindingsPageProps) {
@@ -76,14 +85,35 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
     prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "closed", search: searchText, roundId, findingType, now: today }) }),
   ])
   const findingIds = findings.map((finding) => finding.id)
-  const attachmentCounts = findingIds.length
-    ? await prisma.attachment.groupBy({
-        by: ["referenceId"],
+  const evidenceAttachments = findingIds.length
+    ? await prisma.attachment.findMany({
         where: { module: "audit_finding", referenceId: { in: findingIds }, isActive: true },
-        _count: { _all: true },
+        select: {
+          id: true,
+          referenceId: true,
+          originalName: true,
+          fileType: true,
+          fileSize: true,
+          uploadedAt: true,
+        },
+        orderBy: { uploadedAt: "desc" },
       })
     : []
-  const attachmentCountByFindingId = new Map(attachmentCounts.map((row) => [row.referenceId, row._count._all]))
+  const attachmentsByFindingId = new Map<string, AuditFindingEvidenceAttachment[]>()
+  for (const attachment of evidenceAttachments) {
+    const current = attachmentsByFindingId.get(attachment.referenceId) ?? []
+    current.push({
+      id: attachment.id,
+      originalName: attachment.originalName,
+      fileType: attachment.fileType,
+      fileSize: attachment.fileSize,
+      uploadedAt: attachment.uploadedAt,
+    })
+    attachmentsByFindingId.set(attachment.referenceId, current)
+  }
+  const attachmentCountByFindingId = new Map(
+    Array.from(attachmentsByFindingId, ([findingId, attachments]) => [findingId, attachments.length])
+  )
   const employeeOptions = employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` }))
   const employeeLabelById = new Map(employeeOptions.map((employee) => [employee.id, employee.label]))
   const valueLabels = await buildFindingValueLabels(findings)
@@ -287,6 +317,14 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                       expectedValue={expectedValue}
                       actualValue={actualValue}
                     />
+                    <AuditFindingEvidenceList
+                      attachments={attachmentsByFindingId.get(finding.id) ?? []}
+                      labels={{
+                        title: t("evidenceAttachments"),
+                        count: t("evidenceAttachmentCount", { count: attachmentCountByFindingId.get(finding.id) ?? 0 }),
+                        open: t("openEvidenceAttachment"),
+                      }}
+                    />
                     <Info label={t("actionOwner")} value={finding.actionOwnerId ? (employeeLabelById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : "-"} />
                     <Info label={t("actionDueDate")} value={formatDateTime(finding.actionDueDate)} />
                   </div>
@@ -392,6 +430,14 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                           actualLabel={t("foundValue")}
                           expectedValue={expectedValue}
                           actualValue={actualValue}
+                        />
+                        <AuditFindingEvidenceList
+                          attachments={attachmentsByFindingId.get(finding.id) ?? []}
+                          labels={{
+                            title: t("evidenceAttachments"),
+                            count: t("evidenceAttachmentCount", { count: attachmentCountByFindingId.get(finding.id) ?? 0 }),
+                            open: t("openEvidenceAttachment"),
+                          }}
                         />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
@@ -526,6 +572,45 @@ function FindingComparison({
       <div className="min-w-0 border-t border-border pt-2 sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">
         <div className="text-xs font-medium text-muted-foreground">{actualLabel}</div>
         <div className="mt-1 break-words text-sm font-medium text-foreground">{actualValue || "-"}</div>
+      </div>
+    </div>
+  )
+}
+
+function AuditFindingEvidenceList({
+  attachments,
+  labels,
+}: {
+  attachments: AuditFindingEvidenceAttachment[]
+  labels: { title: string; count: string; open: string }
+}) {
+  if (attachments.length === 0) return null
+
+  return (
+    <div className="mt-2 rounded-md border border-info/20 bg-info/5 p-3">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-xs font-semibold text-foreground">{labels.title}</div>
+        <div className="text-xs text-muted-foreground">{labels.count}</div>
+      </div>
+      <div className="mt-2 grid gap-2">
+        {attachments.map((attachment) => (
+          <a
+            key={attachment.id}
+            href={`/api/attachments/${attachment.id}?inline=1`}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`${labels.open}: ${attachment.originalName}`}
+            className="flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground transition-colors hover:border-primary/40 hover:bg-accent"
+          >
+            <FileText className="h-4 w-4 shrink-0 text-info" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium">{attachment.originalName}</span>
+              <span className="mt-0.5 block truncate text-muted-foreground">
+                {formatFileSize(attachment.fileSize)} · {formatDateTime(attachment.uploadedAt)}
+              </span>
+            </span>
+          </a>
+        ))}
       </div>
     </div>
   )
