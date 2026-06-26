@@ -54,7 +54,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Create or open an assigned audit round.
 - [ ] Preview audit-round candidates before creation.
 - [ ] Create an audit round where a selected parent asset has installed components; confirm preview shows the component count and the created round has separate audit items for the parent and components.
-- [ ] Scan the parent asset and confirm the scan page shows installed components with their own statuses. Confirming a component with parent should update only the component audit item and show `ยืนยันกับทรัพย์สินหลัก`.
+- [ ] Scan the parent asset and confirm the scan page shows installed components with their own statuses. Confirming a component with parent should save immediately without requiring a note, update only the component audit item, and show `ยืนยันกับทรัพย์สินหลัก`.
 - [ ] Move or transfer a parent asset with installed components and confirm active installed components receive supported field updates plus component movement rows.
 - [ ] Scan an expected asset.
 - [ ] On a mobile device, confirm `/th/audit/rounds/{id}/scan` can scan the same printed Asset Label QR in continuous mode, selects the audit item, keeps the raw QR URL only in the latest-decoded panel, and does not navigate away from the audit workflow.

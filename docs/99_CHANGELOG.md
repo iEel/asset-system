@@ -11,6 +11,7 @@
 | Audit round correction history | Audit round result rows now surface the latest `scan_result_corrected` system log for visible audit items, including who corrected it, when, and which audit/actual fields changed. New correction saves include audit round, audit item, asset, actual field, and remark before/after data so the UI can show a readable audit trail without adding a new table. |
 | Audit component context in round results | Audit round result rows now show lightweight relationship context for installed components: parent assets show installed component counts, and component assets show their parent asset/role. The existing Audit Scan component panel remains the source of component actions, so the result list does not duplicate scan workflow controls. |
 | Close checklist drilldowns | The close-round checklist now links actionable counts to focused pages: pending assets open the round pending list, pending review opens Audit Findings filtered by round, and open action plans open Audit Findings with `status=action_open` for the same round. |
+| Audit component confirmation UX decision | Browser verification confirmed that in-round parent assets such as `SNI-EQU-20-0212` and `SNI-EQU-20-0290` show installed component rows in Audit Scan. Product decision: `ยืนยันกับตัวหลัก` should remain a one-tap save without requiring a note; the system records the standard confirmed-with-parent reason when no remark is entered. |
 
 ---
 
