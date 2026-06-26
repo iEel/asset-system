@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation"
 import { AlertTriangle, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
-export function AuditMarkNotFoundButton({ itemId }: { itemId: string }) {
+type AuditMarkNotFoundButtonVariant = "icon" | "button"
+
+export function AuditMarkNotFoundButton({ itemId, variant = "icon" }: { itemId: string; variant?: AuditMarkNotFoundButtonVariant }) {
   const router = useRouter()
   const t = useTranslations("auditPending")
   const tCommon = useTranslations("common")
@@ -34,15 +36,32 @@ export function AuditMarkNotFoundButton({ itemId }: { itemId: string }) {
     }
   }
 
+  const icon = saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />
+
+  if (variant === "button") {
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={saving}
+        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm font-semibold text-warning transition-colors hover:bg-warning/15 disabled:opacity-50"
+      >
+        {icon}
+        {t("markNotFound")}
+      </button>
+    )
+  }
+
   return (
     <button
       type="button"
       onClick={handleClick}
       disabled={saving}
       title={t("markNotFound")}
+      aria-label={t("markNotFound")}
       className="inline-flex h-8 w-8 items-center justify-center rounded-md text-warning transition-colors hover:bg-warning/10 disabled:opacity-50"
     >
-      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
+      {icon}
     </button>
   )
 }

@@ -16,6 +16,7 @@
 | Audit Scan target lock and mismatch evidence | Audit Scan now pauses the camera after a successful QR read, shows a locked-target badge, and requires users to explicitly change/scan again before replacing the selected target. Mismatch evidence now appears inside the detailed mismatch flow with a required-photo counter, fixed-size queued photo thumbnails, and per-photo attachment status, so users capture and verify evidence at the decision point instead of jumping to a separate photo frame. |
 | Audit Scan recent-read collapse | The `สแกนล่าสุด` panel now collapses every recent scan row and edit action instead of leaving the newest three rows visible outside the controlled list. The header remains as the compact affordance for opening the recent-read history during mobile counting. |
 | Audit Scan recent-read count copy | The `สแกนล่าสุด` header now says `แสดง {count} รายการล่าสุด` instead of `{count}/8`, making the badge read as recent-read history rather than audit-round progress. |
+| Audit Pending mobile queue | The full round pending list at `/audit/rounds/{id}/pending` now has a mobile card layout, Asset Tag/name/location/custodian search, and per-item actions to scan that pending asset, view the asset detail, or mark it not found while preserving the scan workflow return context. |
 
 ---
 
