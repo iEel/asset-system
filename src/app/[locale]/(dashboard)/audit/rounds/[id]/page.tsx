@@ -19,6 +19,7 @@ import { isSameAuditActor } from "@/lib/audit-segregation"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { countSuccessfulAuditResultRows, isVarianceAuditResult } from "@/lib/audit-result-summary"
+import { buildAuditCorrectionHistoryByItemId, type AuditCorrectionHistoryItem } from "@/lib/audit-correction-history"
 import { paginationRange } from "@/lib/master-data-query"
 import {
   auditRoundResultPageSizeOptions,
@@ -87,6 +88,22 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                 currentLocation: { select: { code: true, name: true } },
                 custodian: { select: { code: true, fullNameTh: true } },
                 condition: { select: { nameTh: true } },
+                parentComponents: {
+                  where: { status: "installed", removedAt: null },
+                  select: {
+                    componentRole: true,
+                    slotNo: true,
+                    componentAsset: { select: { id: true, assetTag: true, name: true } },
+                  },
+                },
+                installedInLinks: {
+                  where: { status: "installed", removedAt: null },
+                  select: {
+                    componentRole: true,
+                    slotNo: true,
+                    parentAsset: { select: { id: true, assetTag: true, name: true } },
+                  },
+                },
               },
             },
           },
@@ -139,6 +156,22 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                 currentLocation: { select: { code: true, name: true } },
                 custodian: { select: { code: true, fullNameTh: true } },
                 condition: { select: { nameTh: true } },
+                parentComponents: {
+                  where: { status: "installed", removedAt: null },
+                  select: {
+                    componentRole: true,
+                    slotNo: true,
+                    componentAsset: { select: { id: true, assetTag: true, name: true } },
+                  },
+                },
+                installedInLinks: {
+                  where: { status: "installed", removedAt: null },
+                  select: {
+                    componentRole: true,
+                    slotNo: true,
+                    parentAsset: { select: { id: true, assetTag: true, name: true } },
+                  },
+                },
               },
             },
           },
@@ -158,6 +191,22 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                 name: true,
                 currentLocation: { select: { code: true, name: true } },
                 custodian: { select: { code: true, fullNameTh: true } },
+                parentComponents: {
+                  where: { status: "installed", removedAt: null },
+                  select: {
+                    componentRole: true,
+                    slotNo: true,
+                    componentAsset: { select: { id: true, assetTag: true, name: true } },
+                  },
+                },
+                installedInLinks: {
+                  where: { status: "installed", removedAt: null },
+                  select: {
+                    componentRole: true,
+                    slotNo: true,
+                    parentAsset: { select: { id: true, assetTag: true, name: true } },
+                  },
+                },
               },
             },
           },
@@ -166,6 +215,21 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     isOutOfScopeResultList ? prisma.auditScanHistory.count({ where: resultScanHistoryWhere }) : Promise.resolve(0),
   ])
   if (!round) notFound()
+
+  const correctionHistoryByItemId = buildAuditCorrectionHistoryByItemId(
+    resultItems.length > 0
+      ? await prisma.systemLog.findMany({
+          where: {
+            module: "audit",
+            action: "scan_result_corrected",
+            recordId: { in: resultItems.map((item) => item.id) },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 100,
+          include: { user: { select: { username: true, displayName: true } } },
+        })
+      : []
+  )
 
   const isRoundCreator = isSameAuditActor(user.id, round.createdBy)
   const pendingCount = statusCounts.find((row) => row.auditStatus === "pending")?._count._all ?? 0
@@ -182,13 +246,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     .filter((row) => isVarianceAuditResult(row.auditResult))
     .reduce((sum, row) => sum + row._count._all, 0)
   const progress = round._count.items > 0 ? Math.round(((round._count.items - pendingCount) / round._count.items) * 100) : 0
-  const closeChecklist = [
-    { label: t("closePendingItems"), value: pendingCount, ok: pendingCount === 0 },
-    { label: t("closePendingFindings"), value: pendingReviewCount, ok: pendingReviewCount === 0 },
-    { label: t("closeOpenActions"), value: openActionCount, ok: openActionCount === 0 },
-    { label: t("closeSeparateApprover"), value: isRoundCreator ? 1 : 0, ok: !isRoundCreator },
-  ]
-  const canCloseRound = round.status !== "closed" && closeChecklist.every((item) => item.ok)
+
   const evidenceSummary = await getEvidenceSummary({
     auditStartDate: round.startDate,
     items: evidenceItems,
@@ -226,12 +284,15 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         auditResult: "out_of_scope",
         auditResultLabel: formatDateTime(history.scannedAt),
         auditResultTone: "info" as const,
+        componentRelationshipLines: buildAuditRoundComponentRelationshipLines(history.asset, t),
+        latestCorrection: null,
         editHref: buildAuditRoundScanEditHref({ locale, roundId: round.id, assetId: history.asset.id, returnTo: resultListReturnHref }),
       }))
     : resultItems.map((item) => {
         const statusLabelKey = getAuditRoundItemStatusLabelKey(item.auditStatus)
         const resultLabelKey = getAuditRoundItemResultLabelKey(item.auditResult)
         const auditResult = item.auditResult ?? "pending"
+        const correctionHistory = correctionHistoryByItemId.get(item.id) ?? []
         return {
           id: item.id,
           asset: item.asset,
@@ -240,6 +301,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
           auditResult,
           auditResultLabel: item.auditResult ? (resultLabelKey ? t(resultLabelKey) : item.auditResult) : "-",
           auditResultTone: item.auditResult === "found" || item.auditResult === "confirmed_with_parent" ? ("success" as const) : item.auditResult === "not_found" ? ("danger" as const) : ("muted" as const),
+          componentRelationshipLines: buildAuditRoundComponentRelationshipLines(item.asset, t),
+          latestCorrection: correctionHistory[0] ?? null,
           editHref: buildAuditRoundScanEditHref({ locale, roundId: round.id, assetId: item.asset.id, returnTo: resultListReturnHref }),
         }
       })
@@ -252,6 +315,14 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const outOfScopeResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "out_of_scope", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const pendingReviewResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "pending_review", returnTo: returnToHref, pageSize: resultListState.pageSize })
   const pendingReviewFindingsHref = `/${locale}/audit/findings?status=pending&roundId=${round.id}`
+  const openActionFindingsHref = `/${locale}/audit/findings?status=action_open&roundId=${round.id}`
+  const closeChecklist = [
+    { label: t("closePendingItems"), value: pendingCount, ok: pendingCount === 0, href: pendingHref, actionLabel: t("checklistDrilldown") },
+    { label: t("closePendingFindings"), value: pendingReviewCount, ok: pendingReviewCount === 0, href: pendingReviewFindingsHref, actionLabel: t("checklistDrilldown") },
+    { label: t("closeOpenActions"), value: openActionCount, ok: openActionCount === 0, href: openActionFindingsHref, actionLabel: t("checklistDrilldown") },
+    { label: t("closeSeparateApprover"), value: isRoundCreator ? 1 : 0, ok: !isRoundCreator },
+  ]
+  const canCloseRound = round.status !== "closed" && closeChecklist.every((item) => item.ok)
   const auditRoundExportHref = buildAuditRoundExportHref({ roundId: round.id, endpoint: "export", state: resultListState })
   const auditRoundExportPdfHref = buildAuditRoundExportHref({ roundId: round.id, endpoint: "export-pdf", state: resultListState })
   const hasResultBucketFilter = resultListState.result !== "all"
@@ -508,6 +579,23 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                     {item.asset.assetTag}
                   </Link>
                   <p className="mt-1 line-clamp-2 text-sm text-foreground">{item.asset.name}</p>
+                  {item.componentRelationshipLines.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {item.componentRelationshipLines.map((line) => (
+                        <span key={line} className="rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
+                          {line}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  {item.latestCorrection ? (
+                    <div className="mt-2 rounded-md border border-info/30 bg-info/10 px-2 py-1 text-xs text-info">
+                      <div>{t("correctionHistoryLatest", { date: formatDateTime(item.latestCorrection.createdAt), user: item.latestCorrection.userLabel })}</div>
+                      {item.latestCorrection.changedFields.length > 0 ? (
+                        <div>{t("correctionHistoryFields", { fields: formatAuditCorrectionFields(item.latestCorrection, t) })}</div>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <div className="mt-3 grid gap-2 text-sm">
                     <MobileAuditDetailField label={t("expectedLocation")} value={`${item.asset.currentLocation.code} - ${item.asset.currentLocation.name}`} />
                     <MobileAuditDetailField
@@ -562,7 +650,26 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                       label={`${tCommon("view")}: ${item.asset.assetTag}`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{item.asset.assetTag}</td>
-                      <td className="min-w-56 px-4 py-3 text-foreground">{item.asset.name}</td>
+                      <td className="min-w-56 px-4 py-3 text-foreground">
+                        <div>{item.asset.name}</div>
+                        {item.componentRelationshipLines.length > 0 ? (
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {item.componentRelationshipLines.map((line) => (
+                              <span key={line} className="rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
+                                {line}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                        {item.latestCorrection ? (
+                          <div className="mt-2 rounded-md border border-info/30 bg-info/10 px-2 py-1 text-xs text-info">
+                            <div>{t("correctionHistoryLatest", { date: formatDateTime(item.latestCorrection.createdAt), user: item.latestCorrection.userLabel })}</div>
+                            {item.latestCorrection.changedFields.length > 0 ? (
+                              <div>{t("correctionHistoryFields", { fields: formatAuditCorrectionFields(item.latestCorrection, t) })}</div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </td>
                       <td className="min-w-56 px-4 py-3 text-muted-foreground">
                         {item.asset.currentLocation.code} - {item.asset.currentLocation.name}
                       </td>
@@ -728,6 +835,28 @@ function AuditRoundResultPagination({
       </div>
     </div>
   )
+}
+
+type AuditRoundTranslator = Awaited<ReturnType<typeof getTranslations>>
+
+type AuditRoundComponentRelationshipAsset = {
+  parentComponents?: Array<{ componentRole: string; slotNo: string | null; componentAsset: { assetTag: string; name: string } }>
+  installedInLinks?: Array<{ componentRole: string; slotNo: string | null; parentAsset: { assetTag: string; name: string } }>
+}
+
+function buildAuditRoundComponentRelationshipLines(asset: AuditRoundComponentRelationshipAsset, t: AuditRoundTranslator) {
+  const lines: string[] = []
+  const componentCount = asset.parentComponents?.length ?? 0
+  if (componentCount > 0) lines.push(t("componentHasChildren", { count: componentCount }))
+  const installedInParent = asset.installedInLinks?.[0]
+  if (installedInParent) {
+    lines.push(t("componentInstalledInParent", { assetTag: installedInParent.parentAsset.assetTag, role: installedInParent.componentRole }))
+  }
+  return lines
+}
+
+function formatAuditCorrectionFields(correction: AuditCorrectionHistoryItem, t: AuditRoundTranslator) {
+  return correction.changedFields.map((field) => t(`correctionField_${field}`)).join(", ")
 }
 
 function buildAuditRoundScanEditHref({

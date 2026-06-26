@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
@@ -10,6 +11,8 @@ type ChecklistItem = {
   label: string
   value: number
   ok: boolean
+  href?: string
+  actionLabel?: string
 }
 
 export function AuditRoundCloseButton({
@@ -64,22 +67,31 @@ export function AuditRoundCloseButton({
         </button>
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {checklist.map((item) => (
-          <div
-            key={item.label}
-            className={`rounded-md border px-3 py-3 ${
-              item.ok ? "border-success/30 bg-success/10 text-success" : "border-warning/30 bg-warning/10 text-warning"
-            }`}
-          >
+        {checklist.map((item) => {
+          const cardClassName = `rounded-md border px-3 py-3 ${
+            item.ok ? "border-success/30 bg-success/10 text-success" : "border-warning/30 bg-warning/10 text-warning"
+          }`
+          const content = (
             <div className="flex items-start gap-2">
               <CheckCircle2 className={`mt-0.5 h-4 w-4 ${item.ok ? "text-success" : "text-warning"}`} />
               <div className="min-w-0">
                 <div className="text-sm font-medium">{item.label}</div>
                 <div className="mt-1 text-2xl font-bold">{item.value}</div>
+                {item.href && item.value > 0 ? <div className="mt-1 text-xs font-semibold underline underline-offset-2">{item.actionLabel}</div> : null}
               </div>
             </div>
-          </div>
-        ))}
+          )
+
+          return item.href && item.value > 0 ? (
+            <Link key={item.label} href={item.href} className={`${cardClassName} transition-colors hover:bg-warning/20`}>
+              {content}
+            </Link>
+          ) : (
+            <div key={item.label} className={cardClassName}>
+              {content}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

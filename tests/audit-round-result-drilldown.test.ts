@@ -207,3 +207,66 @@ test("audit round filtered result exports include the active filter in filenames
   assert.match(excelRoute, /workbook\.addWorksheet\(buildAuditExportWorksheetName\(filterLabel\)\)/)
   assert.match(pdfRoute, /subtitle: `\$\{round\.name\} \| \$\{formatDate\(round\.startDate\)\} - \$\{formatDate\(round\.endDate\)\} \| Filter: \$\{filterLabel\}`/)
 })
+test("audit round result list exposes component relationship context without duplicating scan workflow", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(page, /parentComponents/)
+  assert.match(page, /installedInLinks/)
+  assert.match(page, /componentRelationshipLines/)
+  assert.match(page, /componentHasChildren/)
+  assert.match(page, /componentInstalledInParent/)
+  assert.doesNotMatch(page, /function AuditComponentPanel/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditRound.componentHasChildren, "string")
+    assert.equal(typeof messages.auditRound.componentInstalledInParent, "string")
+  }
+})
+
+test("audit round close checklist items link to focused drilldown pages", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", "utf8")
+  const closeButton = readFileSync("src/components/audit/audit-round-close-button.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(page, /pendingHref/)
+  assert.match(page, /status=action_open/)
+  assert.match(page, /checklistDrilldown/)
+  assert.match(page, /href: pendingHref/)
+  assert.match(page, /href: pendingReviewFindingsHref/)
+  assert.match(page, /href: openActionFindingsHref/)
+
+  assert.match(closeButton, /href\?: string/)
+  assert.match(closeButton, /actionLabel\?: string/)
+  assert.match(closeButton, /Link/)
+  assert.match(closeButton, /item\.href && item\.value > 0/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditRound.checklistDrilldown, "string")
+  }
+})
+
+test("audit round result rows surface scan correction history", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", "utf8")
+  const route = readFileSync("src/app/api/audit-rounds/[id]/scan/route.ts", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(page, /buildAuditCorrectionHistoryByItemId/)
+  assert.match(page, /scan_result_corrected/)
+  assert.match(page, /latestCorrection/)
+  assert.match(page, /correctionHistoryLatest/)
+  assert.match(page, /correctionHistoryFields/)
+
+  assert.match(route, /actualDepartmentId: item\.actualDepartmentId/)
+  assert.match(route, /actualLocationId: item\.actualLocationId/)
+  assert.match(route, /auditRoundId: id/)
+  assert.match(route, /auditItemId: item\.id/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditRound.correctionHistoryLatest, "string")
+    assert.equal(typeof messages.auditRound.correctionHistoryFields, "string")
+  }
+})
