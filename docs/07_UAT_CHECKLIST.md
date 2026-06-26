@@ -97,7 +97,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Review round progress.
 - [ ] From `/th/audit/rounds`, apply a quick filter/search, open round detail, open Scan and Pending from that round, then use Back and confirm the browser returns to the same round detail and filtered rounds list context.
 - [ ] Close an audit round.
-- [ ] Cancel a test audit round from the round detail page, enter a reason, and confirm the round shows `ยกเลิก`/read-only state. Confirm scan, pending, edit result, review/close actions, operational queues, and active exports no longer include that cancelled round, while historical audit items, scan history, findings, evidence, and already-applied corrections are preserved and not rolled back.
+- [ ] Cancel a test audit round from the round detail page, enter a reason, and confirm the round shows `ยกเลิก`/read-only state. Confirm cancellation time/user/reason are visible, scan, pending, edit result, review/close actions, operational queues, and active exports no longer include that cancelled round, while historical audit items, scan history, findings, evidence, and already-applied corrections are preserved and not rolled back.
 
 ## accounting
 

@@ -1818,6 +1818,7 @@
     "cancelSuccess": "Audit round cancelled",
     "cancelledReadOnlyNotice": "This round has been cancelled and is read-only. Scanning, result edits, reviews, and closing are disabled.",
     "cancelledAt": "Cancelled at",
+    "cancelledBy": "Cancelled by",
     "evidenceSummary": "Audit Evidence Summary",
     "evidenceSummaryHelp": "Counts asset photos uploaded after the audit round started and compares them with the category photo checklist.",
     "evidenceAttached": "With Evidence",

@@ -96,6 +96,9 @@ test("audit rounds UI exposes cancellation and cancelled read-only state", () =>
   assert.match(detail, /isAuditRoundReadOnlyStatus\(round\.status\)/)
   assert.match(detail, /cancelReason/)
   assert.match(detail, /cancelledAt/)
+  assert.match(detail, /cancelledByUser/)
+  assert.match(detail, /cancelledByDisplayName/)
+  assert.match(detail, /t\("cancelledBy"\)/)
   assert.match(detail, /cancelledReadOnlyNotice/)
   assert.match(detail, /!isRoundReadOnly/)
   assert.match(list, /"cancelled"/)
@@ -111,6 +114,7 @@ test("audit rounds UI exposes cancellation and cancelled read-only state", () =>
     assert.equal(typeof messages.auditRound.viewCancelled, "string")
     assert.equal(typeof messages.auditRound.cancelRound, "string")
     assert.equal(typeof messages.auditRound.cancelReason, "string")
+    assert.equal(typeof messages.auditRound.cancelledBy, "string")
     assert.equal(typeof messages.auditRound.cancelImpactProcessed, "string")
     assert.equal(typeof messages.auditRound.cancelledReadOnlyNotice, "string")
   }

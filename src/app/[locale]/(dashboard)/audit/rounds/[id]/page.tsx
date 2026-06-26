@@ -222,6 +222,13 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   ])
   if (!round) notFound()
 
+  const cancelledByUser = round.cancelledBy
+    ? await prisma.user.findUnique({
+        where: { id: round.cancelledBy },
+        select: { username: true, displayName: true },
+      })
+    : null
+
   const correctionHistoryByItemId = buildAuditCorrectionHistoryByItemId(
     resultItems.length > 0
       ? await prisma.systemLog.findMany({
@@ -240,6 +247,11 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const isRoundCreator = isSameAuditActor(user.id, round.createdBy)
   const isRoundReadOnly = isAuditRoundReadOnlyStatus(round.status)
   const canExportRound = round.status !== "cancelled"
+  const cancelledByDisplayName = cancelledByUser
+    ? cancelledByUser.displayName === cancelledByUser.username
+      ? cancelledByUser.username
+      : `${cancelledByUser.displayName} (${cancelledByUser.username})`
+    : round.cancelledBy || "-"
   const pendingCount = statusCounts.find((row) => row.auditStatus === "pending")?._count._all ?? 0
   const processedCount = Math.max(round._count.items - pendingCount, 0)
   const scannedCount = statusCounts
@@ -479,6 +491,10 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                   <dd className="mt-1 break-words text-danger">{formatDateTime(round.cancelledAt)}</dd>
                 </div>
                 <div>
+                  <dt className="font-medium text-foreground">{t("cancelledBy")}</dt>
+                  <dd className="mt-1 break-words text-danger">{cancelledByDisplayName}</dd>
+                </div>
+                <div className="sm:col-span-2">
                   <dt className="font-medium text-foreground">{t("cancelReason")}</dt>
                   <dd className="mt-1 break-words text-danger">{round.cancelReason || "-"}</dd>
                 </div>

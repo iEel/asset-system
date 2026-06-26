@@ -1818,6 +1818,7 @@
     "cancelSuccess": "ยกเลิกรอบตรวจสำเร็จ",
     "cancelledReadOnlyNotice": "รอบนี้ถูกยกเลิกและอ่านได้อย่างเดียว ไม่สามารถสแกน แก้ผลตรวจ Review หรือปิดรอบต่อได้",
     "cancelledAt": "เวลายกเลิก",
+    "cancelledBy": "ผู้ยกเลิก",
     "evidenceSummary": "สรุปหลักฐานรูปตรวจนับ",
     "evidenceSummaryHelp": "นับรูปทรัพย์สินที่อัปโหลดหลังเริ่มรอบตรวจ และเทียบกับ checklist รูปตามประเภททรัพย์สิน",
     "evidenceAttached": "มีรูปแนบ",
