@@ -197,6 +197,15 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const roundDetailReturnHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}`, returnToHref)
   const pendingHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/pending`, roundDetailReturnHref)
   const scanHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/scan`, roundDetailReturnHref)
+  const resultListReturnHref = buildAuditRoundResultListHref({
+    locale,
+    roundId: round.id,
+    result: resultListState.result,
+    returnTo: returnToHref,
+    search: resultListState.search,
+    page: resultListState.page,
+    pageSize: resultListState.pageSize,
+  })
   const resultFilterLabels: Record<AuditRoundResultFilter, string> = {
     all: t("viewAll"),
     found: t("found"),
@@ -217,6 +226,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         auditResult: "out_of_scope",
         auditResultLabel: formatDateTime(history.scannedAt),
         auditResultTone: "info" as const,
+        editHref: buildAuditRoundScanEditHref({ locale, roundId: round.id, assetId: history.asset.id, returnTo: resultListReturnHref }),
       }))
     : resultItems.map((item) => {
         const statusLabelKey = getAuditRoundItemStatusLabelKey(item.auditStatus)
@@ -230,6 +240,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
           auditResult,
           auditResultLabel: item.auditResult ? (resultLabelKey ? t(resultLabelKey) : item.auditResult) : "-",
           auditResultTone: item.auditResult === "found" || item.auditResult === "confirmed_with_parent" ? ("success" as const) : item.auditResult === "not_found" ? ("danger" as const) : ("muted" as const),
+          editHref: buildAuditRoundScanEditHref({ locale, roundId: round.id, assetId: item.asset.id, returnTo: resultListReturnHref }),
         }
       })
   const allResultHref = buildAuditRoundResultListHref({ locale, roundId: round.id, result: "all", returnTo: returnToHref, pageSize: resultListState.pageSize })
@@ -508,6 +519,11 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                     <StatusBadge label={item.auditStatusLabel} status={item.auditStatus} size="xs" />
                     <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} size="xs" />
                   </div>
+                  <div className="mt-3 flex justify-end">
+                    <Link href={item.editHref} className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+                      {t("editScanResult")}
+                    </Link>
+                  </div>
                 </article>
               ))
             )}
@@ -522,12 +538,13 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                   <ColumnHeader>{t("expectedCustodian")}</ColumnHeader>
                   <ColumnHeader>{t("status")}</ColumnHeader>
                   <ColumnHeader>{t("result")}</ColumnHeader>
+                  <ColumnHeader>{tCommon("actions")}</ColumnHeader>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {resultRows.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-6">
+                    <td colSpan={7} className="px-4 py-6">
                       <ActionEmptyState
                         icon={<ScanLine className="h-6 w-6" />}
                         title={emptyResultTitle}
@@ -557,6 +574,15 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} size="xs" />
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                        <Link
+                          href={item.editHref}
+                          data-no-row-click
+                          className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                        >
+                          {t("editScanResult")}
+                        </Link>
                       </td>
                     </ClickableTableRow>
                   ))
@@ -702,6 +728,24 @@ function AuditRoundResultPagination({
       </div>
     </div>
   )
+}
+
+function buildAuditRoundScanEditHref({
+  locale,
+  roundId,
+  assetId,
+  returnTo,
+}: {
+  locale: string
+  roundId: string
+  assetId: string
+  returnTo: string
+}) {
+  const params = new URLSearchParams()
+  params.set("assetId", assetId)
+  params.set("mode", "edit")
+  params.set("returnTo", returnTo)
+  return `/${locale}/audit/rounds/${roundId}/scan?${params.toString()}`
 }
 
 function buildAuditRoundExportHref({

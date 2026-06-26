@@ -1771,6 +1771,7 @@
     "resultNeedsReviewGroup": "ต้องตรวจสอบ",
     "viewResultItems": "ดูรายการ",
     "viewPendingReviewAssets": "ดูทรัพย์สินรอ Review",
+    "editScanResult": "แก้ไขผลตรวจ",
     "openFindingReview": "เปิดงาน Review",
     "resultListHelp": "เลือกตัวเลขด้านบนเพื่อดูรายการทรัพย์สินที่อยู่ในกลุ่มนั้น พร้อมค้นหาและแบ่งหน้าเมื่อข้อมูลมีจำนวนมาก",
     "resultListFilteredTitle": "รายการตรวจ: {result}",

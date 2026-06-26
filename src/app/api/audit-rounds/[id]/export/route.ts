@@ -4,6 +4,9 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { auditResultColumns, createAuditWorkbook, finalizeAuditWorksheet, workbookResponse } from "@/lib/audit-excel"
 import {
+  buildAuditExportFilterLabel,
+  buildAuditExportFilename,
+  buildAuditExportWorksheetName,
   buildAuditRoundItemWhere,
   buildAuditRoundScanHistoryWhere,
   isAuditRoundScanHistoryResultFilter,
@@ -43,6 +46,7 @@ export async function GET(request: NextRequest, context: AuditExportContext) {
     const result = resolveAuditRoundResultFilter(request.nextUrl.searchParams.get("result"))
     const search = request.nextUrl.searchParams.get("search") ?? ""
     const isOutOfScopeExport = isAuditRoundScanHistoryResultFilter(result)
+    const filterLabel = buildAuditExportFilterLabel({ result, search })
 
     const round = await prisma.auditRound.findFirst({
       where: { id, isActive: true },
@@ -67,7 +71,7 @@ export async function GET(request: NextRequest, context: AuditExportContext) {
     )
 
     const workbook = createAuditWorkbook()
-    const worksheet = workbook.addWorksheet("Audit Results")
+    const worksheet = workbook.addWorksheet(buildAuditExportWorksheetName(filterLabel))
     worksheet.columns = auditResultColumns
     worksheet.addRows(
       rows.map((row) => ({
@@ -95,7 +99,7 @@ export async function GET(request: NextRequest, context: AuditExportContext) {
     finalizeAuditWorksheet(worksheet)
 
     const buffer = await workbook.xlsx.writeBuffer()
-    return workbookResponse(buffer, `audit-result-${round.auditNo}-${new Date().toISOString().slice(0, 10)}.xlsx`)
+    return workbookResponse(buffer, buildAuditExportFilename({ prefix: "audit-result", auditNo: round.auditNo, result, search, extension: "xlsx" }))
   } catch (error) {
     return errorResponse(error)
   }

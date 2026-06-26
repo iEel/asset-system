@@ -159,6 +159,55 @@ export function isAuditRoundScanHistoryResultFilter(result: AuditRoundResultFilt
   return result === "out_of_scope"
 }
 
+export function buildAuditExportFilterLabel({
+  result,
+  search,
+}: {
+  result: AuditRoundResultFilter
+  search?: string | null
+}) {
+  const parts: string[] = []
+  if (result !== "all") parts.push(result)
+  const searchText = search ? search.trim() : ""
+  if (searchText) parts.push(`search-${searchText}`)
+  return parts.length > 0 ? parts.join("-") : "all"
+}
+
+export function sanitizeAuditExportFilenamePart(value: string) {
+  return value
+    .trim()
+    .replace(/[^\p{L}\p{N}_-]+/gu, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80) || "all"
+}
+
+export function buildAuditExportFilename({
+  prefix,
+  auditNo,
+  result,
+  search,
+  extension,
+  date = new Date(),
+}: {
+  prefix: string
+  auditNo: string
+  result: AuditRoundResultFilter
+  search?: string | null
+  extension: string
+  date?: Date
+}) {
+  const filterLabel = buildAuditExportFilterLabel({ result, search })
+  const filterSuffix = filterLabel === "all" ? "" : `-${sanitizeAuditExportFilenamePart(filterLabel)}`
+  const cleanExtension = extension.replace(/^\./, "")
+  return `${prefix}-${auditNo}${filterSuffix}-${date.toISOString().slice(0, 10)}.${cleanExtension}`
+}
+
+export function buildAuditExportWorksheetName(filterLabel: string) {
+  if (filterLabel === "all") return "Audit Results"
+  return `Results - ${filterLabel}`.slice(0, 31)
+}
+
 export function buildAuditRoundResultListHref({
   locale,
   roundId,

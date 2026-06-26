@@ -9,7 +9,7 @@ import { withPerformanceTiming } from "@/lib/performance-timing"
 
 type AuditScanPageProps = {
   params: Promise<{ locale: string; id: string }>
-  searchParams: Promise<{ returnTo?: string | string[] }>
+  searchParams: Promise<{ returnTo?: string | string[]; assetId?: string | string[]; mode?: string | string[] }>
 }
 
 type ChecklistSettingRow = {
@@ -148,8 +148,18 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
         conditions: options.conditions,
       }}
       initialRecentScans={initialRecentScans}
+      initialAssetId={resolveFirstSearchParam(rawSearchParams.assetId)}
+      initialMode={resolveAuditScanInitialMode(rawSearchParams.mode)}
     />
   )
+}
+
+function resolveFirstSearchParam(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] : value
+}
+
+function resolveAuditScanInitialMode(value?: string | string[]) {
+  return resolveFirstSearchParam(value) === "edit" ? "edit" : "scan"
 }
 
 function buildInitialRecentScanRows(scanHistory: AuditScanHistoryRow[]): AuditRecentScan[] {

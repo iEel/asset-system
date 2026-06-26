@@ -1771,6 +1771,7 @@
     "resultNeedsReviewGroup": "Needs Review",
     "viewResultItems": "View items",
     "viewPendingReviewAssets": "View pending-review assets",
+    "editScanResult": "Edit result",
     "openFindingReview": "Open review work",
     "resultListHelp": "Select a summary count above to review the assets in that bucket, with search and pagination for large rounds.",
     "resultListFilteredTitle": "Audit items: {result}",

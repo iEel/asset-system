@@ -167,3 +167,43 @@ test("audit round result exports use the same filters as the on-screen result li
     assert.match(route, /out_of_scope/)
   }
 })
+
+test("audit round detail result rows link directly to scan edit mode", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(page, /buildAuditRoundScanEditHref/)
+  assert.match(page, /editHref/)
+  assert.match(page, /mode", "edit"/)
+  assert.match(page, /assetId", assetId/)
+  assert.match(page, /returnTo", returnTo/)
+  assert.match(page, /href=\{item\.editHref\}/)
+  assert.match(page, /t\("editScanResult"\)/)
+
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.auditRound.editScanResult, "string")
+  }
+})
+
+test("audit round filtered result exports include the active filter in filenames and labels", () => {
+  const excelRoute = readFileSync("src/app/api/audit-rounds/[id]/export/route.ts", "utf8")
+  const pdfRoute = readFileSync("src/app/api/audit-rounds/[id]/export-pdf/route.ts", "utf8")
+  const filters = readFileSync("src/lib/audit-round-result-filters.ts", "utf8")
+
+  assert.match(filters, /buildAuditExportFilterLabel/)
+  assert.match(filters, /buildAuditExportFilename/)
+  assert.match(filters, /sanitizeAuditExportFilenamePart/)
+  assert.match(filters, /buildAuditExportWorksheetName/)
+  assert.match(filters, /result !== "all"/)
+  assert.match(filters, /search\.trim\(\)/)
+
+  for (const route of [excelRoute, pdfRoute]) {
+    assert.match(route, /buildAuditExportFilterLabel/)
+    assert.match(route, /buildAuditExportFilename/)
+    assert.match(route, /filterLabel/)
+  }
+
+  assert.match(excelRoute, /workbook\.addWorksheet\(buildAuditExportWorksheetName\(filterLabel\)\)/)
+  assert.match(pdfRoute, /subtitle: `\$\{round\.name\} \| \$\{formatDate\(round\.startDate\)\} - \$\{formatDate\(round\.endDate\)\} \| Filter: \$\{filterLabel\}`/)
+})

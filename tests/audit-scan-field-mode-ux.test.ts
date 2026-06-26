@@ -444,3 +444,23 @@ test("audit scan edit result reloads saved actual values and records correction 
     assert.equal(typeof messages.auditScan.editSavedResultCancel, "string")
   }
 })
+
+test("audit scan page supports deep linking into saved-result edit mode", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/scan/page.tsx", "utf8")
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+
+  assert.match(page, /assetId\?: string \| string\[\]/)
+  assert.match(page, /mode\?: string \| string\[\]/)
+  assert.match(page, /resolveAuditScanInitialMode/)
+  assert.match(page, /initialAssetId=\{resolveFirstSearchParam\(rawSearchParams\.assetId\)\}/)
+  assert.match(page, /initialMode=\{resolveAuditScanInitialMode\(rawSearchParams\.mode\)\}/)
+
+  assert.match(form, /initialAssetId/)
+  assert.match(form, /initialMode = "scan"/)
+  assert.match(form, /const initialSelectedItem = initialAssetId/)
+  assert.match(form, /createInitialAuditScanValues/)
+  assert.match(form, /const initialEditItem = initialMode === "edit" \? initialSelectedItem : null/)
+  assert.match(form, /useState\(\(\) => initialSelectedItem \? getReadableAuditScanValue\(initialSelectedItem\) : ""\)/)
+  assert.match(form, /useState\(\(\) => Boolean\(initialEditItem\)\)/)
+  assert.match(form, /useState<\{ assetId: string; label: string; auditResult: string \| null \} \| null>\(\(\) =>/)
+})

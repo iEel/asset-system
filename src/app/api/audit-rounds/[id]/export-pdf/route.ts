@@ -6,6 +6,8 @@ import { pdfResponse, renderAuditResultPdf } from "@/lib/audit-pdf"
 import { formatDate, formatDateTime } from "@/lib/utils"
 import { isSuccessfulAuditResult } from "@/lib/audit-result-summary"
 import {
+  buildAuditExportFilterLabel,
+  buildAuditExportFilename,
   buildAuditRoundItemWhere,
   buildAuditRoundScanHistoryWhere,
   isAuditRoundScanHistoryResultFilter,
@@ -40,6 +42,7 @@ export async function GET(request: NextRequest, context: AuditPdfExportContext) 
     const result = resolveAuditRoundResultFilter(request.nextUrl.searchParams.get("result"))
     const search = request.nextUrl.searchParams.get("search") ?? ""
     const isOutOfScopeExport = isAuditRoundScanHistoryResultFilter(result)
+    const filterLabel = buildAuditExportFilterLabel({ result, search })
 
     const round = await prisma.auditRound.findFirst({
       where: { id, isActive: true },
@@ -57,7 +60,7 @@ export async function GET(request: NextRequest, context: AuditPdfExportContext) 
 
     const buffer = await renderAuditResultPdf({
       title: `Audit Result - ${round.auditNo}`,
-      subtitle: `${round.name} | ${formatDate(round.startDate)} - ${formatDate(round.endDate)}`,
+      subtitle: `${round.name} | ${formatDate(round.startDate)} - ${formatDate(round.endDate)} | Filter: ${filterLabel}`,
       summary: [
         { label: "Exported Rows", value: rows.length },
         { label: "Pending", value: pendingCount },
@@ -77,7 +80,7 @@ export async function GET(request: NextRequest, context: AuditPdfExportContext) 
       })),
     })
 
-    return pdfResponse(buffer, `audit-result-${round.auditNo}-${new Date().toISOString().slice(0, 10)}.pdf`)
+    return pdfResponse(buffer, buildAuditExportFilename({ prefix: "audit-result", auditNo: round.auditNo, result, search, extension: "pdf" }))
   } catch (error) {
     return errorResponse(error)
   }

@@ -189,6 +189,8 @@ export function AuditScanForm({
   items,
   options,
   initialRecentScans = [],
+  initialAssetId,
+  initialMode = "scan",
 }: {
   locale: string
   roundId: string
@@ -197,16 +199,20 @@ export function AuditScanForm({
   items: AuditScanItem[]
   options: AuditScanOptions
   initialRecentScans?: AuditRecentScan[]
+  initialAssetId?: string
+  initialMode?: "scan" | "edit"
 }) {
   const router = useRouter()
   const t = useTranslations("auditScan")
   const tCommon = useTranslations("common")
+  const initialSelectedItem = initialAssetId ? items.find((item) => item.assetId === initialAssetId) : undefined
+  const initialEditItem = initialMode === "edit" ? initialSelectedItem : null
   const [saving, setSaving] = useState(false)
   const [scannerRunning, setScannerRunning] = useState(false)
   const [scannerLoading, setScannerLoading] = useState(false)
   const [cameraReadiness, setCameraReadiness] = useState<CameraReadiness>("checking")
   const [cameraErrorText, setCameraErrorText] = useState("")
-  const [scanText, setScanText] = useState("")
+  const [scanText, setScanText] = useState(() => initialSelectedItem ? getReadableAuditScanValue(initialSelectedItem) : "")
   const [scanSource, setScanSource] = useState<"manual" | "qr">("manual")
   const [lastResult, setLastResult] = useState<LastAuditResult | null>(null)
   const [lastDecodedText, setLastDecodedText] = useState("")
@@ -214,7 +220,7 @@ export function AuditScanForm({
   const [queuedAuditPhotos, setQueuedAuditPhotos] = useState<QueuedAuditPhoto[]>([])
   const continuousScan = true
   const fastMode = true
-  const [showDetailedFields, setShowDetailedFields] = useState(false)
+  const [showDetailedFields, setShowDetailedFields] = useState(() => Boolean(initialEditItem))
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null)
   const [recentScans, setRecentScans] = useState<AuditRecentScan[]>(() => initialRecentScans.slice(0, MAX_RECENT_AUDIT_SCANS))
   const [showPendingQueue, setShowPendingQueue] = useState(false)
@@ -222,7 +228,9 @@ export function AuditScanForm({
   const [assetPickerExpanded, setAssetPickerExpanded] = useState(false)
   const [assetPickerQuery, setAssetPickerQuery] = useState("")
   const [outOfScopeAsset, setOutOfScopeAsset] = useState<OutOfScopeAsset | null>(null)
-  const [editingScanResult, setEditingScanResult] = useState<{ assetId: string; label: string; auditResult: string | null } | null>(null)
+  const [editingScanResult, setEditingScanResult] = useState<{ assetId: string; label: string; auditResult: string | null } | null>(() =>
+    initialEditItem ? { assetId: initialEditItem.assetId, label: initialEditItem.label, auditResult: initialEditItem.auditResult } : null
+  )
   const [applyCorrections, setApplyCorrections] = useState(false)
   const [offlineQueue, setOfflineQueue] = useState<QueuedAuditScan[]>([])
   const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine))
@@ -236,14 +244,7 @@ export function AuditScanForm({
   const qrReaderRef = useRef<NativeAssetQrScannerRuntime | null>(null)
   const offlineStorageRef = useRef<AuditOfflineQueueStorage | null>(null)
   const lastDecodedRef = useRef<{ value: string; at: number } | null>(null)
-  const [values, setValues] = useState({
-    assetId: "",
-    actualLocationId: "",
-    actualCustodianId: "",
-    actualDepartmentId: "",
-    actualConditionId: "",
-    remark: "",
-  })
+  const [values, setValues] = useState(() => createInitialAuditScanValues(initialSelectedItem, initialMode))
 
   const selectedItem = useMemo(() => items.find((item) => item.assetId === values.assetId), [items, values.assetId])
   const assetLookup = useMemo(() => buildAssetLookup(items), [items])
@@ -2494,6 +2495,26 @@ function toAuditOfflinePhoto(photo: QueuedAuditPhoto): AuditOfflinePhoto {
     fileType: photo.file.type || "application/octet-stream",
     fileSize: photo.file.size,
     blob: photo.file,
+  }
+}
+
+function createInitialAuditScanValues(initialSelectedItem: AuditScanItem | undefined, initialMode: "scan" | "edit") {
+  if (!initialSelectedItem) {
+    return {
+      assetId: "",
+      actualLocationId: "",
+      actualCustodianId: "",
+      actualDepartmentId: "",
+      actualConditionId: "",
+      remark: "",
+    }
+  }
+
+  const actualValues = initialMode === "edit" ? getEditableAuditValues(initialSelectedItem) : getExpectedAuditValues(initialSelectedItem)
+  return {
+    assetId: initialSelectedItem.assetId,
+    ...actualValues,
+    remark: "",
   }
 }
 
