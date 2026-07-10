@@ -62,6 +62,7 @@ import {
 import { isSupportedCronExpression } from "@/lib/scheduled-job"
 import { getSettingsTabOrder, type SettingsTabId } from "@/lib/settings-information-architecture"
 import { buildSystemSettingsTabHref, parseSystemSettingsTab } from "@/lib/system-settings-tabs"
+import { findSystemSettingsSearchResults, getSystemSettingsTabForKey } from "@/lib/settings-search"
 import { buildSystemLogFilterHref, type LdapSyncHistoryItem } from "@/lib/system-log-history"
 import {
   applyCategoryPrefixGroupEdit,
@@ -136,6 +137,10 @@ type SystemSettingsFormProps = {
     advancedSettingCount: string
     unsavedChanges: string
     noUnsavedChanges: string
+    searchSettings: string
+    searchSettingsHelp: string
+    noSettingsSearchResults: string
+    openSettingGroup: string
     changeReview: string
     changeReviewDescription: string
     beforeValue: string
@@ -546,6 +551,7 @@ export function SystemSettingsForm({
   const initialValues = Object.fromEntries(settings.map((setting) => [setting.key, setting.value]))
   const activeTab = parseSystemSettingsTab(searchParams.get("tab"))
   const [saving, setSaving] = useState(false)
+  const [settingsSearch, setSettingsSearch] = useState("")
   const [testingLdap, setTestingLdap] = useState(false)
   const [syncingLdap, setSyncingLdap] = useState<"preview" | "apply" | null>(null)
   const [syncPreview, setSyncPreview] = useState<LdapSyncPreview | null>(null)
@@ -815,10 +821,16 @@ export function SystemSettingsForm({
     advanced: labels.tabAdvanced,
   }
   const tabs = getSettingsTabOrder().map((id) => ({ id, label: tabLabels[id] }))
+  const settingsSearchResults = findSystemSettingsSearchResults(settings, settingsSearch, tabLabels).slice(0, 6)
   const selectTab = (tab: SettingsTabId) => {
     if (tab === activeTab) return
     const href = buildSystemSettingsTabHref(pathname, searchParams.toString(), tab)
-    window.history.replaceState(null, "", href)
+    router.replace(href, { scroll: false })
+  }
+  const openSettingGroup = (tab: SettingsTabId) => {
+    selectTab(tab)
+    setSettingsSearch("")
+    window.requestAnimationFrame(() => document.getElementById("settings-workspace")?.scrollIntoView({ block: "start" }))
   }
   const overviewCards = [
     {
@@ -1034,7 +1046,45 @@ export function SystemSettingsForm({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.searchSettings}</span>
+          <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <input
+              type="search"
+              value={settingsSearch}
+              onChange={(event) => setSettingsSearch(event.target.value)}
+              placeholder={labels.searchSettingsHelp}
+              className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none"
+            />
+          </div>
+        </label>
+        {settingsSearch.trim() ? (
+          settingsSearchResults.length > 0 ? (
+            <div className="mt-3 grid gap-2" role="list">
+              {settingsSearchResults.map((result) => (
+                <button
+                  key={result.key}
+                  type="button"
+                  onClick={() => openSettingGroup(result.tab)}
+                  className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-mono text-xs font-medium text-foreground">{result.key}</span>
+                    {result.description ? <span className="mt-1 block line-clamp-1 text-xs text-muted-foreground">{result.description}</span> : null}
+                  </span>
+                  <span className="shrink-0 text-xs font-medium text-primary">{result.tabLabel}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-muted-foreground">{labels.noSettingsSearchResults}</p>
+          )
+        ) : null}
+      </div>
+
+      <div id="settings-workspace" className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.settingsOverview} description={labels.settingsOverviewDescription} />
         <div className="grid gap-3 px-4 py-4 sm:grid-cols-2 xl:grid-cols-4">
           {overviewCards.map((card) => (
@@ -2197,7 +2247,16 @@ export function SystemSettingsForm({
               <tbody className="divide-y divide-border">
                 {changedSettings.map((setting) => (
                   <tr key={setting.key} className="hover:bg-accent/50">
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{setting.key}</td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => openSettingGroup(getSystemSettingsTabForKey(setting.key))}
+                        className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      >
+                        {setting.key}
+                        <span className="ml-2 text-xs font-normal text-muted-foreground">{labels.openSettingGroup}</span>
+                      </button>
+                    </td>
                     <td className="max-w-md break-words px-4 py-3 text-muted-foreground">
                       {formatReviewValue(setting.key, initialValues[setting.key])}
                     </td>
