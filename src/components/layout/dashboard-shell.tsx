@@ -144,7 +144,7 @@ export function DashboardShell({
           mobileNavigationMode={isNavigationMode}
         />
 
-        <main ref={mainRef} className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
+        <main ref={mainRef} data-dashboard-main className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
           <div
             className={cn(
               "min-w-0 max-w-full",

@@ -11,6 +11,7 @@ import {
 } from "@/lib/asset-list-query"
 import { AssetImportPreviewPanel } from "@/components/assets/asset-import-preview-panel"
 import { AssetRegisterTable, type AssetRegisterRow } from "@/components/assets/asset-register-table"
+import { AssetRegisterViewMemory } from "@/components/assets/asset-register-view-memory"
 import { MasterDataHeader } from "@/components/master-data/master-data-layout"
 import { applyAssetCrossScopeFilter } from "@/lib/asset-cross-scope"
 import type { AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
@@ -98,6 +99,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   const t = await getTranslations("asset")
   const tCommon = await getTranslations("common")
   const filters = parseAssetListParams(rawSearchParams)
+  const registerReturnHref = `/${locale}/assets?${buildAssetQueryString(filters)}`
   const where = await applyAssetCrossScopeFilter(buildAssetWhere(filters), filters.crossScope)
   const [assets, total, companies, branches, categories, statuses, conditions, locations, employees, selectedBrand, selectedModel] = await withPerformanceTiming(
     "assets.initial-data",
@@ -274,6 +276,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
         createHref={`/${locale}/assets/new`}
         createLabel={tCommon("create")}
       />
+      <AssetRegisterViewMemory locale={locale} returnHref={registerReturnHref} />
 
       <AssetFilters
         locale={locale}
@@ -396,6 +399,11 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           printSelectedLabels: t("printSelectedLabels"),
           next: tCommon("next"),
           noData: tCommon("noData"),
+          noResultsTitle: t("noResultsTitle"),
+          noResultsDescription: t("noResultsDescription"),
+          noAssetsTitle: t("noAssetsTitle"),
+          noAssetsDescription: t("noAssetsDescription"),
+          clearAllFilters: t("clearAllFilters"),
           of: tCommon("of"),
           page: tCommon("page"),
           previous: tCommon("previous"),

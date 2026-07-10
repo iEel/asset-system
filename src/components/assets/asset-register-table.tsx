@@ -9,12 +9,14 @@ import { toast } from "sonner"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
+import { rememberAssetRegisterScrollPosition } from "@/lib/asset-register-view-memory"
 import type { AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
 import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
 import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
+import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { getAssetStateTone, getDesktopTableOnlyClasses, getMobileCardListClasses, normalizeAssetStateValue } from "@/lib/design-system"
 import {
   assetRegisterColumnOrder,
@@ -105,6 +107,11 @@ type AssetRegisterTableProps = {
     close: string
     printSelectedLabels: string
     noData: string
+    noResultsTitle: string
+    noResultsDescription: string
+    noAssetsTitle: string
+    noAssetsDescription: string
+    clearAllFilters: string
     of: string
     page: string
     previous: string
@@ -362,6 +369,35 @@ export function AssetRegisterTable({
     return appendReturnTo(`/${locale}/assets/new?cloneFrom=${encodeURIComponent(assetId)}`, registerReturnHref)
   }
 
+  const hasActiveFilters = Boolean(
+    filters.search ||
+      filters.companyId ||
+      filters.branchId ||
+      filters.categoryId ||
+      filters.brandId ||
+      filters.modelId ||
+      filters.statusId ||
+      filters.conditionId ||
+      filters.ownershipType ||
+      filters.custodianId ||
+      filters.supplierId ||
+      filters.dataQuality ||
+      filters.crossScope ||
+      filters.pageSize !== 25 ||
+      filters.sort !== "createdAt" ||
+      filters.direction !== "desc"
+  )
+  const clearAllFiltersHref = `/${locale}/assets?page=1&pageSize=25&sort=createdAt&direction=desc`
+  const emptyState = {
+    title: hasActiveFilters ? labels.noResultsTitle : labels.noAssetsTitle,
+    description: hasActiveFilters ? labels.noResultsDescription : labels.noAssetsDescription,
+    ...(hasActiveFilters ? { actionHref: clearAllFiltersHref, actionLabel: labels.clearAllFilters } : {}),
+  }
+
+  function rememberDetailReturnScroll() {
+    rememberAssetRegisterScrollPosition(registerReturnHref)
+  }
+
   function downloadFile(href: string) {
     window.location.href = href
   }
@@ -479,9 +515,7 @@ export function AssetRegisterTable({
 
       <div data-asset-mobile-list className={`${getMobileCardListClasses()} min-w-0 max-w-full p-3`}>
         {assets.length === 0 ? (
-          <div className="rounded-md border border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
-            {labels.noData}
-          </div>
+          <ActionEmptyState {...emptyState} />
         ) : (
           assets.map((asset) => (
             <article data-asset-mobile-card key={asset.id} className="min-w-0 rounded-md border border-border bg-background p-3">
@@ -511,7 +545,7 @@ export function AssetRegisterTable({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <Link href={buildAssetDetailHref(asset.id)} className="min-w-0 break-words text-sm font-semibold text-foreground hover:text-primary">
+                    <Link onClick={rememberDetailReturnScroll} href={buildAssetDetailHref(asset.id)} className="min-w-0 break-words text-sm font-semibold text-foreground hover:text-primary">
                       {asset.assetTag}
                     </Link>
                     <StatusPill label={asset.status.label} value={asset.status.value} />
@@ -537,6 +571,7 @@ export function AssetRegisterTable({
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <Link
                   href={buildAssetDetailHref(asset.id)}
+                  onClick={rememberDetailReturnScroll}
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
                 >
                   <Eye className="h-4 w-4" />
@@ -639,8 +674,8 @@ export function AssetRegisterTable({
           <tbody className="divide-y divide-border">
             {assets.length === 0 ? (
               <tr>
-                <td colSpan={visibleColumnCount + 2} className="h-32 px-4 text-center text-muted-foreground">
-                  {labels.noData}
+                <td colSpan={visibleColumnCount + 2} className="px-4 py-6">
+                  <ActionEmptyState {...emptyState} />
                 </td>
               </tr>
             ) : (
@@ -650,6 +685,7 @@ export function AssetRegisterTable({
                   href={buildAssetDetailHref(asset.id)}
                   label={`${labels.detail}: ${asset.assetTag}`}
                   className="group"
+                  onNavigate={rememberDetailReturnScroll}
                 >
                   <td className="whitespace-nowrap px-4 py-3">
                     <input
@@ -729,6 +765,7 @@ export function AssetRegisterTable({
                     <div className="inline-flex items-center gap-1">
                       <Link
                         href={buildAssetDetailHref(asset.id)}
+                        onClick={rememberDetailReturnScroll}
                         title={labels.detail}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent"
                       >

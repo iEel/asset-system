@@ -6,11 +6,13 @@ export function ClickableTableRow({
   href,
   label,
   className = "",
+  onNavigate,
   children,
 }: {
   href: string
   label: string
   className?: string
+  onNavigate?: () => void
   children: React.ReactNode
 }) {
   const router = useRouter()
@@ -20,6 +22,7 @@ export function ClickableTableRow({
   }
 
   function openDetail() {
+    onNavigate?.()
     router.push(href)
   }
 

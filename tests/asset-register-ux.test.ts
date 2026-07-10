@@ -6,9 +6,11 @@ import {
   assetRegisterColumnPresets,
   normalizeAssetRegisterColumns,
 } from "../src/lib/asset-register-columns.ts"
+import { getPersistedAssetRegisterView } from "../src/lib/asset-register-view-memory.ts"
 
 const assetsPageSource = () => readFileSync("src/app/[locale]/(dashboard)/assets/page.tsx", "utf8")
 const registerTableSource = () => readFileSync("src/components/assets/asset-register-table.tsx", "utf8")
+const registerViewMemorySource = () => readFileSync("src/components/assets/asset-register-view-memory.tsx", "utf8")
 const importPanelSource = () => readFileSync("src/components/assets/asset-import-preview-panel.tsx", "utf8")
 const importExportPageSource = () =>
   readFileSync("src/app/[locale]/(dashboard)/asset-management/import-export/page.tsx", "utf8")
@@ -45,6 +47,38 @@ test("asset register table exposes persisted column presets", () => {
   assert.match(source, /columnPresetOperations/)
   assert.match(source, /columnPresetAccounting/)
   assert.match(source, /columnPresetAudit/)
+})
+
+test("asset register keeps bulk controls conditional and relies on the shared view-memory helpers", () => {
+  const source = registerTableSource()
+
+  assert.match(source, /selectedAssets\.length > 0 \? \(/)
+  assert.match(source, /rememberAssetRegisterScrollPosition/)
+  assert.deepEqual(
+    Array.from(getPersistedAssetRegisterView(new URLSearchParams("page=2&sort=name&direction=asc")).entries()),
+    [["sort", "name"], ["direction", "asc"]]
+  )
+})
+
+test("asset register restores browser-local views and detail-return scroll without replacing explicit URLs", () => {
+  const source = registerViewMemorySource()
+
+  assert.match(source, /window\.localStorage\.setItem\(assetRegisterViewPreferenceKey/)
+  assert.match(source, /current\.size > 0 \|\| restoredSavedViewRef\.current/)
+  assert.match(source, /router\.replace\(`\$\{pathname\}\?\$\{saved\.toString\(\)\}`/)
+  assert.match(source, /window\.sessionStorage\.getItem\(key\)/)
+  assert.match(source, /\[data-dashboard-main\]/)
+})
+
+test("asset register and dashboard state routes reuse the standard state surface", () => {
+  const tableSource = registerTableSource()
+  const accessDeniedSource = readFileSync("src/app/[locale]/(dashboard)/access-denied/page.tsx", "utf8")
+  const errorSource = readFileSync("src/app/[locale]/(dashboard)/error.tsx", "utf8")
+
+  assert.match(tableSource, /ActionEmptyState \{\.\.\.emptyState\}/)
+  assert.match(accessDeniedSource, /<ActionEmptyState[\s\S]*tone="permission"/)
+  assert.match(errorSource, /<ActionEmptyState[\s\S]*tone="error"/)
+  assert.match(errorSource, /unstable_retry/)
 })
 
 test("asset register table starts in the operational column preset before stored preferences load", () => {
@@ -293,6 +327,10 @@ test("asset register UX messages exist in Thai and English", () => {
     "activeFilters",
     "clearAllFilters",
     "tableScrollHint",
+    "noResultsTitle",
+    "noResultsDescription",
+    "noAssetsTitle",
+    "noAssetsDescription",
   ]
 
   for (const locale of ["th", "en"] as const) {
