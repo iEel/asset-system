@@ -2,6 +2,8 @@ import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 
+import { normalizeAssetComponentManagerReturnTo } from "../src/lib/asset-return-navigation.ts"
+
 function readSource(path: string) {
   return existsSync(path) ? readFileSync(path, "utf8") : ""
 }
@@ -47,4 +49,19 @@ test("asset edit form saves back to the sanitized return target", () => {
   assert.match(formSource, /backHref: providedBackHref/)
   assert.match(formSource, /const backHref = providedBackHref \?\? `\/\$\{locale\}\/assets`/)
   assert.match(formSource, /router\.push\(backHref\)/)
+})
+
+test("component manager only returns to the asset detail that opened it", () => {
+  assert.equal(
+    normalizeAssetComponentManagerReturnTo("th", "asset id/1", "/th/assets/asset%20id%2F1?view=custody"),
+    "/th/assets/asset%20id%2F1?view=custody",
+  )
+  assert.equal(
+    normalizeAssetComponentManagerReturnTo("th", "asset id/1", "/th/assets/other?view=custody"),
+    "/th/assets/asset%20id%2F1?view=custody",
+  )
+  assert.equal(
+    normalizeAssetComponentManagerReturnTo("th", "asset id/1", "https://example.com"),
+    "/th/assets/asset%20id%2F1?view=custody",
+  )
 })

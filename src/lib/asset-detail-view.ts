@@ -2,6 +2,19 @@ export const assetDetailViews = ["overview", "custody", "operations", "audit"] a
 
 export type AssetDetailView = (typeof assetDetailViews)[number]
 
+export type AssetDetailSectionId =
+  | "overview"
+  | "specs"
+  | "purchase"
+  | "photos"
+  | "notes"
+  | "ownership"
+  | "components"
+  | "handover"
+  | "movement"
+  | "maintenance"
+  | "audit"
+
 const assetDetailViewAnchor: Record<AssetDetailView, string> = {
   overview: "overview",
   custody: "ownership",
@@ -9,7 +22,7 @@ const assetDetailViewAnchor: Record<AssetDetailView, string> = {
   audit: "audit",
 }
 
-const sectionIdsByAssetDetailView: Record<AssetDetailView, string[]> = {
+const sectionIdsByAssetDetailView: Record<AssetDetailView, AssetDetailSectionId[]> = {
   overview: ["overview", "specs", "purchase", "photos", "notes"],
   custody: ["ownership", "components", "handover"],
   operations: ["movement", "maintenance"],
@@ -23,6 +36,10 @@ export function parseAssetDetailView(value?: string | string[]): AssetDetailView
 
 export function getAssetDetailViewSectionIds(view: AssetDetailView) {
   return sectionIdsByAssetDetailView[view]
+}
+
+export function isAssetDetailSectionVisible(view: AssetDetailView, sectionId: AssetDetailSectionId) {
+  return sectionIdsByAssetDetailView[view].includes(sectionId)
 }
 
 export function buildAssetDetailViewHref(

@@ -14,12 +14,14 @@ test("shared confirmation dialog manages focus and exposes dialog semantics", ()
   assert.match(source, /onKeyDown=\{handleKeyDown\}/)
 })
 
-test("batch review and component removal use the shared dialog instead of browser prompts", () => {
+test("batch review and component removal use accessible dialogs instead of browser prompts", () => {
   const batchSource = readFileSync("src/components/audit/audit-findings-batch-actions.tsx", "utf8")
-  const componentSource = readFileSync("src/components/assets/asset-components-panel.tsx", "utf8")
+  const componentSource = readFileSync("src/components/assets/asset-component-manager.tsx", "utf8")
 
   assert.match(batchSource, /ConfirmTextDialog/)
-  assert.match(componentSource, /ConfirmTextDialog/)
+  assert.match(componentSource, /role="dialog"/)
+  assert.match(componentSource, /aria-modal="true"/)
+  assert.match(componentSource, /FileDropzone file=\{removeEvidence\}/)
   assert.doesNotMatch(batchSource, /window\.prompt/)
   assert.doesNotMatch(componentSource, /window\.prompt/)
 })

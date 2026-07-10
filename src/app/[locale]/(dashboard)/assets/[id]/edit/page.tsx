@@ -4,7 +4,6 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { getAssetFormOptions } from "@/lib/asset-form-options"
 import { normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
 import { AssetForm } from "@/components/assets/asset-form"
-import { AssetComponentsPanel } from "@/components/assets/asset-components-panel"
 
 type EditAssetPageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -33,40 +32,12 @@ export default async function EditAssetPage({ params, searchParams }: EditAssetP
         purchaseDocumentLinks: {
           select: { purchaseDocumentId: true },
         },
-        parentComponents: {
-          orderBy: { installedAt: "desc" },
-          include: {
-            componentAsset: {
-              select: { id: true, assetTag: true, name: true, serialNumber: true },
-            },
-          },
-        },
       },
     }),
     getAssetFormOptions(),
   ])
 
   if (!asset) notFound()
-
-  const installedComponentAssetIds = await prisma.assetComponent.findMany({
-    where: { status: "installed", removedAt: null },
-    select: { componentAssetId: true },
-  })
-  const unavailableComponentIds = new Set([
-    asset.id,
-    ...installedComponentAssetIds.map((component) => component.componentAssetId),
-  ])
-  const availableComponentAssets = await prisma.asset.findMany({
-    where: {
-      isActive: true,
-      id: { notIn: [...unavailableComponentIds] },
-    },
-    select: { id: true, assetTag: true, name: true, serialNumber: true },
-    orderBy: { assetTag: "asc" },
-    take: 300,
-  })
-  const currentComponents = asset.parentComponents.filter((component) => component.status === "installed" && !component.removedAt)
-  const componentHistory = asset.parentComponents.filter((component) => component.status !== "installed" || component.removedAt)
 
   return (
     <div className="space-y-6">
@@ -108,15 +79,6 @@ export default async function EditAssetPage({ params, searchParams }: EditAssetP
         existingAssetPhotos={asset.attachments}
         backHref={returnToHref}
       />
-
-      <div className="mx-auto max-w-6xl">
-        <AssetComponentsPanel
-          assetId={asset.id}
-          currentComponents={currentComponents}
-          componentHistory={componentHistory}
-          availableAssets={availableComponentAssets}
-        />
-      </div>
     </div>
   )
 }

@@ -1046,6 +1046,18 @@
       "operations": "การดำเนินงาน",
       "audit": "ตรวจนับ"
     },
+    "detailMoreActions": "การดำเนินการเพิ่มเติม",
+    "manageComponents": "จัดการส่วนควบ",
+    "componentContinueReview": "ตรวจสอบก่อนบันทึก",
+    "componentReviewTitle": "ตรวจสอบการติดตั้งส่วนควบ",
+    "componentReviewHelp": "โปรดตรวจสอบทรัพย์สินหลัก ส่วนควบ และตำแหน่งก่อนยืนยัน",
+    "componentConfirmInstall": "ยืนยันติดตั้ง",
+    "componentInstalling": "กำลังติดตั้ง",
+    "componentAddAnother": "เพิ่มส่วนควบอีกชิ้น",
+    "componentRemoveTitle": "ถอดส่วนควบ",
+    "componentConfirmRemove": "ยืนยันถอดส่วนควบ",
+    "componentRemoving": "กำลังถอดส่วนควบ",
+    "componentLoadMore": "แสดงประวัติเพิ่มเติม",
     "detailSections": {
       "nav": "นำทางในรายละเอียดทรัพย์สิน",
       "overview": "ภาพรวม",
