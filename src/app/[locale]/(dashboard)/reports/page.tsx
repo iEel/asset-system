@@ -16,6 +16,7 @@ import { ContentPanel } from "@/components/ui/content-panel"
 import { MetricCard } from "@/components/ui/metric-card"
 import { FilterPanel } from "@/components/ui/filter-panel"
 import { ActionButton } from "@/components/ui/action-button"
+import { ReportPresetControls } from "@/components/reports/report-preset-controls"
 import { getActionButtonClasses, getFieldControlClasses } from "@/lib/design-system"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 
@@ -242,7 +243,6 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     new Date(),
     { policy: parseDepreciationPolicySetting(depreciationPolicySetting?.value).policy }
   )
-  const savedFilterUrl = `/${locale}/reports?${exportQuery}`
   const crossScopeCards = [
     {
       key: "all",
@@ -450,32 +450,22 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
         <div className="mb-4">
-          <h2 className="text-base font-semibold text-foreground">{t("permissionTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("permissionHelp")}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <PermissionPill label={t("exportAssetOverview")} allowed={canReportExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
-          <PermissionPill label={t("exportAssetRegister")} allowed={canAssetExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
-          <PermissionPill label={t("exportMaintenance")} allowed={canMaintenanceExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
-          <PermissionPill label={t("exportAuditFindings")} allowed={canAuditExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
-          <PermissionPill label={t("exportDisposal")} allowed={canDisposalExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
-          <PermissionPill label={t("exportRoleAudit")} allowed={canRoleExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
-        </div>
-      </section>
-
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-        <div className="mb-4">
           <h2 className="text-base font-semibold text-foreground">{t("savedReportsTitle")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("savedReportsHelp")}</p>
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[360px_1fr]">
-          <div className="rounded-md border border-border bg-background p-4">
-            <div className="text-sm font-semibold text-foreground">{t("currentFilterPreset")}</div>
-            <p className="mt-1 text-sm text-muted-foreground">{t("currentFilterPresetHelp")}</p>
-            <Link href={savedFilterUrl} className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-9 sm:min-h-0 sm:w-auto">
-              {t("openSavedFilter")}
-            </Link>
-          </div>
+          <ReportPresetControls
+            locale={locale}
+            currentQuery={exportQuery}
+            labels={{
+              presetName: t("presetName"),
+              saveCurrentPreset: t("saveCurrentPreset"),
+              savedPresetsEmpty: t("savedPresetsEmpty"),
+              savedPresetsDeviceOnly: t("savedPresetsDeviceOnly"),
+              deletePreset: t("deletePreset"),
+              presetNameRequired: t("presetNameRequired"),
+            }}
+          />
           <div className="grid gap-3 md:grid-cols-2">
             {recurringReports.map((report) => (
               <div key={report.name} className="rounded-md border border-border bg-background p-4">
@@ -733,6 +723,19 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           ))}
         </div>
       </section>
+
+      <details className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <summary className="cursor-pointer text-base font-semibold text-foreground">{t("permissionTitle")}</summary>
+        <p className="mt-2 text-sm text-muted-foreground">{t("permissionHelp")}</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <PermissionPill label={t("exportAssetOverview")} allowed={canReportExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
+          <PermissionPill label={t("exportAssetRegister")} allowed={canAssetExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
+          <PermissionPill label={t("exportMaintenance")} allowed={canMaintenanceExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
+          <PermissionPill label={t("exportAuditFindings")} allowed={canAuditExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
+          <PermissionPill label={t("exportDisposal")} allowed={canDisposalExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
+          <PermissionPill label={t("exportRoleAudit")} allowed={canRoleExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
+        </div>
+      </details>
     </div>
   )
 }
