@@ -41,6 +41,14 @@
     "imageOptimizing": "Optimizing image...",
     "imageOptimizationHint": "Large photos are compressed with a sharpness guard and never reduced below a 1,800px long edge."
   },
+  "masterData": {
+    "workspaceNavigation": "Master data sections",
+    "companies": "Companies",
+    "branches": "Branches",
+    "locations": "Locations",
+    "employees": "Employees",
+    "suppliers": "Suppliers"
+  },
   "globalSearch": {
     "label": "Search globally",
     "placeholder": "Search assets, employees, suppliers, repairs, audits...",

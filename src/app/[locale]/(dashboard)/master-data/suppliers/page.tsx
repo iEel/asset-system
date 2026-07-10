@@ -36,6 +36,7 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
 
   const t = await getTranslations("supplier")
   const tCommon = await getTranslations("common")
+  const tWorkspace = await getTranslations("masterData")
   const listState = parseSupplierListParams(rawSearchParams)
   const where = buildSupplierWhere(listState)
 
@@ -79,6 +80,18 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
         subtitle={t("subtitle")}
         createHref={appendMasterDataReturnTo(`/${locale}/master-data/suppliers/new`, supplierReturnHref)}
         createLabel={tCommon("create")}
+        workspace={{
+          locale,
+          activeId: "suppliers",
+          labels: {
+            companies: tWorkspace("companies"),
+            branches: tWorkspace("branches"),
+            locations: tWorkspace("locations"),
+            employees: tWorkspace("employees"),
+            suppliers: tWorkspace("suppliers"),
+          },
+          navigationLabel: tWorkspace("workspaceNavigation"),
+        }}
       />
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
