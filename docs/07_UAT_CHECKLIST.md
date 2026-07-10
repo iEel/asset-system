@@ -173,6 +173,17 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [x] At 1280x800 and 1440x900, the desktop sidebar measured 256px and aligned with the topbar/main; when collapsed it measured 64px, the topbar/main shifted correctly, the nested Asset menu expanded, and the body did not overflow.
 - [x] Visual theme verification: Navy `#0F172A` sidebar, white topbar, blue active state, and readable text. Screenshots are retained as ignored evidence under `.superpowers/sdd/screenshots/task-3`.
 
+## Adaptive UI Release Gate
+
+- [x] Task 6 focused command passed 94/94 tests, including dashboard shell/layout, asset query/return navigation, and all planned Audit Scan coverage.
+- [x] Repository gates passed on 2026-07-10: lint exited 0 with 0 errors and 256 bundled skill-tool warnings; full tests passed 656/656; production build completed Prisma 7.8.0 generation, Next.js 16.2.4 compilation/TypeScript, and 54/54 static pages; `npm run verify` completed; standalone `npx tsc --noEmit` completed; the pre-documentation `git diff --check` and `git status --short` were clean.
+- [x] Raw palette scan completed. Adaptive Task 2-5 components use semantic tokens; expected raw values remain in globals/design/tests/docs. Two inherited Asset Detail lines still pass raw success/action colors to `StatusPill`; that file was not changed in Tasks 2-5 and needs a separate scoped cleanup/acceptance decision.
+- [x] App Shell browser evidence covers 375/768/1280/1440; Asset Register covers 375/390/414/768/1280/1440 plus filtered-empty and disclosure; Audit Scan layout covers 375/390/414/768/1280/1440 plus selected-action and safe-area states.
+- [ ] Validate Android/iPhone camera permission, torch/zoom, offline-photo retry, keyboard, rotation, and safe-area behavior on real devices. The in-app browser did not receive a video stream, so camera/torch/zoom are not passed.
+- [ ] Validate Asset Register actions and empty states with a permission-limited role.
+- [ ] Review the previously reported 13 dependency vulnerabilities (1 low, 8 moderate, 4 high) in a separate security/dependency change; do not force dependency updates during UI UAT.
+- [ ] Decide whether to accept or separately replace the inherited raw `StatusPill` colors in Asset Detail. The known low-priority stale `scanFeedback` sequence also remains documented and unfixed.
+
 ## Sign-Off
 
 | Role | Tester | Date | Result | Notes |

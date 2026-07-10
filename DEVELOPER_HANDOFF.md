@@ -141,6 +141,15 @@ npm run build
 - Runtime QA caught and corrected a missing canonical status/condition projection. Status and condition tones now use explicit, exhaustively tested mappings. Reviewer approval followed 651/651 full tests, 35/35 focused tests, scoped ESLint, `tsc --noEmit`, and a production build.
 - Permission-limited role coverage remains manual because browser QA used `system_admin`. Loading/navigation state verification also remains manual where it was not directly observed.
 
+## Adaptive UI Final Quality Gate
+
+- Task 6 verification completed on 2026-07-10 in the linked worktree on `codex/modern-enterprise-adaptive-ui`. The focused Task 2-5 command passed 94/94 tests, including dashboard shell/layout, Asset Register query/return navigation, and Audit Scan field/offline/mobile/pending/result/component coverage. `npm run lint` exited 0 with 0 errors and 256 warnings from bundled `.agents`/`.gemini` skill tooling; `npm test` passed 656/656; `npm run build` generated Prisma Client 7.8.0, compiled with Next.js 16.2.4, completed TypeScript, and generated 54/54 static pages; `npm run verify` repeated lint, 656/656 tests, and the production build successfully; standalone `npx tsc --noEmit` exited 0; the pre-documentation `git diff --check` and `git status --short` were clean.
+- The raw palette command found no literals in the Task 2-5 adaptive component files. Expected definitions/references remain in `src/app/globals.css`, `DESIGN.md`, tests, and documentation. The repository-wide command did find two pre-existing lines in `src/app/[locale]/(dashboard)/assets/[id]/page.tsx` (lines 1172 and 1201 at gate time), each passing raw `#16A34A` / `#2563EB` values to `StatusPill`. Asset Detail was not changed by Tasks 2-5, so this inherited palette debt was recorded for a separate scoped cleanup rather than expanded into the adaptive UI release.
+- Browser evidence reviewed: App Shell at 375/768/1280/1440; Asset Register at 375/390/414/768/1280/1440 including filtered-empty and disclosure states; Audit Scan layout at 375/390/414/768/1280/1440 including selected-action and safe-area states. The in-app browser created one scanner subtree but did not receive a camera video stream, so camera, torch, and zoom are not passed by that evidence.
+- Real-device Android/iPhone camera permission, torch/zoom, offline-photo retry, keyboard, rotation, and safe-area behavior remain manual. Asset Register permission-limited role coverage also remains manual. Known low-priority inherited behavior remains documented: `scanFeedback` can stay visible after an out-of-scope lookup followed by an in-round pending selection.
+- `package.json` and `package-lock.json` matched `HEAD`, and `npm ls --depth=0` exited 0; no dependency or lockfile update was made. The earlier install report of 13 dependency vulnerabilities (1 low, 8 moderate, 4 high) remains a separate dependency security review item; do not force-fix it inside this UI rollout.
+- This release-quality pass changes no API, schema, RBAC, SOD, audit workflow, camera runtime, or print behavior.
+
 ## Current High-Level Modules
 
 - Dashboard and Work Center
