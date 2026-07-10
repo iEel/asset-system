@@ -12,7 +12,10 @@ export function normalizeAssetReturnTo(locale: string, value: ReturnToParam) {
   try {
     const url = new URL(raw, "http://asset.local")
     if (url.origin !== "http://asset.local") return fallback
-    if (!safeTargets.has(url.pathname)) return fallback
+    const assetDetailPrefix = `${fallback}/`
+    const assetDetailId = url.pathname.startsWith(assetDetailPrefix) ? url.pathname.slice(assetDetailPrefix.length) : ""
+    const isAssetDetailPath = assetDetailId.length > 0 && !assetDetailId.includes("/")
+    if (!safeTargets.has(url.pathname) && !isAssetDetailPath) return fallback
     return `${url.pathname}${url.search}${url.hash}`
   } catch {
     return fallback

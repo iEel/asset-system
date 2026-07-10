@@ -5,6 +5,7 @@ type InstalledInLink = {
   id: string
   componentRole: string
   slotNo?: string | null
+  parentHref: string
   parentAsset: {
     id: string
     assetTag: string
@@ -13,15 +14,15 @@ type InstalledInLink = {
 }
 
 export function AssetComponentContextBanner({
-  locale,
   installedInLinks,
   labels,
 }: {
-  locale: string
   installedInLinks: InstalledInLink[]
   labels: {
     title: string
     openParent: string
+    roleLabel: string
+    slotLabel: string
   }
 }) {
   if (installedInLinks.length === 0) return null
@@ -39,14 +40,15 @@ export function AssetComponentContextBanner({
               {installedInLinks.map((link) => (
                 <Link
                   key={link.id}
-                  href={`/${locale}/assets/${link.parentAsset.id}`}
+                  href={link.parentHref}
                   className="group inline-flex min-h-11 items-center gap-2 rounded-md py-1 text-sm text-foreground outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
                   <span className="min-w-0">
                     <span className="block break-words font-mono font-semibold">{link.parentAsset.assetTag}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {link.parentAsset.name} · {link.componentRole}
-                      {link.slotNo ? ` · ${link.slotNo}` : ""}
+                    <span className="block truncate text-xs text-muted-foreground">{link.parentAsset.name}</span>
+                    <span className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                      <span>{labels.roleLabel}: {link.componentRole}</span>
+                      {link.slotNo ? <span>{labels.slotLabel}: {link.slotNo}</span> : null}
                     </span>
                   </span>
                   <span className="ml-auto hidden shrink-0 items-center gap-1 text-xs font-medium text-primary sm:inline-flex">

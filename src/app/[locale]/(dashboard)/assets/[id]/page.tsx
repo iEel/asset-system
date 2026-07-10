@@ -54,7 +54,7 @@ import { hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset
 import { canCorrectAssetStatus } from "@/lib/asset-lifecycle-exception-policy"
 import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
 import { appendReturnTo, normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
-import { isAssetDetailSectionVisible, parseAssetDetailView } from "@/lib/asset-detail-view"
+import { buildAssetDetailViewHref, isAssetDetailSectionVisible, parseAssetDetailView } from "@/lib/asset-detail-view"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import {
   compactMovementDetails,
@@ -246,6 +246,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
 
   if (!asset) notFound()
 
+  const currentAssetDetailHref = buildAssetDetailViewHref(locale, asset.id, assetDetailView, returnToHref)
+
   const assetStatusHelp = {
     title: t("statusHelpTitle"),
     description: t("statusHelpDescription"),
@@ -371,10 +373,13 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   }))
   const installedInLinksForPanel = asset.installedInLinks.map((component) => ({
     ...component,
+    parentHref: appendReturnTo(`/${locale}/assets/${component.parentAsset.id}`, currentAssetDetailHref),
     installedByLabel: component.createdBy ? componentUserLabels.get(component.createdBy) ?? component.createdBy : null,
     removedByLabel: component.updatedBy ? componentUserLabels.get(component.updatedBy) ?? component.updatedBy : null,
     attachments: componentAttachmentsByReference.get(component.id) ?? [],
   }))
+  const componentRelationshipCount = currentComponentsForPanel.length + installedInLinksForPanel.length
+  const componentMissingSerialCount = currentComponentsForPanel.filter((component) => !component.componentAsset.serialNumber).length
   const purchaseDocumentAttachmentsByReferenceId = new Map<string, typeof purchaseDocumentAttachments>()
   for (const attachment of purchaseDocumentAttachments) {
     purchaseDocumentAttachmentsByReferenceId.set(attachment.referenceId, [
@@ -855,11 +860,12 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         </div>
       </div>
       <AssetComponentContextBanner
-        locale={locale}
         installedInLinks={installedInLinksForPanel}
         labels={{
           title: t("componentContextTitle"),
           openParent: t("componentContextOpenParent"),
+          roleLabel: t("componentRole"),
+          slotLabel: t("slotNo"),
         }}
       />
       {mobileActions.length > 0 ? <MobileActionBar actions={mobileActions} /> : null}
@@ -876,6 +882,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           operations: t("detailViews.operations"),
           audit: t("detailViews.audit"),
         }}
+        indicators={{ custody: { count: componentRelationshipCount, hasWarning: componentMissingSerialCount > 0 } }}
+        warningLabel={t("componentMissingSerial")}
       />
 
       {assetDetailView === "overview" ? (
@@ -1072,6 +1080,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                   title: t("assetComponents"),
                   help: t("componentSummaryHelp"),
                   installedIn: t("installedInParent"),
+                  roleLabel: t("componentRole"),
+                  slotLabel: t("slotNo"),
                   current: t("currentComponents"),
                   noCurrent: t("noCurrentComponents"),
                   missingSerial: t("componentMissingSerial"),
@@ -1094,7 +1104,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               currentMetaValue={`${asset.category.code} - ${asset.category.name}`}
               parentLinks={installedInLinksForPanel.map((link) => ({
                 id: link.id,
-                href: `/${locale}/assets/${link.parentAsset.id}`,
+                href: link.parentHref,
                 label: `${link.parentAsset.assetTag} - ${link.parentAsset.name}`,
                 role: link.componentRole,
               }))}

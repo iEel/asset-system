@@ -53,6 +53,34 @@ test("asset detail keeps a persistent context for assets installed under a paren
   assert.match(contextBannerSource, /ArrowRight/)
 })
 
+test("asset detail marks the custody tab with component count and missing serial warning", () => {
+  const source = assetDetailSource()
+  const tabsSource = readFileSync("src/components/assets/asset-detail-tabs.tsx", "utf8")
+
+  assert.match(source, /const componentRelationshipCount = currentComponentsForPanel\.length \+ installedInLinksForPanel\.length/)
+  assert.match(source, /const componentMissingSerialCount = currentComponentsForPanel\.filter\(\(component\) => !component\.componentAsset\.serialNumber\)\.length/)
+  assert.match(source, /indicators=\{\{ custody: \{ count: componentRelationshipCount, hasWarning: componentMissingSerialCount > 0 \} \}\}/)
+  assert.match(tabsSource, /AlertTriangle/)
+  assert.match(tabsSource, /indicator\?\.count/)
+  assert.match(tabsSource, /warningLabel/)
+})
+
+test("asset component parent links preserve context and label role metadata", () => {
+  const source = assetDetailSource()
+  const bannerSource = readFileSync("src/components/assets/asset-component-context-banner.tsx", "utf8")
+  const summarySource = readFileSync("src/components/assets/asset-components-summary.tsx", "utf8")
+
+  assert.match(source, /const currentAssetDetailHref = buildAssetDetailViewHref\(locale, asset\.id, assetDetailView, returnToHref\)/)
+  assert.match(source, /parentHref: appendReturnTo\(`\/\$\{locale\}\/assets\/\$\{component\.parentAsset\.id\}`, currentAssetDetailHref\)/)
+  assert.match(source, /href: link\.parentHref/)
+  assert.match(bannerSource, /parentHref: string/)
+  assert.match(bannerSource, /roleLabel: string/)
+  assert.match(bannerSource, /slotLabel: string/)
+  assert.match(summarySource, /parentHref: string/)
+  assert.match(summarySource, /roleLabel: string/)
+  assert.match(summarySource, /slotLabel: string/)
+})
+
 test("asset edit does not mount another component installation editor", () => {
   const source = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/edit/page.tsx", "utf8")
 
