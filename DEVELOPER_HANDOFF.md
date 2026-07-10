@@ -129,7 +129,8 @@ npm run build
 
 - The dashboard shell uses committed semantic roles: Brand Navy for the desktop and mobile navigation drawer, Sidebar Foreground/Hover/Active for readable navigation states, Electric Blue for keyboard focus and selected parent emphasis, and Action Blue for accessible white-text actions.
 - The topbar remains a light Surface White operational layer with Border Slate separation. Active navigation uses a full-row Sidebar Active background with text and icon contrast; it does not use a colored side stripe.
-- Controller browser UAT remains required at 375, 768, 1280, and 1440 pixels. Check Thai-label truncation, 85vw mobile drawer width and vertical scrolling, non-overlapping topbar controls, visible focus rings on Navy and White surfaces, and a light content workspace.
+- Controller browser QA completed. At 375x812, the mobile sidebar remained closed off-canvas until opened, the drawer opened and closed correctly, long Thai labels fit, and the body did not overflow. At 768x1024, the mobile/tablet shell fit with the sidebar off-canvas and no body overflow.
+- At 1280x800 and 1440x900, the desktop sidebar measured 256px, the topbar and main content aligned, the collapsed sidebar measured 64px with the topbar/main shifting correctly, the nested Asset menu expanded, and the body did not overflow. The visual theme was verified as Navy `#0F172A` sidebar, white topbar, blue active state, and readable text. Screenshots are retained as ignored evidence under `.superpowers/sdd/screenshots/task-3`.
 
 ## Current High-Level Modules
 

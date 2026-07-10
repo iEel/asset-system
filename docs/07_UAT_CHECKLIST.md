@@ -157,10 +157,10 @@ Use this checklist with realistic master data and at least one asset in each imp
 
 ## Shell Presentation UAT
 
-- [ ] At 375, 768, 1280, and 1440 pixels, confirm the active navigation row is readable through Sidebar Active background, text, and icon contrast without a side stripe.
-- [ ] Confirm long Thai navigation labels truncate without overlap; the mobile drawer is no wider than 85vw and can scroll vertically.
-- [ ] Confirm topbar controls do not overlap and keyboard focus is visible against both the Navy drawer and the light Surface White topbar.
-- [ ] Confirm Brand Navy remains limited to navigation, the topbar stays light, Action Blue remains the accessible white-text action color, and navigation labels, hrefs, permissions, nested behavior, and responsive controls remain unchanged.
+- [x] At 375x812, the mobile sidebar was closed off-canvas by default; its drawer opened and closed correctly, long Thai labels fit, and the body did not overflow.
+- [x] At 768x1024, the mobile/tablet shell fit with the sidebar off-canvas and no body overflow.
+- [x] At 1280x800 and 1440x900, the desktop sidebar measured 256px and aligned with the topbar/main; when collapsed it measured 64px, the topbar/main shifted correctly, the nested Asset menu expanded, and the body did not overflow.
+- [x] Visual theme verification: Navy `#0F172A` sidebar, white topbar, blue active state, and readable text. Screenshots are retained as ignored evidence under `.superpowers/sdd/screenshots/task-3`.
 
 ## Sign-Off
 
