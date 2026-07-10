@@ -2,7 +2,9 @@
 name: Asset Management System
 description: Enterprise asset operations UI for Thai corporate asset registration, custody, audit, maintenance, disposal, reporting, and administration.
 colors:
-  corporate-navy: "#1E3A5F"
+  brand-navy: "#0F172A"
+  brand-accent: "#3B82F6"
+  action-blue: "#2563EB"
   primary-slate-ink: "#0F172A"
   soft-system-background: "#F8FAFC"
   surface: "#FFFFFF"
@@ -59,7 +61,7 @@ spacing:
   touch: "44px"
 components:
   button-primary:
-    backgroundColor: "{colors.corporate-navy}"
+    backgroundColor: "{colors.action-blue}"
     textColor: "{colors.surface}"
     rounded: "{rounded.md}"
     padding: "0 16px"
@@ -110,11 +112,13 @@ Use the existing design-system helpers, Tailwind tokens, RBAC-aware layouts, loc
 
 ## 2. Colors
 
-The palette is a restrained corporate system: Corporate Navy anchors primary actions and active navigation, Soft System Background keeps long work sessions calm, and semantic colors communicate workflow status.
+The palette is a restrained corporate system: Brand Navy anchors the desktop sidebar and identity, Action Blue provides accessible primary actions, Electric Blue marks focus and emphasis, Soft System Background keeps long work sessions calm, and semantic colors communicate workflow status.
 
 ### Primary
 
-- **Corporate Navy**: The primary brand and action color. Use for primary buttons, active navigation, focus rings, important links, selected states, and system identity marks. Its use should remain selective so it keeps authority.
+- **Brand Navy**: The primary identity color. Use for the desktop sidebar and system identity marks.
+- **Action Blue**: The accessible fill for normal white-text primary actions.
+- **Electric Blue**: The accent for focus, icons, links, and selected emphasis. Do not use it as the normal white-text button fill.
 
 ### Secondary
 
@@ -123,20 +127,25 @@ The palette is a restrained corporate system: Corporate Navy anchors primary act
 
 ### Tertiary
 
-- **Info Blue**: Informational status, planned/open workflow states, references, and neutral system links when Corporate Navy would overstate priority.
+- **Info Blue**: Informational status, planned/open workflow states, references, and neutral system links when Brand Navy would overstate priority.
 - **Success Green**, **Warning Amber**, and **Danger Red**: Workflow state colors for completion, review/exception states, and destructive or failed conditions. These colors must be paired with text labels and, where useful, icons or shapes.
 
 ### Neutral
 
 - **Soft System Background**: The app canvas for dashboard and operational pages.
-- **Surface White**: Panels, forms, popovers, tables, topbar, sidebar, and modals.
+- **Surface White**: Panels, forms, popovers, tables, topbar, and modals.
 - **Primary Slate Ink**: Main text and data values.
 - **Muted Surface**: Subtle grouped backgrounds, hover states, inactive badges, and empty-state panels.
 - **Border Slate**: Dividers, table shells, input borders, panel boundaries, and structural separation.
 
 ### Named Rules
 
-**The Corporate Accent Rule.** Corporate Navy is for primary action, current location, focus, and selected state. Do not use it as decorative fill across inactive cards or marketing-style sections.
+**The Brand and Action Rule.** Brand Navy is for the desktop sidebar and identity. Action Blue is for normal white-text primary actions. Electric Blue is for focus, icons, links, and selected emphasis. Do not use these colors as decorative fill across inactive cards or marketing-style sections.
+
+Brand Navy #0F172A anchors the desktop sidebar and identity.
+Action Blue #2563EB is the accessible fill for normal white-text primary actions.
+Electric Blue #3B82F6 is the accent for focus, icons, links, and selected emphasis.
+The topbar and working canvas remain light to preserve operational readability.
 
 **The Status With Evidence Rule.** Status cues must never rely on color alone. Pair semantic color with readable labels, consistent tone mapping, and visible workflow context.
 
@@ -186,8 +195,8 @@ Components should feel consistent, restrained, and task-first. The system alread
 ### Buttons
 
 - **Shape:** Gently curved rectangles (8px radius).
-- **Primary:** Corporate Navy background with white text, medium weight, 40px desktop height, and 44px minimum touch height on mobile.
-- **Hover / Focus:** Primary hover darkens through opacity; focus uses a visible Corporate Navy ring and offset. Disabled states reduce opacity and block pointer actions.
+- **Primary:** Action Blue background with white text, medium weight, 40px desktop height, and 44px minimum touch height on mobile.
+- **Hover / Focus:** Primary hover darkens through opacity; focus uses a visible Electric Blue ring and offset. Disabled states reduce opacity and block pointer actions.
 - **Secondary / Ghost / Tertiary:** Secondary buttons use Surface White, Border Slate, and Primary Slate Ink. Ghost buttons use no border at rest and a Muted Surface hover. Danger buttons use Danger Red only for destructive actions.
 
 ### Chips
@@ -206,12 +215,12 @@ Components should feel consistent, restrained, and task-first. The system alread
 ### Inputs / Fields
 
 - **Style:** 8px radius, Border Slate stroke, Soft System Background fill, 40px desktop height, and 44px mobile minimum touch height.
-- **Focus:** Border shifts to Corporate Navy with a 1px ring. Focus must be visible on keyboard navigation.
+- **Focus:** Border shifts to Electric Blue with a 1px ring. Focus must be visible on keyboard navigation.
 - **Error / Disabled:** Errors use Danger Red with text explanation. Disabled fields use Muted Surface and Muted Slate, and must still communicate why interaction is unavailable when context matters.
 
 ### Navigation
 
-The app uses a fixed dashboard shell with a bordered white sidebar and topbar. Navigation items use Lucide icons, medium-weight labels, Muted Surface hover states, and Corporate Navy for active identity. Mobile navigation uses a slide-in sidebar with 44px touch targets and an overlay.
+The app uses a fixed dashboard shell with a Brand Navy sidebar and light topbar. Navigation items use Lucide icons, medium-weight labels, Sidebar Hover and Sidebar Active states, and Sidebar Foreground for readable labels. The topbar and working canvas remain light to preserve operational readability. Mobile navigation uses a slide-in sidebar with 44px touch targets and an overlay.
 
 ### Data Tables
 
@@ -226,7 +235,7 @@ Scanner and field workflows need touch-safe controls, square or contained camera
 ### Do:
 
 - **Do** preserve existing tokens and design-system helpers such as panel, action button, field control, table shell, mobile card list, empty state, and touch icon button classes.
-- **Do** use Corporate Navy for primary actions, active navigation, selected state, and focus rings.
+- **Do** use Brand Navy for sidebar identity, Action Blue for normal white-text primary actions, and Electric Blue for focus, icons, links, and selected emphasis.
 - **Do** use borders and tonal layers as the default grouping mechanism, with `shadow-sm` only for important panels, cards, modals, and grouped sections.
 - **Do** keep tables and forms dense enough for enterprise scanning, but not cramped.
 - **Do** pair status colors with readable labels, icons, shapes, or explicit workflow context so status does not rely on color alone.
