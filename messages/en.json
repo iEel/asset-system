@@ -2685,6 +2685,12 @@
       "approved": "Approved",
       "disposed": "Disposed",
       "rejected": "Rejected"
+    },
+    "stages": {
+      "pending_approval": "Pending approval",
+      "awaiting_execution": "Approved, awaiting execution",
+      "complete": "Execution complete",
+      "rejected": "Request rejected"
     }
   },
   "approvalInboxPage": {

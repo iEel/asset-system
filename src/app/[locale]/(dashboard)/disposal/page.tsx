@@ -9,12 +9,14 @@ import { buildDisposalQueryString, buildDisposalWhere, parseDisposalListParams }
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { DisposalDecisionButton } from "@/components/disposal/disposal-decision-button"
+import { DisposalExecutionButton } from "@/components/disposal/disposal-execution-button"
 import { DisposalRequestForm } from "@/components/disposal/disposal-request-form"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { getDisposalNextAction, getDisposalStage, type DisposalStage } from "@/lib/disposal-stage"
 
 type DisposalPageProps = {
   params: Promise<{ locale: string }>
@@ -27,6 +29,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
   const user = await requirePagePermission(locale, "disposal", "view")
   const canCreate = hasPermission(user, "disposal", "create")
   const canApprove = hasPermission(user, "disposal", "approve")
+  const canEdit = hasPermission(user, "disposal", "edit")
   const canExport = hasPermission(user, "disposal", "export")
   const t = await getTranslations("disposalPage")
   const tCommon = await getTranslations("common")
@@ -45,9 +48,16 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
-    canCreate || canApprove ? getDisposalOptions() : Promise.resolve(null),
+    canCreate || canApprove || canEdit ? getDisposalOptions() : Promise.resolve(null),
   ])
   const statuses = options?.statuses ?? []
+  const employees = options?.employees ?? []
+  const stageLabels = {
+    pending_approval: t("stages.pending_approval"),
+    awaiting_execution: t("stages.awaiting_execution"),
+    complete: t("stages.complete"),
+    rejected: t("stages.rejected"),
+  }
 
   return (
     <div className="space-y-6">
@@ -169,8 +179,11 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
               actionLabel={t("clearFilters")}
             />
           ) : (
-            requests.map((request) => (
-              <article key={request.id} className="min-w-0 rounded-md border border-border bg-background p-3">
+            requests.map((request) => {
+              const stage = getDisposalStage(request.requestStatus)
+
+              return (
+                <article key={request.id} className="min-w-0 rounded-md border border-border bg-background p-3">
                 <div className="flex min-w-0 flex-col gap-2">
                   <Link href={appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)} className="break-words text-sm font-semibold text-foreground hover:text-primary">
                     {request.disposalNo}
@@ -188,6 +201,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                     disposed: t("statuses.disposed"),
                     rejected: t("statuses.rejected"),
                   }} />
+                  <DisposalStageBadge stage={stage} label={stageLabels[stage]} />
                   <StatusBadge label={t(`types.${request.disposalType}`)} tone="muted" size="xs" />
                 </div>
                 <div className="mt-3 grid gap-2 text-sm">
@@ -206,25 +220,19 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                   <MobileDisposalField label={t("requestDate")} value={formatDateTime(request.requestDate)} />
                 </div>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                  <Link
+                  <DisposalNextAction
+                    request={request}
                     href={appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)}
-                    className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
-                  >
-                    {tCommon("view")}
-                  </Link>
-                  {canApprove && request.requestStatus === "pending" && statuses.length > 0 ? (
-                    <DisposalDecisionButton
-                      requestId={request.id}
-                      disposalNo={request.disposalNo}
-                      disposalType={request.disposalType}
-                      statuses={statuses}
-                      defaultSaleValue={request.saleValue != null ? String(request.saleValue) : undefined}
-                      defaultSalvageValue={request.salvageValue != null ? String(request.salvageValue) : undefined}
-                    />
-                  ) : null}
+                    canApprove={canApprove}
+                    canExecute={canEdit}
+                    statuses={statuses}
+                    employees={employees}
+                    viewLabel={tCommon("view")}
+                  />
                 </div>
               </article>
-            ))
+              )
+            })
           )}
         </div>
         <div className={`${getDesktopTableOnlyClasses()} overflow-x-auto`}>
@@ -240,13 +248,13 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                 <ColumnHeader>{t("value")}</ColumnHeader>
                 <ColumnHeader>{tCommon("status")}</ColumnHeader>
                 <ColumnHeader>{t("requestDate")}</ColumnHeader>
-                {canApprove ? <ColumnHeader>{tCommon("actions")}</ColumnHeader> : null}
+                {canApprove || canEdit ? <ColumnHeader>{tCommon("actions")}</ColumnHeader> : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {requests.length === 0 ? (
                 <tr>
-                  <td colSpan={canApprove ? 10 : 9} className="px-4 py-6">
+                  <td colSpan={canApprove || canEdit ? 10 : 9} className="px-4 py-6">
                     <ActionEmptyState
                       icon={<Trash2 className="h-6 w-6" />}
                       title={t("emptyTitle")}
@@ -257,8 +265,11 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                   </td>
                 </tr>
               ) : (
-                requests.map((request) => (
-                  <ClickableTableRow
+                requests.map((request) => {
+                  const stage = getDisposalStage(request.requestStatus)
+
+                  return (
+                    <ClickableTableRow
                     key={request.id}
                     href={appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)}
                     label={`${tCommon("view")}: ${request.disposalNo}`}
@@ -294,26 +305,27 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                         disposed: t("statuses.disposed"),
                         rejected: t("statuses.rejected"),
                       }} />
+                      <div className="mt-1">
+                        <DisposalStageBadge stage={stage} label={stageLabels[stage]} />
+                      </div>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(request.requestDate)}</td>
-                    {canApprove ? (
+                    {canApprove || canEdit ? (
                       <td className="whitespace-nowrap px-4 py-3">
-                        {request.requestStatus === "pending" && statuses.length > 0 ? (
-                          <DisposalDecisionButton
-                            requestId={request.id}
-                            disposalNo={request.disposalNo}
-                            disposalType={request.disposalType}
-                            statuses={statuses}
-                            defaultSaleValue={request.saleValue != null ? String(request.saleValue) : undefined}
-                            defaultSalvageValue={request.salvageValue != null ? String(request.salvageValue) : undefined}
-                          />
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
+                        <DisposalNextAction
+                          request={request}
+                          href={appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)}
+                          canApprove={canApprove}
+                          canExecute={canEdit}
+                          statuses={statuses}
+                          employees={employees}
+                          viewLabel={tCommon("view")}
+                        />
                       </td>
                     ) : null}
                   </ClickableTableRow>
-                ))
+                  )
+                })
               )}
             </tbody>
           </table>
@@ -331,6 +343,79 @@ function DisposalStatusBadge({
   labels: { pending: string; approved: string; disposed: string; rejected: string }
 }) {
   return <StatusBadge label={labels[status as keyof typeof labels] ?? status} status={status} size="xs" />
+}
+
+function DisposalStageBadge({ stage, label }: { stage: DisposalStage; label: string }) {
+  const tone = stage === "complete" ? "success" : stage === "rejected" ? "danger" : stage === "awaiting_execution" ? "info" : "warning"
+
+  return <StatusBadge label={label} tone={tone} size="xs" />
+}
+
+type DisposalActionRequest = {
+  id: string
+  disposalNo: string
+  disposalType: string
+  requestStatus: string
+  saleValue: { toString(): string } | number | null
+  salvageValue: { toString(): string } | number | null
+}
+
+type DisposalStatusOption = { id: string; label: string; name: string }
+type DisposalEmployeeOption = { id: string; label: string }
+
+function DisposalNextAction({
+  request,
+  href,
+  canApprove,
+  canExecute,
+  statuses,
+  employees,
+  viewLabel,
+}: {
+  request: DisposalActionRequest
+  href: string
+  canApprove: boolean
+  canExecute: boolean
+  statuses: DisposalStatusOption[]
+  employees: DisposalEmployeeOption[]
+  viewLabel: string
+}) {
+  const nextAction = getDisposalNextAction(request.requestStatus, { canApprove, canExecute })
+  const defaultSaleValue = request.saleValue != null ? String(request.saleValue) : undefined
+  const defaultSalvageValue = request.salvageValue != null ? String(request.salvageValue) : undefined
+
+  if (nextAction === "review" && statuses.length > 0) {
+    return (
+      <DisposalDecisionButton
+        requestId={request.id}
+        disposalNo={request.disposalNo}
+        disposalType={request.disposalType}
+        statuses={statuses}
+        defaultSaleValue={defaultSaleValue}
+        defaultSalvageValue={defaultSalvageValue}
+      />
+    )
+  }
+
+  if (nextAction === "execute" && statuses.length > 0) {
+    return (
+      <DisposalExecutionButton
+        requestId={request.id}
+        disposalNo={request.disposalNo}
+        disposalType={request.disposalType}
+        statuses={statuses}
+        employees={employees}
+        defaultActualSaleValue={defaultSaleValue}
+        defaultActualSalvageValue={defaultSalvageValue}
+      />
+    )
+  }
+
+  return (
+    <Link href={href} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0">
+      {viewLabel}
+    </Link>
+  )
 }
 
 function MobileDisposalField({ label, value }: { label: string; value: string }) {

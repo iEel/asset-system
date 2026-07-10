@@ -2685,6 +2685,12 @@
       "approved": "อนุมัติแล้ว",
       "disposed": "ตัดจำหน่ายแล้ว",
       "rejected": "ปฏิเสธ"
+    },
+    "stages": {
+      "pending_approval": "รออนุมัติ",
+      "awaiting_execution": "อนุมัติแล้ว รอดำเนินการ",
+      "complete": "ดำเนินการเสร็จสิ้น",
+      "rejected": "คำขอถูกปฏิเสธ"
     }
   },
   "approvalInboxPage": {
