@@ -427,6 +427,17 @@ test("audit scan recent scans collapse hides every scan row", () => {
   assert.match(panel, /t\(recentScansExpanded \? "recentScansCollapse" : "recentScansExpand"\)/)
 })
 
+test("recent scan header stacks readable controls on narrow screens", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const panelStart = form.indexOf("function RecentScansPanel")
+  const rowStart = form.indexOf("function RecentScanCompactRow")
+  const panel = form.slice(panelStart, rowStart)
+
+  assert.match(panel, /flex min-h-11 w-full flex-col gap-3 rounded-md[\s\S]*sm:flex-row sm:items-center sm:justify-between/)
+  assert.match(panel, /inline-flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end/)
+  assert.match(panel, /focus-visible:ring-2 focus-visible:ring-primary/)
+})
+
 test("audit scan mobile-first field workflow compacts scan setup and moves list work into searchable panels", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
