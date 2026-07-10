@@ -711,7 +711,7 @@ Expected: Milestone 3 is visual/interaction consolidation only; audit business l
 - Modify: `DEVELOPER_HANDOFF.md`
 - Modify: `docs/07_UAT_CHECKLIST.md`
 - Modify: `docs/99_CHANGELOG.md`
-- Test: all targeted tests from Tasks 1-4
+- Test: all targeted tests from Tasks 2-5
 
 **Interfaces:**
 - Consumes: Completed theme, shell, Asset Register, and Audit Scan milestones.
@@ -815,7 +815,7 @@ Expected: compare `git diff --name-only` with the explicit staging list first, o
 
 ## Execution Checkpoints
 
-- After Task 2: approve the global shell before it propagates to every route.
-- After Task 3: approve Asset Register hierarchy before using it as the mobile-list pattern elsewhere.
-- After Task 4: approve real-device Audit Scan behavior before extending Adaptive UI to checkout/checkin/transfer.
+- After Task 3: approve the global shell before it propagates to every route.
+- After Task 4: approve Asset Register hierarchy before using it as the mobile-list pattern elsewhere.
+- After Task 5: approve real-device Audit Scan behavior before extending Adaptive UI to checkout/checkin/transfer.
 - Do not include Asset Detail redesign in this implementation. Plan it after these three foundations are proven, using the accepted shell and mobile hierarchy as constraints.
