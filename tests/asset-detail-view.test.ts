@@ -4,6 +4,7 @@ import test from "node:test"
 import {
   buildAssetDetailViewHref,
   getAssetDetailViewSectionIds,
+  isAssetDetailSectionVisible,
   parseAssetDetailView,
 } from "../src/lib/asset-detail-view.ts"
 
@@ -25,4 +26,11 @@ test("groups section navigation without hiding sections from the detail page", (
   assert.deepEqual(getAssetDetailViewSectionIds("custody"), ["ownership", "components", "handover"])
   assert.deepEqual(getAssetDetailViewSectionIds("operations"), ["movement", "maintenance"])
   assert.deepEqual(getAssetDetailViewSectionIds("audit"), ["audit"])
+})
+
+test("identifies which sections belong to the selected asset detail view", () => {
+  assert.equal(isAssetDetailSectionVisible("custody", "components"), true)
+  assert.equal(isAssetDetailSectionVisible("custody", "overview"), false)
+  assert.equal(isAssetDetailSectionVisible("operations", "maintenance"), true)
+  assert.equal(isAssetDetailSectionVisible("audit", "movement"), false)
 })
