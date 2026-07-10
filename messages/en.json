@@ -360,6 +360,8 @@
     "allWorkDetail": "Shows all visible follow-up work based on your permissions.",
     "myWorkDetail": "Shows work related to your employee profile, department, or responsible assets.",
     "myWorkUnavailable": "This account is not linked to an employee, so My work cannot be scoped yet.",
+    "focusNavigation": "Select a follow-up queue",
+    "focusPriority": "Priority work",
     "showInWorkCenter": "Show here",
     "collapseList": "Collapse",
     "urgent": "Urgent",

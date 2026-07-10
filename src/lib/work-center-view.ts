@@ -1,4 +1,5 @@
 import type { AssetDataQualityFilter } from "./asset-data-quality-filter.ts"
+import type { WorkCenterMetricKey } from "./work-center-metrics.ts"
 
 export const workCenterViews = ["all", "mine"] as const
 export const workCenterPanels = ["overview", "approvals", "assets", "maintenance", "audit", "disposal"] as const
@@ -48,6 +49,47 @@ export function buildWorkCenterHref(
 
 export function getWorkCenterItemLimit(panel: WorkCenterPanel, activePanel: WorkCenterPanel) {
   return panel === activePanel ? 24 : 6
+}
+
+export function getWorkCenterFocusPanels(
+  activePanel: WorkCenterPanel,
+  approvalInboxVisible: boolean,
+): Exclude<WorkCenterPanel, "overview">[] {
+  if (activePanel !== "overview") return [activePanel]
+
+  return [
+    ...(approvalInboxVisible ? ["approvals" as const] : []),
+    "maintenance",
+    "audit",
+    "disposal",
+  ]
+}
+
+const metricKeysByFocusPanel: Record<WorkCenterPanel, readonly WorkCenterMetricKey[]> = {
+  overview: [
+    "approvalInbox",
+    "overdueMaintenance",
+    "waitingMaintenance",
+    "completedMaintenance",
+    "pendingAuditFindings",
+    "openAuditActions",
+    "pendingAuditItems",
+    "pendingDisposals",
+    "approvedDisposals",
+  ],
+  approvals: ["approvalInbox"],
+  assets: ["missingCustodian", "missingSerial", "missingPhoto"],
+  maintenance: ["overdueMaintenance", "waitingMaintenance", "completedMaintenance"],
+  audit: ["pendingAuditFindings", "openAuditActions", "pendingAuditItems"],
+  disposal: ["pendingDisposals", "approvedDisposals"],
+}
+
+export function filterWorkCenterMetricKeys<T extends WorkCenterMetricKey>(
+  metricKeys: readonly T[],
+  activePanel: WorkCenterPanel,
+): T[] {
+  const visibleKeys = new Set(metricKeysByFocusPanel[activePanel])
+  return metricKeys.filter((key) => visibleKeys.has(key))
 }
 
 export function buildWorkCenterUserScope(input: {

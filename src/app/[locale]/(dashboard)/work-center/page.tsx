@@ -24,6 +24,8 @@ import {
   buildDataQualityFixGroups,
   buildWorkCenterHref,
   buildWorkCenterUserScope,
+  filterWorkCenterMetricKeys,
+  getWorkCenterFocusPanels,
   getWorkCenterItemLimit,
   parseWorkCenterParams,
   type WorkCenterPanel,
@@ -72,6 +74,8 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
     departmentId: employeeProfile?.departmentId,
   })
   const isMineView = workCenterParams.view === "mine"
+  const focusPanels = getWorkCenterFocusPanels(workCenterParams.panel, approvalInboxAccess.canAnyApproval)
+  const isPanelFocused = (panel: Exclude<WorkCenterPanel, "overview">) => focusPanels.includes(panel)
   const approvalItemLimit = getWorkCenterItemLimit("approvals", workCenterParams.panel)
   const assetItemLimit = getWorkCenterItemLimit("assets", workCenterParams.panel)
   const maintenanceItemLimit = getWorkCenterItemLimit("maintenance", workCenterParams.panel)
@@ -204,7 +208,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
     prisma.disposalRequest.count({ where: pendingDisposalWhere }),
     prisma.disposalRequest.count({ where: approvedDisposalWhere }),
     approvalInboxAccess.canAnyApproval ? getApprovalInboxSnapshot(user, locale) : Promise.resolve(null),
-    prisma.asset.findMany({
+    isPanelFocused("assets") ? prisma.asset.findMany({
       where: assetIssueWhere,
       select: {
         id: true,
@@ -223,14 +227,14 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       },
       orderBy: { updatedAt: "desc" },
       take: assetItemLimit,
-    }),
-    prisma.maintenanceTicket.findMany({
+    }) : Promise.resolve([]),
+    isPanelFocused("maintenance") ? prisma.maintenanceTicket.findMany({
       where: maintenanceItemWhere,
       include: { asset: { select: { assetTag: true, name: true } } },
       orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
       take: maintenanceItemLimit,
-    }),
-    prisma.auditFinding.findMany({
+    }) : Promise.resolve([]),
+    isPanelFocused("audit") ? prisma.auditFinding.findMany({
       where: auditItemWhere,
       include: {
         auditRound: { select: { id: true, auditNo: true, name: true } },
@@ -238,13 +242,13 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       },
       orderBy: { reportedAt: "desc" },
       take: auditItemLimit,
-    }),
-    prisma.disposalRequest.findMany({
+    }) : Promise.resolve([]),
+    isPanelFocused("disposal") ? prisma.disposalRequest.findMany({
       where: disposalItemWhere,
       include: { asset: { select: { assetTag: true, name: true } } },
       orderBy: { requestDate: "asc" },
       take: disposalItemLimit,
-    }),
+    }) : Promise.resolve([]),
   ])
 
   const approvalInboxCounts = approvalInboxSnapshot?.summary ?? { total: 0, disposal: 0, maintenance: 0, audit: 0 }
@@ -369,12 +373,13 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       icon: <Trash2 className="h-5 w-5" />,
     },
   }
-  const metrics = buildWorkCenterMetricKeys({
+  const metricKeys = buildWorkCenterMetricKeys({
     approvalInbox: {
       visible: approvalInboxVisible,
       ...approvalInboxCounts,
     },
-  }).map((key) => metricMap[key])
+  })
+  const metrics = filterWorkCenterMetricKeys(metricKeys, workCenterParams.panel).map((key) => metricMap[key])
   const urgentCount = calculateWorkCenterUrgentCount({
     approvalInbox: {
       visible: approvalInboxVisible,
@@ -427,6 +432,47 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
         )}
       </div>
 
+      <nav aria-label={t("focusNavigation")} className="flex flex-wrap gap-2">
+        <WorkCenterFocusLink
+          href={buildWorkCenterHref(locale, workCenterParams, { panel: "overview" })}
+          active={workCenterParams.panel === "overview"}
+        >
+          {t("focusPriority")}
+        </WorkCenterFocusLink>
+        {approvalInboxVisible ? (
+          <WorkCenterFocusLink
+            href={buildWorkCenterHref(locale, workCenterParams, { panel: "approvals" })}
+            active={workCenterParams.panel === "approvals"}
+          >
+            {t("approvalInbox")}
+          </WorkCenterFocusLink>
+        ) : null}
+        <WorkCenterFocusLink
+          href={buildWorkCenterHref(locale, workCenterParams, { panel: "assets" })}
+          active={workCenterParams.panel === "assets"}
+        >
+          {t("assetDataTitle")}
+        </WorkCenterFocusLink>
+        <WorkCenterFocusLink
+          href={buildWorkCenterHref(locale, workCenterParams, { panel: "maintenance" })}
+          active={workCenterParams.panel === "maintenance"}
+        >
+          {t("maintenanceTitle")}
+        </WorkCenterFocusLink>
+        <WorkCenterFocusLink
+          href={buildWorkCenterHref(locale, workCenterParams, { panel: "audit" })}
+          active={workCenterParams.panel === "audit"}
+        >
+          {t("auditTitle")}
+        </WorkCenterFocusLink>
+        <WorkCenterFocusLink
+          href={buildWorkCenterHref(locale, workCenterParams, { panel: "disposal" })}
+          active={workCenterParams.panel === "disposal"}
+        >
+          {t("disposalTitle")}
+        </WorkCenterFocusLink>
+      </nav>
+
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
           <MetricCard key={metric.key} metric={metric} />
@@ -434,7 +480,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       </section>
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        {approvalInboxVisible ? (
+        {approvalInboxVisible && isPanelFocused("approvals") ? (
           <FollowUpPanel
             title={t("approvalInboxTitle")}
             subtitle={t("approvalInboxSubtitle")}
@@ -456,7 +502,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
           </FollowUpPanel>
         ) : null}
 
-        <FollowUpPanel
+        {isPanelFocused("assets") ? <FollowUpPanel
           title={t("assetDataTitle")}
           subtitle={t("assetDataSubtitle")}
           href={`/${locale}/assets`}
@@ -506,9 +552,9 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
               )
             })
           )}
-        </FollowUpPanel>
+        </FollowUpPanel> : null}
 
-        <FollowUpPanel
+        {isPanelFocused("maintenance") ? <FollowUpPanel
           title={t("maintenanceTitle")}
           subtitle={t("maintenanceSubtitle")}
           href={`/${locale}/maintenance?overdue=yes`}
@@ -532,9 +578,9 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
               />
             ))
           )}
-        </FollowUpPanel>
+        </FollowUpPanel> : null}
 
-        <FollowUpPanel
+        {isPanelFocused("audit") ? <FollowUpPanel
           title={t("auditTitle")}
           subtitle={t("auditSubtitle")}
           href={`/${locale}/audit/findings?status=pending`}
@@ -558,9 +604,9 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
               />
             ))
           )}
-        </FollowUpPanel>
+        </FollowUpPanel> : null}
 
-        <FollowUpPanel
+        {isPanelFocused("disposal") ? <FollowUpPanel
           title={t("disposalTitle")}
           subtitle={t("disposalSubtitle")}
           href={`/${locale}/disposal?status=pending`}
@@ -584,7 +630,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
               />
             ))
           )}
-        </FollowUpPanel>
+        </FollowUpPanel> : null}
       </section>
     </div>
   )
@@ -623,6 +669,22 @@ function WorkCenterViewLink({ href, active, children }: { href: string; active: 
       href={href}
       className={`inline-flex min-h-11 items-center justify-center rounded px-3 py-1.5 text-center text-sm font-medium transition-colors sm:min-h-0 ${
         active ? "bg-primary text-white" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+      }`}
+    >
+      {children}
+    </Link>
+  )
+}
+
+function WorkCenterFocusLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`inline-flex min-h-11 items-center justify-center rounded-md border px-3 text-center text-xs font-medium transition-colors sm:min-h-0 sm:h-9 ${
+        active
+          ? "border-primary bg-primary text-white"
+          : "border-border bg-surface text-muted-foreground hover:border-primary/40 hover:bg-accent hover:text-foreground"
       }`}
     >
       {children}

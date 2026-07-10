@@ -234,14 +234,6 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       tone: "warning",
     },
   }
-  const crossScopeActionCard: DashboardActionCard = {
-    label: t("crossScopeActionTitle"),
-    value: crossScopeSummary.custodianCompany,
-    detail: t("crossScopeActionDetail"),
-    href: buildDashboardCrossScopeHref(locale, "custodian_company"),
-    icon: <AlertTriangle className="h-5 w-5" />,
-    tone: "warning",
-  }
   const actionCards = [
     ...buildDashboardActionCardKeys({
     approvalInbox: {
@@ -253,7 +245,6 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     pendingDisposals,
     approvedDisposals,
     }).map((key) => actionCardMap[key]),
-    crossScopeActionCard,
   ]
   const crossScopeCards = [
     {
@@ -346,7 +337,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
             <h2 className="text-lg font-semibold text-foreground">{t("actionableTitle")}</h2>
             <p className="text-sm text-muted-foreground">{t("actionableSubtitle")}</p>
           </div>
-          <Link href={`/${locale}/work-center`} className="inline-flex w-fit items-center gap-1 text-sm font-medium text-primary hover:underline">
+          <Link href={`/${locale}/work-center?panel=overview`} className="inline-flex w-fit items-center gap-1 text-sm font-medium text-primary hover:underline">
             {t("openWorkCenter")}
             <ArrowRight className="h-4 w-4" />
           </Link>

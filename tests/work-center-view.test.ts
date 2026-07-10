@@ -4,6 +4,8 @@ import test from "node:test"
 import {
   buildDataQualityFixGroups,
   buildWorkCenterHref,
+  filterWorkCenterMetricKeys,
+  getWorkCenterFocusPanels,
   getWorkCenterItemLimit,
   parseWorkCenterParams,
 } from "../src/lib/work-center-view.ts"
@@ -33,6 +35,36 @@ test("builds work center hrefs while preserving selected view", () => {
 test("expands only the active work center panel", () => {
   assert.equal(getWorkCenterItemLimit("assets", "assets"), 24)
   assert.equal(getWorkCenterItemLimit("maintenance", "assets"), 6)
+})
+
+test("keeps the overview focused on time-sensitive queues", () => {
+  assert.deepEqual(getWorkCenterFocusPanels("overview", true), ["approvals", "maintenance", "audit", "disposal"])
+  assert.deepEqual(getWorkCenterFocusPanels("assets", true), ["assets"])
+  assert.deepEqual(getWorkCenterFocusPanels("overview", false), ["maintenance", "audit", "disposal"])
+})
+
+test("shows only metrics that support the selected work center focus", () => {
+  const metricKeys = [
+    "approvalInbox",
+    "missingCustodian",
+    "missingSerial",
+    "missingPhoto",
+    "overdueMaintenance",
+    "waitingMaintenance",
+    "openAuditActions",
+    "pendingAuditItems",
+    "approvedDisposals",
+  ] as const
+
+  assert.deepEqual(filterWorkCenterMetricKeys(metricKeys, "overview"), [
+    "approvalInbox",
+    "overdueMaintenance",
+    "waitingMaintenance",
+    "openAuditActions",
+    "pendingAuditItems",
+    "approvedDisposals",
+  ])
+  assert.deepEqual(filterWorkCenterMetricKeys(metricKeys, "assets"), ["missingCustodian", "missingSerial", "missingPhoto"])
 })
 
 test("builds data quality fix groups from issue counts", () => {
