@@ -44,7 +44,7 @@ export default async function AssetScanPage({ params }: AssetScanPageProps) {
           torchOn: t("torchOn"),
           torchOff: t("torchOff"),
           torchUnsupported: t("torchUnsupported"),
-          zoomCamera: t("zoomCamera"),
+          zoomCamera: t.raw("zoomCamera"),
           zoomUnsupported: t("zoomUnsupported"),
         },
       }}

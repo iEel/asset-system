@@ -20,7 +20,7 @@ test("asset scan page provides camera utility labels for QR scanning", () => {
   assert.match(page, /torchOn: t\("torchOn"\)/)
   assert.match(page, /torchOff: t\("torchOff"\)/)
   assert.match(page, /torchUnsupported: t\("torchUnsupported"\)/)
-  assert.match(page, /zoomCamera: t\("zoomCamera"\)/)
+  assert.match(page, /zoomCamera: t\.raw\("zoomCamera"\)/)
   assert.match(page, /zoomUnsupported: t\("zoomUnsupported"\)/)
 
   for (const messages of [th, en]) {
