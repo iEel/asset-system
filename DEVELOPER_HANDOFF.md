@@ -152,6 +152,13 @@ npm run build
 - `package.json` and `package-lock.json` matched `HEAD`, and `npm ls --depth=0` exited 0; no dependency or lockfile update was made. The earlier install report of 13 dependency vulnerabilities (1 low, 8 moderate, 4 high) remains a separate dependency security review item; do not force-fix it inside this UI rollout.
 - This release-quality pass changes no API, schema, RBAC, SOD, audit workflow, camera runtime, or print behavior.
 
+## Mobile Field Navigation Milestone
+
+- Mobile Field Navigation now uses one permission-aware field dock for browsing pages: `หน้าหลัก`, `ทรัพย์สิน`, `สแกน`, `ตรวจนับ`, and `เพิ่มเติม`. Dashboard, Asset, Scan, and Audit destinations reuse existing RBAC checks; an employee without broad `asset:view` falls back to My Assets, and `เพิ่มเติม` opens the existing permission-filtered Sidebar instead of creating a second menu tree.
+- The dashboard shell has mutually exclusive Navigation and Focus Task modes. General Asset Scan, Audit Scan, asset create/edit/detail, asset transactions, audit round create/detail, and maintenance/disposal detail routes hide the field dock so existing scanner, save, and `MobileActionBar` controls own the bottom edge. Audit Pending remains in Navigation Mode because `Mark Not Found` belongs to the pending queue rather than the successful scan result.
+- Field navigation adds safe-area content reservation only while visible and hides when `visualViewport` reports a mobile keyboard. Navigation destinations have visible labels, Lucide icons, `aria-current`, focus rings, and touch targets of at least 44px. The topbar mobile menu and scan shortcut are not duplicated while the field dock is available; Focus Task Mode keeps the normal mobile menu escape.
+- Controller browser QA passed at 375x812 and 390x844. Asset Register showed exactly one field dock, no Audit action bar, no body overflow, and target heights from 47.75px to 63.75px. Audit Scan showed no field dock; after selecting an in-round item it showed exactly one existing Audit action bar with 56px/48px/48px actions and no body overflow. Manual Asset Tag/Serial/QR entry remained visible before selection. `npm run verify` passed 673/673 tests, Prisma generation, Next.js 16.2.4 TypeScript/build, and 54/54 static pages. Real-device keyboard, rotation, and safe-area behavior still require Android/iPhone UAT.
+
 ## Current High-Level Modules
 
 - Dashboard and Work Center

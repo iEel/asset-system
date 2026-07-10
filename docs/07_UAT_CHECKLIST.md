@@ -173,6 +173,19 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [x] At 1280x800 and 1440x900, the desktop sidebar measured 256px and aligned with the topbar/main; when collapsed it measured 64px, the topbar/main shifted correctly, the nested Asset menu expanded, and the body did not overflow.
 - [x] Visual theme verification: Navy `#0F172A` sidebar, white topbar, blue active state, and readable text. Screenshots are retained as ignored evidence under `.superpowers/sdd/screenshots/task-3`.
 
+## Mobile Field Navigation UAT
+
+- [x] At 375x812 and 390x844, Asset Register showed one Mobile Field Navigation dock, no contextual Audit action bar, no body overflow, and all five visible targets measured at least 44px high.
+- [x] Confirm `หน้าหลัก`, `ทรัพย์สิน`, `สแกน`, and `ตรวจนับ` use existing routes and `เพิ่มเติม` opens the existing RBAC-filtered Sidebar.
+- [x] Confirm General Asset Scan and `/th/audit/rounds/{id}/scan` hide Mobile Field Navigation before any target is selected.
+- [x] Select an in-round Audit item without saving and confirm exactly one Audit action bar appears while Mobile Field Navigation remains absent. Browser QA measured matched/mismatch/change-target actions at 56px/48px/48px with no body overflow.
+- [x] Confirm Audit Scan still exposes QR scan and manual Asset Tag/Serial/QR entry, and that selecting a manual suggestion stays inside the existing `auditRoundId` workflow.
+- [x] Confirm Audit Pending remains in Navigation Mode and `Mark Not Found` is not added to the post-scan action bar.
+- [x] Confirm Asset create/edit/detail, checkout, check-in, transfer, bulk move, Audit Round create/detail, and maintenance/disposal detail routes use Focus Task Mode so their existing bottom actions do not collide with field navigation.
+- [ ] On Android Chrome and iPhone Safari, open and close the software keyboard and confirm the field dock hides while typing, returns after dismissal, and leaves no blank/covered content after rotation.
+- [ ] On a notched iPhone, verify the field dock and Audit action bar both respect the bottom safe area without stacking or clipping.
+- [ ] With an employee-only account, confirm `ทรัพย์สิน` opens My Assets and Scan/Audit destinations are omitted when the corresponding permission is absent.
+
 ## Adaptive UI Release Gate
 
 - [x] Accessibility follow-up passed TDD: RED was 24/30 with the expected semantic-contrast/token-usage/44px-target failures; GREEN was 30/30. Success, warning, danger, and info badge text now measures 6.396:1, 6.560:1, 7.112:1, and 7.572:1 against the actual 10% tints; muted measures 6.917:1. The mobile checkbox remains visibly 20px inside a centered 44px semantic label with a focus-within ring and unchanged aria/selection behavior.
