@@ -162,3 +162,62 @@ export function AssetRegisterPageSkeleton() {
     </div>
   )
 }
+
+export function AssetDetailPageSkeleton() {
+  return (
+    <div aria-busy="true" className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+      <PageHeaderSkeleton />
+      <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <SkeletonBlock className="h-24 w-24 shrink-0" />
+          <div className="min-w-0 flex-1 space-y-3">
+            <SkeletonBlock className="h-6 w-52 max-w-full" />
+            <SkeletonBlock className="h-4 w-80 max-w-full" />
+            <div className="flex gap-2">
+              <SkeletonBlock className="h-7 w-20 rounded-full" />
+              <SkeletonBlock className="h-7 w-24 rounded-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <MetricGridSkeleton count={4} />
+      <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+          <SkeletonBlock className="h-5 w-44" />
+          <div className="mt-4 space-y-3">
+            <SkeletonBlock className="h-16" />
+            <SkeletonBlock className="h-16" />
+            <SkeletonBlock className="h-16" />
+          </div>
+        </div>
+        <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+          <SkeletonBlock className="h-5 w-36" />
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            <SkeletonBlock className="h-20" />
+            <SkeletonBlock className="h-20" />
+            <SkeletonBlock className="h-20" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function ReportsPageSkeleton() {
+  return (
+    <div aria-busy="true" className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+      <PageHeaderSkeleton />
+      <FilterPanelSkeleton />
+      <MetricGridSkeleton count={4} />
+      <div className="grid gap-5 lg:grid-cols-2">
+        {Array.from({ length: 2 }, (_, index) => (
+          <div key={index} className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+            <SkeletonBlock className="h-5 w-40" />
+            <SkeletonBlock className="mt-4 h-52 w-full" />
+          </div>
+        ))}
+      </div>
+      <TableSkeleton rows={6} columns={5} />
+    </div>
+  )
+}

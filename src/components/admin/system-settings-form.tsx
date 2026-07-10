@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, ArrowRight, Check, ExternalLink, History, Loader2, Pencil, PlugZap, Plus, Save, Search, Trash2, X } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
@@ -61,6 +61,7 @@ import {
 } from "@/lib/retention-policy"
 import { isSupportedCronExpression } from "@/lib/scheduled-job"
 import { getSettingsTabOrder, type SettingsTabId } from "@/lib/settings-information-architecture"
+import { buildSystemSettingsTabHref, parseSystemSettingsTab } from "@/lib/system-settings-tabs"
 import { buildSystemLogFilterHref, type LdapSyncHistoryItem } from "@/lib/system-log-history"
 import {
   applyCategoryPrefixGroupEdit,
@@ -538,10 +539,12 @@ export function SystemSettingsForm({
   labels,
 }: SystemSettingsFormProps) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const params = useParams<{ locale?: string }>()
   const locale = typeof params.locale === "string" ? params.locale : "th"
   const initialValues = Object.fromEntries(settings.map((setting) => [setting.key, setting.value]))
-  const [activeTab, setActiveTab] = useState<SettingsTabId>("asset-numbering")
+  const activeTab = parseSystemSettingsTab(searchParams.get("tab"))
   const [saving, setSaving] = useState(false)
   const [testingLdap, setTestingLdap] = useState(false)
   const [syncingLdap, setSyncingLdap] = useState<"preview" | "apply" | null>(null)
@@ -659,6 +662,17 @@ export function SystemSettingsForm({
     (setting) => normalizeSettingValue(setting.key, effectiveValues[setting.key]) !== normalizeSettingValue(setting.key, initialValues[setting.key])
   )
   const changedCount = changedSettings.length
+  useEffect(() => {
+    if (changedCount === 0) return
+
+    function warnBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault()
+      event.returnValue = ""
+    }
+
+    window.addEventListener("beforeunload", warnBeforeUnload)
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload)
+  }, [changedCount])
   const activePrefixRows = filterPrefixRowsByCategoryIds(prefixRows, activeCategoryIds)
   const prefixGroups = buildCategoryPrefixGroups(activePrefixRows)
   const categoryById = new Map(categories.map((category) => [category.id, category]))
@@ -801,6 +815,11 @@ export function SystemSettingsForm({
     advanced: labels.tabAdvanced,
   }
   const tabs = getSettingsTabOrder().map((id) => ({ id, label: tabLabels[id] }))
+  const selectTab = (tab: SettingsTabId) => {
+    if (tab === activeTab) return
+    const href = buildSystemSettingsTabHref(pathname, searchParams.toString(), tab)
+    window.history.replaceState(null, "", href)
+  }
   const overviewCards = [
     {
       label: labels.overviewAssetTag,
@@ -1002,7 +1021,7 @@ export function SystemSettingsForm({
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => selectTab(tab.id)}
                 className={`min-h-11 whitespace-nowrap rounded-md px-3 text-sm font-medium transition-colors sm:h-10 sm:min-h-0 ${
                   isActive ? "bg-primary text-white" : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
