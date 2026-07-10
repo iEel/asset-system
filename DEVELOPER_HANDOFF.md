@@ -125,6 +125,12 @@ npm run build
 - Asset Detail relationship map is a read-only structural view, not the install/remove editor. It uses three lanes (`Installed under` / current item / `Has components`) plus a status summary to clarify whether the viewed asset is a parent asset, a component, both, or standalone. Relationship cards must keep the Asset Tag fully readable before the asset name and role badge; do not reintroduce one-line truncation for Asset Tags.
 - Maintenance ticket creation intentionally does not require `returnDate`; `returnDate` belongs to the close-ticket workflow after repair is completed. If a damaged asset is currently `Under Inspection`, open a maintenance ticket to move it into `Pending Repair`, then progress through the maintenance workflow. If the inspection proves the asset is usable, return it to `Ready` through the controlled correction/operational workflow rather than forcing a protected status edit from the asset form.
 
+## UI Shell Milestone
+
+- The dashboard shell uses committed semantic roles: Brand Navy for the desktop and mobile navigation drawer, Sidebar Foreground/Hover/Active for readable navigation states, Electric Blue for keyboard focus and selected parent emphasis, and Action Blue for accessible white-text actions.
+- The topbar remains a light Surface White operational layer with Border Slate separation. Active navigation uses a full-row Sidebar Active background with text and icon contrast; it does not use a colored side stripe.
+- Controller browser UAT remains required at 375, 768, 1280, and 1440 pixels. Check Thai-label truncation, 85vw mobile drawer width and vertical scrolling, non-overlapping topbar controls, visible focus rings on Navy and White surfaces, and a light content workspace.
+
 ## Current High-Level Modules
 
 - Dashboard and Work Center

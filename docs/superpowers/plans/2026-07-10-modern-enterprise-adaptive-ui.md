@@ -344,7 +344,7 @@ Expected: commit contains only tokens, design documentation, and token tests.
 - Test: `tests/dashboard-layout-scroll.test.ts`
 
 **Interfaces:**
-- Consumes: Theme tokens from Task 1 and the existing permission-filtered menu tree.
+- Consumes: Theme tokens from Task 2 and the existing permission-filtered menu tree.
 - Produces: Dark Navy desktop/mobile drawer, accessible active navigation, light topbar, unchanged hrefs and RBAC filtering.
 
 - [ ] **Step 1: Write the failing shell appearance test**

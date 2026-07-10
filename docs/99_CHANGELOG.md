@@ -9,6 +9,7 @@
 | Area | Update |
 |---|---|
 | Adaptive UI baseline test portability | Repaired the pre-existing focused baseline failures by using a Node-compatible relative TypeScript import for Audit Finding filters, matching the current Audit Scan helper signature, and normalizing source newlines before the mobile action-bar source assertion. Runtime audit behavior, APIs, payloads, translations, RBAC, SOD, and UI behavior are unchanged. |
+| Enterprise navigation shell | Refreshed the existing dashboard presentation with the committed semantic tokens: a Brand Navy desktop/mobile drawer, Sidebar Foreground/Hover/Active navigation states, full-row active treatment without a right stripe, and Electric Blue focus rings. The topbar remains Surface White with Border Slate separation; labels, Lucide icons, hrefs, RBAC filtering, nesting, collapse, overlay, language, notification, user-menu, and responsive behavior are unchanged. Viewport UAT at 375, 768, 1280, and 1440 pixels is documented for controller browser verification. |
 
 ---
 

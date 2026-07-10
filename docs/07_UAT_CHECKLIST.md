@@ -155,6 +155,13 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Direct API access returns unauthorized or forbidden for restricted actions.
 - [ ] A user cannot review an audit finding they reported if segregation-of-duties rules apply.
 
+## Shell Presentation UAT
+
+- [ ] At 375, 768, 1280, and 1440 pixels, confirm the active navigation row is readable through Sidebar Active background, text, and icon contrast without a side stripe.
+- [ ] Confirm long Thai navigation labels truncate without overlap; the mobile drawer is no wider than 85vw and can scroll vertically.
+- [ ] Confirm topbar controls do not overlap and keyboard focus is visible against both the Navy drawer and the light Surface White topbar.
+- [ ] Confirm Brand Navy remains limited to navigation, the topbar stays light, Action Blue remains the accessible white-text action color, and navigation labels, hrefs, permissions, nested behavior, and responsive controls remain unchanged.
+
 ## Sign-Off
 
 | Role | Tester | Date | Result | Notes |

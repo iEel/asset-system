@@ -188,21 +188,21 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-40 flex max-h-dvh flex-col border-r border-border bg-sidebar transition-all duration-300 lg:relative",
+        "fixed inset-y-0 left-0 z-40 flex max-h-dvh flex-col border-r border-white/10 bg-sidebar text-sidebar-foreground transition-all duration-300 lg:relative",
         collapsed ? "w-[min(18rem,85vw)] lg:w-16" : "w-[min(18rem,85vw)] lg:w-64",
         mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}
     >
       {/* Logo */}
-      <div className="flex h-16 min-w-0 items-center border-b border-border px-4">
-        <Package className="h-8 w-8 shrink-0 text-primary" />
-        <span className={cn("ml-3 truncate text-lg font-semibold text-primary", collapsed && "lg:hidden")}>
+      <div className="flex h-16 min-w-0 items-center border-b border-white/10 px-4">
+        <Package className="h-8 w-8 shrink-0 text-brand-accent" />
+        <span className={cn("ml-3 truncate text-lg font-semibold text-white", collapsed && "lg:hidden")}>
           AMS
         </span>
         <button
           type="button"
           onClick={onMobileClose}
-          className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-sm text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 lg:hidden"
+          className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-hover hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar lg:hidden"
           aria-label="Close menu"
         >
           <X size={18} />
@@ -251,8 +251,8 @@ function SidebarItem({
         <button
           onClick={() => setOpen(!open)}
           className={cn(
-            "flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
-            hasActiveChild && "text-primary",
+            "flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-hover hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-accent",
+            hasActiveChild && "text-brand-accent",
             collapsed && "lg:justify-center lg:px-2"
           )}
         >
@@ -263,7 +263,7 @@ function SidebarItem({
           </span>
         </button>
         {open && (
-          <div className={cn("border-l border-border", depth === 0 ? "ml-4" : "ml-6")}>
+          <div className={cn("border-l border-white/10", depth === 0 ? "ml-4" : "ml-6")}>
             {item.children.map((child) => (
               <SidebarItem
                 key={child.labelKey}
@@ -286,10 +286,10 @@ function SidebarItem({
       href={item.href || "#"}
       onClick={onNavigate}
       className={cn(
-        "flex min-h-11 items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
+        "flex min-h-11 items-center gap-3 px-4 py-2.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-hover hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-accent",
         isActive
-          ? "bg-primary/10 font-medium text-primary border-r-2 border-primary"
-          : "text-muted-foreground",
+          ? "bg-sidebar-active font-medium text-white"
+          : undefined,
         collapsed && "lg:justify-center lg:px-2"
       )}
     >
