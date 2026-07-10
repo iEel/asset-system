@@ -135,7 +135,10 @@ npm run build
 ## Adaptive Asset Register Milestone
 
 - Asset Register keeps the URL-backed filter, sorting, pagination, column preset, bulk-update/export, import placement, and `returnTo` behavior while the desktop stays a dense operational table. Mobile now uses explicit card/list hooks and prioritizes Asset Tag plus semantic status, name, serial/category metadata, location, custodian, field-relevant condition/shared-ownership warnings, then detail/edit actions; company/branch and purchase price remain available through the desktop table and asset detail. Clone and delete actions are retained under the mobile card's secondary expandable action area.
-- Focused regression tests and scoped ESLint passed for this milestone. Controller browser QA remains pending at 375, 390, 414, 768, 1280, and 1440 pixels; confirm card/table visibility, no body overflow, long Thai/asset values, status readability, and permission-limited/empty/loading states before sign-off.
+- Controller browser QA and review completed with the `system_admin` session. At 375, 390, and 414 pixels, the register showed the mobile card list only with 25 sample cards, no body/list/card horizontal overflow, readable text status, and the intended hierarchy; company/branch and purchase price were omitted. The secondary disclosure opened, and its full-width summary measured 44px high. The filtered-empty mobile state showed `ไม่พบข้อมูล` without overflow.
+- At 768, 1280, and 1440 pixels, the dense desktop table was the only register data view and the body did not overflow. Mobile search rendered before quick filters (top 249 versus 568 at 375); desktop preserved quick filters before the form (top 185 versus 447 at 1280).
+- Runtime QA caught and corrected a missing canonical status/condition projection. Status and condition tones now use explicit, exhaustively tested mappings. Reviewer approval followed 651/651 full tests, 35/35 focused tests, scoped ESLint, `tsc --noEmit`, and a production build.
+- Permission-limited role coverage remains manual because browser QA used `system_admin`. Loading/navigation state verification also remains manual where it was not directly observed.
 
 ## Current High-Level Modules
 
