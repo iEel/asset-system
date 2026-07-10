@@ -53,7 +53,7 @@ To restore a file, move it from `.archive/YYYY-MM-DD/<relativePath>` back to `UP
 - [ ] `npm run verify` passes.
 - [ ] `npm run build` passes.
 - [ ] Dashboard pages show a single vertical scrollbar: content scrolls inside the app `<main>` area, and the browser document does not show a second page scrollbar.
-- [ ] Slow authenticated pages show a meaningful skeleton fallback instead of a blank/stalled transition. Confirm `/dashboard` and `/assets` render their `loading.tsx` skeletons during slow local testing, and reuse `src/components/ui/page-skeleton.tsx` for additional high-latency routes.
+- [ ] Slow authenticated pages show a meaningful skeleton fallback instead of a blank/stalled transition. Confirm `/dashboard`, `/assets`, `/assets/{id}`, and `/reports` render their route-specific `loading.tsx` skeletons during slow local testing, and reuse `src/components/ui/page-skeleton.tsx` for additional high-latency routes.
 - [ ] If diagnosing slow menu/page navigation, enable `PERFORMANCE_TIMING=1` or `PERFORMANCE_LOGGING=1`, review `[performance]` server log lines for the slow route labels, then disable the flag after the investigation. Dashboard emits both the full `dashboard.initial-data` duration and subgroup labels (`dashboard.kpi-counts`, `dashboard.recent-activity`, `dashboard.urgent-work`, `dashboard.approval-inbox`, `dashboard.cross-scope`, `dashboard.monthly-trends`) so the slow Dashboard query group can be isolated before optimizing.
 - [ ] Browser security headers are present for app routes and `/sw.js`.
 - [ ] Public QR Base URL is configured before printing labels.

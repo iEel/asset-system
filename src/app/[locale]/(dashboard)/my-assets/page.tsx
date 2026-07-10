@@ -5,6 +5,7 @@ import type { Prisma } from "@prisma/client"
 import { PackageCheck, ShieldAlert } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { ContentPanel } from "@/components/ui/content-panel"
+import { StatusPill } from "@/components/ui/status-pill"
 import { getDesktopTableOnlyClasses, getEmptyStateClasses, getMobileCardListClasses, getResponsiveTableScrollClasses, getSafeActionLinkClasses } from "@/lib/design-system"
 import { getSessionUser } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
@@ -186,21 +187,6 @@ function Metric({ label, value, tone }: { label: string; value: number; tone: "n
 
 function Head({ children }: { children: React.ReactNode }) {
   return <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{children}</th>
-}
-
-function StatusPill({ label, color }: { label: string; color: string | null }) {
-  return (
-    <span
-      className="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium"
-      style={{
-        borderColor: color ?? "var(--border)",
-        color: color ?? "var(--foreground)",
-        backgroundColor: color ? `${color}12` : "var(--muted)",
-      }}
-    >
-      {label}
-    </span>
-  )
 }
 
 function AssetIdentity({ asset, href }: { asset: MyAssetRow; href?: string }) {

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation"
 import { ArrowLeft, Building2, CalendarClock, MapPin, PackageCheck, Tags } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { ContentPanel } from "@/components/ui/content-panel"
+import { StatusPill } from "@/components/ui/status-pill"
 import { getSafeActionLinkClasses } from "@/lib/design-system"
 import { getSessionUser } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
@@ -114,20 +115,5 @@ function DetailItem({ icon, label, value }: { icon: React.ReactNode; label: stri
       </dt>
       <dd className="mt-2 break-words text-sm font-semibold text-foreground">{value}</dd>
     </div>
-  )
-}
-
-function StatusPill({ label, color }: { label: string; color: string | null }) {
-  return (
-    <span
-      className="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium"
-      style={{
-        borderColor: color ?? "var(--border)",
-        color: color ?? "var(--foreground)",
-        backgroundColor: color ? `${color}12` : "var(--muted)",
-      }}
-    >
-      {label}
-    </span>
   )
 }
