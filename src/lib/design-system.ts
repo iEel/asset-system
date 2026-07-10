@@ -98,7 +98,7 @@ export function getResponsiveActionRowClasses() {
 }
 
 export function getMobileSafeBottomPaddingClasses() {
-  return "pb-24 sm:pb-0"
+  return "pb-[calc(6rem+max(0.75rem,env(safe-area-inset-bottom)))] sm:pb-0"
 }
 
 export function getTouchIconButtonClasses() {

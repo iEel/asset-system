@@ -41,6 +41,17 @@ test("audit scan form preserves and renders component context for out-of-scope a
   assert.match(form, /components=\{outOfScopeAsset\.components\}/)
 })
 
+test("audit scan renders component work in the supporting region", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const supportingRegion = form.indexOf("data-audit-scan-supporting")
+  const selectedComponents = form.indexOf("components={selectedItem.components}", supportingRegion)
+  const outOfScopeComponents = form.indexOf("outOfScopeAsset.components.length > 0", supportingRegion)
+
+  assert.ok(supportingRegion > -1)
+  assert.ok(selectedComponents > supportingRegion)
+  assert.ok(outOfScopeComponents > supportingRegion)
+})
+
 test("audit scan component UI copy is translated", () => {
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))

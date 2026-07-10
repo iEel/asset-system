@@ -13,7 +13,7 @@ export function MobileActionBar({ actions }: { actions: MobileAction[] }) {
   const visibleActions = actions.slice(0, 4)
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur md:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-md backdrop-blur md:hidden">
       <div className="grid min-w-0 grid-cols-4 gap-2">
         {visibleActions.map((action) =>
           action.disabled ? (

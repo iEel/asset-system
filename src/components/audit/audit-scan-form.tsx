@@ -1226,7 +1226,7 @@ export function AuditScanForm({
   }
 
   return (
-    <div className={`mx-auto max-w-6xl ${selectedItem ? "pb-36 md:pb-0" : ""}`}>
+    <div className={`mx-auto max-w-6xl ${selectedItem ? "pb-[calc(9rem+max(0.75rem,env(safe-area-inset-bottom)))] md:pb-0" : ""}`}>
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Link href={backHref} className="mb-3 inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent">
@@ -1298,48 +1298,9 @@ export function AuditScanForm({
         ) : null}
       </div>
 
-      {offlineQueue.length > 0 ? (
-        <div className={`mb-4 rounded-lg border p-3 shadow-sm ${online ? "border-warning/30 bg-warning/10" : "border-danger/30 bg-danger/10"}`}>
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-start gap-3">
-              <WifiOff className={`mt-0.5 h-5 w-5 shrink-0 ${online ? "text-warning" : "text-danger"}`} />
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="text-sm font-semibold text-foreground">{t("offlineQueueTitle", { count: offlineQueue.length })}</div>
-                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${online ? "bg-success/10 text-success" : "bg-danger/10 text-danger"}`}>
-                    {online ? t("networkOnline") : t("networkOffline")}
-                  </span>
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">{offlineQueueHelp}</div>
-                <div className="mt-2 text-xs text-muted-foreground">
-                  {t("offlineQueueDetails", {
-                    photos: queuedOfflinePhotoCount,
-                    failed: failedOfflineQueueCount,
-                  })}
-                </div>
-                {lastOfflineQueueError ? (
-                  <div className="mt-2 break-words rounded-md border border-danger/30 bg-danger/10 px-2 py-1 text-xs text-danger">
-                    {t("offlineQueueLastError", { error: lastOfflineQueueError })}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={retryOfflineQueue}
-              disabled={saving || !online}
-              title={online ? t("offlineRetry") : t("networkOffline")}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-medium text-white transition-colors hover:bg-warning/90 disabled:opacity-50 md:w-auto"
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-              {t("offlineRetry")}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
+          <div data-audit-scan-primary className="contents">
           {scanFeedback && (
             <ScanResultPanel feedback={scanFeedback} t={t} />
           )}
@@ -1491,65 +1452,6 @@ export function AuditScanForm({
             ) : null}
           </div>
 
-          {!showFallbackPicker ? (
-            <div className="md:col-span-2 -mt-2">
-              <button
-                type="button"
-                aria-expanded={assetPickerExpanded}
-                aria-controls="audit-asset-fallback-picker"
-                onClick={() => assetPickerExpanded ? setAssetPickerExpanded(false) : setAssetPickerExpanded(true)}
-                className="inline-flex min-h-10 w-full items-center justify-between gap-3 rounded-md border border-dashed border-border bg-background px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:w-auto sm:min-w-[18rem]"
-              >
-                <span className="inline-flex min-w-0 items-center gap-2">
-                  <ListChecks className="h-4 w-4 shrink-0 text-primary" />
-                  <span className="truncate font-medium text-foreground">{t("assetPickerTitle")}</span>
-                </span>
-                <span className="inline-flex shrink-0 items-center gap-2">
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
-                    {pendingCount.toLocaleString("th-TH")}
-                  </span>
-                  <ChevronDown className="h-4 w-4" />
-                </span>
-              </button>
-            </div>
-          ) : null}
-
-          {recentScans.length > 0 ? (
-            <RecentScansPanel
-              recentScans={recentScans}
-              onEditScan={editRecentScan}
-              t={t}
-            />
-          ) : null}
-
-          {showPendingQueue ? (
-            <PendingQueuePanel
-              items={pendingQueuePreview}
-              total={pendingCount}
-              pendingHref={pendingListHref}
-              onSelect={selectPendingQueueItem}
-              expanded={pendingQueueExpanded}
-              onExpandedChange={setPendingQueueExpanded}
-              optionLabelMaps={optionLabelMaps}
-              t={t}
-            />
-          ) : null}
-
-          {showFallbackPicker ? (
-            <AssetFallbackPicker
-              expanded={assetPickerExpanded}
-              items={filteredAssetPickerItems}
-              query={assetPickerQuery}
-              selectedAssetId={values.assetId}
-              total={items.length}
-              onExpandedChange={setAssetPickerExpanded}
-              onQueryChange={setAssetPickerQuery}
-              onSelect={selectAssetFromFallback}
-              optionLabelMaps={optionLabelMaps}
-              t={t}
-            />
-          ) : null}
-
           {selectedItem && (
             <div className="md:col-span-2 rounded-md border border-primary/25 bg-primary/5 p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -1601,16 +1503,6 @@ export function AuditScanForm({
                     </div>
                   ))}
                 </div>
-              ) : null}
-              {selectedItem.components.length > 0 ? (
-                <AuditComponentPanel
-                  components={selectedItem.components}
-                  saving={saving}
-                  onScanComponent={scanComponentQr}
-                  onConfirmWithParent={confirmComponentWithParent}
-                  onMarkMissing={openComponentMissingDialog}
-                  t={t}
-                />
               ) : null}
             </div>
           )}
@@ -1686,17 +1578,6 @@ export function AuditScanForm({
                     </div>
                   ))}
                 </div>
-              ) : null}
-              {outOfScopeAsset.components.length > 0 ? (
-                <AuditComponentPanel
-                  components={outOfScopeAsset.components}
-                  saving={saving}
-                  componentActionsDisabled={true}
-                  onScanComponent={scanComponentQr}
-                  onConfirmWithParent={confirmComponentWithParent}
-                  onMarkMissing={openComponentMissingDialog}
-                  t={t}
-                />
               ) : null}
               <div className="mt-4 border-t border-warning/30 pt-4">
                 <div className="text-sm font-semibold text-foreground">{t("actualDataTitle")}</div>
@@ -1784,6 +1665,95 @@ export function AuditScanForm({
               )}
             </>
           )}
+
+          </div>
+
+          <div data-audit-scan-supporting className="contents">
+          {selectedItem && selectedItem.components.length > 0 ? (
+            <div className="md:col-span-2">
+              <AuditComponentPanel
+                components={selectedItem.components}
+                saving={saving}
+                onScanComponent={scanComponentQr}
+                onConfirmWithParent={confirmComponentWithParent}
+                onMarkMissing={openComponentMissingDialog}
+                t={t}
+              />
+            </div>
+          ) : null}
+
+          {outOfScopeAsset && outOfScopeAsset.components.length > 0 ? (
+            <div className="md:col-span-2">
+              <AuditComponentPanel
+                components={outOfScopeAsset.components}
+                saving={saving}
+                componentActionsDisabled={true}
+                onScanComponent={scanComponentQr}
+                onConfirmWithParent={confirmComponentWithParent}
+                onMarkMissing={openComponentMissingDialog}
+                t={t}
+              />
+            </div>
+          ) : null}
+
+          {!showFallbackPicker ? (
+            <div className="md:col-span-2 -mt-2">
+              <button
+                type="button"
+                aria-expanded={assetPickerExpanded}
+                aria-controls="audit-asset-fallback-picker"
+                onClick={() => assetPickerExpanded ? setAssetPickerExpanded(false) : setAssetPickerExpanded(true)}
+                className="inline-flex min-h-10 w-full items-center justify-between gap-3 rounded-md border border-dashed border-border bg-background px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:w-auto sm:min-w-[18rem]"
+              >
+                <span className="inline-flex min-w-0 items-center gap-2">
+                  <ListChecks className="h-4 w-4 shrink-0 text-primary" />
+                  <span className="truncate font-medium text-foreground">{t("assetPickerTitle")}</span>
+                </span>
+                <span className="inline-flex shrink-0 items-center gap-2">
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                    {pendingCount.toLocaleString("th-TH")}
+                  </span>
+                  <ChevronDown className="h-4 w-4" />
+                </span>
+              </button>
+            </div>
+          ) : null}
+
+          {showFallbackPicker ? (
+            <AssetFallbackPicker
+              expanded={assetPickerExpanded}
+              items={filteredAssetPickerItems}
+              query={assetPickerQuery}
+              selectedAssetId={values.assetId}
+              total={items.length}
+              onExpandedChange={setAssetPickerExpanded}
+              onQueryChange={setAssetPickerQuery}
+              onSelect={selectAssetFromFallback}
+              optionLabelMaps={optionLabelMaps}
+              t={t}
+            />
+          ) : null}
+
+          {recentScans.length > 0 ? (
+            <RecentScansPanel
+              recentScans={recentScans}
+              onEditScan={editRecentScan}
+              t={t}
+            />
+          ) : null}
+
+          {showPendingQueue ? (
+            <PendingQueuePanel
+              items={pendingQueuePreview}
+              total={pendingCount}
+              pendingHref={pendingListHref}
+              onSelect={selectPendingQueueItem}
+              expanded={pendingQueueExpanded}
+              onExpandedChange={setPendingQueueExpanded}
+              optionLabelMaps={optionLabelMaps}
+              t={t}
+            />
+          ) : null}
 
           {shouldShowAuditPhotoEvidence && (
             <div id="audit-photo-evidence" className="scroll-mt-24 md:col-span-2 rounded-md border border-border bg-background p-4">
@@ -1900,6 +1870,46 @@ export function AuditScanForm({
               </Field>
             </div>
           )}
+          {offlineQueue.length > 0 ? (
+            <div className={`md:col-span-2 rounded-lg border p-3 shadow-sm ${online ? "border-warning/30 bg-warning/10" : "border-danger/30 bg-danger/10"}`}>
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-start gap-3">
+                  <WifiOff className={`mt-0.5 h-5 w-5 shrink-0 ${online ? "text-warning" : "text-danger"}`} />
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="text-sm font-semibold text-foreground">{t("offlineQueueTitle", { count: offlineQueue.length })}</div>
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${online ? "bg-success/10 text-success" : "bg-danger/10 text-danger"}`}>
+                        {online ? t("networkOnline") : t("networkOffline")}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">{offlineQueueHelp}</div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {t("offlineQueueDetails", {
+                        photos: queuedOfflinePhotoCount,
+                        failed: failedOfflineQueueCount,
+                      })}
+                    </div>
+                    {lastOfflineQueueError ? (
+                      <div className="mt-2 break-words rounded-md border border-danger/30 bg-danger/10 px-2 py-1 text-xs text-danger">
+                        {t("offlineQueueLastError", { error: lastOfflineQueueError })}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={retryOfflineQueue}
+                  disabled={saving || !online}
+                  title={online ? t("offlineRetry") : t("networkOffline")}
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-medium text-white transition-colors hover:bg-warning/90 disabled:opacity-50 md:w-auto"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+                  {t("offlineRetry")}
+                </button>
+              </div>
+            </div>
+          ) : null}
+          </div>
           <div className={`sticky bottom-0 z-10 -mx-4 justify-end border-t border-border bg-surface/95 p-3 backdrop-blur md:col-span-2 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none ${submitBarVisibility}`}>
             <button type="submit" disabled={saving || !selectedItem || (fastMode && !showDetailedFields) || !evidenceRequirementSatisfied} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-base font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -1983,7 +1993,7 @@ export function AuditScanForm({
       ) : null}
 
       {showMobileQuickActionBar ? (
-        <div aria-label={t("mobileActionBar")} className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 px-3 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-lg backdrop-blur md:hidden">
+        <div data-audit-mobile-actions aria-label={t("mobileActionBar")} className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 px-3 py-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg backdrop-blur md:hidden">
           <div className="mx-auto grid max-w-6xl grid-cols-3 gap-2">
             <button
               type="button"

@@ -328,6 +328,35 @@ test("audit scan keeps rear-camera fast defaults and locks QR results without ex
   assert.doesNotMatch(form, /<RecentScanList recentScans=\{recentScans\}/)
 })
 
+test("audit scan keeps one camera instance and explicit adaptive regions", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+
+  assert.equal((form.match(/id="audit-qr-reader"/g) ?? []).length, 1)
+  assert.match(form, /data-audit-scan-primary/)
+  assert.match(form, /data-audit-scan-supporting/)
+  assert.match(form, /data-audit-mobile-actions/)
+})
+
+test("successful scan decisions do not expose not-found as a post-scan action", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const start = form.indexOf("data-audit-mobile-actions")
+  const end = form.indexOf("</div>", start)
+
+  assert.ok(start > -1 && end > start)
+  assert.doesNotMatch(form.slice(start, end), /markNotFound|notFound/)
+})
+
+test("mobile audit actions and shared action bars reserve safe-area space", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const actionBar = readFileSync("src/components/ui/mobile-action-bar.tsx", "utf8")
+  const designSystem = readFileSync("src/lib/design-system.ts", "utf8")
+
+  assert.match(form, /pb-\[max\(0\.75rem,env\(safe-area-inset-bottom\)\)\]/)
+  assert.match(form, /pb-\[calc\(9rem\+max\(0\.75rem,env\(safe-area-inset-bottom\)\)\)\]/)
+  assert.match(actionBar, /pb-\[max\(0\.75rem,env\(safe-area-inset-bottom\)\)\]/)
+  assert.match(designSystem, /pb-\[calc\(6rem\+max\(0\.75rem,env\(safe-area-inset-bottom\)\)\)\] sm:pb-0/)
+})
+
 test("audit scan phase 2 emphasizes scan entry and exposes pending queue access", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
