@@ -7,6 +7,8 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Login successfully.
 - [ ] Open Admin Settings.
 - [ ] Switch between System Settings tabs, refresh the page, and confirm the selected tab is restored from the `tab` URL query without losing other query values. Change a safe setting, then attempt to close/refresh the browser and confirm the standard leave warning appears only while unsaved changes exist.
+- [ ] Search System Settings by a known key, description keyword, and section name. Open a result and confirm it returns to the matching existing tab without discarding unsaved form values. Change a safe setting, use its link in `ตรวจทานก่อนบันทึก`, and confirm the same tab navigation works.
+- [ ] Open Company, Branch, Location, Employee, and Supplier lists and confirm the shared workspace strip marks the current section, keeps its own filter/pagination state per page, and scrolls only the strip rather than the full page on narrow screens.
 - [ ] Update a safe non-secret setting and confirm audit log entry.
 - [ ] Review system logs and readable before/after details.
 - [ ] Review readiness checks.
@@ -46,12 +48,15 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Print QR labels.
 - [ ] Scan QR and open asset detail.
 - [ ] On Asset Detail, click section shortcuts such as `หมายเหตุ` and `ตรวจนับ`; confirm the target section scrolls inside the app content area and no large blank bottom area stays pinned on screen.
+- [ ] On Asset Detail, switch between `ภาพรวม`, `การถือครอง`, `การดำเนินการ`, and `ตรวจนับ`; confirm the section navigator changes without hiding asset data or changing permission-controlled actions. Run checkout, check-in, and transfer once each and confirm a review dialog shows the asset, destination/counterpart, resulting status, and evidence summary before the existing save request is sent.
 - [ ] On a mobile device, confirm `/th/asset-management/scan` defaults to the generic rear camera option, shows an undistorted 4:3 camera preview and smaller square QR guidance frame; center only the QR code in the frame, adjust distance until the QR is sharp, and confirm the scanned asset detail opens. On supported devices, confirm flashlight plus 1x/2x/3x zoom controls appear inside the existing preview, 1x returns to unzoomed without closing the camera, and unsupported devices hide unavailable controls. Asset QR mode should decode from the native-resolution video frame through ZXing without native `BarcodeDetector`, `html5-qrcode` CSS-pixel canvas downsampling, or mirror-flip retries.
 - [ ] Confirm Serial Number scanner inputs scan manufacturer QR/barcode labels with the 16:9 scan-line guide, native-resolution ZXing multi-format decoder, optional browser `BarcodeDetector` fallback, focused internal scan-band crops, and direct crop `ImageData` ZXing fallback; center the barcode band on the line, make the bars fill most of the frame, and adjust distance until the lines are sharp.
 - [ ] Check-out an asset.
 - [ ] Check-in an asset.
 - [ ] For a legacy/imported asset that has a current custodian but no open checkout, search the Check-in `ข้อมูลเก่า` panel by Asset Tag/holder/location, create the backfilled handover, and complete the normal return form; confirm the activity/audit history includes `legacy_return_backfill`.
 - [ ] Transfer an asset.
+- [ ] On Maintenance, switch between `ตาราง` and `บอร์ด`, confirm the current search/status filters remain in the URL, and verify both layouts show the same ticket set and open the same ticket detail workflow.
+- [ ] On Disposal, verify pending requests offer only the review action to approvers, approved requests offer only actual-execution action to permitted operators, and completed/rejected requests offer a detail link. Confirm this does not bypass the existing approval or execution forms.
 - [ ] Upload and preview asset evidence.
 - [ ] On Asset Detail, confirm model/asset preview photos stay compact in the side rail, the `รูปและไฟล์` section initially shows only the preview set, and expanding/collapsing extra photos or files keeps preview, download, and delete actions available.
 - [ ] On Asset Detail, open the Evidence Center from the top action row and confirm it works as a drawer-based file index with source filters instead of a duplicate page section; the Timeline remains the place to review event history.
@@ -67,6 +72,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] On a mobile device, confirm `/th/audit/rounds/{id}/scan` can scan the same printed Asset Label QR, pauses the camera after the QR read, locks the selected audit item with the `ล็อกเป้าหมายแล้ว` badge, keeps the raw QR URL only in the latest-decoded panel, and does not navigate away from the audit workflow.
 - [ ] After selecting an audit asset, confirm the scan page shows system data for comparison: current location, custodian, department, and condition.
 - [ ] On a mobile device, confirm the sticky progress header is the only progress summary, shows the full compact progress bar before selecting an asset, collapses to a shorter checked/total + pending + photo strip after selecting an asset, and that the old metric-card row is not repeated below it.
+- [ ] Before selecting an item, choose a Location and Department work area. Confirm the pending quick queue, initial manual picker, and progress count use that work area, the selection returns after browser reload for the same audit round, clearing it restores round-wide counts, and direct QR/manual lookup still resolves items from the full current round.
 - [ ] Before scanning or selecting an asset, confirm the scan/manual entry panel is the most prominent area and includes short helper copy for starting the audit scan.
 - [ ] Tap `คิวรอตรวจ {count}` from the sticky header and confirm a collapsible inline pending queue preview opens from the same audit round. Confirm each pending card shows expected location plus custodian/department where applicable. Collapse and reopen the queue, then select an item and confirm it loads for review while marking not found still happens from the full pending list/zone queue. Open the full pending list and confirm `กลับ` returns to the scan page that launched it. On mobile, confirm the full pending list can search by Asset Tag/name/location/custodian and each card has clear actions to scan that item, view the asset, or mark not found.
 - [ ] Without scanning, type at least two characters such as part of an Asset Tag into the manual scan input and confirm suggestion cards appear from the current round by Asset Tag/name/location/custodian/department. If multiple cards match, the manual action should ask the user to choose one; QR scan behavior must still resolve only exact QR/Asset Tag values.
@@ -117,6 +123,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Review asset cost/accounting fields.
 - [ ] Review depreciation/book-value report.
 - [ ] Export reports.
+- [ ] On Reports, apply a filter, save it with a name, reload the page, and reopen the named preset. Confirm it is available only in the same browser/device, does not appear in another browser profile, and does not change export permissions.
 - [ ] On Reports, confirm branch breakdown rows show company/branch labels clearly when branch names repeat across companies and no duplicate-key console warning appears.
 - [ ] On Reports, confirm the cross-scope asset panel shows counts and preview rows for custodian/company, custodian/branch, and location/branch mismatches; open each drilldown and export Asset Overview to verify the Cross Scope sheet.
 - [ ] Review disposal request financial details.

@@ -31,7 +31,7 @@ test("asset register detail and edit links carry the current list URL as returnT
 test("asset detail page exposes a back button and forwards returnTo to edit", () => {
   const source = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
 
-  assert.match(source, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
+  assert.match(source, /searchParams: Promise<\{ returnTo\?: string \| string\[\]; view\?: string \| string\[\] \}>/)
   assert.match(source, /normalizeAssetReturnTo\(locale, rawSearchParams\.returnTo\)/)
   assert.match(source, /href=\{returnToHref\}/)
   assert.match(source, /appendReturnTo\(`\/\$\{locale\}\/assets\/\$\{asset\.id\}\/edit`, returnToHref\)/)

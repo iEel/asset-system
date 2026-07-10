@@ -1834,7 +1834,7 @@ export function AuditScanForm({
           {showPendingQueue ? (
             <PendingQueuePanel
               items={pendingQueuePreview}
-              total={pendingCount}
+              total={queuePendingCount}
               pendingHref={pendingListHref}
               onSelect={selectPendingQueueItem}
               expanded={pendingQueueExpanded}

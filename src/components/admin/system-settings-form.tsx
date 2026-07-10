@@ -825,7 +825,7 @@ export function SystemSettingsForm({
   const selectTab = (tab: SettingsTabId) => {
     if (tab === activeTab) return
     const href = buildSystemSettingsTabHref(pathname, searchParams.toString(), tab)
-    router.replace(href, { scroll: false })
+    window.history.replaceState(null, "", href)
   }
   const openSettingGroup = (tab: SettingsTabId) => {
     selectTab(tab)

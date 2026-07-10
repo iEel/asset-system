@@ -234,6 +234,14 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       tone: "warning",
     },
   }
+  const crossScopeActionCard: DashboardActionCard = {
+    label: t("crossScopeActionTitle"),
+    value: crossScopeSummary.custodianCompany,
+    detail: t("crossScopeActionDetail"),
+    href: buildDashboardCrossScopeHref(locale, "custodian_company"),
+    icon: <AlertTriangle className="h-5 w-5" />,
+    tone: "warning",
+  }
   const actionCards = [
     ...buildDashboardActionCardKeys({
     approvalInbox: {
@@ -245,6 +253,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     pendingDisposals,
     approvedDisposals,
     }).map((key) => actionCardMap[key]),
+    ...(crossScopeTotal > 0 ? [crossScopeActionCard] : []),
   ]
   const crossScopeCards = [
     {
