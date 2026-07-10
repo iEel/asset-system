@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 
-import { normalizeAssetComponentManagerReturnTo } from "../src/lib/asset-return-navigation.ts"
+import { normalizeAssetComponentManagerReturnTo, normalizeAssetReturnTo } from "../src/lib/asset-return-navigation.ts"
 
 function readSource(path: string) {
   return existsSync(path) ? readFileSync(path, "utf8") : ""
@@ -16,6 +16,14 @@ test("asset return navigation helper only accepts approved internal asset routes
   assert.match(source, /url\.origin !== "http:\/\/asset\.local"/)
   assert.match(source, /safeTargets\.has\(url\.pathname\)/)
   assert.match(source, /appendReturnTo/)
+})
+
+test("asset return navigation accepts a same-locale component detail target only", () => {
+  assert.equal(
+    normalizeAssetReturnTo("th", "/th/assets/component%20asset?view=custody#components"),
+    "/th/assets/component%20asset?view=custody#components",
+  )
+  assert.equal(normalizeAssetReturnTo("th", "/th/assets/component%20asset/edit"), "/th/assets")
 })
 
 test("asset register detail and edit links carry the current list URL as returnTo", () => {
