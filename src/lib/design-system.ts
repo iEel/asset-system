@@ -15,12 +15,33 @@ const metricToneClasses: Record<UiTone, { container: string; value: string }> = 
   muted: { container: "border-border bg-muted/40", value: "text-foreground" },
 }
 
+const successAssetStateValues = new Set(["ready", "in use", "new", "excellent", "good", "active"])
+const warningAssetStateValues = new Set(["checked out", "under maintenance", "pending repair", "under inspection", "pending disposal", "fair"])
+const dangerAssetStateValues = new Set(["lost", "missing", "damaged", "non functional", "poor"])
+// Salvage describes a terminal inventory state, so it shares neutral inactive treatment.
+const neutralAssetStateValues = new Set(["draft", "disposed", "retired", "salvage"])
+
 export function normalizeUiTone(value: unknown): UiTone {
   return typeof value === "string" && uiTones.includes(value as UiTone) ? (value as UiTone) : "neutral"
 }
 
 export function getMetricCardToneClasses(tone: UiTone = "neutral") {
   return metricToneClasses[tone]
+}
+
+export function normalizeAssetStateValue(value?: string | null) {
+  return typeof value === "string" ? value.trim().toLowerCase().replace(/[_\s-]+/g, " ") : ""
+}
+
+export function getAssetStateTone(value?: string | null): UiTone {
+  const normalizedValue = normalizeAssetStateValue(value)
+
+  if (!normalizedValue) return "muted"
+  if (successAssetStateValues.has(normalizedValue)) return "success"
+  if (warningAssetStateValues.has(normalizedValue)) return "warning"
+  if (dangerAssetStateValues.has(normalizedValue)) return "danger"
+  if (neutralAssetStateValues.has(normalizedValue)) return "neutral"
+  return "info"
 }
 
 export function getPanelClasses() {

@@ -77,15 +77,11 @@ test("asset register keeps adaptive desktop and mobile responsibilities explicit
 
 test("asset register selects canonical state values for semantic badges", () => {
   const source = assetsPageSource()
-  const tableSource = registerTableSource()
 
   assert.match(source, /status:\s*\{\s*select:\s*\{\s*name:\s*true,\s*nameTh:\s*true/)
   assert.match(source, /condition:\s*\{\s*select:\s*\{\s*name:\s*true,\s*nameTh:\s*true/)
   assert.match(source, /status:\s*\{\s*value:\s*asset\.status\.name,\s*label:\s*asset\.status\.nameTh\s*\}/)
   assert.match(source, /condition:\s*\{\s*value:\s*asset\.condition\.name,\s*label:\s*asset\.condition\.nameTh\s*\}/)
-  assert.match(tableSource, /typeof value === "string" \? value\.trim\(\)\.toLowerCase\(\)\.replace\(\/\[_\\s-\]\+\/g, " "\) : ""/)
-  assert.match(tableSource, /if \(!normalizedValue\) return "bg-muted text-muted-foreground"/)
-  assert.match(tableSource, /damaged\|non functional\|poor\|salvage\|lost\|missing\|retired/)
 })
 
 test("mobile asset cards prioritize field lookup context", () => {
@@ -100,6 +96,44 @@ test("mobile asset cards prioritize field lookup context", () => {
   assert.match(card, /asset\.status/)
   assert.match(card, /asset\.currentLocation/)
   assert.match(card, /asset\.custodian/)
+})
+
+test("mobile asset cards preserve field lookup order and secondary action access", () => {
+  const source = registerTableSource()
+  const start = source.indexOf("data-asset-mobile-card")
+  const end = source.indexOf("</article>", start)
+
+  assert.ok(start > -1 && end > start)
+  const card = source.slice(start, end)
+  const orderedValues = [
+    "asset.assetTag",
+    "asset.status",
+    "asset.name",
+    "asset.serialNumber",
+    "asset.category",
+    "asset.currentLocation",
+    "asset.custodian",
+    "<details",
+  ]
+
+  let previousIndex = -1
+  for (const value of orderedValues) {
+    const index = card.indexOf(value)
+    assert.ok(index > previousIndex, `${value} must follow the prior mobile card value`)
+    previousIndex = index
+  }
+
+  assert.doesNotMatch(card, /asset\.companyBranch/)
+  assert.doesNotMatch(card, /asset\.purchasePrice/)
+  assert.match(card, /<details className="mt-2 border-t border-border pt-2">/)
+  assert.match(card, /<summary className="flex min-h-11 w-full cursor-pointer items-center rounded-md px-3 text-sm font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 hover:text-foreground">/)
+})
+
+test("asset register uses mutually exclusive responsive helper boundaries", () => {
+  const source = registerTableSource()
+
+  assert.match(source, /data-asset-mobile-list className=\{`\$\{getMobileCardListClasses\(\)\}/)
+  assert.match(source, /data-asset-desktop-table className=\{`\$\{getDesktopTableOnlyClasses\(\)\}/)
 })
 
 test("asset register keeps table utility controls out of the mobile-first path", () => {

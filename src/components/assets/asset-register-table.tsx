@@ -15,7 +15,7 @@ import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
 import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
-import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
+import { getAssetStateTone, getDesktopTableOnlyClasses, getMobileCardListClasses, normalizeAssetStateValue } from "@/lib/design-system"
 import {
   assetRegisterColumnOrder,
   assetRegisterColumnPresets,
@@ -549,7 +549,9 @@ export function AssetRegisterTable({
                 </Link>
               </div>
               <details className="mt-2 border-t border-border pt-2">
-                <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">{labels.actions}</summary>
+                <summary className="flex min-h-11 w-full cursor-pointer items-center rounded-md px-3 text-sm font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 hover:text-foreground">
+                  {labels.actions}
+                </summary>
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                   <Link
                     href={buildAssetCloneHref(asset.id)}
@@ -944,31 +946,21 @@ function HeaderWithHelp({
 }
 
 function StatusPill({ label, value }: { label: string; value?: string | null }) {
-  return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getStatusPillTone(value)}`}>{label}</span>
-}
+  const tone = getAssetStateTone(value)
+  const toneClasses = {
+    success: "bg-success/10 text-success",
+    warning: "bg-warning/10 text-warning",
+    danger: "bg-danger/10 text-danger",
+    neutral: "bg-muted text-muted-foreground",
+    muted: "bg-muted text-muted-foreground",
+    info: "bg-info/10 text-info",
+  }[tone]
 
-function getStatusPillTone(value?: string | null) {
-  const normalizedValue = normalizeAssetStateValue(value)
-
-  if (!normalizedValue) return "bg-muted text-muted-foreground"
-  if (/(damaged|non functional|poor|salvage|lost|missing|retired)/.test(normalizedValue)) {
-    return "bg-danger/10 text-danger"
-  }
-  if (/(fair|pending|maintenance|inspection|checked out|in use)/.test(normalizedValue)) {
-    return "bg-warning/10 text-warning"
-  }
-  if (/(new|excellent|good|ready|active)/.test(normalizedValue)) {
-    return "bg-success/10 text-success"
-  }
-  return "bg-info/10 text-info"
+  return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${toneClasses}`}>{label}</span>
 }
 
 function needsFieldAttention(asset: AssetRegisterRow) {
   return ["fair", "poor", "damaged", "non functional", "salvage"].includes(normalizeAssetStateValue(asset.condition.value)) || asset.ownershipType.value === "shared"
-}
-
-function normalizeAssetStateValue(value?: string | null) {
-  return typeof value === "string" ? value.trim().toLowerCase().replace(/[_\s-]+/g, " ") : ""
 }
 
 function OwnershipTypePill({ value, label }: { value: string; label: string }) {

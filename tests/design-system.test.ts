@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import * as designSystem from "../src/lib/design-system.ts"
 
 import {
   getActionButtonClasses,
@@ -12,6 +13,8 @@ import {
   getTableShellClasses,
   normalizeUiTone,
 } from "../src/lib/design-system.ts"
+
+const getAssetStateTone = (designSystem as Record<string, unknown>).getAssetStateTone
 
 test("normalizes supported UI tones with neutral fallback", () => {
   assert.equal(normalizeUiTone("success"), "success")
@@ -34,4 +37,43 @@ test("returns shared panel, form control, and action button classes", () => {
   assert.match(getResponsiveActionRowClasses(), /flex-col/)
   assert.match(getTableShellClasses(), /overflow-hidden/)
   assert.match(getEmptyStateClasses(), /text-center/)
+})
+
+test("maps seeded asset status and condition values to explicit semantic tones", () => {
+  assert.equal(typeof getAssetStateTone, "function")
+  if (typeof getAssetStateTone !== "function") return
+
+  const resolveTone = getAssetStateTone as (value?: string | null) => string
+  const cases: Array<[string | undefined, string]> = [
+    ["Draft", "neutral"],
+    ["Ready", "success"],
+    ["In Use", "success"],
+    ["Reserved", "info"],
+    ["In Transit", "info"],
+    ["Under Maintenance", "warning"],
+    ["Pending Repair", "warning"],
+    ["Under Inspection", "warning"],
+    ["Checked Out", "warning"],
+    ["Pending Disposal", "warning"],
+    ["Lost", "danger"],
+    ["Missing", "danger"],
+    ["Disposed", "neutral"],
+    ["Retired", "neutral"],
+    ["New", "success"],
+    ["Excellent", "success"],
+    ["Good", "success"],
+    ["Fair", "warning"],
+    ["Poor", "danger"],
+    ["Damaged", "danger"],
+    ["Non-functional", "danger"],
+    ["Salvage", "neutral"],
+    ["Active", "success"],
+    ["in_use", "success"],
+    ["unknown legacy value", "info"],
+    [undefined, "muted"],
+  ]
+
+  for (const [value, expectedTone] of cases) {
+    assert.equal(resolveTone(value), expectedTone, value ?? "undefined")
+  }
 })
