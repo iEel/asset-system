@@ -34,7 +34,7 @@ export function MobileFieldNavigation({
   pathname: string
   user: SessionUser
   sidebarOpen: boolean
-  onOpenMore: () => void
+  onOpenMore: (trigger: HTMLButtonElement) => void
 }) {
   const locale = useLocale()
   const t = useTranslations("nav")
@@ -84,7 +84,7 @@ export function MobileFieldNavigation({
 
         <button
           type="button"
-          onClick={onOpenMore}
+          onClick={(event) => onOpenMore(event.currentTarget)}
           aria-current={activeItem === "more" ? "page" : undefined}
           aria-expanded={sidebarOpen}
           aria-controls="mobile-primary-navigation-drawer"

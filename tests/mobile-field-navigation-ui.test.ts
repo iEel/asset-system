@@ -68,6 +68,21 @@ test("More exposes the existing sidebar state to assistive technology", () => {
   assert.match(sidebar, /id="mobile-primary-navigation-drawer"/)
 })
 
+test("More moves focus into the drawer and restores it after dismissal", () => {
+  const navigation = navigationSource()
+  const shell = shellSource()
+  const sidebar = readFileSync("src/components/layout/sidebar.tsx", "utf8")
+
+  assert.match(navigation, /onOpenMore: \(trigger: HTMLButtonElement\) => void/)
+  assert.match(navigation, /onClick=\{\(event\) => onOpenMore\(event\.currentTarget\)\}/)
+  assert.match(shell, /const mobileMoreTriggerRef = useRef<HTMLButtonElement \| null>\(null\)/)
+  assert.match(shell, /mobileMoreTriggerRef\.current = trigger/)
+  assert.match(shell, /restoreMobileMoreFocusRef\.current = restoreFocus/)
+  assert.match(shell, /mobileMoreTriggerRef\.current\?\.focus\(\)/)
+  assert.match(shell, /onMobileNavigate=\{\(\) => closeMobileSidebar\(false\)\}/)
+  assert.match(sidebar, /closeButtonRef\.current\?\.focus\(\)/)
+})
+
 test("mobile field navigation labels exist in Thai and English", () => {
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))

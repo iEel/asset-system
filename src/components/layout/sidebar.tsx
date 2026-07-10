@@ -37,7 +37,7 @@ import {
   Rocket,
   X,
 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import {
   filterNavigationItemsByPermission,
@@ -59,15 +59,25 @@ export function Sidebar({
   mobileOpen,
   user,
   onMobileClose,
+  onMobileNavigate,
 }: {
   collapsed: boolean
   mobileOpen: boolean
   user: SessionUser
   onMobileClose: () => void
+  onMobileNavigate: () => void
 }) {
   const t = useTranslations("nav")
   const locale = useLocale()
   const pathname = usePathname()
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!mobileOpen) return
+
+    const frame = window.requestAnimationFrame(() => closeButtonRef.current?.focus())
+    return () => window.cancelAnimationFrame(frame)
+  }, [mobileOpen])
 
   const menuItems: MenuItem[] = [
     {
@@ -202,6 +212,7 @@ export function Sidebar({
         </span>
         <button
           type="button"
+          ref={closeButtonRef}
           onClick={onMobileClose}
           className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-hover hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar lg:hidden"
           aria-label="Close menu"
@@ -219,7 +230,7 @@ export function Sidebar({
             collapsed={collapsed}
             pathname={pathname}
             t={t}
-            onNavigate={onMobileClose}
+            onNavigate={onMobileNavigate}
           />
         ))}
       </nav>
