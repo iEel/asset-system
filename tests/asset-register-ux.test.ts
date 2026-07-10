@@ -196,6 +196,15 @@ test("asset register groups quick filters and collapses advanced filters", () =>
   assert.match(source, /data-asset-advanced-filters/)
 })
 
+test("asset register prioritizes search before quick filters on mobile", () => {
+  const source = assetsPageSource()
+
+  assert.match(source, /data-asset-filter-layout className="flex min-w-0 max-w-full flex-col"/)
+  assert.match(source, /data-asset-quick-filters className="order-2 mt-4 mb-4 border-b border-border pb-4 md:order-1 md:mt-0"/)
+  assert.match(source, /data-asset-search-form className="order-1 space-y-3 md:order-3"/)
+  assert.match(source, /data-asset-active-filters className="order-3 mb-4 rounded-md border border-primary\/20 bg-primary\/5 px-3 py-2 md:order-2"/)
+})
+
 test("asset register surfaces scoped brand and model drilldown filters", () => {
   const source = assetsPageSource()
 

@@ -696,7 +696,8 @@ function AssetFilters({
 
   return (
     <FilterPanel className="mb-4">
-      <div className="mb-4 border-b border-border pb-4">
+      <div data-asset-filter-layout className="flex min-w-0 max-w-full flex-col">
+      <div data-asset-quick-filters className="order-2 mt-4 mb-4 border-b border-border pb-4 md:order-1 md:mt-0">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-foreground">{labels.quickFilters}</h2>
@@ -718,7 +719,7 @@ function AssetFilters({
         </div>
       </div>
       {activeFilterChips.length > 0 ? (
-        <div data-asset-active-filters className="mb-4 rounded-md border border-primary/20 bg-primary/5 px-3 py-2">
+        <div data-asset-active-filters className="order-3 mb-4 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 md:order-2">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <div className="text-xs font-semibold uppercase tracking-normal text-primary">{labels.activeFilters}</div>
@@ -745,7 +746,7 @@ function AssetFilters({
           </div>
         </div>
       ) : null}
-      <form className="space-y-3" action={`/${locale}/assets`}>
+      <form data-asset-search-form className="order-1 space-y-3 md:order-3" action={`/${locale}/assets`}>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-5">
           <label className="col-span-2">
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{labels.search}</span>
@@ -840,6 +841,7 @@ function AssetFilters({
         <input type="hidden" name="sort" value={filters.sort} />
         <input type="hidden" name="direction" value={filters.direction} />
       </form>
+      </div>
     </FilterPanel>
   )
 }
