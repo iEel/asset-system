@@ -55,3 +55,12 @@ test("component manager confirms a completed install before offering the next co
   assert.match(manager, /setLastInstalledAssetTag\(selectedComponent\.assetTag\)/)
   assert.match(manager, /\{labels\.addAnother\}/)
 })
+
+test("component manager uses the shared asset scan messages for scanner controls", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/components/page.tsx", "utf8")
+
+  assert.match(page, /getTranslations\("assetTools"\)/)
+  assert.match(page, /start: tAssetTools\("scannerStart"\)/)
+  assert.match(page, /zoomCamera: tAssetTools\.raw\("zoomCamera"\)/)
+  assert.doesNotMatch(page, /start: t\("scannerStart"\)/)
+})

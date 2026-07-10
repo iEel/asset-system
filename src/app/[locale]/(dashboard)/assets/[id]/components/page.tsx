@@ -17,7 +17,11 @@ export default async function AssetComponentManagerPage({ params, searchParams }
   const user = await requirePagePermission(locale, "asset", "view")
   const canEdit = hasPermission(user, "asset", "edit")
   const returnToHref = normalizeAssetComponentManagerReturnTo(locale, id, rawSearchParams.returnTo)
-  const [t, tCommon] = await Promise.all([getTranslations("asset"), getTranslations("common")])
+  const [t, tCommon, tAssetTools] = await Promise.all([
+    getTranslations("asset"),
+    getTranslations("common"),
+    getTranslations("assetTools"),
+  ])
 
   const asset = await prisma.asset.findFirst({
     where: { id, isActive: true },
@@ -126,24 +130,24 @@ export default async function AssetComponentManagerPage({ params, searchParams }
         evidence: t("viewEvidence"),
         loadMore: t("componentLoadMore"),
         scanner: {
-          start: t("scannerStart"),
-          stop: t("scannerStop"),
-          title: t("scannerTitle"),
-          help: t("scannerHelp"),
-          cameraUnsupported: t("cameraUnsupported"),
-          cameraNotFound: t("cameraNotFound"),
-          cameraError: t("cameraError"),
-          cameraDevice: t("cameraDevice"),
-          cameraDeviceFallback: t("cameraDeviceFallback"),
-          cameraRear: t("cameraRear"),
-          scanning: t("scannerStop"),
-          scanned: t("serialScanned"),
-          cameraOpening: t("scannerStart"),
-          torchOn: t("torchOn"),
-          torchOff: t("torchOff"),
-          torchUnsupported: t("torchUnsupported"),
-          zoomCamera: t("zoomCamera", { level: "{level}" }),
-          zoomUnsupported: t("zoomUnsupported"),
+          start: tAssetTools("scannerStart"),
+          stop: tAssetTools("scannerStop"),
+          title: tAssetTools("scannerTitle"),
+          help: tAssetTools("scannerHelp"),
+          cameraUnsupported: tAssetTools("cameraUnsupported"),
+          cameraNotFound: tAssetTools("cameraNotFound"),
+          cameraError: tAssetTools("cameraError"),
+          cameraDevice: tAssetTools("cameraDevice"),
+          cameraDeviceFallback: tAssetTools("cameraDeviceFallback"),
+          cameraRear: tAssetTools("cameraRear"),
+          scanning: tAssetTools("scanning"),
+          scanned: tAssetTools("scanned"),
+          cameraOpening: tAssetTools("cameraOpening"),
+          torchOn: tAssetTools("torchOn"),
+          torchOff: tAssetTools("torchOff"),
+          torchUnsupported: tAssetTools("torchUnsupported"),
+          zoomCamera: tAssetTools.raw("zoomCamera"),
+          zoomUnsupported: tAssetTools("zoomUnsupported"),
         },
       }}
     />
