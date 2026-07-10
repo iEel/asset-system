@@ -18,6 +18,8 @@ type CurrentComponent = {
 type InstalledInLink = {
   id: string
   componentRole: string
+  slotNo?: string | null
+  parentHref: string
   parentAsset: AssetReference
 }
 
@@ -38,6 +40,8 @@ export function AssetComponentsSummary({
     title: string
     help: string
     installedIn: string
+    roleLabel: string
+    slotLabel: string
     current: string
     noCurrent: string
     missingSerial: string
@@ -75,11 +79,14 @@ export function AssetComponentsSummary({
             {installedInLinks.map((link) => (
               <Link
                 key={link.id}
-                href={`/${locale}/assets/${link.parentAsset.id}`}
+                href={link.parentHref}
                 className="text-sm font-medium text-primary hover:underline"
               >
                 {link.parentAsset.assetTag} - {link.parentAsset.name}
-                <span className="text-muted-foreground"> · {link.componentRole}</span>
+                <span className="block pt-0.5 text-xs font-normal text-muted-foreground">
+                  {labels.roleLabel}: {link.componentRole}
+                  {link.slotNo ? ` · ${labels.slotLabel}: ${link.slotNo}` : ""}
+                </span>
               </Link>
             ))}
           </div>
@@ -110,9 +117,10 @@ export function AssetComponentsSummary({
               >
                 <span className="min-w-0">
                   <span className="block break-words font-mono text-sm font-semibold text-foreground">{component.componentAsset.assetTag}</span>
-                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                    {component.componentAsset.name} · {component.componentRole}
-                    {component.slotNo ? ` · ${component.slotNo}` : ""}
+                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">{component.componentAsset.name}</span>
+                  <span className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                    <span>{labels.roleLabel}: {component.componentRole}</span>
+                    {component.slotNo ? <span>{labels.slotLabel}: {component.slotNo}</span> : null}
                   </span>
                 </span>
                 {component.componentAsset.serialNumber ? (
