@@ -110,8 +110,8 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           branch: { select: { code: true, name: true } },
           custodian: { select: { code: true, fullNameTh: true } },
           currentLocation: { select: { code: true, name: true } },
-          status: { select: { nameTh: true, colorCode: true } },
-          condition: { select: { nameTh: true, colorCode: true } },
+          status: { select: { name: true, nameTh: true, colorCode: true } },
+          condition: { select: { name: true, nameTh: true, colorCode: true } },
           attachments: {
             where: {
               isActive: true,

@@ -75,6 +75,19 @@ test("asset register keeps adaptive desktop and mobile responsibilities explicit
   assert.match(source, /getDesktopTableOnlyClasses\(\)/)
 })
 
+test("asset register selects canonical state values for semantic badges", () => {
+  const source = assetsPageSource()
+  const tableSource = registerTableSource()
+
+  assert.match(source, /status:\s*\{\s*select:\s*\{\s*name:\s*true,\s*nameTh:\s*true/)
+  assert.match(source, /condition:\s*\{\s*select:\s*\{\s*name:\s*true,\s*nameTh:\s*true/)
+  assert.match(source, /status:\s*\{\s*value:\s*asset\.status\.name,\s*label:\s*asset\.status\.nameTh\s*\}/)
+  assert.match(source, /condition:\s*\{\s*value:\s*asset\.condition\.name,\s*label:\s*asset\.condition\.nameTh\s*\}/)
+  assert.match(tableSource, /typeof value === "string" \? value\.trim\(\)\.toLowerCase\(\)\.replace\(\/\[_\\s-\]\+\/g, " "\) : ""/)
+  assert.match(tableSource, /if \(!normalizedValue\) return "bg-muted text-muted-foreground"/)
+  assert.match(tableSource, /damaged\|non functional\|poor\|salvage\|lost\|missing\|retired/)
+})
+
 test("mobile asset cards prioritize field lookup context", () => {
   const source = registerTableSource()
   const start = source.indexOf("data-asset-mobile-card")

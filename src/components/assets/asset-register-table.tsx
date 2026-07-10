@@ -943,14 +943,15 @@ function HeaderWithHelp({
   )
 }
 
-function StatusPill({ label, value }: { label: string; value: string }) {
+function StatusPill({ label, value }: { label: string; value?: string | null }) {
   return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getStatusPillTone(value)}`}>{label}</span>
 }
 
-function getStatusPillTone(value: string) {
-  const normalizedValue = value.toLowerCase()
+function getStatusPillTone(value?: string | null) {
+  const normalizedValue = normalizeAssetStateValue(value)
 
-  if (/(damaged|non-functional|poor|salvage|lost|missing|retired)/.test(normalizedValue)) {
+  if (!normalizedValue) return "bg-muted text-muted-foreground"
+  if (/(damaged|non functional|poor|salvage|lost|missing|retired)/.test(normalizedValue)) {
     return "bg-danger/10 text-danger"
   }
   if (/(fair|pending|maintenance|inspection|checked out|in use)/.test(normalizedValue)) {
@@ -963,7 +964,11 @@ function getStatusPillTone(value: string) {
 }
 
 function needsFieldAttention(asset: AssetRegisterRow) {
-  return ["Fair", "Poor", "Damaged", "Non-functional", "Salvage"].includes(asset.condition.value) || asset.ownershipType.value === "shared"
+  return ["fair", "poor", "damaged", "non functional", "salvage"].includes(normalizeAssetStateValue(asset.condition.value)) || asset.ownershipType.value === "shared"
+}
+
+function normalizeAssetStateValue(value?: string | null) {
+  return typeof value === "string" ? value.trim().toLowerCase().replace(/[_\s-]+/g, " ") : ""
 }
 
 function OwnershipTypePill({ value, label }: { value: string; label: string }) {
