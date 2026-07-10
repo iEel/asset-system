@@ -4,6 +4,10 @@ export type MyAssetsUser = {
   employeeId?: string | null
 }
 
+export type MyAssetDetailInput = MyAssetsUser & {
+  assetId?: string | null
+}
+
 export type MyAssetSummaryItem = {
   statusName: string | null
   hasPhoto: boolean
@@ -13,6 +17,13 @@ export function buildMyAssetsWhere(user: MyAssetsUser): Prisma.AssetWhereInput {
   const employeeId = user.employeeId?.trim()
   if (!employeeId) return { id: "__my_assets_no_employee__" }
   return { isActive: true, custodianId: employeeId }
+}
+
+export function buildMyAssetDetailWhere(input: MyAssetDetailInput): Prisma.AssetWhereInput {
+  const employeeId = input.employeeId?.trim()
+  const assetId = input.assetId?.trim()
+  if (!employeeId || !assetId) return { id: "__my_assets_no_employee__" }
+  return { id: assetId, isActive: true, custodianId: employeeId }
 }
 
 export function summarizeMyAssets(items: MyAssetSummaryItem[]) {

@@ -8,6 +8,7 @@ import { Download, Loader2, PackagePlus, Printer, Wrench } from "lucide-react"
 import { toast } from "sonner"
 import { formatDateTime } from "@/lib/utils"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { ConfirmTextDialog } from "@/components/ui/confirm-text-dialog"
 
 type AssetOption = {
   id: string
@@ -71,6 +72,7 @@ export function AssetComponentsPanel({
   const [removeEvidenceById, setRemoveEvidenceById] = useState<Record<string, File | null>>({})
   const [saving, setSaving] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const [removeDialogComponent, setRemoveDialogComponent] = useState<ComponentRecord | null>(null)
   const missingSerialCount = currentComponents.filter((component) => !component.componentAsset.serialNumber).length
   const selectedComponentAsset = useMemo(
     () => componentResults.find((asset) => asset.id === componentAssetId) ?? availableAssets.find((asset) => asset.id === componentAssetId),
@@ -142,9 +144,7 @@ export function AssetComponentsPanel({
     }
   }
 
-  async function handleRemove(componentId: string) {
-    const removeReason = window.prompt(t("componentRemoveReason"))
-    if (removeReason === null) return
+  async function handleRemove(componentId: string, removeReason: string) {
     setRemovingId(componentId)
 
     try {
@@ -162,6 +162,7 @@ export function AssetComponentsPanel({
 
       toast.success(t("componentRemoveSuccess"))
       setRemoveEvidenceById((current) => ({ ...current, [componentId]: null }))
+      setRemoveDialogComponent(null)
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))
@@ -358,8 +359,8 @@ export function AssetComponentsPanel({
                   />
                   <button
                     type="button"
-                    onClick={() => handleRemove(component.id)}
-                    disabled={removingId === component.id}
+                    onClick={() => setRemoveDialogComponent(component)}
+                    disabled={removingId === component.id || removeDialogComponent !== null}
                     className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-3 text-xs font-medium text-danger transition-colors hover:bg-danger/10 disabled:opacity-50"
                   >
                     {removingId === component.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wrench className="h-3.5 w-3.5" />}
@@ -398,6 +399,21 @@ export function AssetComponentsPanel({
           </div>
         )}
       </div>
+      <ConfirmTextDialog
+        open={removeDialogComponent !== null}
+        title={t("removeComponent")}
+        description={removeDialogComponent ? `${removeDialogComponent.componentAsset.assetTag} - ${removeDialogComponent.componentAsset.name}` : undefined}
+        fieldLabel={t("componentRemoveReason")}
+        confirmLabel={t("removeComponent")}
+        cancelLabel={tCommon("cancel")}
+        closeLabel={tCommon("close")}
+        busy={removeDialogComponent !== null && removingId === removeDialogComponent.id}
+        tone="danger"
+        onClose={() => setRemoveDialogComponent(null)}
+        onConfirm={(removeReason) => {
+          if (removeDialogComponent) void handleRemove(removeDialogComponent.id, removeReason)
+        }}
+      />
     </section>
   )
 }

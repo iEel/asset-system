@@ -6,13 +6,13 @@ function readSource(path: string) {
   return existsSync(path) ? readFileSync(path, "utf8") : ""
 }
 
-test("asset return navigation helper only accepts internal asset register return targets", () => {
+test("asset return navigation helper only accepts approved internal asset routes", () => {
   const source = readSource("src/lib/asset-return-navigation.ts")
 
   assert.match(source, /normalizeAssetReturnTo/)
   assert.match(source, /new URL\(raw, "http:\/\/asset\.local"\)/)
   assert.match(source, /url\.origin !== "http:\/\/asset\.local"/)
-  assert.match(source, /url\.pathname !== fallback/)
+  assert.match(source, /safeTargets\.has\(url\.pathname\)/)
   assert.match(source, /appendReturnTo/)
 })
 

@@ -34,6 +34,7 @@ import { AssetAttachments } from "@/components/assets/asset-attachments"
 import { AssetEvidenceDrawer } from "@/components/assets/asset-evidence-drawer"
 import { AssetStatusCorrectionButton } from "@/components/assets/asset-status-correction-button"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
+import { StatusPill } from "@/components/ui/status-pill"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { AssetComponentsPanel } from "@/components/assets/asset-components-panel"
 import { AssetPurchaseDocuments } from "@/components/assets/asset-purchase-documents"
@@ -106,6 +107,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const rawSearchParams = await searchParams
   await requirePagePermission(locale, "asset", "view")
   const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
+  const scanReturnHref = `/${locale}/asset-management/scan`
+  const isAssetScanReturn = returnToHref === scanReturnHref
 
   const t = await getTranslations("asset")
   const tBrandModel = await getTranslations("brandModel")
@@ -658,6 +661,16 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     licenseSeatSummary,
     t,
   })
+  const mobileActions = [
+    isAssetScanReturn
+      ? { href: scanReturnHref, label: t("scanNext"), icon: <ScanLine className="h-4 w-4" />, primary: true }
+      : { href: editHref, label: tCommon("edit"), icon: <Edit className="h-4 w-4" />, primary: true },
+    lifecycle.mobilePrimary,
+    lifecycle.mobileSecondary,
+    isAssetScanReturn
+      ? { href: editHref, label: tCommon("edit"), icon: <Edit className="h-4 w-4" /> }
+      : { href: "#movement", label: t("detailSections.movement"), icon: <History className="h-4 w-4" /> },
+  ]
   const activeCheckoutDestination = activeCheckout
     ? getCheckoutDestination(activeCheckout, {
         departments: checkoutDepartmentLabels,
@@ -793,7 +806,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:h-10 sm:min-h-0"
           >
             <ArrowLeft className="h-4 w-4" />
-            {tCommon("back")}
+            {isAssetScanReturn ? t("backToScan") : tCommon("back")}
           </Link>
           <ActivityDrawer
             title={t("activityDrawerTitle")}
@@ -838,12 +851,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         </div>
       </div>
       <MobileActionBar
-        actions={[
-          { href: editHref, label: tCommon("edit"), icon: <Edit className="h-4 w-4" />, primary: true },
-          lifecycle.mobilePrimary,
-          lifecycle.mobileSecondary,
-          { href: "#movement", label: t("detailSections.movement"), icon: <History className="h-4 w-4" /> },
-        ]}
+        actions={mobileActions}
       />
 
       <nav className="sticky top-0 z-20 -mx-4 border-y border-border bg-background/95 px-4 py-2 shadow-sm backdrop-blur md:top-0" aria-label={t("detailSections.nav")}>
@@ -1169,7 +1177,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">{t("latestTransaction")}</span>
                             <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
-                            <StatusPill label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} color={checkout.isReturned ? "#16A34A" : "#2563EB"} />
+                            <StatusPill label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} tone={checkout.isReturned ? "success" : "info"} />
                           </div>
                           <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
                             <Info label={t("documentNo")} value={checkout.documentNo ?? checkout.id} compact />
@@ -1198,7 +1206,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
-                            <StatusPill label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} color={checkout.isReturned ? "#16A34A" : "#2563EB"} />
+                            <StatusPill label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} tone={checkout.isReturned ? "success" : "info"} />
                           </div>
                           <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2 xl:grid-cols-4">
                             <Info label={t("documentNo")} value={checkout.documentNo ?? checkout.id} compact />
@@ -2325,17 +2333,6 @@ function Info({
         {value || "-"}
       </div>
     </div>
-  )
-}
-
-function StatusPill({ label, color }: { label: string; color?: string | null }) {
-  return (
-    <span
-      className="inline-flex rounded-full px-2 py-1 text-xs font-medium"
-      style={color ? { backgroundColor: `${color}1A`, color } : undefined}
-    >
-      {label}
-    </span>
   )
 }
 

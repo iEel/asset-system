@@ -33,7 +33,7 @@ export function ActionEmptyState({ icon, title, description, actionHref, actionL
       {action ?? (actionHref && actionLabel ? (
         <Link
           href={actionHref}
-          className="mt-4 inline-flex h-9 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+          className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-9 sm:min-h-0"
         >
           {actionLabel}
         </Link>

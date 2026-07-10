@@ -6,6 +6,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 
 - [ ] Login successfully.
 - [ ] Open Admin Settings.
+- [ ] Switch between System Settings tabs, refresh the page, and confirm the selected tab is restored from the `tab` URL query without losing other query values. Change a safe setting, then attempt to close/refresh the browser and confirm the standard leave warning appears only while unsaved changes exist.
 - [ ] Update a safe non-secret setting and confirm audit log entry.
 - [ ] Review system logs and readable before/after details.
 - [ ] Review readiness checks.
@@ -20,6 +21,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Add a single asset.
 - [ ] On single asset create/edit, scroll through the long form and confirm Save/Cancel remain visible in the fixed bottom action bar without covering the final fields.
 - [ ] Clone an existing asset from Asset Register or Asset Detail, confirm the create form shows the clone banner, copies shared details, and leaves Asset Tag, Serial Number, and FA/accounting code blank before saving.
+- [ ] From General Asset Scan, open a recognized QR/manual result, then use Asset Detail Back and confirm it returns to the same scanner rather than resetting to Asset Register. Confirm an externally supplied `returnTo` cannot send the user outside the approved asset/scan routes.
 - [ ] Add assets by batch with shared values only, then repeat with optional row columns enabled for custodian, department, current location, home location, and remark; confirm blank row overrides use the shared values while filled row overrides save per asset.
 - [ ] On single and batch asset create/edit, enable cross-branch location mode, choose a home/current location under a different branch, confirm the warning appears, branch labels distinguish repeated location codes, and the generated Asset Tag still follows the owner company/branch.
 - [ ] Create a new asset category with no custom-field template and confirm it saves without a Prisma nested-write error.
@@ -135,7 +137,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Confirm My Assets does not show purchase price, supplier, accounting, disposal, audit, or admin-only fields.
 - [ ] Confirm My Assets thumbnails load for assets held by the signed-in employee even when the user does not have broad `asset:view`.
 - [ ] Open `/th/dashboard` directly and confirm it redirects back to My Assets for an employee without overview permissions.
-- [ ] Open assigned asset detail if permitted.
+- [ ] Open an assigned asset detail and confirm the direct URL only resolves assets assigned to the signed-in employee, then returns to My Assets. Confirm the detail omits purchase price, supplier, accounting, disposal, audit, and admin-only data.
 - [ ] Confirm write actions are not available.
 - [ ] Confirm admin menus are hidden and direct admin URLs show the access denied page.
 - [ ] Confirm an employee without `asset:view` still cannot open the full Asset Register menu.
@@ -198,12 +200,12 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [x] Controller browser recheck passed after a clean dev-server restart at `http://localhost:3001`, 375x812: the success badge class included `text-success-foreground`, computed foreground was `rgb(22, 101, 52)` from `#166534`, the visible checkbox measured 20x20 inside a semantic 44x44 label target, and `bodyOverflow` / `cardOverflow` were both false. Ignored evidence: `.superpowers/sdd/screenshots/task-6/asset-register-accessibility-final-375.png`.
 - [x] Task 6 focused command passed 94/94 tests, including dashboard shell/layout, asset query/return navigation, and all planned Audit Scan coverage.
 - [x] Repository gates passed on 2026-07-10: lint exited 0 with 0 errors and 256 bundled skill-tool warnings; full tests passed 656/656; production build completed Prisma 7.8.0 generation, Next.js 16.2.4 compilation/TypeScript, and 54/54 static pages; `npm run verify` completed; standalone `npx tsc --noEmit` completed; the pre-documentation `git diff --check` and `git status --short` were clean.
-- [x] Raw palette scan completed. Adaptive Task 2-5 components use semantic tokens; expected raw values remain in globals/design/tests/docs. Two inherited Asset Detail lines still pass raw success/action colors to `StatusPill`; that file was not changed in Tasks 2-5 and needs a separate scoped cleanup/acceptance decision.
+- [x] Visual consistency follow-up uses the agreed Navy `#0F172A`, White, and Electric Blue `#3B82F6` accent tokens for the PWA/app shell, while accessible white-text actions stay on Action Blue `#2563EB`. Asset Detail and My Assets use the shared `StatusPill`; fixed workflow badges use semantic success/info/warning/danger tones while database-configured status/condition colors remain available. Empty-state link CTAs meet the 44px mobile touch-target baseline.
 - [x] App Shell browser evidence covers 375/768/1280/1440; Asset Register covers 375/390/414/768/1280/1440 plus filtered-empty and disclosure; Audit Scan layout covers 375/390/414/768/1280/1440 plus selected-action and safe-area states.
 - [ ] Validate Android/iPhone camera permission, torch/zoom, offline-photo retry, keyboard, rotation, and safe-area behavior on real devices. The in-app browser did not receive a video stream, so camera/torch/zoom are not passed.
 - [ ] Validate Asset Register actions and empty states with a permission-limited role.
 - [ ] Review the previously reported 13 dependency vulnerabilities (1 low, 8 moderate, 4 high) in a separate security/dependency change; do not force dependency updates during UI UAT.
-- [ ] Decide whether to accept or separately replace the inherited raw `StatusPill` colors in Asset Detail. The known low-priority stale `scanFeedback` sequence also remains documented and unfixed.
+- [x] The inherited raw Asset Detail handover colors were replaced with shared semantic `StatusPill` tones. Audit Scan now clears stale `scanFeedback` when the target changes or clears.
 
 ## Sign-Off
 

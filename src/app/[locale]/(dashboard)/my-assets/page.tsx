@@ -5,6 +5,7 @@ import type { Prisma } from "@prisma/client"
 import { PackageCheck, ShieldAlert } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { ContentPanel } from "@/components/ui/content-panel"
+import { StatusPill } from "@/components/ui/status-pill"
 import { getDesktopTableOnlyClasses, getEmptyStateClasses, getMobileCardListClasses, getResponsiveTableScrollClasses, getSafeActionLinkClasses } from "@/lib/design-system"
 import { getSessionUser } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
@@ -73,6 +74,7 @@ export default async function MyAssetsPage({ params }: MyAssetsPageProps) {
     companyBranch: t("companyBranch"),
     category: t("category"),
     updatedAt: t("updatedAt"),
+    openDetail: t("openDetail"),
   }
   const summary = summarizeMyAssets(
     assets.map((asset) => ({
@@ -108,7 +110,7 @@ export default async function MyAssetsPage({ params }: MyAssetsPageProps) {
           <>
             <div className={getMobileCardListClasses()}>
               {assets.map((asset) => (
-                <MobileAssetCard key={asset.id} labels={labels} asset={asset} />
+                <MobileAssetCard key={asset.id} labels={labels} asset={asset} href={buildMyAssetDetailHref(locale, asset.id)} />
               ))}
             </div>
             <div className={getDesktopTableOnlyClasses()}>
@@ -129,7 +131,7 @@ export default async function MyAssetsPage({ params }: MyAssetsPageProps) {
                     {assets.map((asset) => (
                       <tr key={asset.id} className="hover:bg-accent/40">
                         <td className="px-4 py-3">
-                          <AssetIdentity asset={asset} />
+                          <AssetIdentity asset={asset} href={buildMyAssetDetailHref(locale, asset.id)} />
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.serialNumber || "-"}</td>
                         <td className="px-4 py-3">
@@ -187,25 +189,9 @@ function Head({ children }: { children: React.ReactNode }) {
   return <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{children}</th>
 }
 
-function StatusPill({ label, color }: { label: string; color: string | null }) {
-  return (
-    <span
-      className="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium"
-      style={{
-        borderColor: color ?? "var(--border)",
-        color: color ?? "var(--foreground)",
-        backgroundColor: color ? `${color}12` : "var(--muted)",
-      }}
-    >
-      {label}
-    </span>
-  )
-}
-
-function AssetIdentity({ asset }: { asset: MyAssetRow }) {
+function AssetIdentity({ asset, href }: { asset: MyAssetRow; href?: string }) {
   const photo = asset.attachments[0]
-
-  return (
+  const content = (
     <div className="flex min-w-0 items-center gap-3">
       <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
         {photo ? (
@@ -230,12 +216,19 @@ function AssetIdentity({ asset }: { asset: MyAssetRow }) {
       </div>
     </div>
   )
+
+  if (!href) return content
+  return (
+    <Link href={href} className="block rounded-md outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-primary">
+      {content}
+    </Link>
+  )
 }
 
-function MobileAssetCard({ labels, asset }: { labels: Record<string, string>; asset: MyAssetRow }) {
+function MobileAssetCard({ labels, asset, href }: { labels: Record<string, string>; asset: MyAssetRow; href: string }) {
   return (
     <article className="rounded-md border border-border bg-surface p-4 shadow-sm">
-      <AssetIdentity asset={asset} />
+      <AssetIdentity asset={asset} href={href} />
       <div className="mt-3 grid gap-2 text-sm">
         <MobileField label={labels.serialNumber} value={asset.serialNumber || "-"} />
         <MobileField label={labels.category} value={`${asset.category.code} - ${asset.category.name}`} />
@@ -251,8 +244,15 @@ function MobileAssetCard({ labels, asset }: { labels: Record<string, string>; as
         </div>
         <MobileField label={labels.updatedAt} value={formatDateTime(asset.updatedAt)} />
       </div>
+      <Link href={href} className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+        {labels.openDetail}
+      </Link>
     </article>
   )
+}
+
+function buildMyAssetDetailHref(locale: string, assetId: string) {
+  return `/${locale}/my-assets/${encodeURIComponent(assetId)}`
 }
 
 function MobileField({ label, value }: { label: string; value: string }) {

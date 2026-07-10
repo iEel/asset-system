@@ -23,7 +23,7 @@ test("PWA manifest and install icons are available", async () => {
   assert.equal(result.short_name, "Asset System")
   assert.equal(result.start_url, "/th")
   assert.equal(result.display, "standalone")
-  assert.equal(result.theme_color, "#1E3A5F")
+  assert.equal(result.theme_color, "#0F172A")
   assert.deepEqual(
     result.icons?.map((icon) => [icon.src, icon.sizes, icon.purpose]),
     [

@@ -409,6 +409,7 @@ export function AuditScanForm({
     setApplyCorrections(false)
     setShowDetailedFields(false)
     setEditingScanResult(null)
+    setScanFeedback(null)
     resetAuditPhotoQueue()
   }
 
@@ -424,6 +425,7 @@ export function AuditScanForm({
     setApplyCorrections(false)
     setShowDetailedFields(editMode)
     setEditingScanResult(editMode ? { assetId: item.assetId, label: item.label, auditResult: item.auditResult } : null)
+    setScanFeedback(null)
     resetAuditPhotoQueue()
   }
 
@@ -1871,7 +1873,7 @@ export function AuditScanForm({
             </div>
           )}
           {offlineQueue.length > 0 ? (
-            <div className={`md:col-span-2 rounded-lg border p-3 shadow-sm ${online ? "border-warning/30 bg-warning/10" : "border-danger/30 bg-danger/10"}`}>
+            <div role="status" aria-live="polite" className={`md:col-span-2 rounded-lg border p-3 shadow-sm ${online ? "border-warning/30 bg-warning/10" : "border-danger/30 bg-danger/10"}`}>
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-start gap-3">
                   <WifiOff className={`mt-0.5 h-5 w-5 shrink-0 ${online ? "text-warning" : "text-danger"}`} />
@@ -2043,7 +2045,7 @@ function ScanResultPanel({
   const Icon = meta.icon
 
   return (
-    <div className={`md:col-span-2 rounded-md border p-4 ${meta.cardClass}`}>
+    <div role="status" aria-live="polite" className={`md:col-span-2 rounded-md border p-4 ${meta.cardClass}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${meta.iconClass}`}>
