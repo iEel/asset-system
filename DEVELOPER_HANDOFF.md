@@ -94,6 +94,7 @@ Long-form development history is preserved in `docs/99_CHANGELOG.md`.
 | `docs/13_INTEGRATION_API.md` | Read-only external Integration API setup, scopes, endpoints, UAT, and production notes |
 | `docs/99_CHANGELOG.md` | Historical implementation notes and feature chronology |
 | `docs/superpowers/plans/2026-05-27-mobile-responsive-qa.md` | Mobile responsive QA implementation plan and phase-by-phase commit/push protocol |
+| `docs/superpowers/plans/2026-07-10-modern-enterprise-adaptive-ui.md` | Planned Modern Enterprise theme and Adaptive UI rollout for the app shell, Asset Register, and Mobile Audit Scan |
 
 ## Core Verification Commands
 
