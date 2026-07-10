@@ -52,7 +52,7 @@ function canAccessNavigationItem<TItem extends PermissionedNavigationItem<TItem>
   return true
 }
 
-function hasNavigationPermission(user: NavigationUser, permission: NavigationPermission) {
+export function hasNavigationPermission(user: NavigationUser, permission: NavigationPermission) {
   if (user.roles.includes("system_admin")) return true
   return user.permissions.includes(`${permission.module}:${permission.action}`)
 }

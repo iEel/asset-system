@@ -35,10 +35,12 @@ export function Topbar({
   user,
   onToggleSidebar,
   onMobileMenuToggle,
+  mobileFieldNavigationVisible,
 }: {
   user: SessionUser
   onToggleSidebar: () => void
   onMobileMenuToggle: () => void
+  mobileFieldNavigationVisible: boolean
 }) {
   const tAuth = useTranslations("auth")
   const tAssetTools = useTranslations("assetTools")
@@ -81,7 +83,10 @@ export function Topbar({
         {/* Mobile menu button */}
         <button
           onClick={onMobileMenuToggle}
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 lg:hidden"
+          className={cn(
+            "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 lg:hidden",
+            mobileFieldNavigationVisible && "hidden",
+          )}
           aria-label="Open menu"
         >
           <Menu size={20} />
@@ -104,7 +109,7 @@ export function Topbar({
       <div className="flex min-w-0 items-center gap-1 sm:gap-2">
         <Link
           href={`/${locale}/asset-management/scan`}
-          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 sm:h-9 sm:min-h-0 sm:min-w-0 sm:px-3"
+          className="hidden min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 sm:h-9 sm:min-h-0 sm:min-w-0 sm:px-3 lg:inline-flex"
           title={tAssetTools("globalScanShortcut")}
           aria-label={tAssetTools("globalScanShortcut")}
         >

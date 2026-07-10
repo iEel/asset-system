@@ -96,6 +96,12 @@
   },
   "nav": {
     "dashboard": "แดชบอร์ด",
+    "mobileNavigationLabel": "เมนูงานภาคสนาม",
+    "mobileHome": "หน้าหลัก",
+    "mobileAssets": "ทรัพย์สิน",
+    "mobileScan": "สแกน",
+    "mobileAudit": "ตรวจนับ",
+    "mobileMore": "เพิ่มเติม",
     "workCenter": "ศูนย์งานค้าง",
     "myAssets": "ทรัพย์สินของฉัน",
     "assetManagement": "จัดการทรัพย์สิน",

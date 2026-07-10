@@ -96,6 +96,12 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "mobileNavigationLabel": "Field work navigation",
+    "mobileHome": "Home",
+    "mobileAssets": "Assets",
+    "mobileScan": "Scan",
+    "mobileAudit": "Audit",
+    "mobileMore": "More",
     "workCenter": "Work Center",
     "myAssets": "My Assets",
     "assetManagement": "Asset Management",
