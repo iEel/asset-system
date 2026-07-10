@@ -40,6 +40,19 @@ test("asset detail exposes a read-only component summary and manager link", () =
   assert.doesNotMatch(source, /<AssetComponentsPanel/)
 })
 
+test("asset detail keeps a persistent context for assets installed under a parent", () => {
+  const source = assetDetailSource()
+  const contextBannerSource = readFileSync("src/components/assets/asset-component-context-banner.tsx", "utf8")
+
+  assert.match(source, /AssetComponentContextBanner/)
+  assert.match(source, /installedInLinks=\{installedInLinksForPanel\}/)
+  assert.ok(source.indexOf("<AssetComponentContextBanner") < source.indexOf("<AssetDetailTabs"))
+  assert.match(source, /title: t\("componentContextTitle"\)/)
+  assert.match(source, /openParent: t\("componentContextOpenParent"\)/)
+  assert.match(contextBannerSource, /if \(installedInLinks\.length === 0\) return null/)
+  assert.match(contextBannerSource, /ArrowRight/)
+})
+
 test("asset edit does not mount another component installation editor", () => {
   const source = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/edit/page.tsx", "utf8")
 

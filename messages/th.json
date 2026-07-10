@@ -1101,6 +1101,8 @@
     "componentSummaryHelp": "ดูส่วนควบที่ติดตั้งอยู่ ประวัติการถอด/ติดตั้ง หลักฐานรูปถ่าย และความสัมพันธ์กับทรัพย์สินหลัก",
     "componentMissingSerial": "ไม่มี Serial",
     "componentGuardNote": "ระบบกันการติดตั้งซ้ำ การติดตั้งเข้าตัวเอง การใช้ช่องซ้ำ และวงจร parent-child ผ่าน API",
+    "componentContextTitle": "ทรัพย์สินนี้เป็นส่วนควบของ",
+    "componentContextOpenParent": "เปิดทรัพย์สินหลัก",
     "installedInParent": "ทรัพย์สินนี้เป็นส่วนควบของ",
     "componentInstallEvidence": "รูปหลักฐานตอนติดตั้ง",
     "componentRemoveEvidence": "รูปหลักฐานตอนถอด",
