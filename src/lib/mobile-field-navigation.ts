@@ -1,7 +1,17 @@
+import { hasNavigationPermission, type NavigationUser } from "./navigation-permissions.ts"
+
 export const mobileFieldNavigationItems = ["home", "assets", "scan", "audit", "more"] as const
 
 export type MobileFieldNavigationItem = (typeof mobileFieldNavigationItems)[number]
 export type MobileShellMode = "navigation" | "focus"
+export type MobileFieldDestination = {
+  id: Exclude<MobileFieldNavigationItem, "more">
+  href: string
+}
+
+type MobileFieldNavigationUser = NavigationUser & {
+  employeeId?: string | null
+}
 
 const focusTaskRoutes = [
   /^\/asset-management\/(?:scan|checkout|checkin|transfer|bulk-move)$/,
@@ -28,6 +38,24 @@ export function getMobileFieldNavigationActiveItem(pathname: string): MobileFiel
   }
   if (route === "/audit" || route.startsWith("/audit/")) return "audit"
   return "more"
+}
+
+export function getMobileFieldDestinations(locale: string, user: MobileFieldNavigationUser): MobileFieldDestination[] {
+  const canViewDashboard = hasNavigationPermission(user, { module: "dashboard", action: "view" })
+  const canViewAssets = hasNavigationPermission(user, { module: "asset", action: "view" })
+  const canViewAudit = hasNavigationPermission(user, { module: "audit", action: "view" })
+  const destinations: MobileFieldDestination[] = []
+
+  if (canViewDashboard) destinations.push({ id: "home", href: `/${locale}/dashboard` })
+  if (canViewAssets) {
+    destinations.push({ id: "assets", href: `/${locale}/assets` })
+    destinations.push({ id: "scan", href: `/${locale}/asset-management/scan` })
+  } else if (user.employeeId) {
+    destinations.push({ id: "assets", href: `/${locale}/my-assets` })
+  }
+  if (canViewAudit) destinations.push({ id: "audit", href: `/${locale}/audit/rounds` })
+
+  return destinations
 }
 
 export function isMobileVirtualKeyboardVisible(viewportHeight: number | undefined, layoutHeight: number) {

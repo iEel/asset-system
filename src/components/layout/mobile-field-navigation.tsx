@@ -4,48 +4,45 @@ import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { ClipboardCheck, Ellipsis, House, Package, ScanLine, type LucideIcon } from "lucide-react"
 import type { SessionUser } from "@/lib/auth-utils"
-import { getMobileFieldNavigationActiveItem, type MobileFieldNavigationItem } from "@/lib/mobile-field-navigation"
-import { hasNavigationPermission } from "@/lib/navigation-permissions"
+import {
+  getMobileFieldDestinations,
+  getMobileFieldNavigationActiveItem,
+  type MobileFieldNavigationItem,
+} from "@/lib/mobile-field-navigation"
 import { cn } from "@/lib/utils"
 
 type MobileFieldDestination = {
-  id: MobileFieldNavigationItem
+  id: Exclude<MobileFieldNavigationItem, "more">
   labelKey: "mobileHome" | "mobileAssets" | "mobileScan" | "mobileAudit"
-  href: string
   icon: LucideIcon
   emphasized?: boolean
+}
+
+const destinationPresentation: Record<MobileFieldDestination["id"], Omit<MobileFieldDestination, "id">> = {
+  home: { labelKey: "mobileHome", icon: House },
+  assets: { labelKey: "mobileAssets", icon: Package },
+  scan: { labelKey: "mobileScan", icon: ScanLine, emphasized: true },
+  audit: { labelKey: "mobileAudit", icon: ClipboardCheck },
 }
 
 export function MobileFieldNavigation({
   pathname,
   user,
+  sidebarOpen,
   onOpenMore,
 }: {
   pathname: string
   user: SessionUser
+  sidebarOpen: boolean
   onOpenMore: () => void
 }) {
   const locale = useLocale()
   const t = useTranslations("nav")
   const activeItem = getMobileFieldNavigationActiveItem(pathname)
-  const canViewDashboard = hasNavigationPermission(user, { module: "dashboard", action: "view" })
-  const canViewAssets = hasNavigationPermission(user, { module: "asset", action: "view" })
-  const canViewAudit = hasNavigationPermission(user, { module: "audit", action: "view" })
-  const assetHref = canViewAssets ? `/${locale}/assets` : user.employeeId ? `/${locale}/my-assets` : null
-  const destinations: MobileFieldDestination[] = [
-    ...(canViewDashboard
-      ? [{ id: "home" as const, labelKey: "mobileHome" as const, href: `/${locale}/dashboard`, icon: House }]
-      : []),
-    ...(assetHref
-      ? [{ id: "assets" as const, labelKey: "mobileAssets" as const, href: assetHref, icon: Package }]
-      : []),
-    ...(canViewAssets
-      ? [{ id: "scan" as const, labelKey: "mobileScan" as const, href: `/${locale}/asset-management/scan`, icon: ScanLine, emphasized: true }]
-      : []),
-    ...(canViewAudit
-      ? [{ id: "audit" as const, labelKey: "mobileAudit" as const, href: `/${locale}/audit/rounds`, icon: ClipboardCheck }]
-      : []),
-  ]
+  const destinations = getMobileFieldDestinations(locale, user).map((destination) => ({
+    ...destination,
+    ...destinationPresentation[destination.id],
+  }))
 
   return (
     <nav
@@ -89,6 +86,8 @@ export function MobileFieldNavigation({
           type="button"
           onClick={onOpenMore}
           aria-current={activeItem === "more" ? "page" : undefined}
+          aria-expanded={sidebarOpen}
+          aria-controls="mobile-primary-navigation-drawer"
           className={cn(
             "flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-1 text-[11px] font-medium leading-tight text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
             activeItem === "more" && "text-primary",

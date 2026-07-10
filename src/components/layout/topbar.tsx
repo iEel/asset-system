@@ -35,12 +35,12 @@ export function Topbar({
   user,
   onToggleSidebar,
   onMobileMenuToggle,
-  mobileFieldNavigationVisible,
+  mobileNavigationMode,
 }: {
   user: SessionUser
   onToggleSidebar: () => void
   onMobileMenuToggle: () => void
-  mobileFieldNavigationVisible: boolean
+  mobileNavigationMode: boolean
 }) {
   const tAuth = useTranslations("auth")
   const tAssetTools = useTranslations("assetTools")
@@ -85,7 +85,7 @@ export function Topbar({
           onClick={onMobileMenuToggle}
           className={cn(
             "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 lg:hidden",
-            mobileFieldNavigationVisible && "hidden",
+            mobileNavigationMode && "hidden",
           )}
           aria-label="Open menu"
         >

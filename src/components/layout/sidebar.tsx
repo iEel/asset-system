@@ -187,6 +187,7 @@ export function Sidebar({
 
   return (
     <aside
+      id="mobile-primary-navigation-drawer"
       className={cn(
         "fixed inset-y-0 left-0 z-40 flex max-h-dvh flex-col border-r border-white/10 bg-sidebar text-sidebar-foreground transition-all duration-300 lg:relative",
         collapsed ? "w-[min(18rem,85vw)] lg:w-16" : "w-[min(18rem,85vw)] lg:w-64",

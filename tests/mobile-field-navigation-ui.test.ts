@@ -32,20 +32,16 @@ test("field navigation remains available through the shell tablet breakpoint", (
 test("mobile field destinations reuse RBAC and employee asset fallback", () => {
   const source = navigationSource()
 
-  assert.match(source, /hasNavigationPermission/)
-  assert.match(source, /dashboard", action: "view"/)
-  assert.match(source, /asset", action: "view"/)
-  assert.match(source, /audit", action: "view"/)
-  assert.match(source, /user\.employeeId/)
-  assert.match(source, /`\/\$\{locale\}\/my-assets`/)
+  assert.match(source, /getMobileFieldDestinations\(locale, user\)/)
   assert.match(source, /onOpenMore/)
 })
 
 test("dashboard shell renders exactly one route-owned mobile bottom surface", () => {
   const source = shellSource()
 
-  assert.match(source, /getMobileShellMode\(pathname\)/)
-  assert.match(source, /mobileFieldNavigationVisible/)
+  assert.match(source, /const isNavigationMode = getMobileShellMode\(pathname\) === "navigation"/)
+  assert.match(source, /const mobileFieldNavigationVisible = isNavigationMode && !mobileKeyboardVisible && !mobileSidebarOpen/)
+  assert.match(source, /mobileNavigationMode=\{isNavigationMode\}/)
   assert.match(source, /<MobileFieldNavigation/)
   assert.match(source, /pb-\[calc\(5\.25rem\+env\(safe-area-inset-bottom\)\)\]/)
   assert.match(source, /window\.visualViewport/)
@@ -55,9 +51,21 @@ test("dashboard shell renders exactly one route-owned mobile bottom surface", ()
 test("topbar removes duplicate mobile menu and scan controls in navigation mode", () => {
   const source = topbarSource()
 
-  assert.match(source, /mobileFieldNavigationVisible/)
-  assert.match(source, /mobileFieldNavigationVisible && "hidden"/)
+  assert.match(source, /mobileNavigationMode/)
+  assert.match(source, /mobileNavigationMode && "hidden"/)
   assert.match(source, /hidden[^"\n]*lg:inline-flex/)
+})
+
+test("More exposes the existing sidebar state to assistive technology", () => {
+  const navigation = navigationSource()
+  const shell = shellSource()
+  const sidebar = readFileSync("src/components/layout/sidebar.tsx", "utf8")
+
+  assert.match(navigation, /sidebarOpen: boolean/)
+  assert.match(navigation, /aria-expanded=\{sidebarOpen\}/)
+  assert.match(navigation, /aria-controls="mobile-primary-navigation-drawer"/)
+  assert.match(shell, /sidebarOpen=\{mobileSidebarOpen\}/)
+  assert.match(sidebar, /id="mobile-primary-navigation-drawer"/)
 })
 
 test("mobile field navigation labels exist in Thai and English", () => {

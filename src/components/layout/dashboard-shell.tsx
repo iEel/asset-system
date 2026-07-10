@@ -22,7 +22,8 @@ export function DashboardShell({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [mobileKeyboardVisible, setMobileKeyboardVisible] = useState(false)
-  const mobileFieldNavigationVisible = getMobileShellMode(pathname) === "navigation" && !mobileKeyboardVisible && !mobileSidebarOpen
+  const isNavigationMode = getMobileShellMode(pathname) === "navigation"
+  const mobileFieldNavigationVisible = isNavigationMode && !mobileKeyboardVisible && !mobileSidebarOpen
 
   const resetShellScroll = useCallback(() => {
     const shell = shellRef.current
@@ -110,7 +111,7 @@ export function DashboardShell({
           user={user}
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
           onMobileMenuToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-          mobileFieldNavigationVisible={mobileFieldNavigationVisible}
+          mobileNavigationMode={isNavigationMode}
         />
 
         <main ref={mainRef} className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
@@ -129,6 +130,7 @@ export function DashboardShell({
         <MobileFieldNavigation
           pathname={pathname}
           user={user}
+          sidebarOpen={mobileSidebarOpen}
           onOpenMore={() => setMobileSidebarOpen(true)}
         />
       ) : null}

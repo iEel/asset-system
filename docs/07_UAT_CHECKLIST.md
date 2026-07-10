@@ -180,6 +180,8 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [x] Confirm `หน้าหลัก`, `ทรัพย์สิน`, `สแกน`, and `ตรวจนับ` use existing routes and `เพิ่มเติม` opens the existing RBAC-filtered Sidebar.
 - [x] Confirm General Asset Scan and `/th/audit/rounds/{id}/scan` hide Mobile Field Navigation before any target is selected.
 - [x] Select an in-round Audit item without saving and confirm exactly one Audit action bar appears while Mobile Field Navigation remains absent. Browser QA measured matched/mismatch/change-target actions at 56px/48px/48px with no body overflow.
+- [x] Confirm opening the More drawer or hiding the dock for the virtual keyboard does not make the Topbar hamburger reappear or shift Navigation Mode content.
+- [x] Confirm More identifies and exposes the existing permission-filtered Sidebar with `aria-expanded` and `aria-controls`.
 - [x] Confirm Audit Scan still exposes QR scan and manual Asset Tag/Serial/QR entry, and that selecting a manual suggestion stays inside the existing `auditRoundId` workflow.
 - [x] Confirm Audit Pending remains in Navigation Mode and `Mark Not Found` is not added to the post-scan action bar.
 - [x] Confirm Asset create/edit/detail, checkout, check-in, transfer, bulk move, Audit Round create/detail, and maintenance/disposal detail routes use Focus Task Mode so their existing bottom actions do not collide with field navigation.
