@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Loader2, MapPin, PackageSearch, Search } from "lucide-react"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { buildDirectAssetHrefFromScanValue } from "@/lib/asset-scan-routing"
+import { appendReturnTo } from "@/lib/asset-return-navigation"
 
 type SearchResult = {
   id: string
@@ -57,14 +58,15 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
+  const scanReturnHref = `/${locale}/asset-management/scan`
   const trimmedQuery = query.trim()
   const directAssetHref = buildDirectAssetHrefFromScanValue(trimmedQuery, locale)
   const visibleResults = directAssetHref || trimmedQuery.length < 2 ? [] : results
 
   useEffect(() => {
     if (!directAssetHref) return
-    router.push(directAssetHref)
-  }, [directAssetHref, router])
+    router.push(appendReturnTo(directAssetHref, scanReturnHref))
+  }, [directAssetHref, router, scanReturnHref])
 
   useEffect(() => {
     if (directAssetHref || trimmedQuery.length < 2) return
@@ -94,12 +96,12 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
   }, [directAssetHref, locale, trimmedQuery])
 
   function openAsset(href: string) {
-    router.push(href)
+    router.push(appendReturnTo(href, scanReturnHref))
   }
 
   function handleScannedValue(value: string) {
     const href = buildDirectAssetHrefFromScanValue(value, locale)
-    if (href) router.push(href)
+    if (href) router.push(appendReturnTo(href, scanReturnHref))
   }
 
   return (

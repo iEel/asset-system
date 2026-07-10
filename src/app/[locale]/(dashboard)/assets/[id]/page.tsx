@@ -106,6 +106,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const rawSearchParams = await searchParams
   await requirePagePermission(locale, "asset", "view")
   const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
+  const scanReturnHref = `/${locale}/asset-management/scan`
+  const isAssetScanReturn = returnToHref === scanReturnHref
 
   const t = await getTranslations("asset")
   const tBrandModel = await getTranslations("brandModel")
@@ -658,6 +660,16 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     licenseSeatSummary,
     t,
   })
+  const mobileActions = [
+    isAssetScanReturn
+      ? { href: scanReturnHref, label: t("scanNext"), icon: <ScanLine className="h-4 w-4" />, primary: true }
+      : { href: editHref, label: tCommon("edit"), icon: <Edit className="h-4 w-4" />, primary: true },
+    lifecycle.mobilePrimary,
+    lifecycle.mobileSecondary,
+    isAssetScanReturn
+      ? { href: editHref, label: tCommon("edit"), icon: <Edit className="h-4 w-4" /> }
+      : { href: "#movement", label: t("detailSections.movement"), icon: <History className="h-4 w-4" /> },
+  ]
   const activeCheckoutDestination = activeCheckout
     ? getCheckoutDestination(activeCheckout, {
         departments: checkoutDepartmentLabels,
@@ -793,7 +805,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:h-10 sm:min-h-0"
           >
             <ArrowLeft className="h-4 w-4" />
-            {tCommon("back")}
+            {isAssetScanReturn ? t("backToScan") : tCommon("back")}
           </Link>
           <ActivityDrawer
             title={t("activityDrawerTitle")}
@@ -838,12 +850,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         </div>
       </div>
       <MobileActionBar
-        actions={[
-          { href: editHref, label: tCommon("edit"), icon: <Edit className="h-4 w-4" />, primary: true },
-          lifecycle.mobilePrimary,
-          lifecycle.mobileSecondary,
-          { href: "#movement", label: t("detailSections.movement"), icon: <History className="h-4 w-4" /> },
-        ]}
+        actions={mobileActions}
       />
 
       <nav className="sticky top-0 z-20 -mx-4 border-y border-border bg-background/95 px-4 py-2 shadow-sm backdrop-blur md:top-0" aria-label={t("detailSections.nav")}>

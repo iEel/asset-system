@@ -803,6 +803,8 @@
     "labelQrPrintTarget": "QR ที่จะพิมพ์",
     "labelQrLocalWarning": "QR นี้ยังชี้ไปที่ localhost/เครือข่ายภายใน หรือยังไม่มี domain เต็ม ให้ตั้งค่า Public QR Base URL ใน ตั้งค่าระบบ > Label / QR เป็น domain ถาวรของระบบ แล้วบันทึกก่อนพิมพ์จริง",
     "scanToOpenDetail": "สแกนเพื่อเปิดรายละเอียด",
+    "scanNext": "สแกนรายการถัดไป",
+    "backToScan": "กลับไปสแกน",
     "fromValue": "จาก",
     "toValue": "ไปยัง",
     "movementSummary": "สรุป",
