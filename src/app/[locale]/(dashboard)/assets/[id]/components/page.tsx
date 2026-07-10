@@ -28,6 +28,7 @@ export default async function AssetComponentManagerPage({ params, searchParams }
       serialNumber: true,
       parentComponents: {
         orderBy: { installedAt: "desc" },
+        take: 100,
         select: {
           id: true,
           componentRole: true,
@@ -123,6 +124,7 @@ export default async function AssetComponentManagerPage({ params, searchParams }
         status: t("componentStatus"),
         serial: t("serialNumber"),
         evidence: t("viewEvidence"),
+        loadMore: t("componentLoadMore"),
         scanner: {
           start: t("scannerStart"),
           stop: t("scannerStop"),

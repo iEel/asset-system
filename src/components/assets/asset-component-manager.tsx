@@ -93,6 +93,7 @@ type ManagerLabels = {
   status: string
   serial: string
   evidence: string
+  loadMore: string
   scanner: ScannerLabels
 }
 
@@ -130,7 +131,11 @@ export function AssetComponentManager({
   const [searching, setSearching] = useState(false)
   const [saving, setSaving] = useState(false)
   const [removeTarget, setRemoveTarget] = useState<ComponentRecord | null>(null)
+  const [historyVisibleCount, setHistoryVisibleCount] = useState(10)
+  const [lastInstalledAssetTag, setLastInstalledAssetTag] = useState<string | null>(null)
   const canSearchCandidates = componentSearch.trim().length >= 2
+  const visibleHistory = componentHistory.slice(0, historyVisibleCount)
+  const hasMoreHistory = historyVisibleCount < componentHistory.length
 
   useEffect(() => {
     if (!canSearchCandidates) return
@@ -203,6 +208,7 @@ export function AssetComponentManager({
       if (!response.ok) throw new Error(payload?.error ?? labels.error)
 
       toast.success(labels.installSuccess)
+      setLastInstalledAssetTag(selectedComponent.assetTag)
       resetInstallFlow()
       router.refresh()
     } catch (error) {
@@ -265,11 +271,27 @@ export function AssetComponentManager({
 
           {installStep === "identify" ? (
             <div className="space-y-3">
+              {lastInstalledAssetTag ? (
+                <div className="flex flex-col gap-3 rounded-md border border-success/20 bg-success/10 p-3 text-sm text-success-foreground sm:flex-row sm:items-center sm:justify-between">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span className="break-words">{labels.installSuccess}: {lastInstalledAssetTag}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setLastInstalledAssetTag(null)}
+                    className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-success/30 bg-surface px-3 text-sm font-medium text-foreground hover:bg-success/10 sm:h-9 sm:min-h-0"
+                  >
+                    {labels.addAnother}
+                  </button>
+                </div>
+              ) : null}
               <ScannerTextInput
                 value={componentSearch}
                 onChange={(value) => {
                   setComponentSearch(value)
                   setSelectedComponent(null)
+                  setLastInstalledAssetTag(null)
                 }}
                 onScanSuccess={(value) => setComponentSearch(value)}
                 scanMode="asset-qr"
@@ -404,9 +426,18 @@ export function AssetComponentManager({
           <p className="mt-3 rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">{labels.noHistory}</p>
         ) : (
           <div className="mt-3 divide-y divide-border rounded-md border border-border">
-            {componentHistory.slice(0, 10).map((component) => <ComponentRow key={component.id} locale={locale} component={component} labels={labels} />)}
+            {visibleHistory.map((component) => <ComponentRow key={component.id} locale={locale} component={component} labels={labels} />)}
           </div>
         )}
+        {hasMoreHistory ? (
+          <button
+            type="button"
+            onClick={() => setHistoryVisibleCount((current) => current + 10)}
+            className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground hover:bg-accent sm:h-10 sm:min-h-0"
+          >
+            {labels.loadMore}
+          </button>
+        ) : null}
       </section>
 
       <ComponentRemovalDialog

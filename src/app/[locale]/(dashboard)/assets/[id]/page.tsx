@@ -145,6 +145,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           },
           checkouts: {
             orderBy: { checkoutDate: "desc" },
+            take: 10,
             include: {
               custodian: { select: { code: true, fullNameTh: true } },
               checkin: {
@@ -158,6 +159,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           attachments: {
             where: { isActive: true },
             orderBy: { uploadedAt: "desc" },
+            take: 20,
           },
           purchaseDocumentLinks: {
             orderBy: { linkedAt: "desc" },

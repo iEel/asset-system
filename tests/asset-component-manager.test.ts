@@ -39,3 +39,19 @@ test("component manager derives hidden search and reset state without synchronou
   assert.doesNotMatch(manager, /if \(!component\) \{\s*setReason\(""\)/)
   assert.match(manager, /key=\{removeTarget\?\.id \?\? "closed"\}/)
 })
+
+test("component manager progressively reveals bounded history", () => {
+  const manager = readFileSync("src/components/assets/asset-component-manager.tsx", "utf8")
+
+  assert.match(manager, /historyVisibleCount/)
+  assert.match(manager, /componentHistory\.slice\(0, historyVisibleCount\)/)
+  assert.match(manager, /setHistoryVisibleCount\(\(current\) => current \+ 10\)/)
+})
+
+test("component manager confirms a completed install before offering the next component", () => {
+  const manager = readFileSync("src/components/assets/asset-component-manager.tsx", "utf8")
+
+  assert.match(manager, /lastInstalledAssetTag/)
+  assert.match(manager, /setLastInstalledAssetTag\(selectedComponent\.assetTag\)/)
+  assert.match(manager, /\{labels\.addAnother\}/)
+})

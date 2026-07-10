@@ -22,7 +22,7 @@ test("builds a shareable detail view href while preserving a return path", () =>
   )
 })
 
-test("groups section navigation without hiding sections from the detail page", () => {
+test("groups sections for the selected detail tab", () => {
   assert.deepEqual(getAssetDetailViewSectionIds("custody"), ["ownership", "components", "handover"])
   assert.deepEqual(getAssetDetailViewSectionIds("operations"), ["movement", "maintenance"])
   assert.deepEqual(getAssetDetailViewSectionIds("audit"), ["audit"])

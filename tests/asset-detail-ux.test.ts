@@ -35,3 +35,13 @@ test("asset edit does not mount another component installation editor", () => {
   assert.doesNotMatch(source, /AssetComponentsPanel/)
   assert.doesNotMatch(source, /availableComponentAssets/)
 })
+
+test("asset detail avoids eager component inventory and bounds preview relations", () => {
+  const source = assetDetailSource()
+
+  assert.doesNotMatch(source, /installedComponentAssetIds/)
+  assert.doesNotMatch(source, /availableComponentAssets/)
+  assert.doesNotMatch(source, /take: 300/)
+  assert.match(source, /checkouts:\s*\{[\s\S]*?take: 10/)
+  assert.match(source, /attachments:\s*\{[\s\S]*?take: 20/)
+})

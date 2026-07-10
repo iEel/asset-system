@@ -1057,6 +1057,7 @@
     "componentRemoveTitle": "Remove component",
     "componentConfirmRemove": "Confirm removal",
     "componentRemoving": "Removing component",
+    "componentLoadMore": "Show more history",
     "detailSections": {
       "nav": "Asset detail navigation",
       "overview": "Overview",

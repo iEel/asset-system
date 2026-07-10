@@ -162,7 +162,7 @@ Run: `node --test tests/asset-detail-view.test.ts tests/asset-detail-ux.test.ts 
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the Asset Detail navigation change**
+- [x] **Step 6: Commit the Asset Detail navigation change**
 
 ```bash
 git add src/app/[locale]/(dashboard)/assets/[id]/page.tsx src/components/assets/asset-detail-tabs.tsx src/components/assets/asset-detail-action-menu.tsx messages/th.json messages/en.json tests/asset-detail-view.test.ts tests/asset-detail-ux.test.ts tests/asset-detail-anchor-layout.test.ts tests/asset-relationship-map-ui.test.ts
@@ -217,7 +217,7 @@ Run: `node --test tests/asset-detail-ux.test.ts tests/asset-relationship-map-ui.
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit the read-only summary**
+- [x] **Step 5: Commit the read-only summary**
 
 ```bash
 git add src/components/assets/asset-components-summary.tsx src/app/[locale]/(dashboard)/assets/[id]/page.tsx src/app/[locale]/(dashboard)/assets/[id]/edit/page.tsx tests/asset-detail-ux.test.ts tests/asset-relationship-map-ui.test.ts
@@ -311,7 +311,7 @@ Run: `node --test tests/asset-component-manager.test.ts tests/asset-return-navig
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the Component Manager**
+- [x] **Step 6: Commit the Component Manager**
 
 ```bash
 git add src/app/[locale]/(dashboard)/assets/[id]/components/page.tsx src/components/assets/asset-component-manager.tsx src/lib/asset-return-navigation.ts src/app/api/assets/component-candidates/route.ts messages/th.json messages/en.json tests/asset-component-manager.test.ts tests/asset-return-navigation.test.ts
@@ -334,7 +334,7 @@ git commit -m "feat: add asset component manager"
 - Consumes: tab visibility policy, manager route, existing evidence center, and existing component API routes.
 - Produces: a bounded Asset Detail first render, updated field workflow documentation, and regression-tested UI behavior.
 
-- [ ] **Step 1: Write failing performance/read-path source tests**
+- [x] **Step 1: Write failing performance/read-path source tests**
 
 ```ts
 test("asset detail does not preload component candidate inventory", () => {
@@ -353,13 +353,13 @@ test("asset detail bounds checkout and attachment previews", () => {
 
 Add manager tests for keeping the parent tag visible in mobile review/removal surfaces and for three-or-fewer fixed mobile actions on Asset Detail.
 
-- [ ] **Step 2: Run the tests to verify failure**
+- [x] **Step 2: Run the tests to verify failure**
 
 Run: `node --test tests/asset-detail-ux.test.ts tests/asset-component-manager.test.ts`
 
 Expected: FAIL because Asset Detail still requests unbounded checkout/attachment previews.
 
-- [ ] **Step 3: Bound reads and preserve full evidence access**
+- [x] **Step 3: Bound reads and preserve full evidence access**
 
 Change the Asset Detail initial include to `take: 10` for checkouts and `take: 20` for attachments. Keep the existing Evidence Center link available through the More menu for complete evidence access. Remove data queries that only support hidden tabs from a selected-tab render path; retain only the compact summary data required before tabs.
 
@@ -379,13 +379,15 @@ npm run verify
 
 Expected: every command exits with code `0`.
 
+Verification on 2026-07-10: the focused suite passed 45/45, `npm test` passed 739/739, `npm run lint` exited with zero errors (256 inherited bundled-tool warnings), and `npx tsc --noEmit` passed. `npm run build` and `npm run verify` compiled and completed TypeScript but could not collect route data because this isolated worktree has no SQL Server environment configuration. Run the production build and browser QA from a configured development/CI environment before release.
+
 - [ ] **Step 5: Perform browser QA using a desktop and mobile viewport**
 
 Verify at `390px` and desktop:
 
 1. Asset identity appears before secondary actions.
 2. Only one tab row is visible, and each tab hides unrelated sections.
-3. Shared, stock, component, and personal examples show the correct responsibility fallback.
+3. Shared, stock, component, and personal examples retain their existing responsibility/custody data without UI-driven changes.
 4. A view-only account has no edit, component install, or component removal control.
 5. Component Manager scan/search, review, evidence, installation, removal, history, and return navigation work without a horizontal page scroll.
 

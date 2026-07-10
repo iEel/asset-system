@@ -1057,6 +1057,7 @@
     "componentRemoveTitle": "ถอดส่วนควบ",
     "componentConfirmRemove": "ยืนยันถอดส่วนควบ",
     "componentRemoving": "กำลังถอดส่วนควบ",
+    "componentLoadMore": "แสดงประวัติเพิ่มเติม",
     "detailSections": {
       "nav": "นำทางในรายละเอียดทรัพย์สิน",
       "overview": "ภาพรวม",
