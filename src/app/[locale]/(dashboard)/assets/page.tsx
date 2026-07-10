@@ -248,8 +248,8 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       value: normalizeAssetOwnershipType(asset.ownershipType),
       label: t(`ownershipType_${normalizeAssetOwnershipType(asset.ownershipType)}`),
     },
-    status: { label: asset.status.nameTh, color: asset.status.colorCode },
-    condition: { label: asset.condition.nameTh, color: asset.condition.colorCode },
+    status: { value: asset.status.name, label: asset.status.nameTh },
+    condition: { value: asset.condition.name, label: asset.condition.nameTh },
     purchasePrice: asset.purchasePrice ? Number(asset.purchasePrice) : null,
     photo: asset.model?.id && modelPhotoByModelId.get(asset.model.id)
       ? {

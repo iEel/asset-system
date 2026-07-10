@@ -12,7 +12,7 @@ import { appendReturnTo } from "@/lib/asset-return-navigation"
 import type { AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
 import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
-import { ActiveBadge, ColumnHeader } from "@/components/master-data/master-data-layout"
+import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
@@ -36,8 +36,8 @@ export type AssetRegisterRow = {
   currentLocation: string
   custodian: string | null
   ownershipType: { value: string; label: string }
-  status: { label: string; color: string | null }
-  condition: { label: string; color: string | null }
+  status: { value: string; label: string }
+  condition: { value: string; label: string }
   purchasePrice: number | null
   photo: { id: string; alt: string; fileType: string } | null
 }
@@ -477,14 +477,14 @@ export function AssetRegisterTable({
         </div>
       ) : null}
 
-      <div className={`${getMobileCardListClasses()} p-3`}>
+      <div data-asset-mobile-list className={`${getMobileCardListClasses()} min-w-0 max-w-full p-3`}>
         {assets.length === 0 ? (
           <div className="rounded-md border border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
             {labels.noData}
           </div>
         ) : (
           assets.map((asset) => (
-            <article key={asset.id} className="min-w-0 rounded-md border border-border bg-background p-3">
+            <article data-asset-mobile-card key={asset.id} className="min-w-0 rounded-md border border-border bg-background p-3">
               <div className="flex items-start gap-3">
                 <input
                   type="checkbox"
@@ -508,25 +508,30 @@ export function AssetRegisterTable({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <Link href={buildAssetDetailHref(asset.id)} className="block break-words text-sm font-semibold text-foreground hover:text-primary">
-                    {asset.assetTag}
-                  </Link>
-                  <p className="mt-1 line-clamp-2 text-sm text-foreground">{asset.name}</p>
-                  {asset.serialNumber ? <p className="mt-1 break-words text-xs text-muted-foreground">{asset.serialNumber}</p> : null}
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <Link href={buildAssetDetailHref(asset.id)} className="min-w-0 break-words text-sm font-semibold text-foreground hover:text-primary">
+                      {asset.assetTag}
+                    </Link>
+                    <StatusPill label={asset.status.label} value={asset.status.value} />
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-sm font-medium leading-snug text-foreground">{asset.name}</p>
+                  <p className="mt-1 break-words text-xs text-muted-foreground">
+                    {asset.serialNumber ? `${asset.serialNumber} · ${asset.category}` : asset.category}
+                  </p>
                 </div>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <OwnershipTypePill value={asset.ownershipType.value} label={asset.ownershipType.label} />
-                <StatusPill label={asset.status.label} color={asset.status.color} />
-                <StatusPill label={asset.condition.label} color={asset.condition.color} />
-              </div>
               <dl className="mt-3 grid gap-2 text-sm">
-                <MobileAssetField label={labels.category} value={asset.category} />
-                <MobileAssetField label={labels.company} value={asset.companyBranch} />
                 <MobileAssetField label={labels.currentLocation} value={asset.currentLocation} />
                 <MobileAssetField label={labels.custodian} value={asset.custodian || "-"} />
-                <MobileAssetField label={labels.purchasePrice} value={formatCurrency(asset.purchasePrice)} />
               </dl>
+              {needsFieldAttention(asset) ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <StatusPill label={asset.condition.label} value={asset.condition.value} />
+                  {asset.ownershipType.value === "shared" ? (
+                    <OwnershipTypePill value={asset.ownershipType.value} label={asset.ownershipType.label} />
+                  ) : null}
+                </div>
+              ) : null}
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <Link
                   href={buildAssetDetailHref(asset.id)}
@@ -542,17 +547,20 @@ export function AssetRegisterTable({
                   <Edit className="h-4 w-4" />
                   {labels.edit}
                 </Link>
-                <Link
-                  href={buildAssetCloneHref(asset.id)}
-                  className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
-                >
-                  <Copy className="h-4 w-4" />
-                  {labels.cloneAsset}
-                </Link>
               </div>
-              <div className="mt-2 flex justify-end">
-                <AssetDeleteButton id={asset.id} />
-              </div>
+              <details className="mt-2 border-t border-border pt-2">
+                <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">{labels.actions}</summary>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                  <Link
+                    href={buildAssetCloneHref(asset.id)}
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
+                  >
+                    <Copy className="h-4 w-4" />
+                    {labels.cloneAsset}
+                  </Link>
+                  <AssetDeleteButton id={asset.id} />
+                </div>
+              </details>
             </article>
           ))
         )}
@@ -565,7 +573,7 @@ export function AssetRegisterTable({
         {labels.tableScrollHint}
       </div>
 
-      <div className={`${getDesktopTableOnlyClasses()} relative overflow-x-auto overscroll-x-contain`}>
+      <div data-asset-desktop-table className={`${getDesktopTableOnlyClasses()} relative overflow-x-auto overscroll-x-contain`}>
         <table className="min-w-full divide-y divide-border text-sm">
           <thead className="bg-muted/40">
             <tr>
@@ -700,12 +708,12 @@ export function AssetRegisterTable({
                   )}
                   {visibleColumns.has("status") && (
                     <td className="whitespace-nowrap px-4 py-3">
-                      <StatusPill label={asset.status.label} color={asset.status.color} />
+                      <StatusPill label={asset.status.label} value={asset.status.value} />
                     </td>
                   )}
                   {visibleColumns.has("condition") && (
                     <td className="whitespace-nowrap px-4 py-3">
-                      <StatusPill label={asset.condition.label} color={asset.condition.color} />
+                      <StatusPill label={asset.condition.label} value={asset.condition.value} />
                     </td>
                   )}
                   {visibleColumns.has("purchasePrice") && (
@@ -935,17 +943,27 @@ function HeaderWithHelp({
   )
 }
 
-function StatusPill({ label, color }: { label: string; color?: string | null }) {
-  if (!color) return <ActiveBadge label={label} />
+function StatusPill({ label, value }: { label: string; value: string }) {
+  return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getStatusPillTone(value)}`}>{label}</span>
+}
 
-  return (
-    <span
-      className="inline-flex rounded-full px-2 py-1 text-xs font-medium"
-      style={{ backgroundColor: `${color}1A`, color }}
-    >
-      {label}
-    </span>
-  )
+function getStatusPillTone(value: string) {
+  const normalizedValue = value.toLowerCase()
+
+  if (/(damaged|non-functional|poor|salvage|lost|missing|retired)/.test(normalizedValue)) {
+    return "bg-danger/10 text-danger"
+  }
+  if (/(fair|pending|maintenance|inspection|checked out|in use)/.test(normalizedValue)) {
+    return "bg-warning/10 text-warning"
+  }
+  if (/(new|excellent|good|ready|active)/.test(normalizedValue)) {
+    return "bg-success/10 text-success"
+  }
+  return "bg-info/10 text-info"
+}
+
+function needsFieldAttention(asset: AssetRegisterRow) {
+  return ["Fair", "Poor", "Damaged", "Non-functional", "Salvage"].includes(asset.condition.value) || asset.ownershipType.value === "shared"
 }
 
 function OwnershipTypePill({ value, label }: { value: string; label: string }) {

@@ -1,6 +1,6 @@
 # Developer Handoff
 
-> Last updated: 2026-06-17
+> Last updated: 2026-07-10
 > Scope: Developer onboarding, production readiness, and operational handoff for the Asset Management System.
 
 ## Start Here
@@ -131,6 +131,11 @@ npm run build
 - The topbar remains a light Surface White operational layer with Border Slate separation. Active navigation uses a full-row Sidebar Active background with text and icon contrast; it does not use a colored side stripe.
 - Controller browser QA completed. At 375x812, the mobile sidebar remained closed off-canvas until opened, the drawer opened and closed correctly, long Thai labels fit, and the body did not overflow. At 768x1024, the mobile/tablet shell fit with the sidebar off-canvas and no body overflow.
 - At 1280x800 and 1440x900, the desktop sidebar measured 256px, the topbar and main content aligned, the collapsed sidebar measured 64px with the topbar/main shifting correctly, the nested Asset menu expanded, and the body did not overflow. The visual theme was verified as Navy `#0F172A` sidebar, white topbar, blue active state, and readable text. Screenshots are retained as ignored evidence under `.superpowers/sdd/screenshots/task-3`.
+
+## Adaptive Asset Register Milestone
+
+- Asset Register keeps the URL-backed filter, sorting, pagination, column preset, bulk-update/export, import placement, and `returnTo` behavior while the desktop stays a dense operational table. Mobile now uses explicit card/list hooks and prioritizes Asset Tag plus semantic status, name, serial/category metadata, location, custodian, field-relevant condition/shared-ownership warnings, then detail/edit actions; company/branch and purchase price remain available through the desktop table and asset detail. Clone and delete actions are retained under the mobile card's secondary expandable action area.
+- Focused regression tests and scoped ESLint passed for this milestone. Controller browser QA remains pending at 375, 390, 414, 768, 1280, and 1440 pixels; confirm card/table visibility, no body overflow, long Thai/asset values, status readability, and permission-limited/empty/loading states before sign-off.
 
 ## Current High-Level Modules
 

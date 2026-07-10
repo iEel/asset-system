@@ -65,6 +65,30 @@ test("asset register desktop table keeps key columns frozen during horizontal sc
   assert.match(source, /group-hover:bg-accent\/50/)
 })
 
+test("asset register keeps adaptive desktop and mobile responsibilities explicit", () => {
+  const source = registerTableSource()
+
+  assert.match(source, /data-asset-mobile-list/)
+  assert.match(source, /data-asset-mobile-card/)
+  assert.match(source, /data-asset-desktop-table/)
+  assert.match(source, /getMobileCardListClasses\(\)/)
+  assert.match(source, /getDesktopTableOnlyClasses\(\)/)
+})
+
+test("mobile asset cards prioritize field lookup context", () => {
+  const source = registerTableSource()
+  const start = source.indexOf("data-asset-mobile-card")
+  const end = source.indexOf("</article>", start)
+
+  assert.ok(start > -1 && end > start)
+  const card = source.slice(start, end)
+  assert.match(card, /asset\.assetTag/)
+  assert.match(card, /asset\.name/)
+  assert.match(card, /asset\.status/)
+  assert.match(card, /asset\.currentLocation/)
+  assert.match(card, /asset\.custodian/)
+})
+
 test("asset register keeps table utility controls out of the mobile-first path", () => {
   const source = registerTableSource()
 
