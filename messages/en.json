@@ -1101,6 +1101,8 @@
     "componentSummaryHelp": "Review installed components, install/remove history, photo evidence, and parent asset relationships",
     "componentMissingSerial": "Missing Serial",
     "componentGuardNote": "The API prevents duplicate installation, self-installation, duplicate slots, and parent-child cycles.",
+    "componentContextTitle": "This asset is a component of",
+    "componentContextOpenParent": "Open parent asset",
     "installedInParent": "This asset is installed in",
     "componentInstallEvidence": "Installation evidence photo",
     "componentRemoveEvidence": "Removal evidence photo",

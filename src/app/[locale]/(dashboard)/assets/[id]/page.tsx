@@ -37,6 +37,7 @@ import { AssetStatusCorrectionButton } from "@/components/assets/asset-status-co
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { StatusPill } from "@/components/ui/status-pill"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
+import { AssetComponentContextBanner } from "@/components/assets/asset-component-context-banner"
 import { AssetComponentsSummary } from "@/components/assets/asset-components-summary"
 import { AssetDetailActionMenu } from "@/components/assets/asset-detail-action-menu"
 import { AssetDetailTabs } from "@/components/assets/asset-detail-tabs"
@@ -853,6 +854,14 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           </AssetDetailActionMenu>
         </div>
       </div>
+      <AssetComponentContextBanner
+        locale={locale}
+        installedInLinks={installedInLinksForPanel}
+        labels={{
+          title: t("componentContextTitle"),
+          openParent: t("componentContextOpenParent"),
+        }}
+      />
       {mobileActions.length > 0 ? <MobileActionBar actions={mobileActions} /> : null}
 
       <AssetDetailTabs
