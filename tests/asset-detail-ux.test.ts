@@ -21,6 +21,17 @@ test("asset detail keeps secondary actions in the More menu and caps mobile acti
   assert.match(source, /hasPermission\(user, "asset", "edit"\)/)
 })
 
+test("asset detail makes component management discoverable from custody and More", () => {
+  const source = assetDetailSource()
+  const thaiMessages = readFileSync("messages/th.json", "utf8")
+  const englishMessages = readFileSync("messages/en.json", "utf8")
+
+  assert.match(source, /href=\{componentsManagerHref\}/)
+  assert.match(source, /\{t\("manageComponents"\)\}/)
+  assert.match(thaiMessages, /"custody": "การถือครอง \/ ส่วนควบ"/)
+  assert.match(englishMessages, /"custody": "Custody & Components"/)
+})
+
 test("asset detail exposes a read-only component summary and manager link", () => {
   const source = assetDetailSource()
 

@@ -823,6 +823,15 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               <Printer className="h-4 w-4" />
               {t("printLabel")}
             </Link>
+            {canEditAsset ? (
+              <Link
+                href={componentsManagerHref}
+                className="inline-flex min-h-11 w-full items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              >
+                <Puzzle className="h-4 w-4" />
+                {t("manageComponents")}
+              </Link>
+            ) : null}
             {canCreateAsset ? (
               <Link
                 href={cloneHref}
