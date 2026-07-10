@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation"
 import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
+import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 
 type Option = { id: string; label: string; disabled?: boolean }
 
@@ -28,6 +30,7 @@ export function TransferForm({
   const t = useTranslations("transfer")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
   const initialAsset = assets.find((asset) => asset.id === initialAssetId && !asset.disabled)
   const [values, setValues] = useState({
     assetId: initialAsset?.id ?? "",
@@ -37,6 +40,23 @@ export function TransferForm({
     reason: "",
     remark: "",
   })
+  const selectedAsset = assets.find((asset) => asset.id === values.assetId)
+  const selectedLocation = locations.find((location) => location.id === values.toLocationId)
+  const selectedCustodian = employees.find((employee) => employee.id === values.toCustodianId)
+  const selectedDepartment = departments.find((department) => department.id === values.toDepartmentId)
+  const reviewItems = buildOperationReviewSummary({
+    assetLabel: selectedAsset?.label ?? "",
+    destinationLabels: [selectedLocation?.label, selectedCustodian?.label, selectedDepartment?.label],
+    details: values.reason ? [{ label: t("reason"), value: values.reason }] : [],
+    evidenceLabel: t("reviewNoEvidence"),
+    labels: {
+      asset: t("asset"),
+      source: t("from"),
+      destination: t("reviewDestination"),
+      nextStatus: t("reviewNextStatus"),
+      evidence: t("reviewEvidence"),
+    },
+  })
 
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -44,11 +64,14 @@ export function TransferForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!values.toLocationId && !values.toCustodianId && !values.toDepartmentId) {
+    if (!selectedAsset || (!values.toLocationId && !values.toCustodianId && !values.toDepartmentId)) {
       toast.error(t("destinationRequired"))
       return
     }
+    setReviewOpen(true)
+  }
 
+  async function submitTransfer() {
     setSaving(true)
     try {
       const response = await fetch(`/api/assets/${values.assetId}/transfer`, {
@@ -107,6 +130,18 @@ export function TransferForm({
             </button>
           </div>
         </form>
+        <OperationReviewDialog
+          open={reviewOpen}
+          title={t("reviewTitle")}
+          description={t("reviewDescription")}
+          items={reviewItems}
+          confirmLabel={t("reviewConfirm")}
+          cancelLabel={tCommon("cancel")}
+          closeLabel={tCommon("close")}
+          busy={saving}
+          onClose={() => setReviewOpen(false)}
+          onConfirm={() => void submitTransfer()}
+        />
       </section>
     </div>
   )

@@ -8,8 +8,10 @@ import { FileImage, Loader2, PackageCheck, Save, Search, Trash2, Wrench } from "
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
+import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
+import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 
 type Option = { id: string; label: string }
 type StatusOption = Option & { name?: string }
@@ -62,6 +64,7 @@ export function CheckinForm({
   const t = useTranslations("checkin")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
   const [legacyBackfillSavingId, setLegacyBackfillSavingId] = useState<string | null>(null)
   const [legacyReturnSearch, setLegacyReturnSearch] = useState("")
   const [photoType, setPhotoType] = useState("overview")
@@ -93,6 +96,9 @@ export function CheckinForm({
   )
   const conditionLabelById = useMemo(() => new Map(conditions.map((condition) => [condition.id, condition.label])), [conditions])
   const selectedStatus = statuses.find((status) => status.id === values.nextStatusId)
+  const selectedReturnBy = employees.find((employee) => employee.id === returnByEmployeeId)
+  const selectedReceiver = employees.find((employee) => employee.id === receiveByEmployeeId)
+  const selectedLocation = locations.find((location) => location.id === values.nextLocationId)
   const pendingRepairStatus = statuses.find((status) => status.name === "Pending Repair")
   const canCreateMaintenance = selectedStatus?.name === "Pending Repair"
   const hasActiveCheckouts = activeCheckouts.length > 0
@@ -117,6 +123,22 @@ export function CheckinForm({
     { id: "accessories", label: t("photoTypeAccessories") },
     { id: "damage", label: t("photoTypeDamage") },
   ]
+  const evidenceCount = photosAfter.length + Number(Boolean(returnSignatureDataUrl)) + Number(Boolean(receiveSignatureDataUrl))
+  const reviewItems = buildOperationReviewSummary({
+    assetLabel: selectedCheckout ? `${selectedCheckout.assetTag ?? ""} - ${selectedCheckout.assetName ?? selectedCheckout.label}`.trim() : "",
+    sourceLabel: selectedReturnBy?.label,
+    destinationLabels: [selectedReceiver?.label],
+    nextStatusLabel: selectedStatus?.label,
+    details: selectedLocation ? [{ label: t("nextLocation"), value: selectedLocation.label }] : [],
+    evidenceLabel: evidenceCount > 0 ? t("reviewEvidenceCount", { count: evidenceCount }) : t("reviewNoEvidence"),
+    labels: {
+      asset: t("asset"),
+      source: t("returnBy"),
+      destination: t("receiveBy"),
+      nextStatus: t("nextStatus"),
+      evidence: t("reviewEvidence"),
+    },
+  })
 
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -209,6 +231,16 @@ export function CheckinForm({
       toast.error(t("selectMaintenanceReportedBy"))
       return
     }
+    setReviewOpen(true)
+  }
+
+  async function submitCheckin() {
+    const assetId = selectedCheckout?.assetId
+    if (!assetId) {
+      setReviewOpen(false)
+      toast.error(t("selectCheckoutRequired"))
+      return
+    }
     setSaving(true)
     const body = new FormData()
     for (const [key, value] of Object.entries(values)) {
@@ -225,7 +257,7 @@ export function CheckinForm({
     if (receiveSignatureDataUrl) body.set("receiveSignatureFile", dataUrlToFile(receiveSignatureDataUrl, `receive-signature-${Date.now()}.png`))
 
     try {
-      const response = await fetch(`/api/assets/${selectedCheckout.assetId}/checkin`, {
+      const response = await fetch(`/api/assets/${assetId}/checkin`, {
         method: "POST",
         body,
       })
@@ -535,6 +567,18 @@ export function CheckinForm({
             </>
           )}
         </form>
+        <OperationReviewDialog
+          open={reviewOpen}
+          title={t("reviewTitle")}
+          description={t("reviewDescription")}
+          items={reviewItems}
+          confirmLabel={t("reviewConfirm")}
+          cancelLabel={tCommon("cancel")}
+          closeLabel={tCommon("close")}
+          busy={saving}
+          onClose={() => setReviewOpen(false)}
+          onConfirm={() => void submitCheckin()}
+        />
       </section>
     </div>
   )

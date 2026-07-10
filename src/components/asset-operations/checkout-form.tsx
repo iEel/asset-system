@@ -8,7 +8,9 @@ import { toast } from "sonner"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
+import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 
 type Option = { id: string; label: string; disabled?: boolean }
 type CheckoutType = "user" | "department" | "location" | "asset"
@@ -33,6 +35,7 @@ export function CheckoutForm({
   const t = useTranslations("checkout")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
   const [photoBefore, setPhotoBefore] = useState<File | null>(null)
   const [receiverSignatureDataUrl, setReceiverSignatureDataUrl] = useState<string | null>(null)
   const initialAsset = assets.find((asset) => asset.id === initialAssetId && !asset.disabled)
@@ -55,6 +58,23 @@ export function CheckoutForm({
     if (values.checkoutType === "location") return locations
     return assets.filter((asset) => asset.id !== values.assetId)
   }, [assets, departments, employees, locations, values.assetId, values.checkoutType])
+  const selectedAsset = assets.find((asset) => asset.id === values.assetId)
+  const selectedDestination = destinationOptions.find((option) => option.id === destinationValue(values))
+  const selectedCondition = conditions.find((condition) => condition.id === values.conditionBefore)
+  const reviewItems = buildOperationReviewSummary({
+    assetLabel: selectedAsset?.label ?? "",
+    destinationLabels: [selectedDestination?.label],
+    nextStatusLabel: selectedCondition?.label,
+    details: values.expectedReturnDate ? [{ label: t("expectedReturn"), value: values.expectedReturnDate }] : [],
+    evidenceLabel: photoBefore || receiverSignatureDataUrl ? t("reviewEvidenceAttached") : t("reviewNoEvidence"),
+    labels: {
+      asset: t("asset"),
+      source: t("checkedOutBy"),
+      destination: t("checkoutTo"),
+      nextStatus: t("conditionBefore"),
+      evidence: t("reviewEvidence"),
+    },
+  })
 
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -62,6 +82,14 @@ export function CheckoutForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!selectedAsset || !selectedDestination || !selectedCondition) {
+      toast.error(t("reviewIncomplete"))
+      return
+    }
+    setReviewOpen(true)
+  }
+
+  async function submitCheckout() {
     setSaving(true)
     const body = new FormData()
     body.set("checkoutType", values.checkoutType)
@@ -193,6 +221,18 @@ export function CheckoutForm({
           </button>
         </div>
       </form>
+      <OperationReviewDialog
+        open={reviewOpen}
+        title={t("reviewTitle")}
+        description={t("reviewDescription")}
+        items={reviewItems}
+        confirmLabel={t("reviewConfirm")}
+        cancelLabel={tCommon("cancel")}
+        closeLabel={tCommon("close")}
+        busy={saving}
+        onClose={() => setReviewOpen(false)}
+        onConfirm={() => void submitCheckout()}
+      />
     </OperationShell>
   )
 

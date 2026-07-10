@@ -1031,6 +1031,13 @@
     "result": "Result",
     "lastAuditDate": "Last Audit",
     "scanCount": "Scan Count",
+    "detailViews": {
+      "label": "Choose an asset detail view",
+      "overview": "Overview",
+      "custody": "Custody",
+      "operations": "Operations",
+      "audit": "Audit"
+    },
     "detailSections": {
       "nav": "Asset detail navigation",
       "overview": "Overview",
@@ -1606,7 +1613,14 @@
     "type_user": "User",
     "type_department": "Department",
     "type_location": "Location",
-    "type_asset": "Another Asset"
+    "type_asset": "Another Asset",
+    "reviewTitle": "Review handover",
+    "reviewDescription": "Confirm the asset, destination, condition, and evidence before recording this handover.",
+    "reviewEvidence": "Evidence",
+    "reviewEvidenceAttached": "Photo or signature attached",
+    "reviewNoEvidence": "No photo or signature attached",
+    "reviewIncomplete": "Select an asset, destination, and condition before continuing.",
+    "reviewConfirm": "Confirm handover"
   },
   "checkin": {
     "title": "Check-in Asset",
@@ -1697,7 +1711,13 @@
     "maintenanceProblemPlaceholder": "Optional. If blank, the system uses damage/missing accessory details from this return.",
     "evidenceAttached": "File attached",
     "approver": "Approver",
-    "signatureDate": "Signature / Date"
+    "signatureDate": "Signature / Date",
+    "reviewTitle": "Review return",
+    "reviewDescription": "Confirm the returner, receiver, destination state, and evidence before recording this return.",
+    "reviewEvidence": "Evidence",
+    "reviewEvidenceCount": "{count} photo/signature items",
+    "reviewNoEvidence": "No photo or signature attached",
+    "reviewConfirm": "Confirm return"
   },
   "transfer": {
     "title": "Transfer Asset",
@@ -1710,7 +1730,15 @@
     "remark": "Remark",
     "noChange": "No change",
     "destinationRequired": "Choose at least one transfer destination",
-    "success": "Asset transferred successfully"
+    "success": "Asset transferred successfully",
+    "from": "From",
+    "reviewTitle": "Review transfer",
+    "reviewDescription": "Confirm the asset, destination, and reason before recording this transfer.",
+    "reviewDestination": "Destination",
+    "reviewNextStatus": "Next status",
+    "reviewEvidence": "Evidence",
+    "reviewNoEvidence": "No evidence files are attached to this transfer.",
+    "reviewConfirm": "Confirm transfer"
   },
   "bulkMove": {
     "title": "Bulk Move Locations",

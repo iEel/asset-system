@@ -1031,6 +1031,13 @@
     "result": "ผลตรวจ",
     "lastAuditDate": "ตรวจล่าสุด",
     "scanCount": "จำนวนครั้งที่สแกน",
+    "detailViews": {
+      "label": "เลือกมุมมองรายละเอียดทรัพย์สิน",
+      "overview": "ข้อมูลหลัก",
+      "custody": "ผู้ถือครอง",
+      "operations": "การดำเนินงาน",
+      "audit": "ตรวจนับ"
+    },
     "detailSections": {
       "nav": "นำทางในรายละเอียดทรัพย์สิน",
       "overview": "ภาพรวม",
@@ -1606,7 +1613,14 @@
     "type_user": "พนักงาน",
     "type_department": "แผนก",
     "type_location": "พื้นที่",
-    "type_asset": "ทรัพย์สินอื่น"
+    "type_asset": "ทรัพย์สินอื่น",
+    "reviewTitle": "ตรวจสอบก่อนส่งมอบ",
+    "reviewDescription": "ยืนยันทรัพย์สิน ปลายทาง สภาพ และหลักฐานก่อนบันทึกรายการ",
+    "reviewEvidence": "หลักฐาน",
+    "reviewEvidenceAttached": "มีรูปหรือ ลายเซ็นแนบแล้ว",
+    "reviewNoEvidence": "ยังไม่ได้แนบรูปหรือ ลายเซ็น",
+    "reviewIncomplete": "กรุณาเลือกทรัพย์สิน ปลายทาง และสภาพก่อนส่งมอบ",
+    "reviewConfirm": "ยืนยันส่งมอบ"
   },
   "checkin": {
     "title": "รับคืนทรัพย์สิน",
@@ -1697,7 +1711,13 @@
     "maintenanceProblemPlaceholder": "เว้นว่างได้ ระบบจะใช้ข้อมูลความเสียหาย/อุปกรณ์ที่ขาดจากรายการรับคืน",
     "evidenceAttached": "แนบไฟล์แล้ว",
     "approver": "ผู้อนุมัติ",
-    "signatureDate": "ลงชื่อ / วันที่"
+    "signatureDate": "ลงชื่อ / วันที่",
+    "reviewTitle": "ตรวจสอบก่อนรับคืน",
+    "reviewDescription": "ยืนยันผู้คืน ผู้รับคืน สถานะปลายทาง และหลักฐานก่อนบันทึกรายการ",
+    "reviewEvidence": "หลักฐาน",
+    "reviewEvidenceCount": "รูปหรือ ลายเซ็น {count} รายการ",
+    "reviewNoEvidence": "ยังไม่ได้แนบรูปหรือ ลายเซ็น",
+    "reviewConfirm": "ยืนยันรับคืน"
   },
   "transfer": {
     "title": "โอนย้ายทรัพย์สิน",
@@ -1710,7 +1730,15 @@
     "remark": "หมายเหตุ",
     "noChange": "ไม่เปลี่ยนแปลง",
     "destinationRequired": "กรุณาเลือกปลายทางอย่างน้อย 1 รายการ",
-    "success": "โอนย้ายทรัพย์สินสำเร็จ"
+    "success": "โอนย้ายทรัพย์สินสำเร็จ",
+    "from": "จาก",
+    "reviewTitle": "ตรวจสอบก่อนโอนย้าย",
+    "reviewDescription": "ยืนยันทรัพย์สิน ปลายทาง และเหตุผลก่อนบันทึกรายการ",
+    "reviewDestination": "ปลายทาง",
+    "reviewNextStatus": "สถานะถัดไป",
+    "reviewEvidence": "หลักฐาน",
+    "reviewNoEvidence": "ไม่มีไฟล์หลักฐานในรายการโอนย้ายนี้",
+    "reviewConfirm": "ยืนยันโอนย้าย"
   },
   "bulkMove": {
     "title": "ย้ายพื้นที่หลายรายการ",

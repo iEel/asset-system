@@ -50,6 +50,7 @@ import { hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset
 import { canCorrectAssetStatus } from "@/lib/asset-lifecycle-exception-policy"
 import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
 import { appendReturnTo, normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
+import { assetDetailViews, buildAssetDetailViewHref, getAssetDetailViewSectionIds, parseAssetDetailView } from "@/lib/asset-detail-view"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import {
   compactMovementDetails,
@@ -68,7 +69,7 @@ import {
 
 type AssetDetailPageProps = {
   params: Promise<{ id: string; locale: string }>
-  searchParams: Promise<{ returnTo?: string | string[] }>
+  searchParams: Promise<{ returnTo?: string | string[]; view?: string | string[] }>
 }
 
 type MovementCustodyDetail = {
@@ -107,6 +108,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const rawSearchParams = await searchParams
   await requirePagePermission(locale, "asset", "view")
   const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
+  const assetDetailView = parseAssetDetailView(rawSearchParams.view)
   const scanReturnHref = `/${locale}/asset-management/scan`
   const isAssetScanReturn = returnToHref === scanReturnHref
 
@@ -743,7 +745,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     publicBaseUrl: qrBaseUrlSetting?.value,
     fallbackBaseUrl: process.env.AUTH_URL,
   })
-  const sectionLinks = [
+  const allSectionLinks = [
     { id: "overview", label: t("detailSections.overview") },
     ...(asset.model && (modelSpecs.items.length > 0 || modelSpecs.notes)
       ? [{ id: "specs", label: t("detailSections.specs") }]
@@ -758,6 +760,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     { id: "maintenance", label: t("detailSections.maintenance") },
     { id: "audit", label: t("detailSections.audit") },
   ]
+  const visibleSectionIds = new Set(getAssetDetailViewSectionIds(assetDetailView))
+  const sectionLinks = allSectionLinks.filter((section) => visibleSectionIds.has(section.id))
   const allEvidenceItems = [
     ...buildEvidenceItems(assetAttachments, t("evidenceGroupAsset"), asset.assetTag),
     ...buildEvidenceItems(modelPhotos, t("evidenceGroupModel"), asset.model?.name ?? asset.name),
@@ -853,6 +857,23 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       <MobileActionBar
         actions={mobileActions}
       />
+
+      <nav aria-label={t("detailViews.label")} className="flex flex-wrap gap-2">
+        {assetDetailViews.map((view) => (
+          <Link
+            key={view}
+            href={buildAssetDetailViewHref(locale, asset.id, view, returnToHref)}
+            aria-current={assetDetailView === view ? "page" : undefined}
+            className={`inline-flex min-h-11 items-center justify-center rounded-md border px-3 text-xs font-medium transition-colors sm:h-9 sm:min-h-0 ${
+              assetDetailView === view
+                ? "border-primary bg-primary text-white"
+                : "border-border bg-surface text-muted-foreground hover:border-primary/40 hover:bg-accent hover:text-foreground"
+            }`}
+          >
+            {t(`detailViews.${view}`)}
+          </Link>
+        ))}
+      </nav>
 
       <nav className="sticky top-0 z-20 -mx-4 border-y border-border bg-background/95 px-4 py-2 shadow-sm backdrop-blur md:top-0" aria-label={t("detailSections.nav")}>
         <div className="scrollbar-none flex gap-2 overflow-x-auto">
