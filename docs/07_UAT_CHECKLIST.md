@@ -176,6 +176,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 ## Mobile Field Navigation UAT
 
 - [x] At 375x812 and 390x844, Asset Register showed one Mobile Field Navigation dock, no contextual Audit action bar, no body overflow, and all five visible targets measured at least 44px high.
+- [x] At 768x1024 the field dock remained visible while the desktop Sidebar was still off-canvas; at 1024x800 the field dock was hidden and the 256px desktop Sidebar was visible. Confirm there is no navigation gap across the `lg` breakpoint.
 - [x] Confirm `หน้าหลัก`, `ทรัพย์สิน`, `สแกน`, and `ตรวจนับ` use existing routes and `เพิ่มเติม` opens the existing RBAC-filtered Sidebar.
 - [x] Confirm General Asset Scan and `/th/audit/rounds/{id}/scan` hide Mobile Field Navigation before any target is selected.
 - [x] Select an in-round Audit item without saving and confirm exactly one Audit action bar appears while Mobile Field Navigation remains absent. Browser QA measured matched/mismatch/change-target actions at 56px/48px/48px with no body overflow.
