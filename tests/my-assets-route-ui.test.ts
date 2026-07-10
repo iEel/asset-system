@@ -12,13 +12,24 @@ test("my assets page is employee scoped and does not require broad asset view", 
 })
 
 test("my assets route has Thai and English translations", () => {
-  const th = readFileSync("messages/th.json", "utf8")
-  const en = readFileSync("messages/en.json", "utf8")
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
-  assert.match(th, /"myAssets"/)
-  assert.match(th, /"ทรัพย์สินของฉัน"/)
-  assert.match(en, /"myAssets"/)
-  assert.match(en, /"My Assets"/)
+  assert.equal(th.myAssets.title, "ทรัพย์สินของฉัน")
+  assert.equal(en.myAssets.title, "My Assets")
+  for (const messages of [th, en]) {
+    assert.equal(typeof messages.myAssets.openDetail, "string")
+    assert.equal(typeof messages.myAssets.detailTitle, "string")
+    assert.equal(typeof messages.myAssets.backToList, "string")
+  }
+})
+
+test("my assets list links both responsive surfaces to employee-scoped detail", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/my-assets/page.tsx", "utf8")
+
+  assert.match(page, /buildMyAssetDetailHref/)
+  assert.match(page, /openDetail/)
+  assert.match(page, /href=\{href\}/)
 })
 
 test("sidebar exposes My Assets only through linked employee identity", () => {

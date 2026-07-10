@@ -176,7 +176,12 @@
     "emptyTitle": "You do not currently hold any assets",
     "emptyHelp": "If you should hold assets, ask the asset administrator to confirm the handover or custodian transfer.",
     "openWorkCenter": "Open Work Center",
-    "updatedAt": "Last updated"
+    "updatedAt": "Last updated",
+    "openDetail": "View details",
+    "detailTitle": "My asset details",
+    "detailHelp": "Read-only asset information assigned to your employee profile.",
+    "backToList": "Back to My Assets",
+    "assetTag": "Asset Tag"
   },
   "assetTools": {
     "scanTitle": "Scan / Search Asset",
