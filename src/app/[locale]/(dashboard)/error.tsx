@@ -27,7 +27,7 @@ export default function DashboardError({
           title={t("unexpectedErrorTitle")}
           description={t("unexpectedErrorDescription")}
           action={(
-            <ActionButton variant="primary" onClick={unstable_retry} className="mt-4">
+            <ActionButton variant="primary" onClick={unstable_retry}>
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
               {t("tryAgain")}
             </ActionButton>

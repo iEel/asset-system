@@ -23,6 +23,14 @@ const toneStyles: Record<ActionEmptyStateTone, { icon: React.ReactNode; iconClas
 
 export function ActionEmptyState({ icon, title, description, actionHref, actionLabel, action, details, tone = "empty" }: ActionEmptyStateProps) {
   const stateIcon = icon ?? toneStyles[tone].icon
+  const actionNode = action ?? (actionHref && actionLabel ? (
+    <Link
+      href={actionHref}
+      className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-9 sm:min-h-0"
+    >
+      {actionLabel}
+    </Link>
+  ) : null)
 
   return (
     <div className="flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-background px-4 py-8 text-center">
@@ -30,14 +38,7 @@ export function ActionEmptyState({ icon, title, description, actionHref, actionL
       <div className="text-sm font-semibold text-foreground">{title}</div>
       {description ? <p className="mt-1 max-w-md text-sm text-muted-foreground">{description}</p> : null}
       {details ? <div className="mt-4 max-w-md">{details}</div> : null}
-      {action ?? (actionHref && actionLabel ? (
-        <Link
-          href={actionHref}
-          className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-9 sm:min-h-0"
-        >
-          {actionLabel}
-        </Link>
-      ) : null)}
+      {actionNode ? <div className="mt-4">{actionNode}</div> : null}
     </div>
   )
 }
