@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-07-10
+
+| Area | Update |
+|---|---|
+| Adaptive UI baseline test portability | Repaired the pre-existing focused baseline failures by using a Node-compatible relative TypeScript import for Audit Finding filters, matching the current Audit Scan helper signature, and normalizing source newlines before the mobile action-bar source assertion. Runtime audit behavior, APIs, payloads, translations, RBAC, SOD, and UI behavior are unchanged. |
+
+---
+
 ## 2026-06-26
 
 | Area | Update |

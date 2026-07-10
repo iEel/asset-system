@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/client"
-import { auditRoundCoverageWhere, auditRoundOperationalWhere } from "@/lib/audit-round-status"
+import { auditRoundCoverageWhere, auditRoundOperationalWhere } from "./audit-round-status.ts"
 
 export const auditFindingResolutionStatuses = [
   "pending",

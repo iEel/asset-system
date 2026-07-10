@@ -170,7 +170,7 @@ test("audit scan locks the scanned target and pauses the QR scanner before savin
 })
 
 test("audit scan mobile resolver removes the evidence-scroll action", () => {
-  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8").replaceAll("\r\n", "\n")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
   const barStart = form.indexOf("aria-label={t(\"mobileActionBar\")}")

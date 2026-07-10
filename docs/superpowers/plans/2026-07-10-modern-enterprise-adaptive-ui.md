@@ -107,11 +107,99 @@ Expected: `noBodyOverflow` is `true`; Audit Scan has `scannerCount: 1`; Asset Re
 
 This is a baseline/review gate. Proceed only when the screenshots and gap list agree with the requirements below.
 
+### Task 1: Repair Pre-existing Baseline Test Failures
+
+**Files:**
+- Modify: `src/lib/audit-finding-filters.ts`
+- Modify: `tests/audit-out-of-scope-actual-field.test.ts`
+- Modify: `tests/audit-scan-field-mode-ux.test.ts`
+- Test: `tests/audit-finding-resolution.test.ts`
+- Test: `tests/audit-out-of-scope-actual-field.test.ts`
+- Test: `tests/audit-scan-field-mode-ux.test.ts`
+
+**Interfaces:**
+- Consumes: Existing Audit Finding filter behavior and current Audit Scan source structure.
+- Produces: A clean 634-test baseline without changing audit business behavior, API payloads, UI copy, or runtime workflow.
+
+- [ ] **Step 1: Preserve the observed failing baseline as RED evidence**
+
+Run:
+
+```powershell
+node --test tests/audit-finding-resolution.test.ts tests/audit-out-of-scope-actual-field.test.ts tests/audit-scan-field-mode-ux.test.ts
+```
+
+Expected: FAIL for three pre-existing reasons: Node cannot resolve the `@/lib/audit-round-status` alias from the directly imported library; the out-of-scope source assertion requires the obsolete one-argument helper signature; and the action-bar source slice requires LF even when the checkout uses CRLF.
+
+- [ ] **Step 2: Make the directly tested library import Node-compatible**
+
+In `src/lib/audit-finding-filters.ts`, replace only the internal alias import with the relative TypeScript import supported by this repository's `allowImportingTsExtensions` configuration:
+
+```ts
+import { auditRoundCoverageWhere, auditRoundOperationalWhere } from "./audit-round-status.ts"
+```
+
+Do not change the exported filter API or query behavior.
+
+- [ ] **Step 3: Update the stale helper-signature assertion**
+
+In `tests/audit-out-of-scope-actual-field.test.ts`, assert the current optional-mode signature rather than the obsolete single-argument signature:
+
+```ts
+assert.match(
+  form,
+  /function selectInRoundAuditItem\(item: AuditScanItem, options: \{ mode\?: "scan" \| "edit" \} = \{\}\)/
+)
+```
+
+Keep all assertions that verify out-of-scope actual values and reviewable findings.
+
+- [ ] **Step 4: Normalize source newlines before locating the mobile action bar**
+
+In `tests/audit-scan-field-mode-ux.test.ts`, normalize the source once inside the affected test:
+
+```ts
+const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8").replaceAll("\r\n", "\n")
+```
+
+Do not loosen the assertions for matched, mismatch, change-target, and evidence-scroll removal actions.
+
+- [ ] **Step 5: Run focused GREEN verification**
+
+Run:
+
+```powershell
+node --test tests/audit-finding-resolution.test.ts tests/audit-out-of-scope-actual-field.test.ts tests/audit-scan-field-mode-ux.test.ts
+```
+
+Expected: PASS with no failed tests.
+
+- [ ] **Step 6: Run the complete baseline suite**
+
+Run:
+
+```powershell
+npm test
+```
+
+Expected: all 634 tests pass. Existing Node module-type warnings may remain as pre-existing noise, but there must be zero failed tests.
+
+- [ ] **Step 7: Update the plan record and commit**
+
+Record the baseline repair in `docs/99_CHANGELOG.md` and keep it separate from the visual milestones, then run:
+
+```powershell
+git add src/lib/audit-finding-filters.ts tests/audit-out-of-scope-actual-field.test.ts tests/audit-scan-field-mode-ux.test.ts docs/99_CHANGELOG.md docs/superpowers/plans/2026-07-10-modern-enterprise-adaptive-ui.md
+git commit -m "Repair adaptive UI baseline tests"
+```
+
+Expected: commit changes test portability/stale assertions only and does not change audit runtime behavior.
+
 ---
 
 ## Milestone 1: Theme Tokens And Application Shell
 
-### Task 1: Define Accessible Modern Enterprise Tokens
+### Task 2: Define Accessible Modern Enterprise Tokens
 
 **Files:**
 - Create: `tests/modern-enterprise-theme.test.ts`
@@ -245,7 +333,7 @@ git commit -m "Define modern enterprise theme tokens"
 
 Expected: commit contains only tokens, design documentation, and token tests.
 
-### Task 2: Refresh Sidebar And Topbar Without Changing Navigation
+### Task 3: Refresh Sidebar And Topbar Without Changing Navigation
 
 **Files:**
 - Create: `tests/dashboard-shell-theme.test.ts`
@@ -354,7 +442,7 @@ Expected: Milestone 1 can be released or rolled back independently.
 
 ## Milestone 2: Adaptive Asset Register
 
-### Task 3: Refine Asset Register Hierarchy Instead Of Rebuilding It
+### Task 4: Refine Asset Register Hierarchy Instead Of Rebuilding It
 
 **Files:**
 - Modify: `src/app/[locale]/(dashboard)/assets/page.tsx`
@@ -479,7 +567,7 @@ Expected: Milestone 2 is independently testable and does not depend on Audit Sca
 
 ## Milestone 3: Mobile Audit Scan Visual Consolidation
 
-### Task 4: Clarify The Existing Field Workflow Without Adding Another Mode
+### Task 5: Clarify The Existing Field Workflow Without Adding Another Mode
 
 **Files:**
 - Modify: `src/components/audit/audit-scan-form.tsx`
@@ -616,10 +704,10 @@ Expected: Milestone 3 is visual/interaction consolidation only; audit business l
 
 ## Milestone 4: Cross-Surface Quality Gate
 
-### Task 5: Accessibility, Visual Regression, Documentation, And Release Gate
+### Task 6: Accessibility, Visual Regression, Documentation, And Release Gate
 
 **Files:**
-- Modify only if defects are found: files changed in Tasks 1-4
+- Modify only if defects are found: files changed in Tasks 2-5
 - Modify: `DEVELOPER_HANDOFF.md`
 - Modify: `docs/07_UAT_CHECKLIST.md`
 - Modify: `docs/99_CHANGELOG.md`

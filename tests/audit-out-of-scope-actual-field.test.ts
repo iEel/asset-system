@@ -38,12 +38,15 @@ test("audit scan form captures out-of-scope actual fields before saving", () => 
   assert.match(form, /actualConditionId:\s*outOfScopeActualValues\.actualConditionId/)
   assert.match(form, /function resetAuditPhotoQueue\(\)/)
   assert.match(form, /function clearAuditScanTarget\(\)/)
-  assert.match(form, /function selectInRoundAuditItem\(item: AuditScanItem\)/)
+  assert.match(
+    form,
+    /function selectInRoundAuditItem\(item: AuditScanItem, options: \{ mode\?: "scan" \| "edit" \} = \{\}\)/
+  )
   assert.match(form, /actualLocationId:\s*item\.expectedLocationId \?\? ""/)
   assert.match(form, /actualCustodianId:\s*item\.expectedCustodianId \?\? ""/)
   assert.match(form, /actualDepartmentId:\s*item\.expectedDepartmentId \?\? ""/)
   assert.match(form, /actualConditionId:\s*item\.expectedConditionId \?\? ""/)
-  assert.match(form, /const shouldShowAuditPhotoEvidence = Boolean\(selectedItem \|\| outOfScopeAsset\)/)
+  assert.match(form, /const shouldShowAuditPhotoEvidence = Boolean\(outOfScopeAsset \|\| isDetailedScanVisible \|\| queuedAuditPhotos\.length > 0\)/)
   assert.match(form, /\{shouldShowAuditPhotoEvidence && \(/)
   assert.match(form, /const evidenceAttachmentIds = queuedAuditPhotos\.length > 0\s*\?\s*await uploadQueuedAuditPhotos\(outOfScopeAsset\.id\)\s*:\s*\[\]/)
   assert.match(form, /evidenceAttachmentIds,/)
