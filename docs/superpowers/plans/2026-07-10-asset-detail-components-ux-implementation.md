@@ -53,7 +53,7 @@
 - Consumes: normalized ownership values from `src/lib/asset-ownership.ts` and current tab values from `src/lib/asset-detail-view.ts`.
 - Produces: `isAssetDetailSectionVisible` for page and component consumers.
 
-- [ ] **Step 1: Write failing tab policy tests**
+- [x] **Step 1: Write failing tab policy tests**
 
 ```ts
 import assert from "node:assert/strict"
@@ -66,13 +66,13 @@ test("shows only sections belonging to the selected detail tab", () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests to verify failure**
+- [x] **Step 2: Run the tests to verify failure**
 
 Run: `node --test tests/asset-detail-view.test.ts`
 
 Expected: FAIL because `isAssetDetailSectionVisible` does not exist.
 
-- [ ] **Step 3: Add the smallest pure policies**
+- [x] **Step 3: Add the smallest pure policies**
 
 In `asset-detail-view.ts`, export the section id union and add:
 
@@ -82,13 +82,13 @@ export function isAssetDetailSectionVisible(view: AssetDetailView, sectionId: As
 }
 ```
 
-- [ ] **Step 4: Run focused tests**
+- [x] **Step 4: Run focused tests**
 
 Run: `node --test tests/asset-detail-view.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit the policy foundation**
+- [x] **Step 5: Commit the policy foundation**
 
 ```bash
 git add src/lib/asset-detail-view.ts tests/asset-detail-view.test.ts
@@ -111,7 +111,7 @@ git commit -m "refactor: add asset detail tab policies"
 - Consumes: `AssetDetailView`, `buildAssetDetailViewHref`, and `isAssetDetailSectionVisible` from Task 1; `SessionUser` and `hasPermission` from `src/lib/auth-utils.ts`.
 - Produces: URL-backed tab content, an accessible More menu, and a maximum of three mobile fixed actions.
 
-- [ ] **Step 1: Write failing layout tests**
+- [x] **Step 1: Write failing layout tests**
 
 ```ts
 test("asset detail renders one tab navigation and selected content only", () => {
@@ -130,13 +130,13 @@ test("asset detail caps mobile actions at three and keeps secondary actions in M
 
 Update the anchor and relationship-map tests so they assert the custody tab owns `ownership` and `components`, rather than relying on the removed peer section navigator.
 
-- [ ] **Step 2: Run the tests to verify failure**
+- [x] **Step 2: Run the tests to verify failure**
 
 Run: `node --test tests/asset-detail-ux.test.ts tests/asset-detail-anchor-layout.test.ts tests/asset-relationship-map-ui.test.ts`
 
 Expected: FAIL because the extracted components and view guard are absent.
 
-- [ ] **Step 3: Implement the one-tab layout**
+- [x] **Step 3: Implement the one-tab layout**
 
 Implement `AssetDetailTabs` as a `nav` with `aria-current="page"` on the selected tab, using the existing `buildAssetDetailViewHref` contract. In `page.tsx`, wrap every content section with the exact guard below and remove the sticky `sectionLinks` navigation:
 
@@ -152,11 +152,11 @@ Render `ownership`, `components`, and `handover` only for `custody`; `movement` 
 
 Build `AssetDetailActionMenu` from an array of `{ label, href, icon, visible }` entries. Desktop shows Back, Edit only when `hasPermission(user, "asset", "edit")`, and More for Activity, Evidence, Print Label, and Clone. Mobile shows Back and More in the header and sends only three stable lifecycle actions to `MobileActionBar`.
 
-- [ ] **Step 4: Add concise bilingual copy**
+- [x] **Step 4: Add concise bilingual copy**
 
 Add translation keys for `asset.detailMoreActions`, `asset.manageComponents`, `asset.notSpecified`, `asset.componentManagerTitle`, and `common.back`. Keep current keys intact where they are already used elsewhere.
 
-- [ ] **Step 5: Run focused tests**
+- [x] **Step 5: Run focused tests**
 
 Run: `node --test tests/asset-detail-view.test.ts tests/asset-detail-ux.test.ts tests/asset-detail-anchor-layout.test.ts tests/asset-relationship-map-ui.test.ts`
 

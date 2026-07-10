@@ -1046,6 +1046,7 @@
       "operations": "Operations",
       "audit": "Audit"
     },
+    "detailMoreActions": "More actions",
     "detailSections": {
       "nav": "Asset detail navigation",
       "overview": "Overview",

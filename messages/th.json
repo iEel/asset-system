@@ -1046,6 +1046,7 @@
       "operations": "การดำเนินงาน",
       "audit": "ตรวจนับ"
     },
+    "detailMoreActions": "การดำเนินการเพิ่มเติม",
     "detailSections": {
       "nav": "นำทางในรายละเอียดทรัพย์สิน",
       "overview": "ภาพรวม",

@@ -28,6 +28,7 @@ import {
 } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
+import { hasPermission } from "@/lib/auth-utils"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 import { AssetQrCode } from "@/components/assets/asset-qr-code"
 import { AssetAttachments } from "@/components/assets/asset-attachments"
@@ -37,6 +38,8 @@ import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popo
 import { StatusPill } from "@/components/ui/status-pill"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { AssetComponentsPanel } from "@/components/assets/asset-components-panel"
+import { AssetDetailActionMenu } from "@/components/assets/asset-detail-action-menu"
+import { AssetDetailTabs } from "@/components/assets/asset-detail-tabs"
 import { AssetPurchaseDocuments } from "@/components/assets/asset-purchase-documents"
 import { parseModelSpecs } from "@/lib/model-specs"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
@@ -50,7 +53,7 @@ import { hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset
 import { canCorrectAssetStatus } from "@/lib/asset-lifecycle-exception-policy"
 import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
 import { appendReturnTo, normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
-import { assetDetailViews, buildAssetDetailViewHref, getAssetDetailViewSectionIds, parseAssetDetailView } from "@/lib/asset-detail-view"
+import { isAssetDetailSectionVisible, parseAssetDetailView } from "@/lib/asset-detail-view"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import {
   compactMovementDetails,
@@ -106,7 +109,9 @@ type RelationshipLink = { id: string; href: string; label: string; role: string 
 export default async function AssetDetailPage({ params, searchParams }: AssetDetailPageProps) {
   const { id, locale } = await params
   const rawSearchParams = await searchParams
-  await requirePagePermission(locale, "asset", "view")
+  const user = await requirePagePermission(locale, "asset", "view")
+  const canEditAsset = hasPermission(user, "asset", "edit")
+  const canCreateAsset = hasPermission(user, "asset", "create")
   const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
   const assetDetailView = parseAssetDetailView(rawSearchParams.view)
   const scanReturnHref = `/${locale}/asset-management/scan`
@@ -663,16 +668,15 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     licenseSeatSummary,
     t,
   })
-  const mobileActions = [
-    isAssetScanReturn
-      ? { href: scanReturnHref, label: t("scanNext"), icon: <ScanLine className="h-4 w-4" />, primary: true }
-      : { href: editHref, label: tCommon("edit"), icon: <Edit className="h-4 w-4" />, primary: true },
-    lifecycle.mobilePrimary,
-    lifecycle.mobileSecondary,
-    isAssetScanReturn
-      ? { href: editHref, label: tCommon("edit"), icon: <Edit className="h-4 w-4" /> }
-      : { href: "#movement", label: t("detailSections.movement"), icon: <History className="h-4 w-4" /> },
-  ]
+  const mobileActionCandidates = canEditAsset
+    ? [
+        isAssetScanReturn
+          ? { href: scanReturnHref, label: t("scanNext"), icon: <ScanLine className="h-4 w-4" />, primary: true }
+          : lifecycle.mobilePrimary,
+        lifecycle.mobileSecondary,
+      ]
+    : []
+  const mobileActions = mobileActionCandidates.slice(0, 3)
   const activeCheckoutDestination = activeCheckout
     ? getCheckoutDestination(activeCheckout, {
         departments: checkoutDepartmentLabels,
@@ -745,23 +749,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     publicBaseUrl: qrBaseUrlSetting?.value,
     fallbackBaseUrl: process.env.AUTH_URL,
   })
-  const allSectionLinks = [
-    { id: "overview", label: t("detailSections.overview") },
-    ...(asset.model && (modelSpecs.items.length > 0 || modelSpecs.notes)
-      ? [{ id: "specs", label: t("detailSections.specs") }]
-      : []),
-    { id: "ownership", label: t("detailSections.ownership") },
-    { id: "components", label: t("detailSections.components") },
-    { id: "purchase", label: t("detailSections.purchase") },
-    { id: "photos", label: t("detailSections.photos") },
-    { id: "handover", label: t("detailSections.handover") },
-    { id: "movement", label: t("detailSections.movement") },
-    { id: "notes", label: t("detailSections.notes") },
-    { id: "maintenance", label: t("detailSections.maintenance") },
-    { id: "audit", label: t("detailSections.audit") },
-  ]
-  const visibleSectionIds = new Set(getAssetDetailViewSectionIds(assetDetailView))
-  const sectionLinks = allSectionLinks.filter((section) => visibleSectionIds.has(section.id))
   const allEvidenceItems = [
     ...buildEvidenceItems(assetAttachments, t("evidenceGroupAsset"), asset.assetTag),
     ...buildEvidenceItems(modelPhotos, t("evidenceGroupModel"), asset.model?.name ?? asset.name),
@@ -804,100 +791,102 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           <h1 className="break-words text-2xl font-bold text-foreground">{asset.assetTag}</h1>
           <p className="mt-1 break-words text-sm text-muted-foreground">{asset.name}</p>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex items-center gap-2">
           <Link
             href={returnToHref}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:h-10 sm:min-h-0"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:h-10"
           >
             <ArrowLeft className="h-4 w-4" />
-            {isAssetScanReturn ? t("backToScan") : tCommon("back")}
+            <span className="hidden sm:inline">{isAssetScanReturn ? t("backToScan") : tCommon("back")}</span>
           </Link>
-          <ActivityDrawer
-            title={t("activityDrawerTitle")}
-            triggerLabel={t("activityDrawerOpen")}
-            emptyLabel={tCommon("noData")}
-            items={activityDrawerItems}
-          />
-          <AssetEvidenceDrawer
-            items={evidenceDrawerItems}
-            labels={{
-              title: t("evidenceCenter"),
-              triggerLabel: t("detailSections.evidence"),
-              emptyLabel: t("noEvidenceHelp"),
-              total: t("evidenceTotal"),
-              images: t("evidenceImages"),
-              documents: t("evidenceDocuments"),
-              all: t("movementFilters.all"),
-              openFile: t("openEvidenceFile"),
-            }}
-          />
-          <Link
-            href={`/${locale}/assets/${asset.id}/label`}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:h-10 sm:min-h-0"
-          >
-            <Printer className="h-4 w-4" />
-            {t("printLabel")}
-          </Link>
-          <Link
-            href={cloneHref}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:h-10 sm:min-h-0"
-          >
-            <Copy className="h-4 w-4" />
-            {t("cloneAsset")}
-          </Link>
-          <Link
-            href={editHref}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0"
-          >
-            <Edit className="h-4 w-4" />
-            {tCommon("edit")}
-          </Link>
+          {canEditAsset ? (
+            <Link
+              href={editHref}
+              className="hidden h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 md:inline-flex"
+            >
+              <Edit className="h-4 w-4" />
+              {tCommon("edit")}
+            </Link>
+          ) : null}
+          <AssetDetailActionMenu label={t("detailMoreActions")} closeLabel={tCommon("close")}>
+            <div className="[&_button]:w-full">
+              <ActivityDrawer
+                title={t("activityDrawerTitle")}
+                triggerLabel={t("activityDrawerOpen")}
+                emptyLabel={tCommon("noData")}
+                items={activityDrawerItems}
+              />
+            </div>
+            <div className="[&_button]:w-full">
+              <AssetEvidenceDrawer
+                items={evidenceDrawerItems}
+                labels={{
+                  title: t("evidenceCenter"),
+                  triggerLabel: t("detailSections.evidence"),
+                  emptyLabel: t("noEvidenceHelp"),
+                  total: t("evidenceTotal"),
+                  images: t("evidenceImages"),
+                  documents: t("evidenceDocuments"),
+                  all: t("movementFilters.all"),
+                  openFile: t("openEvidenceFile"),
+                }}
+              />
+            </div>
+            <Link
+              href={`/${locale}/assets/${asset.id}/label`}
+              className="inline-flex min-h-11 w-full items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              <Printer className="h-4 w-4" />
+              {t("printLabel")}
+            </Link>
+            {canCreateAsset ? (
+              <Link
+                href={cloneHref}
+                className="inline-flex min-h-11 w-full items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              >
+                <Copy className="h-4 w-4" />
+                {t("cloneAsset")}
+              </Link>
+            ) : null}
+            {canEditAsset ? (
+              <Link
+                href={editHref}
+                className="inline-flex min-h-11 w-full items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 md:hidden"
+              >
+                <Edit className="h-4 w-4" />
+                {tCommon("edit")}
+              </Link>
+            ) : null}
+          </AssetDetailActionMenu>
         </div>
       </div>
-      <MobileActionBar
-        actions={mobileActions}
+      {mobileActions.length > 0 ? <MobileActionBar actions={mobileActions} /> : null}
+
+      <AssetDetailTabs
+        locale={locale}
+        assetId={asset.id}
+        view={assetDetailView}
+        returnTo={returnToHref}
+        label={t("detailViews.label")}
+        labels={{
+          overview: t("detailViews.overview"),
+          custody: t("detailViews.custody"),
+          operations: t("detailViews.operations"),
+          audit: t("detailViews.audit"),
+        }}
       />
 
-      <nav aria-label={t("detailViews.label")} className="flex flex-wrap gap-2">
-        {assetDetailViews.map((view) => (
-          <Link
-            key={view}
-            href={buildAssetDetailViewHref(locale, asset.id, view, returnToHref)}
-            aria-current={assetDetailView === view ? "page" : undefined}
-            className={`inline-flex min-h-11 items-center justify-center rounded-md border px-3 text-xs font-medium transition-colors sm:h-9 sm:min-h-0 ${
-              assetDetailView === view
-                ? "border-primary bg-primary text-white"
-                : "border-border bg-surface text-muted-foreground hover:border-primary/40 hover:bg-accent hover:text-foreground"
-            }`}
-          >
-            {t(`detailViews.${view}`)}
-          </Link>
-        ))}
-      </nav>
-
-      <nav className="sticky top-0 z-20 -mx-4 border-y border-border bg-background/95 px-4 py-2 shadow-sm backdrop-blur md:top-0" aria-label={t("detailSections.nav")}>
-        <div className="scrollbar-none flex gap-2 overflow-x-auto">
-          {sectionLinks.map((section) => (
-            <a
-              key={section.id}
-              href={`#${section.id}`}
-              className="inline-flex min-h-11 shrink-0 items-center rounded-md border border-border bg-surface px-3 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary md:h-9 md:min-h-0"
-            >
-              {section.label}
-            </a>
-          ))}
-        </div>
-      </nav>
-
-      <ActivitySummaryPanel
-        title={t("activitySummaryTitle")}
-        subtitle={t("activitySummaryHelp")}
-        latestTitle={t("activityLatest")}
-        followUpTitle={t("activityFollowUp")}
-        noFollowUpLabel={t("activityNoFollowUp")}
-        latestItem={latestActivityItem}
-        followUpItems={activityFollowUpItems}
-      />
+      {assetDetailView === "overview" ? (
+        <ActivitySummaryPanel
+          title={t("activitySummaryTitle")}
+          subtitle={t("activitySummaryHelp")}
+          latestTitle={t("activityLatest")}
+          followUpTitle={t("activityFollowUp")}
+          noFollowUpLabel={t("activityNoFollowUp")}
+          latestItem={latestActivityItem}
+          followUpItems={activityFollowUpItems}
+        />
+      ) : null}
 
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -928,7 +917,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
+      {assetDetailView === "overview" && canEditAsset ? (
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
         <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
@@ -1000,11 +990,13 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             ))}
           </div>
         </div>
-      </section>
+        </section>
+      ) : null}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_280px]">
+      <div className={`grid grid-cols-1 gap-6 ${assetDetailView === "overview" ? "xl:grid-cols-[1fr_280px]" : ""}`}>
         <div className="space-y-6">
-          <section id="overview" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+          {isAssetDetailSectionVisible(assetDetailView, "overview") ? (
+            <section id="overview" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={t("detailSections.overview")} subtitle={t("detailSections.overviewSubtitle")} />
             <div className="mb-5 flex flex-wrap items-center gap-3">
               <div className="inline-flex items-center gap-1.5">
@@ -1030,9 +1022,10 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               <Info label={t("fixedAssetCode")} value={asset.fixedAssetCode} />
               <Info label={t("purchasePrice")} value={formatCurrency(asset.purchasePrice ? Number(asset.purchasePrice) : null)} />
             </div>
-          </section>
+            </section>
+          ) : null}
 
-          {asset.model && (modelSpecs.items.length > 0 || modelSpecs.notes) ? (
+          {isAssetDetailSectionVisible(assetDetailView, "specs") && asset.model && (modelSpecs.items.length > 0 || modelSpecs.notes) ? (
             <section id="specs" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
               <SectionHeading title={tBrandModel("structuredSpecs")} subtitle={t("detailSections.specsSubtitle")} />
               {modelSpecs.items.length > 0 ? (
@@ -1050,7 +1043,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             </section>
           ) : null}
 
-          <section id="ownership" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+          {isAssetDetailSectionVisible(assetDetailView, "ownership") ? (
+            <section id="ownership" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={t("ownership")} subtitle={t("detailSections.ownershipSubtitle")} />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <Info label={t("company")} value={`${asset.company.code} - ${asset.company.nameTh}`} />
@@ -1061,9 +1055,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               <Info label={t("homeLocation")} value={asset.homeLocation ? `${asset.homeLocation.code} - ${asset.homeLocation.name}` : null} />
               <Info label={t("currentLocation")} value={`${asset.currentLocation.code} - ${asset.currentLocation.name}`} />
             </div>
-          </section>
+            </section>
+          ) : null}
 
-          <div id="components" className="scroll-mt-24 space-y-4">
+          {isAssetDetailSectionVisible(assetDetailView, "components") ? (
+            <div id="components" className="scroll-mt-24 space-y-4">
             <AssetRelationshipMap
               title={t("relationshipMap")}
               subtitle={t("relationshipMapHelp")}
@@ -1126,9 +1122,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               installedInLinks={installedInLinksForPanel}
               availableAssets={availableComponentAssets}
             />
-          </div>
+            </div>
+          ) : null}
 
-          <section id="purchase" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+          {isAssetDetailSectionVisible(assetDetailView, "purchase") ? (
+            <section id="purchase" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={t("purchaseWarranty")} subtitle={t("detailSections.purchaseSubtitle")} />
             <div className={`mb-4 rounded-md border px-4 py-3 ${getWarrantyPanelClass(warrantyState.tone)}`}>
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -1148,18 +1146,22 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               <Info label={t("invoiceNumber")} value={asset.invoiceNumber} />
             </div>
             <AssetPurchaseDocuments documents={purchaseDocuments} legacyAttachments={legacyPurchaseDocuments} />
-          </section>
+            </section>
+          ) : null}
 
-          <div id="photos" className="scroll-mt-24">
-            <AssetAttachments
-              assetId={asset.id}
-              attachments={assetAttachments}
-              modelPhotos={modelPhotos}
-              photoChecklist={photoChecklist}
-            />
-          </div>
+          {isAssetDetailSectionVisible(assetDetailView, "photos") ? (
+            <div id="photos" className="scroll-mt-24">
+              <AssetAttachments
+                assetId={asset.id}
+                attachments={assetAttachments}
+                modelPhotos={modelPhotos}
+                photoChecklist={photoChecklist}
+              />
+            </div>
+          ) : null}
 
-          <section id="handover" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+          {isAssetDetailSectionVisible(assetDetailView, "handover") ? (
+            <section id="handover" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={t("detailSections.handover")} subtitle={t("detailSections.handoverSubtitle")} icon={<FileText className="h-5 w-5 text-primary" />} />
             {asset.checkouts.length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
@@ -1258,9 +1260,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                 })}
               </div>
             )}
-          </section>
+            </section>
+          ) : null}
 
-          <section id="movement" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+          {isAssetDetailSectionVisible(assetDetailView, "movement") ? (
+            <section id="movement" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={t("movementHistory")} subtitle={t("detailSections.movementSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
             <div className="mb-5 rounded-md border border-border bg-background p-4">
               <div className="mb-3 text-sm font-semibold text-foreground">{t("movementSnapshot")}</div>
@@ -1296,14 +1300,18 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                 },
               }}
             />
-          </section>
+            </section>
+          ) : null}
 
-          <section id="notes" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <SectionHeading title={t("remark")} subtitle={t("detailSections.notesSubtitle")} />
-            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{asset.remark || "-"}</p>
-          </section>
+          {isAssetDetailSectionVisible(assetDetailView, "notes") ? (
+            <section id="notes" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+              <SectionHeading title={t("remark")} subtitle={t("detailSections.notesSubtitle")} />
+              <p className="whitespace-pre-wrap text-sm text-muted-foreground">{asset.remark || "-"}</p>
+            </section>
+          ) : null}
 
-          <section id="maintenance" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+          {isAssetDetailSectionVisible(assetDetailView, "maintenance") ? (
+            <section id="maintenance" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={tMaintenance("maintenanceHistory")} subtitle={t("detailSections.maintenanceSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
             <SummaryStrip
               items={[
@@ -1373,9 +1381,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                 </table>
               </div>
             )}
-          </section>
+            </section>
+          ) : null}
 
-          <section id="audit" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+          {isAssetDetailSectionVisible(assetDetailView, "audit") ? (
+            <section id="audit" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={t("auditHistory")} subtitle={t("detailSections.auditSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
             <SummaryStrip
               items={[
@@ -1425,11 +1435,13 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                 </table>
               </div>
             )}
-          </section>
+            </section>
+          ) : null}
 
         </div>
 
-        <aside className="space-y-6">
+        {assetDetailView === "overview" ? (
+          <aside className="space-y-6">
           <section id="qr" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 text-center shadow-sm">
             <h2 className="mb-4 flex items-center justify-center gap-2 text-lg font-semibold text-foreground">
               <QrCode className="h-5 w-5 text-primary" />
@@ -1451,7 +1463,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             emptyLabel={tCommon("noData")}
             viewLabel={t("viewPhotoGallery")}
           />
-        </aside>
+          </aside>
+        ) : null}
       </div>
     </div>
   )
