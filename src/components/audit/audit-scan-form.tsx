@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import {
@@ -46,6 +46,14 @@ import {
   type QueuedAuditScan,
 } from "@/lib/audit-offline-queue"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
+import {
+  buildAuditScanContextStorageKey,
+  emptyAuditScanContext,
+  filterAuditItemsByContext,
+  normalizeAuditScanContext,
+  summarizeAuditScanContext,
+  type AuditScanContext,
+} from "@/lib/audit-scan-context"
 
 type Option = { id: string; label: string }
 type AuditScanComponent = {
@@ -129,6 +137,7 @@ type QueuedAuditPhoto = {
 }
 
 const MAX_RECENT_AUDIT_SCANS = 8
+const auditContextSnapshotCache = new Map<string, { raw: string | null; value: AuditScanContext }>()
 type AuditLookupAuditItem = {
   id: string
   assetId: string
@@ -252,6 +261,16 @@ export function AuditScanForm({
 
   const selectedItem = useMemo(() => items.find((item) => item.assetId === values.assetId), [items, values.assetId])
   const assetLookup = useMemo(() => buildAssetLookup(items), [items])
+  const auditContextStorageKey = useMemo(() => buildAuditScanContextStorageKey(roundId), [roundId])
+  const subscribeToAuditContext = useCallback(
+    (onStoreChange: () => void) => subscribeToStoredAuditContext(auditContextStorageKey, onStoreChange),
+    [auditContextStorageKey]
+  )
+  const readAuditContextSnapshot = useCallback(
+    () => readStoredAuditContext(auditContextStorageKey),
+    [auditContextStorageKey]
+  )
+  const auditContext = useSyncExternalStore(subscribeToAuditContext, readAuditContextSnapshot, getEmptyAuditContext)
   const optionLabelMaps = useMemo(
     () => ({
       locations: buildOptionLabelMap(options.locations),
@@ -282,17 +301,33 @@ export function AuditScanForm({
   }, [selectedItem, t, values])
   const correctionMismatchCount = mismatchPreview.filter((mismatch) => mismatch.canApply).length
   const pendingItems = useMemo(() => items.filter((item) => item.auditStatus === "pending"), [items])
-  const pendingQueuePreview = useMemo(() => pendingItems.slice(0, 8), [pendingItems])
+  const contextLocationOptions = useMemo(
+    () => options.locations.filter((location) => items.some((item) => item.expectedLocationId === location.id)),
+    [items, options.locations]
+  )
+  const contextDepartmentOptions = useMemo(
+    () => options.departments.filter((department) => items.some((item) =>
+      item.expectedDepartmentId === department.id &&
+      (!auditContext.locationId || item.expectedLocationId === auditContext.locationId)
+    )),
+    [auditContext.locationId, items, options.departments]
+  )
+  const contextItems = useMemo(() => filterAuditItemsByContext(items, auditContext), [auditContext, items])
+  const contextProgress = useMemo(() => summarizeAuditScanContext(contextItems), [contextItems])
+  const hasAuditContext = Boolean(auditContext.locationId || auditContext.departmentId)
+  const contextPendingItems = useMemo(() => contextItems.filter((item) => item.auditStatus === "pending"), [contextItems])
+  const queuePendingItems = hasAuditContext ? contextPendingItems : pendingItems
+  const pendingQueuePreview = useMemo(() => queuePendingItems.slice(0, 8), [queuePendingItems])
   const filteredAssetPickerItems = useMemo(() => {
     const query = assetPickerQuery.trim().toLocaleLowerCase("th-TH")
-    const sourceItems = query ? items : pendingItems
+    const sourceItems = query ? items : queuePendingItems
     return sourceItems
       .filter((item) => {
         if (!query) return true
         return buildAssetPickerSearchText(item, optionLabelMaps).toLocaleLowerCase("th-TH").includes(query)
       })
       .slice(0, 12)
-  }, [assetPickerQuery, items, optionLabelMaps, pendingItems])
+  }, [assetPickerQuery, items, optionLabelMaps, queuePendingItems])
   const manualScanSuggestions = useMemo(() => {
     const query = scanText.trim()
     const exactScanMatchCandidates = extractAssetLookupCandidatesFromScanValue(scanText)
@@ -304,6 +339,9 @@ export function AuditScanForm({
   const pendingListHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${roundId}/pending`, scanReturnHref)
   const pendingCount = pendingItems.length
   const processedCount = items.length - pendingCount
+  const queuePendingCount = queuePendingItems.length
+  const queueTotal = hasAuditContext ? contextProgress.total : items.length
+  const queueProcessedCount = hasAuditContext ? contextProgress.processed : processedCount
   const compactProgressHeader = Boolean(selectedItem || outOfScopeAsset)
   const scanTargetLocked = Boolean(selectedItem || outOfScopeAsset)
   const isDetailedScanVisible = Boolean(selectedItem && (!fastMode || showDetailedFields))
@@ -507,6 +545,17 @@ export function AuditScanForm({
     const nextValue = !showPendingQueue
     setShowPendingQueue(nextValue)
     if (nextValue) setPendingQueueExpanded(true)
+  }
+
+  function updateAuditContext(next: Partial<AuditScanContext>) {
+    const candidate = normalizeAuditScanContext({ ...auditContext, ...next })
+    const hasDepartmentInLocation = !candidate.departmentId || items.some((item) =>
+      item.expectedDepartmentId === candidate.departmentId &&
+      (!candidate.locationId || item.expectedLocationId === candidate.locationId)
+    )
+    const value = hasDepartmentInLocation ? candidate : { ...candidate, departmentId: "" }
+    window.localStorage.setItem(auditContextStorageKey, JSON.stringify(value))
+    window.dispatchEvent(new Event(auditContextStorageKey))
   }
 
   function queueAuditPhoto(file: File | null) {
@@ -1250,11 +1299,16 @@ export function AuditScanForm({
         {compactProgressHeader ? (
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <span className="rounded-full border border-border bg-background px-2 py-1">
-              {t("scannedQueue")}: <span className="font-semibold text-foreground">{processedCount.toLocaleString("th-TH")}/{items.length.toLocaleString("th-TH")}</span>
+              {t("scannedQueue")}: <span className="font-semibold text-foreground">{queueProcessedCount.toLocaleString("th-TH")}/{queueTotal.toLocaleString("th-TH")}</span>
             </span>
             <span className="rounded-full border border-border bg-background px-2 py-1">
-              {t("pendingQueue")}: <span className="font-semibold text-foreground">{pendingCount.toLocaleString("th-TH")}</span>
+              {t("pendingQueue")}: <span className="font-semibold text-foreground">{queuePendingCount.toLocaleString("th-TH")}</span>
             </span>
+            {hasAuditContext ? (
+              <span className="rounded-full border border-primary/30 bg-primary/5 px-2 py-1 font-medium text-primary">
+                {t("walkingContextActive")}
+              </span>
+            ) : null}
             <span className="rounded-full border border-border bg-background px-2 py-1">
               {t("photoQueue")}: <span className="font-semibold text-foreground">{queuedAuditPhotos.length.toLocaleString("th-TH")}</span>
             </span>
@@ -1266,7 +1320,7 @@ export function AuditScanForm({
               className="inline-flex min-h-8 flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-background px-2 py-1 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex-none"
             >
               <ListChecks className="h-3.5 w-3.5" />
-              {t("pendingQueueQuickAction", { count: pendingCount })}
+              {t("pendingQueueQuickAction", { count: queuePendingCount })}
             </button>
           </div>
         ) : null}
@@ -1274,9 +1328,9 @@ export function AuditScanForm({
           <>
             <AuditProgressBar
               compact
-              total={items.length}
-              processed={processedCount}
-              pending={pendingCount}
+              total={queueTotal}
+              processed={queueProcessedCount}
+              pending={queuePendingCount}
               label={t("progress")}
               processedLabel={t("scannedQueue")}
               pendingLabel={t("pendingQueue")}
@@ -1293,8 +1347,41 @@ export function AuditScanForm({
                 className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-border bg-background px-2 py-1 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <ListChecks className="h-3.5 w-3.5" />
-                {t("pendingQueueQuickAction", { count: pendingCount })}
+                {t("pendingQueueQuickAction", { count: queuePendingCount })}
               </button>
+            </div>
+            <div className="mt-3 grid gap-2 rounded-md border border-border bg-background p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-muted-foreground">{t("walkingContextLocation")}</span>
+                <select
+                  value={auditContext.locationId}
+                  onChange={(event) => updateAuditContext({ locationId: event.target.value })}
+                  className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">{t("walkingContextAllLocations")}</option>
+                  {contextLocationOptions.map((location) => <option key={location.id} value={location.id}>{location.label}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-muted-foreground">{t("walkingContextDepartment")}</span>
+                <select
+                  value={auditContext.departmentId}
+                  onChange={(event) => updateAuditContext({ departmentId: event.target.value })}
+                  className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">{t("walkingContextAllDepartments")}</option>
+                  {contextDepartmentOptions.map((department) => <option key={department.id} value={department.id}>{department.label}</option>)}
+                </select>
+              </label>
+              {hasAuditContext ? (
+                <button
+                  type="button"
+                  onClick={() => updateAuditContext(emptyAuditScanContext)}
+                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent md:h-10 md:min-h-0"
+                >
+                  {t("walkingContextClear")}
+                </button>
+              ) : null}
             </div>
           </>
         ) : null}
@@ -2952,4 +3039,40 @@ function Select({ label, value, required, onChange, children }: { label: string;
       </select>
     </Field>
   )
+}
+
+function subscribeToStoredAuditContext(storageKey: string, onStoreChange: () => void) {
+  function onStorage(event: StorageEvent) {
+    if (event.key === storageKey) onStoreChange()
+  }
+
+  window.addEventListener("storage", onStorage)
+  window.addEventListener(storageKey, onStoreChange)
+  return () => {
+    window.removeEventListener("storage", onStorage)
+    window.removeEventListener(storageKey, onStoreChange)
+  }
+}
+
+function readStoredAuditContext(storageKey: string): AuditScanContext {
+  try {
+    const raw = window.localStorage.getItem(storageKey)
+    const cached = auditContextSnapshotCache.get(storageKey)
+    if (cached?.raw === raw) return cached.value
+
+    const parsed = raw ? JSON.parse(raw) : null
+    const value = isAuditScanContextValue(parsed) ? normalizeAuditScanContext(parsed) : emptyAuditScanContext
+    auditContextSnapshotCache.set(storageKey, { raw, value })
+    return value
+  } catch {
+    return emptyAuditScanContext
+  }
+}
+
+function getEmptyAuditContext() {
+  return emptyAuditScanContext
+}
+
+function isAuditScanContextValue(value: unknown): value is Partial<AuditScanContext> {
+  return Boolean(value) && typeof value === "object"
 }
