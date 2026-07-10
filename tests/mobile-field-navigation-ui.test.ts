@@ -19,6 +19,16 @@ test("mobile field navigation exposes five labelled Lucide destinations", () => 
   assert.match(source, /env\(safe-area-inset-bottom\)/)
 })
 
+test("field navigation remains available through the shell tablet breakpoint", () => {
+  const navigation = navigationSource()
+  const shell = shellSource()
+
+  assert.match(navigation, /lg:hidden/)
+  assert.doesNotMatch(navigation, /md:hidden/)
+  assert.match(shell, /lg:pb-0/)
+  assert.doesNotMatch(shell, /sm:pb-0/)
+})
+
 test("mobile field destinations reuse RBAC and employee asset fallback", () => {
   const source = navigationSource()
 

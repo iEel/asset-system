@@ -117,7 +117,7 @@ export function DashboardShell({
           <div
             className={cn(
               "min-w-0 max-w-full",
-              mobileFieldNavigationVisible && "pb-[calc(5.25rem+env(safe-area-inset-bottom))] sm:pb-0",
+              mobileFieldNavigationVisible && "pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:pb-0",
             )}
           >
             {children}
