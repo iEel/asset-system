@@ -486,13 +486,15 @@ export function AssetRegisterTable({
           assets.map((asset) => (
             <article data-asset-mobile-card key={asset.id} className="min-w-0 rounded-md border border-border bg-background p-3">
               <div className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(asset.id)}
-                  onChange={() => toggleAsset(asset.id)}
-                  aria-label={asset.assetTag}
-                  className="mt-1 h-5 w-5 shrink-0 rounded border-border text-primary"
-                />
+                <label className="flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-md focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(asset.id)}
+                    onChange={() => toggleAsset(asset.id)}
+                    aria-label={asset.assetTag}
+                    className="h-5 w-5 rounded border-border text-primary"
+                  />
+                </label>
                 <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">
                   {asset.photo && previewableAssetPhotoTypes.has(asset.photo.fileType) ? (
                     <Image
@@ -948,12 +950,12 @@ function HeaderWithHelp({
 function StatusPill({ label, value }: { label: string; value?: string | null }) {
   const tone = getAssetStateTone(value)
   const toneClasses = {
-    success: "bg-success/10 text-success",
-    warning: "bg-warning/10 text-warning",
-    danger: "bg-danger/10 text-danger",
+    success: "bg-success/10 text-success-foreground",
+    warning: "bg-warning/10 text-warning-foreground",
+    danger: "bg-danger/10 text-danger-foreground",
     neutral: "bg-muted text-muted-foreground",
     muted: "bg-muted text-muted-foreground",
-    info: "bg-info/10 text-info",
+    info: "bg-info/10 text-info-foreground",
   }[tone]
 
   return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${toneClasses}`}>{label}</span>

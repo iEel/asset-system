@@ -18,9 +18,13 @@
   --border: #E2E8F0;
   --ring: #3B82F6;
   --success: #16A34A;
+  --success-foreground: #166534;
   --warning: #F59E0B;
+  --warning-foreground: #92400E;
   --danger: #DC2626;
+  --danger-foreground: #991B1B;
   --info: #2563EB;
+  --info-foreground: #1E40AF;
   --sidebar: #0F172A;
   --sidebar-foreground: #CBD5E1;
   --sidebar-muted: #94A3B8;
@@ -46,9 +50,13 @@
   --color-border: var(--border);
   --color-ring: var(--ring);
   --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
   --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-muted: var(--sidebar-muted);

@@ -98,6 +98,19 @@ test("mobile asset cards prioritize field lookup context", () => {
   assert.match(card, /asset\.custodian/)
 })
 
+test("mobile asset selection keeps a 44px labeled target around the visible checkbox", () => {
+  const source = registerTableSource()
+  const start = source.indexOf("data-asset-mobile-card")
+  const end = source.indexOf("</article>", start)
+
+  assert.ok(start > -1 && end > start)
+  const card = source.slice(start, end)
+  assert.match(
+    card,
+    /<label className="flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-md focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">[\s\S]*?<input[\s\S]*?type="checkbox"[\s\S]*?checked=\{selectedIds\.has\(asset\.id\)\}[\s\S]*?onChange=\{\(\) => toggleAsset\(asset\.id\)\}[\s\S]*?aria-label=\{asset\.assetTag\}[\s\S]*?className="h-5 w-5 rounded border-border text-primary"[\s\S]*?<\/label>/,
+  )
+})
+
 test("mobile asset cards preserve field lookup order and secondary action access", () => {
   const source = registerTableSource()
   const start = source.indexOf("data-asset-mobile-card")
