@@ -182,12 +182,14 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [x] Select an in-round Audit item without saving and confirm exactly one Audit action bar appears while Mobile Field Navigation remains absent. Browser QA measured matched/mismatch/change-target actions at 56px/48px/48px with no body overflow.
 - [x] Confirm opening the More drawer or hiding the dock for the virtual keyboard does not make the Topbar hamburger reappear or shift Navigation Mode content.
 - [x] Confirm More identifies and exposes the existing permission-filtered Sidebar with `aria-expanded` and `aria-controls`.
+- [x] Automated regression coverage confirms More transfers focus to the Sidebar close button, restores it after close-button/overlay/Escape dismissal, and does not restore it when a drawer link starts navigation.
 - [x] Confirm Audit Scan still exposes QR scan and manual Asset Tag/Serial/QR entry, and that selecting a manual suggestion stays inside the existing `auditRoundId` workflow.
 - [x] Confirm Audit Pending remains in Navigation Mode and `Mark Not Found` is not added to the post-scan action bar.
 - [x] Confirm Asset create/edit/detail, checkout, check-in, transfer, bulk move, Audit Round create/detail, and maintenance/disposal detail routes use Focus Task Mode so their existing bottom actions do not collide with field navigation.
 - [ ] On Android Chrome and iPhone Safari, open and close the software keyboard and confirm the field dock hides while typing, returns after dismissal, and leaves no blank/covered content after rotation.
 - [ ] On a notched iPhone, verify the field dock and Audit action bar both respect the bottom safe area without stacking or clipping.
 - [ ] With an employee-only account, confirm `ทรัพย์สิน` opens My Assets and Scan/Audit destinations are omitted when the corresponding permission is absent.
+- [ ] With a keyboard and screen reader, open More, verify focus moves to the close button, then close with the close button, overlay, and Escape to confirm focus returns to More. Confirm choosing a drawer link moves to the new page without returning focus to the old trigger.
 
 ## Adaptive UI Release Gate
 
