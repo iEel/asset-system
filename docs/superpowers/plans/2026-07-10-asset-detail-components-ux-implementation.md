@@ -4,7 +4,7 @@
 
 **Goal:** Make Asset Detail a focused, permission-aware record view and move component installation/removal to a dedicated, scan-first Component Manager.
 
-**Architecture:** Keep the current `view=overview|custody|operations|audit` URL contract, but make it select the only visible content group. Extract small pure policies for responsibility labels, action visibility, component return paths, and candidate query thresholds so page rendering and client behavior are testable without changing API contracts. The Component Manager reuses existing component installation/removal API routes, audit logging, evidence storage, and validation.
+**Architecture:** Keep the current `view=overview|custody|operations|audit` URL contract, but make it select the only visible content group. Extract small pure policies for tab sections, action visibility, component return paths, and candidate query thresholds so page rendering and client behavior are testable without changing API contracts. The Component Manager reuses existing component installation/removal API routes, audit logging, evidence storage, and validation.
 
 **Tech Stack:** Next.js 16.2.4 App Router, React 19, TypeScript, next-intl, Prisma 7 / SQL Server, Tailwind CSS 4, lucide-react, Node test runner.
 
@@ -26,7 +26,6 @@
 | File | Responsibility |
 | --- | --- |
 | `src/lib/asset-detail-view.ts` | Typed Asset Detail tabs, section membership, and URL builders. |
-| `src/lib/asset-detail-presentation.ts` | Pure responsibility, action, and follow-up display policies. |
 | `src/lib/asset-return-navigation.ts` | Strictly normalizes Component Manager return paths. |
 | `src/components/assets/asset-detail-tabs.tsx` | Single accessible Asset Detail tab bar. |
 | `src/components/assets/asset-detail-action-menu.tsx` | Desktop overflow menu and mobile More menu with permission-filtered actions. |
@@ -38,74 +37,42 @@
 | `src/app/api/assets/component-candidates/route.ts` | Requires a two-character lookup term before querying candidates. |
 | `messages/th.json`, `messages/en.json` | Thai and English copy for tabs, menus, manager, review, and empty/error states. |
 | `tests/asset-detail-view.test.ts` | Tab grouping and href behavior. |
-| `tests/asset-detail-presentation.test.ts` | Responsibility and action-display policies. |
 | `tests/asset-detail-ux.test.ts` | Source-level regression checks for the one-tab layout and action limits. |
 | `tests/asset-component-manager.test.ts` | Manager route, candidate threshold, review, removal, and permission UI checks. |
 | `tests/asset-return-navigation.test.ts` | Safe Component Manager return path checks. |
 
 ---
 
-### Task 1: Add Testable Detail Presentation Policies
+### Task 1: Add Testable Detail Tab Policies
 
 **Files:**
-- Create: `src/lib/asset-detail-presentation.ts`
-- Create: `tests/asset-detail-presentation.test.ts`
 - Modify: `src/lib/asset-detail-view.ts`
 - Modify: `tests/asset-detail-view.test.ts`
 
 **Interfaces:**
 - Consumes: normalized ownership values from `src/lib/asset-ownership.ts` and current tab values from `src/lib/asset-detail-view.ts`.
-- Produces: `resolveAssetResponsibilityValue`, `isAssetDetailSectionVisible`, and `getAssetDetailPrimaryActionSlots` for page and component consumers.
+- Produces: `isAssetDetailSectionVisible` for page and component consumers.
 
-- [ ] **Step 1: Write failing policy tests**
+- [ ] **Step 1: Write failing tab policy tests**
 
 ```ts
 import assert from "node:assert/strict"
 import test from "node:test"
-import { resolveAssetResponsibilityValue } from "../src/lib/asset-detail-presentation.ts"
+import { isAssetDetailSectionVisible } from "../src/lib/asset-detail-view.ts"
 
-test("responsibility uses department for shared and stock assets", () => {
-  assert.equal(
-    resolveAssetResponsibilityValue({
-      ownershipType: "shared",
-      custodianLabel: "EMP-01 - Sam",
-      departmentLabel: "IT - Information Technology",
-      currentLocationLabel: "HQ - Floor 2",
-      installedParentLabel: null,
-      licenseAssignedLabel: null,
-    }),
-    "IT - Information Technology",
-  )
+test("shows only sections belonging to the selected detail tab", () => {
+  assert.equal(isAssetDetailSectionVisible("custody", "components"), true)
+  assert.equal(isAssetDetailSectionVisible("custody", "overview"), false)
 })
 ```
 
-Add table-driven cases for personal, stock with no department, component with a parent, component with no parent, and software license with an assigned asset. Add a view test that confirms `isAssetDetailSectionVisible("custody", "components")` is true and `isAssetDetailSectionVisible("custody", "overview")` is false.
-
 - [ ] **Step 2: Run the tests to verify failure**
 
-Run: `node --import tsx --test tests/asset-detail-presentation.test.ts tests/asset-detail-view.test.ts`
+Run: `node --test tests/asset-detail-view.test.ts`
 
-Expected: FAIL because `asset-detail-presentation.ts` and `isAssetDetailSectionVisible` do not exist.
+Expected: FAIL because `isAssetDetailSectionVisible` does not exist.
 
 - [ ] **Step 3: Add the smallest pure policies**
-
-```ts
-export type AssetResponsibilityInput = {
-  ownershipType: "personal" | "shared" | "stock" | "component" | "software_license"
-  custodianLabel: string | null
-  departmentLabel: string | null
-  currentLocationLabel: string | null
-  installedParentLabel: string | null
-  licenseAssignedLabel: string | null
-}
-
-export function resolveAssetResponsibilityValue(input: AssetResponsibilityInput) {
-  if (input.ownershipType === "personal") return input.custodianLabel
-  if (input.ownershipType === "shared" || input.ownershipType === "stock") return input.departmentLabel ?? input.currentLocationLabel
-  if (input.ownershipType === "component") return input.installedParentLabel ?? input.currentLocationLabel
-  return input.licenseAssignedLabel ?? input.currentLocationLabel
-}
-```
 
 In `asset-detail-view.ts`, export the section id union and add:
 
@@ -117,15 +84,15 @@ export function isAssetDetailSectionVisible(view: AssetDetailView, sectionId: As
 
 - [ ] **Step 4: Run focused tests**
 
-Run: `node --import tsx --test tests/asset-detail-presentation.test.ts tests/asset-detail-view.test.ts`
+Run: `node --test tests/asset-detail-view.test.ts`
 
 Expected: PASS.
 
 - [ ] **Step 5: Commit the policy foundation**
 
 ```bash
-git add src/lib/asset-detail-presentation.ts src/lib/asset-detail-view.ts tests/asset-detail-presentation.test.ts tests/asset-detail-view.test.ts
-git commit -m "refactor: add asset detail presentation policies"
+git add src/lib/asset-detail-view.ts tests/asset-detail-view.test.ts
+git commit -m "refactor: add asset detail tab policies"
 ```
 
 ### Task 2: Convert Asset Detail To One Tab System And A Single Action Hierarchy
@@ -165,7 +132,7 @@ Update the anchor and relationship-map tests so they assert the custody tab owns
 
 - [ ] **Step 2: Run the tests to verify failure**
 
-Run: `node --import tsx --test tests/asset-detail-ux.test.ts tests/asset-detail-anchor-layout.test.ts tests/asset-relationship-map-ui.test.ts`
+Run: `node --test tests/asset-detail-ux.test.ts tests/asset-detail-anchor-layout.test.ts tests/asset-relationship-map-ui.test.ts`
 
 Expected: FAIL because the extracted components and view guard are absent.
 
@@ -191,7 +158,7 @@ Add translation keys for `asset.detailMoreActions`, `asset.manageComponents`, `a
 
 - [ ] **Step 5: Run focused tests**
 
-Run: `node --import tsx --test tests/asset-detail-view.test.ts tests/asset-detail-ux.test.ts tests/asset-detail-anchor-layout.test.ts tests/asset-relationship-map-ui.test.ts`
+Run: `node --test tests/asset-detail-view.test.ts tests/asset-detail-ux.test.ts tests/asset-detail-anchor-layout.test.ts tests/asset-relationship-map-ui.test.ts`
 
 Expected: PASS.
 
@@ -234,7 +201,7 @@ test("asset edit does not mount a second component installation editor", () => {
 
 - [ ] **Step 2: Run the tests to verify failure**
 
-Run: `node --import tsx --test tests/asset-detail-ux.test.ts tests/asset-relationship-map-ui.test.ts`
+Run: `node --test tests/asset-detail-ux.test.ts tests/asset-relationship-map-ui.test.ts`
 
 Expected: FAIL because both pages still import and render `AssetComponentsPanel`.
 
@@ -246,7 +213,7 @@ Remove `AssetComponentsPanel`, global installed-component id lookup, and `availa
 
 - [ ] **Step 4: Run focused tests**
 
-Run: `node --import tsx --test tests/asset-detail-ux.test.ts tests/asset-relationship-map-ui.test.ts tests/asset-return-navigation.test.ts`
+Run: `node --test tests/asset-detail-ux.test.ts tests/asset-relationship-map-ui.test.ts tests/asset-return-navigation.test.ts`
 
 Expected: PASS.
 
@@ -297,7 +264,7 @@ Add source checks that the manager imports `ScannerTextInput`, keeps selected ca
 
 - [ ] **Step 2: Run the tests to verify failure**
 
-Run: `node --import tsx --test tests/asset-component-manager.test.ts tests/asset-return-navigation.test.ts`
+Run: `node --test tests/asset-component-manager.test.ts tests/asset-return-navigation.test.ts`
 
 Expected: FAIL because the route, manager, and safe return helper do not exist.
 
@@ -340,7 +307,7 @@ For removal, open a focus-managed dialog that renders the selected component, a 
 
 - [ ] **Step 5: Run manager and navigation tests**
 
-Run: `node --import tsx --test tests/asset-component-manager.test.ts tests/asset-return-navigation.test.ts tests/asset-component-sync.test.ts tests/asset-component-sync-routes.test.ts`
+Run: `node --test tests/asset-component-manager.test.ts tests/asset-return-navigation.test.ts tests/asset-component-sync.test.ts tests/asset-component-sync-routes.test.ts`
 
 Expected: PASS.
 
@@ -388,7 +355,7 @@ Add manager tests for keeping the parent tag visible in mobile review/removal su
 
 - [ ] **Step 2: Run the tests to verify failure**
 
-Run: `node --import tsx --test tests/asset-detail-ux.test.ts tests/asset-component-manager.test.ts`
+Run: `node --test tests/asset-detail-ux.test.ts tests/asset-component-manager.test.ts`
 
 Expected: FAIL because Asset Detail still requests unbounded checkout/attachment previews.
 
@@ -403,7 +370,7 @@ Update the docs with the exact workflow: open custody tab, select `จัดก�
 Run in order:
 
 ```bash
-node --import tsx --test tests/asset-detail-view.test.ts tests/asset-detail-presentation.test.ts tests/asset-detail-ux.test.ts tests/asset-component-manager.test.ts tests/asset-relationship-map-ui.test.ts tests/asset-return-navigation.test.ts tests/asset-component-sync.test.ts tests/asset-component-sync-routes.test.ts
+node --test tests/asset-detail-view.test.ts tests/asset-detail-ux.test.ts tests/asset-component-manager.test.ts tests/asset-relationship-map-ui.test.ts tests/asset-return-navigation.test.ts tests/asset-component-sync.test.ts tests/asset-component-sync-routes.test.ts
 npm test
 npm run lint
 npm run build
@@ -432,6 +399,6 @@ git push
 
 ## Plan Self-Review
 
-- Spec coverage: Task 1 addresses responsibility consistency; Task 2 covers one tab system, desktop/mobile action hierarchy, and permission-aware controls; Task 3 makes the detail relationship view read-only; Task 4 implements scan/search/review/install/remove/history and safe returns; Task 5 removes eager component candidate reads, bounds preview queries, documents the workflow, and verifies browser behavior.
+- Spec coverage: Task 1 addresses tab section consistency; Task 2 covers one tab system, desktop/mobile action hierarchy, and permission-aware controls; Task 3 makes the detail relationship view read-only; Task 4 implements scan/search/review/install/remove/history and safe returns; Task 5 removes eager component candidate reads, bounds preview queries, documents the workflow, and verifies browser behavior.
 - Placeholder scan: The plan contains concrete file paths, interfaces, test snippets, commands, and commit commands; it contains no deferred implementation markers.
-- Type consistency: `AssetDetailView`, `AssetResponsibilityInput`, `isAssetDetailSectionVisible`, `normalizeAssetComponentManagerReturnTo`, `AssetComponentsSummary`, and `AssetComponentManager` use the same names throughout the task sequence.
+- Type consistency: `AssetDetailView`, `isAssetDetailSectionVisible`, `normalizeAssetComponentManagerReturnTo`, `AssetComponentsSummary`, and `AssetComponentManager` use the same names throughout the task sequence.

@@ -11,7 +11,6 @@ The current Asset Detail page is reliable but asks an operator to process too ma
 - A view selector and a section navigator both look like peer navigation.
 - Desktop exposes six header actions; mobile stacks them above a second fixed action bar.
 - Activity, summary cards, data health, and the record sections repeat the same facts.
-- The responsibility summary can show an empty value for shared, stock, and component assets even when the matching department or parent exists.
 - The read-only relationship map is followed by an always-expanded component installation editor. It loads candidate assets before the operator asks to install anything.
 
 The resulting page is long, hard to scan on mobile, and expensive to load for a record that only needs a quick lookup.
@@ -51,14 +50,7 @@ The existing `view=overview|custody|operations|audit` query remains the shareabl
 
 The header contains a compact image or category fallback icon, Asset Tag, name, category/serial metadata, StatusPill, Condition StatusPill, current location, and responsibility summary.
 
-The responsibility summary must use the correct source by ownership type:
-
-- personal: custodian
-- shared and stock: department, falling back to current location
-- component: installed parent, falling back to current location
-- software license: assigned asset or license responsibility
-
-Use `ยังไม่ระบุ` rather than `-` for missing operational data. Activity copy must not concatenate a movement title with an already titled summary.
+Keep existing responsibility and ownership display data unchanged. Use `ยังไม่ระบุ` rather than `-` only for new Component Manager input and empty states. Activity copy must not concatenate a movement title with an already titled summary.
 
 Show one compact follow-up panel only when there is an actionable exception such as missing required data, open maintenance, active checkout, warranty risk, or audit finding. A healthy record does not need a large data-health panel in the first viewport.
 
@@ -121,7 +113,6 @@ Do not fetch the global installed-component id set or the initial 300 component 
 
 - Asset Detail has one visible navigation layer and the selected `view` renders only its content group.
 - At 390px, core asset identity is visible before secondary actions; there are no six stacked header actions and no duplicate fixed-action choices.
-- Responsibility summary matches ownership type and does not contradict the ownership section.
 - Component Manager opens from Asset Detail, preserves return context, and supports scan/search, review, install, remove, history, and existing audit logging.
 - Component candidates are not loaded until a meaningful search or scan starts.
 - View-only users do not see component install/remove or other mutation controls they cannot complete.
