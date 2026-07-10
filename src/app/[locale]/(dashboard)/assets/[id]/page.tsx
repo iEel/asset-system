@@ -375,6 +375,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     removedByLabel: component.updatedBy ? componentUserLabels.get(component.updatedBy) ?? component.updatedBy : null,
     attachments: componentAttachmentsByReference.get(component.id) ?? [],
   }))
+  const componentRelationshipCount = currentComponentsForPanel.length + installedInLinksForPanel.length
+  const componentMissingSerialCount = currentComponentsForPanel.filter((component) => !component.componentAsset.serialNumber).length
   const purchaseDocumentAttachmentsByReferenceId = new Map<string, typeof purchaseDocumentAttachments>()
   for (const attachment of purchaseDocumentAttachments) {
     purchaseDocumentAttachmentsByReferenceId.set(attachment.referenceId, [
@@ -876,6 +878,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           operations: t("detailViews.operations"),
           audit: t("detailViews.audit"),
         }}
+        indicators={{ custody: { count: componentRelationshipCount, hasWarning: componentMissingSerialCount > 0 } }}
+        warningLabel={t("componentMissingSerial")}
       />
 
       {assetDetailView === "overview" ? (

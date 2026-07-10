@@ -53,6 +53,18 @@ test("asset detail keeps a persistent context for assets installed under a paren
   assert.match(contextBannerSource, /ArrowRight/)
 })
 
+test("asset detail marks the custody tab with component count and missing serial warning", () => {
+  const source = assetDetailSource()
+  const tabsSource = readFileSync("src/components/assets/asset-detail-tabs.tsx", "utf8")
+
+  assert.match(source, /const componentRelationshipCount = currentComponentsForPanel\.length \+ installedInLinksForPanel\.length/)
+  assert.match(source, /const componentMissingSerialCount = currentComponentsForPanel\.filter\(\(component\) => !component\.componentAsset\.serialNumber\)\.length/)
+  assert.match(source, /indicators=\{\{ custody: \{ count: componentRelationshipCount, hasWarning: componentMissingSerialCount > 0 \} \}\}/)
+  assert.match(tabsSource, /AlertTriangle/)
+  assert.match(tabsSource, /indicator\?\.count/)
+  assert.match(tabsSource, /warningLabel/)
+})
+
 test("asset edit does not mount another component installation editor", () => {
   const source = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/edit/page.tsx", "utf8")
 
