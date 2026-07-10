@@ -1047,6 +1047,7 @@
       "audit": "ตรวจนับ"
     },
     "detailMoreActions": "การดำเนินการเพิ่มเติม",
+    "manageComponents": "จัดการส่วนควบ",
     "detailSections": {
       "nav": "นำทางในรายละเอียดทรัพย์สิน",
       "overview": "ภาพรวม",

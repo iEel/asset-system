@@ -37,7 +37,7 @@ import { AssetStatusCorrectionButton } from "@/components/assets/asset-status-co
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { StatusPill } from "@/components/ui/status-pill"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
-import { AssetComponentsPanel } from "@/components/assets/asset-components-panel"
+import { AssetComponentsSummary } from "@/components/assets/asset-components-summary"
 import { AssetDetailActionMenu } from "@/components/assets/asset-detail-action-menu"
 import { AssetDetailTabs } from "@/components/assets/asset-detail-tabs"
 import { AssetPurchaseDocuments } from "@/components/assets/asset-purchase-documents"
@@ -266,20 +266,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     ],
   }
 
-  const installedComponentAssetIds = await withPerformanceTiming(
-    "asset-detail.relationship-data",
-    () => prisma.assetComponent.findMany({
-      where: { status: "installed", removedAt: null },
-      select: { componentAssetId: true },
-    }),
-    { route: "/assets/[id]", locale }
-  )
-  const unavailableComponentIds = new Set([
-    asset.id,
-    ...installedComponentAssetIds.map((component) => component.componentAssetId),
-  ])
-
-  const [photoChecklist, modelPhotos, availableComponentAssets, licenseAssignedAsset] = await Promise.all([
+  const [photoChecklist, modelPhotos, licenseAssignedAsset] = await Promise.all([
     getCategoryPhotoChecklist(asset.categoryId),
     asset.model?.id
       ? prisma.attachment.findMany({
@@ -287,15 +274,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           orderBy: { uploadedAt: "desc" },
         })
       : [],
-    prisma.asset.findMany({
-      where: {
-        isActive: true,
-        id: { notIn: [...unavailableComponentIds] },
-      },
-      select: { id: true, assetTag: true, name: true, serialNumber: true },
-      orderBy: { assetTag: "asc" },
-      take: 300,
-    }),
     asset.licenseAssignedAssetId
       ? prisma.asset.findFirst({
           where: { id: asset.licenseAssignedAssetId, isActive: true },
@@ -607,6 +585,10 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const encodedAssetId = encodeURIComponent(asset.id)
   const editHref = appendReturnTo(`/${locale}/assets/${asset.id}/edit`, returnToHref)
   const cloneHref = appendReturnTo(`/${locale}/assets/new?cloneFrom=${encodedAssetId}`, returnToHref)
+  const componentsManagerHref = appendReturnTo(
+    `/${locale}/assets/${asset.id}/components`,
+    `/${locale}/assets/${asset.id}?view=custody`,
+  )
   const dataHealthItems = ownershipType === "software_license"
     ? [
         createHealthItem(Boolean(asset.serialNumber), t("dataHealthLicenseKey"), "#overview", t("dataHealthFixIdentity"), editHref),
@@ -1060,7 +1042,24 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
 
           {isAssetDetailSectionVisible(assetDetailView, "components") ? (
             <div id="components" className="scroll-mt-24 space-y-4">
-            <AssetRelationshipMap
+              <AssetComponentsSummary
+                locale={locale}
+                currentComponents={currentComponentsForPanel}
+                installedInLinks={installedInLinksForPanel}
+                canManage={canEditAsset}
+                manageHref={componentsManagerHref}
+                labels={{
+                  title: t("assetComponents"),
+                  help: t("componentSummaryHelp"),
+                  installedIn: t("installedInParent"),
+                  current: t("currentComponents"),
+                  noCurrent: t("noCurrentComponents"),
+                  missingSerial: t("componentMissingSerial"),
+                  manage: t("manageComponents"),
+                }}
+              />
+              {currentComponentsForPanel.length > 0 || installedInLinksForPanel.length > 0 ? (
+                <AssetRelationshipMap
               title={t("relationshipMap")}
               subtitle={t("relationshipMapHelp")}
               parentLaneTitle={t("relationshipParentLane")}
@@ -1114,14 +1113,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               componentsEmptyTitle={t("relationshipNoComponents")}
               componentsEmptyHelp={t("relationshipNoComponentsHelp")}
               noteLabel={t("relationshipNote")}
-            />
-            <AssetComponentsPanel
-              assetId={asset.id}
-              currentComponents={currentComponentsForPanel}
-              componentHistory={componentHistoryForPanel}
-              installedInLinks={installedInLinksForPanel}
-              availableAssets={availableComponentAssets}
-            />
+                />
+              ) : null}
             </div>
           ) : null}
 

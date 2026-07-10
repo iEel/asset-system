@@ -182,7 +182,7 @@ git commit -m "feat: simplify asset detail navigation"
 - Consumes: existing `parentComponents`, `installedInLinks`, component evidence counts, `canEditAssets`, and a Component Manager href.
 - Produces: a compact, read-only custody summary and `จัดการส่วนควบ` navigation without initial candidate loading.
 
-- [ ] **Step 1: Write failing summary and regression tests**
+- [x] **Step 1: Write failing summary and regression tests**
 
 ```ts
 test("asset detail exposes a read-only component summary and manager link", () => {
@@ -199,19 +199,19 @@ test("asset edit does not mount a second component installation editor", () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests to verify failure**
+- [x] **Step 2: Run the tests to verify failure**
 
 Run: `node --test tests/asset-detail-ux.test.ts tests/asset-relationship-map-ui.test.ts`
 
 Expected: FAIL because both pages still import and render `AssetComponentsPanel`.
 
-- [ ] **Step 3: Implement the read-only component summary**
+- [x] **Step 3: Implement the read-only component summary**
 
 Use `AssetComponentsSummary` in the custody tab. It must render parent context, installed count, a maximum of five current child rows, missing-serial warning count, and a `จัดการส่วนควบ` Link only when `canEditAssets` is true. Keep `AssetRelationshipMap` only when the asset has a parent or at least one installed child; otherwise render one compact standalone relationship state.
 
 Remove `AssetComponentsPanel`, global installed-component id lookup, and `availableComponentAssets` from both the Asset Detail and Edit page queries. Keep current installed links and component history only where the selected detail tab or manager needs them.
 
-- [ ] **Step 4: Run focused tests**
+- [x] **Step 4: Run focused tests**
 
 Run: `node --test tests/asset-detail-ux.test.ts tests/asset-relationship-map-ui.test.ts tests/asset-return-navigation.test.ts`
 

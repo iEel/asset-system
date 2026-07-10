@@ -1047,6 +1047,7 @@
       "audit": "Audit"
     },
     "detailMoreActions": "More actions",
+    "manageComponents": "Manage components",
     "detailSections": {
       "nav": "Asset detail navigation",
       "overview": "Overview",

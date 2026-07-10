@@ -20,3 +20,18 @@ test("asset detail keeps secondary actions in the More menu and caps mobile acti
   assert.match(source, /mobileActionCandidates\.slice\(0, 3\)/)
   assert.match(source, /hasPermission\(user, "asset", "edit"\)/)
 })
+
+test("asset detail exposes a read-only component summary and manager link", () => {
+  const source = assetDetailSource()
+
+  assert.match(source, /AssetComponentsSummary/)
+  assert.match(source, /assets\/\$\{asset\.id\}\/components/)
+  assert.doesNotMatch(source, /<AssetComponentsPanel/)
+})
+
+test("asset edit does not mount another component installation editor", () => {
+  const source = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/edit/page.tsx", "utf8")
+
+  assert.doesNotMatch(source, /AssetComponentsPanel/)
+  assert.doesNotMatch(source, /availableComponentAssets/)
+})
