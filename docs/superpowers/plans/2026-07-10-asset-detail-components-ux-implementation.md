@@ -240,7 +240,7 @@ git commit -m "feat: move asset components out of detail editor"
 - Consumes: existing `POST /api/assets/[id]/components`, `DELETE /api/assets/[id]/components/[componentId]`, `GET /api/assets/component-candidates`, `ScannerTextInput`, `FileDropzone`, and `ConfirmTextDialog`.
 - Produces: `AssetComponentManager` props `{ assetId, parentAsset, currentComponents, componentHistory, canEdit, returnToHref, labels }`.
 
-- [ ] **Step 1: Write failing manager tests**
+- [x] **Step 1: Write failing manager tests**
 
 ```ts
 test("component manager accepts only safe returns to the current asset detail", () => {
@@ -262,13 +262,13 @@ test("component candidate route avoids a database lookup below two characters", 
 
 Add source checks that the manager imports `ScannerTextInput`, keeps selected candidates in review state before POST, keeps `FileDropzone` inside the removal dialog flow, hides install/remove for `canEdit === false`, and uses the existing component endpoints.
 
-- [ ] **Step 2: Run the tests to verify failure**
+- [x] **Step 2: Run the tests to verify failure**
 
 Run: `node --test tests/asset-component-manager.test.ts tests/asset-return-navigation.test.ts`
 
 Expected: FAIL because the route, manager, and safe return helper do not exist.
 
-- [ ] **Step 3: Implement safe navigation and bounded candidate lookup**
+- [x] **Step 3: Implement safe navigation and bounded candidate lookup**
 
 Add this strict helper to `asset-return-navigation.ts`:
 
@@ -289,7 +289,7 @@ export function normalizeAssetComponentManagerReturnTo(locale: string, assetId: 
 
 In the candidate route, return an empty result before Prisma when `search.length < 2`. Preserve existing auth, `asset:view`, active-only, currently-uninstalled, ordering, and `take: 20` restrictions.
 
-- [ ] **Step 4: Implement the server page and client workspace**
+- [x] **Step 4: Implement the server page and client workspace**
 
 The page calls `const user = await requirePagePermission(locale, "asset", "view")`, selects only the parent identity and bounded component records, calculates `const canEdit = hasPermission(user, "asset", "edit")`, normalizes `returnTo`, and passes the result to `AssetComponentManager`.
 
@@ -305,7 +305,7 @@ Use `ScannerTextInput` with `scanMode="asset-qr"`; its `onScanSuccess` sets the 
 
 For removal, open a focus-managed dialog that renders the selected component, a reason textarea, and `FileDropzone` using `removeEvidence`; submit to the existing DELETE endpoint. Do not render one FileDropzone per list row.
 
-- [ ] **Step 5: Run manager and navigation tests**
+- [x] **Step 5: Run manager and navigation tests**
 
 Run: `node --test tests/asset-component-manager.test.ts tests/asset-return-navigation.test.ts tests/asset-component-sync.test.ts tests/asset-component-sync-routes.test.ts`
 
