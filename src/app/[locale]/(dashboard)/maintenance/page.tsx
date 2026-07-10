@@ -20,13 +20,20 @@ import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { getMaintenancePlanDueState, summarizeMaintenancePlans } from "@/lib/preventive-maintenance"
 import { hasPrismaModelDelegate } from "@/lib/prisma-client-cache"
-import { buildMaintenanceViewHref, normalizeMaintenancePageView, type MaintenancePageView } from "@/lib/maintenance-view"
+import {
+  buildMaintenanceTicketLayoutHref,
+  buildMaintenanceViewHref,
+  normalizeMaintenancePageView,
+  normalizeMaintenanceTicketLayout,
+  type MaintenancePageView,
+  type MaintenanceTicketLayout,
+} from "@/lib/maintenance-view"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 
 type MaintenancePageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string; status?: string; repairType?: string; evidence?: string; overdue?: string; dateFrom?: string; dateTo?: string; assetId?: string; view?: string }>
+  searchParams: Promise<{ search?: string; status?: string; repairType?: string; evidence?: string; overdue?: string; dateFrom?: string; dateTo?: string; assetId?: string; view?: string; layout?: string }>
 }
 
 export default async function MaintenancePage({ params, searchParams }: MaintenancePageProps) {
@@ -40,9 +47,11 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
   const tCommon = await getTranslations("common")
   const listFilters = parseMaintenanceListParams(filters)
   const activeView = normalizeMaintenancePageView(filters.view)
+  const activeTicketLayout = normalizeMaintenanceTicketLayout(filters.layout)
   const exportQuery = buildMaintenanceQueryString(listFilters)
   const maintenanceReturnParams = new URLSearchParams(exportQuery)
   maintenanceReturnParams.set("view", activeView)
+  if (activeView === "tickets" && activeTicketLayout === "board") maintenanceReturnParams.set("layout", activeTicketLayout)
   if (filters.assetId) maintenanceReturnParams.set("assetId", filters.assetId)
   const maintenanceReturnQuery = maintenanceReturnParams.toString()
   const maintenanceReturnHref = `/${locale}/maintenance${maintenanceReturnQuery ? `?${maintenanceReturnQuery}` : ""}`
@@ -82,6 +91,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
         locale={locale}
         activeView={activeView}
         assetId={filters.assetId}
+        ticketLayout={activeTicketLayout}
         ticketCount={summary.openWork}
         pmCount={planSummary.total}
         labels={{
@@ -137,6 +147,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
           <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
             <form className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-[minmax(240px,1fr)_repeat(3,minmax(140px,160px))]" action={`/${locale}/maintenance`}>
               <input type="hidden" name="view" value="tickets" />
+              <input type="hidden" name="layout" value={activeTicketLayout} />
               {filters.assetId ? <input type="hidden" name="assetId" value={filters.assetId} /> : null}
               <label className="min-w-0">
                 <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("search")}</span>
@@ -224,7 +235,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                   {t("filter")}
                 </button>
                 <Link
-                  href={buildMaintenanceViewHref(locale, "tickets", filters.assetId)}
+                  href={buildMaintenanceViewHref(locale, "tickets", filters.assetId, activeTicketLayout)}
                   className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto sm:min-w-24"
                 >
                   {t("clearFilters")}
@@ -233,6 +244,18 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
             </form>
           </section>
 
+          <MaintenanceTicketLayoutTabs
+            locale={locale}
+            currentQuery={maintenanceReturnQuery}
+            activeLayout={activeTicketLayout}
+            labels={{
+              navigation: t("ticketLayoutNavigation"),
+              table: t("ticketLayoutTable"),
+              board: t("ticketLayoutBoard"),
+            }}
+          />
+
+          {activeTicketLayout === "board" ? (
           <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
             <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
               <div>
@@ -253,7 +276,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
               ))}
             </div>
           </section>
-
+          ) : (
           <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
             <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
               <div>
@@ -469,6 +492,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
               </table>
             </div>
           </section>
+          )}
         </>
       ) : (
         <section className="space-y-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
@@ -577,6 +601,7 @@ function MaintenanceViewTabs({
   locale,
   activeView,
   assetId,
+  ticketLayout,
   ticketCount,
   pmCount,
   labels,
@@ -584,6 +609,7 @@ function MaintenanceViewTabs({
   locale: string
   activeView: MaintenancePageView
   assetId?: string
+  ticketLayout: MaintenanceTicketLayout
   ticketCount: number
   pmCount: number
   labels: {
@@ -623,7 +649,7 @@ function MaintenanceViewTabs({
         return (
           <Link
             key={tab.view}
-            href={buildMaintenanceViewHref(locale, tab.view, assetId)}
+            href={buildMaintenanceViewHref(locale, tab.view, assetId, tab.view === "tickets" ? ticketLayout : undefined)}
             aria-current={isActive ? "page" : undefined}
             className={`rounded-lg border p-4 shadow-sm transition-colors ${
               isActive
@@ -648,6 +674,40 @@ function MaintenanceViewTabs({
           </Link>
         )
       })}
+    </nav>
+  )
+}
+
+function MaintenanceTicketLayoutTabs({
+  locale,
+  currentQuery,
+  activeLayout,
+  labels,
+}: {
+  locale: string
+  currentQuery: string
+  activeLayout: MaintenanceTicketLayout
+  labels: { navigation: string; table: string; board: string }
+}) {
+  const layouts: Array<{ layout: MaintenanceTicketLayout; label: string }> = [
+    { layout: "table", label: labels.table },
+    { layout: "board", label: labels.board },
+  ]
+
+  return (
+    <nav aria-label={labels.navigation} className="inline-flex rounded-md border border-border bg-surface p-1">
+      {layouts.map((item) => (
+        <Link
+          key={item.layout}
+          href={buildMaintenanceTicketLayoutHref(locale, currentQuery, item.layout)}
+          aria-current={activeLayout === item.layout ? "page" : undefined}
+          className={`inline-flex min-h-11 items-center justify-center rounded px-3 text-sm font-medium transition-colors sm:h-8 sm:min-h-0 ${
+            activeLayout === item.layout ? "bg-primary text-white" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+          }`}
+        >
+          {item.label}
+        </Link>
+      ))}
     </nav>
   )
 }
