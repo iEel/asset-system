@@ -113,14 +113,15 @@ export function DashboardShell({
           mobileFieldNavigationVisible={mobileFieldNavigationVisible}
         />
 
-        <main
-          ref={mainRef}
-          className={cn(
-            "min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-6",
-            mobileFieldNavigationVisible && "pb-[calc(5.25rem+env(safe-area-inset-bottom))] sm:pb-6",
-          )}
-        >
-          {children}
+        <main ref={mainRef} className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
+          <div
+            className={cn(
+              "min-w-0 max-w-full",
+              mobileFieldNavigationVisible && "pb-[calc(5.25rem+env(safe-area-inset-bottom))] sm:pb-0",
+            )}
+          >
+            {children}
+          </div>
         </main>
       </div>
 
