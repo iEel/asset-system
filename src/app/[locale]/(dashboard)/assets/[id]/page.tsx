@@ -784,6 +784,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         <div className="flex items-center gap-2">
           <Link
             href={returnToHref}
+            aria-label={isAssetScanReturn ? t("backToScan") : tCommon("back")}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:h-10"
           >
             <ArrowLeft className="h-4 w-4" />

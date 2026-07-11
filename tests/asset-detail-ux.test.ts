@@ -21,6 +21,12 @@ test("asset detail keeps secondary actions in the More menu and caps mobile acti
   assert.match(source, /hasPermission\(user, "asset", "edit"\)/)
 })
 
+test("asset detail keeps an accessible name on the icon-only mobile back link", () => {
+  const source = assetDetailSource()
+
+  assert.match(source, /aria-label=\{isAssetScanReturn \? t\("backToScan"\) : tCommon\("back"\)\}/)
+})
+
 test("asset detail makes component management discoverable from custody and More", () => {
   const source = assetDetailSource()
   const thaiMessages = readFileSync("messages/th.json", "utf8")
