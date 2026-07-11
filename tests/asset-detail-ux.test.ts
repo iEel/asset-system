@@ -136,6 +136,6 @@ test("asset detail avoids eager component inventory and bounds preview relations
   assert.doesNotMatch(source, /installedComponentAssetIds/)
   assert.doesNotMatch(source, /availableComponentAssets/)
   assert.doesNotMatch(source, /take: 300/)
-  assert.match(source, /checkouts:\s*\{[\s\S]*?take: 10/)
+  assert.match(source, /checkouts:\s*\{[\s\S]*?take: loadPolicy\.checkoutLimit/)
   assert.match(source, /attachments:\s*\{[\s\S]*?take: 20/)
 })

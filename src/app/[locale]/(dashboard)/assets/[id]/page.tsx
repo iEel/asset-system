@@ -59,6 +59,7 @@ import { buildAssetDetailViewHref, isAssetDetailSectionVisible, parseAssetDetail
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import { splitRelationshipPreview } from "@/lib/asset-relationship-preview"
 import { getAuditRoundItemResultLabelKey, getAuditRoundItemStatusLabelKey } from "@/lib/audit-round-result-filters"
+import { getAssetDetailLoadPolicy } from "@/lib/asset-detail-data"
 import {
   compactMovementDetails,
   createHealthItem,
@@ -117,6 +118,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const canCreateAsset = hasPermission(user, "asset", "create")
   const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
   const assetDetailView = parseAssetDetailView(rawSearchParams.view)
+  const loadPolicy = getAssetDetailLoadPolicy(assetDetailView)
   const scanReturnHref = `/${locale}/asset-management/scan`
   const isAssetScanReturn = returnToHref === scanReturnHref
 
@@ -145,11 +147,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           supplier: { select: { code: true, name: true } },
           movements: {
             orderBy: { performedAt: "desc" },
-            take: 20,
+            take: loadPolicy.movementLimit,
           },
           checkouts: {
             orderBy: { checkoutDate: "desc" },
-            take: 10,
+            take: loadPolicy.checkoutLimit,
             include: {
               custodian: { select: { code: true, fullNameTh: true } },
               checkin: {
@@ -198,21 +200,21 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           maintenanceTickets: {
             where: { isActive: true },
             orderBy: { reportedDate: "desc" },
-            take: 10,
+            take: loadPolicy.maintenanceLimit,
             include: {
               reportedBy: { select: { code: true, fullNameTh: true } },
             },
           },
           auditItems: {
             orderBy: [{ lastScanAt: "desc" }, { createdAt: "desc" }],
-            take: 10,
+            take: loadPolicy.auditItemLimit,
             include: {
               auditRound: { select: { id: true, auditNo: true, name: true } },
             },
           },
           auditFindings: {
             orderBy: { reportedAt: "desc" },
-            take: 20,
+            take: loadPolicy.auditFindingLimit,
             include: {
               auditRound: { select: { auditNo: true, name: true } },
             },
@@ -220,11 +222,12 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           disposalRequests: {
             where: { isActive: true },
             orderBy: { requestDate: "desc" },
-            take: 20,
+            take: loadPolicy.disposalLimit,
           },
           assignedLicenses: {
             where: { isActive: true },
             orderBy: { assetTag: "asc" },
+            take: loadPolicy.assignedLicenseLimit,
             select: {
               id: true,
               assetTag: true,
@@ -248,6 +251,34 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   )
 
   if (!asset) notFound()
+
+  const [evidenceCheckoutReferences, evidenceMaintenanceReferences, evidenceAuditFindingReferences, evidenceDisposalReferences] = await withPerformanceTiming(
+    "asset-detail.evidence-references",
+    () => Promise.all([
+      prisma.assetCheckout.findMany({
+        where: { assetId: asset.id },
+        select: { id: true, checkin: { select: { id: true } } },
+      }),
+      prisma.maintenanceTicket.findMany({
+        where: { assetId: asset.id, isActive: true },
+        select: { id: true },
+      }),
+      prisma.auditFinding.findMany({
+        where: { assetId: asset.id },
+        select: { id: true },
+      }),
+      prisma.disposalRequest.findMany({
+        where: { assetId: asset.id, isActive: true },
+        select: { id: true },
+      }),
+    ]),
+    { route: "/assets/[id]", locale },
+  )
+  const evidenceCheckoutIds = evidenceCheckoutReferences.map((checkout) => checkout.id)
+  const evidenceCheckinIds = evidenceCheckoutReferences.flatMap((checkout) => checkout.checkin ? [checkout.checkin.id] : [])
+  const evidenceMaintenanceTicketIds = evidenceMaintenanceReferences.map((ticket) => ticket.id)
+  const evidenceAuditFindingIds = evidenceAuditFindingReferences.map((finding) => finding.id)
+  const evidenceDisposalRequestIds = evidenceDisposalReferences.map((request) => request.id)
 
   const currentAssetDetailHref = buildAssetDetailViewHref(locale, asset.id, assetDetailView, returnToHref)
 
@@ -295,9 +326,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const componentLinkIds = componentLinks.map((component) => component.id)
   const componentUserIds = uniqueTruthy(componentLinks.flatMap((component) => [component.createdBy, component.updatedBy]))
   const purchaseDocumentIds = asset.purchaseDocumentLinks.map((link) => link.purchaseDocumentId)
-  const maintenanceTicketIds = asset.maintenanceTickets.map((ticket) => ticket.id)
-  const auditFindingIds = asset.auditFindings.map((finding) => finding.id)
-  const disposalRequestIds = asset.disposalRequests.map((request) => request.id)
   const [purchaseDocumentAttachments, componentAttachments, componentUsers, maintenanceAttachments, auditFindingAttachments, disposalAttachments] = await withPerformanceTiming(
     "asset-detail.evidence-data",
     () => Promise.all([
@@ -325,21 +353,21 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             },
           })
         : [],
-      maintenanceTicketIds.length > 0
+      evidenceMaintenanceTicketIds.length > 0
         ? prisma.attachment.findMany({
-            where: { module: "maintenance", referenceId: { in: maintenanceTicketIds }, isActive: true },
+            where: { module: "maintenance", referenceId: { in: evidenceMaintenanceTicketIds }, isActive: true },
             orderBy: { uploadedAt: "desc" },
           })
         : [],
-      auditFindingIds.length > 0
+      evidenceAuditFindingIds.length > 0
         ? prisma.attachment.findMany({
-            where: { module: "audit_finding", referenceId: { in: auditFindingIds }, isActive: true },
+            where: { module: "audit_finding", referenceId: { in: evidenceAuditFindingIds }, isActive: true },
             orderBy: { uploadedAt: "desc" },
           })
         : [],
-      disposalRequestIds.length > 0
+      evidenceDisposalRequestIds.length > 0
         ? prisma.attachment.findMany({
-            where: { module: "disposal", referenceId: { in: disposalRequestIds }, isActive: true },
+            where: { module: "disposal", referenceId: { in: evidenceDisposalRequestIds }, isActive: true },
             orderBy: { uploadedAt: "desc" },
           })
         : [],
@@ -349,9 +377,9 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       locale,
       purchaseDocuments: purchaseDocumentIds.length,
       components: componentLinkIds.length,
-      maintenanceTickets: maintenanceTicketIds.length,
-      auditFindings: auditFindingIds.length,
-      disposalRequests: disposalRequestIds.length,
+      maintenanceTickets: evidenceMaintenanceTicketIds.length,
+      auditFindings: evidenceAuditFindingIds.length,
+      disposalRequests: evidenceDisposalRequestIds.length,
     }
   )
   const componentUserLabels = new Map(componentUsers.map((user) => [user.id, formatUserLabel(user)]))
@@ -420,13 +448,13 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const [operationAttachments, checkoutDepartments, checkoutLocations, checkoutParentAssets, movementUsers, movementEmployees] = await withPerformanceTiming(
     "asset-detail.operation-data",
     () => Promise.all([
-      checkoutIds.length > 0 || checkinIds.length > 0
+      evidenceCheckoutIds.length > 0 || evidenceCheckinIds.length > 0
         ? prisma.attachment.findMany({
             where: {
               isActive: true,
               OR: [
-                { module: { in: ["checkout_photo_before", "checkout_receiver_signature"] }, referenceId: { in: checkoutIds } },
-                { module: { in: ["checkin_photo_after", "checkin_return_signature", "checkin_receive_signature"] }, referenceId: { in: checkinIds } },
+                { module: { in: ["checkout_photo_before", "checkout_receiver_signature"] }, referenceId: { in: evidenceCheckoutIds } },
+                { module: { in: ["checkin_photo_after", "checkin_return_signature", "checkin_receive_signature"] }, referenceId: { in: evidenceCheckinIds } },
               ],
             },
             orderBy: { uploadedAt: "asc" },
