@@ -954,6 +954,7 @@
     "relationshipCurrentViewing": "Current item",
     "relationshipComponentsLane": "Has components",
     "relationshipComponentsCount": "{count} items",
+    "relationshipMoreItems": "View {count} more items",
     "relationshipSummaryParent": "This item is a parent asset • {count} installed components",
     "relationshipSummaryComponent": "This item is installed as a component • under {parent}",
     "relationshipSummaryParentAndComponent": "This item is a component and has child components • under {parent} • {count} components",

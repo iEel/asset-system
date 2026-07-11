@@ -954,6 +954,7 @@
     "relationshipCurrentViewing": "รายการที่กำลังดู",
     "relationshipComponentsLane": "มีส่วนควบ",
     "relationshipComponentsCount": "{count} รายการ",
+    "relationshipMoreItems": "ดูอีก {count} รายการ",
     "relationshipSummaryParent": "รายการนี้เป็นทรัพย์สินหลัก • มีส่วนควบทั้งหมด {count} รายการ",
     "relationshipSummaryComponent": "รายการนี้เป็นส่วนควบของทรัพย์สินหลัก • อยู่ภายใต้ {parent}",
     "relationshipSummaryParentAndComponent": "รายการนี้เป็นส่วนควบและมีส่วนควบย่อย • อยู่ภายใต้ {parent} • มีส่วนควบ {count} รายการ",

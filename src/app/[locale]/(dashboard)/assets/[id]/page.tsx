@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import {
   AlertTriangle,
+  ArrowDown,
   ArrowLeft,
   ArrowRight,
   Building2,
@@ -56,6 +57,7 @@ import { assetQrPublicBaseUrlKey, buildAssetQrValue } from "@/lib/asset-qr"
 import { appendReturnTo, normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
 import { buildAssetDetailViewHref, isAssetDetailSectionVisible, parseAssetDetailView } from "@/lib/asset-detail-view"
 import { withPerformanceTiming } from "@/lib/performance-timing"
+import { splitRelationshipPreview } from "@/lib/asset-relationship-preview"
 import {
   compactMovementDetails,
   createHealthItem,
@@ -1097,6 +1099,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               currentTitle={t("relationshipCurrentViewing")}
               componentsTitle={t("relationshipComponentsLane")}
               componentsCountLabel={t("relationshipComponentsCount", { count: currentComponentsForPanel.length })}
+              moreItemsLabel={t("relationshipMoreItems", { count: Math.max(currentComponentsForPanel.length - 5, 0) })}
               licenseAssignedTitle={t("relationshipLicenseAssignedAsset")}
               assignedLicensesTitle={t("relationshipAssignedLicenses")}
               assetTag={asset.assetTag}
@@ -1797,6 +1800,7 @@ function AssetRelationshipMap({
   currentTitle,
   componentsTitle,
   componentsCountLabel,
+  moreItemsLabel,
   licenseAssignedTitle,
   assignedLicensesTitle,
   assetTag,
@@ -1828,6 +1832,7 @@ function AssetRelationshipMap({
   currentTitle: string
   componentsTitle: string
   componentsCountLabel: string
+  moreItemsLabel: string
   licenseAssignedTitle: string
   assignedLicensesTitle: string
   assetTag: string
@@ -1866,9 +1871,10 @@ function AssetRelationshipMap({
     parentAndComponent: roleParentAndComponentLabel,
     standalone: roleStandaloneLabel,
   })
+  const childPreview = splitRelationshipPreview(childLinks)
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
       <SectionHeading title={title} subtitle={subtitle} icon={<GitBranch className="h-5 w-5 text-primary" />} />
 
       <div className="mb-5 flex flex-col gap-3 rounded-md border border-border bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1914,9 +1920,21 @@ function AssetRelationshipMap({
             <RelationshipEmptyState title={componentsEmptyTitle} help={componentsEmptyHelp} icon={<Puzzle className="h-8 w-8" />} />
           ) : (
             <div className="space-y-2">
-              {childLinks.map((link) => (
+              {childPreview.visible.map((link) => (
                 <RelationshipAssetCard key={link.id} link={link} variant="child" />
               ))}
+              {childPreview.remaining.length > 0 ? (
+                <details className="rounded-md border border-border bg-surface">
+                  <summary className="flex min-h-11 cursor-pointer items-center px-3 text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                    {moreItemsLabel}
+                  </summary>
+                  <div className="space-y-2 border-t border-border p-2">
+                    {childPreview.remaining.map((link) => (
+                      <RelationshipAssetCard key={link.id} link={link} variant="child" />
+                    ))}
+                  </div>
+                </details>
+              ) : null}
             </div>
           )}
         </RelationshipLane>
@@ -1966,8 +1984,15 @@ function RelationshipConnector({ direction }: { direction: "left" | "right" }) {
   const Icon = direction === "left" ? ArrowLeft : ArrowRight
 
   return (
-    <div className="hidden items-center justify-center md:flex">
-      <div className="flex items-center gap-1 text-primary/60">
+    <div className="flex items-center justify-center md:block">
+      <div className="flex flex-col items-center text-primary/60 md:hidden">
+        <span className="h-3 border-l border-dashed border-border" />
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/25 bg-surface">
+          <ArrowDown className="h-4 w-4" />
+        </span>
+        <span className="h-3 border-l border-dashed border-border" />
+      </div>
+      <div className="hidden items-center gap-1 text-primary/60 md:flex">
         <span className="h-px w-5 border-t border-dashed border-border" />
         <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/25 bg-surface">
           <Icon className="h-4 w-4" />
@@ -2066,7 +2091,7 @@ function RelationshipAssetCard({
       ) : null}
     </div>
   )
-  const className = `block rounded-md border px-3 py-3 transition-colors ${current ? "min-h-36" : ""} ${getRelationshipCardClass(variant, Boolean(current))}`
+  const className = `block rounded-md border px-3 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${current ? "min-h-36" : ""} ${getRelationshipCardClass(variant, Boolean(current))}`
 
   if (link) {
     return (
