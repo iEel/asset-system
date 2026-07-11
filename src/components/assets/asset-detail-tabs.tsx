@@ -1,10 +1,14 @@
+"use client"
+
 import Link from "next/link"
-import { AlertTriangle } from "lucide-react"
+import { useEffect, useRef, useState, type UIEvent } from "react"
+import { AlertTriangle, ChevronRight } from "lucide-react"
 import {
   assetDetailViews,
   buildAssetDetailViewHref,
   type AssetDetailView,
 } from "@/lib/asset-detail-view"
+import { hasRemainingHorizontalContent } from "@/lib/horizontal-scroll"
 
 type AssetDetailTabIndicator = {
   count?: number
@@ -30,8 +34,26 @@ export function AssetDetailTabs({
   indicators?: Partial<Record<AssetDetailView, AssetDetailTabIndicator>>
   warningLabel: string
 }) {
+  const activeTabRef = useRef<HTMLAnchorElement>(null)
+  const [showOverflowCue, setShowOverflowCue] = useState(true)
+
+  useEffect(() => {
+    activeTabRef.current?.scrollIntoView({ block: "nearest", inline: "center" })
+  }, [view])
+
+  function handleScroll(event: UIEvent<HTMLElement>) {
+    const container = event.currentTarget
+    setShowOverflowCue(hasRemainingHorizontalContent(container))
+  }
+
   return (
-    <nav aria-label={label} className="scrollbar-none -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+    <div className="relative">
+    <nav
+      aria-label={label}
+      onScroll={handleScroll}
+      style={{ scrollSnapType: "x mandatory" }}
+      className="scrollbar-none -mx-4 overflow-x-auto px-4 pe-12 sm:mx-0 sm:px-0"
+    >
       <div className="flex min-w-max gap-2">
         {assetDetailViews.map((item) => {
           const indicator = indicators?.[item]
@@ -39,8 +61,10 @@ export function AssetDetailTabs({
           return (
             <Link
               key={item}
+              ref={view === item ? activeTabRef : undefined}
               href={buildAssetDetailViewHref(locale, assetId, item, returnTo)}
               aria-current={view === item ? "page" : undefined}
+              style={{ scrollSnapAlign: "start" }}
               className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border px-3 text-sm font-medium transition-colors sm:h-9 sm:min-h-0 ${
                 view === item
                   ? "border-primary bg-primary text-white"
@@ -64,5 +88,14 @@ export function AssetDetailTabs({
         })}
       </div>
     </nav>
+    {showOverflowCue ? (
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 right-0 flex w-9 items-center justify-end border-r border-border bg-background/95 pr-1 text-muted-foreground sm:hidden"
+      >
+        <ChevronRight className="h-5 w-5" />
+      </span>
+    ) : null}
+    </div>
   )
 }
