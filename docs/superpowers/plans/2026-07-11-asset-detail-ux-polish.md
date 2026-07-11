@@ -26,10 +26,10 @@
 - Test: `tests/mobile-action-bar.test.ts`
 - Test: `tests/asset-detail-ux.test.ts`
 
-- [ ] Add failing tests for one-to-three adaptive action columns and a named mobile back link.
-- [ ] Run the focused tests and confirm the expected failures.
-- [ ] Implement static column mappings and an accessible back label without changing actions.
-- [ ] Run focused tests and commit.
+- [x] Add failing tests for one-to-three adaptive action columns and a named mobile back link.
+- [x] Run the focused tests and confirm the expected failures.
+- [x] Implement static column mappings and an accessible back label without changing actions.
+- [x] Run focused tests and commit.
 
 ### Task 2: Discoverable Mobile Detail Tabs
 
@@ -37,10 +37,10 @@
 - Modify: `src/components/assets/asset-detail-tabs.tsx`
 - Test: `tests/asset-detail-tabs.test.ts`
 
-- [ ] Add failing tests for scroll snap, edge affordance, and active-tab visibility hooks.
-- [ ] Run the focused test and confirm failure.
-- [ ] Implement a compact scrollable tab strip with a right-edge cue and snap alignment.
-- [ ] Run focused tests and commit.
+- [x] Add failing tests for scroll snap, edge affordance, and active-tab visibility hooks.
+- [x] Run the focused test and confirm failure.
+- [x] Implement a compact scrollable tab strip with a right-edge cue and snap alignment.
+- [x] Run focused tests and commit.
 
 ### Task 3: Responsive Relationship Map
 
@@ -48,10 +48,10 @@
 - Modify: `src/app/[locale]/(dashboard)/assets/[id]/page.tsx`
 - Test: `tests/asset-relationship-map-ui.test.ts`
 
-- [ ] Add failing tests for vertical mobile relationship flow, full-card links, and bounded child previews.
-- [ ] Run focused tests and confirm failure.
-- [ ] Preserve the full map on desktop while stacking parent/current/children on mobile and limiting initial child rows.
-- [ ] Run focused tests and commit.
+- [x] Add failing tests for vertical mobile relationship flow, full-card links, and bounded child previews.
+- [x] Run focused tests and confirm failure.
+- [x] Preserve the full map on desktop while stacking parent/current/children on mobile and limiting initial child rows.
+- [x] Run focused tests and commit.
 
 ### Task 4: First Viewport Hierarchy And Activity Copy
 
@@ -61,11 +61,11 @@
 - Modify: `messages/en.json`
 - Test: `tests/asset-detail-ux.test.ts`
 
-- [ ] Add failing tests for compact identity status/responsibility content, one actionable follow-up surface, and localized audit status copy.
-- [ ] Run focused tests and confirm failure.
-- [ ] Move status, condition, location, and responsibility into the identity summary; remove repeated overview summary facts; keep full details below.
-- [ ] Format activity copy without duplicated titles or raw workflow enums.
-- [ ] Run focused tests and commit.
+- [x] Add failing tests for compact identity status/responsibility content, one actionable follow-up surface, and localized audit status copy.
+- [x] Run focused tests and confirm failure.
+- [x] Move status, condition, location, and responsibility into the identity summary; remove repeated overview summary facts; keep full details below.
+- [x] Format activity copy without duplicated titles or raw workflow enums.
+- [x] Run focused tests and commit.
 
 ### Task 5: View-Aware Asset Detail Data
 
@@ -74,11 +74,11 @@
 - Modify: `src/app/[locale]/(dashboard)/assets/[id]/page.tsx`
 - Test: `tests/asset-detail-data-boundaries.test.ts`
 
-- [ ] Add failing tests that define common and per-view relation/evidence loading boundaries.
-- [ ] Run focused tests and confirm failure.
-- [ ] Extract view predicates and condition heavy Prisma includes/secondary queries by active view while retaining lightweight header data.
-- [ ] Keep Evidence Center complete by loading its index through the existing drawer path or an explicit on-demand boundary.
-- [ ] Run focused tests and commit.
+- [x] Add failing tests that define common and per-view relation/evidence loading boundaries.
+- [x] Run focused tests and confirm failure.
+- [x] Extract view predicates and condition heavy Prisma includes/secondary queries by active view while retaining lightweight header data.
+- [x] Keep Evidence Center complete by loading its index through the existing drawer path or an explicit on-demand boundary.
+- [x] Run focused tests and commit.
 
 ### Task 6: Regression QA And Documentation
 
@@ -89,8 +89,8 @@
 - Modify: `docs/07_UAT_CHECKLIST.md`
 - Modify: `docs/superpowers/specs/2026-07-10-asset-detail-components-ux-design.md`
 
-- [ ] Add regression coverage for tab navigation, return context, permission-filtered actions, and responsive map/action patterns.
-- [ ] Run focused tests, lint, typecheck, full tests, build, and verify.
-- [ ] Inspect the authenticated page in Chrome at 390px, 768px, and desktop and retain screenshots outside Git.
-- [ ] Update handoff and UAT notes with implemented behavior and remaining real-device/limited-role checks.
-- [ ] Commit documentation and verification evidence summary.
+- [x] Add regression coverage for tab navigation, return context, permission-filtered actions, and responsive map/action patterns.
+- [x] Run focused tests, lint, typecheck, full tests, build, and verify.
+- [x] Inspect the authenticated page in Chrome at 390px, 768px, and desktop and retain screenshots outside Git.
+- [x] Update handoff and UAT notes with implemented behavior and remaining real-device/limited-role checks.
+- [x] Commit documentation and verification evidence summary.

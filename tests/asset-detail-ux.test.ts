@@ -59,7 +59,8 @@ test("asset detail localizes audit activity and avoids duplicated activity title
 
   assert.match(source, /getAuditRoundItemStatusLabelKey/)
   assert.match(source, /getAuditRoundItemResultLabelKey/)
-  assert.match(source, /const tAudit = await getTranslations\("audit"\)/)
+  assert.match(source, /getTranslations\("auditRound"\)/)
+  assert.doesNotMatch(source, /getTranslations\("audit"\)/)
   assert.doesNotMatch(source, /`\$\{latestMovement\.title\}: \$\{latestMovement\.summary\}`/)
 })
 

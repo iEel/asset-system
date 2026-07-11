@@ -126,7 +126,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const tBrandModel = await getTranslations("brandModel")
   const tMaintenance = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
-  const tAudit = await getTranslations("audit")
+  const tAudit = await getTranslations("auditRound")
   const [asset, qrBaseUrlSetting, readyStatus] = await withPerformanceTiming(
     "asset-detail.initial-data",
     () => Promise.all([

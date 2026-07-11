@@ -68,7 +68,7 @@ All action visibility is determined from existing permission helpers. A user wit
 
 `/{locale}/assets/{assetId}/components` is a focused Component Manager linked from the custody tab with `จัดการส่วนควบ`. It preserves a safe `returnTo` path to the originating Asset Detail.
 
-Asset Detail retains a compact read-only relationship summary: installed-under parent, installed child count, missing-serial warning, and a small list of current components. The full three-lane map is retained only when the relationship is nontrivial. The inline installation/removal editor is removed from Asset Detail.
+Asset Detail retains a read-only relationship summary: installed-under parent, installed child count, missing-serial warning, and current components. The full relationship meaning is always preserved when relationships exist. Desktop uses a three-lane parent/current/children map; mobile stacks the same roles vertically with directional connectors. Child rows show five items initially and reveal the remainder on demand. The inline installation/removal editor is removed from Asset Detail.
 
 ### Install Flow
 
@@ -88,7 +88,7 @@ History is collapsed by default, shows recent records first, and uses a bounded 
 
 ### Mobile Behavior
 
-On mobile, Scan Component is the primary entry action. Search is the fallback. The review and removal surfaces are bottom sheets or dialogs that keep the parent Asset Tag visible. Controls are at least 44px high, no page-level horizontal scroll is allowed, and the manager does not display the global mobile field dock while its contextual action bar is active.
+On mobile, Scan Component is the primary entry action. Search is the fallback. The review and removal surfaces are bottom sheets or dialogs that keep the parent Asset Tag visible. Asset Detail tabs snap horizontally, keep the active tab visible, and expose a temporary edge cue when more tabs remain. The contextual action bar derives one to four columns from the actions actually permitted, so limited roles do not see empty slots. Controls are at least 44px high, no page-level horizontal scroll is allowed, and the manager does not display the global mobile field dock while its contextual action bar is active.
 
 ## Performance And Code Boundaries
 
@@ -99,7 +99,7 @@ The current Asset Detail page is a large server component with initial data, evi
 - `asset-detail-components`: compact read-only relationship summary for Asset Detail.
 - `component-manager`: installation/removal client workflow and on-demand candidate lookup.
 
-Do not fetch the global installed-component id set or the initial 300 component candidates for ordinary Asset Detail rendering. Candidate lookup belongs to Component Manager and remains server-filtered. Bound history and attachment previews; use existing Evidence Center for full evidence indexing.
+Do not fetch the global installed-component id set or the initial 300 component candidates for ordinary Asset Detail rendering. Candidate lookup belongs to Component Manager and remains server-filtered. Asset Detail history is bounded by the active URL-backed view: Overview loads lightweight latest references, Custody expands checkout/license data, Operations expands movement/maintenance/disposal data, and Audit expands audit items/findings. A separate ID-only reference index preserves complete cross-workflow Evidence Center attachment discovery without eagerly loading every history record.
 
 ## Accessibility And Error Behavior
 
@@ -113,6 +113,10 @@ Do not fetch the global installed-component id set or the initial 300 component 
 
 - Asset Detail has one visible navigation layer and the selected `view` renders only its content group.
 - At 390px, core asset identity is visible before secondary actions; there are no six stacked header actions and no duplicate fixed-action choices.
+- Status, condition, current location, and current responsibility appear once in the identity header; healthy assets do not render an empty follow-up panel.
+- Audit status/result copy is localized and the full data-quality checklist remains available through one expandable follow-up surface.
+- Desktop and mobile relationship presentations preserve the same parent/current/child data, and all child rows remain available after the bounded preview.
+- Evidence Center remains complete when switching among bounded Overview, Custody, Operations, and Audit history views.
 - Component Manager opens from Asset Detail, preserves return context, and supports scan/search, review, install, remove, history, and existing audit logging.
 - Component candidates are not loaded until a meaningful search or scan starts.
 - View-only users do not see component install/remove or other mutation controls they cannot complete.
