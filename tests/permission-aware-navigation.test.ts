@@ -89,10 +89,12 @@ test("uses My Assets as the default home for linked employee self-service users"
 test("login and dashboard entry points use the role-aware default home", () => {
   const localePage = readFileSync("src/app/[locale]/page.tsx", "utf8")
   const loginPage = readFileSync("src/app/[locale]/(auth)/login/page.tsx", "utf8")
+  const loginForm = readFileSync("src/components/auth/login-form.tsx", "utf8")
   const dashboardPage = readFileSync("src/app/[locale]/(dashboard)/dashboard/page.tsx", "utf8")
 
   assert.match(localePage, /getDefaultHomeHref\(locale, user\)/)
-  assert.match(loginPage, /router\.replace\(`\/\$\{locale\}`\)/)
+  assert.match(loginPage, /normalizeLoginCallbackUrl\(locale, query\.callbackUrl, allowedOrigins\)/)
+  assert.match(loginForm, /router\.replace\(callbackUrl\)/)
   assert.match(dashboardPage, /shouldUseEmployeeHome\(user\)/)
   assert.match(dashboardPage, /redirect\(`\/\$\{locale\}\/my-assets`\)/)
 })
