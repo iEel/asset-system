@@ -5,6 +5,10 @@ Use this checklist with realistic master data and at least one asset in each imp
 ## system_admin
 
 - [ ] Login successfully.
+- [ ] On Login at 390px and desktop, confirm the real application icon, Light Slate background, Navy headings, Surface White form, Action Blue submit button, and Electric Blue focus state match the authenticated shell without horizontal overflow.
+- [ ] Confirm Username and Password have associated accessible labels, password-manager autocomplete values (`username` / `current-password`), 44px mobile targets, and 16px mobile input text. Toggle Eye/EyeOff and confirm the password remains focused and the value does not change.
+- [ ] Submit invalid credentials and confirm the username remains, password clears, focus returns to Password, the generic error is announced, and editing either field clears the stale error. Confirm loading copy and `aria-busy` are present while authentication is pending.
+- [ ] Open Login with `?reason=session-expired` and confirm the localized session-expired status appears. After a valid login with a same-locale `callbackUrl`, confirm navigation returns there; external, protocol-relative, backslash, cross-locale, and malformed callback values must fall back to the role-aware locale home.
 - [ ] Open Admin Settings.
 - [ ] Switch between System Settings tabs, refresh the page, and confirm the selected tab is restored from the `tab` URL query without losing other query values. Change a safe setting, then attempt to close/refresh the browser and confirm the standard leave warning appears only while unsaved changes exist.
 - [ ] Search System Settings by a known key, description keyword, and section name. Open a result and confirm it returns to the matching existing tab without discarding unsaved form values. Change a safe setting, use its link in `ตรวจทานก่อนบันทึก`, and confirm the same tab navigation works.
