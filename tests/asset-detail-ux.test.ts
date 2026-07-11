@@ -27,6 +27,42 @@ test("asset detail keeps an accessible name on the icon-only mobile back link", 
   assert.match(source, /aria-label=\{isAssetScanReturn \? t\("backToScan"\) : tCommon\("back"\)\}/)
 })
 
+test("asset detail answers identity and responsibility in one compact first-viewport summary", () => {
+  const source = assetDetailSource()
+  const identityIndex = source.indexOf('data-testid="asset-identity-summary"')
+  const componentContextIndex = source.indexOf("<AssetComponentContextBanner")
+
+  assert.notEqual(identityIndex, -1)
+  assert.ok(identityIndex < componentContextIndex)
+  assert.match(source, /<StatusPill label=\{asset\.status\.nameTh\}/)
+  assert.match(source, /<StatusPill label=\{asset\.condition\.nameTh\}/)
+  assert.match(source, /\{currentLocationLabel \|\| "-"\}/)
+  assert.match(source, /\{lifecycle\.responsibilityValue \?\? currentCustodianLabel \?\? "-"\}/)
+  assert.doesNotMatch(source, /<SummaryCard/)
+})
+
+test("asset detail keeps one actionable follow-up surface with expandable data quality", () => {
+  const source = assetDetailSource()
+  const thaiMessages = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const englishMessages = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(source, /activityFollowUpItems\.length > 0/)
+  assert.match(source, /data-testid="asset-data-health-details"/)
+  assert.doesNotMatch(source, /latestItem=\{latestActivityItem\}/)
+  assert.doesNotMatch(source, /latestTitle=\{t\("activityLatest"\)\}/)
+  assert.equal(thaiMessages.asset.activitySummaryTitle, "สิ่งที่ต้องติดตาม")
+  assert.equal(englishMessages.asset.activitySummaryTitle, "Follow-up")
+})
+
+test("asset detail localizes audit activity and avoids duplicated activity titles", () => {
+  const source = assetDetailSource()
+
+  assert.match(source, /getAuditRoundItemStatusLabelKey/)
+  assert.match(source, /getAuditRoundItemResultLabelKey/)
+  assert.match(source, /const tAudit = await getTranslations\("audit"\)/)
+  assert.doesNotMatch(source, /`\$\{latestMovement\.title\}: \$\{latestMovement\.summary\}`/)
+})
+
 test("asset detail makes component management discoverable from custody and More", () => {
   const source = assetDetailSource()
   const thaiMessages = readFileSync("messages/th.json", "utf8")

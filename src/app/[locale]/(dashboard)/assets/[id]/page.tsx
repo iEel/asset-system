@@ -58,13 +58,13 @@ import { appendReturnTo, normalizeAssetReturnTo } from "@/lib/asset-return-navig
 import { buildAssetDetailViewHref, isAssetDetailSectionVisible, parseAssetDetailView } from "@/lib/asset-detail-view"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import { splitRelationshipPreview } from "@/lib/asset-relationship-preview"
+import { getAuditRoundItemResultLabelKey, getAuditRoundItemStatusLabelKey } from "@/lib/audit-round-result-filters"
 import {
   compactMovementDetails,
   createHealthItem,
   formatMovementType,
   getActivityToneClass,
   getHealthBadgeClass,
-  getHealthPanelClass,
   getMissingPhotoChecklistLabels,
   getSummaryToneClass,
   getWarrantyIconClass,
@@ -124,6 +124,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const tBrandModel = await getTranslations("brandModel")
   const tMaintenance = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
+  const tAudit = await getTranslations("audit")
   const [asset, qrBaseUrlSetting, readyStatus] = await withPerformanceTiming(
     "asset-detail.initial-data",
     () => Promise.all([
@@ -550,12 +551,18 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       details: compactMovementDetails(details),
     }
   })
+  const formatAuditState = (status: string, result?: string | null) => {
+    const resultLabelKey = getAuditRoundItemResultLabelKey(result)
+    if (resultLabelKey) return tAudit(resultLabelKey)
+    const statusLabelKey = getAuditRoundItemStatusLabelKey(status)
+    return statusLabelKey ? tAudit(statusLabelKey) : result ?? status
+  }
   const unifiedTimelineItems = [
     ...movementTimelineItems,
     ...buildPurchaseTimelineItems(purchaseDocuments, legacyPurchaseDocuments, t),
     ...buildComponentTimelineItems(currentComponentsForPanel, componentHistoryForPanel, installedInLinksForPanel, locale, t),
     ...buildMaintenanceTimelineItems(asset.maintenanceTickets, locale, t),
-    ...buildAuditTimelineItems(asset.auditItems, locale, t),
+    ...buildAuditTimelineItems(asset.auditItems, locale, t, formatAuditState),
   ].sort((a, b) => b.performedAt.getTime() - a.performedAt.getTime())
   const latestMovement = unifiedTimelineItems[0]
   const currentLocationLabel = asset.currentLocation ? `${asset.currentLocation.code} - ${asset.currentLocation.name}` : null
@@ -634,7 +641,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const auditSummary = latestAuditItem
     ? t("latestAuditSummary", {
         auditNo: latestAuditItem.auditRound.auditNo,
-        result: latestAuditItem.auditResult ?? latestAuditItem.auditStatus,
+        result: formatAuditState(latestAuditItem.auditStatus, latestAuditItem.auditResult),
       })
     : tCommon("noData")
   const checkoutHref = `/${locale}/asset-management/checkout?assetId=${encodedAssetId}`
@@ -678,7 +685,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     : null
   const latestActivityItem: ActivitySummaryItem = {
     label: t("activityLatestEvent"),
-    value: latestMovement ? `${latestMovement.title}: ${latestMovement.summary}` : tCommon("noData"),
+    value: latestMovement
+      ? latestMovement.summary.startsWith(latestMovement.title)
+        ? latestMovement.summary
+        : `${latestMovement.title} · ${latestMovement.summary}`
+      : tCommon("noData"),
     href: "#movement",
     tone: latestMovement ? latestMovement.tone : "neutral" as const,
   }
@@ -782,6 +793,28 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           </div>
           <h1 className="break-words text-2xl font-bold text-foreground">{asset.assetTag}</h1>
           <p className="mt-1 break-words text-sm text-muted-foreground">{asset.name}</p>
+          <div data-testid="asset-identity-summary" className="mt-3 flex flex-col gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-1.5">
+                <StatusPill label={asset.status.nameTh} color={asset.status.colorCode} />
+                <AssetStateHelpPopover {...assetStatusHelp} />
+              </div>
+              <div className="inline-flex items-center gap-1.5">
+                <StatusPill label={asset.condition.nameTh} color={asset.condition.colorCode} />
+                <AssetStateHelpPopover {...assetConditionHelp} />
+              </div>
+            </div>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-muted-foreground">
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                <MapPin className="h-4 w-4 shrink-0 text-info" aria-hidden="true" />
+                <span className="truncate">{currentLocationLabel || "-"}</span>
+              </span>
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                <PackageCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                <span className="truncate">{lifecycle.responsibilityValue ?? currentCustodianLabel ?? "-"}</span>
+              </span>
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Link
@@ -889,50 +922,44 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         warningLabel={t("componentMissingSerial")}
       />
 
-      {assetDetailView === "overview" ? (
+      {assetDetailView === "overview" && activityFollowUpItems.length > 0 ? (
         <ActivitySummaryPanel
           title={t("activitySummaryTitle")}
           subtitle={t("activitySummaryHelp")}
-          latestTitle={t("activityLatest")}
           followUpTitle={t("activityFollowUp")}
-          noFollowUpLabel={t("activityNoFollowUp")}
-          latestItem={latestActivityItem}
           followUpItems={activityFollowUpItems}
+          details={dataHealthDone < dataHealthItems.length ? (
+            <details data-testid="asset-data-health-details" className="rounded-md border border-border bg-background">
+              <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 px-3 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                <span>{t("dataHealthTitle")}</span>
+                <span className={`rounded-full px-2 py-0.5 text-xs ${getHealthBadgeClass(dataHealthTone)}`}>
+                  {t("dataHealthProgress", { done: dataHealthDone, total: dataHealthItems.length })}
+                </span>
+              </summary>
+              <div className="grid gap-2 border-t border-border p-2 sm:grid-cols-2">
+                {dataHealthItems.map((item) => (
+                  <a
+                    key={item.label}
+                    href={item.done ? item.href : item.fixHref}
+                    className="flex min-h-11 items-center gap-2 rounded-md bg-surface px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                  >
+                    {item.done ? (
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+                    )}
+                    <span className={item.done ? "text-muted-foreground" : "font-medium text-foreground"}>{item.label}</span>
+                    {!item.done ? <span className="ml-auto text-xs font-medium text-primary">{item.actionLabel}</span> : null}
+                  </a>
+                ))}
+              </div>
+            </details>
+          ) : null}
         />
       ) : null}
 
-      <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard
-            icon={<MapPin className="h-5 w-5 text-info" />}
-            label={t("currentLocation")}
-            value={currentLocationLabel}
-            href="#ownership"
-          />
-          <SummaryCard
-            icon={<PackageCheck className="h-5 w-5 text-primary" />}
-            label={lifecycle.responsibilityLabel}
-            value={lifecycle.responsibilityValue ?? currentCustodianLabel}
-            href="#ownership"
-          />
-          <SummaryCard
-            icon={activeCheckout ? <Truck className="h-5 w-5 text-info" /> : <CheckCircle2 className="h-5 w-5 text-success" />}
-            label={lifecycle.statusLabel}
-            value={lifecycle.statusValue}
-            href={lifecycle.statusHref}
-          />
-          <SummaryCard
-            icon={<ShieldCheck className={`h-5 w-5 ${getWarrantyIconClass(warrantyState.tone)}`} />}
-            label={t("warrantyStatus")}
-            value={getWarrantyStatusLabel(warrantyState, t)}
-            href="#purchase"
-          />
-        </div>
-      </section>
-
       {assetDetailView === "overview" && canEditAsset ? (
-        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
-        <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold text-foreground">{t("quickActions")}</h2>
@@ -967,42 +994,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               />
             </div>
           ) : null}
-        </div>
-
-        <div className={`rounded-lg border p-4 shadow-sm ${getHealthPanelClass(dataHealthTone)}`}>
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold text-foreground">{t("dataHealthTitle")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t("dataHealthProgress", { done: dataHealthDone, total: dataHealthItems.length })}
-              </p>
-            </div>
-            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getHealthBadgeClass(dataHealthTone)}`}>
-              {dataHealthDone === dataHealthItems.length ? t("dataHealthComplete") : t("dataHealthNeedsReview")}
-            </span>
-          </div>
-          <div className="grid gap-2">
-            {dataHealthItems.map((item) => (
-              <a
-                key={item.label}
-                href={item.done ? item.href : item.fixHref}
-                className="flex items-center gap-2 rounded-md bg-surface/80 px-2 py-1.5 text-sm transition-colors hover:bg-background"
-              >
-                {item.done ? (
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
-                ) : (
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
-                )}
-                <span className={item.done ? "text-muted-foreground" : "font-medium text-foreground"}>{item.label}</span>
-                {!item.done ? (
-                  <span className="ml-auto shrink-0 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
-                    {item.actionLabel}
-                  </span>
-                ) : null}
-              </a>
-            ))}
-          </div>
-        </div>
         </section>
       ) : null}
 
@@ -1011,16 +1002,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           {isAssetDetailSectionVisible(assetDetailView, "overview") ? (
             <section id="overview" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <SectionHeading title={t("detailSections.overview")} subtitle={t("detailSections.overviewSubtitle")} />
-            <div className="mb-5 flex flex-wrap items-center gap-3">
-              <div className="inline-flex items-center gap-1.5">
-                <StatusPill label={asset.status.nameTh} color={asset.status.colorCode} />
-                <AssetStateHelpPopover {...assetStatusHelp} />
-              </div>
-              <div className="inline-flex items-center gap-1.5">
-                <StatusPill label={asset.condition.nameTh} color={asset.condition.colorCode} />
-                <AssetStateHelpPopover {...assetConditionHelp} />
-              </div>
-            </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <Info label={t("category")} value={`${asset.category.code} - ${asset.category.name}`} />
               <Info label={t("brand")} value={asset.brand?.name} />
@@ -1452,8 +1433,8 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                           <div className="font-medium text-foreground">{item.auditRound.auditNo}</div>
                           <div className="mt-1 text-xs text-muted-foreground">{item.auditRound.name}</div>
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{item.auditStatus}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{item.auditResult ?? "-"}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatAuditState(item.auditStatus)}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{item.auditResult ? formatAuditState(item.auditStatus, item.auditResult) : "-"}</td>
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(item.lastScanAt ?? item.scannedAt)}</td>
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{item.scanCount}</td>
                       </ClickableTableRow>
@@ -1494,28 +1475,6 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         ) : null}
       </div>
     </div>
-  )
-}
-
-function SummaryCard({
-  icon,
-  label,
-  value,
-  href,
-}: {
-  icon: React.ReactNode
-  label: string
-  value?: string | null
-  href: string
-}) {
-  return (
-    <a href={href} className="rounded-md border border-border bg-background p-3 transition-colors hover:border-primary/40 hover:bg-primary/5">
-      <div className="mb-2 flex items-center gap-2">
-        {icon}
-        <span className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{label}</span>
-      </div>
-      <div className="line-clamp-2 text-sm font-semibold text-foreground">{value || "-"}</div>
-    </a>
   )
 }
 
@@ -1673,19 +1632,15 @@ function getOwnershipLifecycle({
 function ActivitySummaryPanel({
   title,
   subtitle,
-  latestTitle,
   followUpTitle,
-  noFollowUpLabel,
-  latestItem,
   followUpItems,
+  details,
 }: {
   title: string
   subtitle: string
-  latestTitle: string
   followUpTitle: string
-  noFollowUpLabel: string
-  latestItem: ActivitySummaryItem
   followUpItems: ActivitySummaryItem[]
+  details?: React.ReactNode
 }) {
   return (
     <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
@@ -1695,25 +1650,14 @@ function ActivitySummaryPanel({
           <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
         </div>
       </div>
-      <div className="grid gap-4 xl:grid-cols-[1fr_420px]">
-        <div>
-          <div className="mb-2 text-xs font-medium uppercase tracking-normal text-muted-foreground">{latestTitle}</div>
-          <ActivitySummaryLink item={latestItem} spacious />
+      <div>
+        <div className="mb-2 text-xs font-medium uppercase tracking-normal text-muted-foreground">{followUpTitle}</div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {followUpItems.map((item) => (
+            <ActivitySummaryLink key={item.label} item={item} showAction />
+          ))}
         </div>
-        <div>
-          <div className="mb-2 text-xs font-medium uppercase tracking-normal text-muted-foreground">{followUpTitle}</div>
-          {followUpItems.length === 0 ? (
-            <div className="rounded-md border border-success/20 bg-success/5 px-3 py-2 text-sm font-medium text-success">
-              {noFollowUpLabel}
-            </div>
-          ) : (
-            <div className="grid gap-2">
-              {followUpItems.map((item) => (
-                <ActivitySummaryLink key={item.label} item={item} showAction />
-              ))}
-            </div>
-          )}
-        </div>
+        {details ? <div className="mt-3">{details}</div> : null}
       </div>
     </section>
   )
@@ -1722,21 +1666,19 @@ function ActivitySummaryPanel({
 function ActivitySummaryLink({
   item,
   showAction,
-  spacious,
 }: {
   item: ActivitySummaryItem
   showAction?: boolean
-  spacious?: boolean
 }) {
   return (
     <Link
       href={item.href}
-      className={`block rounded-md border px-3 transition-colors hover:border-primary/40 hover:bg-primary/5 ${spacious ? "py-4" : "py-2"} ${getActivityToneClass(item.tone)}`}
+      className={`block rounded-md border px-3 py-2 transition-colors hover:border-primary/40 hover:bg-primary/5 ${getActivityToneClass(item.tone)}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{item.label}</div>
-          <div className={`mt-1 text-sm font-semibold text-foreground ${spacious ? "line-clamp-3" : "line-clamp-2"}`}>{item.value || "-"}</div>
+          <div className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">{item.value || "-"}</div>
         </div>
         {showAction && item.actionLabel ? (
           <span className="shrink-0 rounded-full bg-surface/80 px-2 py-1 text-xs font-medium text-primary">
@@ -2639,12 +2581,13 @@ function buildAuditTimelineItems(
     auditRound: { id: string; auditNo: string; name: string }
   }[],
   locale: string,
-  t: (key: string, values?: Record<string, string | number | Date>) => string
+  t: (key: string, values?: Record<string, string | number | Date>) => string,
+  formatAuditState: (status: string, result?: string | null) => string,
 ): MovementTimelineItem[] {
   return auditItems.map((item) => ({
     id: `audit-${item.id}`,
     title: t("timelineAuditRound"),
-    summary: `${item.auditRound.auditNo}: ${item.auditResult ?? item.auditStatus}`,
+    summary: `${item.auditRound.auditNo} · ${formatAuditState(item.auditStatus, item.auditResult)}`,
     category: "audit",
     tone: (item.findingRequired ? "warning" : "success") as MovementTone,
     performedAt: item.lastScanAt ?? item.createdAt,
@@ -2653,7 +2596,7 @@ function buildAuditTimelineItems(
     reason: null,
     details: compactMovementDetails([
       { label: t("auditRound"), value: `${item.auditRound.auditNo} - ${item.auditRound.name}`, href: `/${locale}/audit/rounds/${item.auditRound.id}` },
-      { label: t("result"), value: item.auditResult ?? item.auditStatus },
+      { label: t("result"), value: formatAuditState(item.auditStatus, item.auditResult) },
       { label: t("scanCount"), value: String(item.scanCount) },
       { label: t("auditFindingRequired"), value: item.findingRequired ? t("timelineYes") : t("timelineNo") },
     ]),
