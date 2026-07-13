@@ -5,6 +5,7 @@ import {
   getDisposalDecisionFieldErrors,
   getDisposalExecutionFieldErrors,
 } from "../disposal-type-policy.ts"
+import { normalizeDisposalBulkExecutionIds } from "../disposal-bulk-execution.ts"
 
 const optionalDecimal = z.preprocess(
   (value) => (value === "" || value == null ? null : value),
@@ -60,19 +61,21 @@ export const disposalExecutionSchema = z.object({
 })
 
 const disposalBulkRequestIds = z.array(z.string().uuid()).min(1).max(50)
+const disposalBulkExecutionRequestIds = z.array(z.string())
+  .transform(normalizeDisposalBulkExecutionIds)
+  .pipe(z.array(z.string().min(1)).min(1).max(20))
 
 export const disposalBulkExecutionSchema = z.object({
   mode: z.enum(["preview", "commit"]),
-  requestIds: z.array(z.string().trim().min(1)).min(1).max(20)
-    .transform((ids) => [...new Set(ids)]),
+  requestIds: disposalBulkExecutionRequestIds,
   executionDate: z.coerce.date(),
   executedById: z.string().trim().min(1),
   nextStatusId: z.string().trim().min(1),
   useHistoricalEvidenceException: z.boolean().optional().default(false),
   evidenceExceptionReason: z.preprocess(
     (value) => (value === "" || value == null ? null : value),
-    z.string().trim().max(2000).nullable().optional(),
-  ),
+    z.string().trim().max(2000).nullable(),
+  ).optional(),
   evidenceExceptionAcknowledged: z.boolean().optional().default(false),
 })
 

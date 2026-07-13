@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
@@ -22,12 +23,20 @@ test("normalizes bulk execution IDs by trimming and preserving first occurrence 
   assert.deepEqual(normalizeDisposalBulkExecutionIds(["r1", "r1", " r2 "]), ["r1", "r2"])
 })
 
-test("requires between one and twenty bulk execution IDs", () => {
+test("enforces the bulk execution limit after normalizing to unique IDs", () => {
   assert.throws(() => disposalBulkExecutionSchema.parse({ ...validInput, requestIds: [] }))
+  assert.deepEqual(
+    disposalBulkExecutionSchema.parse({ ...validInput, requestIds: Array.from({ length: 21 }, () => " r1 ") }).requestIds,
+    ["r1"],
+  )
   assert.throws(() => disposalBulkExecutionSchema.parse({
     ...validInput,
     requestIds: Array.from({ length: 21 }, (_, index) => `r${index}`),
   }))
+})
+
+test("rejects a bulk execution selection containing only blank IDs", () => {
+  assert.throws(() => disposalBulkExecutionSchema.parse({ ...validInput, requestIds: [" ", "   "] }))
 })
 
 test("accepts shared execution values and defaults historical exception fields", () => {
@@ -55,13 +64,28 @@ test("blocks a selected request whose disposal type differs from the established
   assert.equal(getDisposalBulkSelectionBlockCode(destroyCandidate, "sell"), "DISPOSAL_BULK_MIXED_TYPES")
 })
 
-test("localizes the stable bulk execution error codes through the shared disposal message helper", () => {
-  for (const code of [
+test("localizes stable bulk execution error codes from both locale files", () => {
+  const codes = [
     "DISPOSAL_BULK_INVALID_SELECTION",
     "DISPOSAL_BULK_MIXED_TYPES",
     "DISPOSAL_BULK_EXECUTION_FAILED",
-  ]) {
-    assert.equal(getDisposalApiErrorMessage({ code, error: "server detail" }, (key) => key, "fallback"), `errors.${code}`)
+  ] as const
+
+  for (const locale of ["en", "th"] as const) {
+    const errors = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).disposalPage.errors as Record<string, string>
+
+    for (const code of codes) {
+      assert.equal(typeof errors[code], "string", `${locale}:${code}`)
+      assert.notEqual(errors[code], code, `${locale}:${code}`)
+      assert.equal(
+        getDisposalApiErrorMessage(
+          { code, error: "server detail" },
+          (key) => errors[key.replace("errors.", "")],
+          "fallback",
+        ),
+        errors[code],
+      )
+    }
   }
 })
 
