@@ -1,6 +1,11 @@
 "use client"
 
+import { useRef } from "react"
 import { useRouter } from "next/navigation"
+import {
+  CLICKABLE_ROW_BEFORE_NAVIGATE_EVENT,
+  shouldCancelClickableRowNavigation,
+} from "@/lib/clickable-row-navigation"
 
 export function ClickableTableRow({
   href,
@@ -12,22 +17,29 @@ export function ClickableTableRow({
   href: string
   label: string
   className?: string
-  onNavigate?: () => void
+  onNavigate?: () => boolean | void
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const rowRef = useRef<HTMLTableRowElement | null>(null)
 
   function shouldIgnoreClick(target: EventTarget | null) {
     return target instanceof Element && Boolean(target.closest("a,button,input,select,textarea,[data-no-row-click]"))
   }
 
   function openDetail() {
-    onNavigate?.()
+    const beforeNavigateEvent = new CustomEvent(CLICKABLE_ROW_BEFORE_NAVIGATE_EVENT, {
+      bubbles: true,
+      cancelable: true,
+    })
+    if (rowRef.current && !rowRef.current.dispatchEvent(beforeNavigateEvent)) return
+    if (shouldCancelClickableRowNavigation(onNavigate?.())) return
     router.push(href)
   }
 
   return (
     <tr
+      ref={rowRef}
       tabIndex={0}
       aria-label={label}
       onClick={(event) => {

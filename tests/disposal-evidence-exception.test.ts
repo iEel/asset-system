@@ -77,7 +77,7 @@ test("persists disposal evidence exception metadata with an idempotent migration
 })
 
 test("registers each historical evidence exception as a stable API error code", () => {
-  const apiErrors = readFileSync("src/lib/disposal-api-errors.ts", "utf8")
+  const apiErrors = readFileSync("src/lib/disposal-api-error-codes.ts", "utf8")
   const errorMessages = readFileSync("src/lib/disposal-error-message.ts", "utf8")
   const exceptionCodes = [
     "DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN",
@@ -93,7 +93,7 @@ test("registers each historical evidence exception as a stable API error code", 
 })
 
 test("registers the execution failure code with localized client messages", () => {
-  const apiErrors = readFileSync("src/lib/disposal-api-errors.ts", "utf8")
+  const apiErrors = readFileSync("src/lib/disposal-api-error-codes.ts", "utf8")
   const errorMessages = readFileSync("src/lib/disposal-error-message.ts", "utf8")
 
   assert.match(apiErrors, /"DISPOSAL_EXECUTION_FAILED"/)

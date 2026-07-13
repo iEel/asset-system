@@ -1,13 +1,15 @@
-import type { DisposalApiErrorCode } from "./disposal-api-errors.ts"
+import { disposalApiErrorCodes, type DisposalApiErrorCode } from "./disposal-api-error-codes.ts"
 import type { DisposalType } from "./disposal-type-policy.ts"
 
 export const MAX_DISPOSAL_BULK_EXECUTION_ITEMS = 20
 
-const disposalBulkExecutionCodes = [
+export const disposalBulkExecutionCodes = [
   "DISPOSAL_BULK_INVALID_SELECTION",
   "DISPOSAL_BULK_MIXED_TYPES",
   "DISPOSAL_BULK_EXECUTION_FAILED",
 ] as const
+
+export const disposalBulkExecutionErrorCodes = disposalApiErrorCodes
 
 export type DisposalBulkExecutionCode =
   | (typeof disposalBulkExecutionCodes)[number]

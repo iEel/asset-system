@@ -41,6 +41,7 @@ import {
 } from "@/lib/disposal-policy"
 import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
 import { getDisposalBulkApprovalBlockCode } from "@/lib/disposal-bulk-approval"
+import { disposalBulkExecutionErrorCodes } from "@/lib/disposal-bulk-execution"
 
 type DisposalPageProps = {
   params: Promise<{ locale: string }>
@@ -165,6 +166,11 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
     approverId: request.approverId,
     requestedById: request.requestedById,
     createdBy: request.createdBy,
+    recipientName: request.recipientName,
+    documentNo: request.documentNo,
+    saleValue: request.saleValue?.toString() ?? null,
+    salvageValue: request.salvageValue?.toString() ?? null,
+    executionRemark: request.executionRemark,
   })) : []
   const employeeOptions = employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` }))
   const statusOptions = statuses.map((status) => ({ id: status.id, name: status.name, label: status.nameTh }))
@@ -218,9 +224,12 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
       DISPOSAL_APPROVAL_FAILED: t("bulkErrors.DISPOSAL_APPROVAL_FAILED"),
     },
   }
+  const bulkExecutionErrors = Object.fromEntries(
+    disposalBulkExecutionErrorCodes.map((code) => [code, t(`bulkExecutionErrors.${code}`)]),
+  )
   const bulkExecutionCopy: DisposalBulkExecutionCopy = {
-    toolbarLabel: t("bulkExecutionToolbarLabel"), selectionMode: t("bulkExecutionSelectionMode"), cancelSelectionMode: t("bulkExecutionCancelSelectionMode"), selectedCount: t.raw("bulkExecutionSelectedCount"), selectionLimit: t("bulkExecutionSelectionLimit"), mixedType: t("bulkExecutionMixedType"), selectPage: t("bulkExecutionSelectPage"), clearSelection: t("bulkExecutionClearSelection"), review: t("bulkExecutionReview"), selectItem: t.raw("bulkExecutionSelectItem"), incompatibleType: t("bulkExecutionIncompatibleType"), previewTitle: t("bulkExecutionPreviewTitle"), previewLoading: t("bulkExecutionPreviewLoading"), preflightHelp: t("bulkExecutionPreflightHelp"), executionDate: t("bulkExecutionDate"), executor: t("bulkExecutionExecutor"), finalStatus: t("bulkExecutionFinalStatus"), selectEmployee: t("selectEmployee"), selectStatus: t("bulkExecutionSelectStatus"), historicalException: t("bulkExecutionHistoricalException"), historicalReason: t("bulkExecutionHistoricalReason"), historicalReasonHelp: t.raw("bulkExecutionHistoricalReasonHelp"), historicalAcknowledgement: t("bulkExecutionHistoricalAcknowledgement"), permanentConfirmation: t("bulkExecutionPermanentConfirmation"), confirm: t.raw("bulkExecutionConfirm"), committing: t("bulkExecutionCommitting"), resultTitle: t("bulkExecutionResultTitle"), selected: t("bulkExecutionSelected"), eligible: t("bulkExecutionEligible"), executed: t("bulkExecutionExecuted"), blocked: t("bulkExecutionBlocked"), failed: t("bulkExecutionFailed"), retry: t("bulkExecutionRetry"), close: t("bulkExecutionClose"), cancel: t("bulkExecutionCancel"), zeroEligible: t("bulkExecutionZeroEligible"), requestFailed: t("bulkExecutionRequestFailed"), commitFailed: t("bulkExecutionCommitFailed"), discardSelection: t("bulkExecutionDiscardSelection"),
-    errors: { DISPOSAL_REQUEST_NOT_FOUND: t("errors.DISPOSAL_REQUEST_NOT_FOUND"), DISPOSAL_INVALID_STAGE: t("errors.DISPOSAL_INVALID_STAGE"), DISPOSAL_SOD_CONFLICT: t("errors.DISPOSAL_SOD_CONFLICT"), DISPOSAL_ASSET_INELIGIBLE: t("errors.DISPOSAL_ASSET_INELIGIBLE"), DISPOSAL_CONCURRENT_UPDATE: t("bulkErrors.DISPOSAL_CONCURRENT_UPDATE"), DISPOSAL_FORBIDDEN: t("bulkErrors.DISPOSAL_FORBIDDEN"), DISPOSAL_EMPLOYEE_NOT_FOUND: t("errors.DISPOSAL_EMPLOYEE_NOT_FOUND"), DISPOSAL_STATUS_NOT_FOUND: t("errors.DISPOSAL_STATUS_NOT_FOUND"), DISPOSAL_INVALID_STATUS_TARGET: t("errors.DISPOSAL_INVALID_STATUS_TARGET"), DISPOSAL_EVIDENCE_REQUIRED: t("errors.DISPOSAL_EVIDENCE_REQUIRED"), DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN: t("errors.DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN"), DISPOSAL_EVIDENCE_EXCEPTION_NOT_APPLICABLE: t("errors.DISPOSAL_EVIDENCE_EXCEPTION_NOT_APPLICABLE"), DISPOSAL_BULK_INVALID_SELECTION: t("errors.DISPOSAL_BULK_INVALID_SELECTION"), DISPOSAL_BULK_MIXED_TYPES: t("errors.DISPOSAL_BULK_MIXED_TYPES"), DISPOSAL_BULK_EXECUTION_FAILED: t("errors.DISPOSAL_BULK_EXECUTION_FAILED") },
+    toolbarLabel: t("bulkExecutionToolbarLabel"), selectionMode: t("bulkExecutionSelectionMode"), cancelSelectionMode: t("bulkExecutionCancelSelectionMode"), selectedCount: t.raw("bulkExecutionSelectedCount"), selectionLimit: t("bulkExecutionSelectionLimit"), mixedType: t("bulkExecutionMixedType"), selectPage: t("bulkExecutionSelectPage"), clearSelection: t("bulkExecutionClearSelection"), review: t("bulkExecutionReview"), selectItem: t.raw("bulkExecutionSelectItem"), incompatibleType: t("bulkExecutionIncompatibleType"), previewTitle: t("bulkExecutionPreviewTitle"), previewLoading: t("bulkExecutionPreviewLoading"), preflightHelp: t("bulkExecutionPreflightHelp"), executionDate: t("bulkExecutionDate"), executor: t("bulkExecutionExecutor"), finalStatus: t("bulkExecutionFinalStatus"), selectEmployee: t("selectEmployee"), selectStatus: t("bulkExecutionSelectStatus"), historicalException: t("bulkExecutionHistoricalException"), historicalReason: t("bulkExecutionHistoricalReason"), historicalReasonHelp: t.raw("bulkExecutionHistoricalReasonHelp"), historicalAcknowledgement: t("bulkExecutionHistoricalAcknowledgement"), historicalWarning: t("bulkExecutionHistoricalWarning"), permanentConfirmation: t("bulkExecutionPermanentConfirmation"), confirm: t.raw("bulkExecutionConfirm"), committing: t("bulkExecutionCommitting"), resultTitle: t("bulkExecutionResultTitle"), selected: t("bulkExecutionSelected"), eligible: t("bulkExecutionEligible"), executed: t("bulkExecutionExecuted"), blocked: t("bulkExecutionBlocked"), failed: t("bulkExecutionFailed"), retry: t("bulkExecutionRetry"), close: t("bulkExecutionClose"), cancel: t("bulkExecutionCancel"), cancelPreview: t("bulkExecutionCancelPreview"), zeroEligible: t("bulkExecutionZeroEligible"), requestFailed: t("bulkExecutionRequestFailed"), commitFailed: t("bulkExecutionCommitFailed"), discardSelection: t("bulkExecutionDiscardSelection"), sharedValues: t("bulkExecutionSharedValues"), reviewedValues: t("bulkExecutionReviewedValues"), recipient: t("bulkExecutionRecipient"), documentNo: t("bulkExecutionDocumentNo"), saleValue: t("bulkExecutionSaleValue"), salvageValue: t("bulkExecutionSalvageValue"), remark: t("bulkExecutionRemark"), notProvided: t("bulkExecutionNotProvided"),
+    errors: bulkExecutionErrors,
   }
   const stageCountsByStatus = new Map(stageCounts.map((count) => [count.requestStatus, count._count._all]))
   const stageTabs: Array<{ status: "" | "pending" | "approved" | "disposed" | "rejected"; label: string; count: number }> = [
@@ -236,8 +245,8 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
 
   return (
     <div>
-      <DisposalBulkApprovalProvider items={bulkItems} selectionKey={`${filters.page}:${filters.pageSize}:${query}`} copy={bulkApprovalCopy} className="space-y-6">
-      <DisposalBulkExecutionProvider items={bulkExecutionItems} selectionKey={`${filters.page}:${filters.pageSize}:${query}`} copy={bulkExecutionCopy} executionStatuses={executionStatuses} employees={employeeOptions} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} defaultExecutionDate={new Date().toISOString().slice(0, 10)}>
+      <DisposalBulkApprovalProvider items={bulkItems} selectionKey={`${filters.page}:${filters.pageSize}:${query}`} copy={bulkApprovalCopy}>
+      <DisposalBulkExecutionProvider items={bulkExecutionItems} selectionKey={`${filters.page}:${filters.pageSize}:${query}`} copy={bulkExecutionCopy} executionStatuses={executionStatuses} employees={employeeOptions} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>

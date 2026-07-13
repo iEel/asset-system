@@ -42,18 +42,57 @@ test("approved queue alone mounts bulk execution controls", async () => {
 
 test("bulk execution selection, request, and retry rules are represented", async () => {
   const component = await source("src/components/disposal/disposal-bulk-execution.tsx")
+  const state = await source("src/lib/disposal-bulk-execution-ui.ts")
 
-  assert.match(component, /item\.disposalType !== selectedType/)
-  assert.match(component, /current\.size >= MAX_DISPOSAL_BULK_EXECUTION_ITEMS/)
+  assert.match(state, /selectedType !== item\.disposalType/)
+  assert.match(state, /state\.selectedIds\.length >= MAX_DISPOSAL_BULK_EXECUTION_ITEMS/)
   assert.match(component, /selectionKey/)
   assert.match(component, /AbortController/)
   assert.match(component, /window\.confirm/)
   assert.match(component, /useHistoricalEvidenceException/)
   assert.match(component, /evidenceExceptionReason/)
   assert.match(component, /evidenceExceptionAcknowledged/)
-  assert.match(component, /send\("commit", eligibleIds/ )
-  assert.match(component, /preview\(unresolved\)/)
-  assert.match(component, /md:hidden/)
+  assert.match(component, /buildBulkExecutionCommitPayload\(previewPayload, eligibleIds\)/)
+  assert.match(component, /preview\(unresolved, previewPayload\)/)
+  assert.match(component, /toggleBulkExecutionItem/)
+  assert.match(component, /toggleBulkExecutionPage/)
+})
+
+test("bulk execution integrates locked preview snapshots and merged unresolved results", async () => {
+  const component = await source("src/components/disposal/disposal-bulk-execution.tsx")
+
+  assert.match(component, /buildBulkExecutionPayload\(BULK_EXECUTION_MODES\.preview\.mode/)
+  assert.match(component, /buildBulkExecutionCommitPayload\(previewPayload/)
+  assert.match(component, /mergeBulkExecutionResults\(previewResponse, commitResponse\)/)
+  assert.match(component, /getBulkExecutionUnresolvedIds/)
+  assert.match(component, /previewControllerRef\.current\?\.abort\(\)/)
+  assert.match(component, /dialogState === "committing"/)
+})
+
+test("bulk execution reviews server-derived item values and gates historical controls", async () => {
+  const component = await source("src/components/disposal/disposal-bulk-execution.tsx")
+  const page = await source("src/app/[locale]/(dashboard)/disposal/page.tsx")
+
+  for (const field of ["recipientName", "documentNo", "saleValue", "salvageValue", "executionRemark"]) {
+    assert.match(component, new RegExp(field))
+    assert.match(page, new RegExp(field))
+  }
+  assert.match(component, /isHistoricalExceptionAvailable/)
+  assert.match(component, /validateHistoricalException/)
+  assert.match(component, /aria-describedby=/)
+  assert.match(component, /aria-busy=/)
+  assert.match(component, /aria-live="polite"/)
+})
+
+test("bulk execution uses explicit selection mode, guarded rows, Bangkok date, and direct spacing", async () => {
+  const component = await source("src/components/disposal/disposal-bulk-execution.tsx")
+  const page = await source("src/app/[locale]/(dashboard)/disposal/page.tsx")
+
+  assert.match(component, /selectionMode/)
+  assert.match(component, /CLICKABLE_ROW_BEFORE_NAVIGATE_EVENT/)
+  assert.match(component, /getBangkokBusinessDate/)
+  assert.doesNotMatch(page, /toISOString\(\)\.slice\(0, 10\)/)
+  assert.match(page, /DisposalBulkExecutionProvider[\s\S]*className="space-y-6"/)
 })
 
 test("bulk execution copy has English and Thai parity", async () => {
@@ -71,6 +110,8 @@ test("bulk execution copy has English and Thai parity", async () => {
     "bulkExecutionConfirm", "bulkExecutionCommitting", "bulkExecutionResultTitle", "bulkExecutionExecuted",
     "bulkExecutionBlocked", "bulkExecutionFailed", "bulkExecutionRetry", "bulkExecutionClose", "bulkExecutionCancel",
     "bulkExecutionZeroEligible", "bulkExecutionRequestFailed", "bulkExecutionCommitFailed", "bulkExecutionDiscardSelection",
+    "bulkExecutionHistoricalWarning", "bulkExecutionSharedValues", "bulkExecutionReviewedValues", "bulkExecutionRecipient", "bulkExecutionDocumentNo", "bulkExecutionSaleValue",
+    "bulkExecutionSalvageValue", "bulkExecutionRemark", "bulkExecutionNotProvided", "bulkExecutionCancelPreview",
     "bulkExecutionErrors",
   ]
 
@@ -85,6 +126,26 @@ test("bulk execution copy has English and Thai parity", async () => {
     "DISPOSAL_CONCURRENT_UPDATE", "DISPOSAL_FORBIDDEN", "DISPOSAL_EVIDENCE_REQUIRED", "DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN",
     "DISPOSAL_EVIDENCE_EXCEPTION_NOT_APPLICABLE", "DISPOSAL_BULK_MIXED_TYPES", "DISPOSAL_BULK_EXECUTION_FAILED",
   ]) {
+    assert.equal(typeof getObjectAtPath(english, `disposalPage.bulkExecutionErrors.${code}`), "string", `English ${code}`)
+    assert.equal(typeof getObjectAtPath(thai, `disposalPage.bulkExecutionErrors.${code}`), "string", `Thai ${code}`)
+  }
+})
+
+test("every disposal bulk execution code is wired to English and Thai copy", async () => {
+  const [apiErrors, bulkPolicy, page, english, thai] = await Promise.all([
+    source("src/lib/disposal-api-error-codes.ts"),
+    source("src/lib/disposal-bulk-execution.ts"),
+    source("src/app/[locale]/(dashboard)/disposal/page.tsx"),
+    source("messages/en.json").then(JSON.parse) as Promise<Record<string, unknown>>,
+    source("messages/th.json").then(JSON.parse) as Promise<Record<string, unknown>>,
+  ])
+  const codes = [...new Set([
+    ...apiErrors.matchAll(/"(DISPOSAL_[A-Z_]+)"/g),
+    ...bulkPolicy.matchAll(/"(DISPOSAL_[A-Z_]+)"/g),
+  ].map((match) => match[1]))]
+
+  assert.match(page, /disposalBulkExecutionErrorCodes\.map/)
+  for (const code of codes) {
     assert.equal(typeof getObjectAtPath(english, `disposalPage.bulkExecutionErrors.${code}`), "string", `English ${code}`)
     assert.equal(typeof getObjectAtPath(thai, `disposalPage.bulkExecutionErrors.${code}`), "string", `Thai ${code}`)
   }
