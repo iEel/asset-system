@@ -355,7 +355,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     ) : null}
                     {canCreateDisposal && finding.asset ? (
                       <Link
-                        href={appendOperationalReturnTo(`/${locale}/disposal?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref)}
+                        href={appendOperationalReturnTo(`/${locale}/disposal/new?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref)}
                         className="inline-flex min-h-11 items-center justify-center rounded-md border border-warning/40 bg-warning/5 px-3 text-sm font-medium text-warning"
                       >
                         {t("openDisposalRequest")}
@@ -478,7 +478,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                         )}
                         {canCreateDisposal && finding.asset ? (
                           <Link
-                            href={appendOperationalReturnTo(`/${locale}/disposal?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref)}
+                            href={appendOperationalReturnTo(`/${locale}/disposal/new?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref)}
                             className="ml-2 inline-flex h-8 items-center rounded-md border border-warning/40 bg-warning/5 px-2 text-xs font-medium text-warning"
                           >
                             {t("openDisposalRequest")}

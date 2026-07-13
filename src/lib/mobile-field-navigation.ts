@@ -20,7 +20,7 @@ const focusTaskRoutes = [
   /^\/audit\/rounds\/new$/,
   /^\/audit\/rounds\/[^/]+(?:\/scan)?$/,
   /^\/maintenance\/[^/]+$/,
-  /^\/disposal\/[^/]+$/,
+  /^\/disposal\/(?:new|batch\/new|[^/]+)$/,
 ]
 
 export function getMobileShellMode(pathname: string): MobileShellMode {

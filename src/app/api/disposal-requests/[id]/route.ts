@@ -3,8 +3,16 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { getDisposalExecutionStatusError } from "@/lib/asset-lifecycle-exception-policy"
+import {
+  getDisposalApprovalAssetStatusError,
+  getDisposalSegregationError,
+  getDisposalStatusTargetError,
+} from "@/lib/disposal-policy"
 import { disposalDecisionSchema, disposalExecutionSchema } from "@/lib/validations/disposal"
+import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
+import { deriveDisposalBatchStatus } from "@/lib/disposal-batch"
+import { disposalApiError } from "@/lib/disposal-api-errors"
+import { isDisposalBatchSchemaReady } from "@/lib/disposal-schema-readiness"
 
 type DisposalRequestContext = {
   params: Promise<{ id: string }>
@@ -13,35 +21,70 @@ type DisposalRequestContext = {
 export async function PATCH(request: NextRequest, context: DisposalRequestContext) {
   try {
     const user = await requireAuth()
-    requirePermission(user, "disposal", "approve")
-
     const { id } = await context.params
     const body = await request.json()
     const action = typeof body?.action === "string" ? body.action : "decision"
-    const disposalRequest = await prisma.disposalRequest.findFirst({
-      where: { id, isActive: true },
-      include: { asset: { select: { id: true, statusId: true } } },
-    })
-    if (!disposalRequest) return NextResponse.json({ error: "Disposal request not found" }, { status: 404 })
+    if (action === "execute") {
+      requirePermission(user, "disposal", "edit")
+    } else {
+      requirePermission(user, "disposal", "approve")
+    }
+
+    const batchSchemaReady = await isDisposalBatchSchemaReady()
+    const [disposalRequest, savedSettings, batchLink] = await Promise.all([
+      prisma.disposalRequest.findFirst({
+        where: { id, isActive: true },
+        omit: { batchId: true },
+        include: { asset: { select: { id: true, statusId: true, status: { select: { name: true, nameTh: true } } } } },
+      }),
+      prisma.systemSetting.findMany({
+        where: { key: { in: [...workflowApprovalSettingKeys] } },
+        select: { key: true, value: true },
+      }),
+      batchSchemaReady
+        ? prisma.disposalRequest.findFirst({ where: { id, isActive: true }, select: { batchId: true } })
+        : Promise.resolve(null),
+    ])
+    if (!disposalRequest) return disposalApiError("DISPOSAL_REQUEST_NOT_FOUND", "Disposal request not found", 404)
+    const disposalBatchId = batchLink?.batchId ?? null
+    const workflowPolicy = parseWorkflowApprovalPolicy(savedSettings)
 
     if (action === "execute") {
       if (disposalRequest.requestStatus !== "approved") {
-        return NextResponse.json({ error: "Only approved disposal requests can be executed" }, { status: 400 })
+        return disposalApiError("DISPOSAL_INVALID_STAGE", "Only approved disposal requests can be executed")
       }
-      const input = disposalExecutionSchema.parse(body)
+      const input = disposalExecutionSchema.parse({ ...body, disposalType: disposalRequest.disposalType })
+      const segregationError = getDisposalSegregationError({
+        action: "execute",
+        segregationRequired: workflowPolicy.segregationRequired,
+        actorEmployeeId: user.employeeId,
+        actorUserId: user.id,
+        requestedById: disposalRequest.requestedById,
+        createdByUserId: disposalRequest.createdBy,
+        approverId: disposalRequest.approverId,
+        executedById: input.executedById,
+      })
+      if (segregationError) return disposalApiError("DISPOSAL_SOD_CONFLICT", segregationError, 403)
+
       const nextStatus = await prisma.assetStatus.findFirst({
         where: { id: input.nextStatusId, isActive: true },
         select: { id: true, name: true, nameTh: true },
       })
-      if (!nextStatus) return NextResponse.json({ error: "Next asset status not found" }, { status: 404 })
-      const nextStatusError = getDisposalExecutionStatusError(nextStatus)
-      if (nextStatusError) return NextResponse.json({ error: nextStatusError }, { status: 400 })
+      if (!nextStatus) return disposalApiError("DISPOSAL_STATUS_NOT_FOUND", "Next asset status not found", 404)
+      const nextStatusError = getDisposalStatusTargetError("execute", nextStatus)
+      if (nextStatusError) return disposalApiError("DISPOSAL_INVALID_STATUS_TARGET", nextStatusError)
+
+      const executor = await prisma.employee.findFirst({
+        where: { id: input.executedById, isActive: true },
+        select: { id: true },
+      })
+      if (!executor) return disposalApiError("DISPOSAL_EMPLOYEE_NOT_FOUND", "Executor is inactive or missing", 404)
 
       const evidenceCount = await prisma.attachment.count({
         where: { module: "disposal", referenceId: disposalRequest.id, isActive: true },
       })
       if (evidenceCount === 0) {
-        return NextResponse.json({ error: "Please attach disposal evidence before execution" }, { status: 400 })
+        return disposalApiError("DISPOSAL_EVIDENCE_REQUIRED", "Please attach disposal evidence before execution")
       }
 
       const updatedRequest = await prisma.$transaction(async (tx) => {
@@ -59,6 +102,7 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
             completedAt: new Date(),
             updatedBy: user.id,
           },
+          omit: { batchId: true },
         })
 
         await tx.asset.update({
@@ -81,6 +125,11 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
           },
         })
 
+        if (disposalBatchId) {
+          const children = await tx.disposalRequest.findMany({ where: { batchId: disposalBatchId, isActive: true }, select: { requestStatus: true } })
+          await tx.disposalBatch.update({ where: { id: disposalBatchId }, data: { batchStatus: deriveDisposalBatchStatus(children.map((child) => child.requestStatus)), updatedBy: user.id } })
+        }
+
         return record
       })
 
@@ -98,14 +147,30 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
 
     const input = disposalDecisionSchema.parse(body)
     if (disposalRequest.requestStatus !== "pending") {
-      return NextResponse.json({ error: "Disposal request is already reviewed" }, { status: 400 })
+      return disposalApiError("DISPOSAL_INVALID_STAGE", "Disposal request is already reviewed")
+    }
+
+    const segregationError = getDisposalSegregationError({
+      action: input.decision,
+      segregationRequired: workflowPolicy.segregationRequired,
+      actorEmployeeId: user.employeeId,
+      actorUserId: user.id,
+      requestedById: disposalRequest.requestedById,
+      createdByUserId: disposalRequest.createdBy,
+    })
+    if (segregationError) return disposalApiError("DISPOSAL_SOD_CONFLICT", segregationError, 403)
+    if (input.decision === "approve") {
+      const assetStatusError = getDisposalApprovalAssetStatusError(disposalRequest.asset.status)
+      if (assetStatusError) return disposalApiError("DISPOSAL_ASSET_INELIGIBLE", assetStatusError)
     }
 
     const nextStatus = await prisma.assetStatus.findFirst({
       where: { id: input.nextStatusId, isActive: true },
-      select: { id: true },
+      select: { id: true, name: true, nameTh: true },
     })
-    if (!nextStatus) return NextResponse.json({ error: "Next asset status not found" }, { status: 404 })
+    if (!nextStatus) return disposalApiError("DISPOSAL_STATUS_NOT_FOUND", "Next asset status not found", 404)
+    const nextStatusError = getDisposalStatusTargetError(input.decision, nextStatus)
+    if (nextStatusError) return disposalApiError("DISPOSAL_INVALID_STATUS_TARGET", nextStatusError)
 
     const requestStatus = input.decision === "approve" ? "approved" : "rejected"
     const updatedRequest = await prisma.$transaction(async (tx) => {
@@ -120,6 +185,7 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
           approvedAt: new Date(),
           updatedBy: user.id,
         },
+        omit: { batchId: true },
       })
 
       if (input.decision === "reject") {
@@ -142,6 +208,11 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
           remark: requestStatus,
         },
       })
+
+      if (disposalBatchId) {
+        const children = await tx.disposalRequest.findMany({ where: { batchId: disposalBatchId, isActive: true }, select: { requestStatus: true } })
+        await tx.disposalBatch.update({ where: { id: disposalBatchId }, data: { batchStatus: deriveDisposalBatchStatus(children.map((child) => child.requestStatus)), updatedBy: user.id } })
+      }
 
       return record
     })

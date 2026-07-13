@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
     const filters = parseDisposalListParams(request.nextUrl.searchParams)
     const requests = await prisma.disposalRequest.findMany({
       where: buildDisposalWhere(filters),
+      omit: { batchId: true },
       include: {
         asset: { select: { assetTag: true, name: true } },
         requestedBy: { select: { code: true, fullNameTh: true } },

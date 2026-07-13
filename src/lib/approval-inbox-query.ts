@@ -26,6 +26,7 @@ export async function getApprovalInboxSnapshot(user: SessionUser, locale: string
     access.canApproveDisposal && policy.disposalRequired
       ? prisma.disposalRequest.findMany({
           where: { isActive: true, requestStatus: "pending" },
+          omit: { batchId: true },
           include: {
             asset: { select: { assetTag: true, name: true } },
             requestedBy: { select: { code: true, fullNameTh: true } },

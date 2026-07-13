@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ClipboardCheck, FileText, History, Printer, Trash2 } from "lucide-react"
+import { ArrowLeft, ClipboardCheck, FileText, History, Package, Printer } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -9,12 +9,18 @@ import { getDisposalOptions } from "@/lib/disposal-options"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
 import { DisposalAttachments } from "@/components/disposal/disposal-attachments"
+import { DisposalDecisionButton } from "@/components/disposal/disposal-decision-button"
 import { DisposalExecutionButton } from "@/components/disposal/disposal-execution-button"
+import { DisposalMobileActionBar } from "@/components/disposal/disposal-mobile-action-bar"
+import { DisposalWorkflowStepper } from "@/components/disposal/disposal-workflow-stepper"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
-import { MobileActionBar } from "@/components/ui/mobile-action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { filterDisposalExecutorOptions, getDisposalDecisionStatusOptions, getDisposalExecutionStatusOptions, getDisposalSegregationError } from "@/lib/disposal-policy"
+import { getDisposalNextAction, getDisposalStage } from "@/lib/disposal-stage"
+import { formatMovementType } from "@/lib/asset-detail-format"
+import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
 
 type DisposalDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -27,6 +33,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
   const user = await requirePagePermission(locale, "disposal", "view")
   const canApprove = hasPermission(user, "disposal", "approve")
   const canEdit = hasPermission(user, "disposal", "edit")
+  const canCreate = hasPermission(user, "disposal", "create")
   const t = await getTranslations("disposalPage")
   const tAsset = await getTranslations("asset")
   const tCommon = await getTranslations("common")
@@ -34,6 +41,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
   const disposalRequest = await prisma.disposalRequest.findFirst({
     where: { id, isActive: true },
     include: {
+      batch: { select: { id: true, batchNo: true } },
       asset: {
         select: {
           id: true,
@@ -60,7 +68,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
   })
   if (!disposalRequest) notFound()
 
-  const [movements, attachments, options] = await Promise.all([
+  const [movements, attachments, batchAttachments, options, savedSettings] = await Promise.all([
     prisma.assetMovement.findMany({
       where: { referenceType: "disposal", referenceId: disposalRequest.id },
       orderBy: { performedAt: "desc" },
@@ -69,9 +77,39 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
       where: { module: "disposal", referenceId: disposalRequest.id, isActive: true },
       orderBy: { uploadedAt: "desc" },
     }),
+    disposalRequest.batch ? prisma.attachment.findMany({
+      where: { module: "disposal_batch", referenceId: disposalRequest.batch.id, isActive: true },
+      orderBy: { uploadedAt: "desc" },
+    }) : Promise.resolve([]),
     canApprove || canEdit ? getDisposalOptions() : Promise.resolve(null),
+    prisma.systemSetting.findMany({
+      where: { key: { in: [...workflowApprovalSettingKeys] } },
+      select: { key: true, value: true },
+    }),
   ])
   const movementLabels = await getMovementDisplayLabels(movements)
+  const workflowPolicy = parseWorkflowApprovalPolicy(savedSettings)
+  const canReviewDisposal = canApprove && getDisposalSegregationError({
+    action: "approve",
+    segregationRequired: workflowPolicy.segregationRequired,
+    actorEmployeeId: user.employeeId,
+    actorUserId: user.id,
+    requestedById: disposalRequest.requestedById,
+    createdByUserId: disposalRequest.createdBy,
+    approverId: disposalRequest.approverId,
+  }) === null
+  const canExecuteDisposal = canEdit && getDisposalSegregationError({
+    action: "execute",
+    segregationRequired: workflowPolicy.segregationRequired,
+    actorEmployeeId: user.employeeId,
+    actorUserId: user.id,
+    requestedById: disposalRequest.requestedById,
+    createdByUserId: disposalRequest.createdBy,
+    approverId: disposalRequest.approverId,
+  }) === null
+  const decisionStatuses = getDisposalDecisionStatusOptions(options?.statuses ?? [])
+  const executionStatuses = getDisposalExecutionStatusOptions(options?.statuses ?? [])
+  const executorOptions = filterDisposalExecutorOptions(options?.employees ?? [], disposalRequest.approverId, workflowPolicy.segregationRequired)
 
   const statusLabels = {
     pending: t("statuses.pending"),
@@ -79,11 +117,47 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
     disposed: t("statuses.disposed"),
     rejected: t("statuses.rejected"),
   }
+  const workflowStage = getDisposalStage(disposalRequest.requestStatus)
+  const nextAction = getDisposalNextAction(disposalRequest.requestStatus, {
+    canApprove: canReviewDisposal,
+    canExecute: canExecuteDisposal,
+  })
+  const ownerContext = getCurrentOwnerContext(disposalRequest, {
+    centralApprovalQueue: t("centralApprovalQueue"),
+    executionQueue: t("executionQueue"),
+  })
   const returnToHref = normalizeOperationalReturnTo(locale, "disposal", rawSearchParams.returnTo)
   const printHref = appendOperationalReturnTo(`/${locale}/disposal/${disposalRequest.id}/print`, returnToHref)
+  const printLabel = disposalRequest.requestStatus === "disposed" ? t("printFinalDocument") : t("printRequest")
+  const disposalMovementLabels: Record<string, string> = {
+    disposal_request: t("requestDetail"),
+    disposal_approve: t("approve"),
+    disposal_reject: t("reject"),
+    disposal_execute: t("executionDetail"),
+  }
+  const nextActionControl = nextAction === "review" && options && decisionStatuses.length > 0 ? (
+    <DisposalDecisionButton
+      requestId={disposalRequest.id}
+      disposalNo={disposalRequest.disposalNo}
+      disposalType={disposalRequest.disposalType}
+      statuses={decisionStatuses}
+      defaultSaleValue={disposalRequest.saleValue?.toString()}
+      defaultSalvageValue={disposalRequest.salvageValue?.toString()}
+    />
+  ) : nextAction === "execute" && options && executionStatuses.length > 0 ? (
+    <DisposalExecutionButton
+      requestId={disposalRequest.id}
+      disposalNo={disposalRequest.disposalNo}
+      disposalType={disposalRequest.disposalType}
+      statuses={executionStatuses}
+      employees={executorOptions}
+      defaultActualSaleValue={disposalRequest.actualSaleValue?.toString() ?? disposalRequest.saleValue?.toString()}
+      defaultActualSalvageValue={disposalRequest.actualSalvageValue?.toString() ?? disposalRequest.salvageValue?.toString()}
+    />
+  ) : null
 
   return (
-    <div className="space-y-6 pb-24 md:pb-0">
+    <div className="space-y-6 pb-36 md:pb-0">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="mb-2">
@@ -99,12 +173,12 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
             {disposalRequest.asset.assetTag} - {disposalRequest.asset.name}
           </p>
         </div>
-        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+        <div className="hidden min-w-0 flex-col gap-2 md:flex md:flex-row md:flex-wrap md:items-center md:justify-end">
           <Link
             href={returnToHref}
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
           >
-            <Trash2 className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" />
             {tCommon("back")}
           </Link>
           <Link
@@ -112,28 +186,35 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
           >
             <Printer className="h-4 w-4" />
-            {t("printDisposal")}
+            {printLabel}
           </Link>
-          {disposalRequest.requestStatus === "approved" && options ? (
-            <DisposalExecutionButton
-              requestId={disposalRequest.id}
-              disposalNo={disposalRequest.disposalNo}
-              disposalType={disposalRequest.disposalType}
-              statuses={options.statuses}
-              employees={options.employees}
-              defaultActualSaleValue={disposalRequest.actualSaleValue?.toString() ?? disposalRequest.saleValue?.toString()}
-              defaultActualSalvageValue={disposalRequest.actualSalvageValue?.toString() ?? disposalRequest.salvageValue?.toString()}
-            />
-          ) : null}
+          {nextActionControl}
           <StatusBadge label={statusLabels[disposalRequest.requestStatus as keyof typeof statusLabels] ?? disposalRequest.requestStatus} status={disposalRequest.requestStatus} />
         </div>
       </div>
-      <MobileActionBar
+      <DisposalWorkflowStepper
+        stage={workflowStage}
+        currentStageLabel={statusLabels[disposalRequest.requestStatus as keyof typeof statusLabels] ?? disposalRequest.requestStatus}
+        ownerRoleLabel={ownerContext.roleLabel === "approver" ? t("approver") : t("executedBy")}
+        ownerLabel={ownerContext.ownerLabel}
+        labels={{
+          request: t("requestDetail"),
+          decision: t("decisionDetail"),
+          execution: t("executionDetail"),
+        }}
+      />
+      {disposalRequest.batch ? (
+        <div className="flex flex-col gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <div><span className="font-medium text-foreground">{t("sourceBatch")}</span><span className="ml-2 text-muted-foreground">{disposalRequest.batch.batchNo}</span></div>
+          <Link href={`/${locale}/disposal/batches/${disposalRequest.batch.id}`} className="inline-flex min-h-10 items-center justify-center rounded-md border border-primary/30 bg-surface px-3 font-medium text-primary hover:bg-primary/10">{t("openBatch")}</Link>
+        </div>
+      ) : null}
+      <DisposalMobileActionBar
+        primaryAction={nextActionControl}
         actions={[
-          { href: `/${locale}/assets/${disposalRequest.asset.id}`, label: t("openAsset"), icon: <FileText className="h-4 w-4" />, primary: true },
-          { href: printHref, label: t("printDisposal"), icon: <Printer className="h-4 w-4" /> },
+          { href: `/${locale}/assets/${disposalRequest.asset.id}`, label: t("openAsset"), icon: <FileText className="h-4 w-4" /> },
+          { href: printHref, label: printLabel, icon: <Printer className="h-4 w-4" /> },
           { href: "#history", label: t("disposalHistory"), icon: <History className="h-4 w-4" /> },
-          { href: returnToHref, label: tCommon("back"), icon: <Trash2 className="h-4 w-4" /> },
         ]}
       />
 
@@ -163,32 +244,36 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
             <p className="whitespace-pre-wrap text-sm text-muted-foreground">{disposalRequest.reason}</p>
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
-              <ClipboardCheck className="h-5 w-5 text-primary" />
-              {t("decisionDetail")}
-            </h2>
-            <TextBlock label={t("approvalRemark")} value={disposalRequest.approvalRemark} />
-          </section>
+          {disposalRequest.requestStatus !== "pending" ? (
+            <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+              <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
+                <ClipboardCheck className="h-5 w-5 text-primary" />
+                {t("decisionDetail")}
+              </h2>
+              <TextBlock label={t("approvalRemark")} value={disposalRequest.approvalRemark} />
+            </section>
+          ) : null}
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
-              <ClipboardCheck className="h-5 w-5 text-primary" />
-              {t("executionDetail")}
-            </h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <Info label={t("executionDate")} value={formatDateTime(disposalRequest.executionDate)} />
-              <Info label={t("executedBy")} value={disposalRequest.executedBy ? `${disposalRequest.executedBy.code} - ${disposalRequest.executedBy.fullNameTh}` : null} />
-              <Info label={t("recipientName")} value={disposalRequest.recipientName} />
-              <Info label={t("documentNo")} value={disposalRequest.documentNo} />
-              <Info label={t("actualSaleValue")} value={disposalRequest.actualSaleValue == null ? null : formatCurrency(Number(disposalRequest.actualSaleValue))} />
-              <Info label={t("actualSalvageValue")} value={disposalRequest.actualSalvageValue == null ? null : formatCurrency(Number(disposalRequest.actualSalvageValue))} />
-              <Info label={t("completedAt")} value={formatDateTime(disposalRequest.completedAt)} />
-            </div>
-            <div className="mt-5">
-              <TextBlock label={t("executionRemark")} value={disposalRequest.executionRemark} />
-            </div>
-          </section>
+          {disposalRequest.requestStatus === "disposed" ? (
+            <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+              <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
+                <ClipboardCheck className="h-5 w-5 text-primary" />
+                {t("executionDetail")}
+              </h2>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <Info label={t("executionDate")} value={formatDateTime(disposalRequest.executionDate)} />
+                <Info label={t("executedBy")} value={disposalRequest.executedBy ? `${disposalRequest.executedBy.code} - ${disposalRequest.executedBy.fullNameTh}` : null} />
+                <Info label={t("recipientName")} value={disposalRequest.recipientName} />
+                <Info label={t("documentNo")} value={disposalRequest.documentNo} />
+                <Info label={t("actualSaleValue")} value={disposalRequest.actualSaleValue == null ? null : formatCurrency(Number(disposalRequest.actualSaleValue))} />
+                <Info label={t("actualSalvageValue")} value={disposalRequest.actualSalvageValue == null ? null : formatCurrency(Number(disposalRequest.actualSalvageValue))} />
+                <Info label={t("completedAt")} value={formatDateTime(disposalRequest.completedAt)} />
+              </div>
+              <div className="mt-5">
+                <TextBlock label={t("executionRemark")} value={disposalRequest.executionRemark} />
+              </div>
+            </section>
+          ) : null}
 
           <section id="history" className="rounded-lg border border-border bg-surface p-6 shadow-sm">
             <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
@@ -208,7 +293,12 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
                     <span className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-primary" />
                     <div className="rounded-md bg-background p-4">
                       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-                        <div className="font-medium text-foreground">{movement.movementType.replaceAll("_", " ")}</div>
+                        <div className="font-medium text-foreground">
+                          {disposalMovementLabels[movement.movementType]
+                            ?? (knownMovementTypeKeys.has(movement.movementType)
+                              ? tAsset(`movementTypes.${movement.movementType}`)
+                              : formatMovementType(movement.movementType))}
+                        </div>
                         <div className="text-xs text-muted-foreground">{formatDateTime(movement.performedAt)}</div>
                       </div>
                       <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-muted-foreground md:grid-cols-2">
@@ -227,7 +317,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
         <aside className="space-y-6">
           <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
             <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
-              <Trash2 className="h-5 w-5 text-primary" />
+              <Package className="h-5 w-5 text-primary" />
               {t("asset")}
             </h2>
             <div className="space-y-4">
@@ -253,7 +343,8 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
             </div>
           </section>
 
-          <DisposalAttachments requestId={disposalRequest.id} attachments={attachments} />
+          <DisposalAttachments requestId={disposalRequest.id} attachments={attachments} canManage={canCreate || canApprove || canEdit} />
+          {disposalRequest.batch ? <DisposalAttachments requestId={disposalRequest.batch.id} attachments={batchAttachments} canManage={false} title={t("batchSharedEvidence")} /> : null}
         </aside>
       </div>
     </div>
@@ -264,6 +355,49 @@ function formatSource(sourceType?: string | null, sourceId?: string | null) {
   if (!sourceType && !sourceId) return "-"
   return [sourceType, sourceId].filter(Boolean).join(" / ")
 }
+
+function getCurrentOwnerContext(request: {
+  requestStatus: string
+  requestedBy: { code: string; fullNameTh: string }
+  approver: { code: string; fullNameTh: string } | null
+  executedBy: { code: string; fullNameTh: string } | null
+}, labels: { centralApprovalQueue: string; executionQueue: string }) {
+  if (request.requestStatus === "pending") {
+    return { roleLabel: "approver" as const, ownerLabel: request.approver ? `${request.approver.code} - ${request.approver.fullNameTh}` : labels.centralApprovalQueue }
+  }
+  if (request.requestStatus === "approved") return { roleLabel: "executedBy" as const, ownerLabel: labels.executionQueue }
+  if (request.requestStatus === "disposed") {
+    return { roleLabel: "executedBy" as const, ownerLabel: request.executedBy ? `${request.executedBy.code} - ${request.executedBy.fullNameTh}` : labels.executionQueue }
+  }
+  return { roleLabel: "approver" as const, ownerLabel: request.approver ? `${request.approver.code} - ${request.approver.fullNameTh}` : labels.centralApprovalQueue }
+}
+
+const knownMovementTypeKeys = new Set([
+  "create",
+  "import",
+  "checkout",
+  "checkin",
+  "transfer",
+  "location_change",
+  "custodian_change",
+  "status_change",
+  "condition_change",
+  "department_change",
+  "ownership_type_change",
+  "license_total_seats_change",
+  "license_used_seats_change",
+  "license_assigned_asset_change",
+  "bulk_location_move",
+  "bulk_location_update",
+  "bulk_custodian_update",
+  "component_install",
+  "component_remove",
+  "installed_in_parent",
+  "removed_from_parent",
+  "maintenance_create",
+  "maintenance_pm_create",
+  "audit_correction",
+])
 
 function Info({ label, value }: { label: string; value?: string | number | null }) {
   return (

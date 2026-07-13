@@ -29,7 +29,7 @@ test("maintenance list and detail preserve filtered list context", () => {
   assert.match(detailSource, /\{ label: t\("title"\), href: returnToHref \}/)
   assert.match(detailSource, /href=\{returnToHref\}/)
   assert.match(detailSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/maintenance\/\$\{ticket\.id\}\/print`, returnToHref\)/)
-  assert.match(detailSource, /appendOperationalReturnTo\(\s*`\/\$\{locale\}\/disposal\?assetId=\$\{ticket\.asset\.id\}&reason=/)
+  assert.match(detailSource, /appendOperationalReturnTo\(\s*`\/\$\{locale\}\/disposal\/new\?assetId=\$\{ticket\.asset\.id\}&reason=/)
 })
 
 test("disposal list and detail preserve filtered list context", () => {
@@ -82,6 +82,6 @@ test("audit findings preserve resolution context for disposal follow-up links", 
   assert.match(source, /const auditFindingsReturnHref = buildAuditFindingsHref\(locale, status, searchText, \{ roundId, findingType \}\)/)
   assert.match(source, /const \{ search = "", status: statusParam = "pending", roundId: roundIdParam = "", findingType: findingTypeParam = "" \} = await searchParams/)
   assert.match(source, /hiddenInputs=\{\{ status, \.\.\.\(roundId \? \{ roundId \} : \{\}\), \.\.\.\(findingType \? \{ findingType \} : \{\}\) \}\}/)
-  assert.match(source, /appendOperationalReturnTo\(`\/\$\{locale\}\/disposal\?assetId=\$\{finding\.asset\.id\}&reason=/)
+  assert.match(source, /appendOperationalReturnTo\(`\/\$\{locale\}\/disposal\/new\?assetId=\$\{finding\.asset\.id\}&reason=/)
   assert.match(source, /auditFindingsReturnHref\)/)
 })

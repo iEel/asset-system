@@ -19,6 +19,7 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
   const [disposalRequest, evidenceCount] = await Promise.all([
     prisma.disposalRequest.findFirst({
       where: { id, isActive: true },
+      omit: { batchId: true },
       include: {
         asset: {
           select: {

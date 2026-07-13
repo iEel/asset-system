@@ -108,7 +108,7 @@ function getAttachmentPermissionModule(module: string) {
       ? "maintenance"
       : module === "audit_finding"
         ? "audit"
-        : module === "disposal"
+        : module === "disposal" || module === "disposal_batch"
           ? "disposal"
         : module === "asset_model"
           ? "brand"

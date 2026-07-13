@@ -88,7 +88,7 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
     cost: formatCurrency(totalRepairCost),
   })}`
   const disposalRequestHref = appendOperationalReturnTo(
-    `/${locale}/disposal?assetId=${ticket.asset.id}&reason=${encodeURIComponent(disposalReason)}&sourceType=maintenance&sourceId=${ticket.id}`,
+    `/${locale}/disposal/new?assetId=${ticket.asset.id}&reason=${encodeURIComponent(disposalReason)}&sourceType=maintenance&sourceId=${ticket.id}`,
     returnToHref,
   )
 

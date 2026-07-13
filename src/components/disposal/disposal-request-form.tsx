@@ -1,37 +1,41 @@
 "use client"
 
 import { useState } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { DisposalAssetPicker, type DisposalAssetOption } from "@/components/disposal/disposal-asset-picker"
+import { showsEstimatedSaleValue, showsEstimatedSalvageValue, type DisposalType } from "@/lib/disposal-type-policy"
+import { summarizeDisposalEvidenceUploads } from "@/lib/disposal-upload-outcome"
+import { getDisposalApiErrorMessage } from "@/lib/disposal-error-message"
 
 type Option = { id: string; label: string }
 
 export function DisposalRequestForm({
-  assets,
   employees,
-  initialAssetId,
+  initialAsset,
   initialReason,
   initialSourceType,
   initialSourceId,
 }: {
-  assets: Option[]
   employees: Option[]
-  initialAssetId?: string
+  initialAsset?: DisposalAssetOption
   initialReason?: string
   initialSourceType?: string
   initialSourceId?: string
 }) {
   const router = useRouter()
+  const locale = useLocale()
   const t = useTranslations("disposalPage")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
   const [evidenceFiles, setEvidenceFiles] = useState<File[]>([])
+  const [selectedAssets, setSelectedAssets] = useState<DisposalAssetOption[]>(initialAsset ? [initialAsset] : [])
   const [values, setValues] = useState({
-    assetId: initialAssetId ?? "",
+    assetId: initialAsset?.id ?? "",
     disposalType: "dispose",
     reason: initialReason ?? "",
     requestedById: "",
@@ -43,6 +47,8 @@ export function DisposalRequestForm({
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
   }
+
+  const approverOptions = employees.filter((employee) => employee.id !== values.requestedById)
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -65,7 +71,8 @@ export function DisposalRequestForm({
         }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) throw new Error(getDisposalApiErrorMessage(payload, t, tCommon("error")))
+      const uploadResults: Array<{ fileName: string; ok: boolean }> = []
       for (const file of evidenceFiles) {
         const formData = new FormData()
         formData.append("file", file)
@@ -73,13 +80,16 @@ export function DisposalRequestForm({
           method: "POST",
           body: formData,
         })
-        const uploadPayload = await uploadResponse.json().catch(() => null)
-        if (!uploadResponse.ok) throw new Error(uploadPayload?.error ?? t("evidenceUploadFailed"))
+        uploadResults.push({ fileName: file.name, ok: uploadResponse.ok })
       }
-      toast.success(t("createSuccess"))
-      setValues((current) => ({ ...current, assetId: "", reason: "", saleValue: "", salvageValue: "" }))
-      setEvidenceFiles([])
-      router.refresh()
+      const outcome = summarizeDisposalEvidenceUploads(payload.id, uploadResults)
+      if (outcome.failedFileNames.length > 0) {
+        toast.warning(t("createSuccessWithUploadErrors", { count: outcome.failedFileNames.length }))
+      } else {
+        toast.success(t("createSuccess"))
+      }
+      const uploadQuery = outcome.failedFileNames.length > 0 ? `?uploadErrors=${outcome.failedFileNames.length}` : ""
+      router.push(`/${locale}/disposal/${payload.id}${uploadQuery}`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))
     } finally {
@@ -94,12 +104,18 @@ export function DisposalRequestForm({
 
   return (
     <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
-      <div className="mb-5">
-        <h2 className="text-base font-semibold text-foreground">{t("createTitle")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t("createSubtitle")}</p>
-      </div>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <SearchableSelect label={t("asset")} value={values.assetId} required options={assets} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assetId", value)} />
+        <FormStep number={1} title={t("formSteps.asset")} />
+        <DisposalAssetPicker
+          label={t("asset")}
+          selected={selectedAssets}
+          onChange={(assets) => {
+            setSelectedAssets(assets)
+            setField("assetId", assets[0]?.id ?? "")
+          }}
+          searchPlaceholder={tCommon("searchSelectPlaceholder")}
+          emptyLabel={tCommon("searchSelectNoResults")}
+        />
         <Select label={t("disposalType")} value={values.disposalType} required onChange={(value) => setField("disposalType", value)}>
           <option value="dispose">{t("types.dispose")}</option>
           <option value="sell">{t("types.sell")}</option>
@@ -107,9 +123,23 @@ export function DisposalRequestForm({
           <option value="destroy">{t("types.destroy")}</option>
           <option value="lost">{t("types.lost")}</option>
         </Select>
-        <SearchableSelect label={t("requestedBy")} value={values.requestedById} required options={employees} placeholder={t("selectEmployee")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("requestedById", value)} />
-        <SearchableSelect label={t("approver")} value={values.approverId} options={employees} placeholder={t("noApprover")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("approverId", value)} />
-        <Field label={t("saleValue")}>
+        <FormStep number={2} title={t("formSteps.request")} />
+        <SearchableSelect
+          label={t("requestedBy")}
+          value={values.requestedById}
+          required
+          options={employees}
+          placeholder={t("selectEmployee")}
+          searchPlaceholder={tCommon("searchSelectPlaceholder")}
+          emptyLabel={tCommon("searchSelectNoResults")}
+          onChange={(value) => setValues((current) => ({
+            ...current,
+            requestedById: value,
+            approverId: current.approverId === value ? "" : current.approverId,
+          }))}
+        />
+        <SearchableSelect label={t("approver")} value={values.approverId} options={approverOptions} placeholder={t("noApprover")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("approverId", value)} />
+        {showsEstimatedSaleValue(values.disposalType as DisposalType) ? <Field label={t("saleValue")}>
           <input
             type="number"
             min="0"
@@ -118,8 +148,8 @@ export function DisposalRequestForm({
             onChange={(event) => setField("saleValue", event.target.value)}
             className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
-        </Field>
-        <Field label={t("salvageValue")}>
+        </Field> : null}
+        {showsEstimatedSalvageValue(values.disposalType as DisposalType) ? <Field label={t("salvageValue")}>
           <input
             type="number"
             min="0"
@@ -128,19 +158,22 @@ export function DisposalRequestForm({
             onChange={(event) => setField("salvageValue", event.target.value)}
             className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
-        </Field>
+        </Field> : null}
         <div className="md:col-span-2">
           <Field label={t("reason")} required>
             <textarea
               value={values.reason}
               required
+              minLength={12}
               rows={4}
               maxLength={4000}
               onChange={(event) => setField("reason", event.target.value)}
               className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
+            <p className="mt-1 text-right text-xs text-muted-foreground">{t("reasonCharacterCount", { count: values.reason.length, max: 4000 })}</p>
           </Field>
         </div>
+        <FormStep number={3} title={t("formSteps.evidence")} />
         <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
           <div className="mb-3 text-sm font-semibold text-foreground">{t("requestEvidence")}</div>
           <FileDropzone
@@ -183,6 +216,10 @@ export function DisposalRequestForm({
       </form>
     </section>
   )
+}
+
+function FormStep({ number, title }: { number: number; title: string }) {
+  return <div className="flex items-center gap-3 border-b border-border pb-3 md:col-span-2"><span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">{number}</span><h2 className="text-sm font-semibold text-foreground">{title}</h2></div>
 }
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {

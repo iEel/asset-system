@@ -113,6 +113,8 @@ model Employee {
   requestedDisposals          DisposalRequest[]   @relation("DisposalRequestedBy")
   approvedDisposals           DisposalRequest[]   @relation("DisposalApprover")
   executedDisposals           DisposalRequest[]   @relation("DisposalExecutedBy")
+  requestedDisposalBatches    DisposalBatch[]     @relation("DisposalBatchRequestedBy")
+  approvedDisposalBatches     DisposalBatch[]     @relation("DisposalBatchApprover")
   user                        User?
   auditRounds                 AuditRound[]
 
@@ -754,11 +756,40 @@ model MaintenanceTicket {
   @@map("maintenance_tickets")
 }
 
+model DisposalBatch {
+  id               String            @id @default(uuid())
+  batchNo          String            @unique @db.NVarChar(50)
+  disposalType     String            @db.NVarChar(30)
+  reason           String            @db.NVarChar(Max)
+  requestedById    String
+  requestedBy      Employee          @relation("DisposalBatchRequestedBy", fields: [requestedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  requestDate      DateTime          @default(now())
+  approverId       String?
+  approver         Employee?         @relation("DisposalBatchApprover", fields: [approverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  saleValue        Decimal?          @db.Decimal(18, 2)
+  salvageValue     Decimal?          @db.Decimal(18, 2)
+  batchStatus      String            @default("pending") @db.NVarChar(30)
+  createdBy        String            @db.NVarChar(100)
+  updatedBy        String?           @db.NVarChar(100)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  isActive         Boolean           @default(true)
+
+  disposalRequests DisposalRequest[]
+
+  @@index([isActive, batchStatus, requestDate], map: "IX_disposal_batches_isActive_batchStatus_requestDate")
+  @@index([requestedById], map: "IX_disposal_batches_requestedById")
+  @@index([approverId], map: "IX_disposal_batches_approverId")
+  @@map("disposal_batches")
+}
+
 model DisposalRequest {
   id                 String    @id @default(uuid())
   disposalNo         String    @unique @db.NVarChar(50)
   assetId            String
   asset              Asset     @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  batchId            String?
+  batch              DisposalBatch? @relation(fields: [batchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   disposalType       String    @db.NVarChar(30)
   reason             String    @db.NVarChar(Max)
   requestedById      String
@@ -791,6 +822,7 @@ model DisposalRequest {
   @@index([isActive, requestStatus, requestDate], map: "IX_disposal_requests_isActive_requestStatus_requestDate")
   @@index([assetId], map: "IX_disposal_requests_assetId")
   @@index([requestedById], map: "IX_disposal_requests_requestedById")
+  @@index([batchId], map: "IX_disposal_requests_batchId")
   @@map("disposal_requests")
 }
 

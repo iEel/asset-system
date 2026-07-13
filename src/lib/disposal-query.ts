@@ -1,11 +1,13 @@
 import type { Prisma } from "@prisma/client"
 
 export type DisposalListParams = {
-  search?: string
-  status?: string
-  disposalType?: string
-  dateFrom?: string
-  dateTo?: string
+  search?: string | string[]
+  status?: string | string[]
+  disposalType?: string | string[]
+  dateFrom?: string | string[]
+  dateTo?: string | string[]
+  page?: string | string[] | number
+  pageSize?: string | string[] | number
 }
 
 export const disposalStatusFilters = ["pending", "approved", "disposed", "rejected"] as const
@@ -13,23 +15,29 @@ export const disposalTypeFilters = ["sell", "donate", "destroy", "lost", "dispos
 
 export function parseDisposalListParams(input: URLSearchParams | DisposalListParams) {
   const getValue = (key: keyof DisposalListParams) =>
-    input instanceof URLSearchParams ? input.get(key)?.trim() : input[key]?.trim()
+    input instanceof URLSearchParams
+      ? input.get(key)?.trim()
+      : getSingleValue(input[key])?.trim()
 
   const search = getValue("search") ?? ""
   const status = normalizeOption(getValue("status"), disposalStatusFilters)
   const disposalType = normalizeOption(getValue("disposalType"), disposalTypeFilters)
   const dateFrom = normalizeDate(getValue("dateFrom"))
   const dateTo = normalizeDate(getValue("dateTo"))
+  const page = normalizePage(getValue("page"))
+  const pageSize = normalizePageSize(getValue("pageSize"))
 
-  return { search, status, disposalType, dateFrom, dateTo }
+  return { search, status, disposalType, dateFrom, dateTo, page, pageSize }
 }
 
 export function buildDisposalWhere(filters: ReturnType<typeof parseDisposalListParams>): Prisma.DisposalRequestWhereInput {
+  const hasValidDateRange = getDisposalDateRangeError(filters) === null
+
   return {
     isActive: true,
     ...(filters.status ? { requestStatus: filters.status } : {}),
     ...(filters.disposalType ? { disposalType: filters.disposalType } : {}),
-    ...(filters.dateFrom || filters.dateTo
+    ...(hasValidDateRange && (filters.dateFrom || filters.dateTo)
       ? {
           requestDate: {
             ...(filters.dateFrom ? { gte: startOfDay(filters.dateFrom) } : {}),
@@ -55,13 +63,24 @@ export function buildDisposalWhere(filters: ReturnType<typeof parseDisposalListP
   }
 }
 
-export function buildDisposalQueryString(filters: ReturnType<typeof parseDisposalListParams>) {
+export function getDisposalDateRangeError(filters: ReturnType<typeof parseDisposalListParams>) {
+  if (!filters.dateFrom || !filters.dateTo) return null
+  return filters.dateFrom > filters.dateTo ? "invalid_order" as const : null
+}
+
+export function buildDisposalQueryString(
+  filters: ReturnType<typeof parseDisposalListParams>,
+  next: Partial<ReturnType<typeof parseDisposalListParams>> = {}
+) {
+  const merged = { ...filters, ...next }
   const params = new URLSearchParams()
-  if (filters.search) params.set("search", filters.search)
-  if (filters.status) params.set("status", filters.status)
-  if (filters.disposalType) params.set("disposalType", filters.disposalType)
-  if (filters.dateFrom) params.set("dateFrom", filters.dateFrom)
-  if (filters.dateTo) params.set("dateTo", filters.dateTo)
+  if (merged.search) params.set("search", merged.search)
+  if (merged.status) params.set("status", merged.status)
+  if (merged.disposalType) params.set("disposalType", merged.disposalType)
+  if (merged.dateFrom) params.set("dateFrom", merged.dateFrom)
+  if (merged.dateTo) params.set("dateTo", merged.dateTo)
+  params.set("page", String(merged.page))
+  params.set("pageSize", String(merged.pageSize))
   return params.toString()
 }
 
@@ -71,6 +90,20 @@ function normalizeOption<T extends readonly string[]>(value: string | undefined,
 
 function normalizeDate(value: string | undefined) {
   return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : ""
+}
+
+function normalizePageSize(value: string | undefined) {
+  return value === "50" || value === "100" ? Number(value) : 25
+}
+
+function normalizePage(value: string | undefined) {
+  const parsed = Number(value)
+  return Number.isSafeInteger(parsed) && parsed >= 1 ? parsed : 1
+}
+
+function getSingleValue(value: string | string[] | number | undefined) {
+  if (Array.isArray(value)) return value[0]
+  return value == null ? undefined : String(value)
 }
 
 function startOfDay(value: string) {

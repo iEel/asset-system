@@ -1,0 +1,22 @@
+import { NextResponse } from "next/server"
+
+export const disposalApiErrorCodes = [
+  "DISPOSAL_ASSET_NOT_FOUND",
+  "DISPOSAL_EMPLOYEE_NOT_FOUND",
+  "DISPOSAL_OPEN_REQUEST",
+  "DISPOSAL_ASSET_INELIGIBLE",
+  "DISPOSAL_ASSET_BLOCKED",
+  "DISPOSAL_PENDING_STATUS_MISSING",
+  "DISPOSAL_REQUEST_NOT_FOUND",
+  "DISPOSAL_INVALID_STAGE",
+  "DISPOSAL_SOD_CONFLICT",
+  "DISPOSAL_STATUS_NOT_FOUND",
+  "DISPOSAL_INVALID_STATUS_TARGET",
+  "DISPOSAL_EVIDENCE_REQUIRED",
+] as const
+
+export type DisposalApiErrorCode = (typeof disposalApiErrorCodes)[number]
+
+export function disposalApiError(code: DisposalApiErrorCode, error: string, status = 400) {
+  return NextResponse.json({ code, error }, { status })
+}

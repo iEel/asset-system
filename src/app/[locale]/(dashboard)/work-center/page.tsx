@@ -245,6 +245,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
     }) : Promise.resolve([]),
     isPanelFocused("disposal") ? prisma.disposalRequest.findMany({
       where: disposalItemWhere,
+      omit: { batchId: true },
       include: { asset: { select: { assetTag: true, name: true } } },
       orderBy: { requestDate: "asc" },
       take: disposalItemLimit,

@@ -124,6 +124,11 @@ export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
     checks: [{ module: "audit", action: "approve" }],
   },
   {
+    filePath: "src/app/api/disposal-assets/route.ts",
+    label: "Eligible disposal asset search",
+    checks: [{ module: "disposal", action: "create" }],
+  },
+  {
     filePath: "src/app/api/disposal-requests/route.ts",
     label: "Disposal requests",
     checks: [
@@ -134,7 +139,10 @@ export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
   {
     filePath: "src/app/api/disposal-requests/[id]/route.ts",
     label: "Disposal decision/execution",
-    checks: [{ module: "disposal", action: "approve" }],
+    checks: [
+      { module: "disposal", action: "approve" },
+      { module: "disposal", action: "edit" },
+    ],
   },
   {
     filePath: "src/app/api/disposal-requests/[id]/attachments/route.ts",
@@ -144,6 +152,19 @@ export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
       { module: "disposal", action: "edit", snippets: ["hasPermission(user, \"disposal\", \"edit\")"] },
       { module: "disposal", action: "approve", snippets: ["hasPermission(user, \"disposal\", \"approve\")"] },
     ],
+  },
+  {
+    filePath: "src/app/api/disposal-batches/route.ts",
+    label: "Disposal batches",
+    checks: [
+      { module: "disposal", action: "view" },
+      { module: "disposal", action: "create" },
+    ],
+  },
+  {
+    filePath: "src/app/api/disposal-batches/[id]/route.ts",
+    label: "Disposal batch detail",
+    checks: [{ module: "disposal", action: "view" }],
   },
   {
     filePath: "src/app/api/maintenance-plans/route.ts",

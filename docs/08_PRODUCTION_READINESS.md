@@ -30,7 +30,7 @@ Use this checklist before go-live, before a production schema change, and before
 - [ ] Restore test completed.
 - [ ] Prisma schema and migration approach are documented.
 - [ ] Production schema changes have an approved rollback or restore plan.
-- [ ] If the release includes `prisma/manual-migrations/*.sql`, each required script has been run against Production after backup and approval. For the performance-index pass, run `prisma/manual-migrations/2026-06-12-add-performance-indexes.sql` with `npx prisma db execute --file ...`.
+- [ ] If the release includes `prisma/manual-migrations/*.sql`, each required script has been run against Production after backup and approval. For this disposal release, run `prisma/manual-migrations/2026-07-13-add-disposal-batches.sql`; for the performance-index pass, run `prisma/manual-migrations/2026-06-12-add-performance-indexes.sql` with `npx prisma db execute --file ...`.
 
 ## Uploads And Evidence
 
@@ -67,7 +67,14 @@ To restore a file, move it from `.archive/YYYY-MM-DD/<relativePath>` back to `UP
 - [ ] Check-out, check-in, and transfer are tested with evidence.
 - [ ] Audit round create, scan, findings review, and close-round flow are tested.
 - [ ] Maintenance ticket and PM plan workflows are tested.
-- [ ] Disposal approval and execution workflows are tested.
+- [ ] Disposal queue/create/detail, approval, execution, rejection, evidence retry, and 2-100 item batch workflows are tested.
+- [ ] Disposal asset search is server-bounded (minimum two characters, maximum 50 results), does not preload the Asset Register, and has been load-tested with production-like asset volume.
+- [ ] Disposal policy uses `disposal:approve` for decisions and `disposal:edit` for execution; requester/creator self-approval and approver execution are blocked when SOD is enabled.
+- [ ] Concurrent single/batch disposal creation has been tested to confirm conditional status claims prevent duplicate open requests and bounded unique-number retries do not leave partial records.
+- [ ] `workflow_approval_min_approvers` is set to `1` for this release. The current disposal record stores one approval decision; do not configure multi-approver disposal until an approval-record model is implemented.
+- [ ] Disposal type-specific evidence/document/value requirements and Pending Disposal/Disposed/Retired lifecycle targets are verified with production-like master data in both English and Thai.
+- [ ] Disposal readiness blockers have been UAT-tested for checkout, maintenance, audit/finding, component, and license relations; blocked assets remain visible with reasons and direct API submission is rejected.
+- [ ] Disposal batch history/workspace, single shared evidence storage, independent child approval/execution, type-aware dialogs, and the 390px primary mobile workflow action have passed role-based UAT.
 - [ ] Reports and exports are tested with realistic data.
 
 ## Deployment
