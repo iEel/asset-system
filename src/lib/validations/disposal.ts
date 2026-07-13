@@ -61,6 +61,21 @@ export const disposalExecutionSchema = z.object({
 
 const disposalBulkRequestIds = z.array(z.string().uuid()).min(1).max(50)
 
+export const disposalBulkExecutionSchema = z.object({
+  mode: z.enum(["preview", "commit"]),
+  requestIds: z.array(z.string().trim().min(1)).min(1).max(20)
+    .transform((ids) => [...new Set(ids)]),
+  executionDate: z.coerce.date(),
+  executedById: z.string().trim().min(1),
+  nextStatusId: z.string().trim().min(1),
+  useHistoricalEvidenceException: z.boolean().optional().default(false),
+  evidenceExceptionReason: z.preprocess(
+    (value) => (value === "" || value == null ? null : value),
+    z.string().trim().max(2000).nullable().optional(),
+  ),
+  evidenceExceptionAcknowledged: z.boolean().optional().default(false),
+})
+
 export const disposalBulkDecisionSchema = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("preview"), requestIds: disposalBulkRequestIds }).strict(),
   z.object({
@@ -78,3 +93,4 @@ export type DisposalRequestInput = z.infer<typeof disposalRequestSchema>
 export type DisposalDecisionInput = z.infer<typeof disposalDecisionSchema>
 export type DisposalExecutionInput = z.infer<typeof disposalExecutionSchema>
 export type DisposalBulkDecisionInput = z.infer<typeof disposalBulkDecisionSchema>
+export type DisposalBulkExecutionInput = z.infer<typeof disposalBulkExecutionSchema>
