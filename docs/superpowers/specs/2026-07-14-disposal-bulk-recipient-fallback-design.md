@@ -37,6 +37,15 @@ The schema trims the value, converts an empty string to `null`, and enforces a m
 
 Commit uses the exact shared recipient captured in the accepted Preview payload. Retry also carries that same value so unresolved requests are evaluated consistently.
 
+Every item in the Preview response includes these required fields (they are present even when their values are `null`):
+
+```ts
+recipientName: string | null
+recipientSource: "request" | "shared" | null
+```
+
+`recipientName` is the server-resolved effective value for that item. `recipientSource` is `"request"` when a nonblank authoritative request value wins, `"shared"` when `sharedRecipientName` supplies the fallback, and `null` when no effective recipient can be resolved. Commit uses the same item shape for its per-item result.
+
 ## Server Resolution
 
 For each freshly loaded authoritative request, the bulk service resolves:
@@ -46,6 +55,8 @@ effectiveRecipient = nonBlank(request.recipientName) ?? sharedRecipientName
 ```
 
 The service passes `effectiveRecipient` into the existing single-request execution service. An existing nonblank recipient always wins, including during commit revalidation. The shared value is therefore a fallback, not a bulk overwrite.
+
+The shared value is never used to replace a nonblank authoritative request recipient. It only supplies the effective execution recipient for an item whose authoritative recipient is blank; it does not turn a bulk operation into an edit of selected request-specific values.
 
 Preview and Commit both reload each request and apply the same resolution. The existing type-aware validation then decides whether the effective recipient is sufficient. No client-derived recipient is trusted as an authoritative per-item value.
 
@@ -76,7 +87,7 @@ Automated tests must prove:
 - Preview copy distinguishes existing and shared recipient sources;
 - Thai and English messages remain in parity.
 
-Manual UAT uses two approved donation requests with no recipient, enters one shared destination, verifies both Preview rows show `ใช้ค่าร่วม`, and stops before permanent Commit unless the operator intends to record the real disposal.
+Manual UAT is Preview-only: use two approved donation requests with no recipient, enter `ปลายทางทดสอบสำหรับ Preview` as the shared destination together with the required shared execution/evidence-exception values, verify both Preview rows are eligible with that effective recipient and show `ใช้ค่าร่วม`, then close the dialog without permanent Commit. Do not use this UAT path to record a real disposal.
 
 ## Acceptance Criteria
 

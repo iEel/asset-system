@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-07-14
+
+| Area | Update |
+|---|---|
+| Disposal bulk shared-recipient fallback | Documented the optional `sharedRecipientName` for bulk execution of `sell`, `donate`, and `dispose` requests. It is a fallback only: an authoritative nonblank request recipient always wins and is never overwritten. Bulk Preview and Commit items now document required `recipientName` and `recipientSource` fields so the effective recipient and whether it came from the request or shared fallback are explicit. The manual acceptance path is Preview-only with two approved donation requests that have blank recipients, and stops before permanent Commit. This documentation update does not record browser UAT or full verification as passed. |
+
+---
+
 ## 2026-07-13
 
 | Area | Update |
