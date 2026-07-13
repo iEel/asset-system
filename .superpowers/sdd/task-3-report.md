@@ -110,3 +110,71 @@ Exit code: 0
 
 - Node continues to emit the existing module-type warnings for TypeScript test files; all covering tests pass.
 - The pre-existing `package-lock.json` modification remains unstaged and untouched.
+
+# Task 3 RED/GREEN Report: Bulk Execution Route
+
+## RED
+
+1. Command required by the task brief:
+
+   ```powershell
+   node --import tsx --test tests/disposal-bulk-execution-route.test.ts tests/rbac-route-matrix.test.ts
+   ```
+
+   Result: exit 1 before tests ran. Node reported `ERR_MODULE_NOT_FOUND: Cannot find package 'tsx' imported from D:\Antigravity\asset-system\.worktrees\disposal-bulk-execution\`. `tsx` is not a repository dependency, so no package or lockfile change was made.
+
+2. Repository-supported native Node fallback:
+
+   ```powershell
+   node --test tests/disposal-bulk-execution-route.test.ts tests/rbac-route-matrix.test.ts
+   ```
+
+   Result: exit 1, 3 passed, 6 failed. The five route-contract tests failed with `ENOENT` because `src/app/api/disposal-requests/bulk-execution/route.ts` did not exist. The RBAC test failed because the matrix entry was `undefined`.
+
+## GREEN
+
+1. Focused route/RBAC/regression suite:
+
+   ```powershell
+   node --test tests/disposal-bulk-execution-route.test.ts tests/rbac-route-matrix.test.ts tests/disposal-route-structure.test.ts
+   ```
+
+   Result: exit 0, 27 passed, 0 failed.
+
+2. Full repository test suite:
+
+   ```powershell
+   npm test
+   ```
+
+   Result: exit 0, 906 passed, 0 failed.
+
+3. TypeScript check:
+
+   ```powershell
+   npx tsc --noEmit
+   ```
+
+   Result: exit 0.
+
+4. Lint:
+
+   ```powershell
+   npm run lint
+   ```
+
+   Result: exit 0, 0 errors, 257 existing warnings. The warnings are in checked-in `.agents`/`.gemini` skill scripts and the pre-existing `src/lib/disposal-bulk-execution.ts`; none are in Task 3 files.
+
+5. Whitespace validation:
+
+   ```powershell
+   git diff --check
+   ```
+
+   Result: exit 0 with no whitespace errors. Git emitted existing LF-to-CRLF worktree notices for the two modified tracked files.
+
+## Scope
+
+- Added authenticated `POST /api/disposal-requests/bulk-execution`.
+- Added its `disposal:edit` RBAC matrix entry and route/RBAC contract tests.
+- No Task 2 service behavior or `package-lock.json` was changed.

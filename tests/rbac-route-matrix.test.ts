@@ -46,6 +46,14 @@ test("critical API routes still contain their RBAC checks", () => {
   assert.deepEqual(failures, [])
 })
 
+test("bulk disposal execution is registered for disposal edit permission", () => {
+  const entry = rbacRoutePermissionMatrix.find(
+    (candidate) => candidate.filePath === "src/app/api/disposal-requests/bulk-execution/route.ts",
+  )
+
+  assert.deepEqual(entry?.checks, [{ module: "disposal", action: "edit" }])
+})
+
 test("every API route has an explicit protection inventory classification", () => {
   const routeFiles = collectApiRouteFiles("src/app/api")
   const classifications = routeFiles.map((filePath) =>
