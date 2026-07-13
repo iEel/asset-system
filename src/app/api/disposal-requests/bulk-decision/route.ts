@@ -84,7 +84,7 @@ function getBulkApprovalFailure(
 } {
   if (error instanceof DisposalApprovalServiceError) {
     return {
-      code: error.code === "DISPOSAL_FORBIDDEN" ? "DISPOSAL_APPROVAL_FAILED" : error.code,
+      code: error.code as DisposalBulkApprovalCode,
       display: error.item,
     }
   }

@@ -56,6 +56,57 @@ Result: passed with exit code 0.
 - The focused route coverage is structural because the route depends directly on authentication, Prisma, and the service; no database-backed handler integration test was added in this task's prescribed test scope.
 - Node emits the existing `MODULE_TYPELESS_PACKAGE_JSON` warning while running TypeScript tests. It does not affect the passing results.
 
+## Re-review Fix: Preserve Typed Forbidden Errors
+
+### RED
+
+Command:
+
+```powershell
+node --test tests/disposal-route-structure.test.ts tests/disposal-bulk-approval.test.ts
+```
+
+Result: failed as expected with 17 passing and 1 failing test. The new regression proved that the route rewrote `DISPOSAL_FORBIDDEN` to `DISPOSAL_APPROVAL_FAILED`.
+
+### GREEN
+
+Command:
+
+```powershell
+node --test tests/disposal-route-structure.test.ts tests/disposal-bulk-approval.test.ts
+```
+
+Result: passed, 18 tests passed and 0 failed.
+
+### Final Verification
+
+Command:
+
+```powershell
+node --test tests/disposal-bulk-approval.test.ts tests/disposal-route-structure.test.ts tests/rbac-route-matrix.test.ts
+```
+
+Result: passed, 21 tests passed and 0 failed (duration: 181.5873 ms).
+
+Command:
+
+```powershell
+npx tsc --noEmit
+```
+
+Result: passed with exit code 0.
+
+### Self-review
+
+- Every typed `DisposalApprovalServiceError`, including `DISPOSAL_FORBIDDEN`, now retains its original code and item metadata; typed codes other than `DISPOSAL_APPROVAL_FAILED` remain blocked outcomes.
+- Only unexpected errors use the stable `DISPOSAL_APPROVAL_FAILED` failed outcome.
+- The focused regression fails if the forbidden service error is rewritten or if the typed blocked outcome mapping changes.
+
+### Concerns
+
+- The route coverage remains structural; the handler's direct authentication, Prisma, and approval-service dependencies are not exercised through a database-backed integration test.
+- Node emits the existing `MODULE_TYPELESS_PACKAGE_JSON` warning while running TypeScript tests. It does not affect the passing results.
+
 ## Review Fix: Commit Execution And Missing Inspection Isolation
 
 ### RED

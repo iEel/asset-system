@@ -180,3 +180,12 @@ test("bulk commit preserves typed service errors when preview metadata is unavai
   )
   assert.match(failureHandler, /display: error\.item/)
 })
+
+test("bulk commit preserves DISPOSAL_FORBIDDEN as a typed blocked service error", () => {
+  const source = readFileSync("src/app/api/disposal-requests/bulk-decision/route.ts", "utf8")
+  const failureHandler = source.slice(source.indexOf("function getBulkApprovalFailure"))
+
+  assert.match(failureHandler, /code: error\.code\b/)
+  assert.doesNotMatch(failureHandler, /DISPOSAL_FORBIDDEN[^\n]*DISPOSAL_APPROVAL_FAILED/)
+  assert.match(source, /outcome: code === "DISPOSAL_APPROVAL_FAILED" \? "failed" : "blocked"/)
+})
