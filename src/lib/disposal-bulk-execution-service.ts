@@ -26,7 +26,10 @@ import {
   getDisposalStatusTargetError,
 } from "./disposal-policy.ts"
 import type { DisposalBatchSchemaReadiness } from "./disposal-schema-readiness.ts"
-import { getDisposalExecutionFieldErrors } from "./disposal-type-policy.ts"
+import {
+  getDisposalExecutionFieldErrors,
+  type DisposalFieldError,
+} from "./disposal-type-policy.ts"
 import type { DisposalBulkExecutionInput } from "./validations/disposal.ts"
 import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "./workflow-approval.ts"
 
@@ -260,7 +263,8 @@ function getCandidateBlockCode(input: {
     executedById: input.executionInput.executedById,
   })) return "DISPOSAL_SOD_CONFLICT"
   if (input.sharedValidation.blockCode) return input.sharedValidation.blockCode
-  if (getDisposalExecutionFieldErrors(input.executionInput).length > 0) return "DISPOSAL_BULK_INVALID_SELECTION"
+  const fieldError = getDisposalExecutionFieldErrors(input.executionInput)[0]
+  if (fieldError) return getDisposalExecutionFieldErrorCode(fieldError.field)
 
   return getDisposalExecutionEvidenceError({
     roles: input.actor.roles,
@@ -269,6 +273,21 @@ function getCandidateBlockCode(input: {
     evidenceExceptionReason: input.executionInput.evidenceExceptionReason,
     evidenceExceptionAcknowledged: input.executionInput.evidenceExceptionAcknowledged,
   })
+}
+
+function getDisposalExecutionFieldErrorCode(
+  field: DisposalFieldError["field"],
+): DisposalBulkExecutionCode {
+  switch (field) {
+    case "recipientName":
+      return "DISPOSAL_RECIPIENT_REQUIRED"
+    case "documentNo":
+      return "DISPOSAL_DOCUMENT_REQUIRED"
+    case "actualSaleValue":
+      return "DISPOSAL_SALE_VALUE_REQUIRED"
+    case "executionRemark":
+      return "DISPOSAL_EXECUTION_REMARK_REQUIRED"
+  }
 }
 
 function buildResponse(

@@ -62,10 +62,64 @@ test("preview preserves input order and blocks mixed types and missing per-item 
 
   assert.deepEqual(response.items.map((item) => item.requestId), ["request-2", "request-1", "request-3"])
   assert.deepEqual(response.items.map((item) => item.outcome), ["eligible", "blocked", "blocked"])
-  assert.deepEqual(response.items.map((item) => item.code), [null, "DISPOSAL_BULK_MIXED_TYPES", "DISPOSAL_BULK_INVALID_SELECTION"])
+  assert.deepEqual(response.items.map((item) => item.code), [null, "DISPOSAL_BULK_MIXED_TYPES", "DISPOSAL_EXECUTION_REMARK_REQUIRED"])
   assert.equal(response.eligibleCount, 1)
   assert.equal(response.blockedCount, 2)
 })
+
+test("preview identifies a missing donation recipient instead of reporting an invalid selection count", async () => {
+  const state = makeState({
+    requests: [makeRequest({
+      id: "request-1",
+      disposalType: "donate",
+      recipientName: null,
+      documentNo: null,
+    })],
+  })
+
+  const response = await inspectDisposalBulkExecution({
+    ...baseCommand,
+    input: {
+      ...baseCommand.input,
+      requestIds: ["request-1"],
+      useHistoricalEvidenceException: true,
+      evidenceExceptionReason: "Historical disposal with no surviving evidence",
+      evidenceExceptionAcknowledged: true,
+    },
+  }, { database: makeDatabase(state), batchSchemaReadiness: "ready" })
+
+  assert.equal(response.items[0].outcome, "blocked")
+  assert.equal(response.items[0].code, "DISPOSAL_RECIPIENT_REQUIRED")
+})
+
+for (const scenario of [
+  {
+    name: "reference document",
+    request: makeRequest({ documentNo: null }),
+    code: "DISPOSAL_DOCUMENT_REQUIRED",
+  },
+  {
+    name: "sale value",
+    request: makeRequest({ disposalType: "sell", recipientName: "Buyer", saleValue: null }),
+    code: "DISPOSAL_SALE_VALUE_REQUIRED",
+  },
+  {
+    name: "execution detail",
+    request: makeRequest({ executionRemark: null }),
+    code: "DISPOSAL_EXECUTION_REMARK_REQUIRED",
+  },
+] as const) {
+  test(`preview identifies missing ${scenario.name}`, async () => {
+    const state = makeState({ requests: [scenario.request] })
+    const response = await inspectDisposalBulkExecution(baseCommand, {
+      database: makeDatabase(state),
+      batchSchemaReadiness: "ready",
+    })
+
+    assert.equal(response.items[0].outcome, "blocked")
+    assert.equal(response.items[0].code, scenario.code)
+  })
+}
 
 test("commit executes each eligible item independently with shared date executor and status", async () => {
   const state = makeState({
