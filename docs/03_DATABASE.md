@@ -24,6 +24,7 @@
 
 - Audit rounds treat installed component assets as first-class `AuditItem` rows. `AssetComponent` remains the relationship source; no audit-specific component relationship table is added.
 - Parent-to-component master-data sync updates only supported ownership/location fields and records `AssetMovement` rows on each component asset.
+- `DisposalRequest` stores `evidenceExceptionReason`, `evidenceExceptionGrantedBy`, and `evidenceExceptionGrantedAt` only when the controlled historical-evidence exception is used. The normal execution evidence policy remains authoritative for ordinary disposal work.
 
 ## Asset Organization And Custody Semantics
 
@@ -69,6 +70,7 @@ These `.env` database connection settings are unchanged by Integration API token
 - Production schema changes that need deterministic SQL should be stored under `prisma/manual-migrations/` and executed with `npx prisma db execute --file <script>` after approval.
 - `prisma/manual-migrations/2026-06-12-add-performance-indexes.sql` is the current production performance-index script. Its index names match the `@@index(..., map: "...")` names in `prisma/schema.prisma`, so rerunning the script is safe and future schema checks do not create differently named duplicate indexes.
 - `prisma/manual-migrations/2026-06-14-add-integration-api-clients.sql` adds the `integration_api_clients` table for DB-backed Integration API token clients. Apply it in production after backup/approval and before deploying or using the admin token manager.
+- `prisma/manual-migrations/2026-07-13-add-disposal-evidence-exception.sql` adds the disposal-request historical-evidence exception reason, granting user ID, and grant timestamp. Apply it only after a fresh backup has been completed and verified; use `npx prisma db execute --file prisma/manual-migrations/2026-07-13-add-disposal-evidence-exception.sql` only after the operator confirms that backup.
 - Do not assume Prisma migrate support until it is validated against this project's SQL Server setup.
 
 ## Operational Notes

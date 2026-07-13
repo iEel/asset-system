@@ -31,6 +31,7 @@ Use this checklist before go-live, before a production schema change, and before
 - [ ] Prisma schema and migration approach are documented.
 - [ ] Production schema changes have an approved rollback or restore plan.
 - [ ] If the release includes `prisma/manual-migrations/*.sql`, each required script has been run against Production after backup and approval. For this disposal release, run `prisma/manual-migrations/2026-07-13-add-disposal-batches.sql`; for the performance-index pass, run `prisma/manual-migrations/2026-06-12-add-performance-indexes.sql` with `npx prisma db execute --file ...`.
+- [ ] Before `prisma/manual-migrations/2026-07-13-add-disposal-evidence-exception.sql` is applied, a fresh database backup has been completed and verified. After explicit backup confirmation, apply it with `npx prisma db execute --file prisma/manual-migrations/2026-07-13-add-disposal-evidence-exception.sql`, run `npm run prisma:generate`, and manually verify one approved historical request without attachments and one normal approved request with evidence.
 
 ## Uploads And Evidence
 
@@ -73,6 +74,7 @@ To restore a file, move it from `.archive/YYYY-MM-DD/<relativePath>` back to `UP
 - [ ] Concurrent single/batch disposal creation has been tested to confirm conditional status claims prevent duplicate open requests and bounded unique-number retries do not leave partial records.
 - [ ] `workflow_approval_min_approvers` is set to `1` for this release. The current disposal record stores one approval decision; do not configure multi-approver disposal until an approval-record model is implemented.
 - [ ] Disposal type-specific evidence/document/value requirements and Pending Disposal/Disposed/Retired lifecycle targets are verified with production-like master data in both English and Thai.
+- [ ] Historical disposal evidence exceptions are limited to `system_admin`; normal executors are blocked, item/shared-batch evidence rejects exception mode, reason plus acknowledgement are recorded, completed detail/print visibility is confirmed, and the disposal audit log has been inspected. Bulk historical execution remains unavailable.
 - [ ] Disposal readiness blockers have been UAT-tested for checkout, maintenance, audit/finding, component, and license relations; blocked assets remain visible with reasons and direct API submission is rejected.
 - [ ] Disposal batch history/workspace, single shared evidence storage, independent child approval/execution, type-aware dialogs, and the 390px primary mobile workflow action have passed role-based UAT.
 - [ ] Reports and exports are tested with realistic data.

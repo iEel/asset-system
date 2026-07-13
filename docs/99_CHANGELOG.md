@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-07-13
+
+| Area | Update |
+|---|---|
+| Disposal historical-evidence exception | Documented the controlled, no-evidence execution exception for legacy disposals. Only `system_admin` may authorize it; approval, execution permission, SOD, disposal-type requirements, and final Disposed/Retired validation remain in force. Item and shared batch evidence reject exception mode, a 20-character historical reason plus acknowledgement is mandatory, normal work still requires evidence, bulk historical execution is unavailable, and completed detail/print plus audit history preserve the grant. The SQL migration is a manual production handoff that must wait for a fresh verified backup; migration and real-device/browser UAT have not been completed by this documentation update. |
+
+---
+
 ## 2026-07-10
 
 | Area | Update |

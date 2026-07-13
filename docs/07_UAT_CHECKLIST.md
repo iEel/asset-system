@@ -68,6 +68,11 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Transfer an asset.
 - [ ] On Maintenance, switch between `ตาราง` and `บอร์ด`, confirm the current search/status filters remain in the URL, and verify both layouts show the same ticket set and open the same ticket detail workflow.
 - [ ] On Disposal, verify pending requests offer only the review action to approvers, approved requests offer only actual-execution action to permitted operators, and completed/rejected requests offer a detail link. Confirm this does not bypass the existing approval or execution forms.
+- [ ] As a normal permitted executor without `system_admin`, attempt to execute an approved historical request with no evidence. Confirm the normal evidence requirement blocks execution and the historical-evidence exception cannot be authorized.
+- [ ] As `system_admin`, execute an approved historical request with no item or shared batch evidence using a reason of at least 20 characters and the acknowledgement. Confirm the request still observes approval, execution permission, SOD, disposal-type fields, and the final Disposed/Retired status rule.
+- [ ] For a request with item evidence and for a batch child with shared batch evidence, attempt the historical-evidence exception. Confirm both attempts are rejected and ordinary evidence-backed execution remains available.
+- [ ] After a successful historical-evidence exception, open the completed disposal detail and its print view. Confirm both show the historical-evidence exception, reason, granting user, and grant time.
+- [ ] Inspect the disposal audit log for the successful exception. Confirm it records the distinct historical-without-evidence execution action, effective evidence count, reason, granting user, and grant time.
 - [ ] Upload and preview asset evidence.
 - [ ] On Asset Detail, confirm model/asset preview photos stay compact in the side rail, the `รูปและไฟล์` section initially shows only the preview set, and expanding/collapsing extra photos or files keeps preview, download, and delete actions available.
 - [ ] On Asset Detail, open the Evidence Center from the top action row and confirm it works as a drawer-based file index with source filters instead of a duplicate page section; the Timeline remains the place to review event history.
