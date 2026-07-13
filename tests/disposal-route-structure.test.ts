@@ -78,7 +78,7 @@ test("searches eligible disposal assets remotely instead of rendering the full a
 test("guards disposal creation against inactive actors and concurrent asset claims", () => {
   const requestRoute = readFileSync("src/app/api/disposal-requests/route.ts", "utf8")
   const batchRoute = readFileSync("src/app/api/disposal-batches/route.ts", "utf8")
-  const executionRoute = readFileSync("src/app/api/disposal-requests/[id]/route.ts", "utf8")
+  const executionService = readFileSync("src/lib/disposal-execution-service.ts", "utf8")
 
   assert.match(requestRoute, /DISPOSAL_EMPLOYEE_NOT_FOUND/)
   assert.match(requestRoute, /tx\.asset\.updateMany/)
@@ -87,7 +87,7 @@ test("guards disposal creation against inactive actors and concurrent asset clai
   assert.match(batchRoute, /tx\.asset\.updateMany/)
   assert.match(batchRoute, /orderedAssetIds = \[\.\.\.packet\.assetIds\]\.sort\(\)/)
   assert.match(batchRoute, /withPrismaUniqueRetry/)
-  assert.match(executionRoute, /id: input\.executedById, isActive: true/)
+  assert.match(executionService, /id: command\.input\.executedById, isActive: true/)
   assert.match(requestRoute, /getDisposalReadinessBlockers/)
   assert.match(batchRoute, /getDisposalReadinessBlockers/)
 })
@@ -212,11 +212,15 @@ test("bulk commit preserves DISPOSAL_FORBIDDEN as a typed blocked service error"
 
 test("execution enforces shared evidence policy and writes its audit transactionally", () => {
   const route = readFileSync("src/app/api/disposal-requests/[id]/route.ts", "utf8")
+  const service = readFileSync("src/lib/disposal-execution-service.ts", "utf8")
 
-  assert.match(route, /module:\s*"disposal_batch"/)
-  assert.match(route, /getDisposalExecutionEvidenceError/)
-  assert.match(route, /execute_historical_without_evidence/)
-  assert.match(route, /writeAuditLog\(tx/)
+  assert.match(route, /executeDisposalRequest/)
+  assert.match(service, /module:\s*"disposal_batch"/)
+  assert.match(service, /getDisposalExecutionEvidenceError/)
+  assert.match(service, /execute_historical_without_evidence/)
+  assert.match(service, /writeAuditLog\(transaction/)
+  assert.match(service, /isolationLevel:\s*"Serializable"/)
+  assert.match(service, /requestStatus:\s*"approved"/)
   assert.doesNotMatch(route, /await logAudit\([\s\S]*?action:\s*"execute"/)
 })
 
@@ -228,5 +232,7 @@ test("execution sanitizes unexpected infrastructure failures", () => {
   assert.match(route, /code:\s*"DISPOSAL_EXECUTION_FAILED"/)
   assert.match(route, /error:\s*"DISPOSAL_EXECUTION_FAILED"/)
   assert.match(route, /status:\s*500/)
+  assert.match(route, /issue\.path\[0\] === "evidenceExceptionReason"/)
+  assert.match(route, /DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED/)
   assert.doesNotMatch(route, /catch \(error\) \{\s*return errorResponse\(error, 400\)/)
 })

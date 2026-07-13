@@ -23,7 +23,7 @@ export function getDisposalExecutionEvidenceError(input: {
   }
   if (!canUseHistoricalDisposalEvidenceException(input.roles)) return "DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN"
   if (input.effectiveEvidenceCount > 0) return "DISPOSAL_EVIDENCE_EXCEPTION_NOT_APPLICABLE"
-  if (reason.length < 20) return "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED"
+  if (reason.length < 20 || reason.length > 2000) return "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED"
   if (!input.evidenceExceptionAcknowledged) return "DISPOSAL_EVIDENCE_EXCEPTION_ACK_REQUIRED"
   return null
 }

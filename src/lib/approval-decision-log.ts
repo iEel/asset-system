@@ -108,7 +108,7 @@ function getApprovalDecision(log: Pick<ApprovalDecisionLogSource, "module" | "ac
   if (log.module === "disposal") {
     if (log.action === "approve") return "approve"
     if (log.action === "reject") return "reject"
-    if (log.action === "execute") return "execute"
+    if (log.action === "execute" || log.action === "execute_historical_without_evidence") return "execute"
   }
   if (log.module === "maintenance" && log.action === "close") return "close"
   if (log.module === "audit") {

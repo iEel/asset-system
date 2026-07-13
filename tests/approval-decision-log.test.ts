@@ -24,6 +24,7 @@ const t = (key: string) => {
     "action.reject": "ปฏิเสธ",
     "action.approve_finding": "อนุมัติ Finding",
     "action.reject_finding": "ปฏิเสธ Finding",
+    "action.execute_historical_without_evidence": "ดำเนินการย้อนหลังโดยไม่มีหลักฐาน",
     "action.close": "ปิด",
     "field.requestStatus": "สถานะคำขอ",
     "field.reviewStatus": "สถานะตรวจสอบ",
@@ -103,6 +104,28 @@ test("summarizes and filters approval decision log items", () => {
   })
   assert.deepEqual(filterApprovalDecisionLogItems(items, "maintenance", "all").map((item) => item.id), ["maintenance-close"])
   assert.deepEqual(filterApprovalDecisionLogItems(items, "all", "close").map((item) => item.id), ["audit-close", "maintenance-close"])
+})
+
+test("includes historical execution without evidence as an execute decision with localized presentation", () => {
+  const items = buildApprovalDecisionLogItems(
+    [makeLog({
+      id: "historical-execute",
+      action: "execute_historical_without_evidence",
+      module: "disposal",
+      recordId: "disposal-1",
+      newValue: {
+        requestStatus: "disposed",
+        evidenceExceptionReason: "ทรัพย์สินถูกตัดจำหน่ายจริงในอดีตและไม่มีหลักฐานหลงเหลือ",
+      },
+    })],
+    labels,
+    "th",
+    t,
+  )
+
+  assert.equal(items.length, 1)
+  assert.equal(items[0].decision, "execute")
+  assert.equal(items[0].actionLabel, "ดำเนินการย้อนหลังโดยไม่มีหลักฐาน")
 })
 
 function makeLog(input: Partial<Omit<ApprovalDecisionLogSource, "oldValue" | "newValue">> & { id: string; action: string; module: string; oldValue?: unknown; newValue?: unknown }): ApprovalDecisionLogSource {

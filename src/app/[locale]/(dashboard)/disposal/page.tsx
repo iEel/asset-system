@@ -99,14 +99,14 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
   const requestIds = requests.map((request) => request.id)
   const batchIds = [...new Set(requests.flatMap((request) => request.batchId ? [request.batchId] : []))]
   const [itemEvidence, batchEvidence] = await Promise.all([
-    requestIds.length > 0
+    canEdit && requestIds.length > 0
       ? prisma.attachment.groupBy({
           by: ["referenceId"],
           where: { module: "disposal", referenceId: { in: requestIds }, isActive: true },
           _count: { _all: true },
         })
       : Promise.resolve([]),
-    batchIds.length > 0
+    canEdit && batchIds.length > 0
       ? prisma.attachment.groupBy({
           by: ["referenceId"],
           where: { module: "disposal_batch", referenceId: { in: batchIds }, isActive: true },

@@ -326,7 +326,7 @@ function buildFilterHref(
 
 function getAllowedDecisionWhere(access: ReturnType<typeof getApprovalInboxAccess>): Prisma.SystemLogWhereInput[] {
   const conditions: Prisma.SystemLogWhereInput[] = []
-  if (access.canApproveDisposal) conditions.push({ module: "disposal", action: { in: ["approve", "reject", "execute"] } })
+  if (access.canApproveDisposal) conditions.push({ module: "disposal", action: { in: ["approve", "reject", "execute", "execute_historical_without_evidence"] } })
   if (access.canCloseMaintenance) conditions.push({ module: "maintenance", action: "close" })
   if (access.canApproveAudit) conditions.push({ module: "audit", action: { in: ["approve_finding", "reject_finding", "close"] } })
   return conditions

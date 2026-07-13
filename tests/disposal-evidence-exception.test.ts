@@ -155,11 +155,41 @@ test("resets historical exception state on every dialog close and describes the 
   assert.match(executionButton, /resetHistoricalEvidenceException\(\)/)
   assert.match(executionButton, /onClose=\{closeExecutionDialog\}/)
   assert.match(executionButton, /aria-describedby=\{evidenceExceptionReasonHelpId\}/)
+  assert.match(executionButton, /historicalEvidenceWarningId/)
+  assert.match(executionButton, /aria-describedby=\{historicalEvidenceWarningId\}/)
+  assert.match(executionButton, /t\("historicalEvidenceWarning"\)/)
   assert.match(executionButton, /minLength=\{20\}/)
   assert.match(executionButton, /maxLength=\{2000\}/)
   assert.match(executionButton, /t\("historicalEvidenceReasonHelp"/)
   assert.equal(typeof thaiMessages.disposalPage.historicalEvidenceReasonHelp, "string")
   assert.equal(typeof englishMessages.disposalPage.historicalEvidenceReasonHelp, "string")
+})
+
+test("execution dialog resets and refreshes after evidence policy rejections", () => {
+  const executionButton = readFileSync("src/components/disposal/disposal-execution-button.tsx", "utf8")
+
+  assert.match(executionButton, /evidencePolicyErrorCodes/)
+  assert.match(executionButton, /resetHistoricalEvidenceException\(\)/)
+  assert.match(executionButton, /router\.refresh\(\)/)
+  assert.match(executionButton, /setOpen\(false\)/)
+})
+
+test("historical exception copy explicitly says without evidence and describes permanent audit logging", () => {
+  for (const locale of ["th", "en"] as const) {
+    const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
+    const disposal = messages.disposalPage
+    const systemLog = messages.systemLogPage
+    assert.match(disposal.historicalEvidenceException, locale === "th" ? /ไม่มีหลักฐาน/ : /without evidence/i)
+    assert.match(disposal.historicalEvidenceBadge, locale === "th" ? /ไม่มีหลักฐาน/ : /without evidence/i)
+    assert.equal(typeof disposal.historicalEvidenceWarning, "string")
+    assert.equal(typeof systemLog.action_execute_historical_without_evidence, "string")
+    assert.equal(typeof systemLog.field_evidenceExceptionReason, "string")
+    assert.equal(typeof systemLog.field_useHistoricalEvidenceException, "string")
+    assert.equal(typeof systemLog.field_evidenceExceptionAcknowledged, "string")
+    assert.equal(typeof systemLog.field_effectiveEvidenceCount, "string")
+    assert.equal(typeof systemLog.field_evidenceExceptionGrantedBy, "string")
+    assert.equal(typeof systemLog.field_evidenceExceptionGrantedAt, "string")
+  }
 })
 
 test("surfaces recorded historical evidence exceptions on completed detail and print views", () => {

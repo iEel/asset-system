@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { ZodError } from "zod"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
-import { logAudit, writeAuditLog } from "@/lib/audit-log"
+import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import {
   getDisposalSegregationError,
@@ -13,8 +13,8 @@ import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/
 import { deriveDisposalBatchStatus } from "@/lib/disposal-batch"
 import { disposalApiError } from "@/lib/disposal-api-errors"
 import { approveDisposalRequest, DisposalApprovalServiceError } from "@/lib/disposal-approval-service"
-import { isDisposalBatchSchemaReady } from "@/lib/disposal-schema-readiness"
-import { getDisposalExecutionEvidenceError } from "@/lib/disposal-evidence-exception"
+import { getDisposalBatchSchemaReadiness, isDisposalBatchSchemaReady } from "@/lib/disposal-schema-readiness"
+import { executeDisposalRequest, DisposalExecutionServiceError } from "@/lib/disposal-execution-service"
 
 type DisposalRequestContext = {
   params: Promise<{ id: string }>
@@ -30,6 +30,31 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
       requirePermission(user, "disposal", "edit")
     } else {
       requirePermission(user, "disposal", "approve")
+    }
+
+    if (action === "execute") {
+      const input = disposalExecutionSchema.parse(body)
+      try {
+        const result = await executeDisposalRequest({
+          requestId: id,
+          actor: {
+            userId: user.id,
+            employeeId: user.employeeId,
+            roles: user.roles,
+            permissions: user.permissions,
+          },
+          input,
+        }, {
+          database: prisma,
+          batchSchemaReadiness: await getDisposalBatchSchemaReadiness(),
+        })
+        return NextResponse.json(result.request)
+      } catch (error) {
+        if (error instanceof DisposalExecutionServiceError) {
+          return disposalApiError(error.code, error.message, getDisposalExecutionErrorStatus(error.code))
+        }
+        throw error
+      }
     }
 
     const batchSchemaReady = await isDisposalBatchSchemaReady()
@@ -50,134 +75,6 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
     if (!disposalRequest) return disposalApiError("DISPOSAL_REQUEST_NOT_FOUND", "Disposal request not found", 404)
     const disposalBatchId = batchLink?.batchId ?? null
     const workflowPolicy = parseWorkflowApprovalPolicy(savedSettings)
-
-    if (action === "execute") {
-      if (disposalRequest.requestStatus !== "approved") {
-        return disposalApiError("DISPOSAL_INVALID_STAGE", "Only approved disposal requests can be executed")
-      }
-      const input = disposalExecutionSchema.parse({ ...body, disposalType: disposalRequest.disposalType })
-      const segregationError = getDisposalSegregationError({
-        action: "execute",
-        segregationRequired: workflowPolicy.segregationRequired,
-        actorEmployeeId: user.employeeId,
-        actorUserId: user.id,
-        requestedById: disposalRequest.requestedById,
-        createdByUserId: disposalRequest.createdBy,
-        approverId: disposalRequest.approverId,
-        executedById: input.executedById,
-      })
-      if (segregationError) return disposalApiError("DISPOSAL_SOD_CONFLICT", segregationError, 403)
-
-      const nextStatus = await prisma.assetStatus.findFirst({
-        where: { id: input.nextStatusId, isActive: true },
-        select: { id: true, name: true, nameTh: true },
-      })
-      if (!nextStatus) return disposalApiError("DISPOSAL_STATUS_NOT_FOUND", "Next asset status not found", 404)
-      const nextStatusError = getDisposalStatusTargetError("execute", nextStatus)
-      if (nextStatusError) return disposalApiError("DISPOSAL_INVALID_STATUS_TARGET", nextStatusError)
-
-      const executor = await prisma.employee.findFirst({
-        where: { id: input.executedById, isActive: true },
-        select: { id: true },
-      })
-      if (!executor) return disposalApiError("DISPOSAL_EMPLOYEE_NOT_FOUND", "Executor is inactive or missing", 404)
-
-      const [itemEvidenceCount, batchEvidenceCount] = await Promise.all([
-        prisma.attachment.count({
-          where: { module: "disposal", referenceId: disposalRequest.id, isActive: true },
-        }),
-        disposalBatchId
-          ? prisma.attachment.count({
-              where: { module: "disposal_batch", referenceId: disposalBatchId, isActive: true },
-            })
-          : Promise.resolve(0),
-      ])
-      const effectiveEvidenceCount = itemEvidenceCount + batchEvidenceCount
-      const evidenceError = getDisposalExecutionEvidenceError({
-        roles: user.roles,
-        effectiveEvidenceCount,
-        useHistoricalEvidenceException: input.useHistoricalEvidenceException,
-        evidenceExceptionReason: input.evidenceExceptionReason,
-        evidenceExceptionAcknowledged: input.evidenceExceptionAcknowledged,
-      })
-      if (evidenceError) {
-        const error = {
-          DISPOSAL_EVIDENCE_REQUIRED: "Please attach disposal evidence before execution",
-          DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN: "Only system administrators can execute without disposal evidence",
-          DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED: "A historical evidence exception reason of at least 20 characters is required",
-          DISPOSAL_EVIDENCE_EXCEPTION_ACK_REQUIRED: "Historical evidence exception acknowledgement is required",
-          DISPOSAL_EVIDENCE_EXCEPTION_NOT_APPLICABLE: "Historical evidence exceptions can only be used when no active evidence exists",
-        }[evidenceError]
-        return disposalApiError(evidenceError, error, evidenceError === "DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN" ? 403 : 400)
-      }
-
-      const exceptionGrantedAt = input.useHistoricalEvidenceException ? new Date() : null
-      const updatedRequest = await prisma.$transaction(async (tx) => {
-        const record = await tx.disposalRequest.update({
-          where: { id },
-          data: {
-            requestStatus: "disposed",
-            executionDate: input.executionDate,
-            executedById: input.executedById,
-            recipientName: input.recipientName,
-            documentNo: input.documentNo,
-            actualSaleValue: input.actualSaleValue,
-            actualSalvageValue: input.actualSalvageValue,
-            executionRemark: input.executionRemark,
-            evidenceExceptionReason: input.useHistoricalEvidenceException ? input.evidenceExceptionReason : null,
-            evidenceExceptionGrantedBy: input.useHistoricalEvidenceException ? user.id : null,
-            evidenceExceptionGrantedAt: exceptionGrantedAt,
-            completedAt: new Date(),
-            updatedBy: user.id,
-          },
-          omit: { batchId: true },
-        })
-
-        await tx.asset.update({
-          where: { id: disposalRequest.assetId },
-          data: { statusId: input.nextStatusId, updatedBy: user.id },
-        })
-
-        await tx.assetMovement.create({
-          data: {
-            assetId: disposalRequest.assetId,
-            movementType: "disposal_execute",
-            fromValue: disposalRequest.asset.statusId,
-            toValue: input.nextStatusId,
-            reason: input.executionRemark ?? disposalRequest.reason,
-            referenceType: "disposal",
-            referenceId: disposalRequest.id,
-            performedBy: user.id,
-            performedAt: input.executionDate,
-            remark: input.documentNo,
-          },
-        })
-
-        if (disposalBatchId) {
-          const children = await tx.disposalRequest.findMany({ where: { batchId: disposalBatchId, isActive: true }, select: { requestStatus: true } })
-          await tx.disposalBatch.update({ where: { id: disposalBatchId }, data: { batchStatus: deriveDisposalBatchStatus(children.map((child) => child.requestStatus)), updatedBy: user.id } })
-        }
-
-        await writeAuditLog(tx, {
-          userId: user.id,
-          action: input.useHistoricalEvidenceException ? "execute_historical_without_evidence" : "execute",
-          module: "disposal",
-          recordId: id,
-          oldValue: { requestStatus: disposalRequest.requestStatus, assetStatusId: disposalRequest.asset.statusId },
-          newValue: {
-            ...input,
-            requestStatus: "disposed",
-            effectiveEvidenceCount,
-            evidenceExceptionGrantedBy: input.useHistoricalEvidenceException ? user.id : null,
-            evidenceExceptionGrantedAt: exceptionGrantedAt,
-          },
-        })
-
-        return record
-      })
-
-      return NextResponse.json(updatedRequest)
-    }
 
     const input = disposalDecisionSchema.parse(body)
     if (input.decision === "approve") {
@@ -306,7 +203,15 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
 
     return NextResponse.json(updatedRequest)
   } catch (error) {
-    if (error instanceof ZodError) return errorResponse(error, 400)
+    if (error instanceof ZodError) {
+      if (error.issues.some((issue) => issue.path[0] === "evidenceExceptionReason")) {
+        return disposalApiError(
+          "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED",
+          "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED",
+        )
+      }
+      return errorResponse(error, 400)
+    }
     if (error instanceof Error && (error.message === "Unauthorized" || error.message.startsWith("Forbidden"))) {
       return errorResponse(error)
     }
@@ -316,4 +221,12 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
       { status: 500 },
     )
   }
+}
+
+function getDisposalExecutionErrorStatus(code: DisposalExecutionServiceError["code"]) {
+  if (code === "DISPOSAL_CONCURRENT_UPDATE") return 409
+  if (code === "DISPOSAL_BATCH_SCHEMA_CHECK_FAILED") return 503
+  if (code === "DISPOSAL_FORBIDDEN" || code === "DISPOSAL_SOD_CONFLICT" || code === "DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN") return 403
+  if (code === "DISPOSAL_REQUEST_NOT_FOUND" || code === "DISPOSAL_STATUS_NOT_FOUND" || code === "DISPOSAL_EMPLOYEE_NOT_FOUND") return 404
+  return 400
 }

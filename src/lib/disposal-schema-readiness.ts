@@ -1,10 +1,20 @@
 import { prisma } from "@/lib/db"
 
-let disposalBatchSchemaReadiness: Promise<boolean> | undefined
+export type DisposalBatchSchemaReadiness = "ready" | "absent" | "unknown"
 
-export function isDisposalBatchSchemaReady() {
-  disposalBatchSchemaReadiness ??= checkDisposalBatchSchema()
-  return disposalBatchSchemaReadiness
+let disposalBatchSchemaReadiness: Promise<DisposalBatchSchemaReadiness> | undefined
+
+export async function getDisposalBatchSchemaReadiness() {
+  const currentCheck = disposalBatchSchemaReadiness ??= checkDisposalBatchSchema()
+  const readiness = await currentCheck
+  if (readiness === "unknown" && disposalBatchSchemaReadiness === currentCheck) {
+    disposalBatchSchemaReadiness = undefined
+  }
+  return readiness
+}
+
+export async function isDisposalBatchSchemaReady() {
+  return (await getDisposalBatchSchemaReadiness()) === "ready"
 }
 
 async function checkDisposalBatchSchema() {
@@ -16,8 +26,8 @@ async function checkDisposalBatchSchema() {
         THEN 1 ELSE 0
       END AS ready
     `)
-    return Number(rows[0]?.ready ?? 0) === 1
+    return Number(rows[0]?.ready ?? 0) === 1 ? "ready" : "absent"
   } catch {
-    return false
+    return "unknown"
   }
 }

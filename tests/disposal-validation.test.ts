@@ -118,6 +118,23 @@ test("historical evidence mode preserves sale recipient and value requirements",
   }
 })
 
+test("uses the exception reason field for historical reasons over 2000 characters", () => {
+  const result = disposalExecutionSchema.safeParse({
+    disposalType: "destroy",
+    executionDate: "2026-07-13",
+    executedById: "employee-1",
+    nextStatusId: "status-disposed",
+    documentNo: null,
+    executionRemark: "Destroyed before system adoption",
+    useHistoricalEvidenceException: true,
+    evidenceExceptionReason: "x".repeat(2001),
+    evidenceExceptionAcknowledged: true,
+  })
+
+  assert.equal(result.success, false)
+  if (!result.success) assert.equal(result.error.issues[0]?.path[0], "evidenceExceptionReason")
+})
+
 test("accepts preview and commit bulk approval packets", () => {
   assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "preview", requestIds: ["11111111-1111-4111-8111-111111111111"] }).success, true)
   assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "commit", requestIds: ["11111111-1111-4111-8111-111111111111"], approvalRemark: "Reviewed together" }).success, true)
