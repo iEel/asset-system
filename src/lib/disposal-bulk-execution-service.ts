@@ -29,6 +29,7 @@ import {
 import type { DisposalBatchSchemaReadiness } from "./disposal-schema-readiness.ts"
 import {
   getDisposalExecutionFieldErrors,
+  requiresDisposalExecutionRecipient,
   type DisposalFieldError,
 } from "./disposal-type-policy.ts"
 import type { DisposalBulkExecutionInput } from "./validations/disposal.ts"
@@ -161,10 +162,10 @@ async function inspect(
       if (!candidate) return { item: blockedItem(requestId, "DISPOSAL_REQUEST_NOT_FOUND"), command: null }
 
       const executionInput = buildDisposalExecutionInput(candidate, command.input)
-      const recipient = resolveDisposalExecutionRecipient(
-        candidate.recipientName,
-        command.input.sharedRecipientName,
-      )
+      const candidateType = getDisposalExecutionCandidateType(candidate)
+      const recipient = candidateType && requiresDisposalExecutionRecipient(candidateType)
+        ? resolveDisposalExecutionRecipient(candidate.recipientName, command.input.sharedRecipientName)
+        : { recipientName: null, source: null }
       const code = getCandidateBlockCode({
         candidate,
         actor: command.actor,

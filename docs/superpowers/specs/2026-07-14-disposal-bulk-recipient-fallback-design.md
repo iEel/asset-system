@@ -64,7 +64,7 @@ Preview and Commit both reload each request and apply the same resolution. The e
 
 The existing list-page item snapshot is used only to help the operator understand which rows appear to need the fallback before Preview. Server eligibility and the final effective value remain authoritative.
 
-The Preview UI derives the displayed effective value from the locked Preview payload plus the selected item snapshot. Commit still revalidates on the server. If a request changes concurrently, existing guarded execution behavior and stable error codes remain in force.
+The Preview UI displays the authoritative per-item `recipientName` and `recipientSource` returned by the server. The locked Preview payload is retained for Commit and retry, while the selected item snapshot is only a pre-Preview hint. Commit still revalidates on the server. If a request changes concurrently, existing guarded execution behavior and stable error codes remain in force.
 
 ## Accessibility And Localization
 

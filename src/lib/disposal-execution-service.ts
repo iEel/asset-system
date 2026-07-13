@@ -9,7 +9,11 @@ import {
 } from "./disposal-policy.ts"
 import type { DisposalBatchSchemaReadiness } from "./disposal-schema-readiness.ts"
 import type { DisposalApiErrorCode } from "./disposal-api-errors.ts"
-import { disposalTypeValues, type DisposalType } from "./disposal-type-policy.ts"
+import {
+  disposalTypeValues,
+  requiresDisposalExecutionRecipient,
+  type DisposalType,
+} from "./disposal-type-policy.ts"
 import type { DisposalExecutionInput } from "./validations/disposal.ts"
 import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "./workflow-approval.ts"
 
@@ -351,7 +355,7 @@ export function resolveDisposalExecutionRecipient(
   requestRecipient: string | null | undefined,
   sharedRecipient: string | null | undefined,
 ) {
-  const requestValue = requestRecipient?.trim() || null
+  const requestValue = requestRecipient?.trim() ? requestRecipient : null
   if (requestValue) return { recipientName: requestValue, source: "request" as const }
 
   const sharedValue = sharedRecipient?.trim() || null
@@ -365,15 +369,17 @@ export function buildDisposalExecutionInput(
   candidate: DisposalExecutionInputCandidate,
   shared: DisposalExecutionSharedInput,
 ): DisposalExecutionInput {
+  const disposalType = getDisposalExecutionCandidateType(candidate) as DisposalType
+  const recipientName = requiresDisposalExecutionRecipient(disposalType)
+    ? resolveDisposalExecutionRecipient(candidate.recipientName, shared.sharedRecipientName).recipientName
+    : candidate.recipientName
+
   return {
-    disposalType: getDisposalExecutionCandidateType(candidate) as DisposalType,
+    disposalType,
     executionDate: shared.executionDate,
     executedById: shared.executedById,
     nextStatusId: shared.nextStatusId,
-    recipientName: resolveDisposalExecutionRecipient(
-      candidate.recipientName,
-      shared.sharedRecipientName,
-    ).recipientName,
+    recipientName,
     documentNo: candidate.documentNo,
     actualSaleValue: candidate.saleValue == null ? null : Number(candidate.saleValue),
     actualSalvageValue: candidate.salvageValue == null ? null : Number(candidate.salvageValue),

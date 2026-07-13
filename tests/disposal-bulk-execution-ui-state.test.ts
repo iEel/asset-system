@@ -123,10 +123,21 @@ test("final results retain preview blocks and retry unresolved IDs in stable ded
     executionDate: "2026-07-14",
     executedById: "employee-1",
     nextStatusId: "disposed-status",
+    sharedRecipientName: "Fallback Destination",
     useHistoricalEvidenceException: false,
     evidenceExceptionReason: null,
     evidenceExceptionAcknowledged: false,
-  }).requestIds, ["b", "c"])
+  }), {
+    mode: "preview",
+    requestIds: ["b", "c"],
+    executionDate: "2026-07-14",
+    executedById: "employee-1",
+    nextStatusId: "disposed-status",
+    sharedRecipientName: "Fallback Destination",
+    useHistoricalEvidenceException: false,
+    evidenceExceptionReason: null,
+    evidenceExceptionAcknowledged: false,
+  })
 })
 
 test("Bangkok business date does not use the UTC calendar date", () => {

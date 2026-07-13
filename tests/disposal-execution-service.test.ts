@@ -161,6 +161,46 @@ test("builds execution inputs from request-specific candidate fields", () => {
   })
 })
 
+test("preserves the exact authoritative recipient instead of normalizing it", () => {
+  const candidate = makeCandidate()
+  Object.assign(candidate, {
+    disposalType: "sell",
+    recipientName: "  Buyer One  ",
+  })
+
+  const input = buildDisposalExecutionInput(candidate, {
+    executionDate: new Date("2026-07-13T00:00:00.000Z"),
+    executedById: "employee-executor",
+    nextStatusId: "status-disposed",
+    sharedRecipientName: "Fallback Buyer",
+    useHistoricalEvidenceException: false,
+    evidenceExceptionReason: null,
+    evidenceExceptionAcknowledged: false,
+  })
+
+  assert.equal(input.recipientName, "  Buyer One  ")
+})
+
+test("does not apply a shared recipient to a type that has no recipient field", () => {
+  const candidate = makeCandidate()
+  Object.assign(candidate, {
+    disposalType: "destroy",
+    recipientName: null,
+  })
+
+  const input = buildDisposalExecutionInput(candidate, {
+    executionDate: new Date("2026-07-13T00:00:00.000Z"),
+    executedById: "employee-executor",
+    nextStatusId: "status-disposed",
+    sharedRecipientName: "Fallback Destination",
+    useHistoricalEvidenceException: false,
+    evidenceExceptionReason: null,
+    evidenceExceptionAcknowledged: false,
+  })
+
+  assert.equal(input.recipientName, null)
+})
+
 function historicalCommand(): DisposalExecutionCommand {
   return {
     ...baseCommand,

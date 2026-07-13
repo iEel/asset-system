@@ -181,6 +181,11 @@ test("normalizes and limits the shared bulk recipient name", () => {
     sharedRecipientName: "",
   }).sharedRecipientName, null)
 
+  assert.equal(disposalBulkExecutionSchema.parse({
+    ...validBulkExecutionPacket,
+    sharedRecipientName: null,
+  }).sharedRecipientName, null)
+
   assert.equal(disposalBulkExecutionSchema.safeParse({
     ...validBulkExecutionPacket,
     sharedRecipientName: "x".repeat(201),

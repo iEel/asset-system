@@ -93,7 +93,10 @@ test("bulk execution collects a shared recipient and labels its server-derived s
 
   assert.match(component, /const \[sharedRecipientName, setSharedRecipientName\] = useState\(""\)/)
   assert.match(component, /sharedRecipientName: sharedRecipientName\.trim\(\) \|\| null/)
-  assert.match(component, /recipientFallbackApplicable/)
+  assert.match(
+    component,
+    /recipientFallbackApplicable\s*=\s*selectedType\s*!=\s*null\s*&&\s*\["sell",\s*"donate",\s*"dispose"\]\.includes\(selectedType\)/,
+  )
   assert.match(component, /maxLength=\{200\}/)
   assert.match(component, /recipientSource === "shared"/)
   assert.match(page, /sharedRecipient: t\("bulkExecutionSharedRecipient"\)/)

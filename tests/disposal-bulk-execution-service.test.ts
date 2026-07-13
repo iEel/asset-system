@@ -125,9 +125,33 @@ test("preview preserves a nonblank request recipient over the shared fallback", 
     batchSchemaReadiness: "ready",
   })
 
-  assert.equal(response.items[0].recipientName, "Original Foundation")
+  assert.equal(response.items[0].recipientName, " Original Foundation ")
   assert.equal(response.items[0].recipientSource, "request")
 })
+
+for (const disposalType of ["destroy", "lost"] as const) {
+  test(`preview ignores the shared recipient for ${disposalType} requests`, async () => {
+    const response = await inspectDisposalBulkExecution({
+      ...baseCommand,
+      input: {
+        ...baseCommand.input,
+        sharedRecipientName: "Fallback Destination",
+      },
+    }, {
+      database: makeDatabase(makeState({
+        requests: [makeRequest({
+          disposalType,
+          recipientName: null,
+          executionRemark: "Recorded execution details",
+        })],
+      })),
+      batchSchemaReadiness: "ready",
+    })
+
+    assert.equal(response.items[0].recipientName, null)
+    assert.equal(response.items[0].recipientSource, null)
+  })
+}
 
 for (const scenario of [
   {
