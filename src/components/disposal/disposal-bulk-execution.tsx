@@ -896,7 +896,10 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
                     />
                   </label>
                   <p id={historicalHelpId} className="text-xs text-muted-foreground">
-                    {copy.historicalReasonHelp}
+                    {format(copy.historicalReasonHelp, {
+                      count: evidenceExceptionReason.length,
+                      max: 2000,
+                    })}
                   </p>
                   <label className="flex min-h-11 items-center gap-3 text-sm text-foreground">
                     <input
@@ -912,7 +915,7 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
                 </>
               ) : (
                 <p id={historicalHelpId} className="text-xs text-muted-foreground">
-                  {copy.historicalReasonHelp}
+                  {format(copy.historicalReasonHelp, { count: 0, max: 2000 })}
                 </p>
               )}
             </section>
@@ -957,7 +960,7 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
               disabled={!hasSharedValues}
               className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
             >
-              {copy.confirm}
+              {format(copy.confirm, { count: reviewedItems.length })}
             </button>
           ) : null}
           {dialogState === "preview" ? (
@@ -966,7 +969,9 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
               disabled={eligible.length === 0 || !permanentConfirmed}
               className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
             >
-              {eligible.length === 0 ? copy.zeroEligible : copy.confirm}
+              {eligible.length === 0
+                ? copy.zeroEligible
+                : format(copy.confirm, { count: eligible.length })}
             </button>
           ) : null}
           {dialogState === "committing" ? (

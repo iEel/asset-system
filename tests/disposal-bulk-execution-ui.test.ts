@@ -82,6 +82,9 @@ test("bulk execution reviews server-derived item values and gates historical con
   assert.match(component, /aria-describedby=/)
   assert.match(component, /aria-busy=/)
   assert.match(component, /aria-live="polite"/)
+  assert.match(component, /format\(copy\.historicalReasonHelp,\s*\{[\s\S]*?count:\s*evidenceExceptionReason\.length,[\s\S]*?max:\s*2000/)
+  assert.match(component, /format\(copy\.confirm,\s*\{\s*count:\s*reviewedItems\.length\s*\}\)/)
+  assert.match(component, /format\(copy\.confirm,\s*\{\s*count:\s*eligible\.length\s*\}\)/)
 })
 
 test("bulk execution uses explicit selection mode, guarded rows, Bangkok date, and direct spacing", async () => {
