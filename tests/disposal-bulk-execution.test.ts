@@ -39,6 +39,10 @@ test("rejects a bulk execution selection containing only blank IDs", () => {
   assert.throws(() => disposalBulkExecutionSchema.parse({ ...validInput, requestIds: [" ", "   "] }))
 })
 
+test("rejects a blank ID mixed into an otherwise valid bulk execution selection", () => {
+  assert.throws(() => disposalBulkExecutionSchema.parse({ ...validInput, requestIds: ["r1", " "] }))
+})
+
 test("accepts shared execution values and defaults historical exception fields", () => {
   const parsed = disposalBulkExecutionSchema.parse({
     ...validInput,

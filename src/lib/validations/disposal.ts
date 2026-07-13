@@ -61,7 +61,7 @@ export const disposalExecutionSchema = z.object({
 })
 
 const disposalBulkRequestIds = z.array(z.string().uuid()).min(1).max(50)
-const disposalBulkExecutionRequestIds = z.array(z.string())
+const disposalBulkExecutionRequestIds = z.array(z.string().trim().min(1))
   .transform(normalizeDisposalBulkExecutionIds)
   .pipe(z.array(z.string().min(1)).min(1).max(20))
 
