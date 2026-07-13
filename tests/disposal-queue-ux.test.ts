@@ -46,6 +46,15 @@ test("disposal queue passes the complete localized bulk approval copy and expose
   assert.match(page, /<DisposalBulkApprovalSelectPageControl \/>/)
 })
 
+test("disposal queue retrieves ICU bulk approval templates through next-intl raw", () => {
+  const page = readFileSync(queuePath, "utf8")
+
+  for (const key of ["bulkSelectedCount", "bulkSelectItem", "bulkRemarkLimit", "bulkConfirmApproval"]) {
+    assert.match(page, new RegExp(`\\bt\\.raw\\("${key}"\\)`), `${key} must use raw template retrieval`)
+    assert.doesNotMatch(page, new RegExp(`\\bt\\("${key}"\\)`), `${key} must not be evaluated without variables`)
+  }
+})
+
 test("disposal messages cover queue states in both locales", () => {
   for (const locale of ["th", "en"] as const) {
     const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).disposalPage
