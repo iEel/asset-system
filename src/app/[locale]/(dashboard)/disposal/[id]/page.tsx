@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ArrowLeft, ClipboardCheck, FileText, History, Package, Printer } from "lucide-react"
+import { AlertTriangle, ArrowLeft, ClipboardCheck, FileText, History, Package, Printer } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
@@ -67,6 +67,14 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
     },
   })
   if (!disposalRequest) notFound()
+
+  const evidenceExceptionGrantor = disposalRequest.evidenceExceptionReason && disposalRequest.evidenceExceptionGrantedBy
+    ? await prisma.user.findUnique({
+        where: { id: disposalRequest.evidenceExceptionGrantedBy },
+        select: { username: true, displayName: true },
+      })
+    : null
+  const evidenceExceptionGrantorLabel = evidenceExceptionGrantor?.displayName || evidenceExceptionGrantor?.username || disposalRequest.evidenceExceptionGrantedBy
 
   const [movements, attachments, batchAttachments, options, savedSettings] = await Promise.all([
     prisma.assetMovement.findMany({
@@ -274,6 +282,21 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
               <div className="mt-5">
                 <TextBlock label={t("executionRemark")} value={disposalRequest.executionRemark} />
               </div>
+              {disposalRequest.evidenceExceptionReason ? (
+                <section aria-label={t("historicalEvidenceSummary")} className="mt-5 rounded-lg border border-warning/40 bg-warning/10 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
+                    <div>
+                      <p className="font-medium text-foreground">{t("historicalEvidenceBadge")}</p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{disposalRequest.evidenceExceptionReason}</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid grid-cols-1 gap-4 border-t border-warning/30 pt-4 md:grid-cols-2">
+                    <Info label={t("historicalEvidenceGrantedBy")} value={evidenceExceptionGrantorLabel} />
+                    <Info label={t("historicalEvidenceGrantedAt")} value={formatDateTime(disposalRequest.evidenceExceptionGrantedAt)} />
+                  </div>
+                </section>
+              ) : null}
             </section>
           ) : null}
 

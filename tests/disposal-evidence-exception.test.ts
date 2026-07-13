@@ -161,3 +161,31 @@ test("resets historical exception state on every dialog close and describes the 
   assert.equal(typeof thaiMessages.disposalPage.historicalEvidenceReasonHelp, "string")
   assert.equal(typeof englishMessages.disposalPage.historicalEvidenceReasonHelp, "string")
 })
+
+test("surfaces recorded historical evidence exceptions on completed detail and print views", () => {
+  const detail = readFileSync("src/app/[locale]/(dashboard)/disposal/[id]/page.tsx", "utf8")
+  const print = readFileSync("src/app/[locale]/(print)/disposal/[id]/print/page.tsx", "utf8")
+
+  for (const source of [detail, print]) {
+    assert.match(source, /evidenceExceptionReason/)
+    assert.match(source, /evidenceExceptionGrantedBy/)
+    assert.match(source, /evidenceExceptionGrantedAt/)
+    assert.match(source, /prisma\.user\.findUnique/)
+    assert.match(source, /historicalEvidenceBadge/)
+  }
+
+  assert.match(detail, /evidenceExceptionReason \? \(/)
+  assert.match(print, /isDisposalBatchSchemaReady/)
+  assert.match(print, /batchLink\?\.batchId \? prisma\.attachment\.count/)
+  assert.match(print, /evidenceCount \+ batchEvidenceCount/)
+  assert.match(print, /\.filter\(Boolean\)/)
+
+  const thaiMessages = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const englishMessages = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  for (const messages of [thaiMessages, englishMessages]) {
+    assert.equal(typeof messages.disposalPage.historicalEvidenceBadge, "string")
+    assert.equal(typeof messages.disposalPage.historicalEvidenceSummary, "string")
+    assert.equal(typeof messages.disposalPage.historicalEvidenceGrantedBy, "string")
+    assert.equal(typeof messages.disposalPage.historicalEvidenceGrantedAt, "string")
+  }
+})

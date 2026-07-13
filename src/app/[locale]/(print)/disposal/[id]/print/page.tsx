@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { OperationDocumentPrint } from "@/components/asset-operations/operation-document-print"
+import { isDisposalBatchSchemaReady } from "@/lib/disposal-schema-readiness"
 
 type DisposalPrintPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -15,8 +16,9 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
   const t = await getTranslations("disposalPage")
   const tAsset = await getTranslations("asset")
   const tCommon = await getTranslations("common")
+  const batchSchemaReady = await isDisposalBatchSchemaReady()
 
-  const [disposalRequest, evidenceCount] = await Promise.all([
+  const [disposalRequest, evidenceCount, batchLink] = await Promise.all([
     prisma.disposalRequest.findFirst({
       where: { id, isActive: true },
       omit: { batchId: true },
@@ -46,8 +48,38 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
       },
     }),
     prisma.attachment.count({ where: { module: "disposal", referenceId: id, isActive: true } }),
+    batchSchemaReady
+      ? prisma.disposalRequest.findFirst({ where: { id, isActive: true }, select: { batchId: true } })
+      : Promise.resolve(null),
   ])
   if (!disposalRequest) notFound()
+
+  const [batchEvidenceCount, evidenceExceptionGrantor] = await Promise.all([
+    batchLink?.batchId ? prisma.attachment.count({
+      where: { module: "disposal_batch", referenceId: batchLink.batchId, isActive: true },
+    }) : Promise.resolve(0),
+    disposalRequest.evidenceExceptionReason && disposalRequest.evidenceExceptionGrantedBy
+      ? prisma.user.findUnique({
+          where: { id: disposalRequest.evidenceExceptionGrantedBy },
+          select: { username: true, displayName: true },
+        })
+      : Promise.resolve(null),
+  ])
+  const evidenceExceptionGrantorLabel = evidenceExceptionGrantor?.displayName || evidenceExceptionGrantor?.username || disposalRequest.evidenceExceptionGrantedBy
+  const executionFields = [
+    { label: t("executionDate"), value: formatDateTime(disposalRequest.executionDate) },
+    { label: t("executedBy"), value: disposalRequest.executedBy ? `${disposalRequest.executedBy.code} - ${disposalRequest.executedBy.fullNameTh}` : null },
+    { label: t("recipientName"), value: disposalRequest.recipientName },
+    { label: t("documentNo"), value: disposalRequest.documentNo },
+    { label: t("actualSaleValue"), value: disposalRequest.actualSaleValue == null ? null : formatCurrency(Number(disposalRequest.actualSaleValue)) },
+    { label: t("actualSalvageValue"), value: disposalRequest.actualSalvageValue == null ? null : formatCurrency(Number(disposalRequest.actualSalvageValue)) },
+    { label: t("completedAt"), value: formatDateTime(disposalRequest.completedAt) },
+    { label: t("executionRemark"), value: disposalRequest.executionRemark },
+    disposalRequest.evidenceExceptionReason ? { label: t("historicalEvidenceSummary"), value: t("historicalEvidenceBadge") } : null,
+    disposalRequest.evidenceExceptionReason ? { label: t("historicalEvidenceReason"), value: disposalRequest.evidenceExceptionReason } : null,
+    disposalRequest.evidenceExceptionReason ? { label: t("historicalEvidenceGrantedBy"), value: evidenceExceptionGrantorLabel } : null,
+    disposalRequest.evidenceExceptionReason ? { label: t("historicalEvidenceGrantedAt"), value: formatDateTime(disposalRequest.evidenceExceptionGrantedAt) } : null,
+  ].filter(Boolean) as Array<{ label: string; value: string | null }>
 
   const statusLabel =
     disposalRequest.requestStatus === "pending"
@@ -82,7 +114,7 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
             { label: t("approvedAt"), value: formatDateTime(disposalRequest.approvedAt) },
             { label: t("saleValue"), value: disposalRequest.saleValue == null ? null : formatCurrency(Number(disposalRequest.saleValue)) },
             { label: t("salvageValue"), value: disposalRequest.salvageValue == null ? null : formatCurrency(Number(disposalRequest.salvageValue)) },
-            { label: t("requestEvidence"), value: `${evidenceCount}` },
+            { label: t("requestEvidence"), value: `${evidenceCount + batchEvidenceCount}` },
           ],
         },
         {
@@ -113,16 +145,7 @@ export default async function DisposalPrintPage({ params }: DisposalPrintPagePro
         },
         {
           title: t("executionDetail"),
-          fields: [
-            { label: t("executionDate"), value: formatDateTime(disposalRequest.executionDate) },
-            { label: t("executedBy"), value: disposalRequest.executedBy ? `${disposalRequest.executedBy.code} - ${disposalRequest.executedBy.fullNameTh}` : null },
-            { label: t("recipientName"), value: disposalRequest.recipientName },
-            { label: t("documentNo"), value: disposalRequest.documentNo },
-            { label: t("actualSaleValue"), value: disposalRequest.actualSaleValue == null ? null : formatCurrency(Number(disposalRequest.actualSaleValue)) },
-            { label: t("actualSalvageValue"), value: disposalRequest.actualSalvageValue == null ? null : formatCurrency(Number(disposalRequest.actualSalvageValue)) },
-            { label: t("completedAt"), value: formatDateTime(disposalRequest.completedAt) },
-            { label: t("executionRemark"), value: disposalRequest.executionRemark },
-          ],
+          fields: executionFields,
         },
       ]}
       signatures={[
