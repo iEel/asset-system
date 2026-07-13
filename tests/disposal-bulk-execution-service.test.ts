@@ -296,7 +296,7 @@ test("authoritative reload failure becomes failed and later items continue", asy
   assert.doesNotMatch(JSON.stringify(response), /private-db|Password|do-not-serialize/i)
 })
 
-test("known executor exceptions become failed item results", async () => {
+test("known executor exceptions become blocked item results without generic logging", async () => {
   const state = makeState()
   const errors: string[] = []
 
@@ -312,9 +312,9 @@ test("known executor exceptions become failed item results", async () => {
     },
   })
 
-  assert.equal(response.items[0].outcome, "failed")
-  assert.equal(response.items[0].code, "DISPOSAL_BULK_EXECUTION_FAILED")
-  assert.deepEqual(errors, ["Disposal bulk execution item failed"])
+  assert.equal(response.items[0].outcome, "blocked")
+  assert.equal(response.items[0].code, "DISPOSAL_CONCURRENT_UPDATE")
+  assert.deepEqual(errors, [])
 })
 
 test("already executed requests return blocked without a second executor call", async () => {

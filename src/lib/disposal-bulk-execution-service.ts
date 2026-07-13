@@ -12,6 +12,7 @@ import {
   getDisposalExecutionCandidateType,
   hasDisposalExecutionPermission,
   loadDisposalExecutionCandidates,
+  DisposalExecutionServiceError,
   executeDisposalRequest,
   type DisposalExecutionActor,
   type DisposalExecutionCandidate,
@@ -102,7 +103,11 @@ export async function commitDisposalBulkExecution(
         now: dependencies.now,
       })
       items[index] = { ...current.item, outcome: "executed" }
-    } catch {
+    } catch (error) {
+      if (error instanceof DisposalExecutionServiceError) {
+        items[index] = { ...inspection.items[index].item, outcome: "blocked", code: error.code }
+        continue
+      }
       ;(dependencies.logger ?? console.error)("Disposal bulk execution item failed")
       items[index] = { ...inspection.items[index].item, outcome: "failed", code: "DISPOSAL_BULK_EXECUTION_FAILED" }
     }

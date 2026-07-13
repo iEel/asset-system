@@ -59,7 +59,7 @@ Both commands use Node 24 native TypeScript stripping; no unavailable `tsx` impo
 - Candidate mapping uses shared date, executor, status, and historical fields while retaining each request's disposal type, recipient, document, sale value, salvage value, and execution remark.
 - Preview and revalidation enforce permission, batch-schema readiness, same-type selection, stage, asset lifecycle, SOD, active executor/status, type-specific fields, and exact-role historical evidence policy.
 - Commit re-runs the advisory checks before each initially eligible item, then invokes only `executeDisposalRequest`; the bulk service opens no shared transaction.
-- Reload and executor exceptions are logged with a fixed server-side message, return `DISPOSAL_BULK_EXECUTION_FAILED`, and do not halt sibling items.
+- Known single-item service errors become blocked item results without generic logging. Unexpected reload and executor errors are logged with a fixed server-side message, return `DISPOSAL_BULK_EXECUTION_FAILED`, and do not halt sibling items.
 - The single-item executor still owns its fresh serializable validation, guarded updates, movement, audit log, and batch-status derivation.
 
 ## Concerns
@@ -69,7 +69,7 @@ Both commands use Node 24 native TypeScript stripping; no unavailable `tsx` impo
 
 ## Reviewed Task 2 Fixes
 
-- Moved each per-item authoritative reload inside the item failure boundary. Reload and execution exceptions now produce `failed` with `DISPOSAL_BULK_EXECUTION_FAILED`, emit only `Disposal bulk execution item failed`, and allow later items to continue.
+- Moved each per-item authoritative reload inside the item failure boundary. Unexpected reload and execution exceptions produce `failed` with `DISPOSAL_BULK_EXECUTION_FAILED`, emit only `Disposal bulk execution item failed`, and allow later items to continue.
 - Replaced the no-transaction executor assertion with a transaction-capable fake that records one independent `Serializable` transaction per executor invocation.
 - Expanded retry coverage to three items. The middle item fails, the first and last states persist, the last item still executes, and retrying the identical command executes only the unresolved middle item.
 - Varied request fields across authoritative reads and asserted that each execution receives the reloaded values.
@@ -106,5 +106,37 @@ Both commands use Node 24 native TypeScript stripping; no unavailable `tsx` impo
    - Result: no whitespace errors.
 
 7. `git status --short`
+   - Before report update: only `src/lib/disposal-bulk-execution-service.ts` and `tests/disposal-bulk-execution-service.test.ts` were modified.
+   - `package-lock.json` was not modified.
+
+## Important Finding Follow-Up
+
+- Restored `DisposalExecutionServiceError` handling inside the per-item catch.
+- Known service errors now return `blocked` with the original service error code and do not emit the generic failure log.
+- Unexpected authoritative reload and executor errors retain the fixed, non-sensitive log message, generic failure code, redacted response behavior, and sibling continuation.
+
+## Important Finding Verification
+
+1. `node --test tests/disposal-bulk-execution-service.test.ts tests/disposal-execution-service.test.ts tests/disposal-evidence-exception.test.ts`
+   - Exit: `0`.
+   - Result: `31` pass, `0` fail, `0` skipped, `0` todo.
+
+2. `npm test`
+   - Exit: `0`.
+   - Result: `900` pass, `0` fail, `0` skipped, `0` todo.
+
+3. `npx tsc --noEmit`
+   - Exit: `0`.
+   - Result: no TypeScript errors.
+
+4. `npx eslint src/lib/disposal-bulk-execution-service.ts tests/disposal-bulk-execution-service.test.ts`
+   - Exit: `0`.
+   - Result: no errors or warnings.
+
+5. `git diff --check`
+   - Exit: `0`.
+   - Result: no whitespace errors.
+
+6. `git status --short`
    - Before report update: only `src/lib/disposal-bulk-execution-service.ts` and `tests/disposal-bulk-execution-service.test.ts` were modified.
    - `package-lock.json` was not modified.
