@@ -24,6 +24,19 @@ test("disposal queue communicates range, date errors, compact mobile detail, and
   assert.match(page, /hasActiveFilters=\{hasActiveFilters\}/)
 })
 
+test("disposal queue exposes bulk approval only through the approval workspace", () => {
+  const page = readFileSync(queuePath, "utf8")
+
+  assert.match(page, /<DisposalBulkApprovalProvider/)
+  assert.match(page, /<DisposalBulkApprovalToolbar/)
+  assert.match(page, /<DisposalBulkApprovalCheckbox/)
+  assert.match(page, /<DisposalBulkSelectionToggle/)
+  assert.match(page, /canApprove/)
+  assert.match(page, /asset:\s*\{\s*select:[\s\S]*?status:/)
+  assert.match(page, /selectionKey=\{`\$\{filters\.page\}:\$\{filters\.pageSize\}:\$\{query\}`\}/)
+  assert.match(page, /data-no-row-click/)
+})
+
 test("disposal messages cover queue states in both locales", () => {
   for (const locale of ["th", "en"] as const) {
     const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).disposalPage
@@ -31,5 +44,16 @@ test("disposal messages cover queue states in both locales", () => {
     assert.equal(typeof messages.invalidDateRange, "string")
     assert.equal(typeof messages.batchHistory, "string")
     assert.equal(typeof messages.emptyUnfilteredTitle, "string")
+  }
+})
+
+test("bulk approval copy exists in Thai and English", () => {
+  for (const locale of ["th", "en"] as const) {
+    const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).disposalPage
+    for (const key of ["bulkSelectedCount", "bulkReviewAndApprove", "bulkPreviewTitle", "bulkResultTitle", "bulkSelectPage", "bulkClearSelection"]) {
+      assert.equal(typeof messages[key], "string", `${locale}:${key}`)
+    }
+    assert.equal(typeof messages.bulkErrors.DISPOSAL_SOD_CONFLICT, "string")
+    assert.equal(typeof messages.bulkErrors.DISPOSAL_CONCURRENT_UPDATE, "string")
   }
 })

@@ -99,3 +99,13 @@ test("bulk approval invalidates requests on selection-key changes and clears sta
   assert.doesNotMatch(source, /skipDiscardConfirmationRef/)
   assert.match(source, /function confirmDiscard\(\) \{\s*if \(selected\.size === 0\) return true/)
 })
+
+test("bulk approval has localized copy ready for the queue integration", () => {
+  for (const locale of ["th", "en"] as const) {
+    const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).disposalPage
+    for (const key of ["bulkSelection", "bulkSelectionMode", "bulkSelectionLimit", "bulkPreflightHelp", "bulkSharedRemark", "bulkZeroEligible"]) {
+      assert.equal(typeof messages[key], "string", `${locale}:${key}`)
+    }
+    assert.equal(typeof messages.bulkErrors.DISPOSAL_APPROVAL_FAILED, "string")
+  }
+})
