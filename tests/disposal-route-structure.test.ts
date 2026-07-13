@@ -141,8 +141,6 @@ test("bulk approval route guards permission and revalidates each request", () =>
   assert.match(source, /inspectDisposalApprovalRequests/)
   assert.match(source, /for \(const requestId of input\.requestIds\)/)
   assert.match(source, /approveDisposalRequest/)
-  assert.match(source, /item\.requestId\.toLowerCase\(\)/)
-  assert.match(source, /get\(requestId\.toLowerCase\(\)\)/)
   assert.match(source, /roles:\s*user\.roles/)
   assert.match(source, /permissions:\s*user\.permissions/)
   assert.match(matrix, /disposal-requests\/bulk-decision\/route\.ts/)
@@ -155,10 +153,30 @@ test("bulk commit invokes the approval service even when inspection reports a bl
   assert.match(source, /for \(const requestId of input\.requestIds\) \{[\s\S]*?try \{[\s\S]*?approveDisposalRequest\(/)
 })
 
-test("bulk commit isolates missing inspection metadata with a stable item fallback", () => {
+test("bulk commit uses a stable submitted-ID fallback without inspection metadata", () => {
   const source = readFileSync("src/app/api/disposal-requests/bulk-decision/route.ts", "utf8")
 
-  assert.doesNotMatch(source, /inspectedById\.get\(requestId\.toLowerCase\(\)\)!/)
-  assert.match(source, /getBulkApprovalFailure\(error, requestId, previewItem\)/)
-  assert.match(source, /if \(!previewItem\) \{[\s\S]*?code: "DISPOSAL_APPROVAL_FAILED"/)
+  assert.doesNotMatch(source, /inspectedById/)
+  assert.match(source, /getBulkApprovalFailure\(error, requestId\)/)
+  assert.match(source, /display: \{ disposalNo: requestId, assetTag: "-" \}/)
+})
+
+test("bulk commit does not inspect before independently approving every submitted ID", () => {
+  const source = readFileSync("src/app/api/disposal-requests/bulk-decision/route.ts", "utf8")
+  const commitSource = source.slice(source.indexOf("const items: DisposalBulkApprovalItem[]"))
+
+  assert.match(source, /if \(input\.mode === "preview"\) \{[\s\S]*?inspectDisposalApprovalRequests/)
+  assert.doesNotMatch(commitSource, /inspectDisposalApprovalRequests/)
+  assert.match(commitSource, /for \(const requestId of input\.requestIds\) \{[\s\S]*?approveDisposalRequest\(/)
+})
+
+test("bulk commit preserves typed service errors when preview metadata is unavailable", () => {
+  const source = readFileSync("src/app/api/disposal-requests/bulk-decision/route.ts", "utf8")
+  const failureHandler = source.slice(source.indexOf("function getBulkApprovalFailure"))
+
+  assert.ok(
+    failureHandler.indexOf("error instanceof DisposalApprovalServiceError")
+      < failureHandler.indexOf("display: { disposalNo: requestId, assetTag: \"-\" }"),
+  )
+  assert.match(failureHandler, /display: error\.item/)
 })

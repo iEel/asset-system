@@ -107,3 +107,45 @@ Result: passed with exit code 0.
 
 - The route tests remain structural because authentication, Prisma, and the approval service are direct handler dependencies; this task's focused suite does not provide database-backed route integration coverage.
 - Node emits the existing `MODULE_TYPELESS_PACKAGE_JSON` warning while running TypeScript tests. It does not affect the passing results.
+
+## Re-review Fix: Inspection-Independent Commit Execution
+
+### RED
+
+Command:
+
+```powershell
+node --test tests/disposal-route-structure.test.ts tests/disposal-bulk-approval.test.ts
+```
+
+Result: failed as expected with 15 passing and 2 failing tests. The new failures proved that commit called bulk inspection before branching to preview and let missing inspection metadata override a typed service error.
+
+### Final Verification
+
+Command:
+
+```powershell
+node --test tests/disposal-bulk-approval.test.ts tests/disposal-route-structure.test.ts tests/rbac-route-matrix.test.ts
+```
+
+Result: passed, 20 tests passed and 0 failed (duration: 173.6117 ms).
+
+Command:
+
+```powershell
+npx tsc --noEmit
+```
+
+Result: passed with exit code 0.
+
+### Self-review
+
+- Preview remains read-only and is the only mode that calls `inspectDisposalApprovalRequests()`.
+- Commit calls `approveDisposalRequest()` independently for every submitted ID and continues even when a separate item fails.
+- Successful service results and typed `DisposalApprovalServiceError` values supply commit display metadata. Generic failures use the submitted ID with `-` as the asset tag.
+- The focused structural regressions fail if commit regains an inspection dependency or if a missing preview item can override typed service metadata.
+
+### Concerns
+
+- The route coverage remains structural; the handler's direct authentication, Prisma, and approval-service dependencies are not exercised through a database-backed integration test.
+- Node emits the existing `MODULE_TYPELESS_PACKAGE_JSON` warning while running TypeScript tests. It does not affect the passing results.

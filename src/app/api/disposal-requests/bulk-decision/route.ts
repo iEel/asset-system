@@ -32,20 +32,17 @@ export async function POST(request: NextRequest) {
       permissions: user.permissions,
     }
 
-    const inspected = await inspectDisposalApprovalRequests({
-      requestIds: input.requestIds,
-      actor,
-      segregationRequired,
-    })
     if (input.mode === "preview") {
+      const inspected = await inspectDisposalApprovalRequests({
+        requestIds: input.requestIds,
+        actor,
+        segregationRequired,
+      })
       return NextResponse.json({ summary: summarizeDisposalBulkApproval(inspected), items: inspected })
     }
 
     const items: DisposalBulkApprovalItem[] = []
-    const inspectedById = new Map(inspected.map((item) => [item.requestId.toLowerCase(), item]))
     for (const requestId of input.requestIds) {
-      const previewItem = inspectedById.get(requestId.toLowerCase())
-
       try {
         const result = await approveDisposalRequest({
           requestId,
@@ -61,7 +58,7 @@ export async function POST(request: NextRequest) {
           code: null,
         })
       } catch (error) {
-        const { code, display } = getBulkApprovalFailure(error, requestId, previewItem)
+        const { code, display } = getBulkApprovalFailure(error, requestId)
         items.push({
           requestId,
           disposalNo: display.disposalNo,
@@ -81,18 +78,10 @@ export async function POST(request: NextRequest) {
 function getBulkApprovalFailure(
   error: unknown,
   requestId: string,
-  previewItem?: DisposalBulkApprovalItem,
 ): {
   code: DisposalBulkApprovalCode
   display: Pick<DisposalBulkApprovalItem, "disposalNo" | "assetTag">
 } {
-  if (!previewItem) {
-    return {
-      code: "DISPOSAL_APPROVAL_FAILED",
-      display: { disposalNo: requestId, assetTag: "-" },
-    }
-  }
-
   if (error instanceof DisposalApprovalServiceError) {
     return {
       code: error.code === "DISPOSAL_FORBIDDEN" ? "DISPOSAL_APPROVAL_FAILED" : error.code,
@@ -100,5 +89,8 @@ function getBulkApprovalFailure(
     }
   }
 
-  return { code: "DISPOSAL_APPROVAL_FAILED", display: previewItem }
+  return {
+    code: "DISPOSAL_APPROVAL_FAILED",
+    display: { disposalNo: requestId, assetTag: "-" },
+  }
 }
