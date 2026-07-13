@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
@@ -45,4 +46,14 @@ test("summarizes preview and commit outcomes without hiding blocked items", () =
     approved: 1,
     failed: 1,
   })
+})
+
+test("bulk commit delegates each item to an approval service that checks its permission boundary", () => {
+  const service = readFileSync("src/lib/disposal-approval-service.ts", "utf8")
+
+  assert.match(service, /type DisposalApprovalActor = DisposalBulkApprovalActor &/)
+  assert.match(service, /permissions: string\[\]/)
+  assert.match(service, /roles: string\[\]/)
+  assert.match(service, /actor\.roles\.includes\("system_admin"\)/)
+  assert.match(service, /actor\.permissions\.includes\("disposal:approve"\)/)
 })

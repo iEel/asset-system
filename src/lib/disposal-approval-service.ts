@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client"
+import { Prisma } from "@prisma/client"
 import { writeAuditLog } from "@/lib/audit-log"
 import { prisma } from "@/lib/db"
 import { deriveDisposalBatchStatus } from "@/lib/disposal-batch"
@@ -9,9 +9,14 @@ import {
   type DisposalBulkApprovalItem,
 } from "@/lib/disposal-bulk-approval"
 
+export type DisposalApprovalActor = DisposalBulkApprovalActor & {
+  roles: string[]
+  permissions: string[]
+}
+
 export type DisposalApprovalCommand = {
   requestId: string
-  actor: DisposalBulkApprovalActor
+  actor: DisposalApprovalActor
   segregationRequired: boolean
   approvalRemark?: string | null
   saleValue?: number | null
@@ -20,7 +25,7 @@ export type DisposalApprovalCommand = {
 
 export class DisposalApprovalServiceError extends Error {
   constructor(
-    public readonly code: DisposalBulkApprovalCode,
+    public readonly code: DisposalBulkApprovalCode | "DISPOSAL_FORBIDDEN",
     public readonly item: { requestId: string; disposalNo: string; assetTag: string },
   ) {
     super(code)
@@ -53,6 +58,15 @@ const approvalCandidateSelect = {
 type DisposalApprovalCandidate = Prisma.DisposalRequestGetPayload<{
   select: typeof approvalCandidateSelect
 }>
+
+type DisposalApprovalReader = Pick<Prisma.TransactionClient, "disposalRequest">
+
+async function loadApprovalCandidate(db: DisposalApprovalReader, requestId: string) {
+  return db.disposalRequest.findUnique({
+    where: { id: requestId },
+    select: approvalCandidateSelect,
+  })
+}
 
 async function loadApprovedRequest(tx: Prisma.TransactionClient, requestId: string) {
   return tx.disposalRequest.findUniqueOrThrow({
@@ -100,29 +114,38 @@ export async function approveDisposalRequest(command: DisposalApprovalCommand): 
   batchId: string | null
   assetTag: string
 }> {
-  const candidate = await prisma.disposalRequest.findUnique({
-    where: { id: command.requestId },
-    select: approvalCandidateSelect,
-  })
+  if (!hasDisposalApprovalPermission(command.actor)) {
+    throw new DisposalApprovalServiceError("DISPOSAL_FORBIDDEN", missingApprovalItem(command.requestId))
+  }
+
+  const candidate = await loadApprovalCandidate(prisma, command.requestId)
   if (!candidate) {
-    throw new DisposalApprovalServiceError("DISPOSAL_REQUEST_NOT_FOUND", {
-      requestId: command.requestId,
-      disposalNo: command.requestId,
-      assetTag: "-",
-    })
+    throw new DisposalApprovalServiceError("DISPOSAL_REQUEST_NOT_FOUND", missingApprovalItem(command.requestId))
   }
 
   const blockCode = getDisposalBulkApprovalBlockCode(candidate, command.actor, command.segregationRequired)
   if (blockCode) throw new DisposalApprovalServiceError(blockCode, toApprovalItem(candidate))
 
   const approvedAt = new Date()
-  const request = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
+    const currentCandidate = await loadApprovalCandidate(tx, command.requestId)
+    if (!currentCandidate) {
+      throw new DisposalApprovalServiceError("DISPOSAL_REQUEST_NOT_FOUND", missingApprovalItem(command.requestId))
+    }
+
+    const currentBlockCode = getDisposalBulkApprovalBlockCode(
+      currentCandidate,
+      command.actor,
+      command.segregationRequired,
+    )
+    if (currentBlockCode) throw new DisposalApprovalServiceError(currentBlockCode, toApprovalItem(currentCandidate))
+
     const update = await tx.disposalRequest.updateMany({
-      where: { id: candidate.id, isActive: true, requestStatus: "pending" },
+      where: { id: currentCandidate.id, isActive: true, requestStatus: "pending" },
       data: {
         requestStatus: "approved",
         approvalRemark: command.approvalRemark ?? null,
-        approverId: command.actor.employeeId ?? candidate.approverId,
+        approverId: command.actor.employeeId ?? currentCandidate.approverId,
         approvedAt,
         updatedBy: command.actor.userId,
         ...(command.saleValue !== undefined ? { saleValue: command.saleValue } : {}),
@@ -130,18 +153,18 @@ export async function approveDisposalRequest(command: DisposalApprovalCommand): 
       },
     })
     if (update.count !== 1) {
-      throw new DisposalApprovalServiceError("DISPOSAL_CONCURRENT_UPDATE", toApprovalItem(candidate))
+      throw new DisposalApprovalServiceError("DISPOSAL_CONCURRENT_UPDATE", toApprovalItem(currentCandidate))
     }
 
     await tx.assetMovement.create({
       data: {
-        assetId: candidate.assetId,
+        assetId: currentCandidate.assetId,
         movementType: "disposal_approve",
-        fromValue: candidate.asset.statusId,
-        toValue: candidate.asset.statusId,
-        reason: command.approvalRemark ?? candidate.reason,
+        fromValue: currentCandidate.asset.statusId,
+        toValue: currentCandidate.asset.statusId,
+        reason: command.approvalRemark ?? currentCandidate.reason,
         referenceType: "disposal",
-        referenceId: candidate.id,
+        referenceId: currentCandidate.id,
         performedBy: command.actor.userId,
         remark: "approved",
       },
@@ -151,27 +174,27 @@ export async function approveDisposalRequest(command: DisposalApprovalCommand): 
       userId: command.actor.userId,
       action: "approve",
       module: "disposal",
-      recordId: candidate.id,
+      recordId: currentCandidate.id,
       oldValue: {
-        requestStatus: candidate.requestStatus,
-        saleValue: candidate.saleValue,
-        salvageValue: candidate.salvageValue,
+        requestStatus: currentCandidate.requestStatus,
+        saleValue: currentCandidate.saleValue,
+        salvageValue: currentCandidate.salvageValue,
       },
       newValue: {
         requestStatus: "approved",
-        saleValue: command.saleValue !== undefined ? command.saleValue : candidate.saleValue,
-        salvageValue: command.salvageValue !== undefined ? command.salvageValue : candidate.salvageValue,
+        saleValue: command.saleValue !== undefined ? command.saleValue : currentCandidate.saleValue,
+        salvageValue: command.salvageValue !== undefined ? command.salvageValue : currentCandidate.salvageValue,
         approvalRemark: command.approvalRemark ?? null,
       },
     })
 
-    if (candidate.batchId) {
+    if (currentCandidate.batchId) {
       const children = await tx.disposalRequest.findMany({
-        where: { batchId: candidate.batchId, isActive: true },
+        where: { batchId: currentCandidate.batchId, isActive: true },
         select: { requestStatus: true },
       })
       await tx.disposalBatch.update({
-        where: { id: candidate.batchId },
+        where: { id: currentCandidate.batchId },
         data: {
           batchStatus: deriveDisposalBatchStatus(children.map((child) => child.requestStatus)),
           updatedBy: command.actor.userId,
@@ -179,10 +202,24 @@ export async function approveDisposalRequest(command: DisposalApprovalCommand): 
       })
     }
 
-    return loadApprovedRequest(tx, candidate.id)
+    return {
+      request: await loadApprovedRequest(tx, currentCandidate.id),
+      batchId: currentCandidate.batchId,
+      assetTag: currentCandidate.asset.assetTag,
+    }
+  }, {
+    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
   })
 
-  return { request, batchId: candidate.batchId, assetTag: candidate.asset.assetTag }
+  return result
+}
+
+function hasDisposalApprovalPermission(actor: DisposalApprovalActor) {
+  return actor.roles.includes("system_admin") || actor.permissions.includes("disposal:approve")
+}
+
+function missingApprovalItem(requestId: string) {
+  return { requestId, disposalNo: requestId, assetTag: "-" }
 }
 
 function toApprovalItem(candidate: DisposalApprovalCandidate) {

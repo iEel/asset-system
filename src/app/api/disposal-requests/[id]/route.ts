@@ -158,7 +158,12 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
       try {
         const result = await approveDisposalRequest({
           requestId: id,
-          actor: { userId: user.id, employeeId: user.employeeId },
+          actor: {
+            userId: user.id,
+            employeeId: user.employeeId,
+            roles: user.roles,
+            permissions: user.permissions,
+          },
           segregationRequired: workflowPolicy.segregationRequired,
           approvalRemark: input.approvalRemark,
           saleValue: input.saleValue,
@@ -170,7 +175,7 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
           const status =
             error.code === "DISPOSAL_CONCURRENT_UPDATE"
               ? 409
-              : error.code === "DISPOSAL_SOD_CONFLICT"
+              : error.code === "DISPOSAL_SOD_CONFLICT" || error.code === "DISPOSAL_FORBIDDEN"
                 ? 403
                 : error.code === "DISPOSAL_REQUEST_NOT_FOUND"
                   ? 404

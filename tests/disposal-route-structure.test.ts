@@ -119,3 +119,14 @@ test("single and bulk approval share one transactional approval service", () => 
   assert.match(service, /deriveDisposalBatchStatus/)
   assert.match(singleRoute, /approveDisposalRequest\(/)
 })
+
+test("approval service enforces authorization and revalidates lifecycle under serializable isolation", () => {
+  const service = readFileSync("src/lib/disposal-approval-service.ts", "utf8")
+
+  assert.match(service, /hasDisposalApprovalPermission\(command\.actor\)/)
+  assert.match(service, /throw new DisposalApprovalServiceError\("DISPOSAL_FORBIDDEN"/)
+  assert.match(service, /const currentCandidate = await loadApprovalCandidate\(tx, command\.requestId\)/)
+  assert.match(service, /getDisposalBulkApprovalBlockCode\(\s*currentCandidate,\s*command\.actor,\s*command\.segregationRequired,?\s*\)/)
+  assert.match(service, /Prisma\.TransactionIsolationLevel\.Serializable/)
+  assert.match(service, /deriveDisposalBatchStatus\(children\.map\(\(child\) => child\.requestStatus\)\)/)
+})
