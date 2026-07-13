@@ -12,7 +12,6 @@ import {
   getDisposalExecutionCandidateType,
   hasDisposalExecutionPermission,
   loadDisposalExecutionCandidates,
-  DisposalExecutionServiceError,
   executeDisposalRequest,
   type DisposalExecutionActor,
   type DisposalExecutionCandidate,
@@ -89,27 +88,23 @@ export async function commitDisposalBulkExecution(
   for (let index = 0; index < inspection.items.length; index += 1) {
     if (inspection.items[index].item.outcome !== "eligible") continue
 
-    const revalidation = await inspect(command, dependencies)
-    const current = revalidation.items[index]
-    if (!current || current.item.outcome !== "eligible" || !current.command) {
-      items[index] = current?.item ?? blockedItem(command.input.requestIds[index], "DISPOSAL_REQUEST_NOT_FOUND")
-      continue
-    }
-
     try {
+      const revalidation = await inspect(command, dependencies)
+      const current = revalidation.items[index]
+      if (!current || current.item.outcome !== "eligible" || !current.command) {
+        items[index] = current?.item ?? blockedItem(command.input.requestIds[index], "DISPOSAL_REQUEST_NOT_FOUND")
+        continue
+      }
+
       await executor(current.command, {
         database: dependencies.database,
         batchSchemaReadiness: dependencies.batchSchemaReadiness,
         now: dependencies.now,
       })
       items[index] = { ...current.item, outcome: "executed" }
-    } catch (error) {
-      if (error instanceof DisposalExecutionServiceError) {
-        items[index] = { ...current.item, outcome: "blocked", code: error.code }
-        continue
-      }
+    } catch {
       ;(dependencies.logger ?? console.error)("Disposal bulk execution item failed")
-      items[index] = { ...current.item, outcome: "failed", code: "DISPOSAL_BULK_EXECUTION_FAILED" }
+      items[index] = { ...inspection.items[index].item, outcome: "failed", code: "DISPOSAL_BULK_EXECUTION_FAILED" }
     }
   }
 

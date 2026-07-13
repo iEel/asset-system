@@ -17,6 +17,16 @@ type FakeState = {
   batchEvidenceCounts: Map<string, number>
 }
 
+type FakeDatabaseOptions = {
+  beforeRequestRead?: (readNumber: number, state: FakeState) => void | Promise<void>
+}
+
+type FakeDatabase = DisposalBulkExecutionDatabase & {
+  findManyCalls: number
+  transactionCalls: number
+  transactionIsolationLevels: string[]
+}
+
 const baseCommand: DisposalBulkExecutionCommand = {
   actor: {
     userId: "user-executor",
@@ -73,14 +83,18 @@ test("commit executes each eligible item independently with shared date executor
   }, {
     database,
     batchSchemaReadiness: "ready",
-    executeDisposalRequest: async (command) => {
+    executeDisposalRequest: async (command, executionDependencies) => {
       executions.push(command)
+      await executionDependencies.database.$transaction(async () => undefined, {
+        isolationLevel: "Serializable",
+      })
     },
   })
 
   assert.deepEqual(response.items.map((item) => item.outcome), ["executed", "executed"])
   assert.equal(executions.length, 2)
-  assert.equal(database.transactionCalls, 0)
+  assert.equal(database.transactionCalls, 2)
+  assert.deepEqual(database.transactionIsolationLevels, ["Serializable", "Serializable"])
   assert.deepEqual(executions.map((command) => command.requestId), ["request-2", "request-1"])
   assert.deepEqual(executions.map((command) => command.input.executionDate.toISOString()), [
     "2026-07-13T00:00:00.000Z",
@@ -171,49 +185,120 @@ test("normal mode blocks rows without evidence", async () => {
   assert.equal(response.items[0].code, "DISPOSAL_EVIDENCE_REQUIRED")
 })
 
-test("one executor failure produces partial success and retryable unresolved rows", async () => {
+test("middle failure persists sibling success and identical retry only executes the unresolved item", async () => {
   const state = makeState({
     requests: [
-      makeRequest({ id: "request-1", executionRemark: "Destroyed under approved process" }),
-      makeRequest({ id: "request-2", executionRemark: "Destroyed by contractor" }),
+      makeRequest({ id: "request-1", executionRemark: "Initial first detail" }),
+      makeRequest({ id: "request-2", executionRemark: "Initial middle detail" }),
+      makeRequest({ id: "request-3", executionRemark: "Initial last detail" }),
     ],
   })
-  const calls: string[] = []
+  const calls: Array<{ requestId: string; executionRemark: string | null }> = []
   const errors: string[] = []
+  let failMiddle = true
   const command: DisposalBulkExecutionCommand = {
     ...baseCommand,
-    input: { ...baseCommand.input, mode: "commit", requestIds: ["request-1", "request-2"] },
+    input: { ...baseCommand.input, mode: "commit", requestIds: ["request-1", "request-2", "request-3"] },
+  }
+  const database = makeDatabase(state, {
+    beforeRequestRead(readNumber, currentState) {
+      const reloadedDetails = new Map<number, readonly [string, string]>([
+        [2, ["request-1", "Reloaded first detail"]],
+        [3, ["request-2", "Reloaded middle detail"]],
+        [4, ["request-3", "Reloaded last detail"]],
+        [6, ["request-2", "Reloaded middle detail for retry"]],
+      ])
+      const update = reloadedDetails.get(readNumber)
+      if (update) findRequest(currentState, update[0]).executionRemark = update[1]
+    },
+  })
+  const execute = async (
+    execution: DisposalExecutionCommand,
+    executionDependencies: Parameters<NonNullable<Parameters<typeof commitDisposalBulkExecution>[1]["executeDisposalRequest"]>>[1],
+  ) => {
+    calls.push({ requestId: execution.requestId, executionRemark: execution.input.executionRemark ?? null })
+    await executionDependencies.database.$transaction(async () => {
+      if (execution.requestId === "request-2" && failMiddle) {
+        throw new Error("postgresql://admin:secret@internal-db.example/disposals")
+      }
+      const request = findRequest(state, execution.requestId)
+      request.requestStatus = "disposed"
+      request.completedAt = new Date("2026-07-13T01:00:00.000Z")
+    }, { isolationLevel: "Serializable" })
   }
 
   const response = await commitDisposalBulkExecution(command, {
-    database: makeDatabase(state),
+    database,
     batchSchemaReadiness: "ready",
     logger: (message) => errors.push(message),
-    executeDisposalRequest: async (execution) => {
-      calls.push(execution.requestId)
-      if (execution.requestId === "request-2") throw new Error("connection details must not reach the client")
-    },
-  })
-  const retry = await commitDisposalBulkExecution({
-    ...command,
-    input: { ...command.input, requestIds: ["request-2"] },
-  }, {
-    database: makeDatabase(state),
-    batchSchemaReadiness: "ready",
-    executeDisposalRequest: async (execution) => {
-      calls.push(`retry:${execution.requestId}`)
-    },
+    executeDisposalRequest: execute,
   })
 
-  assert.deepEqual(response.items.map((item) => item.outcome), ["executed", "failed"])
+  failMiddle = false
+  const retry = await commitDisposalBulkExecution(command, {
+    database,
+    batchSchemaReadiness: "ready",
+    executeDisposalRequest: execute,
+  })
+
+  assert.deepEqual(response.items.map((item) => item.outcome), ["executed", "failed", "executed"])
   assert.equal(response.items[1].code, "DISPOSAL_BULK_EXECUTION_FAILED")
-  assert.deepEqual(calls, ["request-1", "request-2", "retry:request-2"])
-  assert.equal(errors.length, 1)
-  assert.deepEqual(retry.items.map((item) => item.outcome), ["executed"])
+  assert.deepEqual(state.requests.map((request) => request.requestStatus), ["disposed", "disposed", "disposed"])
+  assert.deepEqual(retry.items.map((item) => item.outcome), ["blocked", "executed", "blocked"])
+  assert.deepEqual(calls, [
+    { requestId: "request-1", executionRemark: "Reloaded first detail" },
+    { requestId: "request-2", executionRemark: "Reloaded middle detail" },
+    { requestId: "request-3", executionRemark: "Reloaded last detail" },
+    { requestId: "request-2", executionRemark: "Reloaded middle detail for retry" },
+  ])
+  assert.equal(calls.filter(({ requestId }) => requestId === "request-1").length, 1)
+  assert.equal(calls.filter(({ requestId }) => requestId === "request-3").length, 1)
+  assert.deepEqual(database.transactionIsolationLevels, ["Serializable", "Serializable", "Serializable", "Serializable"])
+  assert.deepEqual(errors, ["Disposal bulk execution item failed"])
+  assert.doesNotMatch(JSON.stringify(response), /admin|secret|internal-db|postgresql/i)
 })
 
-test("known executor rejections become blocked item results", async () => {
+test("authoritative reload failure becomes failed and later items continue", async () => {
+  const state = makeState({
+    requests: [
+      makeRequest({ id: "request-1" }),
+      makeRequest({ id: "request-2" }),
+      makeRequest({ id: "request-3" }),
+    ],
+  })
+  const database = makeDatabase(state, {
+    beforeRequestRead(readNumber) {
+      if (readNumber === 3) throw new Error("Server=tcp:private-db;Password=do-not-serialize")
+    },
+  })
+  const executions: string[] = []
+  const errors: string[] = []
+
+  const response = await commitDisposalBulkExecution({
+    ...baseCommand,
+    input: { ...baseCommand.input, mode: "commit", requestIds: ["request-1", "request-2", "request-3"] },
+  }, {
+    database,
+    batchSchemaReadiness: "ready",
+    logger: (message) => errors.push(message),
+    executeDisposalRequest: async (execution, executionDependencies) => {
+      executions.push(execution.requestId)
+      await executionDependencies.database.$transaction(async () => undefined, {
+        isolationLevel: "Serializable",
+      })
+    },
+  })
+
+  assert.deepEqual(response.items.map((item) => item.outcome), ["executed", "failed", "executed"])
+  assert.equal(response.items[1].code, "DISPOSAL_BULK_EXECUTION_FAILED")
+  assert.deepEqual(executions, ["request-1", "request-3"])
+  assert.deepEqual(errors, ["Disposal bulk execution item failed"])
+  assert.doesNotMatch(JSON.stringify(response), /private-db|Password|do-not-serialize/i)
+})
+
+test("known executor exceptions become failed item results", async () => {
   const state = makeState()
+  const errors: string[] = []
 
   const response = await commitDisposalBulkExecution({
     ...baseCommand,
@@ -221,13 +306,15 @@ test("known executor rejections become blocked item results", async () => {
   }, {
     database: makeDatabase(state),
     batchSchemaReadiness: "ready",
+    logger: (message) => errors.push(message),
     executeDisposalRequest: async () => {
       throw new DisposalExecutionServiceError("DISPOSAL_CONCURRENT_UPDATE")
     },
   })
 
-  assert.equal(response.items[0].outcome, "blocked")
-  assert.equal(response.items[0].code, "DISPOSAL_CONCURRENT_UPDATE")
+  assert.equal(response.items[0].outcome, "failed")
+  assert.equal(response.items[0].code, "DISPOSAL_BULK_EXECUTION_FAILED")
+  assert.deepEqual(errors, ["Disposal bulk execution item failed"])
 })
 
 test("already executed requests return blocked without a second executor call", async () => {
@@ -328,17 +415,28 @@ function makeState(overrides: Partial<FakeState> = {}): FakeState {
   }
 }
 
-function makeDatabase(state: FakeState): DisposalBulkExecutionDatabase & { findManyCalls: number; transactionCalls: number } {
+function findRequest(state: FakeState, requestId: string): FakeRequest {
+  const request = state.requests.find(({ id }) => id === requestId)
+  assert.ok(request)
+  return request
+}
+
+function makeDatabase(state: FakeState, options: FakeDatabaseOptions = {}): FakeDatabase {
   const database = {
     findManyCalls: 0,
     transactionCalls: 0,
-    async $transaction() {
+    transactionIsolationLevels: [] as string[],
+    async $transaction(callback: (transaction: unknown) => Promise<unknown>, transactionOptions?: { isolationLevel?: string }) {
       database.transactionCalls += 1
-      throw new Error("The bulk coordinator must not open a shared transaction")
+      if (transactionOptions?.isolationLevel) {
+        database.transactionIsolationLevels.push(transactionOptions.isolationLevel)
+      }
+      return callback(database)
     },
     disposalRequest: {
       async findMany({ where }: { where: { id: { in: string[] } } }) {
         database.findManyCalls += 1
+        await options.beforeRequestRead?.(database.findManyCalls, state)
         return state.requests
           .filter((request) => where.id.in.includes(request.id))
           .map((request) => structuredClone(request))
@@ -372,5 +470,5 @@ function makeDatabase(state: FakeState): DisposalBulkExecutionDatabase & { findM
       },
     },
   }
-  return database as unknown as DisposalBulkExecutionDatabase & { findManyCalls: number; transactionCalls: number }
+  return database as unknown as FakeDatabase
 }
