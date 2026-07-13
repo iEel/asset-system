@@ -118,9 +118,9 @@ test("localizes stable bulk execution error codes from both locale files", () =>
 
 test("summarizes bulk execution outcomes without hiding blocked or failed items", () => {
   const items: DisposalBulkExecutionItem[] = [
-    { requestId: "r1", disposalNo: "DP-1", assetLabel: "IT-1", disposalType: "sell", outcome: "blocked", code: "DISPOSAL_ASSET_INELIGIBLE" },
-    { requestId: "r2", disposalNo: "DP-2", assetLabel: "IT-2", disposalType: "sell", outcome: "executed", code: null },
-    { requestId: "r3", disposalNo: "DP-3", assetLabel: "IT-3", disposalType: "sell", outcome: "failed", code: "DISPOSAL_BULK_EXECUTION_FAILED" },
+    { requestId: "r1", disposalNo: "DP-1", assetLabel: "IT-1", disposalType: "sell", recipientName: "Buyer One", recipientSource: "request", outcome: "blocked", code: "DISPOSAL_ASSET_INELIGIBLE" },
+    { requestId: "r2", disposalNo: "DP-2", assetLabel: "IT-2", disposalType: "sell", recipientName: "Buyer Two", recipientSource: "request", outcome: "executed", code: null },
+    { requestId: "r3", disposalNo: "DP-3", assetLabel: "IT-3", disposalType: "sell", recipientName: "Fallback Buyer", recipientSource: "shared", outcome: "failed", code: "DISPOSAL_BULK_EXECUTION_FAILED" },
   ]
 
   assert.deepEqual(summarizeDisposalBulkExecution(items), {

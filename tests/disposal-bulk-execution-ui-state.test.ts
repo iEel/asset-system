@@ -94,9 +94,9 @@ test("final results retain preview blocks and retry unresolved IDs in stable ded
     executedCount: 0,
     failedCount: 0,
     items: [
-      { requestId: "a", disposalNo: "A", assetLabel: "Asset A", disposalType: "sell" as const, outcome: "eligible" as const, code: null },
-      { requestId: "b", disposalNo: "B", assetLabel: "Asset B", disposalType: "sell" as const, outcome: "blocked" as const, code: "DISPOSAL_EVIDENCE_REQUIRED" as const },
-      { requestId: "c", disposalNo: "C", assetLabel: "Asset C", disposalType: "sell" as const, outcome: "eligible" as const, code: null },
+      { requestId: "a", disposalNo: "A", assetLabel: "Asset A", disposalType: "sell" as const, recipientName: "Buyer A", recipientSource: "request" as const, outcome: "eligible" as const, code: null },
+      { requestId: "b", disposalNo: "B", assetLabel: "Asset B", disposalType: "sell" as const, recipientName: "Buyer B", recipientSource: "request" as const, outcome: "blocked" as const, code: "DISPOSAL_EVIDENCE_REQUIRED" as const },
+      { requestId: "c", disposalNo: "C", assetLabel: "Asset C", disposalType: "sell" as const, recipientName: "Buyer C", recipientSource: "shared" as const, outcome: "eligible" as const, code: null },
     ],
   }
   const commit = {
