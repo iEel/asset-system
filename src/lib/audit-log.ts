@@ -1,6 +1,7 @@
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 
-type AuditLogParams = {
+export type AuditLogParams = {
   userId?: string
   action: string
   module: string
@@ -12,21 +13,28 @@ type AuditLogParams = {
   remark?: string
 }
 
+export async function writeAuditLog(
+  db: Pick<Prisma.TransactionClient, "systemLog">,
+  params: AuditLogParams,
+) {
+  return db.systemLog.create({
+    data: {
+      userId: params.userId,
+      action: params.action,
+      module: params.module,
+      recordId: params.recordId,
+      oldValue: params.oldValue ? JSON.stringify(params.oldValue) : null,
+      newValue: params.newValue ? JSON.stringify(params.newValue) : null,
+      ipAddress: params.ipAddress,
+      userAgent: params.userAgent,
+      remark: params.remark,
+    },
+  })
+}
+
 export async function logAudit(params: AuditLogParams) {
   try {
-    await prisma.systemLog.create({
-      data: {
-        userId: params.userId,
-        action: params.action,
-        module: params.module,
-        recordId: params.recordId,
-        oldValue: params.oldValue ? JSON.stringify(params.oldValue) : null,
-        newValue: params.newValue ? JSON.stringify(params.newValue) : null,
-        ipAddress: params.ipAddress,
-        userAgent: params.userAgent,
-        remark: params.remark,
-      },
-    })
+    await writeAuditLog(prisma, params)
   } catch (error) {
     console.error("Failed to write audit log:", error)
   }

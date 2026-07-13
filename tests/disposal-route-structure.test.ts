@@ -108,3 +108,14 @@ test("links queue items to batch workspaces while print remains independent of t
   assert.match(schemaReadiness, /OBJECT_ID\(N'dbo\.disposal_batches'/)
   assert.match(schemaReadiness, /COL_LENGTH\(N'dbo\.disposal_requests', N'batchId'\)/)
 })
+
+test("single and bulk approval share one transactional approval service", () => {
+  const service = readFileSync("src/lib/disposal-approval-service.ts", "utf8")
+  const singleRoute = readFileSync("src/app/api/disposal-requests/[id]/route.ts", "utf8")
+  assert.match(service, /tx\.disposalRequest\.updateMany/)
+  assert.match(service, /requestStatus:\s*"pending"/)
+  assert.match(service, /tx\.assetMovement\.create/)
+  assert.match(service, /writeAuditLog\(tx/)
+  assert.match(service, /deriveDisposalBatchStatus/)
+  assert.match(singleRoute, /approveDisposalRequest\(/)
+})

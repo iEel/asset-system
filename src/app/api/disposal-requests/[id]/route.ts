@@ -4,7 +4,6 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import {
-  getDisposalApprovalAssetStatusError,
   getDisposalSegregationError,
   getDisposalStatusTargetError,
 } from "@/lib/disposal-policy"
@@ -12,6 +11,7 @@ import { disposalDecisionSchema, disposalExecutionSchema } from "@/lib/validatio
 import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
 import { deriveDisposalBatchStatus } from "@/lib/disposal-batch"
 import { disposalApiError } from "@/lib/disposal-api-errors"
+import { approveDisposalRequest, DisposalApprovalServiceError } from "@/lib/disposal-approval-service"
 import { isDisposalBatchSchemaReady } from "@/lib/disposal-schema-readiness"
 
 type DisposalRequestContext = {
@@ -146,6 +146,41 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
     }
 
     const input = disposalDecisionSchema.parse(body)
+    if (input.decision === "approve") {
+      const nextStatus = await prisma.assetStatus.findFirst({
+        where: { id: input.nextStatusId, isActive: true },
+        select: { id: true, name: true, nameTh: true },
+      })
+      if (!nextStatus) return disposalApiError("DISPOSAL_STATUS_NOT_FOUND", "Next asset status not found", 404)
+      const nextStatusError = getDisposalStatusTargetError(input.decision, nextStatus)
+      if (nextStatusError) return disposalApiError("DISPOSAL_INVALID_STATUS_TARGET", nextStatusError)
+
+      try {
+        const result = await approveDisposalRequest({
+          requestId: id,
+          actor: { userId: user.id, employeeId: user.employeeId },
+          segregationRequired: workflowPolicy.segregationRequired,
+          approvalRemark: input.approvalRemark,
+          saleValue: input.saleValue,
+          salvageValue: input.salvageValue,
+        })
+        return NextResponse.json(result.request)
+      } catch (error) {
+        if (error instanceof DisposalApprovalServiceError) {
+          const status =
+            error.code === "DISPOSAL_CONCURRENT_UPDATE"
+              ? 409
+              : error.code === "DISPOSAL_SOD_CONFLICT"
+                ? 403
+                : error.code === "DISPOSAL_REQUEST_NOT_FOUND"
+                  ? 404
+                  : 400
+          return disposalApiError(error.code as Parameters<typeof disposalApiError>[0], error.message, status)
+        }
+        throw error
+      }
+    }
+
     if (disposalRequest.requestStatus !== "pending") {
       return disposalApiError("DISPOSAL_INVALID_STAGE", "Disposal request is already reviewed")
     }
@@ -159,11 +194,6 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
       createdByUserId: disposalRequest.createdBy,
     })
     if (segregationError) return disposalApiError("DISPOSAL_SOD_CONFLICT", segregationError, 403)
-    if (input.decision === "approve") {
-      const assetStatusError = getDisposalApprovalAssetStatusError(disposalRequest.asset.status)
-      if (assetStatusError) return disposalApiError("DISPOSAL_ASSET_INELIGIBLE", assetStatusError)
-    }
-
     const nextStatus = await prisma.assetStatus.findFirst({
       where: { id: input.nextStatusId, isActive: true },
       select: { id: true, name: true, nameTh: true },
@@ -172,7 +202,7 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
     const nextStatusError = getDisposalStatusTargetError(input.decision, nextStatus)
     if (nextStatusError) return disposalApiError("DISPOSAL_INVALID_STATUS_TARGET", nextStatusError)
 
-    const requestStatus = input.decision === "approve" ? "approved" : "rejected"
+    const requestStatus = "rejected"
     const updatedRequest = await prisma.$transaction(async (tx) => {
       const record = await tx.disposalRequest.update({
         where: { id },
@@ -188,19 +218,17 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
         omit: { batchId: true },
       })
 
-      if (input.decision === "reject") {
-        await tx.asset.update({
-          where: { id: disposalRequest.assetId },
-          data: { statusId: input.nextStatusId, updatedBy: user.id },
-        })
-      }
+      await tx.asset.update({
+        where: { id: disposalRequest.assetId },
+        data: { statusId: input.nextStatusId, updatedBy: user.id },
+      })
 
       await tx.assetMovement.create({
         data: {
           assetId: disposalRequest.assetId,
-          movementType: input.decision === "approve" ? "disposal_approve" : "disposal_reject",
+          movementType: "disposal_reject",
           fromValue: disposalRequest.asset.statusId,
-          toValue: input.decision === "approve" ? disposalRequest.asset.statusId : input.nextStatusId,
+          toValue: input.nextStatusId,
           reason: input.approvalRemark ?? disposalRequest.reason,
           referenceType: "disposal",
           referenceId: disposalRequest.id,
