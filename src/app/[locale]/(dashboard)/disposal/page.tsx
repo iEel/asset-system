@@ -19,6 +19,14 @@ import {
   DisposalBulkSelectionToggle,
 } from "@/components/disposal/disposal-bulk-approval"
 import type { DisposalBulkApprovalCopy } from "@/components/disposal/disposal-bulk-approval"
+import {
+  DisposalBulkExecutionCheckbox,
+  DisposalBulkExecutionProvider,
+  DisposalBulkExecutionSelectPageControl,
+  DisposalBulkExecutionSelectionToggle,
+  DisposalBulkExecutionToolbar,
+} from "@/components/disposal/disposal-bulk-execution"
+import type { DisposalBulkExecutionCopy } from "@/components/disposal/disposal-bulk-execution"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -121,7 +129,9 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
     effectiveEvidenceCount: (itemEvidenceCounts.get(request.id) ?? 0) + (batchEvidenceCounts.get(request.batchId ?? "") ?? 0),
   }))
   const workflowPolicy = parseWorkflowApprovalPolicy(savedSettings)
-  const bulkItems = canApprove ? requests.map((request) => {
+  const bulkApprovalEnabled = canApprove && filters.status === "pending"
+  const bulkExecutionEnabled = canEdit && filters.status === "approved"
+  const bulkItems = bulkApprovalEnabled ? requests.map((request) => {
     const blockedCode = getDisposalBulkApprovalBlockCode({
       id: request.id,
       disposalNo: request.disposalNo,
@@ -146,6 +156,16 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
       blockedCode,
     }
   }) : []
+  const bulkExecutionItems = bulkExecutionEnabled ? requestsWithEvidence.map((request) => ({
+    requestId: request.id,
+    disposalNo: request.disposalNo,
+    assetLabel: `${request.asset.assetTag} - ${request.asset.name}`,
+    disposalType: request.disposalType,
+    effectiveEvidenceCount: request.effectiveEvidenceCount,
+    approverId: request.approverId,
+    requestedById: request.requestedById,
+    createdBy: request.createdBy,
+  })) : []
   const employeeOptions = employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` }))
   const statusOptions = statuses.map((status) => ({ id: status.id, name: status.name, label: status.nameTh }))
   const decisionStatuses = getDisposalDecisionStatusOptions(statusOptions)
@@ -198,6 +218,10 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
       DISPOSAL_APPROVAL_FAILED: t("bulkErrors.DISPOSAL_APPROVAL_FAILED"),
     },
   }
+  const bulkExecutionCopy: DisposalBulkExecutionCopy = {
+    toolbarLabel: t("bulkExecutionToolbarLabel"), selectionMode: t("bulkExecutionSelectionMode"), cancelSelectionMode: t("bulkExecutionCancelSelectionMode"), selectedCount: t.raw("bulkExecutionSelectedCount"), selectionLimit: t("bulkExecutionSelectionLimit"), mixedType: t("bulkExecutionMixedType"), selectPage: t("bulkExecutionSelectPage"), clearSelection: t("bulkExecutionClearSelection"), review: t("bulkExecutionReview"), selectItem: t.raw("bulkExecutionSelectItem"), incompatibleType: t("bulkExecutionIncompatibleType"), previewTitle: t("bulkExecutionPreviewTitle"), previewLoading: t("bulkExecutionPreviewLoading"), preflightHelp: t("bulkExecutionPreflightHelp"), executionDate: t("bulkExecutionDate"), executor: t("bulkExecutionExecutor"), finalStatus: t("bulkExecutionFinalStatus"), selectEmployee: t("selectEmployee"), selectStatus: t("bulkExecutionSelectStatus"), historicalException: t("bulkExecutionHistoricalException"), historicalReason: t("bulkExecutionHistoricalReason"), historicalReasonHelp: t.raw("bulkExecutionHistoricalReasonHelp"), historicalAcknowledgement: t("bulkExecutionHistoricalAcknowledgement"), permanentConfirmation: t("bulkExecutionPermanentConfirmation"), confirm: t.raw("bulkExecutionConfirm"), committing: t("bulkExecutionCommitting"), resultTitle: t("bulkExecutionResultTitle"), selected: t("bulkExecutionSelected"), eligible: t("bulkExecutionEligible"), executed: t("bulkExecutionExecuted"), blocked: t("bulkExecutionBlocked"), failed: t("bulkExecutionFailed"), retry: t("bulkExecutionRetry"), close: t("bulkExecutionClose"), cancel: t("bulkExecutionCancel"), zeroEligible: t("bulkExecutionZeroEligible"), requestFailed: t("bulkExecutionRequestFailed"), commitFailed: t("bulkExecutionCommitFailed"), discardSelection: t("bulkExecutionDiscardSelection"),
+    errors: { DISPOSAL_REQUEST_NOT_FOUND: t("errors.DISPOSAL_REQUEST_NOT_FOUND"), DISPOSAL_INVALID_STAGE: t("errors.DISPOSAL_INVALID_STAGE"), DISPOSAL_SOD_CONFLICT: t("errors.DISPOSAL_SOD_CONFLICT"), DISPOSAL_ASSET_INELIGIBLE: t("errors.DISPOSAL_ASSET_INELIGIBLE"), DISPOSAL_CONCURRENT_UPDATE: t("bulkErrors.DISPOSAL_CONCURRENT_UPDATE"), DISPOSAL_FORBIDDEN: t("bulkErrors.DISPOSAL_FORBIDDEN"), DISPOSAL_EMPLOYEE_NOT_FOUND: t("errors.DISPOSAL_EMPLOYEE_NOT_FOUND"), DISPOSAL_STATUS_NOT_FOUND: t("errors.DISPOSAL_STATUS_NOT_FOUND"), DISPOSAL_INVALID_STATUS_TARGET: t("errors.DISPOSAL_INVALID_STATUS_TARGET"), DISPOSAL_EVIDENCE_REQUIRED: t("errors.DISPOSAL_EVIDENCE_REQUIRED"), DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN: t("errors.DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN"), DISPOSAL_EVIDENCE_EXCEPTION_NOT_APPLICABLE: t("errors.DISPOSAL_EVIDENCE_EXCEPTION_NOT_APPLICABLE"), DISPOSAL_BULK_INVALID_SELECTION: t("errors.DISPOSAL_BULK_INVALID_SELECTION"), DISPOSAL_BULK_MIXED_TYPES: t("errors.DISPOSAL_BULK_MIXED_TYPES"), DISPOSAL_BULK_EXECUTION_FAILED: t("errors.DISPOSAL_BULK_EXECUTION_FAILED") },
+  }
   const stageCountsByStatus = new Map(stageCounts.map((count) => [count.requestStatus, count._count._all]))
   const stageTabs: Array<{ status: "" | "pending" | "approved" | "disposed" | "rejected"; label: string; count: number }> = [
     { status: "", label: tCommon("all"), count: stageTotal },
@@ -213,6 +237,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
   return (
     <div>
       <DisposalBulkApprovalProvider items={bulkItems} selectionKey={`${filters.page}:${filters.pageSize}:${query}`} copy={bulkApprovalCopy} className="space-y-6">
+      <DisposalBulkExecutionProvider items={bulkExecutionItems} selectionKey={`${filters.page}:${filters.pageSize}:${query}`} copy={bulkExecutionCopy} executionStatuses={executionStatuses} employees={employeeOptions} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} defaultExecutionDate={new Date().toISOString().slice(0, 10)}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
@@ -290,11 +315,11 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
             <p className="mt-1 text-xs text-muted-foreground">{t("resultRange", { start: resultRange.start, end: resultRange.end, total })}</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            {canApprove ? <DisposalBulkSelectionToggle /> : null}
+            {bulkApprovalEnabled ? <DisposalBulkSelectionToggle /> : bulkExecutionEnabled ? <DisposalBulkExecutionSelectionToggle /> : null}
             {canExport ? <a href={`/api/disposal-requests/export${query ? `?${query}` : ""}`} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-fit"><Download className="h-4 w-4" />{t("exportRequests")}</a> : null}
           </div>
         </div>
-        {canApprove ? <DisposalBulkApprovalToolbar /> : null}
+        {bulkApprovalEnabled ? <DisposalBulkApprovalToolbar /> : bulkExecutionEnabled ? <DisposalBulkExecutionToolbar /> : null}
         <div className="border-b border-border">
           <div className="flex gap-2 overflow-x-auto px-4 pt-3 pb-2" aria-label={t("stageFilterLabel")}>
             {stageTabs.map((stage) => (
@@ -318,7 +343,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                 <div className="mt-3 flex flex-wrap gap-2"><DisposalStageBadge stage={stage} label={stageLabels[stage]} /><StatusBadge label={t(`types.${request.disposalType}`)} tone="muted" size="xs" /></div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-sm"><MobileDisposalField label={t("requestedBy")} value={request.requestedBy.fullNameTh} /><MobileDisposalField label={t("requestDate")} value={formatDateTime(request.requestDate)} /></div>
                 <details className="mt-3 rounded-md border border-border bg-surface px-3 py-2"><summary className="min-h-9 cursor-pointer text-sm font-medium text-primary">{t("moreDetails")}</summary><dl className="grid gap-3 border-t border-border pt-3 text-sm"><MobileDisposalField label={t("reason")} value={request.reason} /><MobileDisposalField label={t("approver")} value={request.approver ? `${request.approver.code} - ${request.approver.fullNameTh}` : "-"} /><MobileDisposalField label={t("value")} value={getRequestValue(request)} /></dl></details>
-                {canApprove ? <div className="flex min-h-11 items-center justify-end" data-no-row-click><DisposalBulkApprovalCheckbox requestId={request.id} variant="mobile" /></div> : null}
+                {bulkApprovalEnabled ? <div className="flex min-h-11 items-center justify-end" data-no-row-click><DisposalBulkApprovalCheckbox requestId={request.id} variant="mobile" /></div> : bulkExecutionEnabled ? <div className="flex min-h-11 items-center justify-end" data-no-row-click><DisposalBulkExecutionCheckbox requestId={request.id} variant="mobile" /></div> : null}
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap"><DisposalNextAction request={request} href={detailHref} canApprove={canApprove} canExecute={canEdit} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} executionStatuses={executionStatuses} employees={employeeOptions} viewLabel={tCommon("view")} /></div>
               </article>
             )
@@ -326,13 +351,13 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         </div>
         <div className={`${getDesktopTableOnlyClasses()} overflow-x-auto`}>
           <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40"><tr>{canApprove ? <th className="w-12 px-4 py-3"><span className="sr-only">{t("bulkSelection")}</span><DisposalBulkApprovalSelectPageControl /></th> : null}<ColumnHeader>{t("disposalNo")}</ColumnHeader><ColumnHeader>{t("asset")}</ColumnHeader><ColumnHeader>{t("disposalType")}</ColumnHeader><ColumnHeader>{t("requestedBy")}</ColumnHeader><ColumnHeader>{tCommon("status")}</ColumnHeader><ColumnHeader>{t("requestDate")}</ColumnHeader>{canApprove || canEdit ? <th className="sticky right-0 z-10 whitespace-nowrap bg-muted/95 px-4 py-3 text-left text-xs font-semibold text-muted-foreground">{tCommon("actions")}</th> : null}</tr></thead>
+            <thead className="bg-muted/40"><tr>{bulkApprovalEnabled ? <th className="w-12 px-4 py-3"><span className="sr-only">{t("bulkSelection")}</span><DisposalBulkApprovalSelectPageControl /></th> : bulkExecutionEnabled ? <th className="w-12 px-4 py-3"><span className="sr-only">{t("bulkExecutionSelection")}</span><DisposalBulkExecutionSelectPageControl /></th> : null}<ColumnHeader>{t("disposalNo")}</ColumnHeader><ColumnHeader>{t("asset")}</ColumnHeader><ColumnHeader>{t("disposalType")}</ColumnHeader><ColumnHeader>{t("requestedBy")}</ColumnHeader><ColumnHeader>{tCommon("status")}</ColumnHeader><ColumnHeader>{t("requestDate")}</ColumnHeader>{canApprove || canEdit ? <th className="sticky right-0 z-10 whitespace-nowrap bg-muted/95 px-4 py-3 text-left text-xs font-semibold text-muted-foreground">{tCommon("actions")}</th> : null}</tr></thead>
             <tbody className="divide-y divide-border">
-              {requestsWithEvidence.length === 0 ? <tr><td colSpan={(canApprove ? 1 : 0) + (canApprove || canEdit ? 7 : 6)} className="px-4 py-6"><DisposalEmptyState locale={locale} t={t} hasActiveFilters={hasActiveFilters} canCreate={canCreate} /></td></tr> : requestsWithEvidence.map((request) => {
+              {requestsWithEvidence.length === 0 ? <tr><td colSpan={((bulkApprovalEnabled || bulkExecutionEnabled) ? 1 : 0) + (canApprove || canEdit ? 7 : 6)} className="px-4 py-6"><DisposalEmptyState locale={locale} t={t} hasActiveFilters={hasActiveFilters} canCreate={canCreate} /></td></tr> : requestsWithEvidence.map((request) => {
                 const stage = getDisposalStage(request.requestStatus)
                 const detailHref = appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)
                 return <ClickableTableRow key={request.id} href={detailHref} label={`${tCommon("view")}: ${request.disposalNo}`}>
-                  {canApprove ? <td className="w-12 px-4 py-3" data-no-row-click><DisposalBulkApprovalCheckbox requestId={request.id} variant="desktop" /></td> : null}
+                  {bulkApprovalEnabled ? <td className="w-12 px-4 py-3" data-no-row-click><DisposalBulkApprovalCheckbox requestId={request.id} variant="desktop" /></td> : bulkExecutionEnabled ? <td className="w-12 px-4 py-3" data-no-row-click><DisposalBulkExecutionCheckbox requestId={request.id} variant="desktop" /></td> : null}
                   <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground"><Link href={detailHref} className="hover:text-primary">{request.disposalNo}</Link>{request.batch ? <Link href={`/${locale}/disposal/batches/${request.batch.id}`} className="mt-1 block text-xs text-primary hover:underline">{request.batch.batchNo}</Link> : null}</td>
                   <td className="min-w-56 px-4 py-3"><div className="font-medium text-foreground">{request.asset.assetTag}</div><div className="mt-1 text-xs text-muted-foreground">{request.asset.name}</div></td>
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground"><div>{t(`types.${request.disposalType}`)}</div><div className="mt-1 text-xs">{getRequestValue(request)}</div></td>
@@ -346,6 +371,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         </div>
         <DisposalPagination filters={filters} total={total} basePath={`/${locale}/disposal`} labels={{ rowsPerPage: tCommon("rowsPerPage"), page: tCommon("page"), of: tCommon("of"), previous: tCommon("previous"), next: tCommon("next") }} />
       </section>
+      </DisposalBulkExecutionProvider>
       </DisposalBulkApprovalProvider>
     </div>
   )
