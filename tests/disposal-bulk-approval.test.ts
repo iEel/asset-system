@@ -57,3 +57,20 @@ test("bulk commit delegates each item to an approval service that checks its per
   assert.match(service, /actor\.roles\.includes\("system_admin"\)/)
   assert.match(service, /actor\.permissions\.includes\("disposal:approve"\)/)
 })
+
+test("bulk approval UI keeps selection page-scoped and uses server preflight", () => {
+  const source = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8")
+
+  assert.match(source, /export function DisposalBulkApprovalProvider/)
+  assert.match(source, /export function DisposalBulkSelectionToggle/)
+  assert.match(source, /export function DisposalBulkApprovalToolbar/)
+  assert.match(source, /export function DisposalBulkApprovalCheckbox/)
+  assert.match(source, /mode:\s*"preview"/)
+  assert.match(source, /mode:\s*"commit"/)
+  assert.match(source, /aria-live="polite"/)
+  assert.match(source, /role="dialog"/)
+  assert.match(source, /aria-modal="true"/)
+  assert.match(source, /MAX_DISPOSAL_BULK_APPROVAL_ITEMS/)
+  assert.match(source, /if \(!link\) return/)
+  assert.doesNotMatch(source, /fixed\s+bottom-0/)
+})
