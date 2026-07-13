@@ -93,9 +93,10 @@ export async function commitDisposalBulkExecution(
   for (let index = 0; index < inspection.items.length; index += 1) {
     if (inspection.items[index].item.outcome !== "eligible") continue
 
+    let current: CandidateEvaluation | undefined
     try {
       const revalidation = await inspect(command, dependencies)
-      const current = revalidation.items[index]
+      current = revalidation.items[index]
       if (!current || current.item.outcome !== "eligible" || !current.command) {
         items[index] = current?.item ?? blockedItem(command.input.requestIds[index], "DISPOSAL_REQUEST_NOT_FOUND")
         continue
@@ -108,12 +109,13 @@ export async function commitDisposalBulkExecution(
       })
       items[index] = { ...current.item, outcome: "executed" }
     } catch (error) {
+      const item = current?.item ?? inspection.items[index].item
       if (error instanceof DisposalExecutionServiceError) {
-        items[index] = { ...inspection.items[index].item, outcome: "blocked", code: error.code }
+        items[index] = { ...item, outcome: "blocked", code: error.code }
         continue
       }
       ;(dependencies.logger ?? console.error)("Disposal bulk execution item failed")
-      items[index] = { ...inspection.items[index].item, outcome: "failed", code: "DISPOSAL_BULK_EXECUTION_FAILED" }
+      items[index] = { ...item, outcome: "failed", code: "DISPOSAL_BULK_EXECUTION_FAILED" }
     }
   }
 

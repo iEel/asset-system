@@ -462,6 +462,52 @@ test("known executor exceptions become blocked item results without generic logg
   assert.deepEqual(errors, [])
 })
 
+for (const scenario of [
+  {
+    name: "known",
+    error: new DisposalExecutionServiceError("DISPOSAL_CONCURRENT_UPDATE"),
+    outcome: "blocked",
+    code: "DISPOSAL_CONCURRENT_UPDATE",
+  },
+  {
+    name: "unexpected",
+    error: new Error("executor failed"),
+    outcome: "failed",
+    code: "DISPOSAL_BULK_EXECUTION_FAILED",
+  },
+] as const) {
+  test(`${scenario.name} executor failure retains recipient metadata from authoritative reinspection`, async () => {
+    const state = makeState({
+      requests: [makeRequest({ disposalType: "donate", recipientName: null, documentNo: "DONATE-001" })],
+    })
+
+    const response = await commitDisposalBulkExecution({
+      ...baseCommand,
+      input: {
+        ...baseCommand.input,
+        mode: "commit",
+        sharedRecipientName: "Fallback Destination",
+      },
+    }, {
+      database: makeDatabase(state, {
+        beforeRequestRead(readNumber, currentState) {
+          if (readNumber === 2) findRequest(currentState, "request-1").recipientName = "Fresh Foundation"
+        },
+      }),
+      batchSchemaReadiness: "ready",
+      logger: () => undefined,
+      executeDisposalRequest: async () => {
+        throw scenario.error
+      },
+    })
+
+    assert.equal(response.items[0].outcome, scenario.outcome)
+    assert.equal(response.items[0].code, scenario.code)
+    assert.equal(response.items[0].recipientName, "Fresh Foundation")
+    assert.equal(response.items[0].recipientSource, "request")
+  })
+}
+
 test("already executed requests return blocked without a second executor call", async () => {
   const state = makeState({
     requests: [makeRequest({ id: "request-1", requestStatus: "disposed", completedAt: new Date("2026-07-13T01:00:00.000Z") })],
