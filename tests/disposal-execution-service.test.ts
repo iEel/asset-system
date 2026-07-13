@@ -3,6 +3,7 @@ import test from "node:test"
 import type { Prisma } from "@prisma/client"
 
 import {
+  buildDisposalExecutionInput,
   DisposalExecutionServiceError,
   executeDisposalRequest,
   type DisposalExecutionCommand,
@@ -124,6 +125,42 @@ test("fails closed without opening a transaction when batch schema readiness is 
   assert.equal(database.transactionCalls, 0)
 })
 
+test("builds execution inputs from request-specific candidate fields", () => {
+  const candidate = makeCandidate()
+  Object.assign(candidate, {
+    disposalType: "sell",
+    recipientName: "Buyer One",
+    documentNo: "SALE-001",
+    saleValue: 1200.5,
+    salvageValue: 100,
+    executionRemark: "Recorded buyer handover",
+  })
+
+  const input = buildDisposalExecutionInput(candidate, {
+    executionDate: new Date("2026-07-13T00:00:00.000Z"),
+    executedById: "employee-executor",
+    nextStatusId: "status-disposed",
+    useHistoricalEvidenceException: false,
+    evidenceExceptionReason: null,
+    evidenceExceptionAcknowledged: false,
+  })
+
+  assert.deepEqual(input, {
+    disposalType: "sell",
+    executionDate: new Date("2026-07-13T00:00:00.000Z"),
+    executedById: "employee-executor",
+    nextStatusId: "status-disposed",
+    recipientName: "Buyer One",
+    documentNo: "SALE-001",
+    actualSaleValue: 1200.5,
+    actualSalvageValue: 100,
+    executionRemark: "Recorded buyer handover",
+    useHistoricalEvidenceException: false,
+    evidenceExceptionReason: null,
+    evidenceExceptionAcknowledged: false,
+  })
+})
+
 function historicalCommand(): DisposalExecutionCommand {
   return {
     ...baseCommand,
@@ -150,6 +187,8 @@ function makeCandidate() {
     assetId: "asset-1",
     reason: "Asset was approved for disposal",
     disposalType: "destroy",
+    saleValue: null as number | null,
+    salvageValue: null as number | null,
     batchId: null as string | null,
     executionDate: null as Date | null,
     executedById: null as string | null,

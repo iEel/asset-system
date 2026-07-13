@@ -9,6 +9,7 @@ import {
 } from "./disposal-policy.ts"
 import type { DisposalBatchSchemaReadiness } from "./disposal-schema-readiness.ts"
 import type { DisposalApiErrorCode } from "./disposal-api-errors.ts"
+import { disposalTypeValues, type DisposalType } from "./disposal-type-policy.ts"
 import type { DisposalExecutionInput } from "./validations/disposal.ts"
 import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "./workflow-approval.ts"
 
@@ -48,7 +49,17 @@ export class DisposalExecutionServiceError extends Error {
   }
 }
 
-const executionCandidateBaseSelect = {
+export type DisposalExecutionSharedInput = Pick<
+  DisposalExecutionInput,
+  | "executionDate"
+  | "executedById"
+  | "nextStatusId"
+  | "useHistoricalEvidenceException"
+  | "evidenceExceptionReason"
+  | "evidenceExceptionAcknowledged"
+>
+
+export const disposalExecutionCandidateBaseSelect = {
   id: true,
   disposalNo: true,
   disposalType: true,
@@ -59,6 +70,12 @@ const executionCandidateBaseSelect = {
   approverId: true,
   assetId: true,
   reason: true,
+  recipientName: true,
+  documentNo: true,
+  saleValue: true,
+  salvageValue: true,
+  executionRemark: true,
+  completedAt: true,
   asset: {
     select: {
       assetTag: true,
@@ -68,10 +85,25 @@ const executionCandidateBaseSelect = {
   },
 } satisfies Prisma.DisposalRequestSelect
 
-type DisposalExecutionCandidateBase = Prisma.DisposalRequestGetPayload<{
-  select: typeof executionCandidateBaseSelect
+export type DisposalExecutionCandidateBase = Prisma.DisposalRequestGetPayload<{
+  select: typeof disposalExecutionCandidateBaseSelect
 }>
-type DisposalExecutionCandidate = DisposalExecutionCandidateBase & { batchId: string | null }
+export type DisposalExecutionCandidate = DisposalExecutionCandidateBase & { batchId: string | null }
+export type DisposalExecutionInputCandidate = Omit<
+  Pick<
+    DisposalExecutionCandidate,
+    | "disposalType"
+    | "recipientName"
+    | "documentNo"
+    | "saleValue"
+    | "salvageValue"
+    | "executionRemark"
+  >,
+  "saleValue" | "salvageValue"
+> & {
+  saleValue: number | { toString(): string } | null
+  salvageValue: number | { toString(): string } | null
+}
 
 export async function executeDisposalRequest(
   command: DisposalExecutionCommand,
@@ -277,17 +309,63 @@ async function loadExecutionCandidate(
   if (batchSchemaReady) {
     return transaction.disposalRequest.findUnique({
       where: { id: requestId },
-      select: { ...executionCandidateBaseSelect, batchId: true },
+      select: { ...disposalExecutionCandidateBaseSelect, batchId: true },
     })
   }
   const candidate = await transaction.disposalRequest.findUnique({
     where: { id: requestId },
-    select: executionCandidateBaseSelect,
+    select: disposalExecutionCandidateBaseSelect,
   })
   return candidate ? { ...candidate, batchId: null } : null
 }
 
-function hasDisposalExecutionPermission(actor: DisposalExecutionActor) {
+export async function loadDisposalExecutionCandidates(
+  database: {
+    disposalRequest: Pick<Prisma.TransactionClient["disposalRequest"], "findMany">
+  },
+  requestIds: string[],
+  batchSchemaReady: boolean,
+): Promise<DisposalExecutionCandidate[]> {
+  if (batchSchemaReady) {
+    return database.disposalRequest.findMany({
+      where: { id: { in: requestIds } },
+      select: { ...disposalExecutionCandidateBaseSelect, batchId: true },
+    })
+  }
+  const candidates = await database.disposalRequest.findMany({
+    where: { id: { in: requestIds } },
+    select: disposalExecutionCandidateBaseSelect,
+  })
+  return candidates.map((candidate) => ({ ...candidate, batchId: null }))
+}
+
+export function getDisposalExecutionCandidateType(candidate: { disposalType?: string | null }) {
+  return disposalTypeValues.includes(candidate.disposalType as DisposalType)
+    ? candidate.disposalType as DisposalType
+    : null
+}
+
+export function buildDisposalExecutionInput(
+  candidate: DisposalExecutionInputCandidate,
+  shared: DisposalExecutionSharedInput,
+): DisposalExecutionInput {
+  return {
+    disposalType: getDisposalExecutionCandidateType(candidate) as DisposalType,
+    executionDate: shared.executionDate,
+    executedById: shared.executedById,
+    nextStatusId: shared.nextStatusId,
+    recipientName: candidate.recipientName,
+    documentNo: candidate.documentNo,
+    actualSaleValue: candidate.saleValue == null ? null : Number(candidate.saleValue),
+    actualSalvageValue: candidate.salvageValue == null ? null : Number(candidate.salvageValue),
+    executionRemark: candidate.executionRemark,
+    useHistoricalEvidenceException: shared.useHistoricalEvidenceException,
+    evidenceExceptionReason: shared.evidenceExceptionReason,
+    evidenceExceptionAcknowledged: shared.evidenceExceptionAcknowledged,
+  }
+}
+
+export function hasDisposalExecutionPermission(actor: DisposalExecutionActor) {
   return actor.roles.includes("system_admin") || actor.permissions.includes("disposal:edit")
 }
 
