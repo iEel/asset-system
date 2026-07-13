@@ -10,6 +10,7 @@ import {
   showsActualSalvageValue,
   showsActualSaleValue,
 } from "../src/lib/disposal-type-policy.ts"
+import { disposalBulkDecisionSchema } from "../src/lib/validations/disposal.ts"
 
 const baseExecution = {
   action: "execute",
@@ -79,4 +80,17 @@ test("requires incident or destruction details and document", () => {
       executionRemark: "Recorded procedure and responsible witnesses",
     }), [])
   }
+})
+
+test("accepts preview and commit bulk approval packets", () => {
+  assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "preview", requestIds: ["11111111-1111-4111-8111-111111111111"] }).success, true)
+  assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "commit", requestIds: ["11111111-1111-4111-8111-111111111111"], approvalRemark: "Reviewed together" }).success, true)
+})
+
+test("rejects empty, duplicate, oversized, and malformed bulk approval IDs", () => {
+  const id = "11111111-1111-4111-8111-111111111111"
+  assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "preview", requestIds: [] }).success, false)
+  assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "preview", requestIds: [id, id] }).success, false)
+  assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "preview", requestIds: Array.from({ length: 51 }, (_, index) => `11111111-1111-4111-8111-${String(index).padStart(12, "0")}`) }).success, false)
+  assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "preview", requestIds: ["not-a-uuid"] }).success, false)
 })

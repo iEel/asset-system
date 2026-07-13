@@ -1,10 +1,10 @@
 import { z } from "zod"
-import { optionalText } from "@/lib/validations/shared"
+import { optionalText } from "./shared.ts"
 import {
   disposalTypeValues,
   getDisposalDecisionFieldErrors,
   getDisposalExecutionFieldErrors,
-} from "@/lib/disposal-type-policy"
+} from "../disposal-type-policy.ts"
 
 const optionalDecimal = z.preprocess(
   (value) => (value === "" || value == null ? null : value),
@@ -53,6 +53,22 @@ export const disposalExecutionSchema = z.object({
   }
 })
 
+const disposalBulkRequestIds = z.array(z.string().uuid()).min(1).max(50)
+
+export const disposalBulkDecisionSchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("preview"), requestIds: disposalBulkRequestIds }).strict(),
+  z.object({
+    mode: z.literal("commit"),
+    requestIds: disposalBulkRequestIds,
+    approvalRemark: z.string().trim().max(4000).transform((value) => value || null).nullable().optional(),
+  }).strict(),
+]).superRefine((input, context) => {
+  if (new Set(input.requestIds).size !== input.requestIds.length) {
+    context.addIssue({ code: "custom", path: ["requestIds"], message: "Disposal request IDs must be unique" })
+  }
+})
+
 export type DisposalRequestInput = z.infer<typeof disposalRequestSchema>
 export type DisposalDecisionInput = z.infer<typeof disposalDecisionSchema>
 export type DisposalExecutionInput = z.infer<typeof disposalExecutionSchema>
+export type DisposalBulkDecisionInput = z.infer<typeof disposalBulkDecisionSchema>
