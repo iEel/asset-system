@@ -75,6 +75,31 @@ test("bulk approval UI keeps selection page-scoped and uses server preflight", (
   assert.doesNotMatch(source, /fixed\s+bottom-0/)
 })
 
+test("bulk approval uses required server-provided copy for every visible state", () => {
+  const source = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8")
+
+  assert.match(source, /export type DisposalBulkApprovalCopy = \{[\s\S]*?errors: Record<DisposalBulkApprovalCode, string>/)
+  assert.match(source, /copy: DisposalBulkApprovalCopy/)
+  assert.match(source, /copy\.sharedRemarkHelp/)
+  assert.match(source, /copy\.remarkLimit/)
+  assert.match(source, /copy\.committing/)
+  assert.match(source, /copy\.zeroEligible/)
+  assert.match(source, /copy\.retry/)
+  assert.match(source, /copy\.errors\[code\]/)
+  assert.doesNotMatch(source, /getBulkCopy/)
+  assert.doesNotMatch(source, /useLocale|useMessages|useTranslations/)
+})
+
+test("bulk approval exposes an initial desktop select-page control with accessible mixed state", () => {
+  const source = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8")
+
+  assert.match(source, /export function DisposalBulkApprovalSelectPageControl/)
+  assert.match(source, /input\.indeterminate = partiallySelected/)
+  assert.match(source, /aria-checked=\{partiallySelected \? "mixed" : allSelected\}/)
+  assert.match(source, /disabled=\{disabled\}/)
+  assert.match(source, /togglePageSelection/)
+})
+
 test("bulk approval aborts and ignores stale preview and commit completions", () => {
   const source = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8")
 

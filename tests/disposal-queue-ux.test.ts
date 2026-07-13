@@ -37,6 +37,15 @@ test("disposal queue exposes bulk approval only through the approval workspace",
   assert.match(page, /data-no-row-click/)
 })
 
+test("disposal queue passes the complete localized bulk approval copy and exposes initial desktop select-page control", () => {
+  const page = readFileSync(queuePath, "utf8")
+
+  assert.match(page, /import type \{ DisposalBulkApprovalCopy \}/)
+  assert.match(page, /const bulkApprovalCopy: DisposalBulkApprovalCopy = \{[\s\S]*?errors:/)
+  assert.match(page, /<DisposalBulkApprovalProvider[\s\S]*?copy=\{bulkApprovalCopy\}/)
+  assert.match(page, /<DisposalBulkApprovalSelectPageControl \/>/)
+})
+
 test("disposal messages cover queue states in both locales", () => {
   for (const locale of ["th", "en"] as const) {
     const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).disposalPage
@@ -50,10 +59,33 @@ test("disposal messages cover queue states in both locales", () => {
 test("bulk approval copy exists in Thai and English", () => {
   for (const locale of ["th", "en"] as const) {
     const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).disposalPage
-    for (const key of ["bulkSelectedCount", "bulkReviewAndApprove", "bulkPreviewTitle", "bulkResultTitle", "bulkSelectPage", "bulkClearSelection"]) {
+    for (const key of [
+      "bulkToolbarLabel",
+      "bulkSelection",
+      "bulkSelectionMode",
+      "bulkCancelSelectionMode",
+      "bulkSelectedCount",
+      "bulkReviewAndApprove",
+      "bulkPreviewTitle",
+      "bulkPreviewLoading",
+      "bulkPreflightHelp",
+      "bulkSelectPage",
+      "bulkClearSelection",
+      "bulkSharedRemark",
+      "bulkSharedRemarkHelp",
+      "bulkRemarkLimit",
+      "bulkCommitting",
+      "bulkResultTitle",
+      "bulkRetry",
+      "bulkClose",
+      "bulkCancel",
+      "bulkZeroEligible",
+      "bulkSelectItem",
+    ]) {
       assert.equal(typeof messages[key], "string", `${locale}:${key}`)
     }
-    assert.equal(typeof messages.bulkErrors.DISPOSAL_SOD_CONFLICT, "string")
-    assert.equal(typeof messages.bulkErrors.DISPOSAL_CONCURRENT_UPDATE, "string")
+    for (const code of ["DISPOSAL_REQUEST_NOT_FOUND", "DISPOSAL_INVALID_STAGE", "DISPOSAL_SOD_CONFLICT", "DISPOSAL_ASSET_INELIGIBLE", "DISPOSAL_CONCURRENT_UPDATE", "DISPOSAL_APPROVAL_FAILED"]) {
+      assert.equal(typeof messages.bulkErrors[code], "string", `${locale}:${code}`)
+    }
   }
 })

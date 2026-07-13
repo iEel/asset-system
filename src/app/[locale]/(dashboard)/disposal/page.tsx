@@ -14,9 +14,11 @@ import { DisposalPagination } from "@/components/disposal/disposal-pagination"
 import {
   DisposalBulkApprovalCheckbox,
   DisposalBulkApprovalProvider,
+  DisposalBulkApprovalSelectPageControl,
   DisposalBulkApprovalToolbar,
   DisposalBulkSelectionToggle,
 } from "@/components/disposal/disposal-bulk-approval"
+import type { DisposalBulkApprovalCopy } from "@/components/disposal/disposal-bulk-approval"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -130,6 +132,47 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
     complete: t("stages.complete"),
     rejected: t("stages.rejected"),
   }
+  const bulkApprovalCopy: DisposalBulkApprovalCopy = {
+    toolbarLabel: t("bulkToolbarLabel"),
+    selectionLabel: t("bulkSelection"),
+    selectionMode: t("bulkSelectionMode"),
+    cancelSelectionMode: t("bulkCancelSelectionMode"),
+    selectedCount: t("bulkSelectedCount"),
+    selectionLimit: t("bulkSelectionLimit"),
+    selectPage: t("bulkSelectPage"),
+    clearSelection: t("bulkClearSelection"),
+    reviewAndApprove: t("bulkReviewAndApprove"),
+    selectItem: t("bulkSelectItem"),
+    requestFailed: t("bulkRequestFailed"),
+    approvalFailed: t("bulkApprovalFailed"),
+    previewTitle: t("bulkPreviewTitle"),
+    previewLoading: t("bulkPreviewLoading"),
+    preflightHelp: t("bulkPreflightHelp"),
+    sharedRemark: t("bulkSharedRemark"),
+    sharedRemarkHelp: t("bulkSharedRemarkHelp"),
+    remarkLimit: t("bulkRemarkLimit"),
+    confirmApproval: t("bulkConfirmApproval"),
+    committing: t("bulkCommitting"),
+    resultTitle: t("bulkResultTitle"),
+    selected: t("bulkSelected"),
+    eligible: t("bulkEligible"),
+    blocked: t("bulkBlocked"),
+    approved: t("bulkApproved"),
+    failed: t("bulkFailed"),
+    retry: t("bulkRetry"),
+    close: t("bulkClose"),
+    cancel: t("bulkCancel"),
+    zeroEligible: t("bulkZeroEligible"),
+    discardSelection: t("bulkDiscardSelection"),
+    errors: {
+      DISPOSAL_REQUEST_NOT_FOUND: t("bulkErrors.DISPOSAL_REQUEST_NOT_FOUND"),
+      DISPOSAL_INVALID_STAGE: t("bulkErrors.DISPOSAL_INVALID_STAGE"),
+      DISPOSAL_SOD_CONFLICT: t("bulkErrors.DISPOSAL_SOD_CONFLICT"),
+      DISPOSAL_ASSET_INELIGIBLE: t("bulkErrors.DISPOSAL_ASSET_INELIGIBLE"),
+      DISPOSAL_CONCURRENT_UPDATE: t("bulkErrors.DISPOSAL_CONCURRENT_UPDATE"),
+      DISPOSAL_APPROVAL_FAILED: t("bulkErrors.DISPOSAL_APPROVAL_FAILED"),
+    },
+  }
   const stageCountsByStatus = new Map(stageCounts.map((count) => [count.requestStatus, count._count._all]))
   const stageTabs: Array<{ status: "" | "pending" | "approved" | "disposed" | "rejected"; label: string; count: number }> = [
     { status: "", label: tCommon("all"), count: stageTotal },
@@ -214,7 +257,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         {dateRangeError ? <p role="alert" className="mt-3 text-sm font-medium text-danger">{t("invalidDateRange")}</p> : null}
       </section>
 
-      <DisposalBulkApprovalProvider items={bulkItems} selectionKey={`${filters.page}:${filters.pageSize}:${query}`}>
+      <DisposalBulkApprovalProvider items={bulkItems} selectionKey={`${filters.page}:${filters.pageSize}:${query}`} copy={bulkApprovalCopy}>
       <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -258,7 +301,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         </div>
         <div className={`${getDesktopTableOnlyClasses()} overflow-x-auto`}>
           <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40"><tr>{canApprove ? <th className="w-12 px-4 py-3"><span className="sr-only">{t("bulkSelection")}</span></th> : null}<ColumnHeader>{t("disposalNo")}</ColumnHeader><ColumnHeader>{t("asset")}</ColumnHeader><ColumnHeader>{t("disposalType")}</ColumnHeader><ColumnHeader>{t("requestedBy")}</ColumnHeader><ColumnHeader>{tCommon("status")}</ColumnHeader><ColumnHeader>{t("requestDate")}</ColumnHeader>{canApprove || canEdit ? <th className="sticky right-0 z-10 whitespace-nowrap bg-muted/95 px-4 py-3 text-left text-xs font-semibold text-muted-foreground">{tCommon("actions")}</th> : null}</tr></thead>
+            <thead className="bg-muted/40"><tr>{canApprove ? <th className="w-12 px-4 py-3"><span className="sr-only">{t("bulkSelection")}</span><DisposalBulkApprovalSelectPageControl /></th> : null}<ColumnHeader>{t("disposalNo")}</ColumnHeader><ColumnHeader>{t("asset")}</ColumnHeader><ColumnHeader>{t("disposalType")}</ColumnHeader><ColumnHeader>{t("requestedBy")}</ColumnHeader><ColumnHeader>{tCommon("status")}</ColumnHeader><ColumnHeader>{t("requestDate")}</ColumnHeader>{canApprove || canEdit ? <th className="sticky right-0 z-10 whitespace-nowrap bg-muted/95 px-4 py-3 text-left text-xs font-semibold text-muted-foreground">{tCommon("actions")}</th> : null}</tr></thead>
             <tbody className="divide-y divide-border">
               {requests.length === 0 ? <tr><td colSpan={(canApprove ? 1 : 0) + (canApprove || canEdit ? 7 : 6)} className="px-4 py-6"><DisposalEmptyState locale={locale} t={t} hasActiveFilters={hasActiveFilters} canCreate={canCreate} /></td></tr> : requests.map((request) => {
                 const stage = getDisposalStage(request.requestStatus)
