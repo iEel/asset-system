@@ -147,3 +147,18 @@ test("bulk approval route guards permission and revalidates each request", () =>
   assert.match(source, /permissions:\s*user\.permissions/)
   assert.match(matrix, /disposal-requests\/bulk-decision\/route\.ts/)
 })
+
+test("bulk commit invokes the approval service even when inspection reports a blocked item", () => {
+  const source = readFileSync("src/app/api/disposal-requests/bulk-decision/route.ts", "utf8")
+
+  assert.doesNotMatch(source, /if \(previewItem\.outcome === "blocked"\) \{[\s\S]*?continue/)
+  assert.match(source, /for \(const requestId of input\.requestIds\) \{[\s\S]*?try \{[\s\S]*?approveDisposalRequest\(/)
+})
+
+test("bulk commit isolates missing inspection metadata with a stable item fallback", () => {
+  const source = readFileSync("src/app/api/disposal-requests/bulk-decision/route.ts", "utf8")
+
+  assert.doesNotMatch(source, /inspectedById\.get\(requestId\.toLowerCase\(\)\)!/)
+  assert.match(source, /getBulkApprovalFailure\(error, requestId, previewItem\)/)
+  assert.match(source, /if \(!previewItem\) \{[\s\S]*?code: "DISPOSAL_APPROVAL_FAILED"/)
+})

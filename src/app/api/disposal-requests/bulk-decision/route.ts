@@ -44,11 +44,7 @@ export async function POST(request: NextRequest) {
     const items: DisposalBulkApprovalItem[] = []
     const inspectedById = new Map(inspected.map((item) => [item.requestId.toLowerCase(), item]))
     for (const requestId of input.requestIds) {
-      const previewItem = inspectedById.get(requestId.toLowerCase())!
-      if (previewItem.outcome === "blocked") {
-        items.push(previewItem)
-        continue
-      }
+      const previewItem = inspectedById.get(requestId.toLowerCase())
 
       try {
         const result = await approveDisposalRequest({
@@ -65,7 +61,7 @@ export async function POST(request: NextRequest) {
           code: null,
         })
       } catch (error) {
-        const { code, display } = getBulkApprovalFailure(error, previewItem)
+        const { code, display } = getBulkApprovalFailure(error, requestId, previewItem)
         items.push({
           requestId,
           disposalNo: display.disposalNo,
@@ -84,11 +80,19 @@ export async function POST(request: NextRequest) {
 
 function getBulkApprovalFailure(
   error: unknown,
-  previewItem: DisposalBulkApprovalItem,
+  requestId: string,
+  previewItem?: DisposalBulkApprovalItem,
 ): {
   code: DisposalBulkApprovalCode
   display: Pick<DisposalBulkApprovalItem, "disposalNo" | "assetTag">
 } {
+  if (!previewItem) {
+    return {
+      code: "DISPOSAL_APPROVAL_FAILED",
+      display: { disposalNo: requestId, assetTag: "-" },
+    }
+  }
+
   if (error instanceof DisposalApprovalServiceError) {
     return {
       code: error.code === "DISPOSAL_FORBIDDEN" ? "DISPOSAL_APPROVAL_FAILED" : error.code,
