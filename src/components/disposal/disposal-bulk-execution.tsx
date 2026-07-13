@@ -29,6 +29,7 @@ import {
   getBulkExecutionUnresolvedIds,
   isHistoricalExceptionAvailable,
   mergeBulkExecutionResults,
+  resolveBulkExecutionRecipientReview,
   setBulkExecutionSelectionMode,
   toggleBulkExecutionItem,
   toggleBulkExecutionPage,
@@ -1159,10 +1160,10 @@ function AuthoritativeItems({
       <div className="mt-2 divide-y divide-border border border-border">
         {items.map((item) => {
           const responseItem = responseItemsById.get(item.requestId)
-          const recipientName = responseItem?.recipientName ?? item.recipientName ?? copy.notProvided
-          const recipientSource = responseItem?.recipientSource === "shared"
+          const recipient = resolveBulkExecutionRecipientReview(item.recipientName, responseItem)
+          const recipientSource = recipient.recipientSource === "shared"
             ? copy.recipientSourceShared
-            : responseItem?.recipientSource === "request"
+            : recipient.recipientSource === "request"
               ? copy.recipientSourceRequest
               : null
           return (
@@ -1172,7 +1173,11 @@ function AuthoritativeItems({
               <span className="text-xs text-muted-foreground">{item.assetLabel}</span>
             </div>
             <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
-              <ReviewValue label={copy.recipient} value={recipientName} detail={recipientSource} />
+              <ReviewValue
+                label={copy.recipient}
+                value={recipient.recipientName ?? copy.notProvided}
+                detail={recipientSource}
+              />
               <ReviewValue label={copy.documentNo} value={item.documentNo ?? copy.notProvided} />
               <ReviewValue label={copy.saleValue} value={item.saleValue ?? copy.notProvided} />
               <ReviewValue label={copy.salvageValue} value={item.salvageValue ?? copy.notProvided} />

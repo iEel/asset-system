@@ -12,6 +12,7 @@ import { getDisposalApiErrorMessage } from "../src/lib/disposal-error-message.ts
 import {
   buildBulkExecutionCommitPayload,
   buildBulkExecutionPayload,
+  resolveBulkExecutionRecipientReview,
 } from "../src/lib/disposal-bulk-execution-ui.ts"
 import { disposalBulkExecutionSchema } from "../src/lib/validations/disposal.ts"
 
@@ -80,6 +81,23 @@ test("preserves the shared recipient name from preview into commit", () => {
   assert.equal(
     buildBulkExecutionCommitPayload(preview, ["request-1"]).sharedRecipientName,
     "Receiving Foundation",
+  )
+})
+
+test("uses selectable recipient data before a server response item exists", () => {
+  assert.deepEqual(
+    resolveBulkExecutionRecipientReview("Selectable Buyer"),
+    { recipientName: "Selectable Buyer", recipientSource: null },
+  )
+})
+
+test("uses authoritative null recipient metadata instead of stale selectable data", () => {
+  assert.deepEqual(
+    resolveBulkExecutionRecipientReview(
+      "Stale Selectable Buyer",
+      { recipientName: null, recipientSource: null },
+    ),
+    { recipientName: null, recipientSource: null },
   )
 })
 

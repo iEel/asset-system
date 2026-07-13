@@ -1,6 +1,7 @@
 import {
   MAX_DISPOSAL_BULK_EXECUTION_ITEMS,
   summarizeDisposalBulkExecution,
+  type DisposalBulkExecutionItem,
   type DisposalBulkExecutionResponse,
 } from "./disposal-bulk-execution.ts"
 
@@ -39,6 +40,24 @@ export type BulkExecutionPreviewPayload = BulkExecutionSharedValuesInput & {
 export type BulkExecutionCommitPayload = BulkExecutionSharedValuesInput & {
   mode: "commit"
   requestIds: string[]
+}
+
+type BulkExecutionRecipientReview = Pick<
+  DisposalBulkExecutionItem,
+  "recipientName" | "recipientSource"
+>
+
+export function resolveBulkExecutionRecipientReview(
+  selectableRecipientName: string | null,
+  responseItem?: BulkExecutionRecipientReview,
+): BulkExecutionRecipientReview {
+  if (responseItem !== undefined) {
+    return {
+      recipientName: responseItem.recipientName,
+      recipientSource: responseItem.recipientSource,
+    }
+  }
+  return { recipientName: selectableRecipientName, recipientSource: null }
 }
 
 export function setBulkExecutionSelectionMode(
