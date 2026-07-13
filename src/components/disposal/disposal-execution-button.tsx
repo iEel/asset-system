@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { CheckCircle2, Loader2, Truck, X } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Loader2, Truck, X } from "lucide-react"
 import { toast } from "sonner"
 import { getDisposalApiErrorMessage } from "@/lib/disposal-error-message"
 import { SearchableSelect } from "@/components/ui/searchable-select"
@@ -26,6 +26,9 @@ type ExecutionValues = {
   actualSaleValue: string
   actualSalvageValue: string
   executionRemark: string
+  useHistoricalEvidenceException: boolean
+  evidenceExceptionReason: string
+  evidenceExceptionAcknowledged: boolean
 }
 
 export function DisposalExecutionButton({
@@ -36,6 +39,8 @@ export function DisposalExecutionButton({
   employees,
   defaultActualSaleValue,
   defaultActualSalvageValue,
+  effectiveEvidenceCount,
+  canUseHistoricalEvidenceException = false,
 }: {
   requestId: string
   disposalNo: string
@@ -44,6 +49,8 @@ export function DisposalExecutionButton({
   employees: EmployeeOption[]
   defaultActualSaleValue?: string
   defaultActualSalvageValue?: string
+  effectiveEvidenceCount?: number
+  canUseHistoricalEvidenceException?: boolean
 }) {
   const router = useRouter()
   const t = useTranslations("disposalPage")
@@ -62,9 +69,12 @@ export function DisposalExecutionButton({
     actualSaleValue: defaultActualSaleValue ?? "",
     actualSalvageValue: defaultActualSalvageValue ?? "",
     executionRemark: "",
+    useHistoricalEvidenceException: false,
+    evidenceExceptionReason: "",
+    evidenceExceptionAcknowledged: false,
   })
 
-  function setField(field: keyof ExecutionValues, value: string) {
+  function setField(field: keyof ExecutionValues, value: string | boolean) {
     setValues((current) => ({ ...current, [field]: value }))
   }
 
@@ -72,6 +82,11 @@ export function DisposalExecutionButton({
     event.preventDefault()
     setSaving(true)
     try {
+      const exceptionPayload = {
+        useHistoricalEvidenceException: values.useHistoricalEvidenceException,
+        evidenceExceptionReason: values.useHistoricalEvidenceException ? values.evidenceExceptionReason : null,
+        evidenceExceptionAcknowledged: values.useHistoricalEvidenceException && values.evidenceExceptionAcknowledged,
+      }
       const response = await fetch(`/api/disposal-requests/${requestId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -86,6 +101,7 @@ export function DisposalExecutionButton({
           actualSaleValue: values.actualSaleValue || null,
           actualSalvageValue: values.actualSalvageValue || null,
           executionRemark: values.executionRemark || null,
+          ...exceptionPayload,
         }),
       })
       const payload = await response.json().catch(() => null)
@@ -106,7 +122,7 @@ export function DisposalExecutionButton({
         <Truck className="h-4 w-4" />
         {t("executeDisposal")}
       </button>
-      {open ? <ExecutionDialog disposalNo={disposalNo} disposalType={disposalType} statuses={statuses} employees={employees} values={values} saving={saving} triggerRef={triggerRef} onClose={() => setOpen(false)} onSubmit={handleSubmit} onFieldChange={setField} /> : null}
+      {open ? <ExecutionDialog disposalNo={disposalNo} disposalType={disposalType} statuses={statuses} employees={employees} values={values} saving={saving} effectiveEvidenceCount={effectiveEvidenceCount} canUseHistoricalEvidenceException={canUseHistoricalEvidenceException} triggerRef={triggerRef} onClose={() => setOpen(false)} onSubmit={handleSubmit} onFieldChange={setField} /> : null}
     </>
   )
 }
@@ -118,6 +134,8 @@ function ExecutionDialog({
   employees,
   values,
   saving,
+  effectiveEvidenceCount,
+  canUseHistoricalEvidenceException,
   triggerRef,
   onClose,
   onSubmit,
@@ -129,10 +147,12 @@ function ExecutionDialog({
   employees: EmployeeOption[]
   values: ExecutionValues
   saving: boolean
+  effectiveEvidenceCount?: number
+  canUseHistoricalEvidenceException: boolean
   triggerRef: React.RefObject<HTMLButtonElement | null>
   onClose: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
-  onFieldChange: (field: keyof ExecutionValues, value: string) => void
+  onFieldChange: (field: keyof ExecutionValues, value: string | boolean) => void
 }) {
   const t = useTranslations("disposalPage")
   const tCommon = useTranslations("common")
@@ -146,6 +166,11 @@ function ExecutionDialog({
   const remarkRequired = requiresDisposalExecutionRemark(normalizedDisposalType)
   const showSaleValue = showsActualSaleValue(normalizedDisposalType)
   const showSalvageValue = showsActualSalvageValue(normalizedDisposalType)
+  const evidenceBlocked = effectiveEvidenceCount === 0 && !values.useHistoricalEvidenceException
+  const historicalInputInvalid = values.useHistoricalEvidenceException && (
+    values.evidenceExceptionReason.trim().length < 20 || !values.evidenceExceptionAcknowledged
+  )
+  const submitDisabled = saving || evidenceBlocked || historicalInputInvalid
 
   useEffect(() => {
     restoreFocusRef.current = triggerRef.current ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
@@ -192,17 +217,20 @@ function ExecutionDialog({
           <button type="button" onClick={closeDialog} disabled={saving} className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 sm:h-8 sm:w-8" aria-label={tCommon("close")}><X className="h-4 w-4" /></button>
         </div>
         <div className="grid grid-cols-1 gap-5 p-4 sm:p-5 md:grid-cols-2">
+          {effectiveEvidenceCount === 0 ? <div role="alert" className="flex gap-3 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-foreground md:col-span-2"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" /><p>{t("errors.DISPOSAL_EVIDENCE_REQUIRED")}</p></div> : null}
           <Field label={t("executionDate")} required><input ref={executionDateRef} type="date" value={values.executionDate} required disabled={saving} onChange={(event) => onFieldChange("executionDate", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0" /></Field>
           <SearchableSelect label={t("executedBy")} value={values.executedById} required disabled={saving} options={employees} placeholder={t("selectEmployee")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => onFieldChange("executedById", value)} />
           <Field label={t("nextStatus")} required><select value={values.nextStatusId} required disabled={saving} onChange={(event) => onFieldChange("nextStatusId", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0">{statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}</select></Field>
           {recipientRequired ? <Field label={t("recipientName")} required><input value={values.recipientName} maxLength={200} required disabled={saving} onChange={(event) => onFieldChange("recipientName", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0" /></Field> : null}
-          <Field label={t("documentNo")} required><input value={values.documentNo} maxLength={100} required disabled={saving} onChange={(event) => onFieldChange("documentNo", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0" /></Field>
+          <Field label={t("documentNo")} required={!values.useHistoricalEvidenceException}><input value={values.documentNo} maxLength={100} required={!values.useHistoricalEvidenceException} disabled={saving} onChange={(event) => onFieldChange("documentNo", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0" /></Field>
           {showSaleValue ? <Field label={t("actualSaleValue")} required><input type="number" min="0" step="0.01" value={values.actualSaleValue} required disabled={saving} onChange={(event) => onFieldChange("actualSaleValue", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0" /></Field> : null}
           {showSalvageValue ? <Field label={t("actualSalvageValue")}><input type="number" min="0" step="0.01" value={values.actualSalvageValue} disabled={saving} onChange={(event) => onFieldChange("actualSalvageValue", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0" /></Field> : null}
           <div className="md:col-span-2"><Field label={t("executionRemark")} required={remarkRequired}><textarea value={values.executionRemark} rows={4} maxLength={4000} required={remarkRequired} disabled={saving} onChange={(event) => onFieldChange("executionRemark", event.target.value)} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" /></Field></div>
+          {effectiveEvidenceCount === 0 && canUseHistoricalEvidenceException ? <div className="md:col-span-2"><label className="flex min-h-11 items-center gap-3 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground"><input type="checkbox" checked={values.useHistoricalEvidenceException} disabled={saving} onChange={(event) => onFieldChange("useHistoricalEvidenceException", event.target.checked)} className="h-4 w-4 rounded border-border text-primary focus:ring-primary" />{t("historicalEvidenceException")}</label></div> : null}
+          {values.useHistoricalEvidenceException ? <><div className="md:col-span-2"><Field label={t("historicalEvidenceReason")} required><textarea value={values.evidenceExceptionReason} rows={4} minLength={20} maxLength={2000} required disabled={saving} onChange={(event) => onFieldChange("evidenceExceptionReason", event.target.value)} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" /></Field></div><div className="md:col-span-2"><label className="flex min-h-11 items-center gap-3 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground"><input type="checkbox" checked={values.evidenceExceptionAcknowledged} required disabled={saving} onChange={(event) => onFieldChange("evidenceExceptionAcknowledged", event.target.checked)} className="h-4 w-4 rounded border-border text-primary focus:ring-primary" />{t("historicalEvidenceAcknowledgement")}</label></div></> : null}
           <div className="flex flex-col justify-end gap-2 sm:flex-row md:col-span-2">
             <button type="button" onClick={closeDialog} disabled={saving} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50 sm:h-10 sm:min-h-0">{tCommon("cancel")}</button>
-            <button type="submit" disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:h-10 sm:min-h-0">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}{t("saveExecution")}</button>
+            <button type="submit" disabled={submitDisabled} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:h-10 sm:min-h-0">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}{values.useHistoricalEvidenceException ? t("confirmHistoricalEvidenceException") : t("saveExecution")}</button>
           </div>
         </div>
       </form>

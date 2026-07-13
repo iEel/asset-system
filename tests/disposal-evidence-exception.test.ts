@@ -106,3 +106,28 @@ test("registers the execution failure code with localized client messages", () =
   assert.notEqual(thaiMessages.disposalPage.errors.DISPOSAL_EXECUTION_FAILED, "DISPOSAL_EXECUTION_FAILED")
   assert.notEqual(englishMessages.disposalPage.errors.DISPOSAL_EXECUTION_FAILED, "DISPOSAL_EXECUTION_FAILED")
 })
+
+test("passes evidence context and submits localized historical evidence exception fields", () => {
+  const detailPage = readFileSync("src/app/[locale]/(dashboard)/disposal/[id]/page.tsx", "utf8")
+  const executionButton = readFileSync("src/components/disposal/disposal-execution-button.tsx", "utf8")
+
+  assert.match(detailPage, /effectiveEvidenceCount=\{attachments\.length \+ batchAttachments\.length\}/)
+  assert.match(detailPage, /canUseHistoricalEvidenceException=\{user\.roles\.includes\("system_admin"\)\}/)
+  assert.match(executionButton, /useHistoricalEvidenceException/)
+  assert.match(executionButton, /evidenceExceptionReason/)
+  assert.match(executionButton, /evidenceExceptionAcknowledged/)
+
+  const thMessages = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const enMessages = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  for (const messages of [thMessages, enMessages]) {
+    assert.equal(typeof messages.disposalPage.historicalEvidenceException, "string")
+    assert.equal(typeof messages.disposalPage.historicalEvidenceReason, "string")
+    assert.equal(typeof messages.disposalPage.historicalEvidenceAcknowledgement, "string")
+    for (const code of [
+      "DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN",
+      "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED",
+      "DISPOSAL_EVIDENCE_EXCEPTION_ACK_REQUIRED",
+      "DISPOSAL_EVIDENCE_EXCEPTION_NOT_APPLICABLE",
+    ]) assert.equal(typeof messages.disposalPage.errors[code], "string")
+  }
+})

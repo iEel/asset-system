@@ -153,6 +153,8 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
       employees={executorOptions}
       defaultActualSaleValue={disposalRequest.actualSaleValue?.toString() ?? disposalRequest.saleValue?.toString()}
       defaultActualSalvageValue={disposalRequest.actualSalvageValue?.toString() ?? disposalRequest.salvageValue?.toString()}
+      effectiveEvidenceCount={attachments.length + batchAttachments.length}
+      canUseHistoricalEvidenceException={user.roles.includes("system_admin")}
     />
   ) : null
 
