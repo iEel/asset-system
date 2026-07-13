@@ -74,3 +74,28 @@ test("bulk approval UI keeps selection page-scoped and uses server preflight", (
   assert.match(source, /if \(!link\) return/)
   assert.doesNotMatch(source, /fixed\s+bottom-0/)
 })
+
+test("bulk approval aborts and ignores stale preview and commit completions", () => {
+  const source = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8")
+
+  assert.match(source, /const selectionGenerationRef = useRef\(0\)/)
+  assert.match(source, /const requestGenerationRef = useRef\(0\)/)
+  assert.match(source, /const previewControllerRef = useRef<AbortController \| null>\(null\)/)
+  assert.match(source, /const commitControllerRef = useRef<AbortController \| null>\(null\)/)
+  assert.match(source, /function isCurrentRequest\(/)
+  assert.match(source, /if \(!isCurrentRequest\("preview", controller, selectionGeneration, requestGeneration\)\) return/)
+  assert.match(source, /if \(!isCurrentRequest\("commit", controller, selectionGeneration, requestGeneration\)\) return/)
+  assert.match(source, /previewControllerRef\.current\?\.abort\(\)/)
+  assert.match(source, /commitControllerRef\.current\?\.abort\(\)/)
+  assert.match(source, /signal: controller\.signal/)
+})
+
+test("bulk approval invalidates requests on selection-key changes and clears stale previews", () => {
+  const source = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8")
+
+  assert.match(source, /selectionGenerationRef\.current \+= 1/)
+  assert.match(source, /useEffect\(\(\) => \{[\s\S]*?selectionGenerationRef\.current \+= 1[\s\S]*?previewControllerRef\.current\?\.abort\(\)[\s\S]*?commitControllerRef\.current\?\.abort\(\)/)
+  assert.match(source, /async function preview\(\) \{[\s\S]*?setResponse\(null\)[\s\S]*?setDialogState\("previewing"\)/)
+  assert.doesNotMatch(source, /skipDiscardConfirmationRef/)
+  assert.match(source, /function confirmDiscard\(\) \{\s*if \(selected\.size === 0\) return true/)
+})

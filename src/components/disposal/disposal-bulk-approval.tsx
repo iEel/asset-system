@@ -89,12 +89,21 @@ export function DisposalBulkApprovalProvider({
   const [limitMessage, setLimitMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
-  const skipDiscardConfirmationRef = useRef(false)
+  const selectionGenerationRef = useRef(0)
+  const requestGenerationRef = useRef(0)
+  const previewControllerRef = useRef<AbortController | null>(null)
+  const commitControllerRef = useRef<AbortController | null>(null)
   const busy = dialogState === "previewing" || dialogState === "committing"
   const copy = getBulkCopy(locale)
 
   /* eslint-disable react-hooks/set-state-in-effect -- A changed selection key represents a new server-rendered queue page. */
   useEffect(() => {
+    selectionGenerationRef.current += 1
+    requestGenerationRef.current += 1
+    previewControllerRef.current?.abort()
+    commitControllerRef.current?.abort()
+    previewControllerRef.current = null
+    commitControllerRef.current = null
     setSelected(new Set())
     setDialogState("closed")
     setResponse(null)
@@ -102,7 +111,6 @@ export function DisposalBulkApprovalProvider({
     setApprovalRemark("")
     setLimitMessage(null)
     setError(null)
-    skipDiscardConfirmationRef.current = false
   }, [selectionKey])
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -136,7 +144,27 @@ export function DisposalBulkApprovalProvider({
     setLimitMessage(items.filter((item) => item.selectable).length > MAX_DISPOSAL_BULK_APPROVAL_ITEMS ? copy.selectionLimit : null)
   }
 
-  async function send(mode: "preview" | "commit", requestIds: string[]) {
+  function abortActiveRequests() {
+    previewControllerRef.current?.abort()
+    commitControllerRef.current?.abort()
+    previewControllerRef.current = null
+    commitControllerRef.current = null
+  }
+
+  function isCurrentRequest(
+    mode: "preview" | "commit",
+    controller: AbortController,
+    selectionGeneration: number,
+    requestGeneration: number,
+  ) {
+    const activeController = mode === "preview" ? previewControllerRef.current : commitControllerRef.current
+    return activeController === controller
+      && !controller.signal.aborted
+      && selectionGeneration === selectionGenerationRef.current
+      && requestGeneration === requestGenerationRef.current
+  }
+
+  async function send(mode: "preview" | "commit", requestIds: string[], controller: AbortController) {
     const request = mode === "preview"
       ? { mode: "preview", requestIds }
       : { mode: "commit", requestIds, approvalRemark: approvalRemark.trim() || null }
@@ -144,6 +172,7 @@ export function DisposalBulkApprovalProvider({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
+      signal: controller.signal,
     })
     const payload = await fetchResponse.json().catch(() => null) as DisposalBulkApprovalResponse | { error?: string; message?: string } | null
     if (!fetchResponse.ok || !payload || !("items" in payload)) {
@@ -154,25 +183,41 @@ export function DisposalBulkApprovalProvider({
 
   async function preview() {
     if (selected.size === 0 || busy) return
+    abortActiveRequests()
+    const controller = new AbortController()
+    const selectionGeneration = selectionGenerationRef.current
+    const requestGeneration = ++requestGenerationRef.current
+    previewControllerRef.current = controller
+    setResponse(null)
     setDialogState("previewing")
     setError(null)
     try {
-      const payload = await send("preview", [...selected])
+      const payload = await send("preview", [...selected], controller)
+      if (!isCurrentRequest("preview", controller, selectionGeneration, requestGeneration)) return
       setResponse(payload)
       setDialogState("preview")
     } catch (caught) {
+      if (!isCurrentRequest("preview", controller, selectionGeneration, requestGeneration)) return
       setError(caught instanceof Error ? caught.message : copy.requestFailed)
       setDialogState("closed")
+    } finally {
+      if (previewControllerRef.current === controller) previewControllerRef.current = null
     }
   }
 
   async function commit() {
     const eligibleIds = response?.items.filter((item) => item.outcome === "eligible").map((item) => item.requestId) ?? []
     if (eligibleIds.length === 0 || busy) return
+    abortActiveRequests()
+    const controller = new AbortController()
+    const selectionGeneration = selectionGenerationRef.current
+    const requestGeneration = ++requestGenerationRef.current
+    commitControllerRef.current = controller
     setDialogState("committing")
     setError(null)
     try {
-      const payload = await send("commit", eligibleIds)
+      const payload = await send("commit", eligibleIds, controller)
+      if (!isCurrentRequest("commit", controller, selectionGeneration, requestGeneration)) return
       const unresolved = payload.items
         .filter((item) => item.outcome === "blocked" || item.outcome === "failed")
         .map((item) => item.requestId)
@@ -180,12 +225,14 @@ export function DisposalBulkApprovalProvider({
       setSelected(new Set(unresolved))
       setDialogState("result")
       if (payload.summary.approved > 0) {
-        skipDiscardConfirmationRef.current = true
         router.refresh()
       }
     } catch (caught) {
+      if (!isCurrentRequest("commit", controller, selectionGeneration, requestGeneration)) return
       setError(caught instanceof Error ? caught.message : copy.requestFailed)
       setDialogState("preview")
+    } finally {
+      if (commitControllerRef.current === controller) commitControllerRef.current = null
     }
   }
 
@@ -194,7 +241,7 @@ export function DisposalBulkApprovalProvider({
   }
 
   function confirmDiscard() {
-    if (selected.size === 0 || skipDiscardConfirmationRef.current) return true
+    if (selected.size === 0) return true
     const confirmed = window.confirm(copy.discardSelection)
     if (confirmed) clear()
     return confirmed
