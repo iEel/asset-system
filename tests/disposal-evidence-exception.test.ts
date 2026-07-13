@@ -1,0 +1,65 @@
+import assert from "node:assert/strict"
+import test from "node:test"
+
+import {
+  canUseHistoricalDisposalEvidenceException,
+  getDisposalExecutionEvidenceError,
+} from "../src/lib/disposal-evidence-exception.ts"
+import { disposalExecutionSchema } from "../src/lib/validations/disposal.ts"
+
+const baseException = {
+  roles: ["system_admin"],
+  effectiveEvidenceCount: 0,
+  useHistoricalEvidenceException: true,
+  evidenceExceptionReason: "ทรัพย์สินถูกตัดจำหน่ายก่อนเริ่มใช้ระบบและไม่มีหลักฐานหลงเหลือ",
+  evidenceExceptionAcknowledged: true,
+}
+
+test("restricts historical evidence exceptions to system administrators", () => {
+  assert.equal(canUseHistoricalDisposalEvidenceException(["system_admin"]), true)
+  assert.equal(canUseHistoricalDisposalEvidenceException(["asset_admin"]), false)
+})
+
+test("keeps normal execution blocked when effective evidence is missing", () => {
+  assert.equal(getDisposalExecutionEvidenceError({
+    roles: ["asset_admin"],
+    effectiveEvidenceCount: 0,
+    useHistoricalEvidenceException: false,
+    evidenceExceptionReason: null,
+    evidenceExceptionAcknowledged: false,
+  }), "DISPOSAL_EVIDENCE_REQUIRED")
+})
+
+test("accepts a fully acknowledged system-admin historical exception", () => {
+  assert.equal(getDisposalExecutionEvidenceError(baseException), null)
+})
+
+test("rejects forbidden, inapplicable, incomplete, and stray exceptions", () => {
+  assert.equal(getDisposalExecutionEvidenceError({ ...baseException, roles: ["asset_admin"] }), "DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN")
+  assert.equal(getDisposalExecutionEvidenceError({ ...baseException, effectiveEvidenceCount: 1 }), "DISPOSAL_EVIDENCE_EXCEPTION_NOT_APPLICABLE")
+  assert.equal(getDisposalExecutionEvidenceError({ ...baseException, evidenceExceptionReason: "สั้นเกินไป" }), "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED")
+  assert.equal(getDisposalExecutionEvidenceError({ ...baseException, evidenceExceptionAcknowledged: false }), "DISPOSAL_EVIDENCE_EXCEPTION_ACK_REQUIRED")
+  assert.equal(getDisposalExecutionEvidenceError({ ...baseException, useHistoricalEvidenceException: false }), "DISPOSAL_EVIDENCE_EXCEPTION_NOT_APPLICABLE")
+})
+
+test("normalizes exception metadata before validating the schema", () => {
+  const result = disposalExecutionSchema.safeParse({
+    disposalType: "destroy",
+    executionDate: "2026-07-13",
+    executedById: "employee-executor",
+    nextStatusId: "status-retired",
+    actualSaleValue: null,
+    actualSalvageValue: null,
+    executionRemark: "Recorded incident detail",
+    useHistoricalEvidenceException: true,
+    evidenceExceptionReason: "   ",
+    evidenceExceptionAcknowledged: false,
+  })
+
+  assert.equal(result.success, true)
+  if (result.success) {
+    assert.equal(result.data.useHistoricalEvidenceException, true)
+    assert.equal(result.data.evidenceExceptionReason, null)
+    assert.equal(result.data.evidenceExceptionAcknowledged, false)
+  }
+})

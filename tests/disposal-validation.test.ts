@@ -10,7 +10,7 @@ import {
   showsActualSalvageValue,
   showsActualSaleValue,
 } from "../src/lib/disposal-type-policy.ts"
-import { disposalBulkDecisionSchema } from "../src/lib/validations/disposal.ts"
+import { disposalBulkDecisionSchema, disposalExecutionSchema } from "../src/lib/validations/disposal.ts"
 
 const baseExecution = {
   action: "execute",
@@ -79,6 +79,42 @@ test("requires incident or destruction details and document", () => {
       documentNo: "REPORT-001",
       executionRemark: "Recorded procedure and responsible witnesses",
     }), [])
+  }
+})
+
+test("historical evidence mode only makes the execution document optional", () => {
+  const result = disposalExecutionSchema.safeParse({
+    disposalType: "sell",
+    executionDate: "2026-07-13",
+    executedById: "employee-executor",
+    nextStatusId: "status-retired",
+    recipientName: "Buyer Co.",
+    documentNo: null,
+    evidenceExceptionReason: null,
+    actualSaleValue: 12000,
+    actualSalvageValue: null,
+    useHistoricalEvidenceException: true,
+  })
+
+  assert.equal(result.success, true)
+})
+
+test("historical evidence mode preserves sale recipient and value requirements", () => {
+  const result = disposalExecutionSchema.safeParse({
+    disposalType: "sell",
+    executionDate: "2026-07-13",
+    executedById: "employee-executor",
+    nextStatusId: "status-retired",
+    documentNo: null,
+    evidenceExceptionReason: null,
+    actualSalvageValue: null,
+    useHistoricalEvidenceException: true,
+    actualSaleValue: null,
+  })
+
+  assert.equal(result.success, false)
+  if (!result.success) {
+    assert.deepEqual(result.error.issues.map((issue) => issue.path[0]), ["recipientName", "actualSaleValue"])
   }
 })
 

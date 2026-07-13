@@ -44,6 +44,12 @@ export const disposalExecutionSchema = z.object({
   nextStatusId: z.string().trim().min(1),
   recipientName: optionalText,
   documentNo: optionalText,
+  useHistoricalEvidenceException: z.boolean().optional().default(false),
+  evidenceExceptionReason: z.preprocess(
+    (value) => typeof value === "string" ? value.trim() || null : value,
+    z.string().max(2000).nullable().optional(),
+  ),
+  evidenceExceptionAcknowledged: z.boolean().optional().default(false),
   actualSaleValue: optionalDecimal,
   actualSalvageValue: optionalDecimal,
   executionRemark: optionalText,

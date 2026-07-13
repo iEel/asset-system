@@ -6,6 +6,7 @@ type DisposalExecutionFields = {
   disposalType: DisposalType
   recipientName?: string | null
   documentNo?: string | null
+  useHistoricalEvidenceException?: boolean
   actualSaleValue?: number | null
   executionRemark?: string | null
 }
@@ -40,7 +41,7 @@ export function getDisposalExecutionFieldErrors(input: DisposalExecutionFields):
   if (["sell", "donate", "dispose"].includes(input.disposalType) && !hasRecipient) {
     errors.push({ field: "recipientName", message: "Recipient, buyer, or destination is required" })
   }
-  if (!hasDocument) {
+  if (!hasDocument && !input.useHistoricalEvidenceException) {
     errors.push({ field: "documentNo", message: "Reference document number is required" })
   }
   if (input.disposalType === "sell" && input.actualSaleValue == null) {
