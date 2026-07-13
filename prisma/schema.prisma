@@ -812,6 +812,9 @@ model DisposalRequest {
   actualSaleValue    Decimal?  @db.Decimal(18, 2)
   actualSalvageValue Decimal?  @db.Decimal(18, 2)
   executionRemark    String?   @db.NVarChar(Max)
+  evidenceExceptionReason    String?   @db.NVarChar(Max)
+  evidenceExceptionGrantedBy String?   @db.NVarChar(100)
+  evidenceExceptionGrantedAt DateTime?
   completedAt        DateTime?
   createdBy          String    @db.NVarChar(100)
   updatedBy          String?   @db.NVarChar(100)

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import {
@@ -61,5 +62,16 @@ test("normalizes exception metadata before validating the schema", () => {
     assert.equal(result.data.useHistoricalEvidenceException, true)
     assert.equal(result.data.evidenceExceptionReason, null)
     assert.equal(result.data.evidenceExceptionAcknowledged, false)
+  }
+})
+
+test("persists disposal evidence exception metadata with an idempotent migration", () => {
+  const schema = readFileSync("prisma/schema.prisma", "utf8")
+  const migration = readFileSync("prisma/manual-migrations/2026-07-13-add-disposal-evidence-exception.sql", "utf8")
+  assert.match(schema, /evidenceExceptionReason\s+String\?\s+@db\.NVarChar\(Max\)/)
+  assert.match(schema, /evidenceExceptionGrantedBy\s+String\?\s+@db\.NVarChar\(100\)/)
+  assert.match(schema, /evidenceExceptionGrantedAt\s+DateTime\?/)
+  for (const column of ["evidenceExceptionReason", "evidenceExceptionGrantedBy", "evidenceExceptionGrantedAt"]) {
+    assert.match(migration, new RegExp(`COL_LENGTH\\('dbo\\.disposal_requests', '${column}'\\) IS NULL`, "i"))
   }
 })
