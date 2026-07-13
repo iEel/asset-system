@@ -75,6 +75,24 @@ test("bulk approval UI keeps selection page-scoped and uses server preflight", (
   assert.doesNotMatch(source, /fixed\s+bottom-0/)
 })
 
+test("bulk approval dialog focuses a stable surface and restores to a persistent queue target", () => {
+  const source = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8")
+
+  assert.match(source, /restoreTargetRef/)
+  assert.match(source, /tabIndex=\{-1\}/)
+  assert.match(source, /busy \? dialogRef\.current : closeRef\.current/)
+  assert.match(source, /restoreFocusRef\.current\?\.isConnected/)
+  assert.match(source, /fallbackTarget\?\.focus\(\)/)
+})
+
+test("bulk approval mobile selection uses 44px targets and exposes blocked reasons", () => {
+  const source = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8")
+
+  assert.match(source, /min-h-11 min-w-11/)
+  assert.match(source, /blockedCode[\s\S]*?tabIndex=\{0\}/)
+  assert.match(source, /getErrorLabel\(item\.blockedCode\)/)
+})
+
 test("bulk approval uses required server-provided copy for every visible state", () => {
   const source = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8")
 

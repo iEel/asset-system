@@ -37,6 +37,20 @@ test("disposal queue exposes bulk approval only through the approval workspace",
   assert.match(page, /data-no-row-click/)
 })
 
+test("bulk approval navigation guard wraps filters as well as the queue", () => {
+  const page = readFileSync(queuePath, "utf8")
+  const providerStart = page.indexOf("<DisposalBulkApprovalProvider")
+  const mobileFilter = page.indexOf("<DisposalFilterForm")
+  const desktopFilter = page.indexOf('<form className="grid grid-cols-1 gap-3 lg:grid-cols-')
+  const providerEnd = page.lastIndexOf("</DisposalBulkApprovalProvider>")
+
+  assert.ok(providerStart >= 0)
+  assert.ok(providerStart < mobileFilter)
+  assert.ok(providerStart < desktopFilter)
+  assert.ok(providerEnd > mobileFilter)
+  assert.ok(providerEnd > desktopFilter)
+})
+
 test("disposal queue passes the complete localized bulk approval copy and exposes initial desktop select-page control", () => {
   const page = readFileSync(queuePath, "utf8")
 
@@ -93,7 +107,7 @@ test("bulk approval copy exists in Thai and English", () => {
     ]) {
       assert.equal(typeof messages[key], "string", `${locale}:${key}`)
     }
-    for (const code of ["DISPOSAL_REQUEST_NOT_FOUND", "DISPOSAL_INVALID_STAGE", "DISPOSAL_SOD_CONFLICT", "DISPOSAL_ASSET_INELIGIBLE", "DISPOSAL_CONCURRENT_UPDATE", "DISPOSAL_APPROVAL_FAILED"]) {
+    for (const code of ["DISPOSAL_REQUEST_NOT_FOUND", "DISPOSAL_INVALID_STAGE", "DISPOSAL_SOD_CONFLICT", "DISPOSAL_ASSET_INELIGIBLE", "DISPOSAL_CONCURRENT_UPDATE", "DISPOSAL_FORBIDDEN", "DISPOSAL_APPROVAL_FAILED"]) {
       assert.equal(typeof messages.bulkErrors[code], "string", `${locale}:${code}`)
     }
   }

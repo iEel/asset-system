@@ -27,17 +27,31 @@ The documentation covers approval-only bulk queue behavior, `disposal:approve` R
 
 ## Controller Browser Evidence
 
-Pending controller evidence for `http://localhost:3000/th/disposal`:
+Browser QA was run against `http://localhost:3000/th/disposal` with an
+authenticated system administrator session:
 
-- Desktop 1440x900: mixed independent/batch pending selection, grouped preflight blockers, eligible commit, refreshed counts, and no horizontal body overflow.
-- Mobile 390x844: selection mode, card selection, full-height dialog/sheet, 44px targets, and no collision with Mobile Field Navigation.
-- Keyboard: dialog focus trap, Escape dismissal, and focus restoration to the bulk trigger.
-- Console: zero errors and zero missing-message warnings.
-- Concurrency: a request approved in a second session after first-session preview is reported blocked/skipped by first-session commit, with no duplicate movement or audit record.
+- Desktop 1280x900 has no horizontal body overflow and exposes page selection
+  for all 25 loaded rows.
+- Mobile 390x844 has no horizontal body overflow. Explicit selection mode,
+  accessible row labels, selected-count copy, and card selection work without
+  colliding with Mobile Field Navigation.
+- Read-only preflight was exercised with 25 eligible rows on desktop and one
+  eligible row on mobile. The confirm action was intentionally not executed, so
+  browser QA did not mutate disposal data.
+- After commit `1546c9c`, the page contains no unresolved bulk-approval
+  message keys and no new console formatting errors were observed.
+- Successful commit, partial-result, and two-session concurrency browser cases
+  remain operator-controlled UAT items because they mutate disposal workflow
+  records. They must be run against dedicated `TEST-` fixtures (or a disposable
+  UAT database), not silently against the business records in this development
+  database. Concurrency safety is covered structurally and at service level
+  until that fixture-backed UAT is executed.
 
 ## Commit Scope
 
-The report remains uncommitted. The documentation commit must include only the three files listed in Scope and must not stage pre-existing `.agents`, `.gemini`, `.codex`, `.impeccable`, or other worktree changes.
+The production documentation was committed separately in `a670834`. This
+tracked SDD report records verification evidence only; unrelated `.agents`,
+`.gemini`, `.codex`, and `.impeccable` worktree changes remain excluded.
 
 ## Task 6 Intl Formatting Fix (2026-07-13)
 
@@ -55,3 +69,35 @@ The report remains uncommitted. The documentation commit must include only the t
 | `node --test tests/disposal-queue-ux.test.ts tests/disposal-bulk-approval.test.ts` | PASS | Exit 0; 17/17 tests passed. Node emitted the existing `MODULE_TYPELESS_PACKAGE_JSON` warning for TypeScript test files. |
 | `npx tsc --noEmit` | PASS | Exit 0; no diagnostics. |
 | `npx eslint -- 'src/app/[locale]/(dashboard)/disposal/page.tsx' 'tests/disposal-queue-ux.test.ts' 'tests/disposal-bulk-approval.test.ts'` | PASS | Exit 0; no diagnostics. |
+
+## Final Review Fixes (2026-07-13)
+
+The final whole-feature review found and resolved five release-relevant edge
+cases:
+
+- Unknown preview/settings failures now log server-side and return a stable
+  `DISPOSAL_APPROVAL_FAILED` response with HTTP 500 instead of raw database
+  messages.
+- Approval candidate queries omit `batchId` until disposal batch schema
+  readiness is confirmed, preserving the existing additive-migration fallback
+  for single approval.
+- The bulk dialog focuses its stable container while busy, focuses the close
+  action when ready, traps focus when no controls are available, and restores
+  focus to either the original trigger or the persistent queue scope.
+- Mobile row selection uses a 44 by 44 pixel label target. Ineligible rows
+  expose a focusable, localized blocked reason instead of relying on a disabled
+  checkbox title.
+- The provider now wraps filters and stage navigation, so changing queue scope
+  while rows are selected uses the existing discard confirmation.
+- `DISPOSAL_FORBIDDEN` is part of the typed, localized bulk result contract.
+
+### Regression And Browser Evidence
+
+- The new regression tests failed first (7 failures) before the production
+  changes, then the focused suite passed 36/36 and `npx tsc --noEmit` passed.
+- Scoped ESLint completed with no errors. A ref-cleanup warning was then fixed
+  by capturing the fallback focus target inside the effect.
+- Authenticated mobile QA at 390x844 confirmed a 44x44 selection target, no
+  horizontal overflow, close-button focus after preflight, trigger focus after
+  dismissal, and blocked stage navigation while a selection remained active.
+- No disposal approval was committed during browser QA.

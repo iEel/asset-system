@@ -2797,6 +2797,7 @@
       "DISPOSAL_SOD_CONFLICT": "Approval is blocked by the segregation-of-duties policy.",
       "DISPOSAL_ASSET_INELIGIBLE": "The asset's current lifecycle state makes this disposal request ineligible.",
       "DISPOSAL_CONCURRENT_UPDATE": "This disposal request was changed by another user. Review it again.",
+      "DISPOSAL_FORBIDDEN": "You do not have permission to approve this disposal request.",
       "DISPOSAL_APPROVAL_FAILED": "This disposal request failed to be approved."
     },
     "batchStatuses": { "partial": "Partially completed" },

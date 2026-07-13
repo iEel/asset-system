@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client"
 import { writeAuditLog } from "@/lib/audit-log"
 import { prisma } from "@/lib/db"
 import { deriveDisposalBatchStatus } from "@/lib/disposal-batch"
+import { isDisposalBatchSchemaReady } from "@/lib/disposal-schema-readiness"
 import {
   getDisposalBulkApprovalBlockCode,
   type DisposalBulkApprovalActor,
@@ -25,7 +26,7 @@ export type DisposalApprovalCommand = {
 
 export class DisposalApprovalServiceError extends Error {
   constructor(
-    public readonly code: DisposalBulkApprovalCode | "DISPOSAL_FORBIDDEN",
+    public readonly code: DisposalBulkApprovalCode,
     public readonly item: { requestId: string; disposalNo: string; assetTag: string },
   ) {
     super(code)
@@ -33,7 +34,7 @@ export class DisposalApprovalServiceError extends Error {
   }
 }
 
-const approvalCandidateSelect = {
+const approvalCandidateBaseSelect = {
   id: true,
   disposalNo: true,
   isActive: true,
@@ -42,7 +43,6 @@ const approvalCandidateSelect = {
   createdBy: true,
   approverId: true,
   assetId: true,
-  batchId: true,
   reason: true,
   saleValue: true,
   salvageValue: true,
@@ -55,17 +55,47 @@ const approvalCandidateSelect = {
   },
 } satisfies Prisma.DisposalRequestSelect
 
-type DisposalApprovalCandidate = Prisma.DisposalRequestGetPayload<{
-  select: typeof approvalCandidateSelect
+type DisposalApprovalCandidateBase = Prisma.DisposalRequestGetPayload<{
+  select: typeof approvalCandidateBaseSelect
 }>
+type DisposalApprovalCandidate = DisposalApprovalCandidateBase & { batchId: string | null }
 
 type DisposalApprovalReader = Pick<Prisma.TransactionClient, "disposalRequest">
 
-async function loadApprovalCandidate(db: DisposalApprovalReader, requestId: string) {
-  return db.disposalRequest.findUnique({
+async function loadApprovalCandidate(
+  db: DisposalApprovalReader,
+  requestId: string,
+  batchSchemaReady: boolean,
+): Promise<DisposalApprovalCandidate | null> {
+  if (batchSchemaReady) {
+    return db.disposalRequest.findUnique({
+      where: { id: requestId },
+      select: { ...approvalCandidateBaseSelect, batchId: true },
+    })
+  }
+  const candidate = await db.disposalRequest.findUnique({
     where: { id: requestId },
-    select: approvalCandidateSelect,
+    select: approvalCandidateBaseSelect,
   })
+  return candidate ? { ...candidate, batchId: null } : null
+}
+
+async function loadApprovalCandidates(
+  db: DisposalApprovalReader,
+  requestIds: string[],
+  batchSchemaReady: boolean,
+): Promise<DisposalApprovalCandidate[]> {
+  if (batchSchemaReady) {
+    return db.disposalRequest.findMany({
+      where: { id: { in: requestIds } },
+      select: { ...approvalCandidateBaseSelect, batchId: true },
+    })
+  }
+  const candidates = await db.disposalRequest.findMany({
+    where: { id: { in: requestIds } },
+    select: approvalCandidateBaseSelect,
+  })
+  return candidates.map((candidate) => ({ ...candidate, batchId: null }))
 }
 
 async function loadApprovedRequest(tx: Prisma.TransactionClient, requestId: string) {
@@ -80,10 +110,8 @@ export async function inspectDisposalApprovalRequests(input: {
   actor: DisposalBulkApprovalActor
   segregationRequired: boolean
 }): Promise<DisposalBulkApprovalItem[]> {
-  const candidates = await prisma.disposalRequest.findMany({
-    where: { id: { in: input.requestIds } },
-    select: approvalCandidateSelect,
-  })
+  const batchSchemaReady = await isDisposalBatchSchemaReady()
+  const candidates = await loadApprovalCandidates(prisma, input.requestIds, batchSchemaReady)
   const candidatesById = new Map(candidates.map((candidate) => [candidate.id, candidate]))
 
   return input.requestIds.map((requestId) => {
@@ -118,7 +146,8 @@ export async function approveDisposalRequest(command: DisposalApprovalCommand): 
     throw new DisposalApprovalServiceError("DISPOSAL_FORBIDDEN", missingApprovalItem(command.requestId))
   }
 
-  const candidate = await loadApprovalCandidate(prisma, command.requestId)
+  const batchSchemaReady = await isDisposalBatchSchemaReady()
+  const candidate = await loadApprovalCandidate(prisma, command.requestId, batchSchemaReady)
   if (!candidate) {
     throw new DisposalApprovalServiceError("DISPOSAL_REQUEST_NOT_FOUND", missingApprovalItem(command.requestId))
   }
@@ -128,7 +157,7 @@ export async function approveDisposalRequest(command: DisposalApprovalCommand): 
 
   const approvedAt = new Date()
   const result = await prisma.$transaction(async (tx) => {
-    const currentCandidate = await loadApprovalCandidate(tx, command.requestId)
+    const currentCandidate = await loadApprovalCandidate(tx, command.requestId, batchSchemaReady)
     if (!currentCandidate) {
       throw new DisposalApprovalServiceError("DISPOSAL_REQUEST_NOT_FOUND", missingApprovalItem(command.requestId))
     }

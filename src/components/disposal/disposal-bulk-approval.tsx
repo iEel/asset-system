@@ -85,6 +85,7 @@ type BulkApprovalContextValue = {
   limitMessage: string | null
   error: string | null
   triggerRef: RefObject<HTMLButtonElement | null>
+  restoreTargetRef: RefObject<HTMLDivElement | null>
   toggle: (requestId: string) => void
   selectPage: () => void
   togglePageSelection: () => void
@@ -120,6 +121,7 @@ function isBulkApprovalCode(value: unknown): value is DisposalBulkApprovalCode {
     DISPOSAL_SOD_CONFLICT: true,
     DISPOSAL_ASSET_INELIGIBLE: true,
     DISPOSAL_CONCURRENT_UPDATE: true,
+    DISPOSAL_FORBIDDEN: true,
     DISPOSAL_APPROVAL_FAILED: true,
   }
 }
@@ -144,6 +146,7 @@ export function DisposalBulkApprovalProvider({
   const [limitMessage, setLimitMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const restoreTargetRef = useRef<HTMLDivElement | null>(null)
   const selectionGenerationRef = useRef(0)
   const requestGenerationRef = useRef(0)
   const previewControllerRef = useRef<AbortController | null>(null)
@@ -338,6 +341,7 @@ export function DisposalBulkApprovalProvider({
     limitMessage,
     error,
     triggerRef,
+    restoreTargetRef,
     toggle,
     selectPage,
     togglePageSelection,
@@ -352,7 +356,7 @@ export function DisposalBulkApprovalProvider({
 
   return (
     <DisposalBulkApprovalContext.Provider value={value}>
-      <div onClickCapture={handleClickCapture} onSubmitCapture={handleSubmitCapture}>
+      <div ref={restoreTargetRef} tabIndex={-1} onClickCapture={handleClickCapture} onSubmitCapture={handleSubmitCapture}>
         {children}
         {dialogState !== "closed" ? <DisposalBulkApprovalDialog /> : null}
       </div>
@@ -442,17 +446,35 @@ export function DisposalBulkApprovalCheckbox({
   if (!item || (variant === "mobile" && !mobileSelectionMode)) return null
   const checked = selected.has(item.requestId)
   const disabled = !item.selectable || busy || (!checked && selected.size >= MAX_DISPOSAL_BULK_APPROVAL_ITEMS)
+  const label = formatCopy(copy.selectItem, { disposalNo: item.disposalNo, assetTag: item.assetTag })
+
+  if (!item.selectable && item.blockedCode) {
+    const blockedReason = getErrorLabel(item.blockedCode)
+    return (
+      <span
+        role="note"
+        tabIndex={0}
+        aria-label={blockedReason}
+        title={blockedReason}
+        className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md text-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${variant === "mobile" ? "px-2 text-xs" : ""}`}
+      >
+        <ShieldAlert className="h-5 w-5 shrink-0" aria-hidden="true" />
+        {variant === "mobile" ? <span>{blockedReason}</span> : <span className="sr-only">{blockedReason}</span>}
+      </span>
+    )
+  }
 
   return (
-    <input
-      type="checkbox"
-      checked={checked}
-      disabled={disabled}
-      onChange={() => toggle(item.requestId)}
-      aria-label={formatCopy(copy.selectItem, { disposalNo: item.disposalNo, assetTag: item.assetTag })}
-      title={item.blockedCode ? getErrorLabel(item.blockedCode) : undefined}
-      className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary"
-    />
+    <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md focus-within:ring-2 focus-within:ring-primary">
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={() => toggle(item.requestId)}
+        aria-label={label}
+        className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary"
+      />
+    </label>
   )
 }
 
@@ -465,6 +487,7 @@ function DisposalBulkApprovalDialog() {
     busy,
     error,
     triggerRef,
+    restoreTargetRef,
     setApprovalRemark,
     commit,
     closeDialog,
@@ -483,14 +506,22 @@ function DisposalBulkApprovalDialog() {
   const description = dialogState === "previewing" ? copy.previewLoading : dialogState === "committing" ? copy.committing : copy.preflightHelp
 
   useEffect(() => {
+    const fallbackTarget = restoreTargetRef.current
     restoreFocusRef.current = triggerRef.current ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
-    const frame = window.requestAnimationFrame(() => closeRef.current?.focus())
     return () => {
-      window.cancelAnimationFrame(frame)
-      restoreFocusRef.current?.focus()
+      if (restoreFocusRef.current?.isConnected) restoreFocusRef.current.focus()
+      else fallbackTarget?.focus()
       restoreFocusRef.current = null
     }
-  }, [triggerRef])
+  }, [restoreTargetRef, triggerRef])
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const focusTarget = busy ? dialogRef.current : closeRef.current
+      focusTarget?.focus()
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [busy])
 
   function handleKeyDown(event: KeyboardEvent<HTMLFormElement>) {
     if (event.defaultPrevented) return
@@ -503,7 +534,11 @@ function DisposalBulkApprovalDialog() {
     const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
       'button:not([disabled]), textarea:not([disabled]), [href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
     )
-    if (!focusable?.length) return
+    if (!focusable?.length) {
+      event.preventDefault()
+      dialogRef.current?.focus()
+      return
+    }
     const first = focusable[0]
     const last = focusable[focusable.length - 1]
     if (event.shiftKey && document.activeElement === first) {
@@ -522,7 +557,7 @@ function DisposalBulkApprovalDialog() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDialog() }}>
-      <form ref={dialogRef} data-disposal-bulk-dialog="true" onSubmit={handleSubmit} onKeyDown={handleKeyDown} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId} className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-lg border border-border bg-surface shadow-lg sm:rounded-lg">
+      <form ref={dialogRef} tabIndex={-1} data-disposal-bulk-dialog="true" onSubmit={handleSubmit} onKeyDown={handleKeyDown} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId} className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-lg border border-border bg-surface shadow-lg outline-none sm:rounded-lg">
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div><h2 id={titleId} className="text-base font-semibold text-foreground">{dialogState === "result" ? copy.resultTitle : copy.previewTitle}</h2><p id={descriptionId} className="mt-1 text-sm text-muted-foreground">{description}</p></div>
           <button ref={closeRef} type="button" onClick={closeDialog} disabled={busy} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 sm:h-8 sm:w-8" aria-label={copy.close}><X className="h-4 w-4" /></button>

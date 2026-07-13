@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { ZodError } from "zod"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/db"
@@ -71,7 +72,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ summary: summarizeDisposalBulkApproval(items), items })
   } catch (error) {
-    return errorResponse(error, 400)
+    if (error instanceof ZodError) return errorResponse(error, 400)
+    if (error instanceof Error && (error.message === "Unauthorized" || error.message.startsWith("Forbidden"))) {
+      return errorResponse(error)
+    }
+    console.error("Disposal bulk approval failed", error)
+    return NextResponse.json(
+      { code: "DISPOSAL_APPROVAL_FAILED", error: "DISPOSAL_APPROVAL_FAILED" },
+      { status: 500 },
+    )
   }
 }
 

@@ -170,6 +170,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
       DISPOSAL_SOD_CONFLICT: t("bulkErrors.DISPOSAL_SOD_CONFLICT"),
       DISPOSAL_ASSET_INELIGIBLE: t("bulkErrors.DISPOSAL_ASSET_INELIGIBLE"),
       DISPOSAL_CONCURRENT_UPDATE: t("bulkErrors.DISPOSAL_CONCURRENT_UPDATE"),
+      DISPOSAL_FORBIDDEN: t("bulkErrors.DISPOSAL_FORBIDDEN"),
       DISPOSAL_APPROVAL_FAILED: t("bulkErrors.DISPOSAL_APPROVAL_FAILED"),
     },
   }
@@ -187,6 +188,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
 
   return (
     <div className="space-y-6">
+      <DisposalBulkApprovalProvider items={bulkItems} selectionKey={`${filters.page}:${filters.pageSize}:${query}`} copy={bulkApprovalCopy}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
@@ -257,7 +259,6 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         {dateRangeError ? <p role="alert" className="mt-3 text-sm font-medium text-danger">{t("invalidDateRange")}</p> : null}
       </section>
 
-      <DisposalBulkApprovalProvider items={bulkItems} selectionKey={`${filters.page}:${filters.pageSize}:${query}`} copy={bulkApprovalCopy}>
       <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>

@@ -125,7 +125,7 @@ test("approval service enforces authorization and revalidates lifecycle under se
 
   assert.match(service, /hasDisposalApprovalPermission\(command\.actor\)/)
   assert.match(service, /throw new DisposalApprovalServiceError\("DISPOSAL_FORBIDDEN"/)
-  assert.match(service, /const currentCandidate = await loadApprovalCandidate\(tx, command\.requestId\)/)
+  assert.match(service, /const currentCandidate = await loadApprovalCandidate\(tx, command\.requestId, batchSchemaReady\)/)
   assert.match(service, /getDisposalBulkApprovalBlockCode\(\s*currentCandidate,\s*command\.actor,\s*command\.segregationRequired,?\s*\)/)
   assert.match(service, /Prisma\.TransactionIsolationLevel\.Serializable/)
   assert.match(service, /deriveDisposalBatchStatus\(children\.map\(\(child\) => child\.requestStatus\)\)/)
@@ -144,6 +144,26 @@ test("bulk approval route guards permission and revalidates each request", () =>
   assert.match(source, /roles:\s*user\.roles/)
   assert.match(source, /permissions:\s*user\.permissions/)
   assert.match(matrix, /disposal-requests\/bulk-decision\/route\.ts/)
+})
+
+test("bulk approval route sanitizes unexpected infrastructure errors", () => {
+  const source = readFileSync("src/app/api/disposal-requests/bulk-decision/route.ts", "utf8")
+
+  assert.match(source, /error instanceof ZodError/)
+  assert.match(source, /console\.error\("Disposal bulk approval failed"/)
+  assert.match(source, /code:\s*"DISPOSAL_APPROVAL_FAILED"/)
+  assert.match(source, /status:\s*500/)
+  assert.match(source, /if \(error instanceof ZodError\) return errorResponse\(error, 400\)/)
+})
+
+test("approval service keeps single approval compatible before batch schema readiness", () => {
+  const service = readFileSync("src/lib/disposal-approval-service.ts", "utf8")
+
+  assert.match(service, /isDisposalBatchSchemaReady/)
+  assert.match(service, /loadApprovalCandidate\([^)]*batchSchemaReady/)
+  assert.match(service, /batchSchemaReady[\s\S]*?batchId:\s*true/)
+  assert.match(service, /batchId:\s*null/)
+  assert.doesNotMatch(service, /const approvalCandidateSelect = \{[\s\S]*?batchId:\s*true/)
 })
 
 test("bulk commit invokes the approval service even when inspection reports a blocked item", () => {
@@ -186,6 +206,6 @@ test("bulk commit preserves DISPOSAL_FORBIDDEN as a typed blocked service error"
   const failureHandler = source.slice(source.indexOf("function getBulkApprovalFailure"))
 
   assert.match(failureHandler, /code: error\.code\b/)
-  assert.doesNotMatch(failureHandler, /DISPOSAL_FORBIDDEN[^\n]*DISPOSAL_APPROVAL_FAILED/)
+  assert.match(readFileSync("src/lib/disposal-bulk-approval.ts", "utf8"), /"DISPOSAL_FORBIDDEN"/)
   assert.match(source, /outcome: code === "DISPOSAL_APPROVAL_FAILED" \? "failed" : "blocked"/)
 })
