@@ -131,3 +131,33 @@ test("passes evidence context and submits localized historical evidence exceptio
     ]) assert.equal(typeof messages.disposalPage.errors[code], "string")
   }
 })
+
+test("passes batched item and batch evidence context to every queue execution action", () => {
+  const listPage = readFileSync("src/app/[locale]/(dashboard)/disposal/page.tsx", "utf8")
+
+  assert.match(listPage, /prisma\.attachment\.groupBy/)
+  assert.match(listPage, /module: "disposal"/)
+  assert.match(listPage, /module: "disposal_batch"/)
+  assert.match(listPage, /referenceId: \{ in: requestIds \}/)
+  assert.match(listPage, /referenceId: \{ in: batchIds \}/)
+  assert.match(listPage, /effectiveEvidenceCount: \(itemEvidenceCounts\.get\(request\.id\) \?\? 0\) \+ \(batchEvidenceCounts\.get\(request\.batchId \?\? ""\) \?\? 0\)/)
+  assert.match(listPage, /effectiveEvidenceCount=\{request\.effectiveEvidenceCount\}/)
+  assert.match(listPage, /canUseHistoricalEvidenceException=\{user\.roles\.includes\("system_admin"\)\}/)
+})
+
+test("resets historical exception state on every dialog close and describes the reason minimum", () => {
+  const executionButton = readFileSync("src/components/disposal/disposal-execution-button.tsx", "utf8")
+  const thaiMessages = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const englishMessages = JSON.parse(readFileSync("messages/en.json", "utf8"))
+
+  assert.match(executionButton, /function resetHistoricalEvidenceException\(\)/)
+  assert.match(executionButton, /function closeExecutionDialog\(\)/)
+  assert.match(executionButton, /resetHistoricalEvidenceException\(\)/)
+  assert.match(executionButton, /onClose=\{closeExecutionDialog\}/)
+  assert.match(executionButton, /aria-describedby=\{evidenceExceptionReasonHelpId\}/)
+  assert.match(executionButton, /minLength=\{20\}/)
+  assert.match(executionButton, /maxLength=\{2000\}/)
+  assert.match(executionButton, /t\("historicalEvidenceReasonHelp"/)
+  assert.equal(typeof thaiMessages.disposalPage.historicalEvidenceReasonHelp, "string")
+  assert.equal(typeof englishMessages.disposalPage.historicalEvidenceReasonHelp, "string")
+})

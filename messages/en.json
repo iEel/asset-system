@@ -2730,6 +2730,7 @@
     "executionRemark": "Execution Remark",
     "historicalEvidenceException": "Use historical evidence exception",
     "historicalEvidenceReason": "Reason for historical evidence exception",
+    "historicalEvidenceReasonHelp": "Provide 20-2,000 characters ({count} / {max}).",
     "historicalEvidenceAcknowledgement": "I acknowledge that this disposal has no active evidence and this exception will be recorded for audit.",
     "confirmHistoricalEvidenceException": "Confirm historical evidence exception",
     "completedAt": "Completed At",

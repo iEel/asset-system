@@ -96,6 +96,30 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         })
       : Promise.resolve([]),
   ])
+  const requestIds = requests.map((request) => request.id)
+  const batchIds = [...new Set(requests.flatMap((request) => request.batchId ? [request.batchId] : []))]
+  const [itemEvidence, batchEvidence] = await Promise.all([
+    requestIds.length > 0
+      ? prisma.attachment.groupBy({
+          by: ["referenceId"],
+          where: { module: "disposal", referenceId: { in: requestIds }, isActive: true },
+          _count: { _all: true },
+        })
+      : Promise.resolve([]),
+    batchIds.length > 0
+      ? prisma.attachment.groupBy({
+          by: ["referenceId"],
+          where: { module: "disposal_batch", referenceId: { in: batchIds }, isActive: true },
+          _count: { _all: true },
+        })
+      : Promise.resolve([]),
+  ])
+  const itemEvidenceCounts = new Map(itemEvidence.map((attachment) => [attachment.referenceId, attachment._count._all]))
+  const batchEvidenceCounts = new Map(batchEvidence.map((attachment) => [attachment.referenceId, attachment._count._all]))
+  const requestsWithEvidence = requests.map((request) => ({
+    ...request,
+    effectiveEvidenceCount: (itemEvidenceCounts.get(request.id) ?? 0) + (batchEvidenceCounts.get(request.batchId ?? "") ?? 0),
+  }))
   const workflowPolicy = parseWorkflowApprovalPolicy(savedSettings)
   const bulkItems = canApprove ? requests.map((request) => {
     const blockedCode = getDisposalBulkApprovalBlockCode({
@@ -282,7 +306,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
           <div className="flex items-center justify-end gap-1 px-4 pb-2 text-[11px] text-muted-foreground sm:hidden">{t("stageScrollHint")}<ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></div>
         </div>
         <div className={`${getMobileCardListClasses()} p-3`}>
-          {requests.length === 0 ? <DisposalEmptyState locale={locale} t={t} hasActiveFilters={hasActiveFilters} canCreate={canCreate} /> : requests.map((request) => {
+          {requestsWithEvidence.length === 0 ? <DisposalEmptyState locale={locale} t={t} hasActiveFilters={hasActiveFilters} canCreate={canCreate} /> : requestsWithEvidence.map((request) => {
             const stage = getDisposalStage(request.requestStatus)
             const detailHref = appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)
             return (
@@ -295,7 +319,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                 <div className="mt-3 grid grid-cols-2 gap-2 text-sm"><MobileDisposalField label={t("requestedBy")} value={request.requestedBy.fullNameTh} /><MobileDisposalField label={t("requestDate")} value={formatDateTime(request.requestDate)} /></div>
                 <details className="mt-3 rounded-md border border-border bg-surface px-3 py-2"><summary className="min-h-9 cursor-pointer text-sm font-medium text-primary">{t("moreDetails")}</summary><dl className="grid gap-3 border-t border-border pt-3 text-sm"><MobileDisposalField label={t("reason")} value={request.reason} /><MobileDisposalField label={t("approver")} value={request.approver ? `${request.approver.code} - ${request.approver.fullNameTh}` : "-"} /><MobileDisposalField label={t("value")} value={getRequestValue(request)} /></dl></details>
                 {canApprove ? <div className="flex min-h-11 items-center justify-end" data-no-row-click><DisposalBulkApprovalCheckbox requestId={request.id} variant="mobile" /></div> : null}
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap"><DisposalNextAction request={request} href={detailHref} canApprove={canApprove} canExecute={canEdit} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} executionStatuses={executionStatuses} employees={employeeOptions} viewLabel={tCommon("view")} /></div>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap"><DisposalNextAction request={request} href={detailHref} canApprove={canApprove} canExecute={canEdit} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} executionStatuses={executionStatuses} employees={employeeOptions} viewLabel={tCommon("view")} /></div>
               </article>
             )
           })}
@@ -304,7 +328,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40"><tr>{canApprove ? <th className="w-12 px-4 py-3"><span className="sr-only">{t("bulkSelection")}</span><DisposalBulkApprovalSelectPageControl /></th> : null}<ColumnHeader>{t("disposalNo")}</ColumnHeader><ColumnHeader>{t("asset")}</ColumnHeader><ColumnHeader>{t("disposalType")}</ColumnHeader><ColumnHeader>{t("requestedBy")}</ColumnHeader><ColumnHeader>{tCommon("status")}</ColumnHeader><ColumnHeader>{t("requestDate")}</ColumnHeader>{canApprove || canEdit ? <th className="sticky right-0 z-10 whitespace-nowrap bg-muted/95 px-4 py-3 text-left text-xs font-semibold text-muted-foreground">{tCommon("actions")}</th> : null}</tr></thead>
             <tbody className="divide-y divide-border">
-              {requests.length === 0 ? <tr><td colSpan={(canApprove ? 1 : 0) + (canApprove || canEdit ? 7 : 6)} className="px-4 py-6"><DisposalEmptyState locale={locale} t={t} hasActiveFilters={hasActiveFilters} canCreate={canCreate} /></td></tr> : requests.map((request) => {
+              {requestsWithEvidence.length === 0 ? <tr><td colSpan={(canApprove ? 1 : 0) + (canApprove || canEdit ? 7 : 6)} className="px-4 py-6"><DisposalEmptyState locale={locale} t={t} hasActiveFilters={hasActiveFilters} canCreate={canCreate} /></td></tr> : requestsWithEvidence.map((request) => {
                 const stage = getDisposalStage(request.requestStatus)
                 const detailHref = appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)
                 return <ClickableTableRow key={request.id} href={detailHref} label={`${tCommon("view")}: ${request.disposalNo}`}>
@@ -314,7 +338,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground"><div>{t(`types.${request.disposalType}`)}</div><div className="mt-1 text-xs">{getRequestValue(request)}</div></td>
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{request.requestedBy.code} - {request.requestedBy.fullNameTh}</td>
                   <td className="whitespace-nowrap px-4 py-3"><DisposalStageBadge stage={stage} label={stageLabels[stage]} /></td><td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(request.requestDate)}</td>
-                  {canApprove || canEdit ? <td className="sticky right-0 z-10 whitespace-nowrap border-l border-border bg-surface px-4 py-3"><DisposalNextAction request={request} href={detailHref} canApprove={canApprove} canExecute={canEdit} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} executionStatuses={executionStatuses} employees={employeeOptions} viewLabel={tCommon("view")} /></td> : null}
+                  {canApprove || canEdit ? <td className="sticky right-0 z-10 whitespace-nowrap border-l border-border bg-surface px-4 py-3"><DisposalNextAction request={request} href={detailHref} canApprove={canApprove} canExecute={canEdit} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} executionStatuses={executionStatuses} employees={employeeOptions} viewLabel={tCommon("view")} /></td> : null}
                 </ClickableTableRow>
               })}
             </tbody>
@@ -353,11 +377,11 @@ function DisposalStageBadge({ stage, label }: { stage: DisposalStage; label: str
   return <StatusBadge label={label} tone={tone} size="xs" />
 }
 
-type DisposalActionRequest = { id: string; disposalNo: string; disposalType: string; requestStatus: string; requestedById: string; approverId: string | null; createdBy: string; saleValue: { toString(): string } | number | null; salvageValue: { toString(): string } | number | null }
+type DisposalActionRequest = { id: string; disposalNo: string; disposalType: string; requestStatus: string; requestedById: string; approverId: string | null; batchId: string | null; createdBy: string; saleValue: { toString(): string } | number | null; salvageValue: { toString(): string } | number | null; effectiveEvidenceCount: number }
 type DisposalStatusOption = { id: string; label: string; name: string }
 type DisposalEmployeeOption = { id: string; label: string }
 
-function DisposalNextAction({ request, href, canApprove, canExecute, segregationRequired, actorEmployeeId, actorUserId, decisionStatuses, executionStatuses, employees, viewLabel }: { request: DisposalActionRequest; href: string; canApprove: boolean; canExecute: boolean; segregationRequired: boolean; actorEmployeeId?: string | null; actorUserId: string; decisionStatuses: DisposalStatusOption[]; executionStatuses: DisposalStatusOption[]; employees: DisposalEmployeeOption[]; viewLabel: string }) {
+function DisposalNextAction({ request, href, canApprove, canExecute, canUseHistoricalEvidenceException, segregationRequired, actorEmployeeId, actorUserId, decisionStatuses, executionStatuses, employees, viewLabel }: { request: DisposalActionRequest; href: string; canApprove: boolean; canExecute: boolean; canUseHistoricalEvidenceException: boolean; segregationRequired: boolean; actorEmployeeId?: string | null; actorUserId: string; decisionStatuses: DisposalStatusOption[]; executionStatuses: DisposalStatusOption[]; employees: DisposalEmployeeOption[]; viewLabel: string }) {
   const canReview = canApprove && getDisposalSegregationError({ action: "approve", segregationRequired, actorEmployeeId, actorUserId, requestedById: request.requestedById, createdByUserId: request.createdBy }) === null
   const canExecuteAction = canExecute && getDisposalSegregationError({ action: "execute", segregationRequired, actorEmployeeId, actorUserId, requestedById: request.requestedById, createdByUserId: request.createdBy, approverId: request.approverId }) === null
   const nextAction = getDisposalNextAction(request.requestStatus, { canApprove: canReview, canExecute: canExecuteAction })
@@ -365,7 +389,7 @@ function DisposalNextAction({ request, href, canApprove, canExecute, segregation
   const defaultSalvageValue = request.salvageValue != null ? String(request.salvageValue) : undefined
 
   if (nextAction === "review" && decisionStatuses.length > 0) return <DisposalDecisionButton requestId={request.id} disposalNo={request.disposalNo} disposalType={request.disposalType} statuses={decisionStatuses} defaultSaleValue={defaultSaleValue} defaultSalvageValue={defaultSalvageValue} />
-  if (nextAction === "execute" && executionStatuses.length > 0) return <DisposalExecutionButton requestId={request.id} disposalNo={request.disposalNo} disposalType={request.disposalType} statuses={executionStatuses} employees={filterDisposalExecutorOptions(employees, request.approverId, segregationRequired)} defaultActualSaleValue={defaultSaleValue} defaultActualSalvageValue={defaultSalvageValue} />
+  if (nextAction === "execute" && executionStatuses.length > 0) return <DisposalExecutionButton requestId={request.id} disposalNo={request.disposalNo} disposalType={request.disposalType} statuses={executionStatuses} employees={filterDisposalExecutorOptions(employees, request.approverId, segregationRequired)} defaultActualSaleValue={defaultSaleValue} defaultActualSalvageValue={defaultSalvageValue} effectiveEvidenceCount={request.effectiveEvidenceCount} canUseHistoricalEvidenceException={canUseHistoricalEvidenceException} />
   return <Link href={href} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0">{viewLabel}</Link>
 }
 

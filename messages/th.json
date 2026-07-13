@@ -2730,6 +2730,7 @@
     "executionRemark": "หมายเหตุการดำเนินการ",
     "historicalEvidenceException": "ใช้ข้อยกเว้นหลักฐานย้อนหลัง",
     "historicalEvidenceReason": "เหตุผลสำหรับข้อยกเว้นหลักฐานย้อนหลัง",
+    "historicalEvidenceReasonHelp": "ระบุเหตุผล 20-2,000 ตัวอักษร ({count} / {max})",
     "historicalEvidenceAcknowledgement": "ฉันรับทราบว่ารายการตัดจำหน่ายนี้ไม่มีหลักฐานที่ยังใช้งานอยู่ และข้อยกเว้นนี้จะถูกบันทึกเพื่อตรวจสอบ",
     "confirmHistoricalEvidenceException": "ยืนยันข้อยกเว้นหลักฐานย้อนหลัง",
     "completedAt": "วันที่ปิดงาน",
