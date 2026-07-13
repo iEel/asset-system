@@ -91,3 +91,18 @@ test("registers each historical evidence exception as a stable API error code", 
     assert.match(errorMessages, new RegExp(`"${code}"`))
   }
 })
+
+test("registers the execution failure code with localized client messages", () => {
+  const apiErrors = readFileSync("src/lib/disposal-api-errors.ts", "utf8")
+  const errorMessages = readFileSync("src/lib/disposal-error-message.ts", "utf8")
+
+  assert.match(apiErrors, /"DISPOSAL_EXECUTION_FAILED"/)
+  assert.match(errorMessages, /"DISPOSAL_EXECUTION_FAILED"/)
+
+  const thaiMessages = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const englishMessages = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  assert.equal(typeof thaiMessages.disposalPage.errors.DISPOSAL_EXECUTION_FAILED, "string")
+  assert.equal(typeof englishMessages.disposalPage.errors.DISPOSAL_EXECUTION_FAILED, "string")
+  assert.notEqual(thaiMessages.disposalPage.errors.DISPOSAL_EXECUTION_FAILED, "DISPOSAL_EXECUTION_FAILED")
+  assert.notEqual(englishMessages.disposalPage.errors.DISPOSAL_EXECUTION_FAILED, "DISPOSAL_EXECUTION_FAILED")
+})

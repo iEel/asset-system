@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { ZodError } from "zod"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit, writeAuditLog } from "@/lib/audit-log"
@@ -305,6 +306,14 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
 
     return NextResponse.json(updatedRequest)
   } catch (error) {
-    return errorResponse(error, 400)
+    if (error instanceof ZodError) return errorResponse(error, 400)
+    if (error instanceof Error && (error.message === "Unauthorized" || error.message.startsWith("Forbidden"))) {
+      return errorResponse(error)
+    }
+    console.error("Disposal execution failed", error)
+    return NextResponse.json(
+      { code: "DISPOSAL_EXECUTION_FAILED", error: "DISPOSAL_EXECUTION_FAILED" },
+      { status: 500 },
+    )
   }
 }

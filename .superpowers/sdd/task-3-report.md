@@ -1,202 +1,112 @@
-# Task 3 Report: Disposal Bulk Approval API
+# Task 3 Report: Backend Enforcement And Transactional Audit
 
 ## RED
 
-Command:
-
-```powershell
-node --test tests/disposal-route-structure.test.ts tests/disposal-bulk-approval.test.ts
-```
-
-Result: failed as expected because `src/app/api/disposal-requests/bulk-decision/route.ts` did not exist.
-
-Command:
-
-```powershell
-node --test tests/disposal-route-structure.test.ts tests/disposal-bulk-approval.test.ts
-```
-
-Result: failed as expected after adding the case-insensitive preview lookup assertion. The route mapped preview items with the raw input ID, while validated UUID input preserves casing and the database may return a canonical-cased ID.
+- Added structural tests for batch-level evidence, pure policy enforcement, exception audit action, transactional audit writes, and removal of the post-transaction execution audit.
+- Added registry tests for all four historical evidence exception codes.
+- Ran `node --test tests/disposal-evidence-exception.test.ts tests/disposal-route-structure.test.ts`.
+- Result: failed as expected because the route and error registries did not yet contain the required enforcement.
 
 ## GREEN
 
-Command:
-
-```powershell
-node --test tests/disposal-bulk-approval.test.ts tests/disposal-route-structure.test.ts tests/rbac-route-matrix.test.ts
-```
-
-Result: passed, 16 tests passed and 0 failed.
-
-Command:
-
-```powershell
-npx tsc --noEmit
-```
-
-Result: passed with exit code 0.
+- Execution now counts active request and batch evidence as one effective evidence count.
+- The route delegates exception eligibility to `getDisposalExecutionEvidenceError`, returning 403 only for `DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN` and 400 for all other evidence decisions.
+- The exception metadata and the execution audit are persisted inside the execution transaction. The audit action is `execute` or `execute_historical_without_evidence`.
+- Preserved the approved-stage guard, segregation-of-duties check, target-status validation, active-executor validation, request and asset updates, movement creation, and batch-status derivation.
 
 ## Files
 
-- Added `src/app/api/disposal-requests/bulk-decision/route.ts`.
-- Updated `src/lib/disposal-api-errors.ts` and `src/lib/disposal-error-message.ts` with concurrent-update and approval-failed codes.
-- Registered the route in `src/lib/rbac-route-matrix.ts`.
-- Updated `tests/disposal-route-structure.test.ts` with route, session-authorization-context, RBAC, and casing-lookup assertions.
+- `src/app/api/disposal-requests/[id]/route.ts`
+- `src/lib/disposal-api-errors.ts`
+- `src/lib/disposal-error-message.ts`
+- `tests/disposal-evidence-exception.test.ts`
+- `tests/disposal-route-structure.test.ts`
 
-## Self-review
+## Commit
 
-- Preview is read-only and returns the inspection summary/items.
-- Commit re-inspects its submitted IDs, processes them sequentially in input order, and invokes the transactional approval service separately for each eligible item.
-- The approval command receives `user.roles` and `user.permissions` unchanged from the authenticated session.
-- Typed service errors retain their item metadata and produce a blocked item; the defense-in-depth forbidden error and unexpected errors produce the stable `DISPOSAL_APPROVAL_FAILED` failed item.
-- Preview-item lookup is case-insensitive internally so canonical database IDs cannot break valid mixed-case UUID commits.
+- `85a6498 feat: enforce disposal evidence exceptions`
+
+## Self-Review
+
+- Confirmed item and shared batch evidence are both included in `effectiveEvidenceCount`.
+- Confirmed the committed policy supplies the exact `system_admin` authorization rule.
+- Confirmed audit creation uses `writeAuditLog(tx, ...)` in the transaction callback and records the exception grant timestamp and actor.
+- Confirmed no database migration was run or changed.
 
 ## Concerns
 
-- The focused route coverage is structural because the route depends directly on authentication, Prisma, and the service; no database-backed handler integration test was added in this task's prescribed test scope.
-- Node emits the existing `MODULE_TYPELESS_PACKAGE_JSON` warning while running TypeScript tests. It does not affect the passing results.
+- The requested Node test command emits existing module-type warnings for TypeScript test files; tests still pass.
+- A pre-existing `package-lock.json` change remains unstaged and untouched.
 
-## Re-review Fix: Preserve Typed Forbidden Errors
+## Reviewer P1 Fix: Sanitize Disposal Execution Failures
 
 ### RED
+
+Added focused assertions for the stable execution-failure code, localized Thai and English messages, server-side logging, and sanitized 500 handling.
 
 Command:
 
 ```powershell
-node --test tests/disposal-route-structure.test.ts tests/disposal-bulk-approval.test.ts
+node --test tests/disposal-evidence-exception.test.ts tests/disposal-route-structure.test.ts
 ```
 
-Result: failed as expected with 17 passing and 1 failing test. The new regression proved that the route rewrote `DISPOSAL_FORBIDDEN` to `DISPOSAL_APPROVAL_FAILED`.
+Output:
+
+```text
+24 passed, 2 failed
+Failed: registers the execution failure code with localized client messages
+  AssertionError: src/lib/disposal-api-errors.ts did not contain "DISPOSAL_EXECUTION_FAILED"
+Failed: execution sanitizes unexpected infrastructure failures
+  AssertionError: src/app/api/disposal-requests/[id]/route.ts did not contain the ZodError-preserving sanitized catch
+Exit code: 1
+```
+
+The command also emitted the existing `MODULE_TYPELESS_PACKAGE_JSON` warnings for TypeScript test files.
 
 ### GREEN
 
-Command:
+Implemented the P1 fix by preserving Zod and auth responses, logging the underlying route failure with `console.error`, and returning `{ code: "DISPOSAL_EXECUTION_FAILED", error: "DISPOSAL_EXECUTION_FAILED" }` with HTTP 500. Registered the code in both disposal API registries and added `disposalPage.errors.DISPOSAL_EXECUTION_FAILED` in Thai and English.
+
+Focused command:
 
 ```powershell
-node --test tests/disposal-route-structure.test.ts tests/disposal-bulk-approval.test.ts
+node --test tests/disposal-evidence-exception.test.ts tests/disposal-route-structure.test.ts
 ```
 
-Result: passed, 18 tests passed and 0 failed.
+Output:
 
-### Final Verification
+```text
+26 tests, 26 passed, 0 failed
+Exit code: 0
+```
 
-Command:
+Covering Task 3 command:
 
 ```powershell
-node --test tests/disposal-bulk-approval.test.ts tests/disposal-route-structure.test.ts tests/rbac-route-matrix.test.ts
+node --test tests/disposal-evidence-exception.test.ts tests/disposal-route-structure.test.ts tests/disposal-validation.test.ts tests/disposal-policy.test.ts
 ```
 
-Result: passed, 21 tests passed and 0 failed (duration: 181.5873 ms).
+Output:
 
-Command:
+```text
+46 tests, 46 passed, 0 failed
+Exit code: 0
+```
+
+Scoped lint command:
 
 ```powershell
-npx tsc --noEmit
+npx eslint 'src/app/api/disposal-requests/[id]/route.ts' src/lib/disposal-api-errors.ts src/lib/disposal-error-message.ts tests/disposal-evidence-exception.test.ts tests/disposal-route-structure.test.ts
 ```
 
-Result: passed with exit code 0.
+Output:
 
-### Self-review
-
-- Every typed `DisposalApprovalServiceError`, including `DISPOSAL_FORBIDDEN`, now retains its original code and item metadata; typed codes other than `DISPOSAL_APPROVAL_FAILED` remain blocked outcomes.
-- Only unexpected errors use the stable `DISPOSAL_APPROVAL_FAILED` failed outcome.
-- The focused regression fails if the forbidden service error is rewritten or if the typed blocked outcome mapping changes.
-
-### Concerns
-
-- The route coverage remains structural; the handler's direct authentication, Prisma, and approval-service dependencies are not exercised through a database-backed integration test.
-- Node emits the existing `MODULE_TYPELESS_PACKAGE_JSON` warning while running TypeScript tests. It does not affect the passing results.
-
-## Review Fix: Commit Execution And Missing Inspection Isolation
-
-### RED
-
-Command:
-
-```powershell
-node --test tests/disposal-route-structure.test.ts tests/disposal-bulk-approval.test.ts
+```text
+No output
+Exit code: 0
 ```
 
-Result: failed as expected with 13 passing and 2 failing tests. The new failures proved that commit skipped `approveDisposalRequest()` for preview-blocked items and dereferenced a missing inspection item with a non-null assertion.
+### Fix Concerns
 
-### GREEN
-
-Command:
-
-```powershell
-node --test tests/disposal-route-structure.test.ts tests/disposal-bulk-approval.test.ts
-```
-
-Result: passed, 15 tests passed and 0 failed.
-
-### Final Verification
-
-Command:
-
-```powershell
-node --test tests/disposal-bulk-approval.test.ts tests/disposal-route-structure.test.ts tests/rbac-route-matrix.test.ts
-```
-
-Result: passed, 18 tests passed and 0 failed.
-
-Command:
-
-```powershell
-npx tsc --noEmit
-```
-
-Result: passed with exit code 0.
-
-### Self-review
-
-- Commit processes submitted IDs sequentially in input order and invokes `approveDisposalRequest()` for every ID, including items inspection marked blocked.
-- Inspection remains advisory display metadata; the transactional service continues to own authorization and lifecycle revalidation.
-- A missing inspection row no longer escapes item-level handling. If that item's approval fails, the response records a stable `DISPOSAL_APPROVAL_FAILED` item with the submitted request ID and `-` asset tag, while later IDs continue processing.
-- The focused regression tests fail if a preview-blocked item becomes an execution gate or if the inspection lookup regains a non-null assertion.
-
-### Concerns
-
-- The route tests remain structural because authentication, Prisma, and the approval service are direct handler dependencies; this task's focused suite does not provide database-backed route integration coverage.
-- Node emits the existing `MODULE_TYPELESS_PACKAGE_JSON` warning while running TypeScript tests. It does not affect the passing results.
-
-## Re-review Fix: Inspection-Independent Commit Execution
-
-### RED
-
-Command:
-
-```powershell
-node --test tests/disposal-route-structure.test.ts tests/disposal-bulk-approval.test.ts
-```
-
-Result: failed as expected with 15 passing and 2 failing tests. The new failures proved that commit called bulk inspection before branching to preview and let missing inspection metadata override a typed service error.
-
-### Final Verification
-
-Command:
-
-```powershell
-node --test tests/disposal-bulk-approval.test.ts tests/disposal-route-structure.test.ts tests/rbac-route-matrix.test.ts
-```
-
-Result: passed, 20 tests passed and 0 failed (duration: 173.6117 ms).
-
-Command:
-
-```powershell
-npx tsc --noEmit
-```
-
-Result: passed with exit code 0.
-
-### Self-review
-
-- Preview remains read-only and is the only mode that calls `inspectDisposalApprovalRequests()`.
-- Commit calls `approveDisposalRequest()` independently for every submitted ID and continues even when a separate item fails.
-- Successful service results and typed `DisposalApprovalServiceError` values supply commit display metadata. Generic failures use the submitted ID with `-` as the asset tag.
-- The focused structural regressions fail if commit regains an inspection dependency or if a missing preview item can override typed service metadata.
-
-### Concerns
-
-- The route coverage remains structural; the handler's direct authentication, Prisma, and approval-service dependencies are not exercised through a database-backed integration test.
-- Node emits the existing `MODULE_TYPELESS_PACKAGE_JSON` warning while running TypeScript tests. It does not affect the passing results.
+- Node continues to emit the existing module-type warnings for TypeScript test files; all covering tests pass.
+- The pre-existing `package-lock.json` modification remains unstaged and untouched.

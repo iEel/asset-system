@@ -219,3 +219,14 @@ test("execution enforces shared evidence policy and writes its audit transaction
   assert.match(route, /writeAuditLog\(tx/)
   assert.doesNotMatch(route, /await logAudit\([\s\S]*?action:\s*"execute"/)
 })
+
+test("execution sanitizes unexpected infrastructure failures", () => {
+  const route = readFileSync("src/app/api/disposal-requests/[id]/route.ts", "utf8")
+
+  assert.match(route, /error instanceof ZodError/)
+  assert.match(route, /console\.error\("Disposal execution failed", error\)/)
+  assert.match(route, /code:\s*"DISPOSAL_EXECUTION_FAILED"/)
+  assert.match(route, /error:\s*"DISPOSAL_EXECUTION_FAILED"/)
+  assert.match(route, /status:\s*500/)
+  assert.doesNotMatch(route, /catch \(error\) \{\s*return errorResponse\(error, 400\)/)
+})

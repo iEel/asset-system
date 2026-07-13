@@ -2813,6 +2813,7 @@
       "DISPOSAL_SOD_CONFLICT": "This action conflicts with requester, approver, and executor segregation of duties.",
       "DISPOSAL_STATUS_NOT_FOUND": "The target asset status was not found.",
       "DISPOSAL_INVALID_STATUS_TARGET": "The target status is invalid for this disposal stage.",
+      "DISPOSAL_EXECUTION_FAILED": "Disposal execution could not be completed. Please try again.",
       "DISPOSAL_EVIDENCE_REQUIRED": "Attach disposal evidence before recording actual execution.",
       "DISPOSAL_BATCH_ASSET_NOT_FOUND": "One or more assets in the batch were not found or are inactive.",
       "DISPOSAL_BATCH_EMPLOYEE_NOT_FOUND": "The requester or approver was not found or is inactive.",
