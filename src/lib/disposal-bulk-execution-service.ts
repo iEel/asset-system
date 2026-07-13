@@ -12,6 +12,7 @@ import {
   getDisposalExecutionCandidateType,
   hasDisposalExecutionPermission,
   loadDisposalExecutionCandidates,
+  resolveDisposalExecutionRecipient,
   DisposalExecutionServiceError,
   executeDisposalRequest,
   type DisposalExecutionActor,
@@ -158,6 +159,10 @@ async function inspect(
       if (!candidate) return { item: blockedItem(requestId, "DISPOSAL_REQUEST_NOT_FOUND"), command: null }
 
       const executionInput = buildDisposalExecutionInput(candidate, command.input)
+      const recipient = resolveDisposalExecutionRecipient(
+        candidate.recipientName,
+        command.input.sharedRecipientName,
+      )
       const code = getCandidateBlockCode({
         candidate,
         actor: command.actor,
@@ -166,7 +171,7 @@ async function inspect(
         effectiveEvidenceCount: evidenceCounts.get(candidate.id) ?? 0,
         sharedValidation,
       })
-      const item = toItem(candidate, code ? "blocked" : "eligible", code)
+      const item = toItem(candidate, recipient, code ? "blocked" : "eligible", code)
       return {
         item,
         command: code ? null : { requestId, actor: command.actor, input: executionInput },
@@ -308,6 +313,7 @@ function buildResponse(
 
 function toItem(
   candidate: DisposalExecutionCandidate,
+  recipient: ReturnType<typeof resolveDisposalExecutionRecipient>,
   outcome: DisposalBulkExecutionItem["outcome"],
   code: DisposalBulkExecutionCode | null,
 ): DisposalBulkExecutionItem {
@@ -316,6 +322,8 @@ function toItem(
     disposalNo: candidate.disposalNo,
     assetLabel: candidate.asset.assetTag,
     disposalType: getDisposalExecutionCandidateType(candidate),
+    recipientName: recipient.recipientName,
+    recipientSource: recipient.source,
     outcome,
     code,
   }
@@ -327,6 +335,8 @@ function blockedItem(requestId: string, code: DisposalBulkExecutionCode): Dispos
     disposalNo: null,
     assetLabel: null,
     disposalType: null,
+    recipientName: null,
+    recipientSource: null,
     outcome: "blocked",
     code,
   }

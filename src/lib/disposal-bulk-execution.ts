@@ -22,6 +22,8 @@ export type DisposalBulkExecutionItem = {
   disposalNo: string | null
   assetLabel: string | null
   disposalType: DisposalType | null
+  recipientName?: string | null
+  recipientSource?: "request" | "shared" | null
   outcome: DisposalBulkExecutionOutcome
   code: DisposalBulkExecutionCode | null
 }

@@ -57,7 +57,9 @@ export type DisposalExecutionSharedInput = Pick<
   | "useHistoricalEvidenceException"
   | "evidenceExceptionReason"
   | "evidenceExceptionAcknowledged"
->
+> & {
+  sharedRecipientName?: string | null
+}
 
 export const disposalExecutionCandidateBaseSelect = {
   id: true,
@@ -345,6 +347,20 @@ export function getDisposalExecutionCandidateType(candidate: { disposalType?: st
     : null
 }
 
+export function resolveDisposalExecutionRecipient(
+  requestRecipient: string | null | undefined,
+  sharedRecipient: string | null | undefined,
+) {
+  const requestValue = requestRecipient?.trim() || null
+  if (requestValue) return { recipientName: requestValue, source: "request" as const }
+
+  const sharedValue = sharedRecipient?.trim() || null
+  return {
+    recipientName: sharedValue,
+    source: sharedValue ? "shared" as const : null,
+  }
+}
+
 export function buildDisposalExecutionInput(
   candidate: DisposalExecutionInputCandidate,
   shared: DisposalExecutionSharedInput,
@@ -354,7 +370,10 @@ export function buildDisposalExecutionInput(
     executionDate: shared.executionDate,
     executedById: shared.executedById,
     nextStatusId: shared.nextStatusId,
-    recipientName: candidate.recipientName,
+    recipientName: resolveDisposalExecutionRecipient(
+      candidate.recipientName,
+      shared.sharedRecipientName,
+    ).recipientName,
     documentNo: candidate.documentNo,
     actualSaleValue: candidate.saleValue == null ? null : Number(candidate.saleValue),
     actualSalvageValue: candidate.salvageValue == null ? null : Number(candidate.salvageValue),

@@ -92,6 +92,43 @@ test("preview identifies a missing donation recipient instead of reporting an in
   assert.equal(response.items[0].code, "DISPOSAL_RECIPIENT_REQUIRED")
 })
 
+test("preview fills a missing donation recipient from the shared fallback", async () => {
+  const response = await inspectDisposalBulkExecution({
+    ...baseCommand,
+    input: {
+      ...baseCommand.input,
+      sharedRecipientName: "Receiving Foundation",
+    },
+  }, {
+    database: makeDatabase(makeState({
+      requests: [makeRequest({ disposalType: "donate", recipientName: null, documentNo: "DONATE-001" })],
+    })),
+    batchSchemaReadiness: "ready",
+  })
+
+  assert.equal(response.items[0].outcome, "eligible")
+  assert.equal(response.items[0].recipientName, "Receiving Foundation")
+  assert.equal(response.items[0].recipientSource, "shared")
+})
+
+test("preview preserves a nonblank request recipient over the shared fallback", async () => {
+  const response = await inspectDisposalBulkExecution({
+    ...baseCommand,
+    input: {
+      ...baseCommand.input,
+      sharedRecipientName: "Fallback Destination",
+    },
+  }, {
+    database: makeDatabase(makeState({
+      requests: [makeRequest({ disposalType: "donate", recipientName: " Original Foundation ", documentNo: "DONATE-001" })],
+    })),
+    batchSchemaReadiness: "ready",
+  })
+
+  assert.equal(response.items[0].recipientName, "Original Foundation")
+  assert.equal(response.items[0].recipientSource, "request")
+})
+
 for (const scenario of [
   {
     name: "reference document",
@@ -199,6 +236,60 @@ test("commit preserves each request recipient values and money fields", async ()
   assert.deepEqual(executions.map((command) => command.input.actualSaleValue), [1200.5, 2400])
   assert.deepEqual(executions.map((command) => command.input.actualSalvageValue), [100, 250.75])
   assert.deepEqual(executions.map((command) => command.input.executionRemark), ["First sale detail", "Second sale detail"])
+})
+
+test("commit passes the resolved shared recipient to the item executor", async () => {
+  const executions: DisposalExecutionCommand[] = []
+
+  await commitDisposalBulkExecution({
+    ...baseCommand,
+    input: {
+      ...baseCommand.input,
+      mode: "commit",
+      sharedRecipientName: "Receiving Foundation",
+    },
+  }, {
+    database: makeDatabase(makeState({
+      requests: [makeRequest({ disposalType: "donate", recipientName: null, documentNo: "DONATE-001" })],
+    })),
+    batchSchemaReadiness: "ready",
+    executeDisposalRequest: async (command) => {
+      executions.push(command)
+    },
+  })
+
+  assert.equal(executions.length, 1)
+  assert.equal(executions[0].input.recipientName, "Receiving Foundation")
+})
+
+test("commit prefers a recipient from the authoritative reload over the shared fallback", async () => {
+  const state = makeState({
+    requests: [makeRequest({ disposalType: "donate", recipientName: null, documentNo: "DONATE-001" })],
+  })
+  const executions: DisposalExecutionCommand[] = []
+
+  const response = await commitDisposalBulkExecution({
+    ...baseCommand,
+    input: {
+      ...baseCommand.input,
+      mode: "commit",
+      sharedRecipientName: "Fallback Destination",
+    },
+  }, {
+    database: makeDatabase(state, {
+      beforeRequestRead(readNumber, currentState) {
+        if (readNumber === 2) findRequest(currentState, "request-1").recipientName = "Fresh Foundation"
+      },
+    }),
+    batchSchemaReadiness: "ready",
+    executeDisposalRequest: async (command) => {
+      executions.push(command)
+    },
+  })
+
+  assert.equal(executions[0].input.recipientName, "Fresh Foundation")
+  assert.equal(response.items[0].recipientName, "Fresh Foundation")
+  assert.equal(response.items[0].recipientSource, "request")
 })
 
 test("historical mode blocks evidence rows and requires exact system_admin", async () => {
