@@ -14,7 +14,14 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth()
     requirePermission(user, "disposal", "edit")
-    const input = disposalBulkExecutionSchema.parse(await request.json())
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+    }
+
+    const input = disposalBulkExecutionSchema.parse(body)
     const batchSchemaReadiness = await getDisposalBatchSchemaReadiness()
     const command = {
       actor: {
