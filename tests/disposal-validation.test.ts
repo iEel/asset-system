@@ -94,3 +94,13 @@ test("rejects empty, duplicate, oversized, and malformed bulk approval IDs", () 
   assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "preview", requestIds: Array.from({ length: 51 }, (_, index) => `11111111-1111-4111-8111-${String(index).padStart(12, "0")}`) }).success, false)
   assert.equal(disposalBulkDecisionSchema.safeParse({ mode: "preview", requestIds: ["not-a-uuid"] }).success, false)
 })
+
+test("rejects the same bulk approval ID submitted with mixed casing", () => {
+  const id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+  const result = disposalBulkDecisionSchema.safeParse({
+    mode: "preview",
+    requestIds: [id, id.toUpperCase()],
+  })
+
+  assert.equal(result.success, false)
+})

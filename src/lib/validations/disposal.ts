@@ -63,7 +63,7 @@ export const disposalBulkDecisionSchema = z.discriminatedUnion("mode", [
     approvalRemark: z.string().trim().max(4000).transform((value) => value || null).nullable().optional(),
   }).strict(),
 ]).superRefine((input, context) => {
-  if (new Set(input.requestIds).size !== input.requestIds.length) {
+  if (new Set(input.requestIds.map((requestId) => requestId.toLowerCase())).size !== input.requestIds.length) {
     context.addIssue({ code: "custom", path: ["requestIds"], message: "Disposal request IDs must be unique" })
   }
 })
