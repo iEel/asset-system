@@ -75,3 +75,19 @@ test("persists disposal evidence exception metadata with an idempotent migration
     assert.match(migration, new RegExp(`COL_LENGTH\\('dbo\\.disposal_requests', '${column}'\\) IS NULL`, "i"))
   }
 })
+
+test("registers each historical evidence exception as a stable API error code", () => {
+  const apiErrors = readFileSync("src/lib/disposal-api-errors.ts", "utf8")
+  const errorMessages = readFileSync("src/lib/disposal-error-message.ts", "utf8")
+  const exceptionCodes = [
+    "DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN",
+    "DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED",
+    "DISPOSAL_EVIDENCE_EXCEPTION_ACK_REQUIRED",
+    "DISPOSAL_EVIDENCE_EXCEPTION_NOT_APPLICABLE",
+  ]
+
+  for (const code of exceptionCodes) {
+    assert.match(apiErrors, new RegExp(`"${code}"`))
+    assert.match(errorMessages, new RegExp(`"${code}"`))
+  }
+})

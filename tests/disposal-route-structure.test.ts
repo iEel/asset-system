@@ -209,3 +209,13 @@ test("bulk commit preserves DISPOSAL_FORBIDDEN as a typed blocked service error"
   assert.match(readFileSync("src/lib/disposal-bulk-approval.ts", "utf8"), /"DISPOSAL_FORBIDDEN"/)
   assert.match(source, /outcome: code === "DISPOSAL_APPROVAL_FAILED" \? "failed" : "blocked"/)
 })
+
+test("execution enforces shared evidence policy and writes its audit transactionally", () => {
+  const route = readFileSync("src/app/api/disposal-requests/[id]/route.ts", "utf8")
+
+  assert.match(route, /module:\s*"disposal_batch"/)
+  assert.match(route, /getDisposalExecutionEvidenceError/)
+  assert.match(route, /execute_historical_without_evidence/)
+  assert.match(route, /writeAuditLog\(tx/)
+  assert.doesNotMatch(route, /await logAudit\([\s\S]*?action:\s*"execute"/)
+})

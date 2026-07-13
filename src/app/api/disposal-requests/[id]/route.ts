@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
-import { logAudit } from "@/lib/audit-log"
+import { logAudit, writeAuditLog } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import {
   getDisposalSegregationError,
@@ -13,6 +13,7 @@ import { deriveDisposalBatchStatus } from "@/lib/disposal-batch"
 import { disposalApiError } from "@/lib/disposal-api-errors"
 import { approveDisposalRequest, DisposalApprovalServiceError } from "@/lib/disposal-approval-service"
 import { isDisposalBatchSchemaReady } from "@/lib/disposal-schema-readiness"
+import { getDisposalExecutionEvidenceError } from "@/lib/disposal-evidence-exception"
 
 type DisposalRequestContext = {
   params: Promise<{ id: string }>
@@ -80,13 +81,36 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
       })
       if (!executor) return disposalApiError("DISPOSAL_EMPLOYEE_NOT_FOUND", "Executor is inactive or missing", 404)
 
-      const evidenceCount = await prisma.attachment.count({
-        where: { module: "disposal", referenceId: disposalRequest.id, isActive: true },
+      const [itemEvidenceCount, batchEvidenceCount] = await Promise.all([
+        prisma.attachment.count({
+          where: { module: "disposal", referenceId: disposalRequest.id, isActive: true },
+        }),
+        disposalBatchId
+          ? prisma.attachment.count({
+              where: { module: "disposal_batch", referenceId: disposalBatchId, isActive: true },
+            })
+          : Promise.resolve(0),
+      ])
+      const effectiveEvidenceCount = itemEvidenceCount + batchEvidenceCount
+      const evidenceError = getDisposalExecutionEvidenceError({
+        roles: user.roles,
+        effectiveEvidenceCount,
+        useHistoricalEvidenceException: input.useHistoricalEvidenceException,
+        evidenceExceptionReason: input.evidenceExceptionReason,
+        evidenceExceptionAcknowledged: input.evidenceExceptionAcknowledged,
       })
-      if (evidenceCount === 0) {
-        return disposalApiError("DISPOSAL_EVIDENCE_REQUIRED", "Please attach disposal evidence before execution")
+      if (evidenceError) {
+        const error = {
+          DISPOSAL_EVIDENCE_REQUIRED: "Please attach disposal evidence before execution",
+          DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN: "Only system administrators can execute without disposal evidence",
+          DISPOSAL_EVIDENCE_EXCEPTION_REASON_REQUIRED: "A historical evidence exception reason of at least 20 characters is required",
+          DISPOSAL_EVIDENCE_EXCEPTION_ACK_REQUIRED: "Historical evidence exception acknowledgement is required",
+          DISPOSAL_EVIDENCE_EXCEPTION_NOT_APPLICABLE: "Historical evidence exceptions can only be used when no active evidence exists",
+        }[evidenceError]
+        return disposalApiError(evidenceError, error, evidenceError === "DISPOSAL_EVIDENCE_EXCEPTION_FORBIDDEN" ? 403 : 400)
       }
 
+      const exceptionGrantedAt = input.useHistoricalEvidenceException ? new Date() : null
       const updatedRequest = await prisma.$transaction(async (tx) => {
         const record = await tx.disposalRequest.update({
           where: { id },
@@ -99,6 +123,9 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
             actualSaleValue: input.actualSaleValue,
             actualSalvageValue: input.actualSalvageValue,
             executionRemark: input.executionRemark,
+            evidenceExceptionReason: input.useHistoricalEvidenceException ? input.evidenceExceptionReason : null,
+            evidenceExceptionGrantedBy: input.useHistoricalEvidenceException ? user.id : null,
+            evidenceExceptionGrantedAt: exceptionGrantedAt,
             completedAt: new Date(),
             updatedBy: user.id,
           },
@@ -130,16 +157,22 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
           await tx.disposalBatch.update({ where: { id: disposalBatchId }, data: { batchStatus: deriveDisposalBatchStatus(children.map((child) => child.requestStatus)), updatedBy: user.id } })
         }
 
-        return record
-      })
+        await writeAuditLog(tx, {
+          userId: user.id,
+          action: input.useHistoricalEvidenceException ? "execute_historical_without_evidence" : "execute",
+          module: "disposal",
+          recordId: id,
+          oldValue: { requestStatus: disposalRequest.requestStatus, assetStatusId: disposalRequest.asset.statusId },
+          newValue: {
+            ...input,
+            requestStatus: "disposed",
+            effectiveEvidenceCount,
+            evidenceExceptionGrantedBy: input.useHistoricalEvidenceException ? user.id : null,
+            evidenceExceptionGrantedAt: exceptionGrantedAt,
+          },
+        })
 
-      await logAudit({
-        userId: user.id,
-        action: "execute",
-        module: "disposal",
-        recordId: id,
-        oldValue: { requestStatus: disposalRequest.requestStatus, assetStatusId: disposalRequest.asset.statusId },
-        newValue: { ...input, requestStatus: "disposed", evidenceCount },
+        return record
       })
 
       return NextResponse.json(updatedRequest)
