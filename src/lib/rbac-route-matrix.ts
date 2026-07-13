@@ -162,6 +162,11 @@ export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
     ],
   },
   {
+    filePath: "src/app/api/disposal-requests/bulk-decision/route.ts",
+    label: "Disposal bulk approval",
+    checks: [{ module: "disposal", action: "approve" }],
+  },
+  {
     filePath: "src/app/api/disposal-batches/[id]/route.ts",
     label: "Disposal batch detail",
     checks: [{ module: "disposal", action: "view" }],

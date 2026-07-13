@@ -130,3 +130,20 @@ test("approval service enforces authorization and revalidates lifecycle under se
   assert.match(service, /Prisma\.TransactionIsolationLevel\.Serializable/)
   assert.match(service, /deriveDisposalBatchStatus\(children\.map\(\(child\) => child\.requestStatus\)\)/)
 })
+
+test("bulk approval route guards permission and revalidates each request", () => {
+  const source = readFileSync("src/app/api/disposal-requests/bulk-decision/route.ts", "utf8")
+  const matrix = readFileSync("src/lib/rbac-route-matrix.ts", "utf8")
+
+  assert.match(source, /requireAuth\(\)/)
+  assert.match(source, /requirePermission\(user, "disposal", "approve"\)/)
+  assert.match(source, /disposalBulkDecisionSchema\.parse/)
+  assert.match(source, /inspectDisposalApprovalRequests/)
+  assert.match(source, /for \(const requestId of input\.requestIds\)/)
+  assert.match(source, /approveDisposalRequest/)
+  assert.match(source, /item\.requestId\.toLowerCase\(\)/)
+  assert.match(source, /get\(requestId\.toLowerCase\(\)\)/)
+  assert.match(source, /roles:\s*user\.roles/)
+  assert.match(source, /permissions:\s*user\.permissions/)
+  assert.match(matrix, /disposal-requests\/bulk-decision\/route\.ts/)
+})
