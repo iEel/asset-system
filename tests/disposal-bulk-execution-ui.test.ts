@@ -87,6 +87,20 @@ test("bulk execution reviews server-derived item values and gates historical con
   assert.match(component, /format\(copy\.confirm,\s*\{\s*count:\s*eligible\.length\s*\}\)/)
 })
 
+test("bulk execution collects a shared recipient and labels its server-derived source", async () => {
+  const component = await source("src/components/disposal/disposal-bulk-execution.tsx")
+  const page = await source("src/app/[locale]/(dashboard)/disposal/page.tsx")
+
+  assert.match(component, /const \[sharedRecipientName, setSharedRecipientName\] = useState\(""\)/)
+  assert.match(component, /sharedRecipientName: sharedRecipientName\.trim\(\) \|\| null/)
+  assert.match(component, /recipientFallbackApplicable/)
+  assert.match(component, /maxLength=\{200\}/)
+  assert.match(component, /recipientSource === "shared"/)
+  assert.match(page, /sharedRecipient: t\("bulkExecutionSharedRecipient"\)/)
+  assert.match(page, /recipientSourceRequest: t\("bulkExecutionRecipientSourceRequest"\)/)
+  assert.match(page, /recipientSourceShared: t\("bulkExecutionRecipientSourceShared"\)/)
+})
+
 test("bulk execution uses explicit selection mode, guarded rows, Bangkok date, and direct spacing", async () => {
   const component = await source("src/components/disposal/disposal-bulk-execution.tsx")
   const page = await source("src/app/[locale]/(dashboard)/disposal/page.tsx")
@@ -115,6 +129,7 @@ test("bulk execution copy has English and Thai parity", async () => {
     "bulkExecutionZeroEligible", "bulkExecutionRequestFailed", "bulkExecutionCommitFailed", "bulkExecutionDiscardSelection",
     "bulkExecutionHistoricalWarning", "bulkExecutionSharedValues", "bulkExecutionReviewedValues", "bulkExecutionRecipient", "bulkExecutionDocumentNo", "bulkExecutionSaleValue",
     "bulkExecutionSalvageValue", "bulkExecutionRemark", "bulkExecutionNotProvided", "bulkExecutionCancelPreview",
+    "bulkExecutionSharedRecipient", "bulkExecutionSharedRecipientHelp", "bulkExecutionRecipientSourceRequest", "bulkExecutionRecipientSourceShared",
     "bulkExecutionErrors",
   ]
 

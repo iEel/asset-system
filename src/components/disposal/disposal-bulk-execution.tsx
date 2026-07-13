@@ -104,8 +104,12 @@ export type DisposalBulkExecutionCopy = {
   commitFailed: string
   discardSelection: string
   sharedValues: string
+  sharedRecipient: string
+  sharedRecipientHelp: string
   reviewedValues: string
   recipient: string
+  recipientSourceRequest: string
+  recipientSourceShared: string
   documentNo: string
   saleValue: string
   salvageValue: string
@@ -129,6 +133,7 @@ type ContextValue = {
   executionDate: string
   executedById: string
   nextStatusId: string
+  sharedRecipientName: string
   useHistoricalEvidenceException: boolean
   evidenceExceptionReason: string
   evidenceExceptionAcknowledged: boolean
@@ -144,6 +149,7 @@ type ContextValue = {
   setExecutionDate: (value: string) => void
   setExecutedById: (value: string) => void
   setNextStatusId: (value: string) => void
+  setSharedRecipientName: (value: string) => void
   setUseHistoricalEvidenceException: (value: boolean) => void
   setEvidenceExceptionReason: (value: string) => void
   setEvidenceExceptionAcknowledged: (value: boolean) => void
@@ -211,6 +217,7 @@ export function DisposalBulkExecutionProvider({
   const [executionDate, setExecutionDate] = useState(getBangkokBusinessDate)
   const [executedById, setExecutedById] = useState("")
   const [nextStatusId, setNextStatusId] = useState("")
+  const [sharedRecipientName, setSharedRecipientName] = useState("")
   const [useHistoricalEvidenceException, setUseHistoricalEvidenceException] = useState(false)
   const [evidenceExceptionReason, setEvidenceExceptionReason] = useState("")
   const [evidenceExceptionAcknowledged, setEvidenceExceptionAcknowledged] = useState(false)
@@ -261,6 +268,7 @@ export function DisposalBulkExecutionProvider({
     setDialogState("closed")
     resetReviewedState()
     clearHistoricalException()
+    setSharedRecipientName("")
     setSelectionMessage(null)
   }, [selectionKey])
 
@@ -277,6 +285,7 @@ export function DisposalBulkExecutionProvider({
       selectionGenerationRef.current += 1
       abortPreview()
       resetReviewedState()
+      setSharedRecipientName("")
     }
   }
 
@@ -346,6 +355,7 @@ export function DisposalBulkExecutionProvider({
       executionDate,
       executedById,
       nextStatusId,
+      sharedRecipientName: sharedRecipientName.trim() || null,
       useHistoricalEvidenceException: historicalAvailable && useHistoricalEvidenceException,
       evidenceExceptionReason: historicalAvailable && useHistoricalEvidenceException
         ? evidenceExceptionReason.trim() || null
@@ -366,6 +376,7 @@ export function DisposalBulkExecutionProvider({
           executionDate: previousPayload.executionDate,
           executedById: previousPayload.executedById,
           nextStatusId: previousPayload.nextStatusId,
+          sharedRecipientName: previousPayload.sharedRecipientName ?? null,
           useHistoricalEvidenceException: previousPayload.useHistoricalEvidenceException,
           evidenceExceptionReason: previousPayload.evidenceExceptionReason,
           evidenceExceptionAcknowledged: previousPayload.evidenceExceptionAcknowledged,
@@ -457,6 +468,7 @@ export function DisposalBulkExecutionProvider({
     if (dialogState === "committing") return
     if (dialogState === "previewing") abortPreview()
     setDialogState("closed")
+    setSharedRecipientName("")
   }
 
   function confirmDiscard() {
@@ -502,6 +514,7 @@ export function DisposalBulkExecutionProvider({
     executionDate,
     executedById,
     nextStatusId,
+    sharedRecipientName,
     useHistoricalEvidenceException,
     evidenceExceptionReason,
     evidenceExceptionAcknowledged,
@@ -517,6 +530,7 @@ export function DisposalBulkExecutionProvider({
     setExecutionDate,
     setExecutedById,
     setNextStatusId,
+    setSharedRecipientName,
     setUseHistoricalEvidenceException,
     setEvidenceExceptionReason,
     setEvidenceExceptionAcknowledged,
@@ -705,6 +719,7 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
     copy,
     items,
     selection,
+    selectedType,
     dialogState,
     response,
     previewPayload,
@@ -712,6 +727,7 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
     executionDate,
     executedById,
     nextStatusId,
+    sharedRecipientName,
     useHistoricalEvidenceException,
     evidenceExceptionReason,
     evidenceExceptionAcknowledged,
@@ -722,6 +738,7 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
     setExecutionDate,
     setExecutedById,
     setNextStatusId,
+    setSharedRecipientName,
     setUseHistoricalEvidenceException,
     setEvidenceExceptionReason,
     setEvidenceExceptionAcknowledged,
@@ -754,6 +771,8 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
   const blocked = response?.items.filter((item) => item.outcome === "blocked") ?? []
   const failed = response?.items.filter((item) => item.outcome === "failed") ?? []
   const hasSharedValues = Boolean(executionDate && executedById && nextStatusId)
+  const recipientFallbackApplicable = selectedType != null
+    && ["sell", "donate", "dispose"].includes(selectedType)
   const title = dialogState === "result" ? copy.resultTitle : copy.previewTitle
   const description = previewing
     ? copy.previewLoading
@@ -852,10 +871,13 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
               executionDate={executionDate}
               executedById={executedById}
               nextStatusId={nextStatusId}
+              sharedRecipientName={sharedRecipientName}
+              recipientFallbackApplicable={recipientFallbackApplicable}
               disabled={previewing}
               onExecutionDateChange={setExecutionDate}
               onExecutedByChange={setExecutedById}
               onNextStatusChange={setNextStatusId}
+              onSharedRecipientNameChange={setSharedRecipientName}
             />
           ) : previewPayload ? (
             <ReviewedSharedValues
@@ -921,7 +943,7 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
             </section>
           ) : null}
 
-          <AuthoritativeItems copy={copy} items={reviewedItems} />
+          <AuthoritativeItems copy={copy} items={reviewedItems} responseItems={response?.items ?? []} />
 
           {response && dialogState !== "review" && !previewing ? (
             <ResponseSummary
@@ -1011,10 +1033,13 @@ function SharedValueFields({
   executionDate,
   executedById,
   nextStatusId,
+  sharedRecipientName,
+  recipientFallbackApplicable,
   disabled,
   onExecutionDateChange,
   onExecutedByChange,
   onNextStatusChange,
+  onSharedRecipientNameChange,
 }: {
   copy: DisposalBulkExecutionCopy
   employees: Option[]
@@ -1022,10 +1047,13 @@ function SharedValueFields({
   executionDate: string
   executedById: string
   nextStatusId: string
+  sharedRecipientName: string
+  recipientFallbackApplicable: boolean
   disabled: boolean
   onExecutionDateChange: (value: string) => void
   onExecutedByChange: (value: string) => void
   onNextStatusChange: (value: string) => void
+  onSharedRecipientNameChange: (value: string) => void
 }) {
   return (
     <fieldset disabled={disabled} className="grid gap-4 sm:grid-cols-3">
@@ -1067,6 +1095,20 @@ function SharedValueFields({
           ))}
         </select>
       </label>
+      {recipientFallbackApplicable ? (
+        <label className="text-sm font-medium text-foreground sm:col-span-3">
+          {copy.sharedRecipient}
+          <input
+            value={sharedRecipientName}
+            onChange={(event) => onSharedRecipientNameChange(event.target.value)}
+            maxLength={200}
+            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
+          />
+          <span className="mt-1 block text-xs text-muted-foreground">
+            {copy.sharedRecipientHelp}
+          </span>
+        </label>
+      ) : null}
     </fieldset>
   )
 }
@@ -1093,6 +1135,7 @@ function ReviewedSharedValues({
         <ReviewValue label={copy.executionDate} value={payload.executionDate} />
         <ReviewValue label={copy.executor} value={employee ?? copy.notProvided} />
         <ReviewValue label={copy.finalStatus} value={status ?? copy.notProvided} />
+        {payload.sharedRecipientName ? <ReviewValue label={copy.sharedRecipient} value={payload.sharedRecipientName} /> : null}
       </dl>
     </section>
   )
@@ -1101,41 +1144,56 @@ function ReviewedSharedValues({
 function AuthoritativeItems({
   copy,
   items,
+  responseItems,
 }: {
   copy: DisposalBulkExecutionCopy
   items: DisposalBulkExecutionSelectableItem[]
+  responseItems: DisposalBulkExecutionResponse["items"]
 }) {
+  const responseItemsById = new Map(responseItems.map((item) => [item.requestId, item]))
   return (
     <section aria-labelledby="bulk-authoritative-values">
       <h3 id="bulk-authoritative-values" className="text-sm font-semibold text-foreground">
         {copy.reviewedValues}
       </h3>
       <div className="mt-2 divide-y divide-border border border-border">
-        {items.map((item) => (
+        {items.map((item) => {
+          const responseItem = responseItemsById.get(item.requestId)
+          const recipientName = responseItem?.recipientName ?? item.recipientName ?? copy.notProvided
+          const recipientSource = responseItem?.recipientSource === "shared"
+            ? copy.recipientSourceShared
+            : responseItem?.recipientSource === "request"
+              ? copy.recipientSourceRequest
+              : null
+          return (
           <article key={item.requestId} className="space-y-3 p-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h4 className="text-sm font-semibold text-foreground">{item.disposalNo}</h4>
               <span className="text-xs text-muted-foreground">{item.assetLabel}</span>
             </div>
             <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
-              <ReviewValue label={copy.recipient} value={item.recipientName ?? copy.notProvided} />
+              <ReviewValue label={copy.recipient} value={recipientName} detail={recipientSource} />
               <ReviewValue label={copy.documentNo} value={item.documentNo ?? copy.notProvided} />
               <ReviewValue label={copy.saleValue} value={item.saleValue ?? copy.notProvided} />
               <ReviewValue label={copy.salvageValue} value={item.salvageValue ?? copy.notProvided} />
               <ReviewValue label={copy.remark} value={item.executionRemark ?? copy.notProvided} />
             </dl>
           </article>
-        ))}
+          )
+        })}
       </div>
     </section>
   )
 }
 
-function ReviewValue({ label, value }: { label: string; value: string }) {
+function ReviewValue({ label, value, detail }: { label: string; value: string; detail?: string | null }) {
   return (
     <div className="min-w-0">
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className="mt-1 break-words text-foreground">{value}</dd>
+      <dd className="mt-1 break-words text-foreground">
+        {value}
+        {detail ? <span className="mt-1 block text-xs text-muted-foreground">{detail}</span> : null}
+      </dd>
     </div>
   )
 }
