@@ -21,17 +21,22 @@ export type BulkExecutionSharedValues = {
   executionDate: string
   executedById: string
   nextStatusId: string
+  sharedRecipientName: string | null
   useHistoricalEvidenceException: boolean
   evidenceExceptionReason: string | null
   evidenceExceptionAcknowledged: boolean
 }
 
-export type BulkExecutionPreviewPayload = BulkExecutionSharedValues & {
+type BulkExecutionSharedValuesInput = Omit<BulkExecutionSharedValues, "sharedRecipientName"> & {
+  sharedRecipientName?: string | null
+}
+
+export type BulkExecutionPreviewPayload = BulkExecutionSharedValuesInput & {
   mode: "preview"
   requestIds: string[]
 }
 
-export type BulkExecutionCommitPayload = BulkExecutionSharedValues & {
+export type BulkExecutionCommitPayload = BulkExecutionSharedValuesInput & {
   mode: "commit"
   requestIds: string[]
 }
@@ -132,17 +137,17 @@ export function validateHistoricalException(input: {
 export function buildBulkExecutionPayload(
   mode: "preview",
   requestIds: string[],
-  values: BulkExecutionSharedValues,
+  values: BulkExecutionSharedValuesInput,
 ): BulkExecutionPreviewPayload
 export function buildBulkExecutionPayload(
   mode: "commit",
   requestIds: string[],
-  values: BulkExecutionSharedValues,
+  values: BulkExecutionSharedValuesInput,
 ): BulkExecutionCommitPayload
 export function buildBulkExecutionPayload(
   mode: "preview" | "commit",
   requestIds: string[],
-  values: BulkExecutionSharedValues,
+  values: BulkExecutionSharedValuesInput,
 ) {
   return { mode, requestIds: [...requestIds], ...values }
 }
@@ -155,6 +160,9 @@ export function buildBulkExecutionCommitPayload(
     executionDate: previewPayload.executionDate,
     executedById: previewPayload.executedById,
     nextStatusId: previewPayload.nextStatusId,
+    ...(previewPayload.sharedRecipientName === undefined
+      ? {}
+      : { sharedRecipientName: previewPayload.sharedRecipientName }),
     useHistoricalEvidenceException: previewPayload.useHistoricalEvidenceException,
     evidenceExceptionReason: previewPayload.evidenceExceptionReason,
     evidenceExceptionAcknowledged: previewPayload.evidenceExceptionAcknowledged,

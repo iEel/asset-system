@@ -71,6 +71,10 @@ export const disposalBulkExecutionSchema = z.object({
   executionDate: z.coerce.date(),
   executedById: z.string().trim().min(1),
   nextStatusId: z.string().trim().min(1),
+  sharedRecipientName: z.preprocess(
+    (value) => typeof value === "string" ? value.trim() || null : value,
+    z.string().max(200).nullable(),
+  ).optional(),
   useHistoricalEvidenceException: z.boolean().optional().default(false),
   evidenceExceptionReason: z.preprocess(
     (value) => (value === "" || value == null ? null : value),

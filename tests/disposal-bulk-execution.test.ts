@@ -9,6 +9,10 @@ import {
   type DisposalBulkExecutionItem,
 } from "../src/lib/disposal-bulk-execution.ts"
 import { getDisposalApiErrorMessage } from "../src/lib/disposal-error-message.ts"
+import {
+  buildBulkExecutionCommitPayload,
+  buildBulkExecutionPayload,
+} from "../src/lib/disposal-bulk-execution-ui.ts"
 import { disposalBulkExecutionSchema } from "../src/lib/validations/disposal.ts"
 
 const validInput = {
@@ -17,6 +21,16 @@ const validInput = {
   executionDate: "2026-07-13",
   executedById: "employee-executor",
   nextStatusId: "status-disposed",
+}
+
+const sharedValues = {
+  executionDate: "2026-07-13",
+  executedById: "employee-executor",
+  nextStatusId: "status-disposed",
+  useHistoricalEvidenceException: false,
+  evidenceExceptionReason: null,
+  evidenceExceptionAcknowledged: false,
+  sharedRecipientName: "Receiving Foundation",
 }
 
 test("normalizes bulk execution IDs by trimming and preserving first occurrence order", () => {
@@ -58,6 +72,15 @@ test("accepts shared execution values and defaults historical exception fields",
     evidenceExceptionReason: null,
     evidenceExceptionAcknowledged: false,
   })
+})
+
+test("preserves the shared recipient name from preview into commit", () => {
+  const preview = buildBulkExecutionPayload("preview", ["request-1"], sharedValues)
+
+  assert.equal(
+    buildBulkExecutionCommitPayload(preview, ["request-1"]).sharedRecipientName,
+    "Receiving Foundation",
+  )
 })
 
 test("blocks a selected request whose disposal type differs from the established type", () => {

@@ -10,13 +10,25 @@ import {
   showsActualSalvageValue,
   showsActualSaleValue,
 } from "../src/lib/disposal-type-policy.ts"
-import { disposalBulkDecisionSchema, disposalExecutionSchema } from "../src/lib/validations/disposal.ts"
+import {
+  disposalBulkDecisionSchema,
+  disposalBulkExecutionSchema,
+  disposalExecutionSchema,
+} from "../src/lib/validations/disposal.ts"
 
 const baseExecution = {
   action: "execute",
   executionDate: "2026-07-13",
   executedById: "employee-executor",
   nextStatusId: "status-retired",
+}
+
+const validBulkExecutionPacket = {
+  mode: "preview" as const,
+  requestIds: ["request-1"],
+  executionDate: "2026-07-13",
+  executedById: "employee-executor",
+  nextStatusId: "status-disposed",
 }
 
 test("requires a meaningful disposal request reason", () => {
@@ -156,4 +168,21 @@ test("rejects the same bulk approval ID submitted with mixed casing", () => {
   })
 
   assert.equal(result.success, false)
+})
+
+test("normalizes and limits the shared bulk recipient name", () => {
+  assert.equal(disposalBulkExecutionSchema.parse({
+    ...validBulkExecutionPacket,
+    sharedRecipientName: "  Receiving Foundation  ",
+  }).sharedRecipientName, "Receiving Foundation")
+
+  assert.equal(disposalBulkExecutionSchema.parse({
+    ...validBulkExecutionPacket,
+    sharedRecipientName: "",
+  }).sharedRecipientName, null)
+
+  assert.equal(disposalBulkExecutionSchema.safeParse({
+    ...validBulkExecutionPacket,
+    sharedRecipientName: "x".repeat(201),
+  }).success, false)
 })
