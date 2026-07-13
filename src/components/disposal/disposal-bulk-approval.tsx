@@ -130,11 +130,13 @@ export function DisposalBulkApprovalProvider({
   items,
   selectionKey,
   copy,
+  className,
   children,
 }: {
   items: DisposalBulkSelectableItem[]
   selectionKey: string
   copy: DisposalBulkApprovalCopy
+  className?: string
   children: ReactNode
 }) {
   const router = useRouter()
@@ -356,7 +358,7 @@ export function DisposalBulkApprovalProvider({
 
   return (
     <DisposalBulkApprovalContext.Provider value={value}>
-      <div ref={restoreTargetRef} tabIndex={-1} onClickCapture={handleClickCapture} onSubmitCapture={handleSubmitCapture}>
+      <div ref={restoreTargetRef} tabIndex={-1} className={className} onClickCapture={handleClickCapture} onSubmitCapture={handleSubmitCapture}>
         {children}
         {dialogState !== "closed" ? <DisposalBulkApprovalDialog /> : null}
       </div>

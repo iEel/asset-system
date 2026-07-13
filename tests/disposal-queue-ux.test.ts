@@ -49,6 +49,7 @@ test("bulk approval navigation guard wraps filters as well as the queue", () => 
   assert.ok(providerStart < desktopFilter)
   assert.ok(providerEnd > mobileFilter)
   assert.ok(providerEnd > desktopFilter)
+  assert.match(page, /<DisposalBulkApprovalProvider[^>]*className="space-y-6"/)
 })
 
 test("disposal queue passes the complete localized bulk approval copy and exposes initial desktop select-page control", () => {
