@@ -6,26 +6,21 @@ import { useRouter } from "next/navigation"
 import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
-import { SearchableSelect } from "@/components/ui/searchable-select"
+import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
 
 type Option = { id: string; label: string }
 
 export function MaintenanceTicketForm({
-  assets,
-  employees,
-  suppliers,
-  initialAssetId,
+  locale,
+  initialAsset,
 }: {
-  assets: Option[]
-  employees: Option[]
-  suppliers: Option[]
-  initialAssetId?: string
+  locale: string
+  initialAsset?: Option
 }) {
   const router = useRouter()
   const t = useTranslations("maintenancePage")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
-  const initialAsset = assets.find((asset) => asset.id === initialAssetId)
   const [values, setValues] = useState({
     assetId: initialAsset?.id ?? "",
     problem: "",
@@ -74,19 +69,7 @@ export function MaintenanceTicketForm({
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
       toast.success(t("createSuccess"))
-      setValues((current) => ({
-        ...current,
-        assetId: initialAsset?.id ?? "",
-        problem: "",
-        dueDate: "",
-        laborCost: "",
-        partsCost: "",
-        repairCost: "",
-        quotationNo: "",
-        invoiceNo: "",
-        vendorId: "",
-      }))
-      router.refresh()
+      router.push(`/${locale}/maintenance/${payload.id}`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))
     } finally {
@@ -106,8 +89,8 @@ export function MaintenanceTicketForm({
             <FormContextBanner label={t("asset")} value={initialAsset.label} />
           </div>
         ) : null}
-        <SearchableSelect label={t("asset")} value={values.assetId} required options={assets} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assetId", value)} />
-        <SearchableSelect label={t("reportedBy")} value={values.reportedById} required options={employees} placeholder={t("selectEmployee")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("reportedById", value)} />
+        <MaintenanceOptionSelect type="asset" label={t("asset")} value={values.assetId} required initialOption={initialAsset} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={t("loading")} onChange={(value) => setField("assetId", value)} />
+        <MaintenanceOptionSelect type="employee" label={t("reportedBy")} value={values.reportedById} required placeholder={t("selectEmployee")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={t("loading")} onChange={(value) => setField("reportedById", value)} />
         <Field label={t("reportedDate")} required>
           <input
             type="date"
@@ -125,12 +108,12 @@ export function MaintenanceTicketForm({
             className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </Field>
-        <SearchableSelect label={t("assignedTo")} value={values.assignedToId} options={employees} placeholder={t("unassigned")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assignedToId", value)} />
+        <MaintenanceOptionSelect type="employee" label={t("assignedTo")} value={values.assignedToId} placeholder={t("unassigned")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={t("loading")} onChange={(value) => setField("assignedToId", value)} />
         <Select label={t("repairType")} value={values.repairType} required onChange={(value) => setField("repairType", value)}>
           <option value="internal">{t("internalRepair")}</option>
           <option value="vendor">{t("vendorRepair")}</option>
         </Select>
-        <SearchableSelect label={t("vendor")} value={values.vendorId} required={values.repairType === "vendor"} options={suppliers} placeholder={t("selectVendor")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("vendorId", value)} />
+        <MaintenanceOptionSelect type="supplier" label={t("vendor")} value={values.vendorId} required={values.repairType === "vendor"} placeholder={t("selectVendor")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={t("loading")} onChange={(value) => setField("vendorId", value)} />
         <Field label={t("laborCost")}>
           <input
             type="number"

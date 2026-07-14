@@ -5,34 +5,42 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { CalendarClock, Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
-import { SearchableSelect } from "@/components/ui/searchable-select"
+import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
 
 type Option = { id: string; label: string }
 
 export function MaintenancePlanForm({
-  assets,
-  employees,
-  suppliers,
-  initialAssetId,
+  locale,
+  initialAsset,
+  planId,
+  initialValues,
 }: {
-  assets: Option[]
-  employees: Option[]
-  suppliers: Option[]
-  initialAssetId?: string
+  locale: string
+  initialAsset?: Option
+  planId?: string
+  initialValues?: Partial<{
+    title: string
+    frequency: string
+    intervalDays: string
+    nextDueDate: string
+    assignedToId: string
+    vendorId: string
+    notes: string
+  }>
 }) {
   const router = useRouter()
   const t = useTranslations("maintenancePage")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
   const [values, setValues] = useState({
-    assetId: initialAssetId ?? "",
-    title: "",
-    frequency: "monthly",
-    intervalDays: "30",
-    nextDueDate: new Date().toISOString().slice(0, 10),
-    assignedToId: "",
-    vendorId: "",
-    notes: "",
+    assetId: initialAsset?.id ?? "",
+    title: initialValues?.title ?? "",
+    frequency: initialValues?.frequency ?? "monthly",
+    intervalDays: initialValues?.intervalDays ?? "30",
+    nextDueDate: initialValues?.nextDueDate ?? new Date().toISOString().slice(0, 10),
+    assignedToId: initialValues?.assignedToId ?? "",
+    vendorId: initialValues?.vendorId ?? "",
+    notes: initialValues?.notes ?? "",
   })
 
   function setField(field: string, value: string) {
@@ -43,11 +51,11 @@ export function MaintenancePlanForm({
     event.preventDefault()
     setSaving(true)
     try {
-      const response = await fetch("/api/maintenance-plans", {
-        method: "POST",
+      const response = await fetch(planId ? `/api/maintenance-plans/${planId}` : "/api/maintenance-plans", {
+        method: planId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          assetId: values.assetId,
+          ...(planId ? { action: "update" } : { assetId: values.assetId }),
           title: values.title,
           frequency: values.frequency,
           intervalDays: values.frequency === "custom" ? values.intervalDays : null,
@@ -60,17 +68,7 @@ export function MaintenancePlanForm({
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
       toast.success(t("pmCreateSuccess"))
-      setValues((current) => ({
-        ...current,
-        title: "",
-        frequency: "monthly",
-        intervalDays: "30",
-        nextDueDate: new Date().toISOString().slice(0, 10),
-        assignedToId: "",
-        vendorId: "",
-        notes: "",
-      }))
-      router.refresh()
+      router.push(`/${locale}/maintenance?view=pm`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))
     } finally {
@@ -85,7 +83,7 @@ export function MaintenancePlanForm({
         {t("pmCreateTitle")}
       </div>
       <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <SearchableSelect label={t("asset")} value={values.assetId} required options={assets} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assetId", value)} />
+        <MaintenanceOptionSelect type="asset" label={t("asset")} value={values.assetId} required disabled={Boolean(planId)} initialOption={initialAsset} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={t("loading")} onChange={(value) => setField("assetId", value)} />
         <Field label={t("pmPlanTitle")} required>
           <input
             value={values.title}
@@ -130,8 +128,8 @@ export function MaintenancePlanForm({
             className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </Field>
-        <SearchableSelect label={t("pmInternalResponsible")} value={values.assignedToId} options={employees} placeholder={t("unassigned")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assignedToId", value)} />
-        <SearchableSelect label={t("pmExternalProvider")} value={values.vendorId} options={suppliers} placeholder={t("pmNoExternalProvider")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("vendorId", value)} />
+        <MaintenanceOptionSelect type="employee" label={t("pmInternalResponsible")} value={values.assignedToId} placeholder={t("unassigned")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={t("loading")} onChange={(value) => setField("assignedToId", value)} />
+        <MaintenanceOptionSelect type="supplier" label={t("pmExternalProvider")} value={values.vendorId} placeholder={t("pmNoExternalProvider")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={t("loading")} onChange={(value) => setField("vendorId", value)} />
         <div className="md:col-span-2 xl:col-span-3">
           <Field label={t("pmNotes")}>
             <textarea

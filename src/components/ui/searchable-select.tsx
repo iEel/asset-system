@@ -24,6 +24,7 @@ export function SearchableSelect({
   searchPlaceholder,
   emptyLabel,
   clearLabel,
+  onSearchChange,
   onChange,
 }: {
   label: string
@@ -35,6 +36,7 @@ export function SearchableSelect({
   searchPlaceholder: string
   emptyLabel: string
   clearLabel?: string
+  onSearchChange?: (query: string) => void
   onChange: (value: string) => void
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -84,6 +86,7 @@ export function SearchableSelect({
     const nextOptions = filterOptions(options, nextQuery)
     const selectedIndex = nextOptions.findIndex((option) => option.id === value && !option.disabled)
     setQuery(nextQuery)
+    onSearchChange?.(nextQuery)
     setActiveOptionIndex(selectedIndex >= 0 ? selectedIndex : getFirstEnabledOptionIndex(nextOptions))
   }
 

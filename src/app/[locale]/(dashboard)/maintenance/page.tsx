@@ -5,17 +5,12 @@ import { AlertTriangle, CalendarClock, CheckCircle2, Clock, ClipboardList, Downl
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
-import { getMaintenanceOptions } from "@/lib/maintenance-options"
 import { buildMaintenanceQueryString, buildMaintenanceWhere, parseMaintenanceListParams } from "@/lib/maintenance-query"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 import { ColumnHeader } from "@/components/master-data/master-data-layout"
-import { MaintenanceTicketForm } from "@/components/maintenance/maintenance-ticket-form"
-import { MaintenancePlanForm } from "@/components/maintenance/maintenance-plan-form"
 import { MaintenancePlanGenerateButton } from "@/components/maintenance/maintenance-plan-generate-button"
-import { MaintenanceTicketCloseButton } from "@/components/maintenance/maintenance-ticket-close-button"
-import { MaintenanceTicketStatusButton } from "@/components/maintenance/maintenance-ticket-status-button"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
-import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceClosed, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
+import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { getMaintenancePlanDueState, summarizeMaintenancePlans } from "@/lib/preventive-maintenance"
@@ -41,7 +36,6 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
   const filters = await searchParams
   const user = await requirePagePermission(locale, "maintenance", "view")
   const canCreate = hasPermission(user, "maintenance", "create")
-  const canEdit = hasPermission(user, "maintenance", "edit")
   const canExport = hasPermission(user, "maintenance", "export")
   const t = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
@@ -59,7 +53,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
   const hasMaintenancePlanSupport = hasPrismaModelDelegate(prisma, "maintenancePlan")
 
   const today = startOfToday(new Date())
-  const [tickets, options, summary, maintenancePlans] = await Promise.all([
+  const [tickets, summary, maintenancePlans] = await Promise.all([
     prisma.maintenanceTicket.findMany({
       where: buildMaintenanceWhere(listFilters, evidenceTicketIds),
       include: {
@@ -72,19 +66,27 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
-    canCreate || canEdit ? getMaintenanceOptions() : Promise.resolve(null),
     getMaintenanceSummary(today),
     getPreventiveMaintenancePlans(hasMaintenancePlanSupport),
   ])
-  const statuses = options?.statuses ?? []
   const statusLabels = getStatusLabels(t)
   const planSummary = summarizeMaintenancePlans(maintenancePlans, today)
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
+        </div>
+        {canCreate ? (
+          <Link
+            href={activeView === "pm" ? `/${locale}/maintenance/pm/new` : `/${locale}/maintenance/new`}
+            className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-10"
+          >
+            {activeView === "pm" ? t("pmCreateTitle") : t("createTitle")}
+          </Link>
+        ) : null}
       </div>
 
       <MaintenanceViewTabs
@@ -104,15 +106,6 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
 
       {activeView === "tickets" ? (
         <>
-          {canCreate && options ? (
-            <MaintenanceTicketForm
-              assets={options.assets}
-              employees={options.employees}
-              suppliers={options.suppliers}
-              initialAssetId={filters.assetId}
-            />
-          ) : null}
-
           <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             <MaintenanceMetric
               label={t("summaryOpen")}
@@ -344,30 +337,6 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                         {t("printRepair")}
                       </Link>
                     </div>
-                    {canEdit && !isMaintenanceClosed(ticket.repairStatus) && options ? (
-                      <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                        <MaintenanceTicketStatusButton
-                          ticketId={ticket.id}
-                          repairNo={ticket.repairNo}
-                          currentStatus={ticket.repairStatus}
-                          assignedToId={ticket.assignedToId}
-                          dueDate={ticket.dueDate}
-                          employees={options.employees}
-                        />
-                        <MaintenanceTicketCloseButton
-                          ticketId={ticket.id}
-                          repairNo={ticket.repairNo}
-                          statuses={statuses}
-                          defaultLaborCost={ticket.laborCost?.toString()}
-                          defaultPartsCost={ticket.partsCost?.toString()}
-                          defaultRepairCost={ticket.repairCost?.toString()}
-                          defaultQuotationNo={ticket.quotationNo}
-                          defaultInvoiceNo={ticket.invoiceNo}
-                          defaultWarrantyClaim={ticket.warrantyClaim}
-                          employees={options.employees}
-                        />
-                      </div>
-                    ) : null}
                   </article>
                 ))
               )}
@@ -459,30 +428,6 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                             >
                               {t("printRepair")}
                             </Link>
-                            {canEdit && !isMaintenanceClosed(ticket.repairStatus) && options ? (
-                              <>
-                                <MaintenanceTicketStatusButton
-                                  ticketId={ticket.id}
-                                  repairNo={ticket.repairNo}
-                                  currentStatus={ticket.repairStatus}
-                                  assignedToId={ticket.assignedToId}
-                                  dueDate={ticket.dueDate}
-                                  employees={options.employees}
-                                />
-                                <MaintenanceTicketCloseButton
-                                  ticketId={ticket.id}
-                                  repairNo={ticket.repairNo}
-                                  statuses={statuses}
-                                  defaultLaborCost={ticket.laborCost?.toString()}
-                                  defaultPartsCost={ticket.partsCost?.toString()}
-                                  defaultRepairCost={ticket.repairCost?.toString()}
-                                  defaultQuotationNo={ticket.quotationNo}
-                                  defaultInvoiceNo={ticket.invoiceNo}
-                                  defaultWarrantyClaim={ticket.warrantyClaim}
-                                  employees={options.employees}
-                                />
-                              </>
-                            ) : canEdit ? <span className="text-muted-foreground">-</span> : null}
                           </div>
                         </td>
                       </ClickableTableRow>
@@ -508,14 +453,6 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
             <MaintenanceMetric label={t("pmSummaryDueSoon")} value={planSummary.dueSoon} detail={t("pmSummaryDueSoonDetail")} tone="warning" icon={<CalendarClock className="h-5 w-5" />} />
             <MaintenanceMetric label={t("pmSummaryUpcoming")} value={planSummary.upcoming} detail={t("pmSummaryUpcomingDetail")} tone="primary" icon={<Clock className="h-5 w-5" />} />
           </div>
-          {hasMaintenancePlanSupport && canCreate && options ? (
-            <MaintenancePlanForm
-              assets={options.assets}
-              employees={options.employees}
-              suppliers={options.suppliers}
-              initialAssetId={filters.assetId}
-            />
-          ) : null}
           <div className="overflow-hidden rounded-md border border-border">
             {maintenancePlans.length === 0 ? (
               <div className="p-4">
