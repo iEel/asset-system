@@ -61,6 +61,7 @@ export const maintenancePlanSchema = z.object({
 export type MaintenancePlanInput = z.infer<typeof maintenancePlanSchema>
 
 export const maintenanceTicketCloseSchema = z.object({
+  expectedUpdatedAt: z.coerce.date(),
   laborCost: optionalDecimal,
   partsCost: optionalDecimal,
   repairCost: optionalDecimal,
@@ -77,6 +78,7 @@ export const maintenanceTicketCloseSchema = z.object({
 export type MaintenanceTicketCloseInput = z.infer<typeof maintenanceTicketCloseSchema>
 
 export const maintenanceTicketStatusSchema = z.object({
+  expectedUpdatedAt: z.coerce.date(),
   repairStatus: z.enum(["reported", "accepted", "in_progress", "waiting_parts", "waiting_vendor", "completed"]),
   assignedToId: optionalText,
   dueDate: optionalDate,
