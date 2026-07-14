@@ -286,7 +286,12 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
             </section>
           ) : null}
 
-          <MaintenanceAttachments ticketId={ticket.id} attachments={attachments} />
+          <MaintenanceAttachments
+            ticketId={ticket.id}
+            attachments={attachments}
+            canEdit={canEdit}
+            canDelete={canEdit && ticket.repairStatus !== "closed"}
+          />
         </aside>
       </div>
     </div>

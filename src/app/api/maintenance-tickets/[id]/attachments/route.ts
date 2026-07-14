@@ -24,7 +24,7 @@ export async function POST(request: NextRequest, context: MaintenanceAttachmentC
     const { id } = await context.params
     const ticket = await prisma.maintenanceTicket.findFirst({
       where: { id, isActive: true },
-      select: { id: true, repairNo: true, assetId: true },
+      select: { id: true, repairNo: true, assetId: true, repairStatus: true },
     })
     if (!ticket) return NextResponse.json({ error: "Maintenance ticket not found" }, { status: 404 })
 
@@ -76,6 +76,7 @@ export async function POST(request: NextRequest, context: MaintenanceAttachmentC
         originalName: attachment.originalName,
         attachmentType,
         fileSize: attachment.fileSize,
+        postCloseAddendum: ticket.repairStatus === "closed",
       },
     })
 

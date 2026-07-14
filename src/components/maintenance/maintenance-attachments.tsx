@@ -19,15 +19,20 @@ type Attachment = {
 export function MaintenanceAttachments({
   ticketId,
   attachments,
+  canEdit,
+  canDelete,
 }: {
   ticketId: string
   attachments: Attachment[]
+  canEdit: boolean
+  canDelete: boolean
 }) {
   const router = useRouter()
   const t = useTranslations("maintenancePage")
   const tCommon = useTranslations("common")
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [preview, setPreview] = useState<Attachment | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [attachmentType, setAttachmentType] = useState<MaintenanceAttachmentType>("after_repair")
@@ -67,7 +72,7 @@ export function MaintenanceAttachments({
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm(tCommon("deleteConfirm"))) return
+    setPendingDeleteId(null)
     setDeletingId(id)
 
     try {
@@ -90,6 +95,7 @@ export function MaintenanceAttachments({
         {t("attachments")}
       </h2>
 
+      {canEdit ? (
       <div className="mb-4 rounded-md border border-border bg-background p-3">
         <label className="mb-3 block">
           <span className="mb-1.5 block text-sm font-medium text-foreground">{t("attachmentType")}</span>
@@ -114,6 +120,7 @@ export function MaintenanceAttachments({
           browseLabel={t("dropFileHint")}
         />
       </div>
+      ) : null}
 
       {attachments.length === 0 ? (
         <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
@@ -185,9 +192,10 @@ export function MaintenanceAttachments({
                   <Download className="h-3.5 w-3.5" />
                   {t("download")}
                 </a>
+                {canDelete ? (
                 <button
                   type="button"
-                  onClick={() => handleDelete(attachment.id)}
+                  onClick={() => setPendingDeleteId(attachment.id)}
                   disabled={deletingId === attachment.id}
                   className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 disabled:opacity-50 sm:h-8 sm:min-h-0 sm:w-8 sm:min-w-0"
                   title={tCommon("delete")}
@@ -198,6 +206,7 @@ export function MaintenanceAttachments({
                     <Trash2 className="h-3.5 w-3.5" />
                   )}
                 </button>
+                ) : null}
               </div>
             </div>
               ))}
@@ -249,6 +258,37 @@ export function MaintenanceAttachments({
                   className="h-[76vh] w-full rounded-md border border-border bg-white"
                 />
               )}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {pendingDeleteId ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="maintenance-delete-title"
+            className="w-full max-w-md rounded-lg border border-border bg-surface p-5 shadow-lg"
+          >
+            <h3 id="maintenance-delete-title" className="text-base font-semibold text-foreground">
+              {tCommon("deleteConfirm")}
+            </h3>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingDeleteId(null)}
+                className="inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm font-medium"
+              >
+                {tCommon("cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(pendingDeleteId)}
+                className="inline-flex min-h-11 items-center rounded-md bg-danger px-4 text-sm font-medium text-danger-foreground"
+              >
+                {tCommon("delete")}
+              </button>
             </div>
           </section>
         </div>

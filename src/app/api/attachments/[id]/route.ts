@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db"
 import { hasPermission, requireAuth } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { getMaintenanceErrorPayload, MaintenanceApiError } from "@/lib/maintenance-api-errors"
+import { canDeleteMaintenanceEvidence } from "@/lib/maintenance-policy"
 import { assertSafeUploadPath } from "@/lib/uploads"
 
 export const runtime = "nodejs"
@@ -63,6 +65,19 @@ export async function DELETE(_request: NextRequest, context: AttachmentRouteCont
       return NextResponse.json({ error: "Attachment not found" }, { status: 404 })
     }
     requireAttachmentPermission(user, existing.module, "edit")
+    if (existing.module === "maintenance") {
+      const ticket = await prisma.maintenanceTicket.findFirst({
+        where: { id: existing.referenceId, isActive: true },
+        select: { repairStatus: true },
+      })
+      if (ticket && !canDeleteMaintenanceEvidence(ticket.repairStatus)) {
+        throw new MaintenanceApiError(
+          "MAINTENANCE_EVIDENCE_LOCKED",
+          "Closed maintenance evidence is append-only and cannot be deleted",
+          409,
+        )
+      }
+    }
 
     const attachment = await prisma.attachment.update({
       where: { id },
@@ -80,6 +95,8 @@ export async function DELETE(_request: NextRequest, context: AttachmentRouteCont
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    const payload = getMaintenanceErrorPayload(error)
+    if (payload) return NextResponse.json(payload.body, { status: payload.status })
     return errorResponse(error)
   }
 }
