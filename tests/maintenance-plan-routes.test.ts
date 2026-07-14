@@ -28,3 +28,10 @@ test("PM plans persist distinct active, paused, and ended states", () => {
   assert.match(migration, /planState/)
   assert.match(page, /MaintenancePlanStateActions/)
 })
+
+test("maintenance plan state migration defers new-column references until runtime", () => {
+  const migration = readFileSync("prisma/manual-migrations/2026-07-14-add-maintenance-plan-state.sql", "utf8")
+
+  assert.match(migration, /sp_executesql\s+N'UPDATE \[dbo\]\.\[maintenance_plans\]/i)
+  assert.match(migration, /sp_executesql\s+N'ALTER TABLE \[dbo\]\.\[maintenance_plans\][\s\S]*CHECK \(\[planState\]/i)
+})
