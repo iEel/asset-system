@@ -9,6 +9,7 @@ import { buildMaintenanceQueryString, buildMaintenanceWhere, getMaintenanceDateR
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { MaintenancePlanGenerateButton } from "@/components/maintenance/maintenance-plan-generate-button"
+import { MaintenancePlanStateActions } from "@/components/maintenance/maintenance-plan-state-actions"
 import { MaintenanceTicketActions } from "@/components/maintenance/maintenance-ticket-actions"
 import { MaintenancePagination } from "@/components/maintenance/maintenance-pagination"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
@@ -568,13 +569,15 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center md:justify-end">
                         <StatusBadge label={t(`pmDueState.${dueState}`)} tone={dueTone} size="xs" />
                         <StatusBadge label={t(`pmFrequencies.${plan.frequency}`)} tone="muted" size="xs" />
-                        {!plan.assignedToId ? <StatusBadge label={t("pmAutomationBlocked")} tone="warning" size="xs" /> : null}
-                        {canEdit ? (
+                        <StatusBadge label={t(`pmPlanStates.${plan.planState}`)} tone={plan.planState === "active" ? "success" : plan.planState === "paused" ? "warning" : "muted"} size="xs" />
+                        {plan.planState === "active" && !plan.assignedToId ? <StatusBadge label={t("pmAutomationBlocked")} tone="warning" size="xs" /> : null}
+                        {canEdit && plan.planState !== "ended" ? (
                           <Link href={appendOperationalReturnTo(`/${locale}/maintenance/pm/${plan.id}/edit`, maintenanceReturnHref)} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-8">
                             {tCommon("edit")}
                           </Link>
                         ) : null}
-                        {canCreate ? <MaintenancePlanGenerateButton planId={plan.id} /> : null}
+                        {canEdit ? <MaintenancePlanStateActions planId={plan.id} state={plan.planState as "active" | "paused" | "ended"} /> : null}
+                        {canCreate && plan.planState === "active" ? <MaintenancePlanGenerateButton planId={plan.id} /> : null}
                       </div>
                     </div>
                   )
@@ -638,9 +641,9 @@ async function getTicketWorkspaceData(listFilters: ParsedMaintenanceListParams, 
 
 async function getPlanWorkspaceData(hasMaintenancePlanSupport: boolean, filters: ParsedMaintenanceListParams, today: Date) {
   if (!hasMaintenancePlanSupport) return emptyPlanWorkspace()
-  const [plans, summary] = await Promise.all([
+  const [plans, summary, total] = await Promise.all([
     prisma.maintenancePlan.findMany({
-      where: { isActive: true },
+      where: {},
       include: {
         asset: { select: { assetTag: true, name: true } },
         assignedTo: { select: { code: true, fullNameTh: true } },
@@ -651,18 +654,19 @@ async function getPlanWorkspaceData(hasMaintenancePlanSupport: boolean, filters:
       take: filters.pageSize,
     }),
     getMaintenancePlanSummary(today),
+    prisma.maintenancePlan.count(),
   ])
-  return { plans, total: summary.total, summary }
+  return { plans, total, summary }
 }
 
 async function getMaintenancePlanSummary(today: Date) {
   const dueSoonCutoff = new Date(today)
   dueSoonCutoff.setDate(dueSoonCutoff.getDate() + 14)
   const [total, overdue, dueSoon, upcoming] = await Promise.all([
-    prisma.maintenancePlan.count({ where: { isActive: true } }),
-    prisma.maintenancePlan.count({ where: { isActive: true, nextDueDate: { lt: today } } }),
-    prisma.maintenancePlan.count({ where: { isActive: true, nextDueDate: { gte: today, lte: dueSoonCutoff } } }),
-    prisma.maintenancePlan.count({ where: { isActive: true, nextDueDate: { gt: dueSoonCutoff } } }),
+    prisma.maintenancePlan.count({ where: { isActive: true, planState: "active" } }),
+    prisma.maintenancePlan.count({ where: { isActive: true, planState: "active", nextDueDate: { lt: today } } }),
+    prisma.maintenancePlan.count({ where: { isActive: true, planState: "active", nextDueDate: { gte: today, lte: dueSoonCutoff } } }),
+    prisma.maintenancePlan.count({ where: { isActive: true, planState: "active", nextDueDate: { gt: dueSoonCutoff } } }),
   ])
   return { total, overdue, dueSoon, upcoming }
 }

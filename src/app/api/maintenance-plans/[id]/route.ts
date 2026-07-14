@@ -5,6 +5,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
 import { mutateMaintenancePlan } from "@/lib/maintenance-plan-service"
 import { maintenancePlanActionSchema } from "@/lib/validations/maintenance"
+import { getMaintenanceErrorPayload } from "@/lib/maintenance-api-errors"
 
 type MaintenancePlanContext = { params: Promise<{ id: string }> }
 const maintenancePlanAuditActions = {
@@ -32,6 +33,8 @@ export async function PATCH(request: NextRequest, context: MaintenancePlanContex
     })
     return NextResponse.json(result.plan)
   } catch (error) {
+    const payload = getMaintenanceErrorPayload(error)
+    if (payload) return NextResponse.json(payload.body, { status: payload.status })
     return errorResponse(error, 400)
   }
 }

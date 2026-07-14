@@ -21,13 +21,13 @@ export async function GET(request: NextRequest) {
     const filters = parseMaintenanceListParams(request.nextUrl.searchParams)
     const [plans, total] = await Promise.all([
       prisma.maintenancePlan.findMany({
-        where: { isActive: true },
+        where: {},
         include: planInclude,
         orderBy: { nextDueDate: "asc" },
         skip: (filters.page - 1) * filters.pageSize,
         take: filters.pageSize,
       }),
-      prisma.maintenancePlan.count({ where: { isActive: true } }),
+      prisma.maintenancePlan.count(),
     ])
 
     return NextResponse.json({ data: plans, total, page: filters.page, pageSize: filters.pageSize })

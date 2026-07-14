@@ -69,7 +69,7 @@ export async function generatePreventiveMaintenanceTicketForPlan({
   generatedAt = new Date(),
   prismaClient,
 }: GenerateTicketOptions): Promise<PreventiveMaintenanceTicketGenerationResult> {
-  if (!plan.isActive) throw new Error("Inactive PM plans cannot generate work orders")
+  if (!plan.isActive || (plan.planState && plan.planState !== "active")) throw new Error("Inactive PM plans cannot generate work orders")
   const draft = buildPreventiveMaintenanceTicketDraft(plan, fallbackReportedById)
   const reportedById = draft.reportedById
   if (!reportedById) {
@@ -168,6 +168,7 @@ export async function generateDuePreventiveMaintenanceTickets({
   const plans = await prismaClient.maintenancePlan.findMany({
     where: {
       isActive: true,
+      planState: "active",
       nextDueDate: { lte: dueCutoff },
     },
     include: preventiveMaintenanceGenerationPlanInclude,

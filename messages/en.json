@@ -2536,6 +2536,25 @@
     "pmExternalProvider": "External Service Provider",
     "pmNoExternalProvider": "No external provider",
     "pmAutomationBlocked": "Automation blocked: assign an owner",
+    "pmPlanStates": {
+      "active": "Active",
+      "paused": "Paused",
+      "ended": "Ended"
+    },
+    "pmActions": {
+      "pause": "Pause",
+      "resume": "Resume",
+      "end": "End plan",
+      "pauseTitle": "Pause this PM plan?",
+      "pauseHelp": "Scheduled generation stops until the plan is resumed.",
+      "resumeTitle": "Resume this PM plan?",
+      "resumeHelp": "The plan returns to scheduled generation using its current next due date.",
+      "endTitle": "End this PM plan permanently?",
+      "endHelp": "Ended plans remain in history and cannot be resumed or edited.",
+      "pauseSuccess": "PM plan paused",
+      "resumeSuccess": "PM plan resumed",
+      "endSuccess": "PM plan ended"
+    },
     "pmGenerateTicket": "Create PM Ticket",
     "pmGenerateTicketSuccess": "PM ticket generated from plan",
     "pmNotes": "Plan Notes",
@@ -2652,7 +2671,8 @@
       "MAINTENANCE_INVALID_CLOSE_STATUS": "Choose Ready or Pending Disposal as the asset status after corrective repair.",
       "MAINTENANCE_EVIDENCE_LOCKED": "Evidence on a closed ticket cannot be deleted. Add a new audited addendum if clarification is needed.",
       "MAINTENANCE_CONFLICT": "Someone updated this ticket while you were working. Refresh and review the latest values before trying again.",
-      "MAINTENANCE_PM_REPORTER_REQUIRED": "Assign an active internal responsible person before generating this PM work order."
+      "MAINTENANCE_PM_REPORTER_REQUIRED": "Assign an active internal responsible person before generating this PM work order.",
+      "MAINTENANCE_PLAN_INVALID_TRANSITION": "This PM plan action is no longer valid. Refresh the workspace and review the latest plan state."
     },
     "statuses": {
       "open": "Open",

@@ -709,6 +709,7 @@ model MaintenancePlan {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   isActive        Boolean   @default(true)
+  planState       String    @default("active") @db.NVarChar(20)
   tickets         MaintenanceTicket[] @relation("MaintenancePlanTickets")
 
   @@index([isActive, nextDueDate], map: "IX_maintenance_plans_isActive_nextDueDate")

@@ -21,7 +21,7 @@ export default async function EditMaintenancePlanPage({ params, searchParams }: 
   const tCommon = await getTranslations("common")
   const returnTo = normalizeOperationalReturnTo(locale, "maintenance", query.returnTo)
   const plan = await prisma.maintenancePlan.findFirst({
-    where: { id },
+    where: { id, planState: { not: "ended" } },
     include: { asset: { select: { id: true, assetTag: true, name: true, status: { select: { nameTh: true } } } } },
   })
   if (!plan) notFound()

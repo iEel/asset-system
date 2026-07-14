@@ -19,7 +19,7 @@ export async function POST(_request: Request, context: MaintenancePlanGenerateTi
 
     const { id } = await context.params
     const plan = await prisma.maintenancePlan.findFirst({
-      where: { id, isActive: true },
+      where: { id, isActive: true, planState: "active" },
       include: preventiveMaintenanceGenerationPlanInclude,
     })
     if (!plan) return NextResponse.json({ error: "Maintenance plan not found" }, { status: 404 })
