@@ -251,3 +251,26 @@ Scanner and field workflows need touch-safe controls, square or contained camera
 - **Don't** rely on color alone for status, permission, validation, audit, or lifecycle state.
 - **Don't** use display fonts, fluid hero typography, gradient text, oversized cards, or landing-page composition inside product workflows.
 - **Don't** use colored side-stripe borders as a decorative accent. Use full borders, status badges, text labels, and icons instead.
+
+## 7. Documentation Governance and Adaptive UI Contract
+
+`DESIGN.md` is the canonical source for visual identity, design tokens, component vocabulary, accessibility principles, and Adaptive UI policy. It is not a feature changelog.
+
+Business workflow, RBAC, SOD, lifecycle, and security requirements always take precedence over visual guidance. Runtime components and CSS are the implemented behavior; drift between runtime and this document must be reviewed and reconciled explicitly.
+
+### Adaptive UI Contract
+
+- Desktop is the management and review workspace for comparison, bulk work, reports, administration, and approvals.
+- Mobile is the field-operation workspace for scanning, evidence capture, quick lookup, custody actions, and walking audits.
+- Desktop and Mobile may present different hierarchy and controls while reusing the same URL, API, workflow records, permissions, validation, audit trail, and data model.
+- Global Mobile Field Navigation and a page-owned contextual action bar must never render together.
+- Focus-task routes such as scanner, edit, and transaction flows hide global field navigation while their contextual action surface is active.
+- Mobile controls remain at least 44px, respect safe-area insets, avoid body-level horizontal overflow, and do not depend on hover.
+
+### Supporting Documents
+
+- `docs/14_UI_UX_DESIGN_SYSTEM.md` is the developer-facing operational index.
+- Focused decisions live in `docs/superpowers/specs/`.
+- Implementation sequencing and verification live in `docs/superpowers/plans/`.
+- Current implementation status and manual QA live in `DEVELOPER_HANDOFF.md`.
+- Historical delivery notes live in `docs/99_CHANGELOG.md`.

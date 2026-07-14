@@ -1,5 +1,7 @@
 # Enterprise Web UI / UX Requirements
 
+> Historical baseline: this document preserves the original enterprise UI/UX requirements. Use `DESIGN.md` as the current source of truth for design tokens, component vocabulary, accessibility, and Adaptive UI policy. Business workflow, RBAC, SOD, lifecycle, and security requirements continue to take precedence over visual guidance.
+
 ## A.1 วัตถุประสงค์ด้านโทนของเว็บไซต์
 
 ระบบ Inventory / Asset Management Web Application ต้องออกแบบให้มีภาพลักษณ์แบบ **Enterprise Web Application** เหมาะสำหรับใช้งานในองค์กรจริง รองรับผู้ใช้งานหลายระดับ เช่น IT, Admin, Accounting, Auditor, Branch Staff, Department Manager และผู้บริหาร
