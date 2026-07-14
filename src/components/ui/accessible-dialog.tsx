@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useId, useRef, type ReactNode, type RefObject } from "react"
+import { useEffect, useEffectEvent, useId, useRef, type ReactNode, type RefObject } from "react"
 
 const focusableSelector = [
   "button:not([disabled])",
@@ -32,28 +32,26 @@ export function AccessibleDialog({
   const descriptionId = useId()
   const panelRef = useRef<HTMLElement | null>(null)
   const restoreFocusRef = useRef<HTMLElement | null>(null)
-  const onCloseRef = useRef(onClose)
-  const busyRef = useRef(busy)
-  const initialFocusRefRef = useRef(initialFocusRef)
-
-  useEffect(() => {
-    onCloseRef.current = onClose
-    busyRef.current = busy
-    initialFocusRefRef.current = initialFocusRef
-  }, [busy, initialFocusRef, onClose])
+  const closeOnEscape = useEffectEvent(() => {
+    if (busy) return false
+    onClose()
+    return true
+  })
+  const resolveInitialFocus = useEffectEvent(() =>
+    initialFocusRef?.current ?? panelRef.current?.querySelector<HTMLElement>(focusableSelector)
+  )
 
   useEffect(() => {
     if (!open) return
     restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const frame = window.requestAnimationFrame(() => {
-      const target = initialFocusRefRef.current?.current ?? panelRef.current?.querySelector<HTMLElement>(focusableSelector)
+      const target = resolveInitialFocus()
       target?.focus()
     })
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !busyRef.current) {
+      if (event.key === "Escape" && closeOnEscape()) {
         event.preventDefault()
-        onCloseRef.current()
         return
       }
       if (event.key === "Tab" && panelRef.current) {
