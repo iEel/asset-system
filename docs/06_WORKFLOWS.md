@@ -80,7 +80,7 @@
 
 ## Maintenance And PM
 
-- Maintenance has two distinct workspaces: corrective Repair Tickets repair an asset after a reported problem, while PM Plans define recurring inspection/preventive work. PM-generated work orders carry `maintenancePlanId`; legacy `[PM]` text is display compatibility only.
+- Maintenance has two distinct workspaces: corrective Repair Tickets repair an asset after a reported problem, while PM Plans define recurring inspection/preventive work. New PM-generated work orders carry `maintenancePlanId`, which is the preferred authoritative classification. For historical rows without that relation, the exact legacy problem pattern `[PM] <code> - ...` remains an active compatibility fallback: status and close services classify it as preventive and suppress asset lifecycle mutation. Other free-text mentions of PM do not activate this fallback.
 - Create corrective repair tickets at `/maintenance/new` or from asset quick actions. Opening a corrective ticket atomically claims an eligible asset as `Pending Repair`; accepting/in-progress work moves it to `Under Maintenance`; closure returns it only to `Ready` or `Pending Disposal`. Concurrent or duplicate active repair claims are rejected.
 - PM work orders never change the asset lifecycle when created, updated, or closed. They still require evidence, result/resolution, return date, and inspector at closure, but do not ask for an asset status.
 - Opening maintenance ticket detail or print from a filtered maintenance list preserves the current tab, status, search, and asset filter through a sanitized `returnTo` value. Ticket detail exposes a Back action to that originating list context.
