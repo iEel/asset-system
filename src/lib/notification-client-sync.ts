@@ -7,6 +7,20 @@ export type NotificationClientSummary = {
   items: NotificationSummaryItem[]
 }
 
+export function createLatestNotificationRequestGuard() {
+  let latestRequestId = 0
+
+  return {
+    begin() {
+      latestRequestId += 1
+      return latestRequestId
+    },
+    isLatest(requestId: number) {
+      return requestId === latestRequestId
+    },
+  }
+}
+
 type PrimaryClick = {
   button: number
   altKey: boolean
@@ -59,6 +73,7 @@ export async function markNotificationRead(
   }
 }
 
-export function notifyNotificationSummaryChanged(target: EventTarget = window) {
-  target.dispatchEvent(new Event(notificationSummaryChangedEvent))
+export function notifyNotificationSummaryChanged(target?: EventTarget) {
+  const eventTarget = target ?? (typeof window !== "undefined" ? window : null)
+  eventTarget?.dispatchEvent(new Event(notificationSummaryChangedEvent))
 }

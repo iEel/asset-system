@@ -61,7 +61,7 @@ export function buildMaintenanceWhere(
     ...(!filters.status && filters.queue === "waiting" ? { repairStatus: { in: ["waiting_parts", "waiting_vendor"] } } : {}),
     ...(!filters.status && filters.queue === "completed" ? { repairStatus: "completed" } : {}),
     ...(filters.repairType ? { repairType: filters.repairType } : {}),
-    ...(filters.overdue === "yes" ? { dueDate: { lt: startOfDay(new Date()) }, repairStatus: { not: "closed" } } : {}),
+    ...(filters.overdue === "yes" ? { dueDate: { lt: startOfDay(new Date()) }, repairStatus: { notIn: ["completed", "closed"] } } : {}),
     ...(filters.evidence === "with" ? { id: { in: evidenceTicketIds?.length ? evidenceTicketIds : ["__no_matching_ticket__"] } } : {}),
     ...(filters.evidence === "without" && evidenceTicketIds?.length ? { id: { notIn: evidenceTicketIds } } : {}),
     ...(!getMaintenanceDateRangeError(filters) && (filters.dateFrom || filters.dateTo)

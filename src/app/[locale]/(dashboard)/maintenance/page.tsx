@@ -616,7 +616,7 @@ async function getMaintenanceSummary(today: Date) {
   const [openWork, overdue, waiting, completedPendingClose] = await Promise.all([
     prisma.maintenanceTicket.count({ where: { isActive: true, repairStatus: { not: "closed" } } }),
     prisma.maintenanceTicket.count({
-      where: { isActive: true, repairStatus: { not: "closed" }, dueDate: { lt: today } },
+      where: { isActive: true, repairStatus: { notIn: ["completed", "closed"] }, dueDate: { lt: today } },
     }),
     prisma.maintenanceTicket.count({
       where: { isActive: true, repairStatus: { in: ["waiting_parts", "waiting_vendor"] } },

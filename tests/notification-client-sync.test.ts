@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  createLatestNotificationRequestGuard,
   isPlainPrimaryClick,
   markNotificationRead,
   notificationSummaryChangedEvent,
@@ -45,6 +46,19 @@ test("dispatches the shared notification summary change event", () => {
   notifyNotificationSummaryChanged(target)
 
   assert.equal(received, 1)
+})
+
+test("ignores an older notification summary response after a newer request begins", () => {
+  const guard = createLatestNotificationRequestGuard()
+  const olderRequest = guard.begin()
+  const newerRequest = guard.begin()
+
+  assert.equal(guard.isLatest(olderRequest), false)
+  assert.equal(guard.isLatest(newerRequest), true)
+})
+
+test("notification change dispatch is safe when no browser target exists", () => {
+  assert.doesNotThrow(() => notifyNotificationSummaryChanged())
 })
 
 test("persists a read action with the notification key and current count", async () => {

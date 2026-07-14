@@ -10,6 +10,8 @@ test("topbar refetches its client summary when notification state changes", () =
 
   assert.match(source, /window\.addEventListener\(notificationSummaryChangedEvent,\s*loadNotificationSummary\)/)
   assert.match(source, /window\.removeEventListener\(notificationSummaryChangedEvent,\s*loadNotificationSummary\)/)
+  assert.match(source, /notificationRequestGuard\.begin\(\)/)
+  assert.match(source, /notificationRequestGuard\.isLatest\(requestId\)/)
   assert.doesNotMatch(source, /\.catch\(\(\)\s*=>\s*\{\s*if \(!cancelled\) setNotificationSummary\(\{ total: 0, items: \[\] \}\)/)
 })
 

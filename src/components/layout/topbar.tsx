@@ -19,6 +19,7 @@ import { GlobalSearch } from "@/components/layout/global-search"
 import { getUserDisplayLabel, getUserInitial, getUserSecondaryLabel } from "@/lib/user-display"
 import type { SessionUser } from "@/lib/auth-utils"
 import {
+  createLatestNotificationRequestGuard,
   isPlainPrimaryClick,
   markNotificationRead,
   notificationSummaryChangedEvent,
@@ -59,25 +60,28 @@ export function Topbar({
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [notificationSummary, setNotificationSummary] = useState<NotificationClientSummary>({ total: 0, items: [] })
+  const [notificationRequestGuard] = useState(createLatestNotificationRequestGuard)
   const userDisplayLabel = getUserDisplayLabel(user)
   const userSecondaryLabel = getUserSecondaryLabel(user)
 
   const loadNotificationSummary = useCallback(async () => {
+    const requestId = notificationRequestGuard.begin()
     const data = await fetchNotificationSummary(locale)
-    if (data) setNotificationSummary(data)
-  }, [locale])
+    if (data && notificationRequestGuard.isLatest(requestId)) setNotificationSummary(data)
+  }, [locale, notificationRequestGuard])
 
   useEffect(() => {
     let cancelled = false
+    const requestId = notificationRequestGuard.begin()
     void fetchNotificationSummary(locale).then((data) => {
-      if (!cancelled && data) setNotificationSummary(data)
+      if (!cancelled && data && notificationRequestGuard.isLatest(requestId)) setNotificationSummary(data)
     })
     window.addEventListener(notificationSummaryChangedEvent, loadNotificationSummary)
     return () => {
       cancelled = true
       window.removeEventListener(notificationSummaryChangedEvent, loadNotificationSummary)
     }
-  }, [loadNotificationSummary, locale])
+  }, [loadNotificationSummary, locale, notificationRequestGuard])
 
   const handleNotificationClick = async (
     event: ReactMouseEvent<HTMLAnchorElement>,
