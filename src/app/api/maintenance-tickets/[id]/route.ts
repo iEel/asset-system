@@ -4,8 +4,16 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { getMaintenanceErrorPayload } from "@/lib/maintenance-api-errors"
-import { closeMaintenanceTicket, transitionMaintenanceTicket } from "@/lib/maintenance-ticket-service"
-import { maintenanceTicketCloseSchema, maintenanceTicketStatusSchema } from "@/lib/validations/maintenance"
+import {
+  closeMaintenanceTicket,
+  transitionMaintenanceTicket,
+  updateMaintenanceTicketPlanning,
+} from "@/lib/maintenance-ticket-service"
+import {
+  maintenanceTicketCloseSchema,
+  maintenanceTicketPlanningSchema,
+  maintenanceTicketStatusSchema,
+} from "@/lib/validations/maintenance"
 
 type MaintenanceTicketContext = {
   params: Promise<{ id: string }>
@@ -31,10 +39,30 @@ export async function PATCH(request: NextRequest, context: MaintenanceTicketCont
         recordId: id,
         oldValue: {
           repairStatus: result.previous.repairStatus,
+        },
+        newValue: input,
+      })
+
+      return NextResponse.json(result.ticket)
+    }
+
+    if (action === "planning") {
+      const input = maintenanceTicketPlanningSchema.parse(body)
+      const result = await updateMaintenanceTicketPlanning(prisma, id, input, user)
+
+      await logAudit({
+        userId: user.id,
+        action: "update_planning",
+        module: "maintenance",
+        recordId: id,
+        oldValue: {
           assignedToId: result.previous.assignedToId,
           dueDate: result.previous.dueDate,
         },
-        newValue: input,
+        newValue: {
+          assignedToId: input.assignedToId ?? null,
+          dueDate: input.dueDate ?? null,
+        },
       })
 
       return NextResponse.json(result.ticket)

@@ -6,6 +6,7 @@ import {
   closeMaintenanceTicket,
   createCorrectiveMaintenanceTicket,
   transitionMaintenanceTicket,
+  updateMaintenanceTicketPlanning,
   type MaintenanceServiceDb,
 } from "../src/lib/maintenance-ticket-service.ts"
 
@@ -48,6 +49,59 @@ test("stale transition returns a typed conflict", async () => {
       { id: "user-1" },
     ),
     hasMaintenanceCode("MAINTENANCE_CONFLICT"),
+  )
+})
+
+test("planning update changes only assignee and due date", async () => {
+  const db = fakeDb({ ticketStatus: "in_progress" })
+
+  await updateMaintenanceTicketPlanning(
+    db,
+    "ticket-1",
+    {
+      action: "planning",
+      expectedUpdatedAt,
+      assignedToId: "employee-1",
+      dueDate: new Date("2026-07-20T00:00:00.000Z"),
+    },
+    { id: "user-1" },
+  )
+
+  assert.deepEqual(db.events, ["planning:employee-1:2026-07-20"])
+  assert.equal(db.events.some((event) => event.startsWith("asset:")), false)
+  assert.equal(db.events.some((event) => event.startsWith("movement:")), false)
+})
+
+test("planning update rejects closed and stale tickets", async () => {
+  await assert.rejects(
+    () => updateMaintenanceTicketPlanning(
+      fakeDb({ ticketStatus: "closed" }),
+      "ticket-1",
+      planningInput,
+      { id: "user-1" },
+    ),
+    hasMaintenanceCode("MAINTENANCE_INVALID_TRANSITION"),
+  )
+  await assert.rejects(
+    () => updateMaintenanceTicketPlanning(
+      fakeDb({ conditionalUpdateCount: 0 }),
+      "ticket-1",
+      planningInput,
+      { id: "user-1" },
+    ),
+    hasMaintenanceCode("MAINTENANCE_CONFLICT"),
+  )
+})
+
+test("waiting transition returns a stable error when remark is missing", async () => {
+  await assert.rejects(
+    () => transitionMaintenanceTicket(
+      fakeDb({ ticketStatus: "in_progress" }),
+      "ticket-1",
+      { repairStatus: "waiting_parts", expectedUpdatedAt, remark: "" },
+      { id: "user-1" },
+    ),
+    hasMaintenanceCode("MAINTENANCE_WAITING_REMARK_REQUIRED"),
   )
 })
 
@@ -108,6 +162,13 @@ const pmCloseInput = {
   inspectedById: "employee-1",
 }
 
+const planningInput = {
+  action: "planning" as const,
+  expectedUpdatedAt,
+  assignedToId: "employee-1",
+  dueDate: new Date("2026-07-20T00:00:00.000Z"),
+}
+
 function fakeDb(config: {
   activeCorrectiveCount?: number
   ticketStatus?: string
@@ -124,8 +185,8 @@ function fakeDb(config: {
     maintenancePlanId: config.ticketKind === "pm" ? "plan-1" : null,
     problem: "UPS does not start",
     repairStatus: config.ticketStatus ?? "reported",
-    assignedToId: null,
-    dueDate: null,
+    assignedToId: null as string | null,
+    dueDate: null as Date | null,
     updatedAt: expectedUpdatedAt,
     asset: {
       id: "asset-1",
@@ -158,9 +219,18 @@ function fakeDb(config: {
       findFirst: async () => ticket,
       findUnique: async () => ticket,
       create: async () => ticket,
-      updateMany: async ({ data }: { data: { repairStatus: string } }) => {
-        events.push(`ticket:${data.repairStatus}`)
-        ticket.repairStatus = data.repairStatus
+      updateMany: async ({ data }: {
+        data: { repairStatus?: string; assignedToId?: string | null; dueDate?: Date | null }
+      }) => {
+        if (data.repairStatus) {
+          events.push(`ticket:${data.repairStatus}`)
+          ticket.repairStatus = data.repairStatus
+        } else {
+          const dueDate = data.dueDate?.toISOString().slice(0, 10) ?? "none"
+          events.push(`planning:${data.assignedToId ?? "none"}:${dueDate}`)
+          ticket.assignedToId = data.assignedToId ?? null
+          ticket.dueDate = data.dueDate ?? null
+        }
         return { count: config.conditionalUpdateCount ?? 1 }
       },
     },

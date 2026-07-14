@@ -12,6 +12,7 @@ import { withPrismaUniqueRetry } from "./prisma-unique-retry.ts"
 import type {
   MaintenanceTicketCloseInput,
   MaintenanceTicketInput,
+  MaintenanceTicketPlanningInput,
   MaintenanceTicketStatusInput,
 } from "./validations/maintenance.ts"
 
@@ -152,7 +153,15 @@ export async function transitionMaintenanceTicket(
         `Cannot move maintenance ticket from ${ticket.repairStatus} to ${input.repairStatus}`,
       )
     }
-    if (input.assignedToId) await requireActiveEmployee(tx, input.assignedToId, "Assignee")
+    if (
+      (input.repairStatus === "waiting_parts" || input.repairStatus === "waiting_vendor")
+      && !input.remark?.trim()
+    ) {
+      throw new MaintenanceApiError(
+        "MAINTENANCE_WAITING_REMARK_REQUIRED",
+        "Waiting status requires a remark",
+      )
+    }
 
     const isPreventive = isPreventiveMaintenanceTicket(ticket)
     const lifecycleTarget = isPreventive ? null : getCorrectiveLifecycleTarget(input.repairStatus)
@@ -175,8 +184,6 @@ export async function transitionMaintenanceTicket(
       },
       data: {
         repairStatus: input.repairStatus,
-        assignedToId: input.assignedToId,
-        dueDate: input.dueDate,
         updatedBy: user.id,
       },
     })
@@ -200,6 +207,46 @@ export async function transitionMaintenanceTicket(
         performedBy: user.id,
       },
     })
+
+    const updatedTicket = await tx.maintenanceTicket.findUnique({
+      where: { id },
+      include: maintenanceTicketInclude,
+    })
+    if (!updatedTicket) throw conflictError()
+    return { ticket: updatedTicket, previous: ticket }
+  })
+}
+
+export async function updateMaintenanceTicketPlanning(
+  db: MaintenanceServiceDb,
+  id: string,
+  input: MaintenanceTicketPlanningInput,
+  user: MaintenanceServiceUser,
+) {
+  return db.$transaction(async (tx) => {
+    const ticket = await getActiveTicket(tx, id)
+    if (ticket.repairStatus === "closed") {
+      throw new MaintenanceApiError(
+        "MAINTENANCE_INVALID_TRANSITION",
+        "Closed tickets cannot be replanned",
+      )
+    }
+    if (input.assignedToId) await requireActiveEmployee(tx, input.assignedToId, "Assignee")
+
+    const updateResult = await tx.maintenanceTicket.updateMany({
+      where: {
+        id,
+        isActive: true,
+        updatedAt: input.expectedUpdatedAt,
+        repairStatus: ticket.repairStatus,
+      },
+      data: {
+        assignedToId: input.assignedToId ?? null,
+        dueDate: input.dueDate ?? null,
+        updatedBy: user.id,
+      },
+    })
+    if (updateResult.count === 0) throw conflictError()
 
     const updatedTicket = await tx.maintenanceTicket.findUnique({
       where: { id },
