@@ -11,6 +11,7 @@ import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { MaintenancePlanGenerateButton } from "@/components/maintenance/maintenance-plan-generate-button"
 import { MaintenancePlanStateActions } from "@/components/maintenance/maintenance-plan-state-actions"
 import { MaintenanceTicketActions } from "@/components/maintenance/maintenance-ticket-actions"
+import { getMaintenanceStatusUpdateTargets } from "@/lib/maintenance-policy"
 import { MaintenancePagination } from "@/components/maintenance/maintenance-pagination"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
@@ -393,7 +394,10 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                     </div>
                     {canEdit && ticket.repairStatus !== "closed" ? (
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {!(["open", "completed"].includes(ticket.repairStatus)) ? (
+                        <button type="button" data-maintenance-action="planning" data-ticket-id={ticket.id} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                          {t("editPlanning")}
+                        </button>
+                        {getMaintenanceStatusUpdateTargets(ticket.repairStatus).length > 0 ? (
                           <button type="button" data-maintenance-action="status" data-ticket-id={ticket.id} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent">
                             {t("updateStatus")}
                           </button>
@@ -496,7 +500,12 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                             >
                               {t("printRepair")}
                             </Link>
-                            {canEdit && !["open", "completed", "closed"].includes(ticket.repairStatus) ? (
+                            {canEdit && ticket.repairStatus !== "closed" ? (
+                              <button type="button" data-maintenance-action="planning" data-ticket-id={ticket.id} className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                                {t("editPlanning")}
+                              </button>
+                            ) : null}
+                            {canEdit && getMaintenanceStatusUpdateTargets(ticket.repairStatus).length > 0 ? (
                               <button type="button" data-maintenance-action="status" data-ticket-id={ticket.id} className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent">
                                 {t("updateStatus")}
                               </button>

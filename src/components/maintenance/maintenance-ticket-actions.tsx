@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { MaintenanceTicketCloseButton } from "@/components/maintenance/maintenance-ticket-close-button"
+import { MaintenanceTicketPlanningButton } from "@/components/maintenance/maintenance-ticket-planning-button"
 import { MaintenanceTicketStatusButton } from "@/components/maintenance/maintenance-ticket-status-button"
 
 export type MaintenanceActionTicket = {
@@ -20,7 +21,7 @@ export type MaintenanceActionTicket = {
   warrantyClaim: boolean
 }
 
-type SelectedAction = { ticketId: string; action: "status" | "close" } | null
+type SelectedAction = { ticketId: string; action: "status" | "planning" | "close" } | null
 
 export function MaintenanceTicketActions({
   tickets,
@@ -36,7 +37,7 @@ export function MaintenanceTicketActions({
       const trigger = (event.target as Element | null)?.closest<HTMLElement>("[data-maintenance-action]")
       const action = trigger?.dataset.maintenanceAction
       const ticketId = trigger?.dataset.ticketId
-      if (ticketId && (action === "status" || action === "close")) setSelected({ ticketId, action })
+      if (ticketId && (action === "status" || action === "planning" || action === "close")) setSelected({ ticketId, action })
     }
     document.addEventListener("click", handleClick)
     return () => document.removeEventListener("click", handleClick)
@@ -50,8 +51,22 @@ export function MaintenanceTicketActions({
         ticketId={ticket.id}
         repairNo={ticket.repairNo}
         currentStatus={ticket.repairStatus}
-        assignedToId={ticket.assignedToId}
-        dueDate={ticket.dueDate}
+        expectedUpdatedAt={ticket.updatedAt}
+        isPreventive={Boolean(ticket.maintenancePlanId)}
+        open
+        hideTrigger
+        onOpenChange={(open) => { if (!open) setSelected(null) }}
+      />
+    )
+  }
+  if (selected.action === "planning") {
+    return (
+      <MaintenanceTicketPlanningButton
+        ticketId={ticket.id}
+        repairNo={ticket.repairNo}
+        currentStatus={ticket.repairStatus}
+        initialAssignedToId={ticket.assignedToId}
+        initialDueDate={ticket.dueDate}
         expectedUpdatedAt={ticket.updatedAt}
         open
         hideTrigger

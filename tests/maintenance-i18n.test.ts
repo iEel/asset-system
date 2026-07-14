@@ -26,6 +26,7 @@ test("maintenance clients localize stable error codes instead of exposing raw AP
   const files = [
     "src/components/maintenance/maintenance-ticket-form.tsx",
     "src/components/maintenance/maintenance-ticket-status-button.tsx",
+    "src/components/maintenance/maintenance-ticket-planning-button.tsx",
     "src/components/maintenance/maintenance-ticket-close-button.tsx",
     "src/components/maintenance/maintenance-plan-form.tsx",
     "src/components/maintenance/maintenance-plan-generate-button.tsx",
@@ -40,7 +41,7 @@ test("maintenance clients localize stable error codes instead of exposing raw AP
 
 test("maintenance option selectors use the shared loading message namespace", async () => {
   const files = [
-    "src/components/maintenance/maintenance-ticket-status-button.tsx",
+    "src/components/maintenance/maintenance-ticket-planning-button.tsx",
     "src/components/maintenance/maintenance-ticket-close-button.tsx",
   ]
   const source = (await Promise.all(files.map((file) => readFile(file, "utf8")))).join("\n")

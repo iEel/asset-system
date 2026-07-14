@@ -28,3 +28,8 @@ test("ticket and PM rows are loaded only for their active workspace", async () =
   assert.match(source, /activeView === "pm" \? getPlanWorkspaceData/)
 })
 
+test("ticket planning actions are available in desktop and mobile queues", async () => {
+  const source = await readFile(pagePath, "utf8")
+  assert.equal((source.match(/data-maintenance-action="planning"/g) ?? []).length, 2)
+})
+

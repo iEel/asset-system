@@ -8,6 +8,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { MaintenanceAttachments } from "@/components/maintenance/maintenance-attachments"
 import { MaintenanceTicketCloseButton } from "@/components/maintenance/maintenance-ticket-close-button"
+import { MaintenanceTicketPlanningButton } from "@/components/maintenance/maintenance-ticket-planning-button"
 import { MaintenanceTicketStatusButton } from "@/components/maintenance/maintenance-ticket-status-button"
 import { getMaintenanceMovementLabel, getMovementDisplayLabels } from "@/lib/movement-labels"
 import { getMaintenanceAttachmentType } from "@/lib/maintenance-attachments"
@@ -17,7 +18,7 @@ import { MobileActionBar } from "@/components/ui/mobile-action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
-import { isPreventiveMaintenanceTicket } from "@/lib/maintenance-policy"
+import { getMaintenanceStatusUpdateTargets, isPreventiveMaintenanceTicket } from "@/lib/maintenance-policy"
 
 type MaintenanceDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -129,13 +130,20 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
           </Link>
           {canEdit && !isMaintenanceClosed(ticket.repairStatus) ? (
             <>
-              {!(["open", "completed"].includes(ticket.repairStatus)) ? <MaintenanceTicketStatusButton
+              <MaintenanceTicketPlanningButton
                 ticketId={ticket.id}
                 repairNo={ticket.repairNo}
                 currentStatus={ticket.repairStatus}
-                assignedToId={ticket.assignedToId}
-                dueDate={ticket.dueDate}
+                initialAssignedToId={ticket.assignedToId}
+                initialDueDate={ticket.dueDate}
                 expectedUpdatedAt={ticket.updatedAt}
+              />
+              {getMaintenanceStatusUpdateTargets(ticket.repairStatus).length > 0 ? <MaintenanceTicketStatusButton
+                ticketId={ticket.id}
+                repairNo={ticket.repairNo}
+                currentStatus={ticket.repairStatus}
+                expectedUpdatedAt={ticket.updatedAt}
+                isPreventive={isPreventive}
               /> : null}
               {["open", "completed"].includes(ticket.repairStatus) ? <MaintenanceTicketCloseButton
                 ticketId={ticket.id}
