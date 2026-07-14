@@ -10,7 +10,7 @@ export type MaintenanceActionTicket = {
   repairNo: string
   repairStatus: string
   updatedAt: string
-  maintenancePlanId?: string | null
+  isPreventive: boolean
   assignedToId?: string | null
   dueDate?: string | null
   laborCost?: string
@@ -52,7 +52,7 @@ export function MaintenanceTicketActions({
         repairNo={ticket.repairNo}
         currentStatus={ticket.repairStatus}
         expectedUpdatedAt={ticket.updatedAt}
-        isPreventive={Boolean(ticket.maintenancePlanId)}
+        isPreventive={ticket.isPreventive}
         open
         hideTrigger
         onOpenChange={(open) => { if (!open) setSelected(null) }}
@@ -86,7 +86,7 @@ export function MaintenanceTicketActions({
       defaultInvoiceNo={ticket.invoiceNo}
       defaultWarrantyClaim={ticket.warrantyClaim}
       expectedUpdatedAt={ticket.updatedAt}
-      isPreventive={Boolean(ticket.maintenancePlanId)}
+      isPreventive={ticket.isPreventive}
       open
       hideTrigger
       onOpenChange={(open) => { if (!open) setSelected(null) }}

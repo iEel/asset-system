@@ -9,6 +9,7 @@ import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-op
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { toLocalDateInputValue } from "@/lib/local-date"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
+import { createMaintenancePlanningDraft, reconcileMaintenancePlanningDraft } from "@/lib/maintenance-planning-draft"
 
 export function MaintenanceTicketPlanningButton({
   ticketId,
@@ -35,18 +36,16 @@ export function MaintenanceTicketPlanningButton({
   const t = useTranslations("maintenancePage")
   const tCommon = useTranslations("common")
   const initialDueDateValue = initialDueDate ? toLocalDateInputValue(new Date(initialDueDate)) : ""
+  const initialDraft = createMaintenancePlanningDraft(initialAssignedToId, initialDueDateValue)
   const [internalOpen, setInternalOpen] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [assignedToId, setAssignedToId] = useState(initialAssignedToId ?? "")
-  const [dueDate, setDueDate] = useState(initialDueDateValue)
+  const [draft, setDraft] = useState(() => initialDraft)
   const open = controlledOpen ?? internalOpen
-  const changed = assignedToId !== (initialAssignedToId ?? "") || dueDate !== initialDueDateValue
+  const values = reconcileMaintenancePlanningDraft(draft, initialDraft, open)
+  const changed = values.assignedToId !== initialDraft.assignedToId || values.dueDate !== initialDraft.dueDate
 
   function setOpen(next: boolean) {
-    if (!next) {
-      setAssignedToId(initialAssignedToId ?? "")
-      setDueDate(initialDueDateValue)
-    }
+    setDraft(initialDraft)
     if (onOpenChange) onOpenChange(next)
     else setInternalOpen(next)
   }
@@ -62,8 +61,8 @@ export function MaintenanceTicketPlanningButton({
         body: JSON.stringify({
           action: "planning",
           expectedUpdatedAt,
-          assignedToId: assignedToId || null,
-          dueDate: dueDate || null,
+          assignedToId: values.assignedToId || null,
+          dueDate: values.dueDate || null,
         }),
       })
       const payload = await response.json().catch(() => null)
@@ -91,10 +90,10 @@ export function MaintenanceTicketPlanningButton({
             <span className="text-xs font-medium text-muted-foreground">{t("currentRepairStatus")}</span>
             <p className="mt-1 text-sm font-semibold text-foreground">{t(`statuses.${currentStatus}`)}</p>
           </div>
-          <MaintenanceOptionSelect type="employee" label={t("assignedTo")} value={assignedToId} placeholder={t("unassigned")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={tCommon("loading")} onChange={setAssignedToId} />
+          <MaintenanceOptionSelect type="employee" label={t("assignedTo")} value={values.assignedToId} placeholder={t("unassigned")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={tCommon("loading")} onChange={(assignedToId) => setDraft((current) => ({ ...current, assignedToId }))} />
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-foreground">{t("dueDate")}</span>
-            <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+            <input type="date" value={values.dueDate} onChange={(event) => setDraft((current) => ({ ...current, dueDate: event.target.value }))} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
           </label>
           <div className="flex flex-col justify-end gap-2 sm:flex-row">
             <button type="button" onClick={() => setOpen(false)} disabled={saving} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">{tCommon("cancel")}</button>

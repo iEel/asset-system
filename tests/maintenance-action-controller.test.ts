@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
+import { isPreventiveMaintenanceTicket } from "../src/lib/maintenance-policy.ts"
 
 test("maintenance list owns one shared action controller", () => {
   const controllerPath = "src/components/maintenance/maintenance-ticket-actions.tsx"
@@ -41,4 +42,15 @@ test("maintenance actions separate planning from status transitions", () => {
   assert.doesNotMatch(statusDialog, /assignedToId|dueDate/)
   assert.match(planningDialog, /action:\s*"planning"/)
   assert.doesNotMatch(planningDialog, /repairStatus:/)
+})
+
+test("maintenance list passes authoritative PM classification to status actions", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/maintenance/page.tsx", "utf8")
+  const controller = readFileSync("src/components/maintenance/maintenance-ticket-actions.tsx", "utf8")
+
+  assert.equal(isPreventiveMaintenanceTicket({ maintenancePlanId: null, problem: "[PM] PM-001 - ตรวจสอบ UPS" }), true)
+  assert.match(page, /isPreventive:\s*isPreventiveMaintenanceTicket\(ticket\)/)
+  assert.match(controller, /isPreventive:\s*boolean/)
+  assert.match(controller, /isPreventive=\{ticket\.isPreventive\}/)
+  assert.doesNotMatch(controller, /Boolean\(ticket\.maintenancePlanId\)/)
 })

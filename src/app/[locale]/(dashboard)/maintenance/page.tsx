@@ -11,7 +11,7 @@ import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { MaintenancePlanGenerateButton } from "@/components/maintenance/maintenance-plan-generate-button"
 import { MaintenancePlanStateActions } from "@/components/maintenance/maintenance-plan-state-actions"
 import { MaintenanceTicketActions } from "@/components/maintenance/maintenance-ticket-actions"
-import { getMaintenanceStatusUpdateTargets } from "@/lib/maintenance-policy"
+import { getMaintenanceStatusUpdateTargets, isPreventiveMaintenanceTicket } from "@/lib/maintenance-policy"
 import { MaintenancePagination } from "@/components/maintenance/maintenance-pagination"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
@@ -117,7 +117,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
             repairNo: ticket.repairNo,
             repairStatus: ticket.repairStatus,
             updatedAt: ticket.updatedAt.toISOString(),
-            maintenancePlanId: ticket.maintenancePlanId,
+            isPreventive: isPreventiveMaintenanceTicket(ticket),
             assignedToId: ticket.assignedToId,
             dueDate: ticket.dueDate?.toISOString() ?? null,
             laborCost: ticket.laborCost?.toString(),
