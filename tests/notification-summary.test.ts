@@ -7,6 +7,7 @@ test("adds approval inbox notification when approval detail counts are already s
   const items = buildNotificationSummaryItems("th", {
     approvalInbox: 4,
     overdueMaintenance: 1,
+    completedMaintenanceAwaitingClose: 0,
     pendingAuditFindings: 0,
     openAuditActions: 0,
     auditActionsDueSoon: 0,
@@ -26,6 +27,7 @@ test("keeps direct pending approval notifications when approval inbox has no act
   const items = buildNotificationSummaryItems("en", {
     approvalInbox: 0,
     overdueMaintenance: 0,
+    completedMaintenanceAwaitingClose: 0,
     pendingAuditFindings: 1,
     openAuditActions: 0,
     auditActionsDueSoon: 0,
@@ -39,5 +41,26 @@ test("keeps direct pending approval notifications when approval inbox has no act
   assert.deepEqual(items.map((item) => [item.key, item.href]), [
     ["pendingAuditFindings", "/en/audit/findings?status=pending"],
     ["pendingDisposals", "/en/disposal?status=pending"],
+  ])
+})
+
+test("separates completed maintenance awaiting closure from overdue maintenance", () => {
+  const items = buildNotificationSummaryItems("th", {
+    approvalInbox: 0,
+    overdueMaintenance: 2,
+    completedMaintenanceAwaitingClose: 1,
+    pendingAuditFindings: 0,
+    openAuditActions: 0,
+    auditActionsDueSoon: 0,
+    pendingDisposals: 0,
+    approvedDisposals: 0,
+    returnsDueSoon: 0,
+    warrantyExpiringSoon: 0,
+    licenseExpiringSoon: 0,
+  })
+
+  assert.deepEqual(items.map((item) => [item.key, item.href, item.tone]), [
+    ["overdueMaintenance", "/th/maintenance?overdue=yes", "danger"],
+    ["completedMaintenanceAwaitingClose", "/th/maintenance?queue=completed", "warning"],
   ])
 })

@@ -85,6 +85,8 @@
     "approvalInboxDetail": "Central queue across disposal, maintenance, and audit approvals",
     "overdueMaintenance": "Overdue repairs",
     "overdueMaintenanceDetail": "Tickets past their SLA due date",
+    "completedMaintenanceAwaitingClose": "Repairs awaiting closure",
+    "completedMaintenanceAwaitingCloseDetail": "Review evidence and close the ticket to finish the workflow",
     "pendingAuditFindings": "Findings pending review",
     "pendingAuditFindingsDetail": "Variances not yet decided",
     "openAuditActions": "Open action plans",

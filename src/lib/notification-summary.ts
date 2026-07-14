@@ -12,7 +12,6 @@ import {
   notificationWarrantyExpiryDaysKey,
 } from "@/lib/system-setting-defaults"
 
-const openMaintenanceStatuses = ["open", "reported", "accepted", "in_progress", "waiting_parts", "waiting_vendor", "completed"]
 const openAuditActionStatuses = ["planned", "in_progress"]
 const defaultNotificationRuleDays = {
   [notificationReturnDueSoonDaysKey]: 3,
@@ -46,6 +45,7 @@ export async function getNotificationCenter(user: SessionUser, locale: string) {
 
   const [
     overdueMaintenance,
+    completedMaintenanceAwaitingClose,
     pendingAuditFindings,
     openAuditActions,
     auditActionsDueSoon,
@@ -57,7 +57,16 @@ export async function getNotificationCenter(user: SessionUser, locale: string) {
   ] = await Promise.all([
     canMaintenance
       ? prisma.maintenanceTicket.count({
-          where: { isActive: true, dueDate: { lt: today }, repairStatus: { in: openMaintenanceStatuses } },
+          where: {
+            isActive: true,
+            dueDate: { lt: today },
+            repairStatus: { notIn: ["completed", "closed"] },
+          },
+        })
+      : Promise.resolve(0),
+    canMaintenance
+      ? prisma.maintenanceTicket.count({
+          where: { isActive: true, repairStatus: "completed" },
         })
       : Promise.resolve(0),
     canAudit && approvalInboxCounts.audit === 0
@@ -116,6 +125,7 @@ export async function getNotificationCenter(user: SessionUser, locale: string) {
   const items = buildNotificationSummaryItems(locale, {
     approvalInbox: approvalInboxCounts.total,
     overdueMaintenance,
+    completedMaintenanceAwaitingClose,
     pendingAuditFindings,
     openAuditActions,
     auditActionsDueSoon,

@@ -85,6 +85,8 @@
     "approvalInboxDetail": "รายการรวมจากตัดจำหน่าย ซ่อมบำรุง และตรวจนับ",
     "overdueMaintenance": "ซ่อมเกินกำหนด",
     "overdueMaintenanceDetail": "ใบซ่อมที่เลยกำหนด SLA",
+    "completedMaintenanceAwaitingClose": "งานซ่อมเสร็จแล้วรอปิดงาน",
+    "completedMaintenanceAwaitingCloseDetail": "ตรวจหลักฐานและปิดใบงานเพื่อจบกระบวนการ",
     "pendingAuditFindings": "Finding รอตรวจ",
     "pendingAuditFindingsDetail": "ผลต่างที่ยังไม่ถูกตัดสินใจ",
     "openAuditActions": "แผนแก้ไขยังเปิด",

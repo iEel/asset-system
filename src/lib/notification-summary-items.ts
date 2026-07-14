@@ -8,6 +8,7 @@ export type NotificationSummaryItem = {
 export type NotificationSummaryCounts = {
   approvalInbox: number
   overdueMaintenance: number
+  completedMaintenanceAwaitingClose: number
   pendingAuditFindings: number
   openAuditActions: number
   auditActionsDueSoon: number
@@ -34,6 +35,12 @@ export function buildNotificationSummaryItems(
       count: counts.overdueMaintenance,
       href: `/${locale}/maintenance?overdue=yes`,
       tone: "danger",
+    },
+    {
+      key: "completedMaintenanceAwaitingClose",
+      count: counts.completedMaintenanceAwaitingClose,
+      href: `/${locale}/maintenance?queue=completed`,
+      tone: "warning",
     },
     {
       key: "pendingAuditFindings",
