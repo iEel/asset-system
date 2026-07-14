@@ -38,6 +38,17 @@ test("maintenance clients localize stable error codes instead of exposing raw AP
   assert.match(source, /toLocalDateInputValue/)
 })
 
+test("maintenance option selectors use the shared loading message namespace", async () => {
+  const files = [
+    "src/components/maintenance/maintenance-ticket-status-button.tsx",
+    "src/components/maintenance/maintenance-ticket-close-button.tsx",
+  ]
+  const source = (await Promise.all(files.map((file) => readFile(file, "utf8")))).join("\n")
+
+  assert.doesNotMatch(source, /loadingLabel=\{t\("loading"\)\}/)
+  assert.equal(source.match(/loadingLabel=\{tCommon\("loading"\)\}/g)?.length, files.length)
+})
+
 function getLeafKeys(value: unknown, prefix = ""): string[] {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [prefix]
   return Object.entries(value as Record<string, unknown>)

@@ -93,7 +93,7 @@ export function MaintenanceTicketStatusButton({
           </Field>
           <Field label={t("dueDate")}><input type="date" value={values.dueDate} onChange={(event) => setField("dueDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" /></Field>
           <div className="md:col-span-2">
-            <MaintenanceOptionSelect type="employee" label={t("assignedTo")} value={values.assignedToId} placeholder={t("unassigned")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={t("loading")} onChange={(value) => setField("assignedToId", value)} />
+            <MaintenanceOptionSelect type="employee" label={t("assignedTo")} value={values.assignedToId} placeholder={t("unassigned")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={tCommon("loading")} onChange={(value) => setField("assignedToId", value)} />
           </div>
           <div className="md:col-span-2"><Field label={t("statusRemark")}><textarea value={values.remark} rows={3} maxLength={500} onChange={(event) => setField("remark", event.target.value)} className="min-h-20 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" /></Field></div>
           <div className="flex flex-col justify-end gap-2 sm:flex-row md:col-span-2">

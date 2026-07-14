@@ -161,7 +161,7 @@ export function MaintenanceTicketCloseButton({
                 placeholder={t("selectEmployee")}
                 searchPlaceholder={tCommon("searchSelectPlaceholder")}
                 emptyLabel={tCommon("searchSelectNoResults")}
-                loadingLabel={t("loading")}
+                loadingLabel={tCommon("loading")}
                 onChange={(value) => setField("inspectedById", value)}
               />
               <Field label={t("laborCost")}>
