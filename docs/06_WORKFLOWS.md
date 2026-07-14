@@ -80,15 +80,19 @@
 
 ## Maintenance And PM
 
-- Create repair tickets from the maintenance page or asset quick actions.
-- Opening a repair ticket sets the asset to `Pending Repair` when that active status exists. The create-ticket form/API should not require `returnDate`; `returnDate` is collected when the repair is closed.
+- Maintenance has two distinct workspaces: corrective Repair Tickets repair an asset after a reported problem, while PM Plans define recurring inspection/preventive work. PM-generated work orders carry `maintenancePlanId`; legacy `[PM]` text is display compatibility only.
+- Create corrective repair tickets at `/maintenance/new` or from asset quick actions. Opening a corrective ticket atomically claims an eligible asset as `Pending Repair`; accepting/in-progress work moves it to `Under Maintenance`; closure returns it only to `Ready` or `Pending Disposal`. Concurrent or duplicate active repair claims are rejected.
+- PM work orders never change the asset lifecycle when created, updated, or closed. They still require evidence, result/resolution, return date, and inspector at closure, but do not ask for an asset status.
 - Opening maintenance ticket detail or print from a filtered maintenance list preserves the current tab, status, search, and asset filter through a sanitized `returnTo` value. Ticket detail exposes a Back action to that originating list context.
-- Track status, SLA, evidence, costs, assignee/vendor, close checklist, and inspector.
+- `/maintenance` is an exact paginated queue with 25/50/100 page sizes, KPI drilldowns, active-filter summary, validated date range, and tab-specific database queries. The board is for workflow stages only; legacy `open` and `closed` filters explicitly switch operators to the complete table view instead of hiding rows.
+- Track status, SLA, evidence, costs, assignee/vendor, close checklist, and inspector. Ticket status/close writes use optimistic timestamps and return a conflict response when another operator changed the ticket first.
+- Closed-ticket evidence is append-only. Existing files cannot be deleted after closure; authorized maintenance editors may upload a post-close addendum, and the audit entry records that it was added after closure.
 - Close maintenance by choosing whether the asset returns to `Ready` or should move to `Pending Disposal`. Do not use the generic asset edit form for protected repair/disposal status changes.
-- Maintenance tickets offer a URL-backed `ตาราง` or `บอร์ด` layout. The switch preserves the existing search/filter context and changes presentation only; the same ticket status, SLA, detail, and PM flows remain authoritative.
-- Create Preventive Maintenance plans.
-- Scheduled PM generation uses the scheduler heartbeat and web-configured schedule.
+- Create PM plans at `/maintenance/pm/new`; edit, pause, resume, or end them from the PM workspace. `paused` is reversible, while `ended` is terminal and remains visible for audit history. Plans without an active internal owner show `Automation blocked` and scheduled generation skips them.
+- Scheduled PM generation uses the scheduler heartbeat and web-configured schedule, reads only `planState=active`, uses a bounded larger candidate window to avoid starvation, and prevents duplicate open work orders for one plan.
+- Asset/employee/vendor choices use bounded server search rather than loading full master-data tables into the list or form.
 - PM history is visible from related asset detail flows.
+- Existing SQL Server databases must apply `prisma/manual-migrations/2026-07-14-add-maintenance-plan-ticket-link.sql` followed by `prisma/manual-migrations/2026-07-14-add-maintenance-plan-state.sql` after a verified backup and approval, then run `npx prisma generate` before build/restart.
 
 ## Disposal
 

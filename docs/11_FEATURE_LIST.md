@@ -204,16 +204,18 @@ Implemented status lifecycle and enforcement from docs/code:
 
 | Feature | Details |
 |---|---|
-| Maintenance tickets | Create, view, update, close, export maintenance tickets |
+| Corrective repair tickets | Dedicated create route, transactional asset claim, controlled status/close transitions, optimistic conflict handling, export, print, and localized history |
+| Repair queue | Tab-specific exact count/query, KPI drilldowns, active filters, validated dates, table/operational board, and 25/50/100 pagination |
 | Ticket detail | Attachments, previews, close/status actions, print page |
 | Maintenance return navigation | Ticket detail, print, and Kanban/status drilldowns preserve the originating maintenance tab/status/search/asset filter through sanitized return context |
 | Ticket creation validation | Opening a ticket moves the asset to Pending Repair when available and does not require `returnDate`; return date is required only when closing the ticket |
 | Check-in integration | Optional ticket creation from check-in when returned asset needs repair |
-| Maintenance status | Controlled close flow with post-repair asset status restrictions |
-| Evidence | Drag/drop attachments and preview/download/delete controls |
+| Maintenance status | Corrective `Pending Repair -> Under Maintenance -> Ready/Pending Disposal`; PM work orders never mutate asset lifecycle |
+| Evidence | Drag/drop preview/download; closed evidence is append-only with audited post-close addenda |
 | Costs/vendor/assignee | Ticket fields and options support internal/vendor repair workflows |
-| PM plans | Preventive maintenance plan model, form, generate-due endpoint, generate-ticket endpoint |
-| PM scheduling | Scheduler heartbeat and web-configured PM schedule settings |
+| PM plans | Dedicated create/edit routes, explicit ticket relation, active/paused/terminal-ended state actions, and visible automation blockers |
+| PM scheduling | Scheduler heartbeat, web-configured schedule, bounded starvation-safe candidates, active-state/owner validation, and duplicate work-order guard |
+| Maintenance options | Bounded server search for assets, employees, and vendors; list pages do not load complete master-data options |
 | PM history | Related PM/maintenance history visible through asset detail flows per docs |
 
 ## Disposal

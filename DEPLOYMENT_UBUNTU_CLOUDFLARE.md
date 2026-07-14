@@ -271,6 +271,16 @@ sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/
 sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma db execute --file prisma/manual-migrations/2026-06-12-add-performance-indexes.sql'
 ```
 
+สำหรับ Maintenance production hardening บน DB เดิม ให้รันตามลำดับนี้หลัง backup/approval และก่อน `npx prisma generate`/build/restart:
+
+```bash
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma db execute --file prisma/manual-migrations/2026-07-14-add-maintenance-plan-ticket-link.sql'
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma db execute --file prisma/manual-migrations/2026-07-14-add-maintenance-plan-state.sql'
+sudo -u assetapp bash -lc 'cd /var/www/asset-system/app && set -a && . /var/www/asset-system/env/asset-system.env && set +a && npx prisma generate'
+```
+
+ห้าม deploy/restart โค้ด Maintenance รุ่นนี้ก่อนสอง migration แรกสำเร็จ เพราะ query ใหม่ต้องใช้ทั้ง `maintenance_tickets.maintenancePlanId` และ `maintenance_plans.planState` สำหรับแยก PM จากงานซ่อมและแยก paused จาก ended
+
 หมายเหตุ:
 
 - ปัจจุบัน repo นี้ยังไม่ assume `prisma migrate` production-grade กับ SQL Server; schema change บน DB เดิมให้ใช้ reviewed manual SQL migration หรือ process ที่ผ่าน approval

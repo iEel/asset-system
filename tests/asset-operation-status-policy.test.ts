@@ -86,9 +86,9 @@ test("status correction action is only visible for recoverable statuses", () => 
   assert.equal(canCorrectAssetStatus({ name: "Checked Out" }), false)
 })
 
-test("lifecycle routes call exception policy helpers", () => {
+test("lifecycle mutation layers call exception policy helpers", () => {
   const routes = [
-    ["src/app/api/maintenance-tickets/[id]/route.ts", /getMaintenanceCloseStatusError/],
+    ["src/lib/maintenance-ticket-service.ts", /getMaintenanceCloseStatusError/],
     ["src/app/api/disposal-requests/[id]/route.ts", /getDisposalStatusTargetError/],
     ["src/app/api/assets/[id]/route.ts", /getAssetRegisterStatusChangeError/],
     ["src/app/api/assets/[id]/status-correction/route.ts", /getAssetStatusCorrectionError/],
