@@ -68,6 +68,14 @@ test("close requires maintenance evidence", async () => {
   )
 })
 
+test("closing a PM ticket never writes an asset lifecycle update", async () => {
+  const db = fakeDb({ ticketStatus: "completed", ticketKind: "pm" })
+
+  await closeMaintenanceTicket(db, "ticket-1", pmCloseInput, { id: "user-1" })
+
+  assert.equal(db.events.some((event) => event.startsWith("asset:")), false)
+})
+
 function hasMaintenanceCode(code: string) {
   return (error: unknown) => error instanceof MaintenanceApiError && error.code === code
 }
@@ -91,6 +99,15 @@ const closeInput = {
   nextStatusId: "status-ready",
 }
 
+const pmCloseInput = {
+  expectedUpdatedAt,
+  warrantyClaim: false,
+  rootCause: "Inspection complete",
+  resolution: "No fault found",
+  returnDate: new Date("2026-07-14T05:00:00.000Z"),
+  inspectedById: "employee-1",
+}
+
 function fakeDb(config: {
   activeCorrectiveCount?: number
   ticketStatus?: string
@@ -98,12 +115,13 @@ function fakeDb(config: {
   conditionalUpdateCount?: number
   nextAssetStatus?: string
   attachmentCount?: number
+  ticketKind?: "corrective" | "pm"
 } = {}) {
   const events: string[] = []
   const ticket = {
     id: "ticket-1",
     assetId: "asset-1",
-    maintenancePlanId: null,
+    maintenancePlanId: config.ticketKind === "pm" ? "plan-1" : null,
     problem: "UPS does not start",
     repairStatus: config.ticketStatus ?? "reported",
     assignedToId: null,

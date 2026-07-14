@@ -1,10 +1,9 @@
-import type { Prisma } from "@prisma/client"
-import { prisma } from "@/lib/db"
+import type { Prisma, PrismaClient } from "@prisma/client"
 import {
   buildPreventiveMaintenanceDuplicateTicketWhere,
   buildPreventiveMaintenanceTicketDraft,
   isPreventiveMaintenancePlanDue,
-} from "@/lib/preventive-maintenance"
+} from "./preventive-maintenance.ts"
 
 export const preventiveMaintenanceGenerationPlanInclude = {
   asset: { select: { id: true, assetTag: true, name: true } },
@@ -51,7 +50,7 @@ type GenerateTicketOptions = {
   generatedByUserId: string
   fallbackReportedById?: string | null
   generatedAt?: Date
-  prismaClient?: typeof prisma
+  prismaClient: PrismaClient
 }
 
 type GenerateDueTicketsOptions = {
@@ -60,7 +59,7 @@ type GenerateDueTicketsOptions = {
   now?: Date
   limit?: number
   dryRun?: boolean
-  prismaClient?: typeof prisma
+  prismaClient: PrismaClient
 }
 
 export async function generatePreventiveMaintenanceTicketForPlan({
@@ -68,8 +67,9 @@ export async function generatePreventiveMaintenanceTicketForPlan({
   generatedByUserId,
   fallbackReportedById,
   generatedAt = new Date(),
-  prismaClient = prisma,
+  prismaClient,
 }: GenerateTicketOptions): Promise<PreventiveMaintenanceTicketGenerationResult> {
+  if (!plan.isActive) throw new Error("Inactive PM plans cannot generate work orders")
   const draft = buildPreventiveMaintenanceTicketDraft(plan, fallbackReportedById)
   const reportedById = draft.reportedById
   if (!reportedById) {
@@ -77,6 +77,28 @@ export async function generatePreventiveMaintenanceTicketForPlan({
   }
 
   return prismaClient.$transaction(async (tx) => {
+    const [activeAsset, activeReporter] = await Promise.all([
+      tx.asset.findFirst({ where: { id: plan.assetId, isActive: true }, select: { id: true } }),
+      tx.employee.findFirst({ where: { id: reportedById, isActive: true }, select: { id: true } }),
+    ])
+    if (!activeAsset) throw new Error("PM plan asset not found or inactive")
+    if (!activeReporter) {
+      return { status: "missing_reporter", plan: { id: plan.id, planNo: plan.planNo } }
+    }
+    if (draft.assignedToId && draft.assignedToId !== reportedById) {
+      const assignee = await tx.employee.findFirst({
+        where: { id: draft.assignedToId, isActive: true },
+        select: { id: true },
+      })
+      if (!assignee) return { status: "missing_reporter", plan: { id: plan.id, planNo: plan.planNo } }
+    }
+    if (draft.vendorId) {
+      const vendor = await tx.supplier.findFirst({
+        where: { id: draft.vendorId, isActive: true },
+        select: { id: true },
+      })
+      if (!vendor) throw new Error("PM vendor not found or inactive")
+    }
     const duplicate = await tx.maintenanceTicket.findFirst({
       where: buildPreventiveMaintenanceDuplicateTicketWhere(plan),
       select: { id: true, repairNo: true },
@@ -90,6 +112,7 @@ export async function generatePreventiveMaintenanceTicketForPlan({
       data: {
         repairNo,
         assetId: plan.assetId,
+        maintenancePlanId: plan.id,
         problem: draft.problem,
         reportedById,
         reportedDate: generatedAt,
@@ -136,10 +159,12 @@ export async function generateDuePreventiveMaintenanceTickets({
   now = new Date(),
   limit = 50,
   dryRun = false,
-  prismaClient = prisma,
+  prismaClient,
 }: GenerateDueTicketsOptions): Promise<PreventiveMaintenanceBatchGenerationResult> {
   const dueCutoff = new Date(now)
   dueCutoff.setHours(23, 59, 59, 999)
+  const processingLimit = Math.max(1, Math.min(limit, 200))
+  const candidateLimit = Math.min(Math.max(processingLimit * 5, processingLimit), 1000)
   const plans = await prismaClient.maintenancePlan.findMany({
     where: {
       isActive: true,
@@ -147,7 +172,7 @@ export async function generateDuePreventiveMaintenanceTickets({
     },
     include: preventiveMaintenanceGenerationPlanInclude,
     orderBy: { nextDueDate: "asc" },
-    take: Math.max(1, Math.min(limit, 200)),
+    take: candidateLimit,
   })
 
   const result: PreventiveMaintenanceBatchGenerationResult = {
@@ -158,13 +183,30 @@ export async function generateDuePreventiveMaintenanceTickets({
     dryRun,
     items: [],
   }
+  let eligibleProcessed = 0
 
   for (const plan of plans) {
+    if (eligibleProcessed >= processingLimit) break
     if (!isPreventiveMaintenancePlanDue(plan, now)) continue
 
     result.scanned += 1
     const draft = buildPreventiveMaintenanceTicketDraft(plan, fallbackReportedById)
     if (!draft.reportedById) {
+      result.skippedMissingReporter += 1
+      result.items.push({
+        planId: plan.id,
+        planNo: plan.planNo,
+        assetTag: plan.asset.assetTag,
+        status: "missing_reporter",
+      })
+      continue
+    }
+    const [activeAsset, activeReporter] = await Promise.all([
+      prismaClient.asset.findFirst({ where: { id: plan.assetId, isActive: true }, select: { id: true } }),
+      prismaClient.employee.findFirst({ where: { id: draft.reportedById, isActive: true }, select: { id: true } }),
+    ])
+    if (!activeAsset) continue
+    if (!activeReporter) {
       result.skippedMissingReporter += 1
       result.items.push({
         planId: plan.id,
@@ -192,6 +234,7 @@ export async function generateDuePreventiveMaintenanceTickets({
     }
 
     if (dryRun) {
+      eligibleProcessed += 1
       result.items.push({
         planId: plan.id,
         planNo: plan.planNo,
@@ -211,6 +254,7 @@ export async function generateDuePreventiveMaintenanceTickets({
     })
 
     if (generated.status === "created") {
+      eligibleProcessed += 1
       result.generated += 1
       result.items.push({
         planId: plan.id,

@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
       now,
       dryRun,
       limit: payload.limit,
+      prismaClient: prisma,
     })
 
     if (isScheduledAction && !dryRun) {

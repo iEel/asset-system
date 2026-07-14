@@ -28,6 +28,7 @@ export async function POST(_request: Request, context: MaintenancePlanGenerateTi
       plan,
       generatedByUserId: user.id,
       fallbackReportedById: user.employeeId,
+      prismaClient: prisma,
     })
     if (result.status === "missing_reporter") {
       return NextResponse.json(

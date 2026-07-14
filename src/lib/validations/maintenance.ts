@@ -60,6 +60,26 @@ export const maintenancePlanSchema = z.object({
 
 export type MaintenancePlanInput = z.infer<typeof maintenancePlanSchema>
 
+const maintenancePlanUpdateSchema = z.object({
+  action: z.literal("update"),
+  title: z.string().trim().min(1).max(200),
+  frequency: z.enum(maintenancePlanFrequencies),
+  intervalDays: optionalIntervalDays,
+  nextDueDate: z.coerce.date(),
+  assignedToId: optionalText,
+  vendorId: optionalText,
+  notes: optionalText,
+})
+
+export const maintenancePlanActionSchema = z.discriminatedUnion("action", [
+  maintenancePlanUpdateSchema,
+  z.object({ action: z.literal("pause") }),
+  z.object({ action: z.literal("resume") }),
+  z.object({ action: z.literal("end") }),
+])
+
+export type MaintenancePlanActionInput = z.infer<typeof maintenancePlanActionSchema>
+
 export const maintenanceTicketCloseSchema = z.object({
   expectedUpdatedAt: z.coerce.date(),
   laborCost: optionalDecimal,
@@ -72,7 +92,7 @@ export const maintenanceTicketCloseSchema = z.object({
   resolution: z.string().trim().min(1).max(4000),
   returnDate: z.coerce.date(),
   inspectedById: z.string().trim().min(1),
-  nextStatusId: z.string().trim().min(1),
+  nextStatusId: optionalText,
 })
 
 export type MaintenanceTicketCloseInput = z.infer<typeof maintenanceTicketCloseSchema>

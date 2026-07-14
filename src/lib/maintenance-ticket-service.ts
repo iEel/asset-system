@@ -237,10 +237,13 @@ export async function closeMaintenanceTicket(
     await requireActiveEmployee(tx, input.inspectedById, "Inspector")
 
     const isPreventive = isPreventiveMaintenanceTicket(ticket)
+    if (!isPreventive && !input.nextStatusId) {
+      throw new MaintenanceApiError("MAINTENANCE_INVALID_CLOSE_STATUS", "Next asset status is required")
+    }
     const nextStatus = isPreventive
       ? null
       : await tx.assetStatus.findFirst({
-          where: { id: input.nextStatusId, isActive: true },
+          where: { id: input.nextStatusId!, isActive: true },
           select: { id: true, name: true, nameTh: true },
         })
     if (!isPreventive && !nextStatus) {

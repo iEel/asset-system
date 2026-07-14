@@ -24,6 +24,7 @@ export type PreventiveMaintenanceGenerationPlanInput = {
 }
 
 export type PreventiveMaintenanceDuplicatePlanInput = {
+  id: string
   planNo: string
   assetId: string
 }
@@ -92,10 +93,16 @@ export function buildPreventiveMaintenanceTicketPrefix(planNo: string) {
 
 export function buildPreventiveMaintenanceDuplicateTicketWhere(plan: PreventiveMaintenanceDuplicatePlanInput) {
   return {
-    assetId: plan.assetId,
     isActive: true,
     repairStatus: { not: "closed" },
-    problem: { startsWith: buildPreventiveMaintenanceTicketPrefix(plan.planNo) },
+    OR: [
+      { maintenancePlanId: plan.id },
+      {
+        assetId: plan.assetId,
+        maintenancePlanId: null,
+        problem: { startsWith: buildPreventiveMaintenanceTicketPrefix(plan.planNo) },
+      },
+    ],
   }
 }
 

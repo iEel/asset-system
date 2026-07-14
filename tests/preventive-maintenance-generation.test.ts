@@ -7,6 +7,10 @@ import {
   isPreventiveMaintenancePlanDue,
   buildPreventiveMaintenanceTicketProblem,
 } from "../src/lib/preventive-maintenance.ts"
+import {
+  generatePreventiveMaintenanceTicketForPlan,
+  type PreventiveMaintenanceGenerationPlan,
+} from "../src/lib/preventive-maintenance-ticket-generator.ts"
 
 test("builds a PM ticket problem that keeps the plan reference visible", () => {
   assert.equal(
@@ -75,14 +79,68 @@ test("detects plans that are due for automatic PM ticket generation", () => {
 test("builds a duplicate guard for open PM tickets of the same plan", () => {
   assert.deepEqual(
     buildPreventiveMaintenanceDuplicateTicketWhere({
+      id: "plan-1",
       planNo: "PM-20260520-0001",
       assetId: "asset-1",
     }),
     {
-      assetId: "asset-1",
       isActive: true,
       repairStatus: { not: "closed" },
-      problem: { startsWith: "[PM] PM-20260520-0001 -" },
+      OR: [
+        { maintenancePlanId: "plan-1" },
+        {
+          assetId: "asset-1",
+          maintenancePlanId: null,
+          problem: { startsWith: "[PM] PM-20260520-0001 -" },
+        },
+      ],
     },
   )
+})
+
+test("generated PM ticket stores its source plan", async () => {
+  const createdTicket: Record<string, unknown> = {}
+  const tx = {
+    asset: { findFirst: async () => ({ id: "asset-1" }) },
+    employee: { findFirst: async () => ({ id: "employee-1" }) },
+    supplier: { findFirst: async () => ({ id: "supplier-1" }) },
+    maintenanceTicket: {
+      findFirst: async () => null,
+      count: async () => 0,
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        Object.assign(createdTicket, data)
+        return { id: "ticket-1", repairNo: data.repairNo as string }
+      },
+    },
+    maintenancePlan: {
+      update: async () => ({ id: "plan-1", nextDueDate: new Date("2026-08-14"), lastGeneratedAt: new Date() }),
+    },
+    assetMovement: { create: async () => ({ id: "movement-1" }) },
+  }
+  const fakePrisma = {
+    $transaction: async <T>(operation: (client: typeof tx) => Promise<T>) => operation(tx),
+  }
+  const plan = {
+    id: "plan-1",
+    planNo: "PM-1",
+    assetId: "asset-1",
+    title: "Monthly inspection",
+    frequency: "monthly",
+    intervalDays: 30,
+    nextDueDate: new Date("2026-07-14"),
+    assignedToId: "employee-1",
+    vendorId: null,
+    notes: null,
+    isActive: true,
+    asset: { id: "asset-1", assetTag: "UPS-1", name: "UPS" },
+  } as unknown as PreventiveMaintenanceGenerationPlan
+
+  const result = await generatePreventiveMaintenanceTicketForPlan({
+    plan,
+    generatedByUserId: "user-1",
+    prismaClient: fakePrisma as unknown as import("@prisma/client").PrismaClient,
+  })
+
+  assert.equal(result.status, "created")
+  assert.equal(createdTicket.maintenancePlanId, plan.id)
 })

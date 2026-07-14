@@ -41,6 +41,20 @@ export async function POST(request: NextRequest) {
       select: { id: true },
     })
     if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
+    if (input.assignedToId) {
+      const assignee = await prisma.employee.findFirst({
+        where: { id: input.assignedToId, isActive: true },
+        select: { id: true },
+      })
+      if (!assignee) return NextResponse.json({ error: "PM assignee not found or inactive" }, { status: 400 })
+    }
+    if (input.vendorId) {
+      const vendor = await prisma.supplier.findFirst({
+        where: { id: input.vendorId, isActive: true },
+        select: { id: true },
+      })
+      if (!vendor) return NextResponse.json({ error: "PM vendor not found or inactive" }, { status: 400 })
+    }
 
     const planNo = await generateMaintenancePlanNo()
     const intervalDays = getMaintenancePlanIntervalDays(input.frequency, input.intervalDays)
