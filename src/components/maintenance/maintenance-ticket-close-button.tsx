@@ -3,12 +3,12 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { CheckCircle2, Loader2, X } from "lucide-react"
+import { CheckCircle2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { SearchableSelect } from "@/components/ui/searchable-select"
+import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
+import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 
 type StatusOption = { id: string; label: string; name: string }
-type EmployeeOption = { id: string; label: string }
 
 export function MaintenanceTicketCloseButton({
   ticketId,
@@ -20,7 +20,12 @@ export function MaintenanceTicketCloseButton({
   defaultQuotationNo,
   defaultInvoiceNo,
   defaultWarrantyClaim,
-  employees,
+  expectedUpdatedAt,
+  isPreventive,
+  open: controlledOpen,
+  hideTrigger = false,
+  disabled = false,
+  onOpenChange,
 }: {
   ticketId: string
   repairNo: string
@@ -31,12 +36,19 @@ export function MaintenanceTicketCloseButton({
   defaultQuotationNo?: string | null
   defaultInvoiceNo?: string | null
   defaultWarrantyClaim: boolean
-  employees: EmployeeOption[]
+  expectedUpdatedAt: Date | string
+  isPreventive: boolean
+  open?: boolean
+  hideTrigger?: boolean
+  disabled?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
   const router = useRouter()
   const t = useTranslations("maintenancePage")
   const tCommon = useTranslations("common")
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
+  const setOpen = (next: boolean) => onOpenChange ? onOpenChange(next) : setInternalOpen(next)
   const [saving, setSaving] = useState(false)
   const readyStatus = statuses.find((status) => status.name === "Ready") ?? statuses[0]
   const [values, setValues] = useState({
@@ -65,6 +77,7 @@ export function MaintenanceTicketCloseButton({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          expectedUpdatedAt,
           rootCause: values.rootCause,
           resolution: values.resolution,
           returnDate: values.returnDate,
@@ -75,7 +88,7 @@ export function MaintenanceTicketCloseButton({
           invoiceNo: values.invoiceNo || null,
           warrantyClaim: values.warrantyClaim,
           inspectedById: values.inspectedById,
-          nextStatusId: values.nextStatusId,
+          ...(!isPreventive ? { nextStatusId: values.nextStatusId } : {}),
         }),
       })
       const payload = await response.json().catch(() => null)
@@ -92,32 +105,18 @@ export function MaintenanceTicketCloseButton({
 
   return (
     <>
-      <button
+      {!hideTrigger ? <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
+        disabled={disabled}
+        title={disabled ? t("closeChecklistEvidence") : undefined}
+        className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:min-h-0"
       >
         <CheckCircle2 className="h-3.5 w-3.5" />
         {t("closeTicket")}
-      </button>
+      </button> : null}
 
-      {open ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center sm:p-4">
-          <section className="max-h-[calc(100vh-1.5rem)] w-full max-w-2xl overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <div>
-                <h2 className="text-base font-semibold text-foreground">{t("closeTitle")}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{repairNo}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-8 sm:w-8"
-                aria-label={tCommon("close")}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+      <AccessibleDialog open={open} title={t("closeTitle")} description={repairNo} busy={saving} onClose={() => setOpen(false)}>
             <form onSubmit={handleSubmit} className="max-h-[calc(100vh-7rem)] overflow-y-auto p-4 sm:p-5">
               <div className="mb-5 rounded-md border border-warning/30 bg-warning/5 p-3">
                 <h3 className="text-sm font-semibold text-foreground">{t("closeChecklistTitle")}</h3>
@@ -138,7 +137,7 @@ export function MaintenanceTicketCloseButton({
                   className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
               </Field>
-              <Field label={t("nextStatus")} required>
+              {!isPreventive ? <Field label={t("nextStatus")} required>
                 <select
                   value={values.nextStatusId}
                   required
@@ -151,15 +150,16 @@ export function MaintenanceTicketCloseButton({
                     </option>
                   ))}
                 </select>
-              </Field>
-              <SearchableSelect
+              </Field> : null}
+              <MaintenanceOptionSelect
+                type="employee"
                 label={t("inspectedBy")}
                 value={values.inspectedById}
                 required
-                options={employees}
                 placeholder={t("selectEmployee")}
                 searchPlaceholder={tCommon("searchSelectPlaceholder")}
                 emptyLabel={tCommon("searchSelectNoResults")}
+                loadingLabel={t("loading")}
                 onChange={(value) => setField("inspectedById", value)}
               />
               <Field label={t("laborCost")}>
@@ -245,14 +245,15 @@ export function MaintenanceTicketCloseButton({
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0"
+                  disabled={saving}
+                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-10 sm:min-h-0"
                 >
                   {tCommon("cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:h-10 sm:min-h-0"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0"
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                   {t("closeTicket")}
@@ -260,9 +261,7 @@ export function MaintenanceTicketCloseButton({
               </div>
               </div>
             </form>
-          </section>
-        </div>
-      ) : null}
+      </AccessibleDialog>
     </>
   )
 }

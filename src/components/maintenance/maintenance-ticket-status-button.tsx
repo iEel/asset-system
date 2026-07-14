@@ -3,11 +3,10 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Loader2, RefreshCw, X } from "lucide-react"
+import { Loader2, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
-import { SearchableSelect } from "@/components/ui/searchable-select"
-
-type EmployeeOption = { id: string; label: string }
+import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
+import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 
 export function MaintenanceTicketStatusButton({
   ticketId,
@@ -15,22 +14,30 @@ export function MaintenanceTicketStatusButton({
   currentStatus,
   assignedToId,
   dueDate,
-  employees,
+  expectedUpdatedAt,
+  open: controlledOpen,
+  hideTrigger = false,
+  onOpenChange,
 }: {
   ticketId: string
   repairNo: string
   currentStatus: string
   assignedToId?: string | null
   dueDate?: Date | string | null
-  employees: EmployeeOption[]
+  expectedUpdatedAt: Date | string
+  open?: boolean
+  hideTrigger?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
   const router = useRouter()
   const t = useTranslations("maintenancePage")
   const tCommon = useTranslations("common")
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const open = controlledOpen ?? internalOpen
+  const setOpen = (next: boolean) => onOpenChange ? onOpenChange(next) : setInternalOpen(next)
   const [values, setValues] = useState({
-    repairStatus: currentStatus === "open" ? "reported" : currentStatus,
+    repairStatus: nextStatuses[currentStatus]?.[0] ?? currentStatus,
     assignedToId: assignedToId ?? "",
     dueDate: dueDate ? new Date(dueDate).toISOString().slice(0, 10) : "",
     remark: "",
@@ -49,6 +56,7 @@ export function MaintenanceTicketStatusButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "status",
+          expectedUpdatedAt,
           repairStatus: values.repairStatus,
           assignedToId: values.assignedToId || null,
           dueDate: values.dueDate || null,
@@ -69,110 +77,39 @@ export function MaintenanceTicketStatusButton({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
-      >
-        <RefreshCw className="h-3.5 w-3.5" />
-        {t("updateStatus")}
-      </button>
-
-      {open ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center sm:p-4">
-          <section className="max-h-[calc(100vh-1.5rem)] w-full max-w-xl overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <div>
-                <h2 className="text-base font-semibold text-foreground">{t("updateStatusTitle")}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{repairNo}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-8 sm:w-8"
-                aria-label={tCommon("close")}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="grid max-h-[calc(100vh-7rem)] grid-cols-1 gap-5 overflow-y-auto p-4 sm:p-5 md:grid-cols-2">
-              <Field label={tCommon("status")} required>
-                <select
-                  value={values.repairStatus}
-                  required
-                  onChange={(event) => setField("repairStatus", event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                >
-                  {["reported", "accepted", "in_progress", "waiting_parts", "waiting_vendor", "completed"].map((status) => (
-                    <option key={status} value={status}>
-                      {t(`statuses.${status}`)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label={t("dueDate")}>
-                <input
-                  type="date"
-                  value={values.dueDate}
-                  onChange={(event) => setField("dueDate", event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                />
-              </Field>
-              <div className="md:col-span-2">
-                <SearchableSelect
-                  label={t("assignedTo")}
-                  value={values.assignedToId}
-                  options={employees}
-                  placeholder={t("unassigned")}
-                  searchPlaceholder={tCommon("searchSelectPlaceholder")}
-                  emptyLabel={tCommon("searchSelectNoResults")}
-                  onChange={(value) => setField("assignedToId", value)}
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Field label={t("statusRemark")}>
-                  <textarea
-                    value={values.remark}
-                    rows={3}
-                    maxLength={500}
-                    onChange={(event) => setField("remark", event.target.value)}
-                    className="min-h-20 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                  />
-                </Field>
-              </div>
-              <div className="flex flex-col justify-end gap-2 sm:flex-row md:col-span-2">
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0"
-                >
-                  {tCommon("cancel")}
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:h-10 sm:min-h-0"
-                >
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                  {t("updateStatus")}
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
+      {!hideTrigger ? (
+        <button type="button" onClick={() => setOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-8 sm:min-h-0">
+          <RefreshCw className="h-3.5 w-3.5" />{t("updateStatus")}
+        </button>
       ) : null}
+      <AccessibleDialog open={open} title={t("updateStatusTitle")} description={repairNo} busy={saving} onClose={() => setOpen(false)}>
+        <form onSubmit={handleSubmit} className="grid max-h-[calc(100vh-7rem)] grid-cols-1 gap-5 overflow-y-auto p-4 sm:p-5 md:grid-cols-2">
+          <Field label={tCommon("status")} required>
+            <select value={values.repairStatus} required onChange={(event) => setField("repairStatus", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+              {(nextStatuses[currentStatus] ?? []).map((status) => <option key={status} value={status}>{t(`statuses.${status}`)}</option>)}
+            </select>
+          </Field>
+          <Field label={t("dueDate")}><input type="date" value={values.dueDate} onChange={(event) => setField("dueDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" /></Field>
+          <div className="md:col-span-2">
+            <MaintenanceOptionSelect type="employee" label={t("assignedTo")} value={values.assignedToId} placeholder={t("unassigned")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={t("loading")} onChange={(value) => setField("assignedToId", value)} />
+          </div>
+          <div className="md:col-span-2"><Field label={t("statusRemark")}><textarea value={values.remark} rows={3} maxLength={500} onChange={(event) => setField("remark", event.target.value)} className="min-h-20 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" /></Field></div>
+          <div className="flex flex-col justify-end gap-2 sm:flex-row md:col-span-2">
+            <button type="button" onClick={() => setOpen(false)} disabled={saving} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">{tCommon("cancel")}</button>
+            <button type="submit" disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}{t("updateStatus")}</button>
+          </div>
+        </form>
+      </AccessibleDialog>
     </>
   )
 }
 
+const nextStatuses: Record<string, string[]> = {
+  open: [], reported: ["accepted"], accepted: ["in_progress"],
+  in_progress: ["waiting_parts", "waiting_vendor", "completed"],
+  waiting_parts: ["in_progress", "completed"], waiting_vendor: ["in_progress", "completed"], completed: [],
+}
+
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
-      {children}
-    </label>
-  )
+  return <label className="block"><span className="mb-1.5 block text-sm font-medium text-foreground">{label}{required ? <span className="ml-1 text-danger">*</span> : null}</span>{children}</label>
 }

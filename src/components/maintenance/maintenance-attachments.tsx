@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { formatFileSize } from "@/lib/uploads"
 import { getMaintenanceAttachmentDisplayName, getMaintenanceAttachmentType, maintenanceAttachmentTypes, type MaintenanceAttachmentType } from "@/lib/maintenance-attachments"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 
 type Attachment = {
   id: string
@@ -263,18 +264,8 @@ export function MaintenanceAttachments({
         </div>
       ) : null}
 
-      {pendingDeleteId ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <section
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="maintenance-delete-title"
-            className="w-full max-w-md rounded-lg border border-border bg-surface p-5 shadow-lg"
-          >
-            <h3 id="maintenance-delete-title" className="text-base font-semibold text-foreground">
-              {tCommon("deleteConfirm")}
-            </h3>
-            <div className="mt-5 flex justify-end gap-2">
+      <AccessibleDialog open={Boolean(pendingDeleteId)} title={tCommon("deleteConfirm")} busy={Boolean(deletingId)} onClose={() => setPendingDeleteId(null)}>
+            <div className="flex justify-end gap-2 p-5">
               <button
                 type="button"
                 onClick={() => setPendingDeleteId(null)}
@@ -284,15 +275,13 @@ export function MaintenanceAttachments({
               </button>
               <button
                 type="button"
-                onClick={() => handleDelete(pendingDeleteId)}
+                onClick={() => { if (pendingDeleteId) handleDelete(pendingDeleteId) }}
                 className="inline-flex min-h-11 items-center rounded-md bg-danger px-4 text-sm font-medium text-danger-foreground"
               >
                 {tCommon("delete")}
               </button>
             </div>
-          </section>
-        </div>
-      ) : null}
+      </AccessibleDialog>
     </section>
   )
 }

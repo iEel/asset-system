@@ -9,6 +9,7 @@ import { buildMaintenanceQueryString, buildMaintenanceWhere, parseMaintenanceLis
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { MaintenancePlanGenerateButton } from "@/components/maintenance/maintenance-plan-generate-button"
+import { MaintenanceTicketActions } from "@/components/maintenance/maintenance-ticket-actions"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
@@ -36,6 +37,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
   const filters = await searchParams
   const user = await requirePagePermission(locale, "maintenance", "view")
   const canCreate = hasPermission(user, "maintenance", "create")
+  const canEdit = hasPermission(user, "maintenance", "edit")
   const canExport = hasPermission(user, "maintenance", "export")
   const t = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
@@ -53,7 +55,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
   const hasMaintenancePlanSupport = hasPrismaModelDelegate(prisma, "maintenancePlan")
 
   const today = startOfToday(new Date())
-  const [tickets, summary, maintenancePlans] = await Promise.all([
+  const [tickets, summary, maintenancePlans, closeStatusRows] = await Promise.all([
     prisma.maintenanceTicket.findMany({
       where: buildMaintenanceWhere(listFilters, evidenceTicketIds),
       include: {
@@ -68,9 +70,15 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
     }),
     getMaintenanceSummary(today),
     getPreventiveMaintenancePlans(hasMaintenancePlanSupport),
+    canEdit ? prisma.assetStatus.findMany({
+      where: { isActive: true, name: { in: ["Ready", "Pending Disposal"] } },
+      select: { id: true, name: true, nameTh: true },
+      orderBy: { sortOrder: "asc" },
+    }) : Promise.resolve([]),
   ])
   const statusLabels = getStatusLabels(t)
   const planSummary = summarizeMaintenancePlans(maintenancePlans, today)
+  const closeStatuses = closeStatusRows.map((status) => ({ id: status.id, name: status.name, label: status.nameTh }))
 
   return (
     <div className="space-y-6">
@@ -103,6 +111,27 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
           pmHelp: t("viewPmHelp"),
         }}
       />
+
+      {canEdit ? (
+        <MaintenanceTicketActions
+          tickets={tickets.map((ticket) => ({
+            id: ticket.id,
+            repairNo: ticket.repairNo,
+            repairStatus: ticket.repairStatus,
+            updatedAt: ticket.updatedAt.toISOString(),
+            maintenancePlanId: ticket.maintenancePlanId,
+            assignedToId: ticket.assignedToId,
+            dueDate: ticket.dueDate?.toISOString() ?? null,
+            laborCost: ticket.laborCost?.toString(),
+            partsCost: ticket.partsCost?.toString(),
+            repairCost: ticket.repairCost?.toString(),
+            quotationNo: ticket.quotationNo,
+            invoiceNo: ticket.invoiceNo,
+            warrantyClaim: ticket.warrantyClaim,
+          }))}
+          closeStatuses={closeStatuses}
+        />
+      ) : null}
 
       {activeView === "tickets" ? (
         <>
@@ -337,6 +366,20 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                         {t("printRepair")}
                       </Link>
                     </div>
+                    {canEdit && ticket.repairStatus !== "closed" ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {!(["open", "completed"].includes(ticket.repairStatus)) ? (
+                          <button type="button" data-maintenance-action="status" data-ticket-id={ticket.id} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent">
+                            {t("updateStatus")}
+                          </button>
+                        ) : null}
+                        {["open", "completed"].includes(ticket.repairStatus) ? (
+                          <button type="button" data-maintenance-action="close" data-ticket-id={ticket.id} disabled={!evidenceTicketIds.includes(ticket.id)} title={!evidenceTicketIds.includes(ticket.id) ? t("closeChecklistEvidence") : undefined} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
+                            {t("closeTicket")}
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </article>
                 ))
               )}
@@ -428,6 +471,16 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                             >
                               {t("printRepair")}
                             </Link>
+                            {canEdit && !["open", "completed", "closed"].includes(ticket.repairStatus) ? (
+                              <button type="button" data-maintenance-action="status" data-ticket-id={ticket.id} className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent">
+                                {t("updateStatus")}
+                              </button>
+                            ) : null}
+                            {canEdit && ["open", "completed"].includes(ticket.repairStatus) ? (
+                              <button type="button" data-maintenance-action="close" data-ticket-id={ticket.id} disabled={!evidenceTicketIds.includes(ticket.id)} title={!evidenceTicketIds.includes(ticket.id) ? t("closeChecklistEvidence") : undefined} className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
+                                {t("closeTicket")}
+                              </button>
+                            ) : null}
                           </div>
                         </td>
                       </ClickableTableRow>

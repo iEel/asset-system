@@ -5,7 +5,6 @@ import { AlertTriangle, CheckCircle2, FileText, History, Printer, Trash2, Wrench
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
-import { getMaintenanceOptions } from "@/lib/maintenance-options"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { MaintenanceAttachments } from "@/components/maintenance/maintenance-attachments"
 import { MaintenanceTicketCloseButton } from "@/components/maintenance/maintenance-ticket-close-button"
@@ -18,6 +17,7 @@ import { MobileActionBar } from "@/components/ui/mobile-action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { isPreventiveMaintenanceTicket } from "@/lib/maintenance-policy"
 
 type MaintenanceDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -57,7 +57,7 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
   })
   if (!ticket) notFound()
 
-  const [attachments, movements, assetRepairSummary, options] = await Promise.all([
+  const [attachments, movements, assetRepairSummary, closeStatusRows] = await Promise.all([
     prisma.attachment.findMany({
       where: { module: "maintenance", referenceId: ticket.id, isActive: true },
       orderBy: { uploadedAt: "desc" },
@@ -71,10 +71,15 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
       _count: { _all: true },
       _sum: { repairCost: true },
     }),
-    canEdit ? getMaintenanceOptions() : Promise.resolve(null),
+    canEdit ? prisma.assetStatus.findMany({
+      where: { isActive: true, name: { in: ["Ready", "Pending Disposal"] } },
+      select: { id: true, name: true, nameTh: true },
+      orderBy: { sortOrder: "asc" },
+    }) : Promise.resolve([]),
   ])
   const movementLabels = await getMovementDisplayLabels(movements)
-  const statuses = options?.statuses ?? []
+  const statuses = closeStatusRows.map((status) => ({ id: status.id, name: status.name, label: status.nameTh }))
+  const isPreventive = isPreventiveMaintenanceTicket(ticket)
   const totalRepairCount = assetRepairSummary._count._all
   const totalRepairCost = Number(assetRepairSummary._sum.repairCost ?? 0)
   const purchasePrice = Number(ticket.asset.purchasePrice ?? 0)
@@ -122,17 +127,17 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
             <Printer className="h-4 w-4" />
             {t("printRepair")}
           </Link>
-          {canEdit && !isMaintenanceClosed(ticket.repairStatus) && options ? (
+          {canEdit && !isMaintenanceClosed(ticket.repairStatus) ? (
             <>
-              <MaintenanceTicketStatusButton
+              {!(["open", "completed"].includes(ticket.repairStatus)) ? <MaintenanceTicketStatusButton
                 ticketId={ticket.id}
                 repairNo={ticket.repairNo}
                 currentStatus={ticket.repairStatus}
                 assignedToId={ticket.assignedToId}
                 dueDate={ticket.dueDate}
-                employees={options.employees}
-              />
-              <MaintenanceTicketCloseButton
+                expectedUpdatedAt={ticket.updatedAt}
+              /> : null}
+              {["open", "completed"].includes(ticket.repairStatus) ? <MaintenanceTicketCloseButton
                 ticketId={ticket.id}
                 repairNo={ticket.repairNo}
                 statuses={statuses}
@@ -142,8 +147,10 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
                 defaultQuotationNo={ticket.quotationNo}
                 defaultInvoiceNo={ticket.invoiceNo}
                 defaultWarrantyClaim={ticket.warrantyClaim}
-                employees={options.employees}
-              />
+                expectedUpdatedAt={ticket.updatedAt}
+                isPreventive={isPreventive}
+                disabled={!hasAfterRepairEvidence}
+              /> : null}
             </>
           ) : null}
           <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, getStatusLabels(t))} tone={getMaintenanceStatusTone(ticket.repairStatus)} />

@@ -1,0 +1,80 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { MaintenanceTicketCloseButton } from "@/components/maintenance/maintenance-ticket-close-button"
+import { MaintenanceTicketStatusButton } from "@/components/maintenance/maintenance-ticket-status-button"
+
+export type MaintenanceActionTicket = {
+  id: string
+  repairNo: string
+  repairStatus: string
+  updatedAt: string
+  maintenancePlanId?: string | null
+  assignedToId?: string | null
+  dueDate?: string | null
+  laborCost?: string
+  partsCost?: string
+  repairCost?: string
+  quotationNo?: string | null
+  invoiceNo?: string | null
+  warrantyClaim: boolean
+}
+
+type SelectedAction = { ticketId: string; action: "status" | "close" } | null
+
+export function MaintenanceTicketActions({
+  tickets,
+  closeStatuses,
+}: {
+  tickets: MaintenanceActionTicket[]
+  closeStatuses: Array<{ id: string; label: string; name: string }>
+}) {
+  const [selected, setSelected] = useState<SelectedAction>(null)
+
+  useEffect(() => {
+    function handleClick(event: MouseEvent) {
+      const trigger = (event.target as Element | null)?.closest<HTMLElement>("[data-maintenance-action]")
+      const action = trigger?.dataset.maintenanceAction
+      const ticketId = trigger?.dataset.ticketId
+      if (ticketId && (action === "status" || action === "close")) setSelected({ ticketId, action })
+    }
+    document.addEventListener("click", handleClick)
+    return () => document.removeEventListener("click", handleClick)
+  }, [])
+
+  const ticket = selected ? tickets.find((item) => item.id === selected.ticketId) : null
+  if (!ticket || !selected) return null
+  if (selected.action === "status") {
+    return (
+      <MaintenanceTicketStatusButton
+        ticketId={ticket.id}
+        repairNo={ticket.repairNo}
+        currentStatus={ticket.repairStatus}
+        assignedToId={ticket.assignedToId}
+        dueDate={ticket.dueDate}
+        expectedUpdatedAt={ticket.updatedAt}
+        open
+        hideTrigger
+        onOpenChange={(open) => { if (!open) setSelected(null) }}
+      />
+    )
+  }
+  return (
+    <MaintenanceTicketCloseButton
+      ticketId={ticket.id}
+      repairNo={ticket.repairNo}
+      statuses={closeStatuses}
+      defaultLaborCost={ticket.laborCost}
+      defaultPartsCost={ticket.partsCost}
+      defaultRepairCost={ticket.repairCost}
+      defaultQuotationNo={ticket.quotationNo}
+      defaultInvoiceNo={ticket.invoiceNo}
+      defaultWarrantyClaim={ticket.warrantyClaim}
+      expectedUpdatedAt={ticket.updatedAt}
+      isPreventive={Boolean(ticket.maintenancePlanId)}
+      open
+      hideTrigger
+      onOpenChange={(open) => { if (!open) setSelected(null) }}
+    />
+  )
+}
