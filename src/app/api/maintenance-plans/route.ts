@@ -5,6 +5,7 @@ import { errorResponse } from "@/lib/api-response"
 import { logAudit } from "@/lib/audit-log"
 import { getMaintenancePlanIntervalDays } from "@/lib/preventive-maintenance"
 import { maintenancePlanSchema } from "@/lib/validations/maintenance"
+import { parseMaintenanceListParams } from "@/lib/maintenance-query"
 
 const planInclude = {
   asset: { select: { assetTag: true, name: true } },
@@ -12,19 +13,24 @@ const planInclude = {
   vendor: { select: { code: true, name: true } },
 } as const
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth()
     requirePermission(user, "maintenance", "view")
 
-    const plans = await prisma.maintenancePlan.findMany({
-      where: { isActive: true },
-      include: planInclude,
-      orderBy: { nextDueDate: "asc" },
-      take: 100,
-    })
+    const filters = parseMaintenanceListParams(request.nextUrl.searchParams)
+    const [plans, total] = await Promise.all([
+      prisma.maintenancePlan.findMany({
+        where: { isActive: true },
+        include: planInclude,
+        orderBy: { nextDueDate: "asc" },
+        skip: (filters.page - 1) * filters.pageSize,
+        take: filters.pageSize,
+      }),
+      prisma.maintenancePlan.count({ where: { isActive: true } }),
+    ])
 
-    return NextResponse.json({ data: plans })
+    return NextResponse.json({ data: plans, total, page: filters.page, pageSize: filters.pageSize })
   } catch (error) {
     return errorResponse(error)
   }

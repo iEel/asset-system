@@ -9,6 +9,7 @@ export type MaintenanceListParams = {
   repairType?: string
   evidence?: string
   overdue?: string
+  queue?: string
   dateFrom?: string
   dateTo?: string
   page?: QueryValue
@@ -34,12 +35,13 @@ export function parseMaintenanceListParams(input: URLSearchParams | MaintenanceL
   const repairType = normalizeOption(getValue("repairType"), maintenanceRepairTypeFilters)
   const evidence = normalizeOption(getValue("evidence"), maintenanceEvidenceFilters)
   const overdue = normalizeOption(getValue("overdue"), ["yes"] as const)
+  const queue = normalizeOption(getValue("queue"), ["open", "waiting", "completed"] as const)
   const dateFrom = normalizeDate(getValue("dateFrom"))
   const dateTo = normalizeDate(getValue("dateTo"))
   const page = normalizePositiveInteger(getValue("page"), 1)
   const pageSize = normalizePageSize(getValue("pageSize"))
 
-  return { search, status, repairType, evidence, overdue, dateFrom, dateTo, page, pageSize }
+  return { search, status, repairType, evidence, overdue, queue, dateFrom, dateTo, page, pageSize }
 }
 
 export function getMaintenanceDateRangeError(filters: ParsedMaintenanceListParams) {
@@ -55,6 +57,9 @@ export function buildMaintenanceWhere(
   return {
     isActive: true,
     ...(filters.status ? { repairStatus: filters.status } : {}),
+    ...(!filters.status && filters.queue === "open" ? { repairStatus: { not: "closed" } } : {}),
+    ...(!filters.status && filters.queue === "waiting" ? { repairStatus: { in: ["waiting_parts", "waiting_vendor"] } } : {}),
+    ...(!filters.status && filters.queue === "completed" ? { repairStatus: "completed" } : {}),
     ...(filters.repairType ? { repairType: filters.repairType } : {}),
     ...(filters.overdue === "yes" ? { dueDate: { lt: startOfDay(new Date()) }, repairStatus: { not: "closed" } } : {}),
     ...(filters.evidence === "with" ? { id: { in: evidenceTicketIds?.length ? evidenceTicketIds : ["__no_matching_ticket__"] } } : {}),
@@ -98,6 +103,7 @@ export function buildMaintenanceQueryString(
   if (values.repairType) params.set("repairType", values.repairType)
   if (values.evidence) params.set("evidence", values.evidence)
   if (values.overdue) params.set("overdue", values.overdue)
+  if (values.queue) params.set("queue", values.queue)
   if (values.dateFrom) params.set("dateFrom", values.dateFrom)
   if (values.dateTo) params.set("dateTo", values.dateTo)
   params.set("page", String(values.page))

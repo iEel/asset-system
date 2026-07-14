@@ -9,20 +9,28 @@ import {
   maintenanceTicketInclude,
 } from "@/lib/maintenance-ticket-service"
 import { maintenanceTicketSchema } from "@/lib/validations/maintenance"
+import { buildMaintenanceWhere, parseMaintenanceListParams } from "@/lib/maintenance-query"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth()
     requirePermission(user, "maintenance", "view")
 
-    const tickets = await prisma.maintenanceTicket.findMany({
-      where: { isActive: true },
-      include: maintenanceTicketInclude,
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    })
+    const filters = parseMaintenanceListParams(request.nextUrl.searchParams)
+    const evidenceTicketIds = filters.evidence ? await getMaintenanceAttachmentTicketIds() : []
+    const where = buildMaintenanceWhere(filters, evidenceTicketIds)
+    const [tickets, total] = await Promise.all([
+      prisma.maintenanceTicket.findMany({
+        where,
+        include: maintenanceTicketInclude,
+        orderBy: { createdAt: "desc" },
+        skip: (filters.page - 1) * filters.pageSize,
+        take: filters.pageSize,
+      }),
+      prisma.maintenanceTicket.count({ where }),
+    ])
 
-    return NextResponse.json({ data: tickets })
+    return NextResponse.json({ data: tickets, total, page: filters.page, pageSize: filters.pageSize })
   } catch (error) {
     return errorResponse(error)
   }
@@ -50,4 +58,13 @@ export async function POST(request: NextRequest) {
     if (payload) return NextResponse.json(payload.body, { status: payload.status })
     return errorResponse(error, 400)
   }
+}
+
+async function getMaintenanceAttachmentTicketIds() {
+  const rows = await prisma.attachment.findMany({
+    where: { module: "maintenance", isActive: true },
+    select: { referenceId: true },
+    distinct: ["referenceId"],
+  })
+  return rows.map((row) => row.referenceId)
 }

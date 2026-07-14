@@ -5,16 +5,17 @@ import { AlertTriangle, CalendarClock, CheckCircle2, Clock, ClipboardList, Downl
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
-import { buildMaintenanceQueryString, buildMaintenanceWhere, parseMaintenanceListParams } from "@/lib/maintenance-query"
+import { buildMaintenanceQueryString, buildMaintenanceWhere, getMaintenanceDateRangeError, parseMaintenanceListParams, type ParsedMaintenanceListParams } from "@/lib/maintenance-query"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { MaintenancePlanGenerateButton } from "@/components/maintenance/maintenance-plan-generate-button"
 import { MaintenanceTicketActions } from "@/components/maintenance/maintenance-ticket-actions"
+import { MaintenancePagination } from "@/components/maintenance/maintenance-pagination"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { getMaintenancePlanDueState, summarizeMaintenancePlans } from "@/lib/preventive-maintenance"
+import { getMaintenancePlanDueState } from "@/lib/preventive-maintenance"
 import { hasPrismaModelDelegate } from "@/lib/prisma-client-cache"
 import {
   buildMaintenanceTicketLayoutHref,
@@ -24,12 +25,13 @@ import {
   type MaintenancePageView,
   type MaintenanceTicketLayout,
 } from "@/lib/maintenance-view"
+import { getMaintenanceBoardCompatibility } from "@/lib/maintenance-list"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 
 type MaintenancePageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string; status?: string; repairType?: string; evidence?: string; overdue?: string; dateFrom?: string; dateTo?: string; assetId?: string; view?: string; layout?: string }>
+  searchParams: Promise<{ search?: string; status?: string; repairType?: string; evidence?: string; overdue?: string; queue?: string; dateFrom?: string; dateTo?: string; assetId?: string; view?: string; layout?: string; page?: string; pageSize?: string }>
 }
 
 export default async function MaintenancePage({ params, searchParams }: MaintenancePageProps) {
@@ -51,34 +53,28 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
   if (filters.assetId) maintenanceReturnParams.set("assetId", filters.assetId)
   const maintenanceReturnQuery = maintenanceReturnParams.toString()
   const maintenanceReturnHref = `/${locale}/maintenance${maintenanceReturnQuery ? `?${maintenanceReturnQuery}` : ""}`
-  const evidenceTicketIds = await getMaintenanceAttachmentTicketIds()
+  const evidenceTicketIdsPromise = listFilters.evidence ? getMaintenanceAttachmentTicketIds() : Promise.resolve([])
+  const evidenceTicketIds = await evidenceTicketIdsPromise
   const hasMaintenancePlanSupport = hasPrismaModelDelegate(prisma, "maintenancePlan")
 
   const today = startOfToday(new Date())
-  const [tickets, summary, maintenancePlans, closeStatusRows] = await Promise.all([
-    prisma.maintenanceTicket.findMany({
-      where: buildMaintenanceWhere(listFilters, evidenceTicketIds),
-      include: {
-        asset: { select: { assetTag: true, name: true } },
-        reportedBy: { select: { code: true, fullNameTh: true } },
-        assignedTo: { select: { code: true, fullNameTh: true } },
-        inspectedBy: { select: { code: true, fullNameTh: true } },
-        vendor: { select: { code: true, name: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-    getMaintenanceSummary(today),
-    getPreventiveMaintenancePlans(hasMaintenancePlanSupport),
-    canEdit ? prisma.assetStatus.findMany({
+  const [ticketWorkspace, planWorkspace, closeStatusRows] = await Promise.all([
+    activeView === "tickets" ? getTicketWorkspaceData(listFilters, evidenceTicketIds, today) : Promise.resolve(emptyTicketWorkspace()),
+    activeView === "pm" ? getPlanWorkspaceData(hasMaintenancePlanSupport, listFilters, today) : Promise.resolve(emptyPlanWorkspace()),
+    activeView === "tickets" && canEdit ? prisma.assetStatus.findMany({
       where: { isActive: true, name: { in: ["Ready", "Pending Disposal"] } },
       select: { id: true, name: true, nameTh: true },
       orderBy: { sortOrder: "asc" },
     }) : Promise.resolve([]),
   ])
+  const { tickets, total: ticketTotal, summary } = ticketWorkspace
+  const { plans: maintenancePlans, total: planTotal, summary: planSummary } = planWorkspace
+  const closeEvidenceTicketIds = activeView === "tickets" && canEdit
+    ? await getMaintenanceAttachmentTicketIds(tickets.map((ticket) => ticket.id))
+    : []
   const statusLabels = getStatusLabels(t)
-  const planSummary = summarizeMaintenancePlans(maintenancePlans, today)
   const closeStatuses = closeStatusRows.map((status) => ({ id: status.id, name: status.name, label: status.nameTh }))
+  const boardCompatibility = getMaintenanceBoardCompatibility(listFilters.status)
 
   return (
     <div className="space-y-6">
@@ -112,7 +108,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
         }}
       />
 
-      {canEdit ? (
+      {activeView === "tickets" && canEdit ? (
         <MaintenanceTicketActions
           tickets={tickets.map((ticket) => ({
             id: ticket.id,
@@ -142,6 +138,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
               detail={t("summaryOpenDetail")}
               tone="primary"
               icon={<Wrench className="h-5 w-5" />}
+              href={buildMaintenanceKpiHref(locale, listFilters, filters.assetId, { queue: "open", overdue: "", status: "" })}
             />
             <MaintenanceMetric
               label={t("summaryOverdue")}
@@ -149,6 +146,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
               detail={t("summaryOverdueDetail")}
               tone="danger"
               icon={<AlertTriangle className="h-5 w-5" />}
+              href={buildMaintenanceKpiHref(locale, listFilters, filters.assetId, { overdue: "yes", queue: "", status: "" })}
             />
             <MaintenanceMetric
               label={t("summaryWaiting")}
@@ -156,6 +154,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
               detail={t("summaryWaitingDetail")}
               tone="warning"
               icon={<Hourglass className="h-5 w-5" />}
+              href={buildMaintenanceKpiHref(locale, listFilters, filters.assetId, { queue: "waiting", overdue: "", status: "" })}
             />
             <MaintenanceMetric
               label={t("summaryCompleted")}
@@ -163,6 +162,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
               detail={t("summaryCompletedDetail")}
               tone="success"
               icon={<CheckCircle2 className="h-5 w-5" />}
+              href={buildMaintenanceKpiHref(locale, listFilters, filters.assetId, { queue: "completed", overdue: "", status: "" })}
             />
           </section>
 
@@ -264,6 +264,22 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                 </Link>
               </div>
             </form>
+            {getMaintenanceDateRangeError(listFilters) ? (
+              <p role="alert" className="mt-3 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-sm text-warning-foreground">
+                {t("invalidDateRange")}
+              </p>
+            ) : null}
+            {hasActiveTicketFilters(listFilters) ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2" aria-label={t("activeFilters")}>
+                <span className="text-xs font-medium text-muted-foreground">{t("activeFilters")}</span>
+                {getActiveTicketFilterLabels(listFilters, t).map((label) => (
+                  <span key={label} className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs text-foreground">{label}</span>
+                ))}
+                <Link href={buildMaintenanceViewHref(locale, "tickets", filters.assetId, activeTicketLayout)} className="text-xs font-medium text-primary hover:underline">
+                  {t("clearFilters")}
+                </Link>
+              </div>
+            ) : null}
           </section>
 
           <MaintenanceTicketLayoutTabs
@@ -277,7 +293,15 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
             }}
           />
 
-          {activeTicketLayout === "board" ? (
+          {activeTicketLayout === "board" && boardCompatibility === "table_required" ? (
+          <section className="rounded-lg border border-warning/30 bg-warning/5 p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-foreground">{t("boardTableRequired")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("boardTableRequiredHelp")}</p>
+            <Link href={buildMaintenanceTicketLayoutHref(locale, maintenanceReturnQuery, "table")} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+              {t("ticketLayoutTable")}
+            </Link>
+          </section>
+          ) : activeTicketLayout === "board" ? (
           <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
             <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
               <div>
@@ -303,7 +327,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
             <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <h2 className="text-base font-semibold text-foreground">{t("ticketList")}</h2>
-                <p className="mt-1 text-xs text-muted-foreground">{t("resultCount", { count: tickets.length })}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("resultCount", { count: ticketTotal })}</p>
               </div>
               {canExport ? (
                 <a
@@ -374,7 +398,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                           </button>
                         ) : null}
                         {["open", "completed"].includes(ticket.repairStatus) ? (
-                          <button type="button" data-maintenance-action="close" data-ticket-id={ticket.id} disabled={!evidenceTicketIds.includes(ticket.id)} title={!evidenceTicketIds.includes(ticket.id) ? t("closeChecklistEvidence") : undefined} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
+                          <button type="button" data-maintenance-action="close" data-ticket-id={ticket.id} disabled={!closeEvidenceTicketIds.includes(ticket.id)} title={!closeEvidenceTicketIds.includes(ticket.id) ? t("closeChecklistEvidence") : undefined} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
                             {t("closeTicket")}
                           </button>
                         ) : null}
@@ -477,7 +501,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                               </button>
                             ) : null}
                             {canEdit && ["open", "completed"].includes(ticket.repairStatus) ? (
-                              <button type="button" data-maintenance-action="close" data-ticket-id={ticket.id} disabled={!evidenceTicketIds.includes(ticket.id)} title={!evidenceTicketIds.includes(ticket.id) ? t("closeChecklistEvidence") : undefined} className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
+                              <button type="button" data-maintenance-action="close" data-ticket-id={ticket.id} disabled={!closeEvidenceTicketIds.includes(ticket.id)} title={!closeEvidenceTicketIds.includes(ticket.id) ? t("closeChecklistEvidence") : undefined} className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
                                 {t("closeTicket")}
                               </button>
                             ) : null}
@@ -489,6 +513,14 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                 </tbody>
               </table>
             </div>
+            <MaintenancePagination
+              locale={locale}
+              currentQuery={maintenanceReturnQuery}
+              page={listFilters.page}
+              pageSize={listFilters.pageSize}
+              total={ticketTotal}
+              labels={{ rowsPerPage: tCommon("rowsPerPage"), page: tCommon("page"), of: tCommon("of"), previous: tCommon("previous"), next: tCommon("next") }}
+            />
           </section>
           )}
         </>
@@ -513,7 +545,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {maintenancePlans.slice(0, 8).map((plan) => {
+                {maintenancePlans.map((plan) => {
                   const dueState = getMaintenancePlanDueState(plan.nextDueDate, today)
                   const dueTone = dueState === "overdue" ? "danger" : dueState === "due_soon" ? "warning" : "primary"
                   return (
@@ -536,6 +568,12 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center md:justify-end">
                         <StatusBadge label={t(`pmDueState.${dueState}`)} tone={dueTone} size="xs" />
                         <StatusBadge label={t(`pmFrequencies.${plan.frequency}`)} tone="muted" size="xs" />
+                        {!plan.assignedToId ? <StatusBadge label={t("pmAutomationBlocked")} tone="warning" size="xs" /> : null}
+                        {canEdit ? (
+                          <Link href={appendOperationalReturnTo(`/${locale}/maintenance/pm/${plan.id}/edit`, maintenanceReturnHref)} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-8">
+                            {tCommon("edit")}
+                          </Link>
+                        ) : null}
                         {canCreate ? <MaintenancePlanGenerateButton planId={plan.id} /> : null}
                       </div>
                     </div>
@@ -544,6 +582,14 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
               </div>
             )}
           </div>
+          <MaintenancePagination
+            locale={locale}
+            currentQuery={maintenanceReturnQuery}
+            page={listFilters.page}
+            pageSize={listFilters.pageSize}
+            total={planTotal}
+            labels={{ rowsPerPage: tCommon("rowsPerPage"), page: tCommon("page"), of: tCommon("of"), previous: tCommon("previous"), next: tCommon("next") }}
+          />
         </section>
       )}
     </div>
@@ -568,19 +614,65 @@ async function getMaintenanceSummary(today: Date) {
   return { openWork, overdue, waiting, completedPendingClose }
 }
 
-async function getPreventiveMaintenancePlans(hasMaintenancePlanSupport: boolean) {
-  if (!hasMaintenancePlanSupport) return []
+async function getTicketWorkspaceData(listFilters: ParsedMaintenanceListParams, evidenceTicketIds: string[], today: Date) {
+  const where = buildMaintenanceWhere(listFilters, evidenceTicketIds)
+  const [tickets, total, summary] = await Promise.all([
+    prisma.maintenanceTicket.findMany({
+      where,
+      include: {
+        asset: { select: { assetTag: true, name: true } },
+        reportedBy: { select: { code: true, fullNameTh: true } },
+        assignedTo: { select: { code: true, fullNameTh: true } },
+        inspectedBy: { select: { code: true, fullNameTh: true } },
+        vendor: { select: { code: true, name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (listFilters.page - 1) * listFilters.pageSize,
+      take: listFilters.pageSize,
+    }),
+    prisma.maintenanceTicket.count({ where }),
+    getMaintenanceSummary(today),
+  ])
+  return { tickets, total, summary }
+}
 
-  return prisma.maintenancePlan.findMany({
-    where: { isActive: true },
-    include: {
-      asset: { select: { assetTag: true, name: true } },
-      assignedTo: { select: { code: true, fullNameTh: true } },
-      vendor: { select: { code: true, name: true } },
-    },
-    orderBy: { nextDueDate: "asc" },
-    take: 20,
-  })
+async function getPlanWorkspaceData(hasMaintenancePlanSupport: boolean, filters: ParsedMaintenanceListParams, today: Date) {
+  if (!hasMaintenancePlanSupport) return emptyPlanWorkspace()
+  const [plans, summary] = await Promise.all([
+    prisma.maintenancePlan.findMany({
+      where: { isActive: true },
+      include: {
+        asset: { select: { assetTag: true, name: true } },
+        assignedTo: { select: { code: true, fullNameTh: true } },
+        vendor: { select: { code: true, name: true } },
+      },
+      orderBy: { nextDueDate: "asc" },
+      skip: (filters.page - 1) * filters.pageSize,
+      take: filters.pageSize,
+    }),
+    getMaintenancePlanSummary(today),
+  ])
+  return { plans, total: summary.total, summary }
+}
+
+async function getMaintenancePlanSummary(today: Date) {
+  const dueSoonCutoff = new Date(today)
+  dueSoonCutoff.setDate(dueSoonCutoff.getDate() + 14)
+  const [total, overdue, dueSoon, upcoming] = await Promise.all([
+    prisma.maintenancePlan.count({ where: { isActive: true } }),
+    prisma.maintenancePlan.count({ where: { isActive: true, nextDueDate: { lt: today } } }),
+    prisma.maintenancePlan.count({ where: { isActive: true, nextDueDate: { gte: today, lte: dueSoonCutoff } } }),
+    prisma.maintenancePlan.count({ where: { isActive: true, nextDueDate: { gt: dueSoonCutoff } } }),
+  ])
+  return { total, overdue, dueSoon, upcoming }
+}
+
+function emptyTicketWorkspace() {
+  return { tickets: [], total: 0, summary: { openWork: 0, overdue: 0, waiting: 0, completedPendingClose: 0 } }
+}
+
+function emptyPlanWorkspace() {
+  return { plans: [], total: 0, summary: { total: 0, overdue: 0, dueSoon: 0, upcoming: 0 } }
 }
 
 function startOfToday(now: Date) {
@@ -708,12 +800,14 @@ function MaintenanceMetric({
   detail,
   tone,
   icon,
+  href,
 }: {
   label: string
   value: number
   detail: string
   tone: "primary" | "danger" | "warning" | "success"
   icon: React.ReactNode
+  href?: string
 }) {
   const toneClass =
     tone === "danger"
@@ -724,16 +818,22 @@ function MaintenanceMetric({
           ? "border-success/30 bg-success/5 text-success"
           : "border-primary/30 bg-primary/5 text-primary"
 
-  return (
-    <div className={`rounded-lg border p-4 shadow-sm ${toneClass}`}>
+  const content = (
+    <>
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm font-medium text-foreground">{label}</div>
         {icon}
       </div>
       <div className="mt-3 text-3xl font-bold text-foreground">{value}</div>
       <div className="mt-1 text-xs text-muted-foreground">{detail}</div>
-    </div>
+    </>
   )
+
+  return href ? (
+    <Link href={href} className={`rounded-lg border p-4 shadow-sm transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${toneClass}`}>
+      {content}
+    </Link>
+  ) : <div className={`rounded-lg border p-4 shadow-sm ${toneClass}`}>{content}</div>
 }
 
 function MobileMaintenanceField({ label, value }: { label: string; value: string }) {
@@ -801,11 +901,44 @@ function MaintenanceKanbanColumn({
   )
 }
 
-async function getMaintenanceAttachmentTicketIds() {
+async function getMaintenanceAttachmentTicketIds(ticketIds?: string[]) {
   const rows = await prisma.attachment.findMany({
-    where: { module: "maintenance", isActive: true },
+    where: {
+      module: "maintenance",
+      isActive: true,
+      ...(ticketIds ? { referenceId: { in: ticketIds } } : {}),
+    },
     select: { referenceId: true },
     distinct: ["referenceId"],
   })
   return rows.map((row) => row.referenceId)
+}
+
+function hasActiveTicketFilters(filters: ParsedMaintenanceListParams) {
+  return Boolean(filters.search || filters.status || filters.repairType || filters.evidence || filters.overdue || filters.queue || filters.dateFrom || filters.dateTo)
+}
+
+function getActiveTicketFilterLabels(filters: ParsedMaintenanceListParams, t: (key: string) => string) {
+  return [
+    filters.search ? `${t("filterSearch")}: ${filters.search}` : null,
+    filters.status ? `${t("filterStatus")}: ${t(`statuses.${filters.status}`)}` : null,
+    filters.repairType ? `${t("repairType")}: ${t(filters.repairType === "vendor" ? "vendorRepair" : "internalRepair")}` : null,
+    filters.evidence ? `${t("evidence")}: ${t(filters.evidence === "with" ? "withEvidence" : "withoutEvidence")}` : null,
+    filters.overdue ? t("overdueOnly") : null,
+    filters.queue ? t(`queue.${filters.queue}`) : null,
+    filters.dateFrom ? `${t("dateFrom")}: ${filters.dateFrom}` : null,
+    filters.dateTo ? `${t("dateTo")}: ${filters.dateTo}` : null,
+  ].filter((label): label is string => Boolean(label))
+}
+
+function buildMaintenanceKpiHref(
+  locale: string,
+  filters: ParsedMaintenanceListParams,
+  assetId: string | undefined,
+  overrides: Partial<ParsedMaintenanceListParams>,
+) {
+  const params = new URLSearchParams(buildMaintenanceQueryString(filters, { ...overrides, page: 1 }))
+  params.set("view", "tickets")
+  if (assetId) params.set("assetId", assetId)
+  return `/${locale}/maintenance?${params.toString()}`
 }

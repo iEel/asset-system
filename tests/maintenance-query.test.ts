@@ -39,3 +39,13 @@ test("preserves normalized list state and supports explicit overrides", () => {
     "search=UPS&status=closed&page=1&pageSize=50",
   )
 })
+
+test("builds exact KPI queue filters", () => {
+  const waiting = parseMaintenanceListParams({ queue: "waiting" })
+  assert.deepEqual(buildMaintenanceWhere(waiting), {
+    isActive: true,
+    repairStatus: { in: ["waiting_parts", "waiting_vendor"] },
+  })
+  assert.equal(buildMaintenanceQueryString(waiting), "queue=waiting&page=1&pageSize=25")
+  assert.equal(parseMaintenanceListParams({ queue: "unknown" }).queue, "")
+})
