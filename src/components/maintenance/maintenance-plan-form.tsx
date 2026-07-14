@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation"
 import { CalendarClock, Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
+import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
+import { toLocalDateInputValue } from "@/lib/local-date"
 
 type Option = { id: string; label: string }
 
@@ -37,7 +39,7 @@ export function MaintenancePlanForm({
     title: initialValues?.title ?? "",
     frequency: initialValues?.frequency ?? "monthly",
     intervalDays: initialValues?.intervalDays ?? "30",
-    nextDueDate: initialValues?.nextDueDate ?? new Date().toISOString().slice(0, 10),
+    nextDueDate: initialValues?.nextDueDate ?? toLocalDateInputValue(),
     assignedToId: initialValues?.assignedToId ?? "",
     vendorId: initialValues?.vendorId ?? "",
     notes: initialValues?.notes ?? "",
@@ -66,7 +68,7 @@ export function MaintenancePlanForm({
         }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) throw new Error(getMaintenanceErrorMessage(payload?.code, t, tCommon("error")))
       toast.success(t("pmCreateSuccess"))
       router.push(`/${locale}/maintenance?view=pm`)
     } catch (error) {

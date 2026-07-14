@@ -1,5 +1,3 @@
-import { prisma } from "@/lib/db"
-
 type MovementValue = {
   id: string
   movementType: string
@@ -10,6 +8,22 @@ type MovementValue = {
 type MovementLabels = {
   from: string | null
   to: string | null
+}
+
+export type MaintenanceMovementLabels = {
+  create: string
+  statusUpdate: string
+  close: string
+  pmCreate: string
+  fallback: string
+}
+
+export function getMaintenanceMovementLabel(movementType: string, labels: MaintenanceMovementLabels) {
+  if (movementType === "maintenance_create") return labels.create
+  if (movementType === "maintenance_status_update") return labels.statusUpdate
+  if (movementType === "maintenance_close") return labels.close
+  if (movementType === "maintenance_pm_create") return labels.pmCreate
+  return labels.fallback
 }
 
 const uuidPattern = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi
@@ -60,6 +74,7 @@ function collectMovementIds(movements: MovementValue[]) {
 async function buildMovementLookup(ids: string[]) {
   const lookup = new Map<string, string>()
   if (ids.length === 0) return lookup
+  const { prisma } = await import("@/lib/db")
 
   const [locations, statuses, conditions, departments, employees, assets, companies, branches] = await Promise.all([
     prisma.location.findMany({

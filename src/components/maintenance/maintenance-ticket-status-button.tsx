@@ -7,6 +7,8 @@ import { Loader2, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
+import { toLocalDateInputValue } from "@/lib/local-date"
 
 export function MaintenanceTicketStatusButton({
   ticketId,
@@ -39,7 +41,7 @@ export function MaintenanceTicketStatusButton({
   const [values, setValues] = useState({
     repairStatus: nextStatuses[currentStatus]?.[0] ?? currentStatus,
     assignedToId: assignedToId ?? "",
-    dueDate: dueDate ? new Date(dueDate).toISOString().slice(0, 10) : "",
+    dueDate: dueDate ? toLocalDateInputValue(new Date(dueDate)) : "",
     remark: "",
   })
 
@@ -64,7 +66,7 @@ export function MaintenanceTicketStatusButton({
         }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) throw new Error(getMaintenanceErrorMessage(payload?.code, t, tCommon("error")))
       toast.success(t("statusUpdateSuccess"))
       setOpen(false)
       router.refresh()

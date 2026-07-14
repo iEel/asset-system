@@ -9,7 +9,7 @@ import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { MaintenanceAttachments } from "@/components/maintenance/maintenance-attachments"
 import { MaintenanceTicketCloseButton } from "@/components/maintenance/maintenance-ticket-close-button"
 import { MaintenanceTicketStatusButton } from "@/components/maintenance/maintenance-ticket-status-button"
-import { getMovementDisplayLabels } from "@/lib/movement-labels"
+import { getMaintenanceMovementLabel, getMovementDisplayLabels } from "@/lib/movement-labels"
 import { getMaintenanceAttachmentType } from "@/lib/maintenance-attachments"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceClosed, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
@@ -238,7 +238,13 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
                     <span className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-primary" />
                     <div className="rounded-md bg-background p-4">
                       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-                        <div className="font-medium text-foreground">{movement.movementType.replaceAll("_", " ")}</div>
+                        <div className="font-medium text-foreground">{getMaintenanceMovementLabel(movement.movementType, {
+                          create: t("movementLabels.create"),
+                          statusUpdate: t("movementLabels.statusUpdate"),
+                          close: t("movementLabels.close"),
+                          pmCreate: t("movementLabels.pmCreate"),
+                          fallback: t("movementLabels.fallback"),
+                        })}</div>
                         <div className="text-xs text-muted-foreground">{formatDateTime(movement.performedAt)}</div>
                       </div>
                       <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-muted-foreground md:grid-cols-2">
@@ -275,7 +281,7 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
           {shouldReviewDisposal && canCreateDisposal ? (
             <section className="rounded-lg border border-warning/40 bg-warning/5 p-6 shadow-sm">
               <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
-                <AlertTriangle className="h-5 w-5 text-warning" />
+                <AlertTriangle className="h-5 w-5 text-warning-foreground" />
                 {t("disposalReviewTitle")}
               </h2>
               <div className="space-y-2 text-sm text-muted-foreground">
@@ -285,7 +291,7 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
               </div>
               <Link
                 href={disposalRequestHref}
-                className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 text-sm font-medium text-warning transition-colors hover:bg-warning/10"
+                className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 text-sm font-medium text-warning-foreground transition-colors hover:bg-warning/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <Trash2 className="h-4 w-4" />
                 {t("openDisposalRequest")}
@@ -331,7 +337,7 @@ function getStatusLabels(t: (key: string) => string) {
 
 function ChecklistItem({ done, label }: { done: boolean; label: string }) {
   return (
-    <div className={done ? "text-success" : "text-muted-foreground"}>
+    <div className={done ? "text-success-foreground" : "text-muted-foreground"}>
       {done ? "[x]" : "[ ]"} {label}
     </div>
   )

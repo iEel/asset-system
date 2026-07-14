@@ -2601,6 +2601,13 @@
     "ticketDetail": "Repair Ticket Detail",
     "closeDetail": "Closure Detail",
     "maintenanceHistory": "Maintenance History",
+    "movementLabels": {
+      "create": "Repair ticket opened",
+      "statusUpdate": "Repair status updated",
+      "close": "Repair ticket closed",
+      "pmCreate": "PM work order created",
+      "fallback": "Maintenance activity"
+    },
     "emptyHistoryTitle": "No movements for this repair ticket yet",
     "emptyHistoryHelp": "Status updates, closure, or asset return events will appear here.",
     "currentStatus": "Current Status",
@@ -2636,6 +2643,17 @@
     "closeChecklistEvidence": "After-repair photo or evidence is attached",
     "closeChecklistInspector": "Inspector is selected",
     "nextStatus": "Asset Status After Repair",
+    "closedEvidenceAppendOnlyHelp": "This ticket is closed. Existing evidence is locked, but authorized users may add a clearly audited addendum.",
+    "errors": {
+      "MAINTENANCE_ASSET_INELIGIBLE": "This asset is not eligible to enter the repair workflow.",
+      "MAINTENANCE_ACTIVE_TICKET_EXISTS": "This asset already has an active repair ticket. Open that ticket instead of creating a duplicate.",
+      "MAINTENANCE_INVALID_TRANSITION": "This status change is no longer valid. Refresh the ticket and review its current status.",
+      "MAINTENANCE_EVIDENCE_REQUIRED": "Attach repair evidence before closing this ticket.",
+      "MAINTENANCE_INVALID_CLOSE_STATUS": "Choose Ready or Pending Disposal as the asset status after corrective repair.",
+      "MAINTENANCE_EVIDENCE_LOCKED": "Evidence on a closed ticket cannot be deleted. Add a new audited addendum if clarification is needed.",
+      "MAINTENANCE_CONFLICT": "Someone updated this ticket while you were working. Refresh and review the latest values before trying again.",
+      "MAINTENANCE_PM_REPORTER_REQUIRED": "Assign an active internal responsible person before generating this PM work order."
+    },
     "statuses": {
       "open": "Open",
       "reported": "Reported",

@@ -813,9 +813,9 @@ function MaintenanceMetric({
     tone === "danger"
       ? "border-danger/30 bg-danger/5 text-danger"
       : tone === "warning"
-        ? "border-warning/30 bg-warning/5 text-warning"
+        ? "border-warning/30 bg-warning/5 text-warning-foreground"
         : tone === "success"
-          ? "border-success/30 bg-success/5 text-success"
+          ? "border-success/30 bg-success/5 text-success-foreground"
           : "border-primary/30 bg-primary/5 text-primary"
 
   const content = (

@@ -38,3 +38,11 @@ export function getMaintenanceErrorPayload(error: unknown) {
     body: { code: error.code, error: error.message },
   }
 }
+
+export function getMaintenanceErrorMessage(
+  code: unknown,
+  translate: (key: string) => string,
+  fallback: string,
+) {
+  return isMaintenanceErrorCode(code) ? translate(`errors.${code}`) : fallback
+}

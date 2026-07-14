@@ -9,6 +9,7 @@ import { formatFileSize } from "@/lib/uploads"
 import { getMaintenanceAttachmentDisplayName, getMaintenanceAttachmentType, maintenanceAttachmentTypes, type MaintenanceAttachmentType } from "@/lib/maintenance-attachments"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 
 type Attachment = {
   id: string
@@ -59,7 +60,7 @@ export function MaintenanceAttachments({
         body: formData,
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) throw new Error(getMaintenanceErrorMessage(payload?.code, t, tCommon("error")))
 
       setSelectedFile(null)
       toast.success(t("uploadSuccess"))
@@ -79,7 +80,7 @@ export function MaintenanceAttachments({
     try {
       const response = await fetch(`/api/attachments/${id}`, { method: "DELETE" })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) throw new Error(getMaintenanceErrorMessage(payload?.code, t, tCommon("error")))
       toast.success(tCommon("savedSuccess"))
       router.refresh()
     } catch (error) {
@@ -98,6 +99,7 @@ export function MaintenanceAttachments({
 
       {canEdit ? (
       <div className="mb-4 rounded-md border border-border bg-background p-3">
+        {!canDelete ? <p className="mb-3 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-sm text-warning-foreground">{t("closedEvidenceAppendOnlyHelp")}</p> : null}
         <label className="mb-3 block">
           <span className="mb-1.5 block text-sm font-medium text-foreground">{t("attachmentType")}</span>
           <select

@@ -7,6 +7,8 @@ import { CheckCircle2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
+import { toLocalDateInputValue } from "@/lib/local-date"
 
 type StatusOption = { id: string; label: string; name: string }
 
@@ -54,7 +56,7 @@ export function MaintenanceTicketCloseButton({
   const [values, setValues] = useState({
     rootCause: "",
     resolution: "",
-    returnDate: new Date().toISOString().slice(0, 10),
+    returnDate: toLocalDateInputValue(),
     laborCost: defaultLaborCost ?? "",
     partsCost: defaultPartsCost ?? "",
     repairCost: defaultRepairCost ?? "",
@@ -92,7 +94,7 @@ export function MaintenanceTicketCloseButton({
         }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) throw new Error(getMaintenanceErrorMessage(payload?.code, t, tCommon("error")))
       toast.success(t("closeSuccess"))
       setOpen(false)
       router.refresh()

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Loader2, Wrench } from "lucide-react"
 import { toast } from "sonner"
+import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 
 export function MaintenancePlanGenerateButton({ planId }: { planId: string }) {
   const router = useRouter()
@@ -19,7 +20,7 @@ export function MaintenancePlanGenerateButton({ planId }: { planId: string }) {
         method: "POST",
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) throw new Error(getMaintenanceErrorMessage(payload?.code, t, tCommon("error")))
 
       toast.success(t("pmGenerateTicketSuccess"))
       router.refresh()

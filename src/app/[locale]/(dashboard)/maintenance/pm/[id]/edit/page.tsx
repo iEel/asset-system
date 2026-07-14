@@ -6,6 +6,7 @@ import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { prisma } from "@/lib/db"
 import { normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { requirePagePermission } from "@/lib/page-auth"
+import { toLocalDateInputValue } from "@/lib/local-date"
 
 type Props = {
   params: Promise<{ locale: string; id: string }>
@@ -45,7 +46,7 @@ export default async function EditMaintenancePlanPage({ params, searchParams }: 
           title: plan.title,
           frequency: plan.frequency,
           intervalDays: String(plan.intervalDays),
-          nextDueDate: plan.nextDueDate.toISOString().slice(0, 10),
+          nextDueDate: toLocalDateInputValue(plan.nextDueDate),
           assignedToId: plan.assignedToId ?? "",
           vendorId: plan.vendorId ?? "",
           notes: plan.notes ?? "",

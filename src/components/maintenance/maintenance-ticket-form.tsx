@@ -7,6 +7,8 @@ import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
 import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
+import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
+import { toLocalDateInputValue } from "@/lib/local-date"
 
 type Option = { id: string; label: string }
 
@@ -25,7 +27,7 @@ export function MaintenanceTicketForm({
     assetId: initialAsset?.id ?? "",
     problem: "",
     reportedById: "",
-    reportedDate: new Date().toISOString().slice(0, 10),
+    reportedDate: toLocalDateInputValue(),
     dueDate: "",
     assignedToId: "",
     repairType: "internal",
@@ -67,7 +69,7 @@ export function MaintenanceTicketForm({
         }),
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) throw new Error(getMaintenanceErrorMessage(payload?.code, t, tCommon("error")))
       toast.success(t("createSuccess"))
       router.push(`/${locale}/maintenance/${payload.id}`)
     } catch (error) {
