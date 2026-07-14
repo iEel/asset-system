@@ -55,19 +55,12 @@ test("interactive status updates never expose closure transitions", () => {
 })
 ```
 
-Extend validation tests with real schemas:
+Extend validation tests with the real planning schema:
 
 ```ts
 import {
   maintenanceTicketPlanningSchema,
-  maintenanceTicketStatusSchema,
 } from "../src/lib/validations/maintenance.ts"
-
-test("waiting status requires a meaningful remark", () => {
-  const input = { expectedUpdatedAt: "2026-07-14T03:00:00.000Z", repairStatus: "waiting_parts", remark: "" }
-  assert.equal(maintenanceTicketStatusSchema.safeParse(input).success, false)
-  assert.equal(maintenanceTicketStatusSchema.safeParse({ ...input, remark: "Waiting for battery shipment" }).success, true)
-})
 
 test("planning input accepts cleared assignee and due date", () => {
   const parsed = maintenanceTicketPlanningSchema.parse({
@@ -91,7 +84,7 @@ Run:
 node --test --experimental-strip-types tests/maintenance-policy.test.ts tests/maintenance-validation.test.ts tests/maintenance-api-errors.test.ts
 ```
 
-Expected: FAIL because the interactive helper, planning schema, and stable error code do not exist and waiting remarks are optional.
+Expected: FAIL because the interactive helper, planning schema, and stable error code do not exist.
 
 - [ ] **Step 3: Implement the policy helper and schemas**
 
@@ -103,20 +96,14 @@ export function getMaintenanceStatusUpdateTargets(status: string): readonly Main
 }
 ```
 
-Refine the status schema and add planning validation:
+Keep the status remark optional at the shape layer and add planning validation. The service in Task 2 owns the waiting-status business validation so the API can return the stable localized code instead of a generic Zod response:
 
 ```ts
-const waitingStatuses = new Set(["waiting_parts", "waiting_vendor"])
-
 export const maintenanceTicketStatusSchema = z.object({
   action: z.literal("status").optional(),
   expectedUpdatedAt: z.coerce.date(),
   repairStatus: z.enum(["reported", "accepted", "in_progress", "waiting_parts", "waiting_vendor", "completed"]),
   remark: optionalText,
-}).superRefine((input, context) => {
-  if (waitingStatuses.has(input.repairStatus) && !input.remark) {
-    context.addIssue({ code: "custom", path: ["remark"], message: "Remark is required for a waiting status" })
-  }
 })
 
 export const maintenanceTicketPlanningSchema = z.object({
@@ -198,6 +185,18 @@ test("planning update rejects closed and stale tickets", async () => {
   await assert.rejects(
     () => updateMaintenanceTicketPlanning(fakeDb({ conditionalUpdateCount: 0 }), "ticket-1", planningInput, { id: "user-1" }),
     hasMaintenanceCode("MAINTENANCE_CONFLICT"),
+  )
+})
+
+test("waiting transition returns a stable error when remark is missing", async () => {
+  await assert.rejects(
+    () => transitionMaintenanceTicket(
+      fakeDb({ ticketStatus: "in_progress" }),
+      "ticket-1",
+      { repairStatus: "waiting_parts", expectedUpdatedAt, remark: "" },
+      { id: "user-1" },
+    ),
+    hasMaintenanceCode("MAINTENANCE_WAITING_REMARK_REQUIRED"),
   )
 })
 ```
@@ -482,4 +481,3 @@ git push origin master
 ```
 
 Expected: push succeeds without force and local `master` matches `origin/master`.
-
