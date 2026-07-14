@@ -32,19 +32,28 @@ export function AccessibleDialog({
   const descriptionId = useId()
   const panelRef = useRef<HTMLElement | null>(null)
   const restoreFocusRef = useRef<HTMLElement | null>(null)
+  const onCloseRef = useRef(onClose)
+  const busyRef = useRef(busy)
+  const initialFocusRefRef = useRef(initialFocusRef)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+    busyRef.current = busy
+    initialFocusRefRef.current = initialFocusRef
+  }, [busy, initialFocusRef, onClose])
 
   useEffect(() => {
     if (!open) return
     restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const frame = window.requestAnimationFrame(() => {
-      const target = initialFocusRef?.current ?? panelRef.current?.querySelector<HTMLElement>(focusableSelector)
+      const target = initialFocusRefRef.current?.current ?? panelRef.current?.querySelector<HTMLElement>(focusableSelector)
       target?.focus()
     })
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !busy) {
+      if (event.key === "Escape" && !busyRef.current) {
         event.preventDefault()
-        onClose()
+        onCloseRef.current()
         return
       }
       if (event.key === "Tab" && panelRef.current) {
@@ -68,7 +77,7 @@ export function AccessibleDialog({
       document.removeEventListener("keydown", handleKeyDown)
       restoreFocusRef.current?.focus()
     }
-  }, [busy, initialFocusRef, onClose, open])
+  }, [open])
 
   if (!open) return null
   return (
