@@ -3,6 +3,10 @@ import { readFileSync } from "node:fs"
 import test from "node:test"
 import { z } from "zod"
 
+import {
+  maintenanceTicketPlanningSchema,
+} from "../src/lib/validations/maintenance.ts"
+
 test("maintenance ticket optional dates use a Zod-v4 optional preprocess pattern", () => {
   const source = readFileSync("src/lib/validations/maintenance.ts", "utf8")
 
@@ -28,5 +32,16 @@ test("maintenance status and close mutations require an optimistic concurrency t
   const source = readFileSync("src/lib/validations/maintenance.ts", "utf8")
   const occurrences = source.match(/expectedUpdatedAt:\s*z\.coerce\.date\(\)/g) ?? []
 
-  assert.equal(occurrences.length, 2)
+  assert.equal(occurrences.length, 3)
+})
+
+test("planning input accepts cleared assignee and due date", () => {
+  const parsed = maintenanceTicketPlanningSchema.parse({
+    action: "planning",
+    expectedUpdatedAt: "2026-07-14T03:00:00.000Z",
+    assignedToId: "",
+    dueDate: "",
+  })
+  assert.equal(parsed.assignedToId, undefined)
+  assert.equal(parsed.dueDate, undefined)
 })

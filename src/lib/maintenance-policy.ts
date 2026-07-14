@@ -55,6 +55,10 @@ export function getAllowedMaintenanceTransitions(status: string): readonly Maint
   return maintenanceTransitions[status as MaintenanceStatus] ?? []
 }
 
+export function getMaintenanceStatusUpdateTargets(status: string): readonly MaintenanceStatus[] {
+  return getAllowedMaintenanceTransitions(status).filter((target) => target !== "closed")
+}
+
 export function isMaintenanceTransitionAllowed(currentStatus: string, nextStatus: string) {
   return getAllowedMaintenanceTransitions(currentStatus).includes(nextStatus as MaintenanceStatus)
 }

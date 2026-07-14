@@ -13,6 +13,10 @@ test("recognizes every stable maintenance error code", () => {
   assert.equal(isMaintenanceErrorCode("UNKNOWN"), false)
 })
 
+test("exports a stable error code for waiting statuses without a remark", () => {
+  assert.equal(maintenanceErrorCodes.includes("MAINTENANCE_WAITING_REMARK_REQUIRED"), true)
+})
+
 test("serializes typed maintenance conflicts with their HTTP status", () => {
   const error = new MaintenanceApiError("MAINTENANCE_CONFLICT", "Ticket changed", 409)
   assert.deepEqual(getMaintenanceErrorPayload(error), {

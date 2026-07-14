@@ -1,6 +1,6 @@
 import { z } from "zod"
-import { maintenancePlanFrequencies } from "@/lib/preventive-maintenance"
-import { optionalText } from "@/lib/validations/shared"
+import { maintenancePlanFrequencies } from "../preventive-maintenance.ts"
+import { optionalText } from "./shared.ts"
 
 const optionalDate = z.preprocess(
   (value) => (value == null || (typeof value === "string" && value.trim().length === 0) ? undefined : value),
@@ -98,11 +98,19 @@ export const maintenanceTicketCloseSchema = z.object({
 export type MaintenanceTicketCloseInput = z.infer<typeof maintenanceTicketCloseSchema>
 
 export const maintenanceTicketStatusSchema = z.object({
+  action: z.literal("status").optional(),
   expectedUpdatedAt: z.coerce.date(),
   repairStatus: z.enum(["reported", "accepted", "in_progress", "waiting_parts", "waiting_vendor", "completed"]),
-  assignedToId: optionalText,
-  dueDate: optionalDate,
   remark: optionalText,
 })
 
 export type MaintenanceTicketStatusInput = z.infer<typeof maintenanceTicketStatusSchema>
+
+export const maintenanceTicketPlanningSchema = z.object({
+  action: z.literal("planning"),
+  expectedUpdatedAt: z.coerce.date(),
+  assignedToId: optionalText.transform((value) => value ?? undefined),
+  dueDate: optionalDate,
+})
+
+export type MaintenanceTicketPlanningInput = z.infer<typeof maintenanceTicketPlanningSchema>

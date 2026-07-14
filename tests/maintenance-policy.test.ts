@@ -6,6 +6,7 @@ import {
   getAllowedMaintenanceTransitions,
   getCorrectiveAssetEligibilityError,
   getCorrectiveLifecycleTarget,
+  getMaintenanceStatusUpdateTargets,
   isPreventiveMaintenanceTicket,
 } from "../src/lib/maintenance-policy.ts"
 
@@ -34,6 +35,13 @@ test("defines forward maintenance transitions", () => {
   assert.deepEqual(getAllowedMaintenanceTransitions("accepted"), ["in_progress"])
   assert.deepEqual(getAllowedMaintenanceTransitions("completed"), ["closed"])
   assert.deepEqual(getAllowedMaintenanceTransitions("closed"), [])
+})
+
+test("interactive status updates never expose closure transitions", () => {
+  assert.deepEqual(getMaintenanceStatusUpdateTargets("reported"), ["accepted"])
+  assert.deepEqual(getMaintenanceStatusUpdateTargets("in_progress"), ["waiting_parts", "waiting_vendor", "completed"])
+  assert.deepEqual(getMaintenanceStatusUpdateTargets("completed"), [])
+  assert.deepEqual(getMaintenanceStatusUpdateTargets("open"), [])
 })
 
 test("closed maintenance evidence cannot be deleted", () => {
