@@ -709,6 +709,7 @@ model MaintenancePlan {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   isActive        Boolean   @default(true)
+  tickets         MaintenanceTicket[] @relation("MaintenancePlanTickets")
 
   @@index([isActive, nextDueDate], map: "IX_maintenance_plans_isActive_nextDueDate")
   @@index([assetId], map: "IX_maintenance_plans_assetId")
@@ -721,6 +722,8 @@ model MaintenanceTicket {
   repairNo      String    @unique @db.NVarChar(50)
   assetId       String
   asset         Asset     @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  maintenancePlanId String?
+  maintenancePlan   MaintenancePlan? @relation("MaintenancePlanTickets", fields: [maintenancePlanId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   problem       String    @db.NVarChar(Max)
   reportedById  String
   reportedBy    Employee  @relation("MaintenanceReportedBy", fields: [reportedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -753,6 +756,7 @@ model MaintenanceTicket {
   @@index([assetId, reportedDate], map: "IX_maintenance_tickets_assetId_reportedDate")
   @@index([assignedToId], map: "IX_maintenance_tickets_assignedToId")
   @@index([reportedById], map: "IX_maintenance_tickets_reportedById")
+  @@index([maintenancePlanId], map: "IX_maintenance_tickets_maintenancePlanId")
   @@map("maintenance_tickets")
 }
 
