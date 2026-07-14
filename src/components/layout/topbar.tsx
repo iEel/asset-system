@@ -13,22 +13,29 @@ import {
   ChevronDown,
   PanelLeftClose,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { cn } from "@/lib/utils"
 import { GlobalSearch } from "@/components/layout/global-search"
 import { getUserDisplayLabel, getUserInitial, getUserSecondaryLabel } from "@/lib/user-display"
 import type { SessionUser } from "@/lib/auth-utils"
+import {
+  isPlainPrimaryClick,
+  markNotificationRead,
+  notificationSummaryChangedEvent,
+  notifyNotificationSummaryChanged,
+  removeNotificationSummaryItem,
+  type NotificationClientSummary,
+} from "@/lib/notification-client-sync"
+import type { NotificationSummaryItem } from "@/lib/notification-summary-items"
 
-type NotificationItem = {
-  key: string
-  count: number
-  href: string
-  tone: "danger" | "warning" | "primary"
-}
-
-type NotificationSummary = {
-  total: number
-  items: NotificationItem[]
+async function fetchNotificationSummary(locale: string) {
+  try {
+    const response = await fetch(`/api/notifications?locale=${locale}`)
+    if (!response.ok) return null
+    return await response.json() as NotificationClientSummary
+  } catch {
+    return null
+  }
 }
 
 export function Topbar({
@@ -51,24 +58,47 @@ export function Topbar({
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
-  const [notificationSummary, setNotificationSummary] = useState<NotificationSummary>({ total: 0, items: [] })
+  const [notificationSummary, setNotificationSummary] = useState<NotificationClientSummary>({ total: 0, items: [] })
   const userDisplayLabel = getUserDisplayLabel(user)
   const userSecondaryLabel = getUserSecondaryLabel(user)
 
+  const loadNotificationSummary = useCallback(async () => {
+    const data = await fetchNotificationSummary(locale)
+    if (data) setNotificationSummary(data)
+  }, [locale])
+
   useEffect(() => {
     let cancelled = false
-    fetch(`/api/notifications?locale=${locale}`)
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data: NotificationSummary | null) => {
-        if (!cancelled && data) setNotificationSummary(data)
-      })
-      .catch(() => {
-        if (!cancelled) setNotificationSummary({ total: 0, items: [] })
-      })
+    void fetchNotificationSummary(locale).then((data) => {
+      if (!cancelled && data) setNotificationSummary(data)
+    })
+    window.addEventListener(notificationSummaryChangedEvent, loadNotificationSummary)
     return () => {
       cancelled = true
+      window.removeEventListener(notificationSummaryChangedEvent, loadNotificationSummary)
     }
-  }, [locale])
+  }, [loadNotificationSummary, locale])
+
+  const handleNotificationClick = async (
+    event: ReactMouseEvent<HTMLAnchorElement>,
+    item: NotificationSummaryItem,
+  ) => {
+    if (!isPlainPrimaryClick(event)) {
+      setNotificationOpen(false)
+      return
+    }
+
+    event.preventDefault()
+    try {
+      if (await markNotificationRead(item)) {
+        setNotificationSummary((current) => removeNotificationSummaryItem(current, item.key))
+        notifyNotificationSummaryChanged()
+      }
+    } finally {
+      setNotificationOpen(false)
+      router.push(item.href)
+    }
+  }
 
   const switchLocale = (newLocale: string) => {
     const newPath = pathname.replace(`/${locale}`, `/${newLocale}`)
@@ -149,7 +179,7 @@ export function Topbar({
                     <Link
                       key={item.key}
                       href={item.href}
-                      onClick={() => setNotificationOpen(false)}
+                      onClick={(event) => void handleNotificationClick(event, item)}
                       className="flex items-start justify-between gap-3 rounded-md px-3 py-2 text-sm hover:bg-accent"
                     >
                       <div className="min-w-0">

@@ -1,10 +1,15 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, type MouseEvent as ReactMouseEvent } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Check, Clock3, ExternalLink, RotateCcw, UserRound } from "lucide-react"
 import { toast } from "sonner"
+import {
+  isPlainPrimaryClick,
+  markNotificationRead,
+  notifyNotificationSummaryChanged,
+} from "@/lib/notification-client-sync"
 
 type AssigneeOption = {
   id: string
@@ -37,23 +42,43 @@ export function NotificationCenterActions({ item, assignees, labels }: Notificat
   const [isPending, startTransition] = useTransition()
   const [assignedToUserId, setAssignedToUserId] = useState(item.assignedToUserId ?? "")
 
+  const openItem = async (event: ReactMouseEvent<HTMLAnchorElement>) => {
+    if (!isPlainPrimaryClick(event)) return
+
+    event.preventDefault()
+    try {
+      if (await markNotificationRead(item)) {
+        notifyNotificationSummaryChanged()
+      } else {
+        toast.error(labels.error)
+      }
+    } finally {
+      router.push(item.href)
+    }
+  }
+
   const mutate = (payload: { action: "read" | "unread" | "snooze" | "assign"; assignedToUserId?: string | null; snoozeHours?: number }) => {
     startTransition(async () => {
-      const response = await fetch("/api/notifications", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          key: item.key,
-          count: item.count,
-          ...payload,
-        }),
-      })
-      if (!response.ok) {
+      try {
+        const response = await fetch("/api/notifications", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            key: item.key,
+            count: item.count,
+            ...payload,
+          }),
+        })
+        if (!response.ok) {
+          toast.error(labels.error)
+          return
+        }
+        toast.success(labels.saved)
+        notifyNotificationSummaryChanged()
+        router.refresh()
+      } catch {
         toast.error(labels.error)
-        return
       }
-      toast.success(labels.saved)
-      router.refresh()
     })
   }
 
@@ -62,6 +87,7 @@ export function NotificationCenterActions({ item, assignees, labels }: Notificat
       <div className="flex flex-wrap gap-2">
         <Link
           href={item.href}
+          onClick={(event) => void openItem(event)}
           className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium hover:bg-accent"
         >
           <ExternalLink className="h-4 w-4" />
