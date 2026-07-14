@@ -31,6 +31,7 @@ export function buildMaintenanceTicketLayoutHref(
 ) {
   const params = new URLSearchParams(currentQuery)
   params.set("view", "tickets")
+  params.set("page", "1")
   if (layout === "board") {
     params.set("layout", layout)
   } else {

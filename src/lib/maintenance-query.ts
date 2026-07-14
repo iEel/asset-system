@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client"
-import { maintenanceStatuses } from "@/lib/maintenance-status"
+import { maintenanceStatuses } from "./maintenance-status.ts"
+
+type QueryValue = string | string[] | number | undefined
 
 export type MaintenanceListParams = {
   search?: string
@@ -9,15 +11,23 @@ export type MaintenanceListParams = {
   overdue?: string
   dateFrom?: string
   dateTo?: string
+  page?: QueryValue
+  pageSize?: QueryValue
 }
 
 export const maintenanceStatusFilters = maintenanceStatuses
 export const maintenanceRepairTypeFilters = ["internal", "vendor"] as const
 export const maintenanceEvidenceFilters = ["with", "without"] as const
+export const maintenancePageSizes = [25, 50, 100] as const
+
+export type ParsedMaintenanceListParams = ReturnType<typeof parseMaintenanceListParams>
 
 export function parseMaintenanceListParams(input: URLSearchParams | MaintenanceListParams) {
-  const getValue = (key: keyof MaintenanceListParams) =>
-    input instanceof URLSearchParams ? input.get(key)?.trim() : input[key]?.trim()
+  const getValue = (key: keyof MaintenanceListParams) => {
+    const rawValue = input instanceof URLSearchParams ? input.get(key) ?? undefined : input[key]
+    const value = Array.isArray(rawValue) ? rawValue[0] : rawValue
+    return value === undefined ? undefined : String(value).trim()
+  }
 
   const search = getValue("search") ?? ""
   const status = normalizeOption(getValue("status"), maintenanceStatusFilters)
@@ -26,12 +36,20 @@ export function parseMaintenanceListParams(input: URLSearchParams | MaintenanceL
   const overdue = normalizeOption(getValue("overdue"), ["yes"] as const)
   const dateFrom = normalizeDate(getValue("dateFrom"))
   const dateTo = normalizeDate(getValue("dateTo"))
+  const page = normalizePositiveInteger(getValue("page"), 1)
+  const pageSize = normalizePageSize(getValue("pageSize"))
 
-  return { search, status, repairType, evidence, overdue, dateFrom, dateTo }
+  return { search, status, repairType, evidence, overdue, dateFrom, dateTo, page, pageSize }
+}
+
+export function getMaintenanceDateRangeError(filters: ParsedMaintenanceListParams) {
+  return filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo
+    ? "invalid_order" as const
+    : null
 }
 
 export function buildMaintenanceWhere(
-  filters: ReturnType<typeof parseMaintenanceListParams>,
+  filters: ParsedMaintenanceListParams,
   evidenceTicketIds?: string[]
 ): Prisma.MaintenanceTicketWhereInput {
   return {
@@ -41,7 +59,7 @@ export function buildMaintenanceWhere(
     ...(filters.overdue === "yes" ? { dueDate: { lt: startOfDay(new Date()) }, repairStatus: { not: "closed" } } : {}),
     ...(filters.evidence === "with" ? { id: { in: evidenceTicketIds?.length ? evidenceTicketIds : ["__no_matching_ticket__"] } } : {}),
     ...(filters.evidence === "without" && evidenceTicketIds?.length ? { id: { notIn: evidenceTicketIds } } : {}),
-    ...(filters.dateFrom || filters.dateTo
+    ...(!getMaintenanceDateRangeError(filters) && (filters.dateFrom || filters.dateTo)
       ? {
           reportedDate: {
             ...(filters.dateFrom ? { gte: startOfDay(filters.dateFrom) } : {}),
@@ -69,15 +87,21 @@ export function buildMaintenanceWhere(
   }
 }
 
-export function buildMaintenanceQueryString(filters: ReturnType<typeof parseMaintenanceListParams>) {
+export function buildMaintenanceQueryString(
+  filters: ParsedMaintenanceListParams,
+  overrides: Partial<ParsedMaintenanceListParams> = {},
+) {
+  const values = { ...filters, ...overrides }
   const params = new URLSearchParams()
-  if (filters.search) params.set("search", filters.search)
-  if (filters.status) params.set("status", filters.status)
-  if (filters.repairType) params.set("repairType", filters.repairType)
-  if (filters.evidence) params.set("evidence", filters.evidence)
-  if (filters.overdue) params.set("overdue", filters.overdue)
-  if (filters.dateFrom) params.set("dateFrom", filters.dateFrom)
-  if (filters.dateTo) params.set("dateTo", filters.dateTo)
+  if (values.search) params.set("search", values.search)
+  if (values.status) params.set("status", values.status)
+  if (values.repairType) params.set("repairType", values.repairType)
+  if (values.evidence) params.set("evidence", values.evidence)
+  if (values.overdue) params.set("overdue", values.overdue)
+  if (values.dateFrom) params.set("dateFrom", values.dateFrom)
+  if (values.dateTo) params.set("dateTo", values.dateTo)
+  params.set("page", String(values.page))
+  params.set("pageSize", String(values.pageSize))
   return params.toString()
 }
 
@@ -86,7 +110,29 @@ function normalizeOption<T extends readonly string[]>(value: string | undefined,
 }
 
 function normalizeDate(value: string | undefined) {
-  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : ""
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return ""
+  const date = new Date(`${value}T00:00:00.000`)
+  return Number.isNaN(date.getTime()) || toDateKey(date) !== value ? "" : value
+}
+
+function normalizePositiveInteger(value: string | undefined, fallback: number) {
+  if (!value || !/^\d+$/.test(value)) return fallback
+  const parsed = Number(value)
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function normalizePageSize(value: string | undefined): (typeof maintenancePageSizes)[number] {
+  const parsed = Number(value)
+  return maintenancePageSizes.includes(parsed as (typeof maintenancePageSizes)[number])
+    ? parsed as (typeof maintenancePageSizes)[number]
+    : 25
+}
+
+function toDateKey(date: Date) {
+  const year = String(date.getFullYear()).padStart(4, "0")
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
 }
 
 function startOfDay(value: Date): Date

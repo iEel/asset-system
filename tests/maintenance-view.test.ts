@@ -29,7 +29,11 @@ test("normalizes ticket layouts and preserves list filters when switching layout
   assert.equal(normalizeMaintenanceTicketLayout("board"), "board")
   assert.equal(normalizeMaintenanceTicketLayout("cards"), "table")
   assert.equal(
-    buildMaintenanceTicketLayoutHref("th", "search=UPS&status=in_progress&view=tickets", "board"),
-    "/th/maintenance?search=UPS&status=in_progress&view=tickets&layout=board",
+    buildMaintenanceTicketLayoutHref(
+      "th",
+      "search=UPS&status=in_progress&view=tickets&page=4&pageSize=50",
+      "board",
+    ),
+    "/th/maintenance?search=UPS&status=in_progress&view=tickets&page=1&pageSize=50&layout=board",
   )
 })
