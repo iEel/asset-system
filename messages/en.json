@@ -787,6 +787,7 @@
     "dataQualityPurchase": "Purchase info gaps",
     "dataQualityWarranty": "Warranty expiring",
     "dataQualityResponsibility": "Missing responsibility",
+    "activityIdle180d": "No movement in the latest 180 days",
     "quickFilterCrossScopeAll": "Cross company/branch",
     "quickFilterCustodianCrossCompany": "Custodian different company",
     "quickFilterCustodianCrossBranch": "Custodian different branch",

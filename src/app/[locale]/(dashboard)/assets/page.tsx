@@ -53,6 +53,7 @@ type AssetFilterLabels = {
   dataQualityPurchase: string
   dataQualityWarranty: string
   dataQualityResponsibility: string
+  activityIdle180d: string
   quickFilterCrossScopeAll: string
   quickFilterCustodianCrossCompany: string
   quickFilterCustodianCrossBranch: string
@@ -313,6 +314,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           dataQualityPurchase: t("dataQualityPurchase"),
           dataQualityWarranty: t("dataQualityWarranty"),
           dataQualityResponsibility: t("dataQualityResponsibility"),
+          activityIdle180d: t("activityIdle180d"),
           quickFilterCrossScopeAll: t("quickFilterCrossScopeAll"),
           quickFilterCustodianCrossCompany: t("quickFilterCustodianCrossCompany"),
           quickFilterCustodianCrossBranch: t("quickFilterCustodianCrossBranch"),
@@ -605,6 +607,7 @@ function AssetFilters({
     supplierId: "",
     dataQuality: "",
     crossScope: "",
+    activity: "",
     page: 1,
     pageSize: 25,
   })}`
@@ -670,6 +673,13 @@ function AssetFilters({
           key: "crossScope",
           label: selectedCrossScopeFilter?.label ?? filters.crossScope,
           href: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "", page: 1 })}`,
+        }
+      : null,
+    filters.activity
+      ? {
+          key: "activity",
+          label: labels.activityIdle180d,
+          href: `/${locale}/assets?${buildAssetQueryString(filters, { activity: "", page: 1 })}`,
         }
       : null,
     filters.pageSize !== 25

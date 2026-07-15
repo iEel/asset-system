@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
 import { rememberAssetRegisterScrollPosition } from "@/lib/asset-register-view-memory"
+import type { AssetActivityFilter } from "@/lib/asset-activity-filter"
 import type { AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
 import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
@@ -61,7 +62,7 @@ type AssetRegisterTableProps = {
     supplierId: string
     dataQuality: "" | AssetDataQualityFilter
     crossScope: "" | AssetCrossScopeFilter
-    activity: "" | "idle_180d"
+    activity: AssetActivityFilter
     page: number
     pageSize: number
     sort: string

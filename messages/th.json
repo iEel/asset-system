@@ -787,6 +787,7 @@
     "dataQualityPurchase": "ข้อมูลซื้อไม่ครบ",
     "dataQualityWarranty": "ใกล้หมดประกัน",
     "dataQualityResponsibility": "ผู้รับผิดชอบไม่ครบ",
+    "activityIdle180d": "ไม่มีความเคลื่อนไหวใน 180 วันล่าสุด",
     "quickFilterCrossScopeAll": "ต่างบริษัท/ต่างสาขา",
     "quickFilterCustodianCrossCompany": "ผู้ถือครองต่างบริษัท",
     "quickFilterCustodianCrossBranch": "ผู้ถือครองต่างสาขา",
