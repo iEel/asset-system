@@ -5,6 +5,7 @@ import { ReportPresetControls } from "@/components/reports/report-preset-control
 import { MetricCard } from "@/components/ui/metric-card"
 
 export type ReportRecurringExport = {
+  key: string
   name: string
   cadence: string
   href: string
@@ -13,6 +14,7 @@ export type ReportRecurringExport = {
 }
 
 export type ReportCatalogRow = {
+  key: string
   label: string
   viewHref: string
   exportHref?: string
@@ -109,7 +111,7 @@ export function ReportsCatalogView({
           />
           <div className="grid gap-3 md:grid-cols-2">
             {recurringReports.map((report) => (
-              <div key={report.name} className="rounded-md border border-border bg-background p-4">
+              <div key={report.key} className="rounded-md border border-border bg-background p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-foreground">{report.name}</div>
@@ -154,7 +156,7 @@ export function ReportsCatalogView({
                 </div>
                 <div className="grid gap-2">
                   {category.reports.map((report) => (
-                    <div key={report.label} className="flex flex-col gap-2 rounded-md border border-border bg-surface px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div key={report.key} className="flex flex-col gap-2 rounded-md border border-border bg-surface px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
                       <span className="text-sm font-medium text-foreground">{report.label}</span>
                       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
                         <Link href={report.viewHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-background px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0">

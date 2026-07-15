@@ -1,5 +1,6 @@
 import Link from "next/link"
 import type React from "react"
+import { selectReportEmptyCopy } from "@/lib/report-empty-state"
 
 export type ReportCountRow = {
   key: string
@@ -42,6 +43,7 @@ export type ReportsOverviewLabels = {
 export type ReportsOverviewViewProps = {
   locale: string
   hasActiveFilters: boolean
+  hasMatchingAssets: boolean
   emptyCopy: {
     filtered: string
     dataset: string
@@ -61,12 +63,13 @@ export type ReportsOverviewViewProps = {
 export function ReportsOverviewView({
   locale,
   hasActiveFilters,
+  hasMatchingAssets,
   emptyCopy,
   previewRows,
   breakdowns,
   labels,
 }: ReportsOverviewViewProps) {
-  const emptyLabel = hasActiveFilters ? emptyCopy.filtered : emptyCopy.dataset
+  const emptyLabel = selectReportEmptyCopy({ hasActiveFilters, hasMatchingAssets, ...emptyCopy })
 
   return (
     <div className="space-y-5">

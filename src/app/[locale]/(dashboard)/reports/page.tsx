@@ -280,10 +280,10 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   ]
   const idleAssetsHref = `/${locale}/assets?${buildAssetQueryString(filters, idleAssetOverrides)}`
   const recurringReports = [
-    { name: t("monthlyAssetOverview"), cadence: t("monthly"), href: `/api/reports/assets-overview/export?${exportQuery}`, owner: t("ownerAccounting"), allowed: canReportExport },
-    { name: t("weeklyMaintenanceFollowUp"), cadence: t("weekly"), href: "/api/maintenance-tickets/export", owner: t("ownerMaintenance"), allowed: canMaintenanceExport },
-    { name: t("monthlyDisposalFollowUp"), cadence: t("monthly"), href: "/api/disposal-requests/export", owner: t("ownerApprover"), allowed: canDisposalExport },
-    { name: t("weeklyAuditFindings"), cadence: t("weekly"), href: "/api/audit-findings/export?status=pending", owner: t("ownerAudit"), allowed: canAuditExport },
+    { key: "asset-overview", name: t("monthlyAssetOverview"), cadence: t("monthly"), href: `/api/reports/assets-overview/export?${exportQuery}`, owner: t("ownerAccounting"), allowed: canReportExport },
+    { key: "maintenance-follow-up", name: t("weeklyMaintenanceFollowUp"), cadence: t("weekly"), href: "/api/maintenance-tickets/export", owner: t("ownerMaintenance"), allowed: canMaintenanceExport },
+    { key: "disposal-follow-up", name: t("monthlyDisposalFollowUp"), cadence: t("monthly"), href: "/api/disposal-requests/export", owner: t("ownerApprover"), allowed: canDisposalExport },
+    { key: "audit-findings", name: t("weeklyAuditFindings"), cadence: t("weekly"), href: "/api/audit-findings/export?status=pending", owner: t("ownerAudit"), allowed: canAuditExport },
   ]
   const reportCatalog: ReportCatalogCategory[] = [
     {
@@ -293,9 +293,9 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       audience: t("catalogAssetAudience"),
       icon: <FileSpreadsheet className="h-5 w-5" />,
       reports: [
-        { label: t("assetRegister"), viewHref: `/${locale}/assets?${exportQuery}`, exportHref: `/api/assets/export?${exportQuery}`, exportLabel: t("exportAssetRegister"), exportAllowed: canAssetExport },
-        { label: t("assetOverviewExcel"), viewHref: `/${locale}/reports?${exportQuery}`, exportHref: `/api/reports/assets-overview/export?${exportQuery}`, exportLabel: t("exportAssetOverview"), exportAllowed: canReportExport },
-        { label: t("crossScopeAssetsExcel"), viewHref: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "all", dataQuality: "", statusId: "", page: 1 })}`, exportHref: `/api/assets/export?${buildAssetQueryString(filters, { crossScope: "all", dataQuality: "", statusId: "", page: 1 })}`, exportLabel: t("exportCrossScopeAssets"), exportAllowed: canAssetExport },
+        { key: "asset-register", label: t("assetRegister"), viewHref: `/${locale}/assets?${exportQuery}`, exportHref: `/api/assets/export?${exportQuery}`, exportLabel: t("exportAssetRegister"), exportAllowed: canAssetExport },
+        { key: "asset-overview", label: t("assetOverviewExcel"), viewHref: `/${locale}/reports?${exportQuery}`, exportHref: `/api/reports/assets-overview/export?${exportQuery}`, exportLabel: t("exportAssetOverview"), exportAllowed: canReportExport },
+        { key: "cross-scope-assets", label: t("crossScopeAssetsExcel"), viewHref: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "all", dataQuality: "", statusId: "", page: 1 })}`, exportHref: `/api/assets/export?${buildAssetQueryString(filters, { crossScope: "all", dataQuality: "", statusId: "", page: 1 })}`, exportLabel: t("exportCrossScopeAssets"), exportAllowed: canAssetExport },
       ],
     },
     {
@@ -305,7 +305,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       audience: t("catalogDataQualityAudience"),
       icon: <DatabaseZap className="h-5 w-5" />,
       reports: [
-        { label: t("dataQuality"), viewHref: `/${locale}/admin/data-quality`, exportHref: `/api/reports/assets-overview/export?${exportQuery}`, exportLabel: t("exportAssetOverview"), exportAllowed: canReportExport },
+        { key: "data-quality", label: t("dataQuality"), viewHref: `/${locale}/admin/data-quality`, exportHref: `/api/reports/assets-overview/export?${exportQuery}`, exportLabel: t("exportAssetOverview"), exportAllowed: canReportExport },
       ],
     },
     {
@@ -315,7 +315,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       audience: t("catalogMaintenanceAudience"),
       icon: <Wrench className="h-5 w-5" />,
       reports: [
-        { label: t("maintenanceReport"), viewHref: `/${locale}/maintenance`, exportHref: "/api/maintenance-tickets/export", exportLabel: t("exportMaintenance"), exportAllowed: canMaintenanceExport },
+        { key: "maintenance", label: t("maintenanceReport"), viewHref: `/${locale}/maintenance`, exportHref: "/api/maintenance-tickets/export", exportLabel: t("exportMaintenance"), exportAllowed: canMaintenanceExport },
       ],
     },
     {
@@ -325,8 +325,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       audience: t("catalogAuditAudience"),
       icon: <ClipboardCheck className="h-5 w-5" />,
       reports: [
-        { label: t("auditFindingsReport"), viewHref: `/${locale}/audit/findings`, exportHref: "/api/audit-findings/export?status=all", exportLabel: t("exportAuditFindings"), exportAllowed: canAuditExport },
-        { label: t("auditFindingsPdf"), viewHref: `/${locale}/audit/findings`, exportHref: "/api/audit-findings/export-pdf?status=all", exportLabel: t("exportPdf"), exportAllowed: canAuditExport },
+        { key: "audit-findings", label: t("auditFindingsReport"), viewHref: `/${locale}/audit/findings`, exportHref: "/api/audit-findings/export?status=all", exportLabel: t("exportAuditFindings"), exportAllowed: canAuditExport },
+        { key: "audit-findings-pdf", label: t("auditFindingsPdf"), viewHref: `/${locale}/audit/findings`, exportHref: "/api/audit-findings/export-pdf?status=all", exportLabel: t("exportPdf"), exportAllowed: canAuditExport },
       ],
     },
     {
@@ -336,7 +336,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       audience: t("catalogDisposalAudience"),
       icon: <Trash2 className="h-5 w-5" />,
       reports: [
-        { label: t("disposalReport"), viewHref: `/${locale}/disposal`, exportHref: "/api/disposal-requests/export", exportLabel: t("exportDisposal"), exportAllowed: canDisposalExport },
+        { key: "disposal", label: t("disposalReport"), viewHref: `/${locale}/disposal`, exportHref: "/api/disposal-requests/export", exportLabel: t("exportDisposal"), exportAllowed: canDisposalExport },
       ],
     },
     {
@@ -346,18 +346,18 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       audience: t("catalogSystemAudience"),
       icon: <ShieldCheck className="h-5 w-5" />,
       reports: [
-        { label: t("rolePermissionAudit"), viewHref: `/${locale}/admin/roles`, exportHref: "/api/admin/roles/export", exportLabel: t("exportRoleAudit"), exportAllowed: canRoleExport },
-        { label: t("systemLogs"), viewHref: `/${locale}/admin/logs` },
+        { key: "role-permission-audit", label: t("rolePermissionAudit"), viewHref: `/${locale}/admin/roles`, exportHref: "/api/admin/roles/export", exportLabel: t("exportRoleAudit"), exportAllowed: canRoleExport },
+        { key: "system-logs", label: t("systemLogs"), viewHref: `/${locale}/admin/logs` },
       ],
     },
   ]
   const reportCount = reportCatalog.reduce((sum, category) => sum + category.reports.length, 0)
   const totalPurchaseValue = totalValue._sum.purchasePrice ? Number(totalValue._sum.purchasePrice) : 0
   const filterOptions: ReportFilterOptions = {
-    companies: filterCompanies.map((company) => ({ value: company.id, label: companyMap.get(company.id) ?? company.id })),
-    branches: filterBranches.map((branch) => ({ value: branch.id, label: branchMap.get(branch.id) ?? branch.id })),
-    categories: filterCategories.map((category) => ({ value: category.id, label: categoryMap.get(category.id) ?? category.id })),
-    statuses: filterStatuses.map((status) => ({ value: status.id, label: statusMap.get(status.id) ?? status.id })),
+    companies: filterCompanies.map((company) => ({ value: company.id, label: `${company.code} - ${company.nameTh}` })),
+    branches: filterBranches.map((branch) => ({ value: branch.id, label: `${branch.company.code} / ${branch.code} - ${branch.name}` })),
+    categories: filterCategories.map((category) => ({ value: category.id, label: `${category.code} - ${category.name}` })),
+    statuses: filterStatuses.map((status) => ({ value: status.id, label: status.nameTh })),
     conditions: filterConditions.map((condition) => ({ value: condition.id, label: condition.nameTh })),
     ownershipTypes: assetOwnershipTypes.map((type) => ({ value: type, label: tAsset("ownershipType_" + type) })),
   }
@@ -425,7 +425,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         <ReportsOverviewView
           locale={locale}
           hasActiveFilters={hasActiveFilters}
-          emptyCopy={{ filtered: t("previewEmpty"), dataset: tAsset("noAssetsTitle") }}
+          hasMatchingAssets={totalAssets > 0}
+          emptyCopy={{ filtered: t("previewEmpty"), dataset: tAsset("importBatchStatusEmpty") }}
           previewRows={previewAssets.map((asset) => ({
             id: asset.id,
             assetTag: asset.assetTag,
@@ -480,6 +481,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         <ReportsAccountingView
           locale={locale}
           hasActiveFilters={hasActiveFilters}
+          hasMatchingAssets={totalAssets > 0}
           filteredEmptyCopy={t("previewEmpty")}
           costInsights={costInsights}
           depreciationSummary={depreciationSummary}
@@ -520,6 +522,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         <ReportsOperationsView
           locale={locale}
           hasActiveFilters={hasActiveFilters}
+          hasMatchingAssets={totalAssets > 0}
           filteredEmptyCopy={t("previewEmpty")}
           dataQuality={{
             missingCustodian,
@@ -586,6 +589,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             frequentRepairAssets: t("frequentRepairAssets"),
             idleAssets: t("idleAssets"),
             idleAssetsHelp: t("idleAssetsHelp"),
+            noActivity: tAsset("importBatchStatusEmpty"),
           }}
         />
       )

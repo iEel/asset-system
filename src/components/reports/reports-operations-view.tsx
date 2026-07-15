@@ -4,6 +4,7 @@ import { Download } from "lucide-react"
 import { MetricCard } from "@/components/ui/metric-card"
 import type { AssetCrossScopeSummaryRow } from "@/lib/asset-cross-scope"
 import { getAssetCrossScopeFlagLabels } from "@/lib/asset-cross-scope-filter"
+import { selectReportEmptyCopy } from "@/lib/report-empty-state"
 import type { ReportCountRow } from "@/components/reports/reports-overview-view"
 
 export type ReportDataQualityRow = {
@@ -54,11 +55,13 @@ export type ReportsOperationsLabels = {
   frequentRepairAssets: string
   idleAssets: string
   idleAssetsHelp: string
+  noActivity: string
 }
 
 export type ReportsOperationsViewProps = {
   locale: string
   hasActiveFilters: boolean
+  hasMatchingAssets: boolean
   filteredEmptyCopy: string
   dataQuality: {
     missingCustodian: number
@@ -85,14 +88,31 @@ export type ReportsOperationsViewProps = {
 export function ReportsOperationsView({
   locale,
   hasActiveFilters,
+  hasMatchingAssets,
   filteredEmptyCopy,
   dataQuality,
   crossScope,
   insights,
   labels,
 }: ReportsOperationsViewProps) {
-  const dataQualityEmpty = hasActiveFilters ? filteredEmptyCopy : labels.dataQualityEmpty
-  const crossScopeEmpty = hasActiveFilters ? filteredEmptyCopy : labels.crossScopeEmpty
+  const dataQualityEmpty = selectReportEmptyCopy({
+    hasActiveFilters,
+    hasMatchingAssets,
+    filtered: filteredEmptyCopy,
+    dataset: labels.dataQualityEmpty,
+  })
+  const crossScopeEmpty = selectReportEmptyCopy({
+    hasActiveFilters,
+    hasMatchingAssets,
+    filtered: filteredEmptyCopy,
+    dataset: labels.crossScopeEmpty,
+  })
+  const insightsEmpty = selectReportEmptyCopy({
+    hasActiveFilters,
+    hasMatchingAssets,
+    filtered: filteredEmptyCopy,
+    dataset: labels.noActivity,
+  })
 
   return (
     <div className="space-y-5">
@@ -189,9 +209,9 @@ export function ReportsOperationsView({
           <p className="mt-1 text-sm text-muted-foreground">{labels.operationInsightsHelp}</p>
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <ReportTable title={labels.byCustodian} rows={insights.custodians} emptyLabel={dataQualityEmpty} />
-          <ReportTable title={labels.byLocation} rows={insights.locations} emptyLabel={dataQualityEmpty} />
-          <ReportTable title={labels.frequentRepairAssets} rows={insights.repairs} emptyLabel={dataQualityEmpty} />
+          <ReportTable title={labels.byCustodian} rows={insights.custodians} emptyLabel={insightsEmpty} />
+          <ReportTable title={labels.byLocation} rows={insights.locations} emptyLabel={insightsEmpty} />
+          <ReportTable title={labels.frequentRepairAssets} rows={insights.repairs} emptyLabel={insightsEmpty} />
           <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
             <h2 className="mb-4 text-base font-semibold text-foreground">{labels.idleAssets}</h2>
             <Link href={insights.idleAssetsHref} className="block rounded-md border border-warning/30 bg-warning/5 p-4 transition-colors hover:bg-warning/10">

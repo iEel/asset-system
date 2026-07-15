@@ -4,6 +4,7 @@ import { ContentPanel } from "@/components/ui/content-panel"
 import { MetricCard } from "@/components/ui/metric-card"
 import type { DepreciationSummary, DepreciableAsset } from "@/lib/asset-depreciation"
 import type { CostExposureAsset, CostInsightSummary } from "@/lib/cost-insights"
+import { selectReportEmptyCopy } from "@/lib/report-empty-state"
 import { formatCurrency } from "@/lib/utils"
 
 export type ReportsAccountingLabels = {
@@ -39,6 +40,7 @@ export type ReportsAccountingLabels = {
 export type ReportsAccountingViewProps = {
   locale: string
   hasActiveFilters: boolean
+  hasMatchingAssets: boolean
   filteredEmptyCopy: string
   costInsights: CostInsightSummary
   depreciationSummary: DepreciationSummary
@@ -48,6 +50,7 @@ export type ReportsAccountingViewProps = {
 export function ReportsAccountingView({
   locale,
   hasActiveFilters,
+  hasMatchingAssets,
   filteredEmptyCopy,
   costInsights,
   depreciationSummary,
@@ -72,7 +75,12 @@ export function ReportsAccountingView({
             purchasePrice: labels.purchasePrice,
             ratio: labels.ratio,
             repairCount: labels.repairCount,
-            empty: hasActiveFilters ? filteredEmptyCopy : labels.noRepairRisk,
+            empty: selectReportEmptyCopy({
+              hasActiveFilters,
+              hasMatchingAssets,
+              filtered: filteredEmptyCopy,
+              dataset: labels.noRepairRisk,
+            }),
           }}
         />
       </ContentPanel>
@@ -97,7 +105,12 @@ export function ReportsAccountingView({
             ratio: labels.depreciationRatio,
             usefulLife: labels.usefulLife,
             ageMonths: labels.ageMonths,
-            empty: hasActiveFilters ? filteredEmptyCopy : labels.noAssets,
+            empty: selectReportEmptyCopy({
+              hasActiveFilters,
+              hasMatchingAssets,
+              filtered: filteredEmptyCopy,
+              dataset: labels.noAssets,
+            }),
           }}
         />
       </ContentPanel>
