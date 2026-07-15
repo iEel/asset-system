@@ -65,6 +65,23 @@ test("rejects unknown cross-scope asset filters", () => {
   assert.equal(parseAssetListParams({ crossScope: "location_branch" }).crossScope, "location_branch")
 })
 
+test("builds and serializes the idle activity scope without dropping data quality", () => {
+  const filters = parseAssetListParams({ activity: "idle_180d", dataQuality: "serial" })
+  const where = buildAssetWhere(filters)
+  const rules = Array.isArray(where.AND) ? where.AND : []
+
+  assert.equal(filters.activity, "idle_180d")
+  assert.deepEqual(rules[0], { OR: [{ serialNumber: null }, { serialNumber: "" }] })
+  assert.ok(rules[1] && "movements" in rules[1])
+  assert.match(buildAssetQueryString(filters), /activity=idle_180d/)
+})
+
+test("rejects and omits unknown activity scopes", () => {
+  const filters = parseAssetListParams({ activity: "unknown" })
+  assert.equal(filters.activity, "")
+  assert.doesNotMatch(buildAssetQueryString(filters), /activity=/)
+})
+
 test("searches assets by current custodian employee code", () => {
   const filters = parseAssetListParams({ search: "8044" })
   const where = buildAssetWhere(filters)
