@@ -39,8 +39,10 @@ export type ReportPermissionRow = {
 
 export type ReportsCatalogLabels = {
   catalogItems: string
-  savedReportsTitle: string
-  savedReportsHelp: string
+  assetPresetScopeTitle: string
+  assetPresetScopeHelp: string
+  moduleExportScopeTitle: string
+  moduleExportScopeHelp: string
   presetName: string
   saveCurrentPreset: string
   savedPresetsEmpty: string
@@ -93,45 +95,50 @@ export function ReportsCatalogView({
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
         <div className="mb-4">
-          <h2 className="text-base font-semibold text-foreground">{labels.savedReportsTitle}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{labels.savedReportsHelp}</p>
+          <h2 className="text-base font-semibold text-foreground">{labels.assetPresetScopeTitle}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{labels.assetPresetScopeHelp}</p>
         </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[360px_1fr]">
-          <ReportPresetControls
-            locale={locale}
-            currentQuery={currentQuery}
-            labels={{
-              presetName: labels.presetName,
-              saveCurrentPreset: labels.saveCurrentPreset,
-              savedPresetsEmpty: labels.savedPresetsEmpty,
-              savedPresetsDeviceOnly: labels.savedPresetsDeviceOnly,
-              deletePreset: labels.deletePreset,
-              presetNameRequired: labels.presetNameRequired,
-            }}
-          />
-          <div className="grid gap-3 md:grid-cols-2">
-            {recurringReports.map((report) => (
-              <div key={report.key} className="rounded-md border border-border bg-background p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-foreground">{report.name}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{report.owner}</div>
-                  </div>
-                  <span className="rounded-full bg-info/10 px-2 py-1 text-xs font-medium text-info">{report.cadence}</span>
+        <ReportPresetControls
+          locale={locale}
+          currentQuery={currentQuery}
+          labels={{
+            presetName: labels.presetName,
+            saveCurrentPreset: labels.saveCurrentPreset,
+            savedPresetsEmpty: labels.savedPresetsEmpty,
+            savedPresetsDeviceOnly: labels.savedPresetsDeviceOnly,
+            deletePreset: labels.deletePreset,
+            presetNameRequired: labels.presetNameRequired,
+          }}
+        />
+      </section>
+
+      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-foreground">{labels.moduleExportScopeTitle}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{labels.moduleExportScopeHelp}</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {recurringReports.map((report) => (
+            <div key={report.key} className="rounded-md border border-border bg-background p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-foreground">{report.name}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{report.owner}</div>
                 </div>
-                {report.allowed ? (
-                  <Link href={report.href} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0 sm:w-auto">
-                    <Download aria-hidden="true" className="h-3.5 w-3.5" />
-                    {labels.runNow}
-                  </Link>
-                ) : (
-                  <span className="mt-4 inline-flex h-8 items-center rounded-md bg-muted px-3 text-xs font-medium text-muted-foreground">
-                    {labels.notAllowed}
-                  </span>
-                )}
+                <span className="rounded-full bg-info/10 px-2 py-1 text-xs font-medium text-info">{report.cadence}</span>
               </div>
-            ))}
-          </div>
+              {report.allowed ? (
+                <Link href={report.href} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0 sm:w-auto">
+                  <Download aria-hidden="true" className="h-3.5 w-3.5" />
+                  {labels.runNow}
+                </Link>
+              ) : (
+                <span className="mt-4 inline-flex h-8 items-center rounded-md bg-muted px-3 text-xs font-medium text-muted-foreground">
+                  {labels.notAllowed}
+                </span>
+              )}
+            </div>
+          ))}
         </div>
       </section>
 

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
 import { buildReportPreset, buildReportPresetHref, normalizeReportPresetQuery } from "../src/lib/report-presets.ts"
@@ -25,4 +26,14 @@ test("builds a concise named preset for the current report filters", () => {
 test("builds report links from saved filter queries", () => {
   assert.equal(buildReportPresetHref("th", "statusId=ready&branchId=hq"), "/th/reports?statusId=ready&branchId=hq")
   assert.equal(buildReportPresetHref("en", ""), "/en/reports")
+})
+
+test("saved report links preserve a valid view and keep legacy queries compatible", () => {
+  assert.equal(buildReportPresetHref("th", "view=operations&statusId=ready"), "/th/reports?view=operations&statusId=ready")
+  assert.equal(buildReportPresetHref("th", "statusId=ready"), "/th/reports?statusId=ready")
+})
+
+test("new catalog presets receive the current report view and asset filters", () => {
+  const source = readFileSync("src/app/[locale]/(dashboard)/reports/page.tsx", "utf8")
+  assert.match(source, /currentQuery=\{buildReportQueryString\(activeView, filters\)\}/)
 })

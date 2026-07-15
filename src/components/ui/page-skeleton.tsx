@@ -207,17 +207,17 @@ export function ReportsPageSkeleton() {
   return (
     <div aria-busy="true" className="mx-auto flex w-full max-w-7xl flex-col gap-5">
       <PageHeaderSkeleton />
-      <FilterPanelSkeleton />
-      <MetricGridSkeleton count={4} />
-      <div className="grid gap-5 lg:grid-cols-2">
-        {Array.from({ length: 2 }, (_, index) => (
-          <div key={index} className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-            <SkeletonBlock className="h-5 w-40" />
-            <SkeletonBlock className="mt-4 h-52 w-full" />
-          </div>
+      <div data-report-tabs-skeleton className="flex gap-2 overflow-hidden">
+        {Array.from({ length: 4 }, (_, index) => (
+          <SkeletonBlock key={index} className="h-11 w-32 shrink-0" />
         ))}
       </div>
-      <TableSkeleton rows={6} columns={5} />
+      <FilterPanelSkeleton />
+      <MetricGridSkeleton count={2} />
+      <div data-report-view-skeleton className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <SkeletonBlock className="h-5 w-44" />
+        <SkeletonBlock className="mt-4 h-64 w-full" />
+      </div>
     </div>
   )
 }

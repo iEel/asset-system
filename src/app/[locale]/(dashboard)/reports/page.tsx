@@ -21,7 +21,7 @@ import { ReportsCatalogView, type ReportCatalogCategory } from "@/components/rep
 import { ReportsOperationsView, type ReportDataQualityRow } from "@/components/reports/reports-operations-view"
 import { ReportsOverviewView } from "@/components/reports/reports-overview-view"
 import { buildReportActiveFilters } from "@/lib/report-active-filters"
-import { buildReportHref, parseReportView, type ReportView } from "@/lib/report-view"
+import { buildReportHref, buildReportQueryString, parseReportView, type ReportView } from "@/lib/report-view"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 
 type ReportsPageProps = {
@@ -649,7 +649,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         return (
           <ReportsCatalogView
             locale={locale}
-            currentQuery={exportQuery}
+            currentQuery={buildReportQueryString(activeView, filters)}
             hasActiveFilters={hasActiveFilters}
             emptyCopy={{ filtered: t("previewEmpty"), dataset: t("savedPresetsEmpty") }}
             reportCount={reportCount}
@@ -665,8 +665,10 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             ]}
             labels={{
               catalogItems: t("catalogItems"),
-              savedReportsTitle: t("savedReportsTitle"),
-              savedReportsHelp: t("savedReportsHelp"),
+              assetPresetScopeTitle: t("assetPresetScopeTitle"),
+              assetPresetScopeHelp: t("assetPresetScopeHelp"),
+              moduleExportScopeTitle: t("moduleExportScopeTitle"),
+              moduleExportScopeHelp: t("moduleExportScopeHelp"),
               presetName: t("presetName"),
               saveCurrentPreset: t("saveCurrentPreset"),
               savedPresetsEmpty: t("savedPresetsEmpty"),
