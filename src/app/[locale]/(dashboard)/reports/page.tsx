@@ -7,7 +7,6 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type AssetListParams } from "@/lib/asset-list-query"
-import { getAssetActivityWhere } from "@/lib/asset-activity-filter"
 import { applyAssetCrossScopeFilter, buildAssetCrossScopeSummary, type AssetCrossScopeSummaryRow } from "@/lib/asset-cross-scope"
 import { getAssetCrossScopeFlagLabels } from "@/lib/asset-cross-scope-filter"
 import { assetMissingResponsibilityWhere, assetOwnershipTypes, hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
@@ -39,9 +38,11 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const canDisposalExport = hasPermission(user, "disposal", "export")
   const canRoleExport = hasPermission(user, "role", "export")
   const filters = parseAssetListParams(rawSearchParams)
+  const idleAssetOverrides = { activity: "idle_180d", dataQuality: "", page: 1 } as const
+  const idleAssetFilters = parseAssetListParams({ ...filters, ...idleAssetOverrides })
   const baseAssetWhere = buildAssetWhere(filters)
   const assetWhere = await applyAssetCrossScopeFilter(baseAssetWhere, filters.crossScope)
-  const idleAssetWhere = getAssetActivityWhere("idle_180d")
+  const idleAssetWhere = await applyAssetCrossScopeFilter(buildAssetWhere(idleAssetFilters), idleAssetFilters.crossScope)
   const exportQuery = buildAssetQueryString(filters, { page: 1, pageSize: 100 })
   const warrantyThreshold = new Date()
   warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
@@ -147,7 +148,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       prisma.asset.groupBy({ by: ["custodianId"], where: { ...assetWhere, custodianId: { not: null } }, _count: { _all: true }, orderBy: { _count: { custodianId: "desc" } }, take: 5 }),
       prisma.asset.groupBy({ by: ["currentLocationId"], where: assetWhere, _count: { _all: true }, orderBy: { _count: { currentLocationId: "desc" } }, take: 5 }),
       prisma.maintenanceTicket.groupBy({ by: ["assetId"], where: { isActive: true }, _count: { _all: true }, _sum: { repairCost: true }, orderBy: { _count: { assetId: "desc" } }, take: 5 }),
-      prisma.asset.count({ where: { AND: [assetWhere, ...(idleAssetWhere ? [idleAssetWhere] : [])] } }),
+      prisma.asset.count({ where: idleAssetWhere }),
       prisma.asset.findMany({
         where: assetWhere,
         select: {
@@ -271,7 +272,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       href: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "location_branch", dataQuality: "", statusId: "", page: 1 })}`,
     },
   ]
-  const idleAssetsHref = `/${locale}/assets?${buildAssetQueryString(filters, { activity: "idle_180d", dataQuality: "", page: 1 })}`
+  const idleAssetsHref = `/${locale}/assets?${buildAssetQueryString(filters, idleAssetOverrides)}`
   const recurringReports = [
     { name: t("monthlyAssetOverview"), cadence: t("monthly"), href: `/api/reports/assets-overview/export?${exportQuery}`, owner: t("ownerAccounting"), allowed: canReportExport },
     { name: t("weeklyMaintenanceFollowUp"), cadence: t("weekly"), href: "/api/maintenance-tickets/export", owner: t("ownerMaintenance"), allowed: canMaintenanceExport },
