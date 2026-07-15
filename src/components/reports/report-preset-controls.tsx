@@ -6,6 +6,7 @@ import { BookmarkPlus, Trash2 } from "lucide-react"
 import {
   buildReportPreset,
   buildReportPresetHref,
+  persistReportPresets,
   reportPresetStorageKey,
   type ReportPreset,
 } from "@/lib/report-presets"
@@ -24,6 +25,7 @@ type ReportPresetControlsProps = {
     savedPresetsDeviceOnly: string
     deletePreset: string
     presetNameRequired: string
+    presetStorageFailed: string
   }
 }
 
@@ -33,8 +35,12 @@ export function ReportPresetControls({ locale, currentQuery, labels }: ReportPre
   const [message, setMessage] = useState("")
 
   function persist(next: ReportPreset[]) {
-    window.localStorage.setItem(reportPresetStorageKey, JSON.stringify(next))
+    if (!persistReportPresets(() => window.localStorage, next)) {
+      setMessage(labels.presetStorageFailed)
+      return false
+    }
     window.dispatchEvent(new Event(reportPresetStorageKey))
+    return true
   }
 
   function savePreset() {
@@ -49,13 +55,13 @@ export function ReportPresetControls({ locale, currentQuery, labels }: ReportPre
       return
     }
 
-    persist([preset, ...presets])
+    if (!persist([preset, ...presets])) return
     setName("")
     setMessage("")
   }
 
   function deletePreset(id: string) {
-    persist(presets.filter((preset) => preset.id !== id))
+    if (persist(presets.filter((preset) => preset.id !== id))) setMessage("")
   }
 
   return (

@@ -53,6 +53,7 @@ type AssetFilterLabels = {
   dataQualityPurchase: string
   dataQualityWarranty: string
   dataQualityResponsibility: string
+  activityIdle180d: string
   quickFilterCrossScopeAll: string
   quickFilterCustodianCrossCompany: string
   quickFilterCustodianCrossBranch: string
@@ -313,6 +314,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           dataQualityPurchase: t("dataQualityPurchase"),
           dataQualityWarranty: t("dataQualityWarranty"),
           dataQualityResponsibility: t("dataQualityResponsibility"),
+          activityIdle180d: t("activityIdle180d"),
           quickFilterCrossScopeAll: t("quickFilterCrossScopeAll"),
           quickFilterCustodianCrossCompany: t("quickFilterCustodianCrossCompany"),
           quickFilterCustodianCrossBranch: t("quickFilterCustodianCrossBranch"),
@@ -605,6 +607,7 @@ function AssetFilters({
     supplierId: "",
     dataQuality: "",
     crossScope: "",
+    activity: "",
     page: 1,
     pageSize: 25,
   })}`
@@ -672,6 +675,13 @@ function AssetFilters({
           href: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "", page: 1 })}`,
         }
       : null,
+    filters.activity
+      ? {
+          key: "activity",
+          label: labels.activityIdle180d,
+          href: `/${locale}/assets?${buildAssetQueryString(filters, { activity: "", page: 1 })}`,
+        }
+      : null,
     filters.pageSize !== 25
       ? {
           key: "pageSize",
@@ -737,7 +747,7 @@ function AssetFilters({
                     key={filter.key}
                     href={filter.href}
                     aria-label={`${labels.clearDrilldownFilter}: ${filter.label}`}
-                    className="inline-flex min-h-8 max-w-full items-center gap-2 rounded-full border border-primary/20 bg-surface px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+                    className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border border-primary/20 bg-surface px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10 md:min-h-8"
                   >
                     <span className="truncate">{filter.label}</span>
                     <span aria-hidden="true" className="text-xs text-primary/70">x</span>
@@ -747,7 +757,7 @@ function AssetFilters({
             </div>
             <Link
               href={clearAllFiltersHref}
-              className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-surface px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-surface px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10 md:min-h-9"
             >
               {labels.clearAllFilters}
             </Link>
@@ -846,6 +856,7 @@ function AssetFilters({
         {filters.modelId ? <input type="hidden" name="modelId" value={filters.modelId} /> : null}
         {filters.dataQuality ? <input type="hidden" name="dataQuality" value={filters.dataQuality} /> : null}
         {filters.crossScope ? <input type="hidden" name="crossScope" value={filters.crossScope} /> : null}
+        {filters.activity ? <input type="hidden" name="activity" value={filters.activity} /> : null}
         <input type="hidden" name="sort" value={filters.sort} />
         <input type="hidden" name="direction" value={filters.direction} />
       </form>

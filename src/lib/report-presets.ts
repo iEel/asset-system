@@ -7,6 +7,10 @@ export type ReportPreset = {
   createdAt: string
 }
 
+type ReportPresetStorage = {
+  setItem: (key: string, value: string) => void
+}
+
 type ReportPresetInput = Partial<ReportPreset> & Pick<ReportPreset, "name" | "query">
 
 export function normalizeReportPresetQuery(query: string) {
@@ -30,4 +34,13 @@ export function buildReportPreset(input: ReportPresetInput): ReportPreset | null
 export function buildReportPresetHref(locale: string, query: string) {
   const normalizedQuery = normalizeReportPresetQuery(query)
   return `/${locale}/reports${normalizedQuery ? `?${normalizedQuery}` : ""}`
+}
+
+export function persistReportPresets(getStorage: () => ReportPresetStorage, presets: ReportPreset[]) {
+  try {
+    getStorage().setItem(reportPresetStorageKey, JSON.stringify(presets))
+    return true
+  } catch {
+    return false
+  }
 }

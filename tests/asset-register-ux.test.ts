@@ -273,6 +273,32 @@ test("asset register summarizes active filters and provides a clear all action",
   assert.match(source, /buildAssetQueryString\(filters, \{[\s\S]*search: "",[\s\S]*companyId: "",[\s\S]*branchId: ""/)
 })
 
+test("asset register exposes a removable idle activity filter", () => {
+  const source = assetsPageSource()
+
+  assert.match(source, /activityIdle180d: string/)
+  assert.match(source, /activityIdle180d: t\("activityIdle180d"\)/)
+  assert.match(source, /filters\.activity[\s\S]*key: "activity"[\s\S]*label: labels\.activityIdle180d/)
+  assert.match(source, /buildAssetQueryString\(filters, \{ activity: "", page: 1 \}\)/)
+  assert.match(source, /clearAllFiltersHref[\s\S]*crossScope: "",[\s\S]*activity: "",[\s\S]*page: 1/)
+  assert.match(source, /filters\.activity \? <input type="hidden" name="activity" value=\{filters\.activity\} \/> : null/)
+})
+
+test("asset active-filter actions stay at least 44px tall below md", () => {
+  const source = assetsPageSource()
+
+  assert.match(source, /activeFilterChips\.map[\s\S]*className="inline-flex min-h-11[^"]*md:min-h-8"/)
+  assert.match(source, /href=\{clearAllFiltersHref\}[\s\S]*className="inline-flex min-h-11[^"]*md:min-h-9"/)
+})
+
+test("asset register reuses the authoritative activity filter type", () => {
+  const source = registerTableSource()
+
+  assert.match(source, /import type \{ AssetActivityFilter \} from "@\/lib\/asset-activity-filter"/)
+  assert.match(source, /activity: AssetActivityFilter/)
+  assert.doesNotMatch(source, /activity: "" \| "idle_180d"/)
+})
+
 test("asset register desktop table exposes horizontal scroll affordance", () => {
   const source = registerTableSource()
 
@@ -301,6 +327,7 @@ test("asset register UX messages exist in Thai and English", () => {
     "dataQualityPurchase",
     "dataQualityWarranty",
     "dataQualityResponsibility",
+    "activityIdle180d",
     "quickFilterCrossScopeAll",
     "quickFilterCustodianCrossCompany",
     "quickFilterCustodianCrossBranch",
@@ -338,4 +365,9 @@ test("asset register UX messages exist in Thai and English", () => {
     const missing = keys.filter((key) => !(key in messages))
     assert.deepEqual(missing, [], `${locale} asset messages are missing keys`)
   }
+})
+
+test("asset activity filter messages are equivalent in Thai and English", () => {
+  assert.equal(assetMessages("th").activityIdle180d, "ไม่มีความเคลื่อนไหวใน 180 วันล่าสุด")
+  assert.equal(assetMessages("en").activityIdle180d, "No movement in the latest 180 days")
 })

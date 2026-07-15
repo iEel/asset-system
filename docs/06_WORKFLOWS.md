@@ -121,10 +121,15 @@
 
 ## Reports And Export
 
-- Asset register export and report exports use current filters where supported.
+- `/{locale}/reports` provides four URL-backed views on one permission boundary: `overview` for headline metrics, latest matching assets, and core breakdowns; `accounting` for cost, repair, depreciation, and net book value; `operations` for data quality, cross-scope, custody/location, frequent repairs, and idle assets; and `catalog` for browser-local asset-report presets, recurring exports, and permission visibility. Missing or unknown `view` values safely open Overview.
+- Supported asset filters remain in the URL when users switch views. The filter panel precedes the two shared metrics, active filters appear as individually removable chips, Clear removes all asset filters while retaining the selected view, and removing Company also removes its dependent Branch.
+- Asset register export and report exports use current filters where supported. The Asset Overview recurring export uses the asset filters above; Maintenance, Disposal, and Audit recurring exports use their own module scope and explicitly do not inherit those filters.
 - Cross-scope filters are supported by Dashboard drilldowns, Asset Register export, Reports, and Asset Overview export. Asset register export includes owner/custodian/home/current location branch context and cross-scope flags; Asset Overview export includes cross-scope summary metrics and a Cross Scope sheet for review.
+- Operations drilldowns preserve compatible asset filters. Data-quality cards open exact `dataQuality` scopes, frequent-repair values constrain tickets through the selected asset scope, and idle assets use the shared `activity=idle_180d` Asset Register/export predicate so count and destination mean no movement during the same latest 180-day period.
+- Wide report datasets render semantic tables at `md` and above and labelled cards below `md`. Mobile keeps horizontally scrollable view tabs, filters before metrics, full-width permission-aware exports where needed, and controls of at least 44px while the dashboard `<main>` remains the vertical scroll owner.
+- With `PERFORMANCE_TIMING=1` or `PERFORMANCE_LOGGING=1`, each Reports request should emit `reports.shared-data` plus only the selected view label: `reports.overview-data`, `reports.accounting-data`, `reports.operations-data`, or `reports.catalog-data`. Disable the flag after diagnosis.
 - Audit, disposal, maintenance, and asset overview exports support operational review.
-- Operators can save named asset-report filter presets in the current browser. Presets are intentionally device-local, are not shared with other users or synced between browsers, and only reopen the existing reports page with its URL filters.
+- Operators can save named asset-report filter presets in the current browser. Presets are intentionally device-local, are not shared with other users or synced between browsers, and reopen the saved Reports view plus its URL filter context without changing permissions.
 - PDF output uses bundled Thai fonts unless production overrides are configured.
 
 ## Admin Operations
