@@ -200,7 +200,7 @@ export function ReportsOperationsView({
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link href={`/${locale}/assets/${asset.id}`} className="font-semibold text-primary hover:underline">
+                      <Link href={`/${locale}/assets/${asset.id}`} className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline md:min-h-0">
                         {asset.assetTag}
                       </Link>
                       <span className="text-sm text-foreground">{asset.name}</span>

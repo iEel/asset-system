@@ -100,6 +100,18 @@ test("operations cross-scope mobile asset links keep a 44px touch target", () =>
   )
 })
 
+test("operations data-quality asset tags keep a 44px mobile touch target", () => {
+  const dataQualityPreview = operationsView.slice(
+    operationsView.indexOf("dataQuality.rows.map"),
+    operationsView.indexOf("function CrossScopePreviewTable"),
+  )
+
+  assert.match(
+    dataQualityPreview,
+    /<Link href=\{`\/\$\{locale\}\/assets\/\$\{asset\.id\}`\} className="inline-flex min-h-11 items-center font-semibold[^"]*md:min-h-0">/,
+  )
+})
+
 test("operations exposes exact actionable drilldowns from the same compatible filter base", () => {
   for (const filter of ["responsibility", "serial", "photo", "warranty"]) {
     assert.ok(operationsView.includes(`dataQuality: "${filter}"`))
