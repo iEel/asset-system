@@ -236,7 +236,8 @@ Implemented status lifecycle and enforcement from docs/code:
 
 | Feature | Details |
 |---|---|
-| Reports page | Central report entry point with shared filters, grouped breakdowns, and a cross-scope asset panel for custodian/location scope mismatches; branch breakdown labels include company code so repeated branch names across companies remain clear |
+| Reports workspace | Four URL-backed `overview`, `accounting`, `operations`, and `catalog` views with filter-preserving tabs, removable active-filter chips, two shared metrics, active-view-only data loading/timing, browser-local view/filter presets, permission-aware exports, exact data-quality/cross-scope/idle drilldowns, company-qualified branch labels, and semantic desktop tables paired with labelled mobile cards |
+| Reports performance timing | Opt-in `reports.shared-data` plus exactly one active-view label from `reports.overview-data`, `reports.accounting-data`, `reports.operations-data`, or `reports.catalog-data` |
 | Asset overview export | `reports/assets-overview/export` API with cross-scope summary metrics and a Cross Scope sheet |
 | Asset register export | Current filter export through asset export API, including cross-scope filters and owner/custodian/home/current location branch columns |
 | Audit exports | Audit round results, findings, variance Excel/PDF exports |

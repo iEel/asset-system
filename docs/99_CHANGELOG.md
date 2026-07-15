@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-07-15
+
+| Area | Update |
+|---|---|
+| Adaptive Reports workspace | Replaced the single long Reports surface with four URL-backed, filter-preserving `overview`, `accounting`, `operations`, and `catalog` views while preserving the route, schema, APIs, RBAC, export permissions, and accounting formulas. The page now loads shared metrics plus only the active view, exposes removable filter chips with dependent Company/Branch clearing, uses exact filtered data-quality/frequent-repair/cross-scope/`activity=idle_180d` drilldowns, restores browser-local presets to their saved view, separates module-owned export scope, localizes Thai/English copy, aligns the route skeleton, and renders semantic desktop tables or labelled mobile cards for wide datasets. Non-browser release gates passed 48/48 focused tests, scoped ESLint, standalone TypeScript, 1,078/1,078 full tests, a Next.js 16.2.4 build with Prisma 7.8.0 and 59/59 static pages, diff check, and an Impeccable `[]` result. Authenticated all-width browser QA, enabled timing-label requests, permission-limited role coverage, real-device checks, and production-like realistic-data Reports/export reconciliation remain explicit UAT gates and are not claimed by this entry. |
+
+---
+
 ## 2026-07-14
 
 | Area | Update |

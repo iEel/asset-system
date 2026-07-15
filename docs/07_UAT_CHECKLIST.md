@@ -142,8 +142,8 @@ Use this checklist with realistic master data and at least one asset in each imp
 ## accounting
 
 - [ ] Review asset cost/accounting fields.
-- [ ] Review depreciation/book-value report.
-- [ ] Export reports.
+- [ ] Open `/{locale}/reports?view=accounting`, review the filtered cost/repair and depreciation/book-value metrics and rows, and confirm changing the asset filters changes the displayed accounting scope without changing formulas.
+- [ ] Export only the reports permitted for this role and confirm unauthorized export/admin actions remain unavailable through both the UI and direct requests.
 - [ ] On Reports, apply a filter, save it with a name, reload the page, and reopen the named preset. Confirm it is available only in the same browser/device, does not appear in another browser profile, and does not change export permissions.
 - [ ] On Reports, confirm branch breakdown rows show company/branch labels clearly when branch names repeat across companies and no duplicate-key console warning appears.
 - [ ] On Reports, confirm the cross-scope asset panel shows counts and preview rows for custodian/company, custodian/branch, and location/branch mismatches; open each drilldown and export Asset Overview to verify the Cross Scope sheet.
@@ -235,6 +235,21 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [x] At 768x1024, the mobile/tablet shell fit with the sidebar off-canvas and no body overflow.
 - [x] At 1280x800 and 1440x900, the desktop sidebar measured 256px and aligned with the topbar/main; when collapsed it measured 64px, the topbar/main shifted correctly, the nested Asset menu expanded, and the body did not overflow.
 - [x] Visual theme verification: Navy `#0F172A` sidebar, white topbar, blue active state, and readable text. Screenshots are retained as ignored evidence under `.superpowers/sdd/screenshots/task-3`.
+
+## Reports Adaptive UI UAT
+
+- [ ] With an authenticated `system_admin`, open `overview`, `accounting`, `operations`, and `catalog` at 375, 390, 414, 768, 1280, and 1440 pixels. Confirm the dashboard `<main>` is the only vertical scroll owner and body/list/card horizontal overflow is absent.
+- [ ] At 375px, confirm Overview reaches its long breakdown content within approximately four to six visible viewport heights rather than recreating the previous roughly fourteen-height page.
+- [ ] Switch views with company, branch, status, and another supported filter active. Confirm every tab retains the compatible URL filters, the current tab is visible and identified without color alone, filters precede metrics, individual chips are removable, and removing Company also removes Branch.
+- [ ] Below `md`, confirm wide datasets render labelled cards only, permission-aware header exports become full-width where needed, and every action target is at least 44px. At `md` and above, confirm the same datasets render semantic tables only with contained horizontal scrolling where needed.
+- [ ] In Operations, open each data-quality card and confirm the Asset Register receives the exact `dataQuality` filter plus compatible asset filters. Apply an asset filter before reviewing frequent repairs and confirm the values obey that scope. Open Idle Assets and confirm `activity=idle_180d` is present and the destination count uses the same latest-180-day no-movement semantics.
+- [ ] Save and reopen a named preset from Catalog. Confirm it restores the saved view and asset-filter context in the same browser only, is absent in a separate browser profile/device, and does not broaden permissions.
+- [ ] Confirm Catalog states that Maintenance, Disposal, and Audit recurring exports use their own module filters and do not inherit the asset filters above, while Asset Overview uses the current supported asset filter query.
+- [ ] With `PERFORMANCE_TIMING=1` or `PERFORMANCE_LOGGING=1`, request each view once and confirm every request emits `reports.shared-data` plus only its matching `reports.<view>-data` label. Disable the timing flag immediately after this check.
+- [ ] Repeat a Reports smoke test with `accounting` or another permission-limited role. Confirm unrelated admin actions and unauthorized exports are hidden and blocked, while allowed views and exports remain available.
+- [ ] Use production-like data with repeated branch names and cross-scope assets. Confirm branch labels retain company context and Operations counts/drilldowns agree with Asset Overview export, including the Cross Scope sheet. Keep the Production Readiness realistic-data Reports/export gate open until this is actually executed.
+- [ ] On target real phones/tablets, repeat the mobile/tablet layout, tab visibility, touch-target, overflow, and long Thai/English content checks; viewport emulation alone is not a real-device pass.
+- [ ] Across the matrix, confirm the console and server output contain no missing-message, hydration, duplicate-key, or runtime errors.
 
 ## Mobile Field Navigation UAT
 
