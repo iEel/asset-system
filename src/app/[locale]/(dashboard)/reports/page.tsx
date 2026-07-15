@@ -1,28 +1,31 @@
-import Link from "next/link"
 import type React from "react"
-import { ClipboardCheck, DatabaseZap, Download, FileSpreadsheet, ShieldCheck, Trash2, Wrench } from "lucide-react"
+import { ClipboardCheck, DatabaseZap, FileSpreadsheet, ShieldCheck, Trash2, Wrench } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type AssetListParams } from "@/lib/asset-list-query"
-import { applyAssetCrossScopeFilter, buildAssetCrossScopeSummary, type AssetCrossScopeSummaryRow } from "@/lib/asset-cross-scope"
-import { getAssetCrossScopeFlagLabels } from "@/lib/asset-cross-scope-filter"
+import { applyAssetCrossScopeFilter, buildAssetCrossScopeSummary } from "@/lib/asset-cross-scope"
 import { assetMissingResponsibilityWhere, assetOwnershipTypes, hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
-import { buildCostInsights, type CostExposureAsset } from "@/lib/cost-insights"
-import { buildDepreciationSummary, depreciationPolicySettingKey, parseDepreciationPolicySetting, type DepreciableAsset } from "@/lib/asset-depreciation"
-import { ContentPanel } from "@/components/ui/content-panel"
+import { buildCostInsights } from "@/lib/cost-insights"
+import { buildDepreciationSummary, depreciationPolicySettingKey, parseDepreciationPolicySetting } from "@/lib/asset-depreciation"
 import { MetricCard } from "@/components/ui/metric-card"
-import { FilterPanel } from "@/components/ui/filter-panel"
-import { ActionButton } from "@/components/ui/action-button"
-import { ReportPresetControls } from "@/components/reports/report-preset-controls"
-import { getActionButtonClasses, getFieldControlClasses } from "@/lib/design-system"
+import { ReportActiveFilters } from "@/components/reports/report-active-filters"
+import { ReportFilterPanel, type ReportFilterOptions } from "@/components/reports/report-filter-panel"
+import { ReportHeader, type ReportHeaderAction } from "@/components/reports/report-header"
+import { ReportViewTabs } from "@/components/reports/report-view-tabs"
+import { ReportsAccountingView } from "@/components/reports/reports-accounting-view"
+import { ReportsCatalogView, type ReportCatalogCategory } from "@/components/reports/reports-catalog-view"
+import { ReportsOperationsView, type ReportDataQualityRow } from "@/components/reports/reports-operations-view"
+import { ReportsOverviewView } from "@/components/reports/reports-overview-view"
+import { buildReportActiveFilters } from "@/lib/report-active-filters"
+import { buildReportHref, parseReportView, type ReportView } from "@/lib/report-view"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 
 type ReportsPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<AssetListParams>
+  searchParams: Promise<AssetListParams & { view?: string | string[] }>
 }
 
 export default async function ReportsPage({ params, searchParams }: ReportsPageProps) {
@@ -37,7 +40,10 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const canAuditExport = hasPermission(user, "audit", "export")
   const canDisposalExport = hasPermission(user, "disposal", "export")
   const canRoleExport = hasPermission(user, "role", "export")
-  const filters = parseAssetListParams(rawSearchParams)
+  const activeView = parseReportView(rawSearchParams.view)
+  const assetSearchParams = { ...rawSearchParams }
+  delete assetSearchParams.view
+  const filters = parseAssetListParams(assetSearchParams)
   const idleAssetOverrides = { activity: "idle_180d", dataQuality: "", page: 1 } as const
   const idleAssetFilters = parseAssetListParams({ ...filters, ...idleAssetOverrides })
   const baseAssetWhere = buildAssetWhere(filters)
@@ -279,8 +285,9 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     { name: t("monthlyDisposalFollowUp"), cadence: t("monthly"), href: "/api/disposal-requests/export", owner: t("ownerApprover"), allowed: canDisposalExport },
     { name: t("weeklyAuditFindings"), cadence: t("weekly"), href: "/api/audit-findings/export?status=pending", owner: t("ownerAudit"), allowed: canAuditExport },
   ]
-  const reportCatalog = [
+  const reportCatalog: ReportCatalogCategory[] = [
     {
+      key: "assets",
       title: t("catalogAssetTitle"),
       description: t("catalogAssetDescription"),
       audience: t("catalogAssetAudience"),
@@ -292,6 +299,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       ],
     },
     {
+      key: "data-quality",
       title: t("catalogDataQualityTitle"),
       description: t("catalogDataQualityDescription"),
       audience: t("catalogDataQualityAudience"),
@@ -301,6 +309,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       ],
     },
     {
+      key: "maintenance",
       title: t("catalogMaintenanceTitle"),
       description: t("catalogMaintenanceDescription"),
       audience: t("catalogMaintenanceAudience"),
@@ -310,6 +319,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       ],
     },
     {
+      key: "audit",
       title: t("catalogAuditTitle"),
       description: t("catalogAuditDescription"),
       audience: t("catalogAuditAudience"),
@@ -320,6 +330,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       ],
     },
     {
+      key: "disposal",
       title: t("catalogDisposalTitle"),
       description: t("catalogDisposalDescription"),
       audience: t("catalogDisposalAudience"),
@@ -329,6 +340,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       ],
     },
     {
+      key: "system",
       title: t("catalogSystemTitle"),
       description: t("catalogSystemDescription"),
       audience: t("catalogSystemAudience"),
@@ -340,668 +352,341 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     },
   ]
   const reportCount = reportCatalog.reduce((sum, category) => sum + category.reports.length, 0)
+  const totalPurchaseValue = totalValue._sum.purchasePrice ? Number(totalValue._sum.purchasePrice) : 0
+  const filterOptions: ReportFilterOptions = {
+    companies: filterCompanies.map((company) => ({ value: company.id, label: companyMap.get(company.id) ?? company.id })),
+    branches: filterBranches.map((branch) => ({ value: branch.id, label: branchMap.get(branch.id) ?? branch.id })),
+    categories: filterCategories.map((category) => ({ value: category.id, label: categoryMap.get(category.id) ?? category.id })),
+    statuses: filterStatuses.map((status) => ({ value: status.id, label: statusMap.get(status.id) ?? status.id })),
+    conditions: filterConditions.map((condition) => ({ value: condition.id, label: condition.nameTh })),
+    ownershipTypes: assetOwnershipTypes.map((type) => ({ value: type, label: tAsset("ownershipType_" + type) })),
+  }
+  const viewLabels: Record<ReportView, string> = {
+    overview: t("viewOverview"),
+    accounting: t("viewAccounting"),
+    operations: t("viewOperations"),
+    catalog: t("viewCatalog"),
+  }
+  const activeFilters = buildReportActiveFilters({
+    locale,
+    view: activeView,
+    filters,
+    names: {
+      search: t("search"),
+      companyId: t("company"),
+      branchId: t("branch"),
+      categoryId: t("category"),
+      brandId: tAsset("brand"),
+      modelId: tAsset("model"),
+      statusId: t("status"),
+      conditionId: t("condition"),
+      ownershipType: tAsset("ownershipType"),
+      custodianId: t("custodian"),
+      supplierId: tAsset("supplier"),
+      dataQuality: t("dataQuality"),
+      crossScope: t("crossScopeTitle"),
+      activity: t("idleAssets"),
+    },
+    values: {
+      companyId: filterOptions.companies.find((option) => option.value === filters.companyId)?.label,
+      branchId: filterOptions.branches.find((option) => option.value === filters.branchId)?.label,
+      categoryId: filterOptions.categories.find((option) => option.value === filters.categoryId)?.label,
+      statusId: filterOptions.statuses.find((option) => option.value === filters.statusId)?.label,
+      conditionId: filterOptions.conditions.find((option) => option.value === filters.conditionId)?.label,
+      ownershipType: filterOptions.ownershipTypes.find((option) => option.value === filters.ownershipType)?.label,
+      activity: filters.activity === "idle_180d" ? tAsset("activityIdle180d") : undefined,
+    },
+  })
+  const hasActiveFilters = activeFilters.length > 0
+  const headerActions: ReportHeaderAction[] = [
+    ...(canReportExport
+      ? [{ href: "/api/reports/assets-overview/export?" + exportQuery, label: t("exportAssetOverview"), variant: "primary" as const }]
+      : []),
+    ...(canAssetExport
+      ? [{ href: "/api/assets/export?" + exportQuery, label: t("exportAssetRegister"), variant: "secondary" as const }]
+      : []),
+  ]
+  const dataQualityRows: ReportDataQualityRow[] = dataQualityAssets.map((asset) => {
+    const issues = getDataQualityIssues(asset, warrantyThreshold, t, locale)
+    return {
+      id: asset.id,
+      assetTag: asset.assetTag,
+      name: asset.name,
+      context: asset.category.code + " - " + asset.category.name + " · " + asset.branch.code + " - " + asset.branch.name,
+      issues: issues.map((issue, index) => ({ ...issue, key: String(index) + ":" + issue.label })),
+      primaryFixHref: issues[0]?.href ?? "/" + locale + "/assets/" + asset.id + "/edit",
+    }
+  })
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {canReportExport ? (
-            <Link
-              href={`/api/reports/assets-overview/export?${exportQuery}`}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
-            >
-              <Download className="h-4 w-4" />
-              {t("exportAssetOverview")}
-            </Link>
-          ) : null}
-          {canAssetExport ? (
-            <Link
-              href={`/api/assets/export?${exportQuery}`}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-            >
-              <Download className="h-4 w-4" />
-              {t("exportAssetRegister")}
-            </Link>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <MetricCard label={t("totalAssets")} value={totalAssets.toLocaleString("th-TH")} />
-        <MetricCard label={t("totalValue")} value={formatCurrency(totalValue._sum.purchasePrice ? Number(totalValue._sum.purchasePrice) : 0)} />
-        <MetricCard label={t("reportsReady")} value={reportCount.toLocaleString("th-TH")} />
-      </div>
-
-      <ContentPanel title={t("costInsightTitle")} description={t("costInsightHelp")}>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label={t("costTotalRepair")} value={formatCurrency(costInsights.totalRepairCost)} compact />
-          <MetricCard label={t("costRepairRatio")} value={formatPercent(costInsights.repairToPurchaseRatio)} compact />
-          <MetricCard label={t("costMissingPrice")} value={costInsights.missingPurchasePriceCount.toLocaleString("th-TH")} compact />
-          <MetricCard label={t("costHighValueAssets")} value={costInsights.highValueAssetCount.toLocaleString("th-TH")} compact />
-        </div>
-        <CostExposureTable
-          title={t("costHighRepairRisk")}
-          rows={costInsights.highRepairExposureAssets}
+  let viewContent: React.ReactNode
+  switch (activeView) {
+    case "overview":
+      viewContent = (
+        <ReportsOverviewView
           locale={locale}
+          hasActiveFilters={hasActiveFilters}
+          emptyCopy={{ filtered: t("previewEmpty"), dataset: tAsset("noAssetsTitle") }}
+          previewRows={previewAssets.map((asset) => ({
+            id: asset.id,
+            assetTag: asset.assetTag,
+            name: asset.name,
+            category: asset.category.code + " - " + asset.category.name,
+            branch: asset.branch.code + " - " + asset.branch.name,
+            department: asset.department ? asset.department.code + " - " + asset.department.name : t("unassigned"),
+            custodian: asset.custodian ? asset.custodian.code + " - " + asset.custodian.fullNameTh : t("unassigned"),
+            ownership: tAsset("ownershipType_" + normalizeAssetOwnershipType(asset.ownershipType)),
+            status: asset.status.nameTh,
+          }))}
+          breakdowns={{
+            status: byStatus.map((item) => ({ key: item.statusId, label: statusMap.get(item.statusId) ?? item.statusId, count: item._count._all })),
+            category: byCategory.map((item) => ({ key: item.categoryId, label: categoryMap.get(item.categoryId) ?? item.categoryId, count: item._count._all })),
+            company: byCompany.map((item) => ({ key: item.companyId, label: companyMap.get(item.companyId) ?? item.companyId, count: item._count._all })),
+            branch: byBranch.map((item) => ({ key: item.branchId, label: branchMap.get(item.branchId) ?? item.branchId, count: item._count._all })),
+            department: byDepartment.map((item) => ({
+              key: item.departmentId ?? "unassigned",
+              label: departmentMap.get(item.departmentId ?? "") ?? item.departmentId ?? t("unassigned"),
+              count: item._count._all,
+            })),
+            ownership: byOwnership.map((item) => ({
+              key: normalizeAssetOwnershipType(item.ownershipType),
+              label: tAsset("ownershipType_" + normalizeAssetOwnershipType(item.ownershipType)),
+              count: item._count._all,
+            })),
+          }}
           labels={{
+            previewTitle: t("previewTitle"),
+            previewHelp: t("previewHelp"),
+            previewCount: t("previewCount", { count: previewAssets.length }),
+            assetTag: t("assetTag"),
+            assetName: t("assetName"),
+            category: t("category"),
+            branch: t("branch"),
+            department: t("department"),
+            custodian: t("custodian"),
+            ownership: tAsset("ownershipType"),
+            status: t("status"),
+            byStatus: t("byStatus"),
+            byCategory: t("byCategory"),
+            byCompany: t("byCompany"),
+            byBranch: t("byBranch"),
+            byDepartment: t("byDepartment"),
+            byOwnership: t("byOwnership"),
+          }}
+        />
+      )
+      break
+    case "accounting":
+      viewContent = (
+        <ReportsAccountingView
+          locale={locale}
+          hasActiveFilters={hasActiveFilters}
+          filteredEmptyCopy={t("previewEmpty")}
+          costInsights={costInsights}
+          depreciationSummary={depreciationSummary}
+          labels={{
+            costTitle: t("costInsightTitle"),
+            costHelp: t("costInsightHelp"),
+            totalRepair: t("costTotalRepair"),
+            repairRatio: t("costRepairRatio"),
+            missingPrice: t("costMissingPrice"),
+            highValueAssets: t("costHighValueAssets"),
+            highRepairRisk: t("costHighRepairRisk"),
             asset: t("assetName"),
             repairCost: t("costRepairCost"),
             purchasePrice: t("costPurchasePrice"),
             ratio: t("costRepairRatioShort"),
             repairCount: t("costRepairCount"),
-            empty: t("costNoRepairRisk"),
-          }}
-        />
-      </ContentPanel>
-
-      <ContentPanel title={t("accountingInsightTitle")} description={t("accountingInsightHelp")}>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
-          <MetricCard label={t("accountingAcquisitionCost")} value={formatCurrency(depreciationSummary.totalAcquisitionCost)} compact />
-          <MetricCard label={t("accountingResidualValue")} value={formatCurrency(depreciationSummary.totalResidualValue)} compact />
-          <MetricCard label={t("accountingAccumulatedDepreciation")} value={formatCurrency(depreciationSummary.totalAccumulatedDepreciation)} compact />
-          <MetricCard label={t("accountingNetBookValue")} value={formatCurrency(depreciationSummary.totalNetBookValue)} compact />
-          <MetricCard label={t("accountingFullyDepreciated")} value={depreciationSummary.fullyDepreciatedCount.toLocaleString("th-TH")} compact />
-          <MetricCard label={t("accountingMissingInfo")} value={depreciationSummary.missingAccountingInfoCount.toLocaleString("th-TH")} compact />
-        </div>
-        <DepreciationTable
-          title={t("accountingTopBookValueAssets")}
-          rows={depreciationSummary.topNetBookValueAssets}
-          locale={locale}
-          labels={{
-            asset: t("assetName"),
+            noRepairRisk: t("costNoRepairRisk"),
+            accountingTitle: t("accountingInsightTitle"),
+            accountingHelp: t("accountingInsightHelp"),
+            acquisitionCost: t("accountingAcquisitionCost"),
+            residualValue: t("accountingResidualValue"),
+            accumulatedDepreciation: t("accountingAccumulatedDepreciation"),
+            netBookValue: t("accountingNetBookValue"),
+            fullyDepreciated: t("accountingFullyDepreciated"),
+            missingInfo: t("accountingMissingInfo"),
+            topBookValueAssets: t("accountingTopBookValueAssets"),
             bookValue: t("accountingBookValue"),
-            accumulated: t("accountingAccumulatedDepreciation"),
-            ratio: t("accountingDepreciationRatio"),
+            depreciationRatio: t("accountingDepreciationRatio"),
             usefulLife: t("accountingUsefulLife"),
             ageMonths: t("accountingAgeMonths"),
-            empty: t("accountingNoAssets"),
+            noAssets: t("accountingNoAssets"),
           }}
         />
-      </ContentPanel>
-
-      <FilterPanel title={t("filterTitle")} description={t("filterHelp")} className="p-5">
-        <form action={`/${locale}/reports`} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <label>
-            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("search")}</span>
-            <input
-              type="search"
-              name="search"
-              defaultValue={filters.search}
-              placeholder={t("searchPlaceholder")}
-              className={getFieldControlClasses()}
-            />
-          </label>
-          <ReportSelect name="companyId" label={t("company")} value={filters.companyId} options={filterCompanies.map((company) => ({ value: company.id, label: `${company.code} - ${company.nameTh}` }))} allLabel={t("all")} />
-          <ReportSelect name="branchId" label={t("branch")} value={filters.branchId} options={filterBranches.map((branch) => ({ value: branch.id, label: `${branch.company.code} / ${branch.code} - ${branch.name}` }))} allLabel={t("all")} />
-          <ReportSelect name="categoryId" label={t("category")} value={filters.categoryId} options={filterCategories.map((category) => ({ value: category.id, label: `${category.code} - ${category.name}` }))} allLabel={t("all")} />
-          <ReportSelect name="statusId" label={t("status")} value={filters.statusId} options={filterStatuses.map((status) => ({ value: status.id, label: status.nameTh }))} allLabel={t("all")} />
-          <ReportSelect name="conditionId" label={t("condition")} value={filters.conditionId} options={filterConditions.map((condition) => ({ value: condition.id, label: condition.nameTh }))} allLabel={t("all")} />
-          <ReportSelect name="ownershipType" label={tAsset("ownershipType")} value={filters.ownershipType} options={assetOwnershipTypes.map((type) => ({ value: type, label: tAsset(`ownershipType_${type}`) }))} allLabel={t("all")} />
-          <div className="flex min-w-0 flex-col gap-2 self-end sm:flex-row sm:flex-wrap md:col-span-2 xl:col-span-3">
-            <ActionButton type="submit" variant="primary" className="min-h-11 w-full sm:h-10 sm:min-h-0 sm:w-auto">
-              {t("applyFilters")}
-            </ActionButton>
-            <Link href={`/${locale}/reports`} className={`${getActionButtonClasses("secondary")} min-h-11 w-full sm:h-10 sm:min-h-0 sm:w-auto`}>
-              {t("clearFilters")}
-            </Link>
-          </div>
-        </form>
-      </FilterPanel>
-
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-        <div className="mb-4">
-          <h2 className="text-base font-semibold text-foreground">{t("savedReportsTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("savedReportsHelp")}</p>
-        </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[360px_1fr]">
-          <ReportPresetControls
-            locale={locale}
-            currentQuery={exportQuery}
-            labels={{
-              presetName: t("presetName"),
-              saveCurrentPreset: t("saveCurrentPreset"),
-              savedPresetsEmpty: t("savedPresetsEmpty"),
-              savedPresetsDeviceOnly: t("savedPresetsDeviceOnly"),
-              deletePreset: t("deletePreset"),
-              presetNameRequired: t("presetNameRequired"),
-            }}
-          />
-          <div className="grid gap-3 md:grid-cols-2">
-            {recurringReports.map((report) => (
-              <div key={report.name} className="rounded-md border border-border bg-background p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-foreground">{report.name}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{report.owner}</div>
-                  </div>
-                  <span className="rounded-full bg-info/10 px-2 py-1 text-xs font-medium text-info">{report.cadence}</span>
-                </div>
-                {report.allowed ? (
-                  <Link href={report.href} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0 sm:w-auto">
-                    <Download className="h-3.5 w-3.5" />
-                    {t("runNow")}
-                  </Link>
-                ) : (
-                  <span className="mt-4 inline-flex h-8 items-center rounded-md bg-muted px-3 text-xs font-medium text-muted-foreground">
-                    {t("notAllowed")}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-        <h2 className="mb-4 text-base font-semibold text-foreground">{t("dataQuality")}</h2>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          <MetricCard label={t("missingCustodian")} value={missingCustodian.toLocaleString("th-TH")} compact />
-          <MetricCard label={t("missingSerial")} value={missingSerial.toLocaleString("th-TH")} compact />
-          <MetricCard label={t("missingPhoto")} value={missingPhoto.toLocaleString("th-TH")} compact />
-          <MetricCard label={t("warrantyExpiring")} value={warrantyExpiring.toLocaleString("th-TH")} compact />
-        </div>
-      </section>
-
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">{t("crossScopeTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("crossScopeHelp")}</p>
-          </div>
-          {canAssetExport ? (
-            <Link
-              href={`/api/assets/export?${buildAssetQueryString(filters, { crossScope: "all", dataQuality: "", statusId: "", page: 1 })}`}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0"
-            >
-              <Download className="h-4 w-4" />
-              {t("exportCrossScopeAssets")}
-            </Link>
-          ) : null}
-        </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {crossScopeCards.map((card) => (
-            <Link key={card.key} href={card.href} className="rounded-md border border-border bg-background p-4 transition-colors hover:bg-accent">
-              <div className="text-sm text-muted-foreground">{card.label}</div>
-              <div className="mt-2 text-2xl font-bold text-foreground">{card.value.toLocaleString("th-TH")}</div>
-            </Link>
-          ))}
-        </div>
-        <CrossScopePreviewTable
-          rows={crossScopeSummary.rows}
+      )
+      break
+    case "operations":
+      viewContent = (
+        <ReportsOperationsView
           locale={locale}
+          hasActiveFilters={hasActiveFilters}
+          filteredEmptyCopy={t("previewEmpty")}
+          dataQuality={{
+            missingCustodian,
+            missingSerial,
+            missingPhoto,
+            warrantyExpiring,
+            rows: dataQualityRows,
+          }}
+          crossScope={{
+            cards: crossScopeCards,
+            rows: crossScopeSummary.rows,
+            exportHref: canAssetExport
+              ? "/api/assets/export?" + buildAssetQueryString(filters, { crossScope: "all", dataQuality: "", statusId: "", page: 1 })
+              : undefined,
+          }}
+          insights={{
+            custodians: byCustodian.map((item) => ({
+              key: item.custodianId ?? "unassigned",
+              label: custodianMap.get(item.custodianId ?? "") ?? t("unassigned"),
+              count: item._count._all,
+            })),
+            locations: byLocation.map((item) => ({
+              key: item.currentLocationId,
+              label: locationMap.get(item.currentLocationId) ?? item.currentLocationId,
+              count: item._count._all,
+            })),
+            repairs: repairGroups.map((item) => ({
+              key: item.assetId,
+              label: repairAssetMap.get(item.assetId) ?? item.assetId,
+              count: item._count._all,
+            })),
+            idleAssetsCount,
+            idleAssetsHref,
+          }}
           labels={{
-            title: t("crossScopePreviewTitle"),
-            empty: t("crossScopeEmpty"),
+            dataQuality: t("dataQuality"),
+            missingCustodian: t("missingCustodian"),
+            missingSerial: t("missingSerial"),
+            missingPhoto: t("missingPhoto"),
+            warrantyExpiring: t("warrantyExpiring"),
+            crossScopeTitle: t("crossScopeTitle"),
+            crossScopeHelp: t("crossScopeHelp"),
+            exportCrossScopeAssets: t("exportCrossScopeAssets"),
+            crossScopePreviewTitle: t("crossScopePreviewTitle"),
+            crossScopeEmpty: t("crossScopeEmpty"),
             asset: t("assetName"),
             ownerBranch: t("crossScopeOwnerBranch"),
             custodianBranch: t("crossScopeCustodianBranchColumn"),
             locationBranch: t("crossScopeLocationBranchColumn"),
             flags: t("crossScopeFlags"),
-            custodianCompany: t("crossScopeCustodianCompany"),
+            custodianCompanyDifference: t("crossScopeCustodianCompany"),
             custodianBranchDifference: t("crossScopeCustodianBranch"),
             locationBranchDifference: t("crossScopeLocationBranch"),
+            dataQualityActionTitle: t("dataQualityActionTitle"),
+            dataQualityActionHelp: t("dataQualityActionHelp"),
+            openDataQualityRules: t("openDataQualityRules"),
+            dataQualityEmpty: t("dataQualityEmpty"),
+            openAsset: t("openAsset"),
+            fixData: t("fixData"),
+            operationInsightsTitle: t("operationInsightsTitle"),
+            operationInsightsHelp: t("operationInsightsHelp"),
+            byCustodian: t("byCustodian"),
+            byLocation: t("byLocation"),
+            frequentRepairAssets: t("frequentRepairAssets"),
+            idleAssets: t("idleAssets"),
+            idleAssetsHelp: t("idleAssetsHelp"),
           }}
         />
-      </section>
+      )
+      break
+    case "catalog":
+      viewContent = (
+        <ReportsCatalogView
+          locale={locale}
+          currentQuery={exportQuery}
+          hasActiveFilters={hasActiveFilters}
+          emptyCopy={{ filtered: t("previewEmpty"), dataset: t("savedPresetsEmpty") }}
+          reportCount={reportCount}
+          recurringReports={recurringReports}
+          categories={reportCatalog}
+          permissions={[
+            { key: "report", label: t("exportAssetOverview"), allowed: canReportExport },
+            { key: "asset", label: t("exportAssetRegister"), allowed: canAssetExport },
+            { key: "maintenance", label: t("exportMaintenance"), allowed: canMaintenanceExport },
+            { key: "audit", label: t("exportAuditFindings"), allowed: canAuditExport },
+            { key: "disposal", label: t("exportDisposal"), allowed: canDisposalExport },
+            { key: "role", label: t("exportRoleAudit"), allowed: canRoleExport },
+          ]}
+          labels={{
+            catalogItems: t("catalogItems"),
+            savedReportsTitle: t("savedReportsTitle"),
+            savedReportsHelp: t("savedReportsHelp"),
+            presetName: t("presetName"),
+            saveCurrentPreset: t("saveCurrentPreset"),
+            savedPresetsEmpty: t("savedPresetsEmpty"),
+            savedPresetsDeviceOnly: t("savedPresetsDeviceOnly"),
+            deletePreset: t("deletePreset"),
+            presetNameRequired: t("presetNameRequired"),
+            runNow: t("runNow"),
+            notAllowed: t("notAllowed"),
+            reportCatalog: t("reportCatalog"),
+            reportCatalogHelp: t("reportCatalogHelp"),
+            openReport: t("openReport"),
+            permissionTitle: t("permissionTitle"),
+            permissionHelp: t("permissionHelp"),
+            allowed: t("allowed"),
+          }}
+        />
+      )
+      break
+    default: {
+      const exhaustiveView: never = activeView
+      viewContent = exhaustiveView
+    }
+  }
 
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">{t("dataQualityActionTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("dataQualityActionHelp")}</p>
-          </div>
-          <Link href={`/${locale}/admin/data-quality`} className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-fit">
-            {t("openDataQualityRules")}
-          </Link>
-        </div>
-        <div className="grid gap-3">
-          {dataQualityAssets.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              {t("dataQualityEmpty")}
-            </div>
-          ) : (
-            dataQualityAssets.map((asset) => {
-              const issues = getDataQualityIssues(asset, warrantyThreshold, t, locale)
-              const primaryFixHref = issues[0]?.href ?? `/${locale}/assets/${asset.id}/edit`
-
-              return (
-                <div key={asset.id} className="rounded-md border border-border bg-background p-4">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Link href={`/${locale}/assets/${asset.id}`} className="font-semibold text-primary hover:underline">
-                          {asset.assetTag}
-                        </Link>
-                        <span className="text-sm text-foreground">{asset.name}</span>
-                      </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {asset.category.code} - {asset.category.name} · {asset.branch.code} - {asset.branch.name}
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {issues.map((issue) => (
-                          <Link key={issue.label} href={issue.href} className="rounded-full bg-warning/10 px-2 py-1 text-xs font-medium text-warning transition-colors hover:bg-warning/20">
-                            {issue.label}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
-                      <Link href={`/${locale}/assets/${asset.id}`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0">
-                        {t("openAsset")}
-                      </Link>
-                      <Link href={primaryFixHref} className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary/90 sm:h-8 sm:min-h-0">
-                        {t("fixData")}
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
-      </section>
-
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-        <div className="flex flex-col gap-2 border-b border-border px-5 py-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">{t("previewTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("previewHelp")}</p>
-          </div>
-          <span className="text-xs font-medium text-muted-foreground">{t("previewCount", { count: previewAssets.length })}</span>
-        </div>
-        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <PreviewHead>{t("assetTag")}</PreviewHead>
-                <PreviewHead>{t("assetName")}</PreviewHead>
-                <PreviewHead>{t("category")}</PreviewHead>
-                <PreviewHead>{t("branch")}</PreviewHead>
-                <PreviewHead>{t("department")}</PreviewHead>
-                <PreviewHead>{t("custodian")}</PreviewHead>
-                <PreviewHead>{tAsset("ownershipType")}</PreviewHead>
-                <PreviewHead>{t("status")}</PreviewHead>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {previewAssets.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                    {t("previewEmpty")}
-                  </td>
-                </tr>
-              ) : (
-                previewAssets.map((asset) => (
-                  <tr key={asset.id}>
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">
-                      <Link href={`/${locale}/assets/${asset.id}`} className="text-primary hover:underline">
-                        {asset.assetTag}
-                      </Link>
-                    </td>
-                    <td className="min-w-56 px-4 py-3 text-foreground">{asset.name}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.category.code} - {asset.category.name}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.branch.code} - {asset.branch.name}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.department ? `${asset.department.code} - ${asset.department.name}` : t("unassigned")}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : t("unassigned")}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{tAsset(`ownershipType_${normalizeAssetOwnershipType(asset.ownershipType)}`)}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.status.nameTh}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <ReportTable title={t("byStatus")} rows={byStatus.map((item) => [statusMap.get(item.statusId) ?? item.statusId, item._count._all])} />
-        <ReportTable title={t("byCategory")} rows={byCategory.map((item) => [categoryMap.get(item.categoryId) ?? item.categoryId, item._count._all])} />
-        <ReportTable title={t("byCompany")} rows={byCompany.map((item) => [companyMap.get(item.companyId) ?? item.companyId, item._count._all])} />
-        <ReportTable title={t("byBranch")} rows={byBranch.map((item) => [branchMap.get(item.branchId) ?? item.branchId, item._count._all])} />
-        <ReportTable title={t("byDepartment")} rows={byDepartment.map((item) => [departmentMap.get(item.departmentId ?? "") ?? item.departmentId ?? t("unassigned"), item._count._all])} />
-        <ReportTable title={t("byOwnership")} rows={byOwnership.map((item) => [tAsset(`ownershipType_${normalizeAssetOwnershipType(item.ownershipType)}`), item._count._all])} />
+  return (
+    <div className="space-y-5" data-report-page>
+      <ReportHeader title={t("title")} subtitle={t("subtitle")} actions={headerActions} />
+      <div data-report-tabs>
+        <ReportViewTabs
+          locale={locale}
+          activeView={activeView}
+          filters={filters}
+          labels={viewLabels}
+          navigationLabel={t("viewNavigation")}
+        />
       </div>
-
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-        <div className="mb-4">
-          <h2 className="text-base font-semibold text-foreground">{t("operationInsightsTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("operationInsightsHelp")}</p>
+      <div data-report-filters>
+        <ReportFilterPanel
+          locale={locale}
+          activeView={activeView}
+          filters={filters}
+          options={filterOptions}
+          labels={{
+            title: t("filterTitle"),
+            help: t("filterHelp"),
+            search: t("search"),
+            searchPlaceholder: t("searchPlaceholder"),
+            company: t("company"),
+            branch: t("branch"),
+            category: t("category"),
+            status: t("status"),
+            condition: t("condition"),
+            ownershipType: tAsset("ownershipType"),
+            all: t("all"),
+            apply: t("applyFilters"),
+            clear: t("clearFilters"),
+          }}
+        />
+      </div>
+      {activeFilters.length > 0 ? (
+        <div data-report-active-filters>
+          <ReportActiveFilters
+            filters={activeFilters}
+            clearAllHref={buildReportHref(locale, activeView, parseAssetListParams({}))}
+            clearLabel={t("clearFilters")}
+            removeLabel={t("clearActiveFilter")}
+          />
         </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <ReportTable title={t("byCustodian")} rows={byCustodian.map((item) => [custodianMap.get(item.custodianId ?? "") ?? t("unassigned"), item._count._all])} />
-          <ReportTable title={t("byLocation")} rows={byLocation.map((item) => [locationMap.get(item.currentLocationId) ?? item.currentLocationId, item._count._all])} />
-          <ReportTable title={t("frequentRepairAssets")} rows={repairGroups.map((item) => [repairAssetMap.get(item.assetId) ?? item.assetId, item._count._all])} />
-          <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-            <h2 className="mb-4 text-base font-semibold text-foreground">{t("idleAssets")}</h2>
-            <Link href={idleAssetsHref} className="block rounded-md border border-warning/30 bg-warning/5 p-4 transition-colors hover:bg-warning/10">
-              <div className="text-sm text-muted-foreground">{t("idleAssetsHelp")}</div>
-              <div className="mt-2 text-2xl font-bold text-foreground">{idleAssetsCount.toLocaleString("th-TH")}</div>
-            </Link>
-          </section>
-        </div>
-      </section>
-
-      <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-        <div className="mb-5">
-          <h2 className="text-lg font-semibold text-foreground">{t("reportCatalog")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("reportCatalogHelp")}</p>
-        </div>
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          {reportCatalog.map((category) => (
-            <div key={category.title} className="rounded-md border border-border bg-background p-4">
-              <div className="mb-4 flex items-start gap-3">
-                <div className="rounded-md bg-primary/10 p-2 text-primary">{category.icon}</div>
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">{category.title}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{category.description}</p>
-                  <p className="mt-2 text-xs font-medium text-primary">{category.audience}</p>
-                </div>
-              </div>
-              <div className="grid gap-2">
-                {category.reports.map((report) => (
-                  <div key={report.label} className="flex flex-col gap-2 rounded-md border border-border bg-surface px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-                    <span className="text-sm font-medium text-foreground">{report.label}</span>
-                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
-                      <Link href={report.viewHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-background px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0">
-                        {t("openReport")}
-                      </Link>
-                      {report.exportHref && report.exportAllowed ? (
-                        <Link href={report.exportHref} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary/90 sm:h-8 sm:min-h-0">
-                          <Download className="h-3.5 w-3.5" />
-                          {report.exportLabel}
-                        </Link>
-                      ) : report.exportHref ? (
-                        <span className="inline-flex h-8 items-center rounded-md bg-muted px-3 text-xs font-medium text-muted-foreground">
-                          {t("notAllowed")}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <details className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-        <summary className="cursor-pointer text-base font-semibold text-foreground">{t("permissionTitle")}</summary>
-        <p className="mt-2 text-sm text-muted-foreground">{t("permissionHelp")}</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <PermissionPill label={t("exportAssetOverview")} allowed={canReportExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
-          <PermissionPill label={t("exportAssetRegister")} allowed={canAssetExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
-          <PermissionPill label={t("exportMaintenance")} allowed={canMaintenanceExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
-          <PermissionPill label={t("exportAuditFindings")} allowed={canAuditExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
-          <PermissionPill label={t("exportDisposal")} allowed={canDisposalExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
-          <PermissionPill label={t("exportRoleAudit")} allowed={canRoleExport} allowedLabel={t("allowed")} deniedLabel={t("notAllowed")} />
-        </div>
-      </details>
+      ) : null}
+      <div data-report-shared-metrics className="grid grid-cols-2 gap-3">
+        <MetricCard label={t("totalAssets")} value={totalAssets.toLocaleString("th-TH")} />
+        <MetricCard label={t("totalValue")} value={formatCurrency(totalPurchaseValue)} />
+      </div>
+      <div data-report-view-content>{viewContent}</div>
     </div>
-  )
-}
-
-function CostExposureTable({
-  title,
-  rows,
-  locale,
-  labels,
-}: {
-  title: string
-  rows: CostExposureAsset[]
-  locale: string
-  labels: {
-    asset: string
-    repairCost: string
-    purchasePrice: string
-    ratio: string
-    repairCount: string
-    empty: string
-  }
-}) {
-  return (
-    <div className="mt-4 overflow-hidden rounded-md border border-border bg-background">
-      <div className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">{title}</div>
-      {rows.length === 0 ? (
-        <div className="px-4 py-6 text-center text-sm text-muted-foreground">{labels.empty}</div>
-      ) : (
-        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <PreviewHead>{labels.asset}</PreviewHead>
-                <PreviewHead>{labels.repairCost}</PreviewHead>
-                <PreviewHead>{labels.purchasePrice}</PreviewHead>
-                <PreviewHead>{labels.ratio}</PreviewHead>
-                <PreviewHead>{labels.repairCount}</PreviewHead>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {rows.map((asset) => (
-                <tr key={asset.id}>
-                  <td className="min-w-64 px-4 py-3 font-medium text-foreground">
-                    <Link href={`/${locale}/assets/${asset.id}`} className="text-primary hover:underline">
-                      {asset.label}
-                    </Link>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.repairCost)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.purchasePrice)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatPercent(asset.repairToPurchaseRatio)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.repairCount.toLocaleString("th-TH")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function DepreciationTable({
-  title,
-  rows,
-  locale,
-  labels,
-}: {
-  title: string
-  rows: DepreciableAsset[]
-  locale: string
-  labels: {
-    asset: string
-    bookValue: string
-    accumulated: string
-    ratio: string
-    usefulLife: string
-    ageMonths: string
-    empty: string
-  }
-}) {
-  return (
-    <div className="mt-4 overflow-hidden rounded-md border border-border bg-background">
-      <div className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">{title}</div>
-      {rows.length === 0 ? (
-        <div className="px-4 py-6 text-center text-sm text-muted-foreground">{labels.empty}</div>
-      ) : (
-        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <PreviewHead>{labels.asset}</PreviewHead>
-                <PreviewHead>{labels.bookValue}</PreviewHead>
-                <PreviewHead>{labels.accumulated}</PreviewHead>
-                <PreviewHead>{labels.ratio}</PreviewHead>
-                <PreviewHead>{labels.usefulLife}</PreviewHead>
-                <PreviewHead>{labels.ageMonths}</PreviewHead>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {rows.map((asset) => (
-                <tr key={asset.id}>
-                  <td className="min-w-64 px-4 py-3 font-medium text-foreground">
-                    <Link href={`/${locale}/assets/${asset.id}`} className="text-primary hover:underline">
-                      {asset.label}
-                    </Link>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.netBookValue)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.accumulatedDepreciation)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatPercent(asset.depreciatedRatio)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.usefulLifeMonths.toLocaleString("th-TH")}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.ageMonths.toLocaleString("th-TH")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function CrossScopePreviewTable({
-  rows,
-  locale,
-  labels,
-}: {
-  rows: AssetCrossScopeSummaryRow[]
-  locale: string
-  labels: {
-    title: string
-    empty: string
-    asset: string
-    ownerBranch: string
-    custodianBranch: string
-    locationBranch: string
-    flags: string
-    custodianCompany: string
-    custodianBranchDifference: string
-    locationBranchDifference: string
-  }
-}) {
-  return (
-    <div className="mt-4 overflow-hidden rounded-md border border-border bg-background">
-      <div className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">{labels.title}</div>
-      {rows.length === 0 ? (
-        <div className="px-4 py-6 text-center text-sm text-muted-foreground">{labels.empty}</div>
-      ) : (
-        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <PreviewHead>{labels.asset}</PreviewHead>
-                <PreviewHead>{labels.ownerBranch}</PreviewHead>
-                <PreviewHead>{labels.custodianBranch}</PreviewHead>
-                <PreviewHead>{labels.locationBranch}</PreviewHead>
-                <PreviewHead>{labels.flags}</PreviewHead>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {rows.map((asset) => {
-                const flagLabels = getAssetCrossScopeFlagLabels(asset.flags, {
-                  custodianCompany: labels.custodianCompany,
-                  custodianBranch: labels.custodianBranchDifference,
-                  locationBranch: labels.locationBranchDifference,
-                })
-
-                return (
-                  <tr key={asset.id}>
-                    <td className="min-w-64 px-4 py-3 font-medium text-foreground">
-                      <Link href={`/${locale}/assets/${asset.id}`} className="text-primary hover:underline">
-                        {asset.assetTag}
-                      </Link>
-                      <div className="mt-1 text-xs font-normal text-muted-foreground">{asset.name}</div>
-                    </td>
-                    <td className="min-w-48 px-4 py-3 text-muted-foreground">{asset.ownerBranch}</td>
-                    <td className="min-w-56 px-4 py-3 text-muted-foreground">
-                      <div>{asset.custodian}</div>
-                      <div className="mt-1 text-xs">{asset.custodianBranch}</div>
-                    </td>
-                    <td className="min-w-56 px-4 py-3 text-muted-foreground">
-                      <div>{asset.currentLocation}</div>
-                      <div className="mt-1 text-xs">{asset.currentLocationBranch}</div>
-                    </td>
-                    <td className="min-w-56 px-4 py-3">
-                      <div className="flex flex-wrap gap-1.5">
-                        {flagLabels.map((label) => (
-                          <span key={label} className="rounded-full bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
-                            {label}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function formatPercent(value: number | null) {
-  if (value == null) return "-"
-  return new Intl.NumberFormat("th-TH", {
-    style: "percent",
-    maximumFractionDigits: 1,
-  }).format(value)
-}
-
-function ReportSelect({
-  name,
-  label,
-  value,
-  options,
-  allLabel,
-}: {
-  name: string
-  label: string
-  value: string
-  options: Array<{ value: string; label: string }>
-  allLabel: string
-}) {
-  return (
-    <label>
-      <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{label}</span>
-      <select
-        name={name}
-        defaultValue={value}
-        className={getFieldControlClasses()}
-      >
-        <option value="">{allLabel}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  )
-}
-
-function PreviewHead({ children }: { children: React.ReactNode }) {
-  return <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{children}</th>
-}
-
-function PermissionPill({
-  label,
-  allowed,
-  allowedLabel,
-  deniedLabel,
-}: {
-  label: string
-  allowed: boolean
-  allowedLabel: string
-  deniedLabel: string
-}) {
-  return (
-    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${allowed ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
-      {label}: {allowed ? allowedLabel : deniedLabel}
-    </span>
   )
 }
 
@@ -1020,36 +705,16 @@ function getDataQualityIssues(
   t: (key: string) => string,
   locale: string
 ) {
-  const editHref = `/${locale}/assets/${asset.id}/edit`
-  const detailHref = `/${locale}/assets/${asset.id}`
+  const editHref = "/" + locale + "/assets/" + asset.id + "/edit"
+  const detailHref = "/" + locale + "/assets/" + asset.id
   const issues: Array<{ label: string; href: string }> = []
   if (!hasAssetResponsibility(asset)) issues.push({ label: t("missingCustodian"), href: editHref })
   if (!asset.serialNumber) issues.push({ label: t("missingSerial"), href: editHref })
   if (asset.ownershipType !== "software_license" && asset.attachments.length === 0) {
-    issues.push({ label: t("missingPhoto"), href: `${detailHref}#photos` })
+    issues.push({ label: t("missingPhoto"), href: detailHref + "#photos" })
   }
   if (asset.warrantyEndDate && asset.warrantyEndDate >= new Date() && asset.warrantyEndDate <= warrantyThreshold) {
-    issues.push({ label: t("warrantyExpiring"), href: `${detailHref}#purchase` })
+    issues.push({ label: t("warrantyExpiring"), href: detailHref + "#purchase" })
   }
   return issues
-}
-
-function ReportTable({ title, rows }: { title: string; rows: [string, number][] }) {
-  return (
-    <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-      <h2 className="mb-4 text-base font-semibold text-foreground">{title}</h2>
-      <div className="space-y-2">
-        {rows.length === 0 ? (
-          <div className="text-sm text-muted-foreground">-</div>
-        ) : (
-          rows.map(([label, count], index) => (
-            <div key={`${index}:${label}`} className="flex items-center justify-between gap-3 text-sm">
-              <span className="truncate text-muted-foreground">{label}</span>
-              <span className="font-semibold text-foreground">{count.toLocaleString("th-TH")}</span>
-            </div>
-          ))
-        )}
-      </div>
-    </section>
-  )
 }
