@@ -19,7 +19,7 @@ export function ReportActiveFilters({ filters, clearAllHref, clearLabel, removeL
           key={filter.key}
           href={filter.href}
           aria-label={`${removeLabel}: ${filter.label}`}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-primary/20 bg-surface px-3 text-sm text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:min-h-9"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-primary/20 bg-surface px-3 text-sm text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 md:min-h-9"
         >
           <span>{filter.label}</span>
           <X aria-hidden="true" className="h-3.5 w-3.5 text-muted-foreground" />
@@ -27,7 +27,7 @@ export function ReportActiveFilters({ filters, clearAllHref, clearLabel, removeL
       ))}
       <Link
         href={clearAllHref}
-        className="inline-flex min-h-11 items-center justify-center rounded-md px-3 text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:min-h-9"
+        className="inline-flex min-h-11 items-center justify-center rounded-md px-3 text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 md:min-h-9"
       >
         {clearLabel}
       </Link>

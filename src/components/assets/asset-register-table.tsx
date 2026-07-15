@@ -61,6 +61,7 @@ type AssetRegisterTableProps = {
     supplierId: string
     dataQuality: "" | AssetDataQualityFilter
     crossScope: "" | AssetCrossScopeFilter
+    activity: "" | "idle_180d"
     page: number
     pageSize: number
     sort: string

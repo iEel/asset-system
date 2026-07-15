@@ -17,6 +17,7 @@ export type AssetListParams = {
   supplierId?: string
   dataQuality?: string
   crossScope?: string
+  activity?: string
   page?: string | number
   pageSize?: string | number
   sort?: string
@@ -37,6 +38,7 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
   const ownershipType = String(getValue("ownershipType") ?? "").trim()
   const dataQuality = normalizeAssetDataQualityFilter(getValue("dataQuality"))
   const crossScope = normalizeAssetCrossScopeFilter(getValue("crossScope"))
+  const activity: "" | "idle_180d" = getValue("activity") === "idle_180d" ? "idle_180d" : ""
 
   return {
     search: String(getValue("search") ?? "").trim(),
@@ -52,6 +54,7 @@ export function parseAssetListParams(input: URLSearchParams | AssetListParams) {
     supplierId: String(getValue("supplierId") ?? "").trim(),
     dataQuality,
     crossScope,
+    activity,
     page,
     pageSize,
     sort: sortableFields.has(sort) ? sort : "createdAt",
@@ -110,7 +113,7 @@ export function buildAssetQueryString(
   const next = { ...filters, ...overrides }
   const params = new URLSearchParams()
 
-  for (const key of ["search", "companyId", "branchId", "categoryId", "brandId", "modelId", "statusId", "conditionId", "ownershipType", "custodianId", "supplierId", "dataQuality", "crossScope", "sort", "direction"] as const) {
+  for (const key of ["search", "companyId", "branchId", "categoryId", "brandId", "modelId", "statusId", "conditionId", "ownershipType", "custodianId", "supplierId", "dataQuality", "crossScope", "activity", "sort", "direction"] as const) {
     if (next[key]) params.set(key, String(next[key]))
   }
 

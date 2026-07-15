@@ -28,3 +28,19 @@ test("removing company also removes its dependent branch", () => {
   })
   assert.doesNotMatch(company.href, /companyId|branchId/)
 })
+
+test("clearing another filter preserves the activity scope", () => {
+  const filters = parseAssetListParams({ statusId: "ready", activity: "idle_180d" })
+  const chips = buildReportActiveFilters({
+    locale: "en",
+    view: "operations",
+    filters,
+    names: { statusId: "Status", activity: "Activity" },
+    values: { statusId: "Ready", activity: "Idle for 180 days" },
+  })
+
+  const status = chips.find((chip) => chip.key === "statusId")
+  assert.ok(status)
+  assert.match(status.href, /activity=idle_180d/)
+  assert.match(status.href, /view=operations/)
+})
