@@ -1,7 +1,7 @@
 # Reports Adaptive UI Design
 
 **Date:** 2026-07-14  
-**Status:** Approved direction, pending written-spec review  
+**Status:** Approved after handoff and documentation review
 **Route:** `/{locale}/reports`
 
 ## Goal
@@ -16,6 +16,8 @@ The finished experience must:
 - reduce the amount of report data queried and rendered on each request;
 - adapt structurally for desktop, tablet, and mobile instead of merely stacking the desktop page;
 - preserve shareable URL state, browser-local presets, exports, RBAC, and Thai/English locales.
+
+This design was reconciled against `DEVELOPER_HANDOFF.md`, the Reports workflow and UAT contracts, Production Readiness, the feature list, the existing Adaptive UI rollout, and `DESIGN.md`. Desktop and mobile continue to share the same route, data contract, permissions, validation, and business behavior; only hierarchy and presentation adapt by viewport.
 
 ## Chosen Approach
 
@@ -82,6 +84,7 @@ The existing `Reports Ready` metric becomes `Report catalog items` and moves int
 - Shared metrics use two compact columns, leaving more vertical room for the selected report.
 - Tables remain semantic HTML tables with horizontal overflow only where needed.
 - Operations uses balanced two- and four-column layouts for actionable summaries.
+- The page remains inside the dashboard `<main>` scroll owner and must not create a second document scrollbar.
 
 ### Tablet (`md` to `xl`)
 
@@ -101,8 +104,11 @@ The existing `Reports Ready` metric becomes `Report catalog items` and moves int
 - Data tables with more than four meaningful columns render a mobile card list with the same links and values; the desktop semantic table is hidden below `md` and the mobile list is hidden at `md` and above.
 - Touch targets remain at least 44px. The page must not depend on hover.
 - Bottom navigation and mobile sidebar behavior remain unchanged.
+- The page and every list/card surface must have no body-level horizontal overflow at 375px.
 
 The target is to reduce the initial mobile Overview from roughly fourteen viewport heights to a task-focused view of approximately four to six viewport heights before pagination or long breakdown content.
+
+All new presentation reuses the existing design-system helpers and semantic tokens: Brand Navy for navigation identity, Action Blue for normal white-text actions, and Electric Blue for focus/selection. Panels stay border-first with the established 8–12px radii. This rollout adds no UI dependency, raw palette, gradient, glass, or decorative dashboard treatment.
 
 ## Components And Boundaries
 
@@ -203,13 +209,23 @@ English messages remain complete and equivalent.
 ### Verification
 
 - Focused Node tests, full `npm test`, ESLint, TypeScript, and production build.
-- Chrome smoke test at desktop and 375px mobile for every view.
+- Chrome smoke test for every view at 375, 390, 414, 768, 1280, and 1440 pixels, including a single-scroll-owner and body-overflow check.
 - Verify active-filter chips, tab URL preservation, filter application, data-quality drilldowns, accurate idle drilldown, local preset reopening, horizontal overflow, and absence of console errors.
+- Verify with `system_admin` and an `accounting` or other permission-limited role that report visibility and export actions remain permission-aware and that unrelated admin actions do not appear.
+- Verify realistic repeated branch names retain company context and cross-scope counts/drilldowns agree with Asset Overview export.
+- When performance timing is enabled, confirm the request emits `reports.shared-data` and only the active view timing label; disable timing after diagnosis.
 - Run the Impeccable detector on changed UI files.
+
+### Handoff and release documentation
+
+- Update `DEVELOPER_HANDOFF.md`, `docs/06_WORKFLOWS.md`, `docs/07_UAT_CHECKLIST.md`, `docs/11_FEATURE_LIST.md`, and `docs/99_CHANGELOG.md` with the completed behavior and retained manual UAT gates.
+- Keep realistic-data Reports/export verification as an explicit Production Readiness gate; do not mark it complete from fixture-only tests.
+- Record the existing dependency-audit findings separately and do not force dependency upgrades into this UI rollout.
 
 ## Non-Goals
 
 - No new chart library or decorative visualization.
+- No new runtime or UI dependency.
 - No database schema or migration.
 - No changes to accounting formulas, maintenance lifecycle, audit workflow, disposal workflow, or RBAC definitions.
 - No server-synced report presets or scheduled report delivery.
