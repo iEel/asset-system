@@ -8,20 +8,22 @@
 Read these documents in order:
 
 1. `README.md`
-2. `docs/01_OVERVIEW.md`
-3. `docs/02_ARCHITECTURE.md`
-4. `docs/03_DATABASE.md`
-5. `docs/04_AUTH_RBAC.md`
-6. `docs/05_ASSET_LIFECYCLE.md`
-7. `docs/06_WORKFLOWS.md`
-8. `docs/07_UAT_CHECKLIST.md`
-9. `docs/08_PRODUCTION_READINESS.md`
-10. `docs/09_BACKUP_RESTORE_RUNBOOK.md`
-11. `docs/10_SECURITY_REVIEW.md`
-12. `docs/11_FEATURE_LIST.md`
-13. `docs/12_HANDOUT.md`
-14. `docs/13_INTEGRATION_API.md`
-15. `DEPLOYMENT_UBUNTU_CLOUDFLARE.md`
+2. `DESIGN.md`
+3. `docs/01_OVERVIEW.md`
+4. `docs/02_ARCHITECTURE.md`
+5. `docs/03_DATABASE.md`
+6. `docs/04_AUTH_RBAC.md`
+7. `docs/05_ASSET_LIFECYCLE.md`
+8. `docs/06_WORKFLOWS.md`
+9. `docs/14_UI_UX_DESIGN_SYSTEM.md`
+10. `docs/07_UAT_CHECKLIST.md`
+11. `docs/08_PRODUCTION_READINESS.md`
+12. `docs/09_BACKUP_RESTORE_RUNBOOK.md`
+13. `docs/10_SECURITY_REVIEW.md`
+14. `docs/11_FEATURE_LIST.md`
+15. `docs/12_HANDOUT.md`
+16. `docs/13_INTEGRATION_API.md`
+17. `DEPLOYMENT_UBUNTU_CLOUDFLARE.md`
 
 Long-form development history is preserved in `docs/99_CHANGELOG.md`.
 
@@ -86,6 +88,8 @@ Long-form development history is preserved in `docs/99_CHANGELOG.md`.
 
 | Document | Purpose |
 |---|---|
+| `DESIGN.md` | Canonical visual system, components, accessibility, and Adaptive UI policy |
+| `docs/14_UI_UX_DESIGN_SYSTEM.md` | Developer-facing Desktop/Mobile implementation index and UI QA contract |
 | `docs/01_OVERVIEW.md` | Product purpose, users, and modules |
 | `docs/02_ARCHITECTURE.md` | System architecture, route structure, background jobs, storage boundaries |
 | `docs/03_DATABASE.md` | Prisma/SQL Server schema overview and migration policy |

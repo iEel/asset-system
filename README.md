@@ -9,8 +9,10 @@ Enterprise asset management system for asset registration, custody, QR/label wor
 | `DEVELOPER_HANDOFF.md` | Current implementation status, feature index, schema notes, and developer handoff details |
 | `DEPLOYMENT_UBUNTU_CLOUDFLARE.md` | Step-by-step Ubuntu + Nginx + Cloudflare Tunnel production deployment guide |
 | `AGENTS.md` | Local coding-agent rule: read Next.js 16 docs in `node_modules/next/dist/docs/` before changing Next.js routes/pages |
+| `DESIGN.md` | Canonical design tokens, component vocabulary, accessibility, and Adaptive UI policy |
+| `docs/14_UI_UX_DESIGN_SYSTEM.md` | Developer-facing Desktop/Mobile behavior guide, route references, and UI QA checklist |
 | `System Requirement (2).md` | Original business/system requirement reference |
-| `Enterprise Web UI UX Requirements.md` | UI/UX requirements and enterprise design guidance |
+| `Enterprise Web UI UX Requirements.md` | Original enterprise UI/UX baseline; current policy lives in DESIGN.md |
 | `Tech Stack.md` | Stack decision reference |
 | `Implementation Plan.md` | Original staged implementation plan |
 
