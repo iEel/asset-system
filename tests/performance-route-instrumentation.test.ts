@@ -29,7 +29,13 @@ const routeFiles = [
   },
   {
     file: "src/app/[locale]/(dashboard)/reports/page.tsx",
-    labels: ["reports.initial-data", "reports.lookup-data", "reports.dimension-labels"],
+    labels: [
+      "reports.shared-data",
+      "reports.overview-data",
+      "reports.accounting-data",
+      "reports.operations-data",
+      "reports.catalog-data",
+    ],
   },
   {
     file: "src/app/[locale]/(dashboard)/audit/rounds/page.tsx",
