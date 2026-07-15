@@ -45,21 +45,25 @@ Both presentations reuse the same URL, API, business records, workflow records, 
 
 ## Shared Visual and Interaction Reminders
 
-Follow [`DESIGN.md`](../DESIGN.md) rather than copying token tables: use Navy identity, Action Blue primary fills, and Electric Blue for focus or emphasis. Use semantic statuses with readable text, plus icons or shapes where useful; use Lucide icons, an 8px control radius, and a 12px panel ceiling. Favor borders and tonal hierarchy. Do not introduce decorative gradients, glass effects, or heavy motion. Implement standard component states and consistent skeleton, empty, error, and denied patterns.
+Follow the canonical [`Colors`](../DESIGN.md#2-colors), [`Typography`](../DESIGN.md#3-typography), and [`Components`](../DESIGN.md#5-components) sections of [`DESIGN.md`](../DESIGN.md); do not copy mutable token values into route documentation. Use semantic statuses with readable text plus icons, shapes, or clear workflow context where useful. Reuse Lucide icons and existing component helpers, favor borders and tonal hierarchy, and avoid decorative gradients, glass effects, and heavy motion. Implement consistent loading, empty, error, and denied states.
 
-## Route-Pattern Index
+## Current-Surface Registry
 
-- [`docs/superpowers/plans/2026-07-10-modern-enterprise-adaptive-ui.md`](superpowers/plans/2026-07-10-modern-enterprise-adaptive-ui.md) defines the enterprise adaptive UI direction across management and field-operation surfaces.
-- [`docs/superpowers/specs/2026-07-10-mobile-field-navigation-design.md`](superpowers/specs/2026-07-10-mobile-field-navigation-design.md) owns the focused design decisions for Mobile Field Navigation.
-- [`docs/superpowers/plans/2026-07-10-mobile-field-navigation.md`](superpowers/plans/2026-07-10-mobile-field-navigation.md) sequences implementation and verification for Mobile Field Navigation.
-- [`docs/superpowers/plans/2026-07-10-desktop-asset-register-workspace.md`](superpowers/plans/2026-07-10-desktop-asset-register-workspace.md) defines the Desktop Asset Register workspace approach.
-- [`docs/superpowers/plans/2026-07-10-asset-detail-components-ux-implementation.md`](superpowers/plans/2026-07-10-asset-detail-components-ux-implementation.md) defines Asset Detail component and UX implementation work.
-- [`docs/superpowers/plans/2026-07-11-asset-detail-ux-polish.md`](superpowers/plans/2026-07-11-asset-detail-ux-polish.md) records Asset Detail polish and review work.
-- [`docs/superpowers/specs/2026-07-11-login-ux-design.md`](superpowers/specs/2026-07-11-login-ux-design.md) owns the Login route UX design decisions.
-- [`docs/superpowers/specs/2026-07-13-disposal-production-readiness-design.md`](superpowers/specs/2026-07-13-disposal-production-readiness-design.md) owns disposal workflow production-readiness design decisions.
-- [`docs/superpowers/specs/2026-07-14-maintenance-production-hardening-design.md`](superpowers/specs/2026-07-14-maintenance-production-hardening-design.md) owns maintenance workflow production-hardening design decisions.
-- [`docs/superpowers/plans/2026-07-10-module-ux-roadmap.md`](superpowers/plans/2026-07-10-module-ux-roadmap.md) maps UX sequencing across product modules.
-- [`docs/superpowers/specs/2026-07-10-ui-ux-hardening-design.md`](superpowers/specs/2026-07-10-ui-ux-hardening-design.md) owns cross-cutting UI/UX hardening decisions.
+A focused design record is current and approved for repository work only when this registry lists it in the **Current design record** column. When no focused record is listed, [`DESIGN.md`](../DESIGN.md) and this guide govern; create and register a focused specification before making material route-behavior changes. Plans record implementation sequencing and verification only; they do not supersede a current design record.
+
+When a focused specification is added, replaced, or retired, update this registry in the same commit. For a replacement, retain the former record in history and mark it `Superseded by <replacement>` so the authority change is auditable.
+
+| Current surface | Current design record | Implementation and supporting records |
+| --- | --- | --- |
+| Mobile Field Navigation | [`2026-07-10-mobile-field-navigation-design.md`](superpowers/specs/2026-07-10-mobile-field-navigation-design.md) | [`2026-07-10-mobile-field-navigation.md`](superpowers/plans/2026-07-10-mobile-field-navigation.md) sequences implementation and verification. |
+| Asset Register | [`2026-07-10-desktop-asset-register-workspace-design.md`](superpowers/specs/2026-07-10-desktop-asset-register-workspace-design.md) | [`2026-07-10-desktop-asset-register-workspace.md`](superpowers/plans/2026-07-10-desktop-asset-register-workspace.md) is the implementation and sequencing record. |
+| Asset Detail and components | [`2026-07-10-asset-detail-components-ux-design.md`](superpowers/specs/2026-07-10-asset-detail-components-ux-design.md) | [`2026-07-10-asset-detail-components-ux-implementation.md`](superpowers/plans/2026-07-10-asset-detail-components-ux-implementation.md) and [`2026-07-11-asset-detail-ux-polish.md`](superpowers/plans/2026-07-11-asset-detail-ux-polish.md) record implementation, sequencing, and polish history. |
+| Audit Scan | No dedicated scan specification; the current cross-cutting record is [`2026-07-10-ui-ux-hardening-design.md`](superpowers/specs/2026-07-10-ui-ux-hardening-design.md). | [`2026-07-10-modern-enterprise-adaptive-ui.md`](superpowers/plans/2026-07-10-modern-enterprise-adaptive-ui.md) is implementation direction only. |
+| Reports | No focused current specification; [`DESIGN.md`](../DESIGN.md) and this guide govern. A focused specification is required before material route-behavior changes. | [`2026-07-10-module-ux-roadmap.md`](superpowers/plans/2026-07-10-module-ux-roadmap.md) provides supporting implementation guidance. |
+| Login | [`2026-07-11-login-ux-design.md`](superpowers/specs/2026-07-11-login-ux-design.md) | [`2026-07-11-login-ux.md`](superpowers/plans/2026-07-11-login-ux.md) sequences implementation and verification. |
+| Disposal | [`2026-07-13-disposal-production-readiness-design.md`](superpowers/specs/2026-07-13-disposal-production-readiness-design.md) | [`2026-07-13-disposal-production-readiness.md`](superpowers/plans/2026-07-13-disposal-production-readiness.md) sequences implementation and verification. |
+| Maintenance | [`2026-07-14-maintenance-production-hardening-design.md`](superpowers/specs/2026-07-14-maintenance-production-hardening-design.md) | [`2026-07-14-maintenance-production-hardening.md`](superpowers/plans/2026-07-14-maintenance-production-hardening.md) sequences implementation and verification. |
+| Cross-cutting UI hardening | [`2026-07-10-ui-ux-hardening-design.md`](superpowers/specs/2026-07-10-ui-ux-hardening-design.md) | [`2026-07-10-ui-ux-hardening.md`](superpowers/plans/2026-07-10-ui-ux-hardening.md) sequences implementation and verification; [`2026-07-10-module-ux-roadmap.md`](superpowers/plans/2026-07-10-module-ux-roadmap.md) provides module-level sequencing. |
 
 ## UI QA Checklist
 
@@ -75,4 +79,4 @@ Follow [`DESIGN.md`](../DESIGN.md) rather than copying token tables: use Navy id
 
 ## Change Maintenance
 
-Update [`DESIGN.md`](../DESIGN.md) for shared policy, a focused specification for route behavior, the Handoff for implemented state and manual QA, and the changelog for delivery history.
+Update [`DESIGN.md`](../DESIGN.md) for shared policy, a focused specification for route behavior, the Handoff for implemented state and manual QA, and the changelog for delivery history. Update the Current-Surface Registry in the same commit whenever a focused specification changes status, including when it is added, replaced, retired, or marked superseded.
