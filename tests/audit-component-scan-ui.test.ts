@@ -14,8 +14,9 @@ test("audit scan page passes component relationships to the client form", () => 
 
 test("audit scan form renders installed component panel and confirmation actions", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const types = readFileSync("src/components/audit/audit-scan-types.ts", "utf8")
 
-  assert.match(form, /type AuditScanComponent/)
+  assert.match(types, /export type AuditScanComponent/)
   assert.match(form, /function AuditComponentPanel/)
   assert.match(form, /confirmComponentWithParent/)
   assert.match(form, /openComponentMissingDialog/)
@@ -29,13 +30,15 @@ test("audit scan form renders installed component panel and confirmation actions
 
 test("audit scan form preserves and renders component context for out-of-scope assets", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const helpers = readFileSync("src/components/audit/audit-scan-helpers.ts", "utf8")
+  const types = readFileSync("src/components/audit/audit-scan-types.ts", "utf8")
 
-  assert.match(form, /type AuditLookupComponent/)
-  assert.match(form, /components:\s*AuditLookupComponent\[\]/)
-  assert.match(form, /installedIn:\s*AuditLookupInstalledInParent\[\]/)
-  assert.match(form, /function normalizeOutOfScopeAuditAsset/)
-  assert.match(form, /components:\s*normalizeAuditLookupComponents\(asset\.components/)
-  assert.match(form, /installedIn:\s*normalizeAuditLookupInstalledIn\(asset\.installedIn/)
+  assert.match(types, /export type AuditLookupComponent/)
+  assert.match(types, /components:\s*AuditLookupComponent\[\]/)
+  assert.match(types, /installedIn:\s*AuditLookupInstalledInParent\[\]/)
+  assert.match(helpers, /export function normalizeOutOfScopeAuditAsset/)
+  assert.match(helpers, /components:\s*normalizeAuditLookupComponents\(asset\.components/)
+  assert.match(helpers, /installedIn:\s*normalizeAuditLookupInstalledIn\(asset\.installedIn/)
   assert.match(form, /outOfScopeAsset\.installedIn\.length > 0/)
   assert.match(form, /outOfScopeAsset\.components\.length > 0/)
   assert.match(form, /components=\{outOfScopeAsset\.components\}/)

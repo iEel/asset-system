@@ -6,9 +6,12 @@ const lookupRoutePath = "src/app/api/audit-rounds/[id]/scan-lookup/route.ts"
 
 test("audit scan uses a dedicated lookup route instead of global search for out-of-scope assets", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const types = readFileSync("src/components/audit/audit-scan-types.ts", "utf8")
 
   assert.match(form, /\/api\/audit-rounds\/\$\{roundId\}\/scan-lookup/)
   assert.doesNotMatch(form, /fetch\(`\/api\/search\?q=/)
+  assert.match(types, /export type AuditScanLookupResponse/)
+  assert.doesNotMatch(form, /^type AuditScanLookupResponse =/m)
 })
 
 test("audit scan lookup resolves QR asset ids under audit permissions", () => {

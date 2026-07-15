@@ -40,7 +40,6 @@ import {
   loadQueuedAuditScansAsync,
   markQueuedAuditScanSyncFailed,
   removeQueuedAuditScanAsync,
-  type AuditOfflinePhoto,
   type AuditOfflineScanPayload,
   type AuditOfflineQueueStorage,
   type QueuedAuditScan,
@@ -54,142 +53,49 @@ import {
   summarizeAuditScanContext,
   type AuditScanContext,
 } from "@/lib/audit-scan-context"
+import {
+  MAX_RECENT_AUDIT_SCANS,
+  type AuditMismatchPreview,
+  type AuditLookupAsset,
+  type AuditRecentScan,
+  type AuditScanComponent,
+  type AuditScanItem,
+  type AuditScanLookupResponse,
+  type AuditScanOptions,
+  type CameraDevice,
+  type CameraReadiness,
+  type LastAuditResult,
+  type Option,
+  type OptionLabelMaps,
+  type OutOfScopeAsset,
+  type PendingQueueContextRow,
+  type QueuedAuditPhoto,
+  type ScanFeedback,
+  type StoredAuditContextSnapshot,
+} from "./audit-scan-types"
+import {
+  buildAssetLookup,
+  buildAssetPickerSearchText,
+  buildManualScanSuggestions,
+  buildOptionLabelMap,
+  buildPendingQueueContext,
+  buildSystemDataRows,
+  createInitialAuditScanValues,
+  emptyToNull,
+  getActualValues,
+  getEditableAuditValues,
+  getExpectedAuditValues,
+  getOutOfScopeActualValues,
+  getReadableAuditScanValue,
+  hasOutOfScopeActualMismatch,
+  isAuditComponentChecked,
+  normalizeOutOfScopeAuditAsset,
+  toAuditOfflinePhoto,
+} from "./audit-scan-helpers"
 
-type Option = { id: string; label: string }
-type AuditScanComponent = {
-  assetId: string
-  assetTag: string
-  name: string
-  componentRole: string
-  slotNo: string | null
-  auditItemId: string | null
-  auditStatus: string
-  auditResult: string | null
-}
+export type { AuditRecentScan } from "./audit-scan-types"
 
-type AuditInstalledInParent = {
-  parentAssetId: string
-  assetTag: string
-  name: string
-  componentRole: string
-  slotNo: string | null
-}
-
-type AuditScanItem = {
-  id: string
-  assetId: string
-  assetTag: string
-  label: string
-  auditStatus: string
-  auditResult: string | null
-  expectedDepartmentId: string | null
-  expectedLocationId: string
-  expectedCustodianId: string | null
-  expectedConditionId: string | null
-  actualDepartmentId: string | null
-  actualLocationId: string | null
-  actualCustodianId: string | null
-  actualConditionId: string | null
-  ownershipType?: string | null
-  photoChecklist: string[]
-  components: AuditScanComponent[]
-  installedIn: AuditInstalledInParent[]
-}
-
-type AuditScanOptions = {
-  locations: Option[]
-  departments: Option[]
-  employees: Option[]
-  conditions: Option[]
-}
-type OptionLabelMaps = {
-  locations: Map<string, string>
-  employees: Map<string, string>
-  departments: Map<string, string>
-  conditions: Map<string, string>
-}
-type PendingQueueContextRow = { label: string; value: string }
-
-type CameraDevice = { id: string; label: string }
-type CameraReadiness = "checking" | "ready" | "unavailable"
-type AuditMismatchPreview = { type: string; label: string; canApply: boolean }
-type ScanFeedback = {
-  status: "found" | "mismatch" | "out_of_scope" | "unknown_asset" | "saved" | "found_later" | "offline_queued"
-  title: string
-  description: string
-  assetId?: string
-  assetTag?: string
-}
-type LastAuditResult = {
-  status: ScanFeedback["status"]
-  label: string
-}
-export type AuditRecentScan = ScanFeedback & {
-  id: string
-  source: "manual" | "qr"
-  at: number
-}
-type QueuedAuditPhoto = {
-  id: string
-  label: string
-  file: File
-  previewUrl: string | null
-}
-
-const MAX_RECENT_AUDIT_SCANS = 8
-const auditContextSnapshotCache = new Map<string, { raw: string | null; value: AuditScanContext }>()
-type AuditLookupAuditItem = {
-  id: string
-  assetId: string
-  auditStatus: string
-  auditResult: string | null
-}
-type AuditLookupComponent = {
-  assetId: string
-  assetTag: string
-  name: string
-  componentRole: string
-  slotNo: string | null
-  auditItem: AuditLookupAuditItem | null
-}
-type AuditLookupInstalledInParent = AuditInstalledInParent & {
-  auditItem: AuditLookupAuditItem | null
-}
-type OutOfScopeAsset = {
-  id: string
-  assetTag: string
-  title: string
-  subtitle: string
-  currentLocationId: string
-  custodianId: string | null
-  departmentId: string | null
-  conditionId: string | null
-  ownershipType?: string | null
-  meta: {
-    location: string
-    custodian: string | null
-  }
-  components: AuditScanComponent[]
-  installedIn: AuditInstalledInParent[]
-}
-type AuditLookupAsset = Omit<OutOfScopeAsset, "components" | "installedIn"> & {
-  components: AuditLookupComponent[]
-  installedIn: AuditLookupInstalledInParent[]
-}
-type AuditScanLookupResponse =
-  | {
-      status: "in_round"
-      asset: AuditLookupAsset
-      item?: { assetId: string }
-    }
-  | {
-      status: "out_of_scope"
-      asset: AuditLookupAsset
-    }
-  | {
-      status: "unknown_asset"
-      candidates?: string[]
-    }
+const auditContextSnapshotCache = new Map<string, StoredAuditContextSnapshot>()
 
 export function AuditScanForm({
   locale,
@@ -2335,45 +2241,6 @@ function AuditComponentPanel({
   )
 }
 
-function normalizeOutOfScopeAuditAsset(asset: AuditLookupAsset): OutOfScopeAsset {
-  return {
-    ...asset,
-    components: normalizeAuditLookupComponents(asset.components),
-    installedIn: normalizeAuditLookupInstalledIn(asset.installedIn),
-  }
-}
-
-function normalizeAuditLookupComponents(components: AuditLookupComponent[]): AuditScanComponent[] {
-  return components.map((component) => ({
-    assetId: component.assetId,
-    assetTag: component.assetTag,
-    name: component.name,
-    componentRole: component.componentRole,
-    slotNo: component.slotNo,
-    auditItemId: component.auditItem?.id ?? null,
-    auditStatus: component.auditItem?.auditStatus ?? "out_of_round",
-    auditResult: component.auditItem?.auditResult ?? null,
-  }))
-}
-
-function normalizeAuditLookupInstalledIn(installedIn: AuditLookupInstalledInParent[]): AuditInstalledInParent[] {
-  return installedIn.map((parent) => ({
-    parentAssetId: parent.parentAssetId,
-    assetTag: parent.assetTag,
-    name: parent.name,
-    componentRole: parent.componentRole,
-    slotNo: parent.slotNo,
-  }))
-}
-
-function isAuditComponentChecked(component: AuditScanComponent) {
-  return Boolean(
-    component.auditItemId &&
-      component.auditStatus !== "pending" &&
-      component.auditStatus !== "out_of_round"
-  )
-}
-
 function getAuditComponentStatusMeta(component: AuditScanComponent, t: AuditScanTranslator) {
   if (!component.auditItemId || component.auditStatus === "out_of_round") {
     return {
@@ -2778,231 +2645,6 @@ function AuditQrScannerOverlay() {
 function createAuditPhotoPreviewUrl(file: File) {
   if (!file.type.startsWith("image/") || typeof URL === "undefined") return null
   return URL.createObjectURL(file)
-}
-
-function toAuditOfflinePhoto(photo: QueuedAuditPhoto): AuditOfflinePhoto {
-  return {
-    id: photo.id,
-    label: photo.label,
-    fileName: photo.file.name,
-    fileType: photo.file.type || "application/octet-stream",
-    fileSize: photo.file.size,
-    blob: photo.file,
-  }
-}
-
-function createInitialAuditScanValues(initialSelectedItem: AuditScanItem | undefined, initialMode: "scan" | "edit") {
-  if (!initialSelectedItem) {
-    return {
-      assetId: "",
-      actualLocationId: "",
-      actualCustodianId: "",
-      actualDepartmentId: "",
-      actualConditionId: "",
-      remark: "",
-    }
-  }
-
-  const actualValues = initialMode === "edit" ? getEditableAuditValues(initialSelectedItem) : getExpectedAuditValues(initialSelectedItem)
-  return {
-    assetId: initialSelectedItem.assetId,
-    ...actualValues,
-    remark: "",
-  }
-}
-
-function getExpectedAuditValues(item: AuditScanItem) {
-  return {
-    actualLocationId: item.expectedLocationId ?? "",
-    actualCustodianId: item.expectedCustodianId ?? "",
-    actualDepartmentId: item.expectedDepartmentId ?? "",
-    actualConditionId: item.expectedConditionId ?? "",
-  }
-}
-
-function getEditableAuditValues(item: AuditScanItem) {
-  if (item.auditStatus === "pending" && !item.auditResult) return getExpectedAuditValues(item)
-  return {
-    actualLocationId: item.actualLocationId ?? item.expectedLocationId ?? "",
-    actualCustodianId: item.actualCustodianId ?? "",
-    actualDepartmentId: item.actualDepartmentId ?? "",
-    actualConditionId: item.actualConditionId ?? "",
-  }
-}
-
-function getActualValues(
-  values: {
-    actualLocationId: string
-    actualCustodianId: string
-    actualDepartmentId: string
-    actualConditionId: string
-  },
-  selectedItem: AuditScanItem
-) {
-  return {
-    actualLocationId: values.actualLocationId || selectedItem.expectedLocationId,
-    actualCustodianId: values.actualCustodianId,
-    actualDepartmentId: values.actualDepartmentId,
-    actualConditionId: values.actualConditionId,
-  }
-}
-
-function getOutOfScopeActualValues(
-  values: {
-    actualLocationId: string
-    actualCustodianId: string
-    actualDepartmentId: string
-    actualConditionId: string
-  },
-  asset: OutOfScopeAsset
-) {
-  return {
-    actualLocationId: values.actualLocationId || asset.currentLocationId || "",
-    actualCustodianId: values.actualCustodianId,
-    actualDepartmentId: values.actualDepartmentId,
-    actualConditionId: values.actualConditionId,
-  }
-}
-
-function hasOutOfScopeActualMismatch(
-  asset: OutOfScopeAsset,
-  actualValues: ReturnType<typeof getOutOfScopeActualValues>
-) {
-  const ownershipType = normalizeAssetOwnershipType(asset.ownershipType)
-  const locationMismatch =
-    ownershipType !== "software_license" && actualValues.actualLocationId !== asset.currentLocationId
-  const custodianMismatch =
-    requiresCustodian(asset.ownershipType) && (actualValues.actualCustodianId || null) !== asset.custodianId
-  const departmentMismatch = (actualValues.actualDepartmentId || null) !== asset.departmentId
-  const conditionMismatch = (actualValues.actualConditionId || null) !== asset.conditionId
-
-  return locationMismatch || custodianMismatch || departmentMismatch || conditionMismatch
-}
-
-function emptyToNull<T extends Record<string, string>>(values: T): { [K in keyof T]: string | null } {
-  return Object.fromEntries(
-    Object.entries(values).map(([key, value]) => [key, value.trim() === "" ? null : value])
-  ) as { [K in keyof T]: string | null }
-}
-
-function buildAssetLookup(items: AuditScanItem[]) {
-  const lookup = new Map<string, AuditScanItem>()
-  for (const item of items) {
-    lookup.set(item.assetId.toLowerCase(), item)
-    lookup.set(item.assetTag.toLowerCase(), item)
-    lookup.set(item.label.toLowerCase(), item)
-  }
-  return lookup
-}
-
-function buildManualScanSuggestions(query: string, items: AuditScanItem[], maps: OptionLabelMaps) {
-  const normalizedQuery = query.trim().toLocaleLowerCase("th-TH")
-  if (normalizedQuery.length < 2) return []
-
-  return items
-    .filter((item) => buildAssetPickerSearchText(item, maps).toLocaleLowerCase("th-TH").includes(normalizedQuery))
-    .sort((a, b) => {
-      const pendingScore = Number(a.auditStatus !== "pending") - Number(b.auditStatus !== "pending")
-      if (pendingScore !== 0) return pendingScore
-      return a.assetTag.localeCompare(b.assetTag, "th-TH")
-    })
-    .slice(0, 5)
-}
-
-function buildOptionLabelMap(options: Option[]) {
-  return new Map(options.map((option) => [option.id, option.label]))
-}
-
-function buildSystemDataRows(
-  item: AuditScanItem,
-  maps: OptionLabelMaps,
-  labels: {
-    expectedLocation: string
-    expectedCustodian: string
-    expectedDepartment: string
-    expectedCondition: string
-    none: string
-  }
-) {
-  const rows: Array<{ label: string; value: string }> = []
-  const ownershipType = normalizeAssetOwnershipType(item.ownershipType)
-
-  if (ownershipType !== "software_license") {
-    rows.push({
-      label: labels.expectedLocation,
-      value: getOptionLabel(maps.locations, item.expectedLocationId, labels.none),
-    })
-  }
-  if (requiresCustodian(ownershipType)) {
-    rows.push({
-      label: labels.expectedCustodian,
-      value: getOptionLabel(maps.employees, item.expectedCustodianId, labels.none),
-    })
-  }
-  rows.push(
-    {
-      label: labels.expectedDepartment,
-      value: getOptionLabel(maps.departments, item.expectedDepartmentId, labels.none),
-    },
-    {
-      label: labels.expectedCondition,
-      value: getOptionLabel(maps.conditions, item.expectedConditionId, labels.none),
-    }
-  )
-
-  return rows
-}
-
-function buildPendingQueueContext(
-  item: AuditScanItem,
-  maps: OptionLabelMaps,
-  labels: {
-    location: string
-    custodian: string
-    department: string
-    none: string
-  }
-) {
-  const rows: PendingQueueContextRow[] = [
-    {
-      label: labels.location,
-      value: getOptionLabel(maps.locations, item.expectedLocationId, labels.none),
-    },
-    {
-      label: labels.department,
-      value: getOptionLabel(maps.departments, item.expectedDepartmentId, labels.none),
-    },
-  ]
-
-  if (requiresCustodian(item.ownershipType)) {
-    rows.splice(1, 0, {
-      label: labels.custodian,
-      value: getOptionLabel(maps.employees, item.expectedCustodianId, labels.none),
-    })
-  }
-
-  return rows
-}
-
-function buildAssetPickerSearchText(item: AuditScanItem, maps: OptionLabelMaps) {
-  return [
-    item.assetTag,
-    item.label,
-    item.auditStatus,
-    getOptionLabel(maps.locations, item.expectedLocationId, ""),
-    getOptionLabel(maps.employees, item.expectedCustodianId, ""),
-    getOptionLabel(maps.departments, item.expectedDepartmentId, ""),
-  ].join(" ")
-}
-
-function getOptionLabel(options: Map<string, string>, id: string | null, emptyLabel: string) {
-  if (!id) return emptyLabel
-  return options.get(id) ?? id
-}
-
-function getReadableAuditScanValue(item: AuditScanItem) {
-  const assetTag = item.assetTag.trim()
-  return assetTag || item.label
 }
 
 function OptionList({ emptyLabel, options }: { emptyLabel?: string; options: Option[] }) {

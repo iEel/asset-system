@@ -4,8 +4,9 @@ import test from "node:test"
 
 test("audit scan separates found, out-of-scope, unknown, and found-later results", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const types = readFileSync("src/components/audit/audit-scan-types.ts", "utf8")
 
-  assert.match(form, /status: "found" \| "mismatch" \| "out_of_scope" \| "unknown_asset" \| "saved" \| "found_later"/)
+  assert.match(types, /status: "found" \| "mismatch" \| "out_of_scope" \| "unknown_asset" \| "saved" \| "found_later"/)
   assert.match(form, /status: "out_of_scope"/)
   assert.match(form, /status: "unknown_asset"/)
   assert.match(form, /payload\.resolvedNotFoundFinding \? "found_later"/)

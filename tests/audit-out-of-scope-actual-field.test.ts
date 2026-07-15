@@ -6,6 +6,8 @@ const scanLookupRoutePath = "src/app/api/audit-rounds/[id]/scan-lookup/route.ts"
 const scanRoutePath = "src/app/api/audit-rounds/[id]/scan/route.ts"
 const reviewRoutePath = "src/app/api/audit-findings/[id]/review/route.ts"
 const scanFormPath = "src/components/audit/audit-scan-form.tsx"
+const scanHelpersPath = "src/components/audit/audit-scan-helpers.ts"
+const scanTypesPath = "src/components/audit/audit-scan-types.ts"
 const auditValidationPath = "src/lib/validations/audit.ts"
 
 test("audit scan lookup returns master field ids for out-of-scope actual data", () => {
@@ -24,12 +26,14 @@ test("audit scan lookup returns master field ids for out-of-scope actual data", 
 
 test("audit scan form captures out-of-scope actual fields before saving", () => {
   const form = readFileSync(scanFormPath, "utf8")
+  const helpers = readFileSync(scanHelpersPath, "utf8")
+  const types = readFileSync(scanTypesPath, "utf8")
 
-  assert.match(form, /type OutOfScopeAsset = \{[\s\S]*currentLocationId:\s*string/)
-  assert.match(form, /type OutOfScopeAsset = \{[\s\S]*custodianId:\s*string \| null/)
-  assert.match(form, /type OutOfScopeAsset = \{[\s\S]*departmentId:\s*string \| null/)
-  assert.match(form, /type OutOfScopeAsset = \{[\s\S]*conditionId:\s*string \| null/)
-  assert.match(form, /type OutOfScopeAsset = \{[\s\S]*ownershipType\?:\s*string \| null/)
+  assert.match(types, /export type OutOfScopeAsset = \{[\s\S]*currentLocationId:\s*string/)
+  assert.match(types, /export type OutOfScopeAsset = \{[\s\S]*custodianId:\s*string \| null/)
+  assert.match(types, /export type OutOfScopeAsset = \{[\s\S]*departmentId:\s*string \| null/)
+  assert.match(types, /export type OutOfScopeAsset = \{[\s\S]*conditionId:\s*string \| null/)
+  assert.match(types, /export type OutOfScopeAsset = \{[\s\S]*ownershipType\?:\s*string \| null/)
   assert.match(form, /getOutOfScopeActualValues\(values,\s*outOfScopeAsset\)/)
   assert.match(form, /hasOutOfScopeActualMismatch\(outOfScopeAsset,\s*outOfScopeActualValues\)/)
   assert.match(form, /actualLocationId:\s*outOfScopeActualValues\.actualLocationId/)
@@ -42,18 +46,18 @@ test("audit scan form captures out-of-scope actual fields before saving", () => 
     form,
     /function selectInRoundAuditItem\(item: AuditScanItem, options: \{ mode\?: "scan" \| "edit" \} = \{\}\)/
   )
-  assert.match(form, /actualLocationId:\s*item\.expectedLocationId \?\? ""/)
-  assert.match(form, /actualCustodianId:\s*item\.expectedCustodianId \?\? ""/)
-  assert.match(form, /actualDepartmentId:\s*item\.expectedDepartmentId \?\? ""/)
-  assert.match(form, /actualConditionId:\s*item\.expectedConditionId \?\? ""/)
+  assert.match(helpers, /actualLocationId:\s*item\.expectedLocationId \?\? ""/)
+  assert.match(helpers, /actualCustodianId:\s*item\.expectedCustodianId \?\? ""/)
+  assert.match(helpers, /actualDepartmentId:\s*item\.expectedDepartmentId \?\? ""/)
+  assert.match(helpers, /actualConditionId:\s*item\.expectedConditionId \?\? ""/)
   assert.match(form, /const shouldShowAuditPhotoEvidence = Boolean\(outOfScopeAsset \|\| isDetailedScanVisible \|\| queuedAuditPhotos\.length > 0\)/)
   assert.match(form, /\{shouldShowAuditPhotoEvidence && \(/)
   assert.match(form, /const evidenceAttachmentIds = queuedAuditPhotos\.length > 0\s*\?\s*await uploadQueuedAuditPhotos\(outOfScopeAsset\.id\)\s*:\s*\[\]/)
   assert.match(form, /evidenceAttachmentIds,/)
   assert.match(form, /clearAuditScanTarget\(\)/)
-  assert.match(form, /actualCustodianId:\s*values\.actualCustodianId,/)
-  assert.match(form, /actualDepartmentId:\s*values\.actualDepartmentId,/)
-  assert.match(form, /actualConditionId:\s*values\.actualConditionId,/)
+  assert.match(helpers, /actualCustodianId:\s*values\.actualCustodianId,/)
+  assert.match(helpers, /actualDepartmentId:\s*values\.actualDepartmentId,/)
+  assert.match(helpers, /actualConditionId:\s*values\.actualConditionId,/)
   assert.match(form, /outOfScopeAsset && \(/)
   assert.match(form, /t\("actualDataTitle"\)/)
   assert.match(form, /t\("actualLocation"\)/)

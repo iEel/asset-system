@@ -4,11 +4,12 @@ import test from "node:test"
 
 test("audit QR scan keeps raw QR value separate from readable scan input", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const helpers = readFileSync("src/components/audit/audit-scan-helpers.ts", "utf8")
 
   assert.match(form, /setLastDecodedText\(decodedText\)/)
   assert.match(form, /setScanText\(getReadableAuditScanValue\(matchedItem\)\)/)
-  assert.match(form, /function getReadableAuditScanValue\(item: AuditScanItem\)/)
-  assert.match(form, /return assetTag \|\| item\.label/)
+  assert.match(helpers, /export function getReadableAuditScanValue\(item: AuditScanItem\)/)
+  assert.match(helpers, /return assetTag \|\| item\.label/)
 })
 
 test("audit QR scan uses native-resolution asset QR decoder and locks after a read", () => {
