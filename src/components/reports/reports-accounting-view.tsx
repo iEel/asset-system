@@ -148,6 +148,7 @@ function CostExposureTable({
             key: "asset",
             label: labels.asset,
             className: "min-w-64 font-medium text-foreground",
+            mobileClassName: "col-span-2",
             render: (asset) => (
               <Link
                 href={`/${locale}/assets/${asset.id}`}
@@ -198,6 +199,7 @@ function DepreciationTable({
             key: "asset",
             label: labels.asset,
             className: "min-w-64 font-medium text-foreground",
+            mobileClassName: "col-span-2",
             render: (asset) => (
               <Link
                 href={`/${locale}/assets/${asset.id}`}

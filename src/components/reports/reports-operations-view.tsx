@@ -274,11 +274,12 @@ function CrossScopePreviewTable({
             key: "asset",
             label: labels.asset,
             className: "min-w-64 font-medium text-foreground",
+            mobileClassName: "col-span-2",
             render: (asset) => (
               <>
                 <Link
                   href={`/${locale}/assets/${asset.id}`}
-                  className="inline-flex min-h-11 items-center text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0"
+                  className="flex min-h-11 w-full items-center text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:inline-flex md:min-h-0 md:w-auto"
                 >
                   {asset.assetTag}
                 </Link>

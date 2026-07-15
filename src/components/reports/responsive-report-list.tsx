@@ -6,6 +6,7 @@ export type ResponsiveReportColumn<Row> = {
   label: string
   render: (row: Row) => ReactNode
   className?: string
+  mobileClassName?: string
 }
 
 export function ResponsiveReportList<Row>({
@@ -54,14 +55,14 @@ export function ResponsiveReportList<Row>({
         </table>
       </div>
 
-      <div data-report-mobile-list className="grid gap-3 p-3 md:hidden">
+      <div data-report-mobile-list className="grid gap-2 p-2 md:hidden">
         {rows.map((row) => (
-          <article key={rowKey(row)} className="min-w-0 rounded-md border border-border bg-surface p-4">
-            <dl className="grid min-w-0 gap-3">
+          <article key={rowKey(row)} className="min-w-0 rounded-md border border-border bg-surface p-3">
+            <dl className="grid min-w-0 grid-cols-2 gap-x-3 gap-y-2">
               {columns.map((column) => (
-                <div key={column.key} className="min-w-0">
-                  <dt className="text-xs font-medium text-muted-foreground">{column.label}</dt>
-                  <dd className="mt-1 min-w-0 break-words text-sm text-foreground">{column.render(row)}</dd>
+                <div key={column.key} className={cn("min-w-0", column.mobileClassName)}>
+                  <dt className="text-xs font-medium leading-4 text-muted-foreground">{column.label}</dt>
+                  <dd className="mt-0.5 min-w-0 break-words text-sm leading-5 text-foreground">{column.render(row)}</dd>
                 </div>
               ))}
             </dl>

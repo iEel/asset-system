@@ -90,6 +90,7 @@ export function ReportsOverviewView({
               key: "assetTag",
               label: labels.assetTag,
               className: "whitespace-nowrap font-medium text-foreground",
+              mobileClassName: "col-span-2",
               render: (asset) => (
                 <Link
                   href={`/${locale}/assets/${asset.id}`}
@@ -99,7 +100,13 @@ export function ReportsOverviewView({
                 </Link>
               ),
             },
-            { key: "name", label: labels.assetName, className: "min-w-56 text-foreground", render: (asset) => asset.name },
+            {
+              key: "name",
+              label: labels.assetName,
+              className: "min-w-56 text-foreground",
+              mobileClassName: "col-span-2",
+              render: (asset) => asset.name,
+            },
             { key: "category", label: labels.category, className: "whitespace-nowrap text-muted-foreground", render: (asset) => asset.category },
             { key: "branch", label: labels.branch, className: "whitespace-nowrap text-muted-foreground", render: (asset) => asset.branch },
             { key: "department", label: labels.department, className: "whitespace-nowrap text-muted-foreground", render: (asset) => asset.department },

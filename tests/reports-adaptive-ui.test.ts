@@ -8,6 +8,7 @@ const overviewView = readFileSync("src/components/reports/reports-overview-view.
 const accountingView = readFileSync("src/components/reports/reports-accounting-view.tsx", "utf8")
 const operationsView = readFileSync("src/components/reports/reports-operations-view.tsx", "utf8")
 const catalogView = readFileSync("src/components/reports/reports-catalog-view.tsx", "utf8")
+const responsiveList = readFileSync("src/components/reports/responsive-report-list.tsx", "utf8")
 
 test("reports renders the adaptive shell before one active view", () => {
   const order = ["data-report-tabs", "data-report-filters", "data-report-active-filters", "data-report-shared-metrics", "data-report-view-content"]
@@ -58,8 +59,6 @@ test("catalog and recurring exports use stable non-localized row keys", () => {
 })
 
 test("wide report datasets have mutually exclusive table and mobile list hooks", () => {
-  const responsiveList = readFileSync("src/components/reports/responsive-report-list.tsx", "utf8")
-
   assert.match(responsiveList, /data-report-desktop-table/)
   assert.match(responsiveList, /hidden md:block/)
   assert.match(responsiveList, /data-report-mobile-list/)
@@ -70,6 +69,35 @@ test("wide report datasets have mutually exclusive table and mobile list hooks",
   assert.equal(overviewView.match(/<ResponsiveReportList/g)?.length, 1)
   assert.equal(accountingView.match(/<ResponsiveReportList/g)?.length, 2)
   assert.equal(operationsView.match(/<ResponsiveReportList/g)?.length, 1)
+})
+
+test("mobile report cards use two labelled columns with optional full-width fields", () => {
+  assert.match(responsiveList, /mobileClassName\?: string/)
+  assert.match(responsiveList, /<dl className="[^"]*grid-cols-2[^"]*">/)
+  assert.match(responsiveList, /cn\("min-w-0", column\.mobileClassName\)/)
+})
+
+test("wide report identity fields span both mobile columns", () => {
+  assert.equal(overviewView.match(/mobileClassName: "col-span-2"/g)?.length, 2)
+  assert.equal(accountingView.match(/mobileClassName: "col-span-2"/g)?.length, 2)
+
+  const crossScopePreview = operationsView.slice(
+    operationsView.indexOf("function CrossScopePreviewTable"),
+    operationsView.indexOf("function getCrossScopeFlagLabels"),
+  )
+  assert.match(crossScopePreview, /key: "asset"[\s\S]*?mobileClassName: "col-span-2"/)
+})
+
+test("operations cross-scope mobile asset links keep a 44px touch target", () => {
+  const crossScopePreview = operationsView.slice(
+    operationsView.indexOf("function CrossScopePreviewTable"),
+    operationsView.indexOf("function getCrossScopeFlagLabels"),
+  )
+
+  assert.match(
+    crossScopePreview,
+    /className="flex min-h-11 w-full[^"]*md:inline-flex[^"]*md:min-h-0[^"]*md:w-auto"/,
+  )
 })
 
 test("operations exposes exact actionable drilldowns from the same compatible filter base", () => {
