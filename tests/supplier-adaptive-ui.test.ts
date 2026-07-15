@@ -5,6 +5,7 @@ import test from "node:test"
 const listPath = "src/components/master-data/supplier-list-view.tsx"
 const list = existsSync(listPath) ? readFileSync(listPath, "utf8") : ""
 const page = readFileSync("src/app/[locale]/(dashboard)/master-data/suppliers/page.tsx", "utf8")
+const masterDataLayout = readFileSync("src/components/master-data/master-data-layout.tsx", "utf8")
 
 test("supplier list has mutually exclusive desktop and mobile presentations", () => {
   assert.notEqual(list, "", "supplier-list-view.tsx must exist")
@@ -51,4 +52,8 @@ test("mobile filters use a disclosure while desktop filters remain visible", () 
   assert.match(page, /md:hidden/)
   assert.match(page, /hidden[^"\n]*md:block/)
   assert.match(page, /min-h-11/)
+})
+
+test("shared master-data create action meets the mobile touch target", () => {
+  assert.match(masterDataLayout, /href=\{createHref\}\s+className="[^"]*min-h-11/)
 })
