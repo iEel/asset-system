@@ -7,6 +7,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString, buildAssetWhere, parseAssetListParams, type AssetListParams } from "@/lib/asset-list-query"
+import { getAssetActivityWhere } from "@/lib/asset-activity-filter"
 import { applyAssetCrossScopeFilter, buildAssetCrossScopeSummary, type AssetCrossScopeSummaryRow } from "@/lib/asset-cross-scope"
 import { getAssetCrossScopeFlagLabels } from "@/lib/asset-cross-scope-filter"
 import { assetMissingResponsibilityWhere, assetOwnershipTypes, hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
@@ -40,6 +41,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const filters = parseAssetListParams(rawSearchParams)
   const baseAssetWhere = buildAssetWhere(filters)
   const assetWhere = await applyAssetCrossScopeFilter(baseAssetWhere, filters.crossScope)
+  const idleAssetWhere = getAssetActivityWhere("idle_180d")
   const exportQuery = buildAssetQueryString(filters, { page: 1, pageSize: 100 })
   const warrantyThreshold = new Date()
   warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
@@ -145,7 +147,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       prisma.asset.groupBy({ by: ["custodianId"], where: { ...assetWhere, custodianId: { not: null } }, _count: { _all: true }, orderBy: { _count: { custodianId: "desc" } }, take: 5 }),
       prisma.asset.groupBy({ by: ["currentLocationId"], where: assetWhere, _count: { _all: true }, orderBy: { _count: { currentLocationId: "desc" } }, take: 5 }),
       prisma.maintenanceTicket.groupBy({ by: ["assetId"], where: { isActive: true }, _count: { _all: true }, _sum: { repairCost: true }, orderBy: { _count: { assetId: "desc" } }, take: 5 }),
-      prisma.asset.count({ where: { AND: [assetWhere, { movements: { none: { performedAt: { gte: daysAgo(180) } } } }] } }),
+      prisma.asset.count({ where: { AND: [assetWhere, ...(idleAssetWhere ? [idleAssetWhere] : [])] } }),
       prisma.asset.findMany({
         where: assetWhere,
         select: {
@@ -269,6 +271,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       href: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "location_branch", dataQuality: "", statusId: "", page: 1 })}`,
     },
   ]
+  const idleAssetsHref = `/${locale}/assets?${buildAssetQueryString(filters, { activity: "idle_180d", dataQuality: "", page: 1 })}`
   const recurringReports = [
     { name: t("monthlyAssetOverview"), cadence: t("monthly"), href: `/api/reports/assets-overview/export?${exportQuery}`, owner: t("ownerAccounting"), allowed: canReportExport },
     { name: t("weeklyMaintenanceFollowUp"), cadence: t("weekly"), href: "/api/maintenance-tickets/export", owner: t("ownerMaintenance"), allowed: canMaintenanceExport },
@@ -673,7 +676,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           <ReportTable title={t("frequentRepairAssets")} rows={repairGroups.map((item) => [repairAssetMap.get(item.assetId) ?? item.assetId, item._count._all])} />
           <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
             <h2 className="mb-4 text-base font-semibold text-foreground">{t("idleAssets")}</h2>
-            <Link href={`/${locale}/assets?${exportQuery}`} className="block rounded-md border border-warning/30 bg-warning/5 p-4 transition-colors hover:bg-warning/10">
+            <Link href={idleAssetsHref} className="block rounded-md border border-warning/30 bg-warning/5 p-4 transition-colors hover:bg-warning/10">
               <div className="text-sm text-muted-foreground">{t("idleAssetsHelp")}</div>
               <div className="mt-2 text-2xl font-bold text-foreground">{idleAssetsCount.toLocaleString("th-TH")}</div>
             </Link>
@@ -1028,12 +1031,6 @@ function getDataQualityIssues(
     issues.push({ label: t("warrantyExpiring"), href: `${detailHref}#purchase` })
   }
   return issues
-}
-
-function daysAgo(days: number) {
-  const date = new Date()
-  date.setDate(date.getDate() - days)
-  return date
 }
 
 function ReportTable({ title, rows }: { title: string; rows: [string, number][] }) {

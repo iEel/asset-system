@@ -281,6 +281,14 @@ test("asset register exposes a removable idle activity filter", () => {
   assert.match(source, /filters\.activity[\s\S]*key: "activity"[\s\S]*label: labels\.activityIdle180d/)
   assert.match(source, /buildAssetQueryString\(filters, \{ activity: "", page: 1 \}\)/)
   assert.match(source, /clearAllFiltersHref[\s\S]*crossScope: "",[\s\S]*activity: "",[\s\S]*page: 1/)
+  assert.match(source, /filters\.activity \? <input type="hidden" name="activity" value=\{filters\.activity\} \/> : null/)
+})
+
+test("asset active-filter actions stay at least 44px tall below md", () => {
+  const source = assetsPageSource()
+
+  assert.match(source, /activeFilterChips\.map[\s\S]*className="inline-flex min-h-11[^"]*md:min-h-8"/)
+  assert.match(source, /href=\{clearAllFiltersHref\}[\s\S]*className="inline-flex min-h-11[^"]*md:min-h-9"/)
 })
 
 test("asset register reuses the authoritative activity filter type", () => {
