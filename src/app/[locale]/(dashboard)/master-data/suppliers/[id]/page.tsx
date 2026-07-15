@@ -25,6 +25,7 @@ import { formatCurrency, formatDate } from "@/lib/utils"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { SupplierPurchaseDocuments } from "@/components/master-data/supplier-purchase-documents"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, maintenanceStatuses } from "@/lib/maintenance-status"
 import { appendMasterDataReturnTo, normalizeMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 
@@ -166,27 +167,27 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Link
             href={returnToHref}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
             {tCommon("back")}
           </Link>
           <Link
             href={editHref}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
-            <Edit className="h-4 w-4" />
+            <Edit aria-hidden="true" className="h-4 w-4" />
             {tCommon("edit")}
           </Link>
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <MetricCard label={t("assets")} value={summary.assetCount} detail={t("linkedAssetsHelp")} href={hrefs.assets} icon={<Boxes className="h-5 w-5 text-primary" />} />
-        <MetricCard label={t("purchaseDocuments")} value={summary.purchaseDocumentCount} detail={t("purchaseDocumentsHelp")} icon={<FileText className="h-5 w-5 text-primary" />} />
-        <MetricCard label={t("maintenanceTickets")} value={summary.maintenanceTicketCount} detail={t("openMaintenanceCount", { count: summary.openMaintenanceTicketCount })} icon={<Wrench className="h-5 w-5 text-primary" />} tone={summary.openMaintenanceTicketCount > 0 ? "warning" : "neutral"} />
-        <MetricCard label={t("totalPurchaseAmount")} value={formatCurrency(summary.purchaseAmount)} detail={t("fromPurchaseDocuments")} icon={<ClipboardList className="h-5 w-5 text-primary" />} />
-        <MetricCard label={t("totalMaintenanceCost")} value={formatCurrency(summary.maintenanceCost)} detail={t("fromMaintenanceTickets")} icon={<Wrench className="h-5 w-5 text-primary" />} />
+      <div className="grid auto-cols-[minmax(230px,85%)] grid-flow-col gap-3 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-2 md:overflow-visible md:pb-0 xl:grid-cols-5">
+        <MetricCard label={t("assets")} value={summary.assetCount} detail={t("linkedAssetsHelp")} href={hrefs.assets} icon={<Boxes aria-hidden="true" className="h-5 w-5 text-primary" />} />
+        <MetricCard label={t("purchaseDocuments")} value={summary.purchaseDocumentCount} detail={t("purchaseDocumentsHelp")} icon={<FileText aria-hidden="true" className="h-5 w-5 text-primary" />} />
+        <MetricCard label={t("maintenanceTickets")} value={summary.maintenanceTicketCount} detail={t("openMaintenanceCount", { count: summary.openMaintenanceTicketCount })} icon={<Wrench aria-hidden="true" className="h-5 w-5 text-primary" />} tone={summary.openMaintenanceTicketCount > 0 ? "warning" : "neutral"} />
+        <MetricCard label={t("totalPurchaseAmount")} value={formatCurrency(summary.purchaseAmount)} detail={t("fromPurchaseDocuments")} icon={<ClipboardList aria-hidden="true" className="h-5 w-5 text-primary" />} />
+        <MetricCard label={t("totalMaintenanceCost")} value={formatCurrency(summary.maintenanceCost)} detail={t("fromMaintenanceTickets")} icon={<Wrench aria-hidden="true" className="h-5 w-5 text-primary" />} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
@@ -194,9 +195,9 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
           <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
             <SectionTitle title={t("profileTitle")} />
             <dl className="mt-4 space-y-3 text-sm">
-              <InfoRow label={t("contactPerson")} value={supplier.contactPerson} icon={<Mail className="h-4 w-4" />} />
-              <InfoRow label={t("phone")} value={supplier.phone} icon={<Phone className="h-4 w-4" />} />
-              <InfoRow label={t("email")} value={supplier.email} icon={<Mail className="h-4 w-4" />} />
+              <InfoRow label={t("contactPerson")} value={supplier.contactPerson} icon={<Mail aria-hidden="true" className="h-4 w-4" />} />
+              <InfoRow label={t("phone")} value={supplier.phone} icon={<Phone aria-hidden="true" className="h-4 w-4" />} />
+              <InfoRow label={t("email")} value={supplier.email} icon={<Mail aria-hidden="true" className="h-4 w-4" />} />
               <InfoRow label={t("address")} value={supplier.address} />
             </dl>
           </section>
@@ -211,7 +212,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
               <div className="mt-4 space-y-2">
                 {followUpItems.map((item) => (
                   <div key={item} className="flex gap-2 rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>{followUpText(item, t)}</span>
                   </div>
                 ))}
@@ -228,7 +229,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
             ) : (
               <div className="mt-4 divide-y divide-border">
                 {assets.map((asset) => (
-                  <Link key={asset.id} href={`/${locale}/assets/${asset.id}`} className="flex flex-col gap-2 py-3 transition-colors hover:bg-accent/50 sm:flex-row sm:items-center sm:justify-between">
+                  <Link key={asset.id} href={`/${locale}/assets/${asset.id}`} className="flex min-h-11 flex-col gap-2 py-3 transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset sm:flex-row sm:items-center sm:justify-between">
                     <span className="min-w-0">
                       <span className="block font-medium text-primary">{asset.assetTag} - {asset.name}</span>
                       <span className="mt-1 block text-xs text-muted-foreground">
@@ -247,35 +248,27 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
 
           <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
             <SectionTitle title={t("purchaseDocumentsTitle")} />
-            {purchaseDocuments.length === 0 ? (
-              <ActionEmptyState title={t("noPurchaseDocuments")} description={t("noPurchaseDocumentsHelp")} />
-            ) : (
-              <div className="mt-4 overflow-hidden rounded-md border border-border">
-                <table className="min-w-full divide-y divide-border text-sm">
-                  <thead className="bg-muted/40">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium">{t("documentNo")}</th>
-                      <th className="px-3 py-2 text-left font-medium">{t("documentDate")}</th>
-                      <th className="px-3 py-2 text-left font-medium">{t("linkedAssets")}</th>
-                      <th className="px-3 py-2 text-right font-medium">{t("totalAmount")}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {purchaseDocuments.map((document) => (
-                      <tr key={document.id}>
-                        <td className="px-3 py-2">
-                          <div className="font-medium text-foreground">{document.documentType} / {document.documentNo}</div>
-                          <div className="text-xs text-muted-foreground">{[document.poNumber, document.invoiceNumber].filter(Boolean).join(" / ") || "-"}</div>
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{formatDate(document.documentDate)}</td>
-                        <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{document._count.assetLinks.toLocaleString()}</td>
-                        <td className="whitespace-nowrap px-3 py-2 text-right text-muted-foreground">{formatCurrency(Number(document.totalAmount ?? 0))}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <SupplierPurchaseDocuments
+              documents={purchaseDocuments.map((document) => ({
+                id: document.id,
+                documentType: document.documentType,
+                documentNo: document.documentNo,
+                poNumber: document.poNumber,
+                invoiceNumber: document.invoiceNumber,
+                documentDate: document.documentDate,
+                totalAmount: Number(document.totalAmount ?? 0),
+                currency: document.currency,
+                linkedAssets: document._count.assetLinks,
+              }))}
+              labels={{
+                documentNo: t("documentNo"),
+                documentDate: t("documentDate"),
+                linkedAssets: t("linkedAssets"),
+                totalAmount: t("totalAmount"),
+                noPurchaseDocuments: t("noPurchaseDocuments"),
+                noPurchaseDocumentsHelp: t("noPurchaseDocumentsHelp"),
+              }}
+            />
           </section>
 
           <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
@@ -285,7 +278,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
             ) : (
               <div className="mt-4 space-y-3">
                 {maintenanceTickets.map((ticket) => (
-                  <Link key={ticket.id} href={`/${locale}/maintenance/${ticket.id}`} className="block rounded-md border border-border bg-background p-3 transition-colors hover:border-primary/40 hover:bg-accent/60">
+                  <Link key={ticket.id} href={`/${locale}/maintenance/${ticket.id}`} className="block min-h-11 rounded-md border border-border bg-background p-3 transition-colors hover:border-primary/40 hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <div className="font-medium text-primary">{ticket.repairNo} - {ticket.asset.assetTag}</div>
@@ -344,7 +337,11 @@ function MetricCard({
     </div>
   )
 
-  return href ? <Link href={href}>{content}</Link> : content
+  return href ? (
+    <Link href={href} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+      {content}
+    </Link>
+  ) : content
 }
 
 function SectionTitle({ title, actionHref, actionLabel }: { title: string; actionHref?: string; actionLabel?: string }) {
@@ -352,7 +349,7 @@ function SectionTitle({ title, actionHref, actionLabel }: { title: string; actio
     <div className="flex items-start justify-between gap-3">
       <h2 className="text-base font-semibold text-foreground">{title}</h2>
       {actionHref && actionLabel ? (
-        <Link href={actionHref} className="text-sm font-medium text-primary hover:underline">
+        <Link href={actionHref} className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-primary hover:bg-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
           {actionLabel}
         </Link>
       ) : null}
