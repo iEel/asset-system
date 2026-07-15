@@ -496,11 +496,13 @@ export function getEmployeeDeleteBlockReason(counts: {
 export function getSupplierDeleteBlockReason(counts: {
   assets: number
   maintenanceTickets: number
+  maintenancePlans?: number
   purchaseDocuments: number
 }) {
   const reasons = [
     counts.assets > 0 ? `ทรัพย์สิน ${counts.assets} รายการ` : null,
     counts.maintenanceTickets > 0 ? `งานซ่อม ${counts.maintenanceTickets} รายการ` : null,
+    (counts.maintenancePlans ?? 0) > 0 ? `แผน PM ${counts.maintenancePlans} รายการ` : null,
     counts.purchaseDocuments > 0 ? `เอกสารจัดซื้อ ${counts.purchaseDocuments} รายการ` : null,
   ].filter((reason): reason is string => Boolean(reason))
 

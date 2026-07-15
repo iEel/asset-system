@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { supplierSchema } from "@/lib/validations/supplier"
 import { getSupplierDeleteBlockReason } from "@/lib/organization-master-query"
+import { shouldBlockSupplierLifecycleChange } from "@/lib/supplier-lifecycle-policy"
 
 type SupplierRouteContext = {
   params: Promise<{ id: string }>
@@ -51,6 +52,7 @@ export async function PUT(request: NextRequest, context: SupplierRouteContext) {
           select: {
             assets: { where: { isActive: true } },
             maintenanceTickets: { where: { isActive: true } },
+            maintenancePlans: { where: { isActive: true } },
             purchaseDocuments: { where: { isActive: true } },
           },
         },
@@ -61,13 +63,20 @@ export async function PUT(request: NextRequest, context: SupplierRouteContext) {
       return NextResponse.json({ error: "Supplier not found" }, { status: 404 })
     }
 
-    const blockReason = getSupplierDeleteBlockReason({
+    const relationshipCounts = {
       assets: existing._count.assets,
       maintenanceTickets: existing._count.maintenanceTickets,
+      maintenancePlans: existing._count.maintenancePlans,
       purchaseDocuments: existing._count.purchaseDocuments,
-    })
+    }
 
-    if (blockReason) {
+    if (shouldBlockSupplierLifecycleChange({
+      currentIsActive: existing.isActive,
+      nextIsActive: input.isActive,
+      operation: "update",
+      counts: relationshipCounts,
+    })) {
+      const blockReason = getSupplierDeleteBlockReason(relationshipCounts)
       return NextResponse.json({ error: blockReason }, { status: 409 })
     }
 
@@ -102,10 +111,37 @@ export async function DELETE(_request: NextRequest, context: SupplierRouteContex
     const { id } = await context.params
     const existing = await prisma.supplier.findFirst({
       where: { id, isActive: true },
+      include: {
+        _count: {
+          select: {
+            assets: { where: { isActive: true } },
+            maintenanceTickets: { where: { isActive: true } },
+            maintenancePlans: { where: { isActive: true } },
+            purchaseDocuments: { where: { isActive: true } },
+          },
+        },
+      },
     })
 
     if (!existing) {
       return NextResponse.json({ error: "Supplier not found" }, { status: 404 })
+    }
+
+    const relationshipCounts = {
+      assets: existing._count.assets,
+      maintenanceTickets: existing._count.maintenanceTickets,
+      maintenancePlans: existing._count.maintenancePlans,
+      purchaseDocuments: existing._count.purchaseDocuments,
+    }
+
+    if (shouldBlockSupplierLifecycleChange({
+      currentIsActive: existing.isActive,
+      nextIsActive: false,
+      operation: "delete",
+      counts: relationshipCounts,
+    })) {
+      const blockReason = getSupplierDeleteBlockReason(relationshipCounts)
+      return NextResponse.json({ error: blockReason }, { status: 409 })
     }
 
     const supplier = await prisma.supplier.update({
