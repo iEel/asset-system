@@ -56,3 +56,38 @@ test("catalog and recurring exports use stable non-localized row keys", () => {
   assert.equal(catalogView.match(/key=\{report\.key\}/g)?.length, 2)
   assert.doesNotMatch(catalogView, /key=\{report\.(name|label)\}/)
 })
+
+test("wide report datasets have mutually exclusive table and mobile list hooks", () => {
+  const responsiveList = readFileSync("src/components/reports/responsive-report-list.tsx", "utf8")
+
+  assert.match(responsiveList, /data-report-desktop-table/)
+  assert.match(responsiveList, /hidden md:block/)
+  assert.match(responsiveList, /data-report-mobile-list/)
+  assert.match(responsiveList, /md:hidden/)
+  assert.match(responsiveList, /<th/)
+  assert.match(responsiveList, /<dl/)
+
+  assert.equal(overviewView.match(/<ResponsiveReportList/g)?.length, 1)
+  assert.equal(accountingView.match(/<ResponsiveReportList/g)?.length, 2)
+  assert.equal(operationsView.match(/<ResponsiveReportList/g)?.length, 1)
+})
+
+test("operations exposes exact actionable drilldowns from the same compatible filter base", () => {
+  for (const filter of ["responsibility", "serial", "photo", "warranty"]) {
+    assert.ok(operationsView.includes(`dataQuality: "${filter}"`))
+  }
+  assert.match(operationsView, /activity: "idle_180d"/)
+  assert.match(operationsView, /buildAssetQueryString\(filters,/)
+  assert.match(operationsView, /min-h-11/)
+
+  assert.match(page, /const operationsQualityFilters = parseAssetListParams\(\{ \.\.\.filters, dataQuality: "", activity: "", page: 1 \}\)/)
+  assert.match(page, /const operationsQualityWhere = await applyAssetCrossScopeFilter\(buildAssetWhere\(operationsQualityFilters\), operationsQualityFilters\.crossScope\)/)
+  assert.match(page, /filters=\{operationsQualityFilters\}/)
+  assert.ok((page.match(/operationsQualityWhere/g)?.length ?? 0) >= 6)
+})
+
+test("cross-scope cards and preview share the drilldown filter overrides", () => {
+  assert.match(page, /const crossScopeFilters = parseAssetListParams\(\{ \.\.\.filters, dataQuality: "", statusId: "", page: 1 \}\)/)
+  assert.match(page, /buildAssetCrossScopeSummary\(buildAssetWhere\(crossScopeFilters\), 8\)/)
+  assert.ok((page.match(/buildAssetQueryString\(crossScopeFilters,/g)?.length ?? 0) >= 5)
+})

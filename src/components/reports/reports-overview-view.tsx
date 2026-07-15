@@ -1,5 +1,5 @@
 import Link from "next/link"
-import type React from "react"
+import { ResponsiveReportList } from "@/components/reports/responsive-report-list"
 import { selectReportEmptyCopy } from "@/lib/report-empty-state"
 
 export type ReportCountRow = {
@@ -81,48 +81,33 @@ export function ReportsOverviewView({
           </div>
           <span className="text-xs font-medium text-muted-foreground">{labels.previewCount}</span>
         </div>
-        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <PreviewHead>{labels.assetTag}</PreviewHead>
-                <PreviewHead>{labels.assetName}</PreviewHead>
-                <PreviewHead>{labels.category}</PreviewHead>
-                <PreviewHead>{labels.branch}</PreviewHead>
-                <PreviewHead>{labels.department}</PreviewHead>
-                <PreviewHead>{labels.custodian}</PreviewHead>
-                <PreviewHead>{labels.ownership}</PreviewHead>
-                <PreviewHead>{labels.status}</PreviewHead>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {previewRows.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                    {emptyLabel}
-                  </td>
-                </tr>
-              ) : (
-                previewRows.map((asset) => (
-                  <tr key={asset.id}>
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">
-                      <Link href={`/${locale}/assets/${asset.id}`} className="text-primary hover:underline">
-                        {asset.assetTag}
-                      </Link>
-                    </td>
-                    <td className="min-w-56 px-4 py-3 text-foreground">{asset.name}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.category}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.branch}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.department}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.custodian}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.ownership}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.status}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <ResponsiveReportList
+          rows={previewRows}
+          rowKey={(asset) => asset.id}
+          emptyLabel={emptyLabel}
+          columns={[
+            {
+              key: "assetTag",
+              label: labels.assetTag,
+              className: "whitespace-nowrap font-medium text-foreground",
+              render: (asset) => (
+                <Link
+                  href={`/${locale}/assets/${asset.id}`}
+                  className="inline-flex min-h-11 items-center text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0"
+                >
+                  {asset.assetTag}
+                </Link>
+              ),
+            },
+            { key: "name", label: labels.assetName, className: "min-w-56 text-foreground", render: (asset) => asset.name },
+            { key: "category", label: labels.category, className: "whitespace-nowrap text-muted-foreground", render: (asset) => asset.category },
+            { key: "branch", label: labels.branch, className: "whitespace-nowrap text-muted-foreground", render: (asset) => asset.branch },
+            { key: "department", label: labels.department, className: "whitespace-nowrap text-muted-foreground", render: (asset) => asset.department },
+            { key: "custodian", label: labels.custodian, className: "whitespace-nowrap text-muted-foreground", render: (asset) => asset.custodian },
+            { key: "ownership", label: labels.ownership, className: "whitespace-nowrap text-muted-foreground", render: (asset) => asset.ownership },
+            { key: "status", label: labels.status, className: "whitespace-nowrap text-muted-foreground", render: (asset) => asset.status },
+          ]}
+        />
       </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -135,10 +120,6 @@ export function ReportsOverviewView({
       </div>
     </div>
   )
-}
-
-function PreviewHead({ children }: { children: React.ReactNode }) {
-  return <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{children}</th>
 }
 
 function ReportTable({ title, rows, emptyLabel }: { title: string; rows: ReportCountRow[]; emptyLabel: string }) {

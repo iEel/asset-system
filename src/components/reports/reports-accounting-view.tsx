@@ -1,5 +1,5 @@
 import Link from "next/link"
-import type React from "react"
+import { ResponsiveReportList } from "@/components/reports/responsive-report-list"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { MetricCard } from "@/components/ui/metric-card"
 import type { DepreciationSummary, DepreciableAsset } from "@/lib/asset-depreciation"
@@ -139,38 +139,30 @@ function CostExposureTable({
   return (
     <div className="mt-4 overflow-hidden rounded-md border border-border bg-background">
       <div className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">{title}</div>
-      {rows.length === 0 ? (
-        <div className="px-4 py-6 text-center text-sm text-muted-foreground">{labels.empty}</div>
-      ) : (
-        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <PreviewHead>{labels.asset}</PreviewHead>
-                <PreviewHead>{labels.repairCost}</PreviewHead>
-                <PreviewHead>{labels.purchasePrice}</PreviewHead>
-                <PreviewHead>{labels.ratio}</PreviewHead>
-                <PreviewHead>{labels.repairCount}</PreviewHead>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {rows.map((asset) => (
-                <tr key={asset.id}>
-                  <td className="min-w-64 px-4 py-3 font-medium text-foreground">
-                    <Link href={`/${locale}/assets/${asset.id}`} className="text-primary hover:underline">
-                      {asset.label}
-                    </Link>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.repairCost)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.purchasePrice)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatPercent(asset.repairToPurchaseRatio)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.repairCount.toLocaleString("th-TH")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <ResponsiveReportList
+        rows={rows}
+        rowKey={(asset) => asset.id}
+        emptyLabel={labels.empty}
+        columns={[
+          {
+            key: "asset",
+            label: labels.asset,
+            className: "min-w-64 font-medium text-foreground",
+            render: (asset) => (
+              <Link
+                href={`/${locale}/assets/${asset.id}`}
+                className="inline-flex min-h-11 items-center text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0"
+              >
+                {asset.label}
+              </Link>
+            ),
+          },
+          { key: "repairCost", label: labels.repairCost, className: "whitespace-nowrap text-muted-foreground", render: (asset) => formatCurrency(asset.repairCost) },
+          { key: "purchasePrice", label: labels.purchasePrice, className: "whitespace-nowrap text-muted-foreground", render: (asset) => formatCurrency(asset.purchasePrice) },
+          { key: "ratio", label: labels.ratio, className: "whitespace-nowrap text-muted-foreground", render: (asset) => formatPercent(asset.repairToPurchaseRatio) },
+          { key: "repairCount", label: labels.repairCount, className: "whitespace-nowrap text-muted-foreground", render: (asset) => asset.repairCount.toLocaleString("th-TH") },
+        ]}
+      />
     </div>
   )
 }
@@ -197,46 +189,33 @@ function DepreciationTable({
   return (
     <div className="mt-4 overflow-hidden rounded-md border border-border bg-background">
       <div className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">{title}</div>
-      {rows.length === 0 ? (
-        <div className="px-4 py-6 text-center text-sm text-muted-foreground">{labels.empty}</div>
-      ) : (
-        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <PreviewHead>{labels.asset}</PreviewHead>
-                <PreviewHead>{labels.bookValue}</PreviewHead>
-                <PreviewHead>{labels.accumulated}</PreviewHead>
-                <PreviewHead>{labels.ratio}</PreviewHead>
-                <PreviewHead>{labels.usefulLife}</PreviewHead>
-                <PreviewHead>{labels.ageMonths}</PreviewHead>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {rows.map((asset) => (
-                <tr key={asset.id}>
-                  <td className="min-w-64 px-4 py-3 font-medium text-foreground">
-                    <Link href={`/${locale}/assets/${asset.id}`} className="text-primary hover:underline">
-                      {asset.label}
-                    </Link>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.netBookValue)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.accumulatedDepreciation)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatPercent(asset.depreciatedRatio)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.usefulLifeMonths.toLocaleString("th-TH")}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.ageMonths.toLocaleString("th-TH")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <ResponsiveReportList
+        rows={rows}
+        rowKey={(asset) => asset.id}
+        emptyLabel={labels.empty}
+        columns={[
+          {
+            key: "asset",
+            label: labels.asset,
+            className: "min-w-64 font-medium text-foreground",
+            render: (asset) => (
+              <Link
+                href={`/${locale}/assets/${asset.id}`}
+                className="inline-flex min-h-11 items-center text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0"
+              >
+                {asset.label}
+              </Link>
+            ),
+          },
+          { key: "bookValue", label: labels.bookValue, className: "whitespace-nowrap text-muted-foreground", render: (asset) => formatCurrency(asset.netBookValue) },
+          { key: "accumulated", label: labels.accumulated, className: "whitespace-nowrap text-muted-foreground", render: (asset) => formatCurrency(asset.accumulatedDepreciation) },
+          { key: "ratio", label: labels.ratio, className: "whitespace-nowrap text-muted-foreground", render: (asset) => formatPercent(asset.depreciatedRatio) },
+          { key: "usefulLife", label: labels.usefulLife, className: "whitespace-nowrap text-muted-foreground", render: (asset) => asset.usefulLifeMonths.toLocaleString("th-TH") },
+          { key: "ageMonths", label: labels.ageMonths, className: "whitespace-nowrap text-muted-foreground", render: (asset) => asset.ageMonths.toLocaleString("th-TH") },
+        ]}
+      />
     </div>
   )
-}
-
-function PreviewHead({ children }: { children: React.ReactNode }) {
-  return <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{children}</th>
 }
 
 function formatPercent(value: number | null) {

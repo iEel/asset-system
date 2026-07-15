@@ -6,14 +6,15 @@ const reportsPage = readFileSync("src/app/[locale]/(dashboard)/reports/page.tsx"
 const operationsView = readFileSync("src/components/reports/reports-operations-view.tsx", "utf8")
 
 test("reports rebuild the idle count from the exact drilldown scope and shared activity predicate", () => {
-  assert.match(reportsPage, /const idleAssetOverrides = \{ activity: "idle_180d", dataQuality: "", page: 1 \} as const/)
-  assert.match(reportsPage, /const idleAssetFilters = parseAssetListParams\(\{ \.\.\.filters, \.\.\.idleAssetOverrides \}\)/)
+  assert.match(reportsPage, /const operationsQualityFilters = parseAssetListParams\(\{ \.\.\.filters, dataQuality: "", activity: "", page: 1 \}\)/)
+  assert.match(reportsPage, /const operationsQualityWhere = await applyAssetCrossScopeFilter\(buildAssetWhere\(operationsQualityFilters\), operationsQualityFilters\.crossScope\)/)
   assert.match(reportsPage, /getAssetActivityWhere\("idle_180d"/)
-  assert.match(reportsPage, /prisma\.asset\.count\([\s\S]*idleAssetWhere/)
+  assert.match(reportsPage, /prisma\.asset\.count\(\{[\s\S]*operationsQualityWhere[\s\S]*idleAssetWhere/)
   assert.doesNotMatch(reportsPage, /function daysAgo/)
 })
 
 test("reports idle drilldown opens the exact Asset Register activity scope", () => {
-  assert.match(reportsPage, /buildAssetQueryString\(filters, idleAssetOverrides\)/)
-  assert.match(operationsView, /<Link href=\{insights\.idleAssetsHref\}/)
+  assert.match(reportsPage, /filters=\{operationsQualityFilters\}/)
+  assert.match(operationsView, /buildAssetQueryString\(filters, \{[\s\S]*activity: "idle_180d",[\s\S]*dataQuality: ""/)
+  assert.match(operationsView, /<Link href=\{idleAssetsHref\}/)
 })

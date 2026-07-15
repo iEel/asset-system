@@ -59,8 +59,6 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
   const assetSearchParams = { ...rawSearchParams }
   delete assetSearchParams.view
   const filters = parseAssetListParams(assetSearchParams)
-  const idleAssetOverrides = { activity: "idle_180d", dataQuality: "", page: 1 } as const
-  const idleAssetFilters = parseAssetListParams({ ...filters, ...idleAssetOverrides })
   const baseAssetWhere = buildAssetWhere(filters)
   const assetWhere = await applyAssetCrossScopeFilter(baseAssetWhere, filters.crossScope)
   const exportQuery = buildAssetQueryString(filters, { page: 1, pageSize: 100 })
@@ -377,8 +375,9 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       async function loadOperationsView(): Promise<React.ReactNode> {
         const warrantyThreshold = new Date()
         warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
-        const idleAssetScopeFilters = parseAssetListParams({ ...idleAssetFilters, activity: "" })
-        const idleAssetScopeWhere = await applyAssetCrossScopeFilter(buildAssetWhere(idleAssetScopeFilters), idleAssetScopeFilters.crossScope)
+        const operationsQualityFilters = parseAssetListParams({ ...filters, dataQuality: "", activity: "", page: 1 })
+        const operationsQualityWhere = await applyAssetCrossScopeFilter(buildAssetWhere(operationsQualityFilters), operationsQualityFilters.crossScope)
+        const crossScopeFilters = parseAssetListParams({ ...filters, dataQuality: "", statusId: "", page: 1 })
         const idleAssetWhere = getAssetActivityWhere("idle_180d")
         const [
           missingCustodian,
@@ -392,22 +391,22 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
           idleAssetsCount,
           crossScopeSummary,
         ] = await Promise.all([
-          prisma.asset.count({ where: { AND: [assetWhere, assetMissingResponsibilityWhere] } }),
-          prisma.asset.count({ where: { AND: [assetWhere, { OR: [{ serialNumber: null }, { serialNumber: "" }] }] } }),
+          prisma.asset.count({ where: { AND: [operationsQualityWhere, assetMissingResponsibilityWhere] } }),
+          prisma.asset.count({ where: { AND: [operationsQualityWhere, { OR: [{ serialNumber: null }, { serialNumber: "" }] }] } }),
           prisma.asset.count({
             where: {
               AND: [
-                assetWhere,
+                operationsQualityWhere,
                 { ownershipType: { not: "software_license" } },
                 { attachments: { none: { module: "asset", fileType: { startsWith: "image/" }, isActive: true } } },
               ],
             },
           }),
-          prisma.asset.count({ where: { AND: [assetWhere, { warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } }] } }),
+          prisma.asset.count({ where: { AND: [operationsQualityWhere, { warrantyEndDate: { gte: new Date(), lte: warrantyThreshold } }] } }),
           prisma.asset.findMany({
             where: {
               AND: [
-                assetWhere,
+                operationsQualityWhere,
                 {
                   OR: [
                     assetMissingResponsibilityWhere,
@@ -446,9 +445,9 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             take: 5,
           }),
           prisma.asset.count({
-            where: { AND: [idleAssetScopeWhere, ...(idleAssetWhere ? [idleAssetWhere] : [])] },
+            where: { AND: [operationsQualityWhere, ...(idleAssetWhere ? [idleAssetWhere] : [])] },
           }),
-          buildAssetCrossScopeSummary(baseAssetWhere, 8),
+          buildAssetCrossScopeSummary(buildAssetWhere(crossScopeFilters), 8),
         ])
         const [custodianOptions, locationOptions, repairAssets] = await Promise.all([
           prisma.employee.findMany({ where: { id: { in: byCustodian.map((item) => item.custodianId).filter((id): id is string => Boolean(id)) } }, select: { id: true, code: true, fullNameTh: true } }),
@@ -463,28 +462,27 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
             key: "all",
             label: t("crossScopeAll"),
             value: crossScopeSummary.all,
-            href: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "all", dataQuality: "", statusId: "", page: 1 })}`,
+            href: `/${locale}/assets?${buildAssetQueryString(crossScopeFilters, { crossScope: "all", page: 1 })}`,
           },
           {
             key: "custodian_company",
             label: t("crossScopeCustodianCompany"),
             value: crossScopeSummary.custodianCompany,
-            href: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "custodian_company", dataQuality: "", statusId: "", page: 1 })}`,
+            href: `/${locale}/assets?${buildAssetQueryString(crossScopeFilters, { crossScope: "custodian_company", page: 1 })}`,
           },
           {
             key: "custodian_branch",
             label: t("crossScopeCustodianBranch"),
             value: crossScopeSummary.custodianBranch,
-            href: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "custodian_branch", dataQuality: "", statusId: "", page: 1 })}`,
+            href: `/${locale}/assets?${buildAssetQueryString(crossScopeFilters, { crossScope: "custodian_branch", page: 1 })}`,
           },
           {
             key: "location_branch",
             label: t("crossScopeLocationBranch"),
             value: crossScopeSummary.locationBranch,
-            href: `/${locale}/assets?${buildAssetQueryString(filters, { crossScope: "location_branch", dataQuality: "", statusId: "", page: 1 })}`,
+            href: `/${locale}/assets?${buildAssetQueryString(crossScopeFilters, { crossScope: "location_branch", page: 1 })}`,
           },
         ]
-        const idleAssetsHref = `/${locale}/assets?${buildAssetQueryString(filters, idleAssetOverrides)}`
         const dataQualityRows: ReportDataQualityRow[] = dataQualityAssets.map((asset) => {
           const issues = getDataQualityIssues(asset, warrantyThreshold, t, locale)
           return {
@@ -500,6 +498,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
         return (
           <ReportsOperationsView
             locale={locale}
+            filters={operationsQualityFilters}
             hasActiveFilters={hasActiveFilters}
             hasMatchingAssets={totalAssets > 0}
             filteredEmptyCopy={t("previewEmpty")}
@@ -508,7 +507,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
               cards: crossScopeCards,
               rows: crossScopeSummary.rows,
               exportHref: canAssetExport
-                ? "/api/assets/export?" + buildAssetQueryString(filters, { crossScope: "all", dataQuality: "", statusId: "", page: 1 })
+                ? "/api/assets/export?" + buildAssetQueryString(crossScopeFilters, { crossScope: "all", page: 1 })
                 : undefined,
             }}
             insights={{
@@ -526,9 +525,9 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
                 key: item.assetId,
                 label: repairAssetMap.get(item.assetId) ?? item.assetId,
                 count: item._count._all,
+                href: `/${locale}/assets/${item.assetId}`,
               })),
               idleAssetsCount,
-              idleAssetsHref,
             }}
             labels={{
               dataQuality: t("dataQuality"),

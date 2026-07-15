@@ -1,7 +1,9 @@
 import Link from "next/link"
-import type React from "react"
 import { Download } from "lucide-react"
+import { ResponsiveReportList } from "@/components/reports/responsive-report-list"
 import { MetricCard } from "@/components/ui/metric-card"
+import { buildAssetQueryString } from "@/lib/asset-list-query"
+import type { parseAssetListParams } from "@/lib/asset-list-query"
 import type { AssetCrossScopeSummaryRow } from "@/lib/asset-cross-scope"
 import { getAssetCrossScopeFlagLabels } from "@/lib/asset-cross-scope-filter"
 import { selectReportEmptyCopy } from "@/lib/report-empty-state"
@@ -21,6 +23,10 @@ export type ReportCrossScopeCard = {
   label: string
   value: number
   href: string
+}
+
+type ReportInsightRow = ReportCountRow & {
+  href?: string
 }
 
 export type ReportsOperationsLabels = {
@@ -60,6 +66,7 @@ export type ReportsOperationsLabels = {
 
 export type ReportsOperationsViewProps = {
   locale: string
+  filters: ReturnType<typeof parseAssetListParams>
   hasActiveFilters: boolean
   hasMatchingAssets: boolean
   filteredEmptyCopy: string
@@ -76,17 +83,17 @@ export type ReportsOperationsViewProps = {
     exportHref?: string
   }
   insights: {
-    custodians: ReportCountRow[]
-    locations: ReportCountRow[]
-    repairs: ReportCountRow[]
+    custodians: ReportInsightRow[]
+    locations: ReportInsightRow[]
+    repairs: ReportInsightRow[]
     idleAssetsCount: number
-    idleAssetsHref: string
   }
   labels: ReportsOperationsLabels
 }
 
 export function ReportsOperationsView({
   locale,
+  filters,
   hasActiveFilters,
   hasMatchingAssets,
   filteredEmptyCopy,
@@ -95,6 +102,20 @@ export function ReportsOperationsView({
   insights,
   labels,
 }: ReportsOperationsViewProps) {
+  const dataQualityCards = [
+    { key: "responsibility", dataQuality: "responsibility" as const, label: labels.missingCustodian, value: dataQuality.missingCustodian },
+    { key: "serial", dataQuality: "serial" as const, label: labels.missingSerial, value: dataQuality.missingSerial },
+    { key: "photo", dataQuality: "photo" as const, label: labels.missingPhoto, value: dataQuality.missingPhoto },
+    { key: "warranty", dataQuality: "warranty" as const, label: labels.warrantyExpiring, value: dataQuality.warrantyExpiring },
+  ].map((card) => ({
+    ...card,
+    href: `/${locale}/assets?${buildAssetQueryString(filters, { dataQuality: card.dataQuality, activity: "", page: 1 })}`,
+  }))
+  const idleAssetsHref = `/${locale}/assets?${buildAssetQueryString(filters, {
+    activity: "idle_180d",
+    dataQuality: "",
+    page: 1,
+  })}`
   const dataQualityEmpty = selectReportEmptyCopy({
     hasActiveFilters,
     hasMatchingAssets,
@@ -119,10 +140,15 @@ export function ReportsOperationsView({
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
         <h2 className="mb-4 text-base font-semibold text-foreground">{labels.dataQuality}</h2>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          <MetricCard label={labels.missingCustodian} value={dataQuality.missingCustodian.toLocaleString("th-TH")} compact />
-          <MetricCard label={labels.missingSerial} value={dataQuality.missingSerial.toLocaleString("th-TH")} compact />
-          <MetricCard label={labels.missingPhoto} value={dataQuality.missingPhoto.toLocaleString("th-TH")} compact />
-          <MetricCard label={labels.warrantyExpiring} value={dataQuality.warrantyExpiring.toLocaleString("th-TH")} compact />
+          {dataQualityCards.map((card) => (
+            <Link
+              key={card.key}
+              href={card.href}
+              className="block min-h-11 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <MetricCard label={card.label} value={card.value.toLocaleString("th-TH")} className="h-full transition-colors hover:bg-accent" compact />
+            </Link>
+          ))}
         </div>
       </section>
 
@@ -144,7 +170,7 @@ export function ReportsOperationsView({
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {crossScope.cards.map((card) => (
-            <Link key={card.key} href={card.href} className="rounded-md border border-border bg-background p-4 transition-colors hover:bg-accent">
+            <Link key={card.key} href={card.href} className="min-h-11 rounded-md border border-border bg-background p-4 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
               <div className="text-sm text-muted-foreground">{card.label}</div>
               <div className="mt-2 text-2xl font-bold text-foreground">{card.value.toLocaleString("th-TH")}</div>
             </Link>
@@ -182,7 +208,7 @@ export function ReportsOperationsView({
                     <div className="mt-1 text-xs text-muted-foreground">{asset.context}</div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {asset.issues.map((issue) => (
-                        <Link key={issue.key} href={issue.href} className="rounded-full bg-warning/10 px-2 py-1 text-xs font-medium text-warning transition-colors hover:bg-warning/20">
+                        <Link key={issue.key} href={issue.href} className="inline-flex min-h-11 items-center rounded-full bg-warning/10 px-3 py-1 text-xs font-medium text-warning transition-colors hover:bg-warning/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0">
                           {issue.label}
                         </Link>
                       ))}
@@ -214,7 +240,7 @@ export function ReportsOperationsView({
           <ReportTable title={labels.frequentRepairAssets} rows={insights.repairs} emptyLabel={insightsEmpty} />
           <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
             <h2 className="mb-4 text-base font-semibold text-foreground">{labels.idleAssets}</h2>
-            <Link href={insights.idleAssetsHref} className="block rounded-md border border-warning/30 bg-warning/5 p-4 transition-colors hover:bg-warning/10">
+            <Link href={idleAssetsHref} className="block min-h-11 rounded-md border border-warning/30 bg-warning/5 p-4 transition-colors hover:bg-warning/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
               <div className="text-sm text-muted-foreground">{labels.idleAssetsHelp}</div>
               <div className="mt-2 text-2xl font-bold text-foreground">{insights.idleAssetsCount.toLocaleString("th-TH")}</div>
             </Link>
@@ -239,70 +265,79 @@ function CrossScopePreviewTable({
   return (
     <div className="mt-4 overflow-hidden rounded-md border border-border bg-background">
       <div className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">{labels.crossScopePreviewTitle}</div>
-      {rows.length === 0 ? (
-        <div className="px-4 py-6 text-center text-sm text-muted-foreground">{emptyLabel}</div>
-      ) : (
-        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <PreviewHead>{labels.asset}</PreviewHead>
-                <PreviewHead>{labels.ownerBranch}</PreviewHead>
-                <PreviewHead>{labels.custodianBranch}</PreviewHead>
-                <PreviewHead>{labels.locationBranch}</PreviewHead>
-                <PreviewHead>{labels.flags}</PreviewHead>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {rows.map((asset) => {
-                const flagLabels = getAssetCrossScopeFlagLabels(asset.flags, {
-                  custodianCompany: labels.custodianCompanyDifference,
-                  custodianBranch: labels.custodianBranchDifference,
-                  locationBranch: labels.locationBranchDifference,
-                })
-
-                return (
-                  <tr key={asset.id}>
-                    <td className="min-w-64 px-4 py-3 font-medium text-foreground">
-                      <Link href={`/${locale}/assets/${asset.id}`} className="text-primary hover:underline">
-                        {asset.assetTag}
-                      </Link>
-                      <div className="mt-1 text-xs font-normal text-muted-foreground">{asset.name}</div>
-                    </td>
-                    <td className="min-w-48 px-4 py-3 text-muted-foreground">{asset.ownerBranch}</td>
-                    <td className="min-w-56 px-4 py-3 text-muted-foreground">
-                      <div>{asset.custodian}</div>
-                      <div className="mt-1 text-xs">{asset.custodianBranch}</div>
-                    </td>
-                    <td className="min-w-56 px-4 py-3 text-muted-foreground">
-                      <div>{asset.currentLocation}</div>
-                      <div className="mt-1 text-xs">{asset.currentLocationBranch}</div>
-                    </td>
-                    <td className="min-w-56 px-4 py-3">
-                      <div className="flex flex-wrap gap-1.5">
-                        {flagLabels.map((label) => (
-                          <span key={label} className="rounded-full bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
-                            {label}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <ResponsiveReportList
+        rows={rows}
+        rowKey={(asset) => asset.id}
+        emptyLabel={emptyLabel}
+        columns={[
+          {
+            key: "asset",
+            label: labels.asset,
+            className: "min-w-64 font-medium text-foreground",
+            render: (asset) => (
+              <>
+                <Link
+                  href={`/${locale}/assets/${asset.id}`}
+                  className="inline-flex min-h-11 items-center text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0"
+                >
+                  {asset.assetTag}
+                </Link>
+                <div className="text-xs font-normal text-muted-foreground md:mt-1">{asset.name}</div>
+              </>
+            ),
+          },
+          { key: "ownerBranch", label: labels.ownerBranch, className: "min-w-48 text-muted-foreground", render: (asset) => asset.ownerBranch },
+          {
+            key: "custodianBranch",
+            label: labels.custodianBranch,
+            className: "min-w-56 text-muted-foreground",
+            render: (asset) => (
+              <>
+                <div>{asset.custodian}</div>
+                <div className="mt-1 text-xs">{asset.custodianBranch}</div>
+              </>
+            ),
+          },
+          {
+            key: "locationBranch",
+            label: labels.locationBranch,
+            className: "min-w-56 text-muted-foreground",
+            render: (asset) => (
+              <>
+                <div>{asset.currentLocation}</div>
+                <div className="mt-1 text-xs">{asset.currentLocationBranch}</div>
+              </>
+            ),
+          },
+          {
+            key: "flags",
+            label: labels.flags,
+            className: "min-w-56",
+            render: (asset) => (
+              <div className="flex flex-wrap gap-1.5">
+                {getCrossScopeFlagLabels(asset, labels).map((label) => (
+                  <span key={label} className="rounded-full bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
+                    {label}
+                  </span>
+                ))}
+              </div>
+            ),
+          },
+        ]}
+      />
     </div>
   )
 }
 
-function PreviewHead({ children }: { children: React.ReactNode }) {
-  return <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{children}</th>
+function getCrossScopeFlagLabels(asset: AssetCrossScopeSummaryRow, labels: ReportsOperationsLabels) {
+  return getAssetCrossScopeFlagLabels(asset.flags, {
+    custodianCompany: labels.custodianCompanyDifference,
+    custodianBranch: labels.custodianBranchDifference,
+    locationBranch: labels.locationBranchDifference,
+  })
 }
 
-function ReportTable({ title, rows, emptyLabel }: { title: string; rows: ReportCountRow[]; emptyLabel: string }) {
+function ReportTable({ title, rows, emptyLabel }: { title: string; rows: ReportInsightRow[]; emptyLabel: string }) {
   return (
     <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
       <h2 className="mb-4 text-base font-semibold text-foreground">{title}</h2>
@@ -310,12 +345,28 @@ function ReportTable({ title, rows, emptyLabel }: { title: string; rows: ReportC
         {rows.length === 0 ? (
           <div className="text-sm text-muted-foreground">{emptyLabel}</div>
         ) : (
-          rows.map((row) => (
-            <div key={row.key} className="flex items-center justify-between gap-3 text-sm">
-              <span className="truncate text-muted-foreground">{row.label}</span>
-              <span className="font-semibold text-foreground">{row.count.toLocaleString("th-TH")}</span>
-            </div>
-          ))
+          rows.map((row) => {
+            const content = (
+              <>
+                <span className="truncate text-muted-foreground">{row.label}</span>
+                <span className="font-semibold text-foreground">{row.count.toLocaleString("th-TH")}</span>
+              </>
+            )
+
+            return row.href ? (
+              <Link
+                key={row.key}
+                href={row.href}
+                className="flex min-h-11 items-center justify-between gap-3 rounded-md px-2 text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0 md:py-1"
+              >
+                {content}
+              </Link>
+            ) : (
+              <div key={row.key} className="flex items-center justify-between gap-3 text-sm">
+                {content}
+              </div>
+            )
+          })
         )}
       </div>
     </section>
