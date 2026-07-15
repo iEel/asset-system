@@ -48,6 +48,13 @@ export function ReportFilterPanel({ locale, activeView, filters, options, labels
     <FilterPanel title={labels.title} description={labels.help} className="p-5">
       <form action={`/${locale}/reports`} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <input type="hidden" name="view" value={activeView} />
+        {filters.brandId ? <input type="hidden" name="brandId" value={filters.brandId} /> : null}
+        {filters.modelId ? <input type="hidden" name="modelId" value={filters.modelId} /> : null}
+        {filters.custodianId ? <input type="hidden" name="custodianId" value={filters.custodianId} /> : null}
+        {filters.supplierId ? <input type="hidden" name="supplierId" value={filters.supplierId} /> : null}
+        {filters.dataQuality ? <input type="hidden" name="dataQuality" value={filters.dataQuality} /> : null}
+        {filters.crossScope ? <input type="hidden" name="crossScope" value={filters.crossScope} /> : null}
+        {filters.activity ? <input type="hidden" name="activity" value={filters.activity} /> : null}
         <label>
           <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{labels.search}</span>
           <input

@@ -15,3 +15,13 @@ test("the active report tab has a non-color indicator", () => {
   assert.match(viewTabsSource, /isActive \? <Check aria-hidden="true"/)
   assert.match(viewTabsSource, /aria-current=\{isActive \? "page" : undefined\}/)
 })
+
+test("mobile report tabs snap and reveal the active view after direct navigation", () => {
+  assert.match(viewTabsSource, /^"use client"/)
+  assert.match(viewTabsSource, /useEffect/)
+  assert.match(viewTabsSource, /activeTabRef/)
+  assert.match(viewTabsSource, /scrollTo\(\{[\s\S]*?left:/)
+  assert.match(viewTabsSource, /snap-x/)
+  assert.match(viewTabsSource, /snap-mandatory/)
+  assert.match(viewTabsSource, /snap-start/)
+})

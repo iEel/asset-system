@@ -49,6 +49,7 @@ export type ReportsCatalogLabels = {
   savedPresetsDeviceOnly: string
   deletePreset: string
   presetNameRequired: string
+  presetStorageFailed: string
   runNow: string
   notAllowed: string
   reportCatalog: string
@@ -108,6 +109,7 @@ export function ReportsCatalogView({
             savedPresetsDeviceOnly: labels.savedPresetsDeviceOnly,
             deletePreset: labels.deletePreset,
             presetNameRequired: labels.presetNameRequired,
+            presetStorageFailed: labels.presetStorageFailed,
           }}
         />
       </section>

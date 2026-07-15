@@ -2462,6 +2462,7 @@
     "savedPresetsDeviceOnly": "Saved presets stay in this browser on this device and are not shared with other users.",
     "deletePreset": "Delete preset",
     "presetNameRequired": "Enter a preset name before saving.",
+    "presetStorageFailed": "This browser could not save the filter preset. Check its privacy or storage settings.",
     "currentFilterPreset": "Current Filter Preset",
     "currentFilterPresetHelp": "Reopen this page with the same filters. Useful for bookmarks or sharing within the team.",
     "openSavedFilter": "Open This Preset",

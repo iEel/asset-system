@@ -26,6 +26,28 @@ test("filter form keeps view state and uses adaptive columns", () => {
   assert.match(filterPanel, /xl:grid-cols-3/)
 })
 
+test("applying visible filters preserves supported URL-only report scopes", () => {
+  for (const key of ["brandId", "modelId", "custodianId", "supplierId", "dataQuality", "crossScope", "activity"]) {
+    assert.match(filterPanel, new RegExp(`name="${key}" value=\\{filters\\.${key}\\}`))
+  }
+})
+
+test("report chips localize data-quality and cross-scope values", () => {
+  assert.match(page, /const dataQualityFilterLabels/)
+  assert.match(page, /responsibility: t\("missingCustodian"\)/)
+  assert.match(page, /serial: t\("missingSerial"\)/)
+  assert.match(page, /photo: t\("missingPhoto"\)/)
+  assert.match(page, /department: t\("department"\)/)
+  assert.match(page, /purchase: tAsset\("dataQualityPurchase"\)/)
+  assert.match(page, /warranty: t\("warrantyExpiring"\)/)
+  assert.match(page, /const crossScopeFilterLabels/)
+  assert.match(page, /custodian_company: t\("crossScopeCustodianCompany"\)/)
+  assert.match(page, /custodian_branch: t\("crossScopeCustodianBranch"\)/)
+  assert.match(page, /location_branch: t\("crossScopeLocationBranch"\)/)
+  assert.match(page, /dataQuality: dataQualityFilterLabels\[filters\.dataQuality\]/)
+  assert.match(page, /crossScope: crossScopeFilterLabels\[filters\.crossScope\]/)
+})
+
 test("filter option labels come from complete lookup collections without id fallbacks", () => {
   const start = page.indexOf("const filterOptions")
   const end = page.indexOf("const viewLabels")

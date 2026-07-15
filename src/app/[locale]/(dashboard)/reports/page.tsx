@@ -137,6 +137,20 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
     operations: t("viewOperations"),
     catalog: t("viewCatalog"),
   }
+  const dataQualityFilterLabels: Record<string, string> = {
+    responsibility: t("missingCustodian"),
+    serial: t("missingSerial"),
+    photo: t("missingPhoto"),
+    department: t("department"),
+    purchase: tAsset("dataQualityPurchase"),
+    warranty: t("warrantyExpiring"),
+  }
+  const crossScopeFilterLabels: Record<string, string> = {
+    all: t("crossScopeAll"),
+    custodian_company: t("crossScopeCustodianCompany"),
+    custodian_branch: t("crossScopeCustodianBranch"),
+    location_branch: t("crossScopeLocationBranch"),
+  }
   const activeFilters = buildReportActiveFilters({
     locale,
     view: activeView,
@@ -168,6 +182,8 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
       ownershipType: filterOptions.ownershipTypes.find((option) => option.value === filters.ownershipType)?.label,
       custodianId: selectedLabels.custodian,
       supplierId: selectedLabels.supplier,
+      dataQuality: dataQualityFilterLabels[filters.dataQuality],
+      crossScope: crossScopeFilterLabels[filters.crossScope],
       activity: filters.activity === "idle_180d" ? tAsset("activityIdle180d") : undefined,
     },
   })
@@ -675,6 +691,7 @@ export default async function ReportsPage({ params, searchParams }: ReportsPageP
               savedPresetsDeviceOnly: t("savedPresetsDeviceOnly"),
               deletePreset: t("deletePreset"),
               presetNameRequired: t("presetNameRequired"),
+              presetStorageFailed: t("presetStorageFailed"),
               runNow: t("runNow"),
               notAllowed: t("notAllowed"),
               reportCatalog: t("reportCatalog"),
