@@ -326,4 +326,8 @@ test("builds supplier filters, summary, drilldown, query string, and delete guar
     getSupplierDeleteBlockReason({ assets: 2, maintenanceTickets: 1, purchaseDocuments: 3 }),
     "ไม่สามารถลบผู้ขายนี้ได้ เพราะยังมีทรัพย์สิน 2 รายการ, งานซ่อม 1 รายการ และเอกสารจัดซื้อ 3 รายการใช้งานอยู่"
   )
+  assert.equal(
+    getSupplierDeleteBlockReason({ assets: 0, maintenanceTickets: 0, maintenancePlans: 2, purchaseDocuments: 0 }),
+    "ไม่สามารถลบผู้ขายนี้ได้ เพราะยังมีแผน PM 2 รายการใช้งานอยู่"
+  )
 })

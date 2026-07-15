@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { supplierSchema } from "@/lib/validations/supplier"
+import { getSupplierApiError } from "@/lib/supplier-api-error"
 
 export async function GET(request: NextRequest) {
   try {
@@ -66,6 +67,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(supplier, { status: 201 })
   } catch (error) {
+    const supplierError = getSupplierApiError(error)
+    if (supplierError) return NextResponse.json(supplierError.payload, { status: supplierError.status })
     return errorResponse(error, 400)
   }
 }

@@ -259,7 +259,7 @@ Implemented status lifecycle and enforcement from docs/code:
 | Locations | CRUD, branch relation, parent/child hierarchy, location type |
 | Categories | CRUD, soft delete/reactivation by code, custom field templates, safe create/update template writes, photo checklist/prefix support, and count drilldowns to models/assets |
 | Brands/Models | Compact brand navigator, model workspace, structured specs, model photos, active count summaries, and drilldowns to brand/model asset lists |
-| Suppliers | CRUD/detail, tax ID/supplier code semantics, contact/address fields |
+| Suppliers | Adaptive list/detail CRUD, tax ID/supplier code semantics, validated contact/address fields, relationship-aware deactivate/delete guards, linked asset/purchase/maintenance summaries, and mobile purchase-document cards |
 
 ## Admin, Settings, And Governance
 

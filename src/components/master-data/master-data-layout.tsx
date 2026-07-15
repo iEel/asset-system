@@ -1,8 +1,6 @@
 import Link from "next/link"
 import { ArrowDown, ArrowUp, Plus, Search } from "lucide-react"
 import { buildMasterDataQueryString, paginationRange, type MasterDataListState } from "@/lib/master-data-query"
-import type { MasterDataWorkspaceId, MasterDataWorkspaceLabels } from "@/lib/master-data-workspace"
-import { buildMasterDataWorkspaceItems } from "@/lib/master-data-workspace"
 
 export function MasterDataHeader({
   title,
@@ -10,19 +8,12 @@ export function MasterDataHeader({
   createHref,
   createLabel,
   actions,
-  workspace,
 }: {
   title: string
   subtitle: string
   createHref: string
   createLabel: string
   actions?: React.ReactNode
-  workspace?: {
-    locale: string
-    activeId: MasterDataWorkspaceId
-    labels: MasterDataWorkspaceLabels
-    navigationLabel: string
-  }
 }) {
   return (
     <div className="mb-6 space-y-4">
@@ -35,46 +26,14 @@ export function MasterDataHeader({
           {actions}
           <Link
             href={createHref}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
-            <Plus className="h-4 w-4" />
+            <Plus aria-hidden="true" className="h-4 w-4" />
             {createLabel}
           </Link>
         </div>
       </div>
-      {workspace ? <MasterDataWorkspaceNav {...workspace} /> : null}
     </div>
-  )
-}
-
-export function MasterDataWorkspaceNav({
-  locale,
-  activeId,
-  labels,
-  navigationLabel,
-}: {
-  locale: string
-  activeId: MasterDataWorkspaceId
-  labels: MasterDataWorkspaceLabels
-  navigationLabel: string
-}) {
-  return (
-    <nav aria-label={navigationLabel} className="flex max-w-full gap-1 overflow-x-auto border-b border-border pb-px">
-      {buildMasterDataWorkspaceItems(locale, activeId, labels).map((item) => (
-        <Link
-          key={item.id}
-          href={item.href}
-          aria-current={item.active ? "page" : undefined}
-          className={`inline-flex min-h-11 shrink-0 items-center border-b-2 px-3 text-sm font-medium transition-colors sm:h-10 sm:min-h-0 ${
-            item.active
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
-          }`}
-        >
-          {item.label}
-        </Link>
-      ))}
-    </nav>
   )
 }
 

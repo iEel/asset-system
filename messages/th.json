@@ -41,14 +41,6 @@
     "imageOptimizing": "กำลังปรับขนาดรูป...",
     "imageOptimizationHint": "รูปขนาดใหญ่จะถูกบีบอัดแบบรักษาความคมชัด และไม่ลดด้านยาวต่ำกว่า 1,800px"
   },
-  "masterData": {
-    "workspaceNavigation": "เมนูข้อมูลหลัก",
-    "companies": "บริษัท",
-    "branches": "สาขา",
-    "locations": "พื้นที่",
-    "employees": "พนักงาน",
-    "suppliers": "ผู้ขาย"
-  },
   "globalSearch": {
     "label": "ค้นหาทั่วระบบ",
     "placeholder": "ค้นหา Asset, พนักงาน, ผู้ขาย, งานซ่อม, ตรวจนับ...",
@@ -1563,6 +1555,12 @@
     "withPurchaseDocuments": "มีเอกสารจัดซื้อ",
     "withoutPurchaseDocuments": "ยังไม่มีเอกสารจัดซื้อ",
     "clearFilters": "ล้างตัวกรอง",
+    "filtersTitle": "ค้นหาและตัวกรอง",
+    "summaryLabel": "ภาพรวมผู้ขาย",
+    "emptyTitle": "ยังไม่มีข้อมูลผู้ขาย",
+    "emptyDescription": "เพิ่มผู้ขายรายแรกเพื่อใช้กับทะเบียนทรัพย์สิน เอกสารจัดซื้อ และงานซ่อม",
+    "filteredEmptyTitle": "ไม่พบผู้ขายที่ตรงกับตัวกรอง",
+    "filteredEmptyDescription": "ลองเปลี่ยนคำค้นหาหรือล้างตัวกรองเพื่อดูผู้ขายทั้งหมด",
     "summaryTotal": "ผู้ขายทั้งหมด",
     "summaryWithAssets": "ผูกทรัพย์สินแล้ว {count} ราย",
     "summaryAssetLinked": "มีทรัพย์สิน",
@@ -1600,7 +1598,11 @@
     "linkedAssets": "ทรัพย์สินที่ผูก",
     "totalAmount": "มูลค่า",
     "reportedDate": "วันที่แจ้ง",
-    "dueDate": "กำหนดเสร็จ"
+    "dueDate": "กำหนดเสร็จ",
+    "unsavedChangesConfirm": "มีข้อมูลผู้ขายที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?",
+    "duplicateCode": "เลขประจำตัวผู้เสียภาษีหรือรหัสผู้ขายนี้มีอยู่แล้ว",
+    "invalidEmail": "รูปแบบอีเมลไม่ถูกต้อง",
+    "fieldTooLong": "ข้อมูลยาวเกินจำนวนตัวอักษรที่กำหนด"
   },
   "checkout": {
     "title": "ส่งมอบทรัพย์สิน",

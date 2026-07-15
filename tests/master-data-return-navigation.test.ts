@@ -41,7 +41,11 @@ test("master data list edit and create links carry the current list URL as retur
   }
 
   for (const item of detailSections) {
-    const source = readFileSync(`src/app/[locale]/(dashboard)/master-data/${item.section}/page.tsx`, "utf8")
+    const pageSource = readFileSync(`src/app/[locale]/(dashboard)/master-data/${item.section}/page.tsx`, "utf8")
+    const extractedListSource = item.section === "suppliers"
+      ? readFileSync("src/components/master-data/supplier-list-view.tsx", "utf8")
+      : ""
+    const source = `${pageSource}\n${extractedListSource}`
 
     assert.match(source, new RegExp(`const ${item.returnVar} = `))
     assert.match(source, new RegExp(`appendMasterDataReturnTo\\(\`/\\$\\{locale\\}/master-data/${item.section}/new\`, ${item.returnVar}\\)`))
