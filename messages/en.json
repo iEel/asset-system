@@ -1600,7 +1600,11 @@
     "linkedAssets": "Linked Assets",
     "totalAmount": "Amount",
     "reportedDate": "Reported",
-    "dueDate": "Due"
+    "dueDate": "Due",
+    "unsavedChangesConfirm": "You have unsaved supplier changes. Leave this page?",
+    "duplicateCode": "This tax ID or supplier code already exists.",
+    "invalidEmail": "Enter a valid email address.",
+    "fieldTooLong": "This value exceeds the allowed length."
   },
   "checkout": {
     "title": "Check-out Asset",
