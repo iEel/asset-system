@@ -1,22 +1,23 @@
 import assert from "node:assert/strict"
+import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 
-import { buildMasterDataWorkspaceItems } from "../src/lib/master-data-workspace.ts"
+const pagePaths = [
+  "src/app/[locale]/(dashboard)/master-data/companies/page.tsx",
+  "src/app/[locale]/(dashboard)/master-data/branches/page.tsx",
+  "src/app/[locale]/(dashboard)/master-data/locations/page.tsx",
+  "src/app/[locale]/(dashboard)/master-data/employees/page.tsx",
+  "src/app/[locale]/(dashboard)/master-data/suppliers/page.tsx",
+]
 
-test("builds a shared master-data workspace with a stable active section", () => {
-  const items = buildMasterDataWorkspaceItems("th", "locations", {
-    companies: "Companies",
-    branches: "Branches",
-    locations: "Locations",
-    employees: "Employees",
-    suppliers: "Suppliers",
-  })
+test("master-data lists rely on the application navigation instead of a duplicate workspace strip", () => {
+  for (const path of pagePaths) {
+    const page = readFileSync(path, "utf8")
+    assert.doesNotMatch(page, /workspace=\{\{/)
+    assert.doesNotMatch(page, /getTranslations\("masterData"\)/)
+  }
 
-  assert.equal(items.length, 5)
-  assert.deepEqual(items.find((item) => item.id === "locations"), {
-    id: "locations",
-    label: "Locations",
-    href: "/th/master-data/locations",
-    active: true,
-  })
+  const layout = readFileSync("src/components/master-data/master-data-layout.tsx", "utf8")
+  assert.doesNotMatch(layout, /MasterDataWorkspaceNav/)
+  assert.equal(existsSync("src/lib/master-data-workspace.ts"), false)
 })

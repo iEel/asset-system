@@ -27,7 +27,6 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
 
   const t = await getTranslations("supplier")
   const tCommon = await getTranslations("common")
-  const tWorkspace = await getTranslations("masterData")
   const listState = parseSupplierListParams(rawSearchParams)
   const where = buildSupplierWhere(listState)
 
@@ -81,18 +80,6 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
         subtitle={t("subtitle")}
         createHref={createHref}
         createLabel={tCommon("create")}
-        workspace={{
-          locale,
-          activeId: "suppliers",
-          labels: {
-            companies: tWorkspace("companies"),
-            branches: tWorkspace("branches"),
-            locations: tWorkspace("locations"),
-            employees: tWorkspace("employees"),
-            suppliers: tWorkspace("suppliers"),
-          },
-          navigationLabel: tWorkspace("workspaceNavigation"),
-        }}
       />
 
       <div aria-label={t("summaryLabel")} className="grid auto-cols-[minmax(240px,85%)] grid-flow-col gap-3 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-2 md:overflow-visible md:pb-0 xl:grid-cols-4">

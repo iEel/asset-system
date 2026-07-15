@@ -41,14 +41,6 @@
     "imageOptimizing": "กำลังปรับขนาดรูป...",
     "imageOptimizationHint": "รูปขนาดใหญ่จะถูกบีบอัดแบบรักษาความคมชัด และไม่ลดด้านยาวต่ำกว่า 1,800px"
   },
-  "masterData": {
-    "workspaceNavigation": "เมนูข้อมูลหลัก",
-    "companies": "บริษัท",
-    "branches": "สาขา",
-    "locations": "พื้นที่",
-    "employees": "พนักงาน",
-    "suppliers": "ผู้ขาย"
-  },
   "globalSearch": {
     "label": "ค้นหาทั่วระบบ",
     "placeholder": "ค้นหา Asset, พนักงาน, ผู้ขาย, งานซ่อม, ตรวจนับ...",

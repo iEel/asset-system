@@ -38,7 +38,6 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
 
   const t = await getTranslations("location")
   const tCommon = await getTranslations("common")
-  const tWorkspace = await getTranslations("masterData")
   const listState = parseLocationListParams(rawSearchParams)
   const searchText = listState.search
   const where = buildLocationWhere(listState)
@@ -129,18 +128,6 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
         subtitle={t("subtitle")}
         createHref={appendMasterDataReturnTo(`/${locale}/master-data/locations/new`, locationReturnHref)}
         createLabel={tCommon("create")}
-        workspace={{
-          locale,
-          activeId: "locations",
-          labels: {
-            companies: tWorkspace("companies"),
-            branches: tWorkspace("branches"),
-            locations: tWorkspace("locations"),
-            employees: tWorkspace("employees"),
-            suppliers: tWorkspace("suppliers"),
-          },
-          navigationLabel: tWorkspace("workspaceNavigation"),
-        }}
       />
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">

@@ -1,8 +1,6 @@
 import Link from "next/link"
 import { ArrowDown, ArrowUp, Plus, Search } from "lucide-react"
 import { buildMasterDataQueryString, paginationRange, type MasterDataListState } from "@/lib/master-data-query"
-import type { MasterDataWorkspaceId, MasterDataWorkspaceLabels } from "@/lib/master-data-workspace"
-import { buildMasterDataWorkspaceItems } from "@/lib/master-data-workspace"
 
 export function MasterDataHeader({
   title,
@@ -10,19 +8,12 @@ export function MasterDataHeader({
   createHref,
   createLabel,
   actions,
-  workspace,
 }: {
   title: string
   subtitle: string
   createHref: string
   createLabel: string
   actions?: React.ReactNode
-  workspace?: {
-    locale: string
-    activeId: MasterDataWorkspaceId
-    labels: MasterDataWorkspaceLabels
-    navigationLabel: string
-  }
 }) {
   return (
     <div className="mb-6 space-y-4">
@@ -42,39 +33,7 @@ export function MasterDataHeader({
           </Link>
         </div>
       </div>
-      {workspace ? <MasterDataWorkspaceNav {...workspace} /> : null}
     </div>
-  )
-}
-
-export function MasterDataWorkspaceNav({
-  locale,
-  activeId,
-  labels,
-  navigationLabel,
-}: {
-  locale: string
-  activeId: MasterDataWorkspaceId
-  labels: MasterDataWorkspaceLabels
-  navigationLabel: string
-}) {
-  return (
-    <nav aria-label={navigationLabel} className="flex max-w-full gap-1 overflow-x-auto border-b border-border pb-px">
-      {buildMasterDataWorkspaceItems(locale, activeId, labels).map((item) => (
-        <Link
-          key={item.id}
-          href={item.href}
-          aria-current={item.active ? "page" : undefined}
-          className={`inline-flex min-h-11 shrink-0 items-center border-b-2 px-3 text-sm font-medium transition-colors sm:h-10 sm:min-h-0 ${
-            item.active
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
-          }`}
-        >
-          {item.label}
-        </Link>
-      ))}
-    </nav>
   )
 }
 
