@@ -90,3 +90,30 @@ test("audit scan controller imports extracted types and helpers instead of redec
   assert.doesNotMatch(form, /^function getReadableAuditScanValue/m)
   assert.doesNotMatch(form, /^function normalizeOutOfScopeAuditAsset/m)
 })
+
+test("audit scan presentation panels have a focused owner outside the controller", () => {
+  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  assert.ok(existsSync("src/components/audit/audit-scan-panels.tsx"), "audit-scan-panels.tsx must exist")
+  const panels = readFileSync("src/components/audit/audit-scan-panels.tsx", "utf8")
+
+  for (const component of [
+    "ScanResultPanel",
+    "RecentScansPanel",
+    "AuditComponentPanel",
+    "ManualScanSuggestionList",
+    "PendingQueuePanel",
+    "AssetFallbackPicker",
+    "AuditQrScannerOverlay",
+    "OptionList",
+    "Field",
+    "Select",
+  ]) {
+    assert.match(panels, new RegExp(`export function ${component}\\b`))
+    assert.doesNotMatch(form, new RegExp(`^function ${component}\\b`, "m"))
+  }
+
+  assert.match(form, /from "\.\/audit-scan-panels"/)
+  assert.doesNotMatch(panels, /\bfetch\(/)
+  assert.doesNotMatch(panels, /localStorage/)
+  assert.doesNotMatch(panels, /startNativeAssetQrScanner/)
+})

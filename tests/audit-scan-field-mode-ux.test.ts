@@ -83,13 +83,14 @@ test("audit scan hides normal camera status and only surfaces camera issues", ()
 
 test("audit scan uses a larger mobile QR camera target", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const panels = readFileSync("src/components/audit/audit-scan-panels.tsx", "utf8")
 
   assert.match(form, /relative isolate aspect-square sm:aspect-\[4\/3\]/)
   assert.match(form, /id="audit-qr-reader"/)
-  assert.match(form, /function AuditQrScannerOverlay/)
-  assert.match(form, /aspect-square h-\[78%\] max-h-72 sm:max-h-80/)
+  assert.match(panels, /export function AuditQrScannerOverlay/)
+  assert.match(panels, /aspect-square h-\[78%\] max-h-72 sm:max-h-80/)
   assert.doesNotMatch(form, /aspect-\[4\/3\] min-h-0/)
-  assert.doesNotMatch(form, /aspect-square h-\[66%\] max-h-56/)
+  assert.doesNotMatch(panels, /aspect-square h-\[66%\] max-h-56/)
 })
 
 test("audit scan field-mode UX copy is translated", () => {
@@ -211,10 +212,11 @@ test("audit scan mismatch flow embeds required evidence instead of using a scrol
 
 test("audit scan evidence queue shows mobile photo previews and finding attachment status", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const types = readFileSync("src/components/audit/audit-scan-types.ts", "utf8")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
-  assert.match(form, /type QueuedAuditPhoto = \{[\s\S]*previewUrl: string \| null/)
+  assert.match(types, /export type QueuedAuditPhoto = \{[\s\S]*previewUrl: string \| null/)
   assert.match(form, /URL\.createObjectURL\(file\)/)
   assert.match(form, /URL\.revokeObjectURL\(previewUrl\)/)
   assert.match(form, /auditPhotoPreviewUrlsRef\.current/)
@@ -247,28 +249,30 @@ test("audit scan compacts the sticky progress header after an asset is selected"
 })
 test("audit scan phase 1 shows readable result semantics and recent scans", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const panels = readFileSync("src/components/audit/audit-scan-panels.tsx", "utf8")
+  const types = readFileSync("src/components/audit/audit-scan-types.ts", "utf8")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
-  assert.match(form, /type AuditRecentScan/)
-  assert.match(form, /assetId\?: string/)
-  assert.match(form, /assetTag\?: string/)
-  assert.match(form, /MAX_RECENT_AUDIT_SCANS = 8/)
+  assert.match(types, /export type AuditRecentScan/)
+  assert.match(types, /assetId\?: string/)
+  assert.match(types, /assetTag\?: string/)
+  assert.match(types, /MAX_RECENT_AUDIT_SCANS = 8/)
   assert.match(form, /function pushRecentScan\(/)
   assert.match(form, /setRecentScans\(\(current\) => \[/)
   assert.match(form, /ScanResultPanel feedback=\{scanFeedback\} t=\{t\}/)
   assert.match(form, /<RecentScansPanel[\s\S]*recentScans=\{recentScans\}[\s\S]*onEditScan=\{editRecentScan\}/)
-  assert.match(form, /function ScanResultPanel/)
-  assert.match(form, /function RecentScansPanel/)
+  assert.match(panels, /export function ScanResultPanel/)
+  assert.match(panels, /export function RecentScansPanel/)
   assert.match(form, /function editRecentScan\(/)
-  assert.match(form, /function formatLastAuditResult\(/)
-  assert.match(form, /function getScanFeedbackMeta/)
-  assert.match(form, /t\("recentScansEdit"\)/)
-  assert.match(form, /t\("lastResultWithAsset"/)
-  assert.match(form, /t\("feedbackStatusFound"\)/)
-  assert.match(form, /t\("recentScansTitle"\)/)
-  assert.match(form, /t\("recentScansHelp"\)/)
-  assert.match(form, /t\("recentScansCount", \{ count: recentScans\.length \}\)/)
+  assert.match(panels, /function formatLastAuditResult\(/)
+  assert.match(panels, /function getScanFeedbackMeta/)
+  assert.match(panels, /t\("recentScansEdit"\)/)
+  assert.match(panels, /t\("lastResultWithAsset"/)
+  assert.match(panels, /t\("feedbackStatusFound"\)/)
+  assert.match(panels, /t\("recentScansTitle"\)/)
+  assert.match(panels, /t\("recentScansHelp"\)/)
+  assert.match(panels, /t\("recentScansCount", \{ count: recentScans\.length \}\)/)
 
   for (const messages of [th, en]) {
     assert.equal(typeof messages.auditScan.recentScansTitle, "string")
@@ -304,6 +308,7 @@ test("audit scan recent scans are seeded from persisted scan history", () => {
 
 test("audit scan keeps rear-camera fast defaults and locks QR results without exposing mode switches", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const panels = readFileSync("src/components/audit/audit-scan-panels.tsx", "utf8")
 
   assert.match(form, /stopAfterSuccess: true/)
   assert.match(form, /void stopScanner\(\)[\s\S]*void selectScannedAsset\(decodedText, "qr"\)/)
@@ -326,7 +331,7 @@ test("audit scan keeps rear-camera fast defaults and locks QR results without ex
   assert.match(form, /ScanResultPanel feedback=\{scanFeedback\} t=\{t\}/)
   assert.match(form, /<RecentScansPanel[\s\S]*recentScans=\{recentScans\}[\s\S]*onEditScan=\{editRecentScan\}/)
   assert.doesNotMatch(form, /<ScanFeedbackCard feedback=\{scanFeedback\}/)
-  assert.match(form, /id="audit-recent-scans-list"[\s\S]*recentScans\.map/)
+  assert.match(panels, /id="audit-recent-scans-list"[\s\S]*recentScans\.map/)
   assert.doesNotMatch(form, /<RecentScanList recentScans=\{recentScans\}/)
 })
 
@@ -361,13 +366,14 @@ test("mobile audit actions and shared action bars reserve safe-area space", () =
 
 test("audit scan phase 2 emphasizes scan entry and exposes pending queue access", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const panels = readFileSync("src/components/audit/audit-scan-panels.tsx", "utf8")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
   assert.match(form, /const pendingItems = useMemo/)
   assert.match(form, /const queuePendingItems = hasAuditContext \? contextPendingItems : pendingItems/)
   assert.match(form, /queuePendingItems\.slice\(0, 8\)/)
-  assert.match(form, /function PendingQueuePanel/)
+  assert.match(panels, /export function PendingQueuePanel/)
   assert.match(form, /pendingQueueQuickAction/)
   assert.match(form, /scanEntryTitle/)
   assert.match(form, /scanEntryHelp/)
@@ -393,6 +399,7 @@ test("audit scan phase 2 emphasizes scan entry and exposes pending queue access"
 
 test("audit scan pending queue and recent scans are collapsible", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const panels = readFileSync("src/components/audit/audit-scan-panels.tsx", "utf8")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
@@ -401,10 +408,10 @@ test("audit scan pending queue and recent scans are collapsible", () => {
   assert.match(form, /aria-controls="audit-pending-queue-panel"/)
   assert.match(form, /aria-expanded=\{showPendingQueue\}/)
   assert.match(form, /expanded=\{pendingQueueExpanded\}/)
-  assert.match(form, /recentScansExpanded/)
-  assert.match(form, /setRecentScansExpanded/)
-  assert.match(form, /aria-expanded=\{recentScansExpanded\}/)
-  assert.match(form, /t\(recentScansExpanded \? "recentScansCollapse" : "recentScansExpand"\)/)
+  assert.match(panels, /recentScansExpanded/)
+  assert.match(panels, /setRecentScansExpanded/)
+  assert.match(panels, /aria-expanded=\{recentScansExpanded\}/)
+  assert.match(panels, /t\(recentScansExpanded \? "recentScansCollapse" : "recentScansExpand"\)/)
 
   for (const messages of [th, en]) {
     assert.equal(typeof messages.auditScan.pendingQueueExpand, "string")
@@ -414,12 +421,12 @@ test("audit scan pending queue and recent scans are collapsible", () => {
   }
 })
 test("audit scan recent scans collapse hides every scan row", () => {
-  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
-  const panelStart = form.indexOf("function RecentScansPanel")
-  const rowStart = form.indexOf("function RecentScanCompactRow")
+  const panels = readFileSync("src/components/audit/audit-scan-panels.tsx", "utf8")
+  const panelStart = panels.indexOf("export function RecentScansPanel")
+  const rowStart = panels.indexOf("function RecentScanCompactRow")
   assert.ok(panelStart > -1, "RecentScansPanel should exist")
   assert.ok(rowStart > panelStart, "RecentScanCompactRow should follow RecentScansPanel")
-  const panel = form.slice(panelStart, rowStart)
+  const panel = panels.slice(panelStart, rowStart)
 
   assert.doesNotMatch(panel, /const visibleScans = recentScans\.slice\(0, 3\)/)
   assert.doesNotMatch(panel, /const olderScans = recentScans\.slice\(3\)/)
@@ -431,10 +438,10 @@ test("audit scan recent scans collapse hides every scan row", () => {
 })
 
 test("recent scan header stacks readable controls on narrow screens", () => {
-  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
-  const panelStart = form.indexOf("function RecentScansPanel")
-  const rowStart = form.indexOf("function RecentScanCompactRow")
-  const panel = form.slice(panelStart, rowStart)
+  const panels = readFileSync("src/components/audit/audit-scan-panels.tsx", "utf8")
+  const panelStart = panels.indexOf("export function RecentScansPanel")
+  const rowStart = panels.indexOf("function RecentScanCompactRow")
+  const panel = panels.slice(panelStart, rowStart)
 
   assert.match(panel, /flex min-h-11 w-full flex-col gap-3 rounded-md[\s\S]*sm:flex-row sm:items-center sm:justify-between/)
   assert.match(panel, /inline-flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end/)
@@ -443,24 +450,26 @@ test("recent scan header stacks readable controls on narrow screens", () => {
 
 test("audit scan mobile-first field workflow compacts scan setup and moves list work into searchable panels", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const helpers = readFileSync("src/components/audit/audit-scan-helpers.ts", "utf8")
+  const panels = readFileSync("src/components/audit/audit-scan-panels.tsx", "utf8")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
   assert.match(form, /const \[assetPickerExpanded, setAssetPickerExpanded\]/)
   assert.match(form, /const \[assetPickerQuery, setAssetPickerQuery\]/)
   assert.match(form, /const filteredAssetPickerItems = useMemo/)
-  assert.match(form, /function AssetFallbackPicker/)
+  assert.match(panels, /export function AssetFallbackPicker/)
   assert.match(form, /items=\{filteredAssetPickerItems\}/)
   assert.match(form, /onSelect=\{selectAssetFromFallback\}/)
   assert.doesNotMatch(form, /<Select label=\{t\("asset"\)\}/)
 
-  assert.match(form, /function buildPendingQueueContext/)
-  assert.match(form, /contextRows=\{buildPendingQueueContext/)
-  assert.match(form, /pendingQueueLocation/)
-  assert.match(form, /pendingQueueCustodian/)
-  assert.match(form, /pendingQueueDepartment/)
+  assert.match(helpers, /export function buildPendingQueueContext/)
+  assert.match(panels, /contextRows=\{buildPendingQueueContext/)
+  assert.match(panels, /pendingQueueLocation/)
+  assert.match(panels, /pendingQueueCustodian/)
+  assert.match(panels, /pendingQueueDepartment/)
 
-  assert.match(form, /function RecentScansPanel/)
+  assert.match(panels, /export function RecentScansPanel/)
   assert.match(form, /<RecentScansPanel[\s\S]*recentScans=\{recentScans\}[\s\S]*onEditScan=\{editRecentScan\}/)
   assert.doesNotMatch(form, /ScanResultPanel feedback=\{scanFeedback\} recentScans=\{recentScans\}/)
 
@@ -495,6 +504,8 @@ test("audit scan initial mobile state prioritizes scanning before fallback and n
 
 test("audit scan manual entry supports partial suggestions without changing QR exact lookup", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const helpers = readFileSync("src/components/audit/audit-scan-helpers.ts", "utf8")
+  const panels = readFileSync("src/components/audit/audit-scan-panels.tsx", "utf8")
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
@@ -502,8 +513,8 @@ test("audit scan manual entry supports partial suggestions without changing QR e
   assert.match(form, /scanSource !== "manual"/)
   assert.match(form, /query\.length < 2/)
   assert.match(form, /exactScanMatchCandidates\.some\(\(candidate\) => assetLookup\.has\(candidate\)\)/)
-  assert.match(form, /function buildManualScanSuggestions/)
-  assert.match(form, /function ManualScanSuggestionList/)
+  assert.match(helpers, /export function buildManualScanSuggestions/)
+  assert.match(panels, /export function ManualScanSuggestionList/)
   assert.match(form, /function handleManualScanAction/)
   assert.match(form, /manualScanSuggestions\.length === 1/)
   assert.match(form, /manualScanSuggestions\.length > 1/)
@@ -579,6 +590,7 @@ test("audit scan exposes 1x, 2x and 3x zoom controls in the existing camera pane
 test("audit scan edit result reloads saved actual values and records correction context", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/scan/page.tsx", "utf8")
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const types = readFileSync("src/components/audit/audit-scan-types.ts", "utf8")
   const route = readFileSync("src/app/api/audit-rounds/[id]/scan/route.ts", "utf8")
   const validation = readFileSync("src/lib/validations/audit.ts", "utf8")
   const offlineQueue = readFileSync("src/lib/audit-offline-queue.ts", "utf8")
@@ -590,8 +602,8 @@ test("audit scan edit result reloads saved actual values and records correction 
   assert.match(page, /actualCustodianId: item\.actualCustodianId/)
   assert.match(page, /actualConditionId: item\.actualConditionId/)
 
-  assert.match(form, /actualDepartmentId: string \| null/)
-  assert.match(form, /actualLocationId: string \| null/)
+  assert.match(types, /actualDepartmentId: string \| null/)
+  assert.match(types, /actualLocationId: string \| null/)
   assert.match(form, /editingScanResult/)
   assert.match(form, /getEditableAuditValues/)
   assert.match(form, /selectInRoundAuditItem\(targetItem, \{ mode: "edit" \}\)/)

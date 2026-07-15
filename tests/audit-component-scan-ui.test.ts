@@ -14,10 +14,11 @@ test("audit scan page passes component relationships to the client form", () => 
 
 test("audit scan form renders installed component panel and confirmation actions", () => {
   const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+  const panels = readFileSync("src/components/audit/audit-scan-panels.tsx", "utf8")
   const types = readFileSync("src/components/audit/audit-scan-types.ts", "utf8")
 
   assert.match(types, /export type AuditScanComponent/)
-  assert.match(form, /function AuditComponentPanel/)
+  assert.match(panels, /export function AuditComponentPanel/)
   assert.match(form, /confirmComponentWithParent/)
   assert.match(form, /openComponentMissingDialog/)
   assert.match(form, /submitComponentMissing/)
@@ -25,7 +26,7 @@ test("audit scan form renders installed component panel and confirmation actions
   assert.match(form, /confirmedWithParentAssetId/)
   assert.match(form, /componentConfirmationReason/)
   assert.match(form, /mark-not-found/)
-  assert.match(form, /componentStatusConfirmedWithParent/)
+  assert.match(panels, /componentStatusConfirmedWithParent/)
 })
 
 test("audit scan form preserves and renders component context for out-of-scope assets", () => {
