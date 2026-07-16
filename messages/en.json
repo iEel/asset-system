@@ -189,6 +189,7 @@
     "scanTitle": "Scan / Search Asset",
     "scanSubtitle": "Use a phone camera to scan the QR Code on an asset label, or search by Asset Tag, Serial Number, custodian, or location to open asset details quickly",
     "scanQueryLabel": "Search or scan asset code",
+    "scanPlaceholder": "Search by Asset Tag, Serial Number, custodian, or location",
     "openAsset": "Open Asset Detail",
     "scannerStart": "Scan",
     "scannerStop": "Stop",

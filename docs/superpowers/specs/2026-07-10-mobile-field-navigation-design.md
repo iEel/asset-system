@@ -9,7 +9,7 @@ Add a permission-aware mobile field navigation bar without changing asset, audit
 The mobile shell has two mutually exclusive modes:
 
 1. **Navigation Mode** shows `หน้าหลัก / ทรัพย์สิน / สแกน / ตรวจนับ / เพิ่มเติม` on browsing and queue pages.
-2. **Focus Task Mode** hides field navigation and leaves the existing contextual action bar in control on scanner, edit, transaction, and detail pages that already own the bottom action area.
+2. **Focus Task Mode** hides field navigation and leaves the existing contextual action bar in control on Audit Scan, edit, transaction, and detail pages that already own the bottom action area.
 
 The two bottom bars must never render together. Page content receives safe-area bottom padding only when field navigation is visible.
 
@@ -23,11 +23,12 @@ The two bottom bars must never render together. Page content receives safe-area 
 
 The general Scan destination never guesses an audit round. Audit scanning continues to start from an existing Audit Round and keeps its original `auditRoundId`.
 
+General Asset Scan remains in Navigation Mode because its camera controls are inline rather than a fixed contextual bottom action bar. This keeps the selected Scan destination visible without stacking two bottom surfaces.
+
 ## Focus Task Routes
 
 Field navigation is hidden on:
 
-- General Asset Scan.
 - Audit Round Scan.
 - Asset create, edit, detail, and label detail routes that use task-specific controls.
 - Asset checkout, check-in, transfer, and bulk move.
@@ -57,7 +58,7 @@ Audit Pending remains in Navigation Mode because `Mark Not Found` belongs to tha
 - Unit-test locale removal, active destination selection, focus-route policy, and keyboard visibility threshold.
 - Source-contract test the five Lucide destinations, RBAC filtering, shell padding, and topbar/sidebar integration.
 - Run the full test suite, lint, and production build.
-- Browser-test 375px and 390px navigation pages plus Audit Scan Focus Task Mode, checking that only one bottom bar is visible and body horizontal overflow is absent.
+- Browser-test General Asset Scan at 375px and 390px in Navigation Mode plus Audit Scan in Focus Task Mode, checking that only one bottom bar is visible and body horizontal overflow is absent.
 
 ## Out Of Scope
 

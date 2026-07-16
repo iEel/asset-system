@@ -14,6 +14,7 @@ test("mobile shell keeps browsing and pending queues in navigation mode", () => 
   for (const pathname of [
     "/th/dashboard",
     "/en/assets",
+    "/th/asset-management/scan",
     "/th/asset-management/labels",
     "/th/audit/rounds",
     "/th/audit/rounds/round-1/pending",
@@ -26,7 +27,6 @@ test("mobile shell keeps browsing and pending queues in navigation mode", () => 
 
 test("mobile shell reserves scanner and contextual action routes for focus mode", () => {
   for (const pathname of [
-    "/th/asset-management/scan",
     "/th/audit/rounds/round-1/scan",
     "/th/assets/new",
     "/th/assets/asset-1",

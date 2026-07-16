@@ -189,6 +189,7 @@
     "scanTitle": "สแกน / ค้นหาทรัพย์สิน",
     "scanSubtitle": "ใช้มือถือสแกน QR Code บน Label หรือค้นหาด้วย Asset Tag, Serial Number, ผู้ถือครอง หรือ Location เพื่อเปิดหน้ารายละเอียดทันที",
     "scanQueryLabel": "ค้นหาหรือสแกนรหัสทรัพย์สิน",
+    "scanPlaceholder": "ค้นหาด้วย Asset Tag, Serial Number, ผู้ถือครอง หรือสถานที่",
     "openAsset": "เปิดรายละเอียดทรัพย์สิน",
     "scannerStart": "สแกน",
     "scannerStop": "หยุด",

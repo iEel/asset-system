@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useId, useRef, useState } from "react"
-import { Camera, Flashlight, FlashlightOff, Loader2, X } from "lucide-react"
+import { Camera, Flashlight, FlashlightOff, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import {
   environmentCameraId,
@@ -39,6 +39,7 @@ type ScannerTextInputLabels = {
 }
 
 type ScannerTextInputProps = {
+  id?: string
   value: string
   onChange: (value: string) => void
   labels: ScannerTextInputLabels
@@ -52,6 +53,7 @@ type ScannerTextInputProps = {
 }
 
 export function ScannerTextInput({
+  id,
   value,
   onChange,
   labels,
@@ -285,6 +287,7 @@ export function ScannerTextInput({
     <div className="min-w-0 max-w-full space-y-2">
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
         <input
+          id={id}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onPaste={onPaste}
@@ -292,7 +295,7 @@ export function ScannerTextInput({
           placeholder={placeholder}
           className={
             inputClassName ??
-            "min-h-11 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0"
+            "min-h-11 min-w-0 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0 sm:flex-1"
           }
         />
         <button
@@ -303,26 +306,15 @@ export function ScannerTextInput({
           title={scannerRunning || scannerLoading ? labels.stop : labels.start}
         >
           {scannerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-          <span className="hidden sm:inline">{scannerRunning || scannerLoading ? labels.stop : labels.start}</span>
+          <span>{scannerRunning || scannerLoading ? labels.stop : labels.start}</span>
         </button>
       </div>
 
       {showScannerPanel && (
         <div className="min-w-0 max-w-full rounded-md border border-border bg-surface p-3">
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-foreground">{labels.title}</p>
-              <p className="mt-1 break-words text-xs text-muted-foreground">{labels.help}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void stopScanner()}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-10 sm:w-10"
-              title={labels.stop}
-              aria-label={labels.stop}
-            >
-              <X className="h-4 w-4" />
-            </button>
+          <div className="mb-3 min-w-0">
+            <p className="text-sm font-medium text-foreground">{labels.title}</p>
+            <p className="mt-1 break-words text-xs text-muted-foreground">{labels.help}</p>
           </div>
 
           {cameras.length > 1 && (

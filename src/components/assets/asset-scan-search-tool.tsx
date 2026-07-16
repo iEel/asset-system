@@ -112,18 +112,19 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
       </div>
 
       <section className="min-w-0 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.queryLabel}</span>
-          <ScannerTextInput
-            value={query}
-            onChange={setQuery}
-            labels={labels.scanner}
-            placeholder={labels.placeholder}
-            scanMode="asset-qr"
-            onScanSuccess={handleScannedValue}
-            inputClassName="h-11 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-          />
+        <label htmlFor="asset-scan-query" className="mb-1.5 block text-sm font-medium text-foreground">
+          {labels.queryLabel}
         </label>
+        <ScannerTextInput
+          id="asset-scan-query"
+          value={query}
+          onChange={setQuery}
+          labels={labels.scanner}
+          placeholder={labels.placeholder}
+          scanMode="asset-qr"
+          onScanSuccess={handleScannedValue}
+          inputClassName="min-h-11 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0 sm:flex-1"
+        />
       </section>
 
       {directAssetHref ? (

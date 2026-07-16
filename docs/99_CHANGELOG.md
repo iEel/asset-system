@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-07-16
+
+| Area | Update |
+|---|---|
+| General Asset Scan mobile UX | Kept `/asset-management/scan` in Mobile Field Navigation Mode so the selected Scan destination remains visible; Audit Scan and routes with contextual bottom actions remain Focus Task routes. The shared scanner now associates an optional native input ID with the page label, preserves a 44px mobile input, shows start/stop text beside the camera/loading icon, and uses one toggle instead of a duplicate panel-close action. General Asset Scan now uses asset-only Thai/English placeholder copy that matches `scope=asset`. Camera decoding, exact QR routing, APIs, schema, RBAC, SOD, audit workflow, and dependencies are unchanged. |
+
+---
+
 ## 2026-07-15
 
 | Area | Update |

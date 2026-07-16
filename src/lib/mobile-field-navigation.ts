@@ -14,7 +14,7 @@ type MobileFieldNavigationUser = NavigationUser & {
 }
 
 const focusTaskRoutes = [
-  /^\/asset-management\/(?:scan|checkout|checkin|transfer|bulk-move)$/,
+  /^\/asset-management\/(?:checkout|checkin|transfer|bulk-move)$/,
   /^\/assets\/new$/,
   /^\/assets\/(?!labels(?:\/|$))[^/]+(?:\/(?:edit|label))?$/,
   /^\/audit\/rounds\/new$/,

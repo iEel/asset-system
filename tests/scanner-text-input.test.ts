@@ -185,3 +185,14 @@ test("scanner can trigger a scan success callback after stopping the camera", ()
   assert.match(source, /onScanSuccess\?: \(value: string\) => void/)
   assert.match(source, /stopScanner\(\)\.finally\(\(\) => \{[\s\S]+onScanSuccess\?\.\(normalizedText\)/)
 })
+
+test("scanner input keeps mobile controls labelled, touch-safe, and unambiguous", () => {
+  const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8")
+
+  assert.match(source, /id\?: string/)
+  assert.match(source, /<input[\s\S]+id=\{id\}/)
+  assert.match(source, /min-h-11 min-w-0 w-full[^"]*sm:flex-1/)
+  assert.match(source, /<span>\{scannerRunning \|\| scannerLoading \? labels\.stop : labels\.start\}<\/span>/)
+  assert.doesNotMatch(source, /aria-label=\{labels\.stop\}/)
+  assert.doesNotMatch(source, /onClick=\{\(\) => void stopScanner\(\)\}/)
+})

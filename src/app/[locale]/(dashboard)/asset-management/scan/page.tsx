@@ -20,7 +20,7 @@ export default async function AssetScanPage({ params }: AssetScanPageProps) {
         title: t("scanTitle"),
         subtitle: t("scanSubtitle"),
         queryLabel: t("scanQueryLabel"),
-        placeholder: tGlobalSearch("placeholder"),
+        placeholder: t("scanPlaceholder"),
         openAsset: t("openAsset"),
         noResults: tGlobalSearch("noResults"),
         minChars: tGlobalSearch("minChars"),
