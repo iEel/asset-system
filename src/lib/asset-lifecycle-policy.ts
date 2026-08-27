@@ -176,6 +176,21 @@ export function getTransferTargetStatusName(toCustodianId?: string | null): "In 
   return toCustodianId ? "In Use" : null
 }
 
+export function getAssetConditionCompatibilityIssue(
+  statusName: string | null | undefined,
+  conditionName: string | null | undefined,
+): "operational_asset_is_damaged" | "repair_asset_marked_good" | null {
+  const status = normalizeAssetStateName(statusName)
+  const condition = normalizeAssetStateName(conditionName)
+  if (["ready", "in use"].includes(status) && ["damaged", "non-functional", "salvage"].includes(condition)) {
+    return "operational_asset_is_damaged"
+  }
+  if (["pending repair", "under maintenance"].includes(status) && condition === "good") {
+    return "repair_asset_marked_good"
+  }
+  return null
+}
+
 export function normalizeAssetStateName(value: string | null | undefined): string {
   return value?.trim().toLowerCase() ?? ""
 }
