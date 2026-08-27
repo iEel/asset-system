@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { getAssetLifecycleTransitionError } from "@/lib/asset-lifecycle-policy"
+import { getAssetLifecycleTransitionError, getAssetOperationConditionError } from "@/lib/asset-lifecycle-policy"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { assetCheckoutSchema } from "@/lib/validations/asset-operations"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
@@ -41,6 +41,15 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
     })
     if (activeCheckout) {
       return NextResponse.json({ error: "Asset already has an active checkout" }, { status: 400 })
+    }
+
+    const checkoutCondition = await prisma.assetCondition.findUnique({
+      where: { id: input.conditionBefore },
+      select: { name: true, isActive: true },
+    })
+    const conditionError = getAssetOperationConditionError(checkoutCondition)
+    if (conditionError) {
+      return NextResponse.json({ code: conditionError, error: "Invalid asset condition for checkout" }, { status: 400 })
     }
 
     const checkedOutStatusId = await getRequiredAssetStatusId("Checked Out")

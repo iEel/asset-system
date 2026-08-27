@@ -3,6 +3,7 @@ import { getCheckinReturnStatuses } from "@/lib/asset-status-flow"
 import {
   filterCheckoutEligibleAssets,
   filterPersonalTransferEligibleAssets,
+  getAssetOperationConditionOptions,
 } from "@/lib/asset-lifecycle-policy"
 
 export async function getAssetOperationOptions() {
@@ -120,7 +121,8 @@ export async function getAssetOperationOptions() {
     departments: departments.map((department) => ({ id: department.id, label: `${department.code} - ${department.name}` })),
     locations: locations.map((location) => ({ id: location.id, label: `${location.code} - ${location.name}` })),
     statuses: statuses.map((status) => ({ id: status.id, label: status.nameTh, name: status.name })),
-    conditions: conditions.map((condition) => ({ id: condition.id, label: condition.nameTh, name: condition.name })),
+    conditions: getAssetOperationConditionOptions(conditions)
+      .map((condition) => ({ id: condition.id, label: condition.nameTh, name: condition.name })),
   }
 }
 

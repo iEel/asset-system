@@ -122,6 +122,17 @@ export function filterSelectableConditions<T extends AssetStateMaster>(condition
   return conditions.filter((condition) => condition.isActive !== false && allowed.has(normalizeAssetStateName(condition.name)))
 }
 
+export function getAssetOperationConditionOptions<T extends AssetStateMaster>(conditions: readonly T[]): T[] {
+  return filterSelectableConditions(conditions)
+}
+
+export function getAssetOperationConditionError(
+  condition: AssetStateMaster | null | undefined,
+): Extract<AssetStateSelectionError, "ASSET_STATE_MASTER_NOT_FOUND" | "ASSET_CONDITION_NOT_SELECTABLE"> | null {
+  if (!condition || condition.isActive === false) return "ASSET_STATE_MASTER_NOT_FOUND"
+  return filterSelectableConditions([condition]).length === 1 ? null : "ASSET_CONDITION_NOT_SELECTABLE"
+}
+
 export function filterCheckoutEligibleAssets<T extends { status?: AssetStateMaster | null }>(assets: readonly T[]): T[] {
   return assets.filter((asset) => getAssetLifecycleTransitionError("checkout", asset.status?.name) === null)
 }

@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { assetCheckinSchema } from "@/lib/validations/asset-operations"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
+import { getAssetOperationConditionError } from "@/lib/asset-lifecycle-policy"
 import { isValidCheckinReturnStatus } from "@/lib/asset-status-flow"
 import { generateCheckinDocumentNo } from "@/lib/operation-document-number"
 import {
@@ -40,6 +41,14 @@ export async function POST(request: NextRequest, context: CheckinContext) {
     })
     if (!checkout) {
       return NextResponse.json({ error: "Active checkout not found" }, { status: 404 })
+    }
+    const returnCondition = await prisma.assetCondition.findUnique({
+      where: { id: input.conditionAfter },
+      select: { name: true, isActive: true },
+    })
+    const conditionError = getAssetOperationConditionError(returnCondition)
+    if (conditionError) {
+      return NextResponse.json({ code: conditionError, error: "Invalid return condition for check-in" }, { status: 400 })
     }
     if (!(await isValidCheckinReturnStatus(input.nextStatusId))) {
       return NextResponse.json({ error: "Invalid return status for check-in" }, { status: 400 })
