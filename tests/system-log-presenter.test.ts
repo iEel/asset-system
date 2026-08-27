@@ -14,6 +14,7 @@ const t = (key: string) => {
     "action.upload": "อัปโหลด",
     "action.batch_create": "สร้างแบบชุด",
     "action.deliver_notification_digest": "ส่งสรุปแจ้งเตือน",
+    "action.asset_state_review_resolve": "แก้รายการรอตรวจสอบ",
     "module.setting": "ตั้งค่าระบบ",
     "module.asset": "ทรัพย์สิน",
     "module.brand": "ยี่ห้อ/รุ่น",
@@ -29,6 +30,8 @@ const t = (key: string) => {
     "field.originalName": "ชื่อไฟล์",
     "field.fileSize": "ขนาดไฟล์",
     "field.delivered": "ส่งในระบบ",
+    "field.issueType": "ประเด็นตรวจสอบ",
+    "field.resolutionReason": "เหตุผล",
     "value.true": "เปิด",
     "value.false": "ปิด",
     "value.items": "รายการ",
@@ -67,6 +70,29 @@ test("summarizes setting updates with changed fields and before/after values", (
     { field: "เปิดใช้งาน LDAP", before: "ปิด", after: "เปิด" },
     { field: "LDAP URL", before: "ldap://old.example", after: "ldap://new.example" },
   ])
+})
+
+test("summarizes asset state review resolution without raw metadata", () => {
+  const result = buildSystemLogPresentation({
+    id: "log-review",
+    action: "asset_state_review_resolve",
+    module: "asset",
+    recordId: "asset-1",
+    oldValue: JSON.stringify({ assetTag: "AST-001", issueType: "personal_ready_with_custodian", statusId: "status-ready" }),
+    newValue: JSON.stringify({ assetTag: "AST-001", issueType: "personal_ready_with_custodian", statusId: "status-in-use", resolutionReason: "ยืนยันผู้ครอบครองจากเอกสารล่าสุด" }),
+    remark: null,
+    createdAt: new Date("2026-08-27T00:00:00.000Z"),
+    user: { username: "admin", displayName: "System Administrator" },
+  }, {
+    ...labels,
+    status: new Map([["status-ready", "พร้อมใช้งาน"], ["status-in-use", "ใช้งานอยู่"]]),
+  }, "th", t)
+
+  assert.match(result.summary, /พร้อมใช้งาน/)
+  assert.match(result.summary, /ใช้งานอยู่/)
+  assert.match(result.summary, /ยืนยันผู้ครอบครองจากเอกสารล่าสุด/)
+  assert.equal(result.changes.some((change) => change.field === "เหตุผล"), true)
+  assert.doesNotMatch(result.summary, /metadataJson/)
 })
 
 test("summarizes asset check-in with sender and destination labels", () => {

@@ -1,10 +1,15 @@
 import type { Prisma, PrismaClient } from "@prisma/client"
+import { filterSelectableConditions, normalizeAssetStateName } from "./asset-lifecycle-policy.ts"
 import { detectAssetStateIssues } from "./asset-state-review-detector.ts"
 import type {
+  AssetStateReviewErrorCode,
+  AssetStateReviewIssueType,
   AssetStateObservedSnapshot,
   AssetStateReviewCandidate,
   AssetStateReviewListFilters,
 } from "./asset-state-review-types.ts"
+import { isAssetStateReviewIssueType } from "./asset-state-review-types.ts"
+import { writeAuditLog } from "./audit-log-writer.ts"
 
 const scanPageSize = 250
 
@@ -20,6 +25,212 @@ type ScanOptions = {
   now?: Date
   statusIdByName?: ReadonlyMap<string, string>
   conditionIdByName?: ReadonlyMap<string, string>
+}
+
+export type AssetStateReviewResolutionCommand = {
+  reviewId: string
+  statusId?: string
+  conditionId?: string
+  reason: string
+}
+
+export class AssetStateReviewServiceError extends Error {
+  readonly code: AssetStateReviewErrorCode
+
+  constructor(code: AssetStateReviewErrorCode) {
+    super(code)
+    this.code = code
+    this.name = "AssetStateReviewServiceError"
+  }
+}
+
+const allowedStatusTargets: Record<AssetStateReviewIssueType, readonly string[]> = {
+  checked_out_without_open_checkout: ["Ready", "In Use"],
+  personal_ready_with_custodian: ["In Use"],
+  personal_in_use_without_custodian: ["Ready"],
+  repair_status_without_active_ticket: ["Ready", "In Use"],
+  active_repair_ticket_status_mismatch: ["Pending Repair", "Under Maintenance"],
+  open_checkout_status_mismatch: ["Checked Out"],
+  incompatible_status_condition: [],
+  legacy_condition_value: [],
+  controlled_legacy_status: ["Ready", "In Use", "Missing", "Lost"],
+  legacy_disposal_missing_previous_status: ["Ready", "In Use"],
+}
+
+const conditionResolutionIssues = new Set<AssetStateReviewIssueType>([
+  "incompatible_status_condition",
+  "legacy_condition_value",
+])
+
+export async function resolveAssetStateReview(
+  db: PrismaClient,
+  command: AssetStateReviewResolutionCommand,
+  actorId: string,
+) {
+  assertResolutionReason(command.reason)
+  if (!command.statusId && !command.conditionId) {
+    throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_TARGET_NOT_ALLOWED")
+  }
+
+  return db.$transaction(async (tx) => {
+    const review = await tx.assetStateReview.findUnique({
+      where: { id: command.reviewId },
+      include: {
+        asset: {
+          include: {
+            status: { select: { id: true, name: true } },
+            condition: { select: { id: true, name: true } },
+          },
+        },
+      },
+    })
+    if (!review) throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_NOT_FOUND")
+    if (review.reviewStatus !== "pending") throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_NOT_PENDING")
+    if (!isAssetStateReviewIssueType(review.issueType)) {
+      throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_TARGET_NOT_ALLOWED")
+    }
+    assertFreshReview(review)
+
+    const nextStatus = command.statusId
+      ? await tx.assetStatus.findFirst({ where: { id: command.statusId, isActive: true }, select: { id: true, name: true } })
+      : null
+    const nextCondition = command.conditionId
+      ? await tx.assetCondition.findFirst({ where: { id: command.conditionId, isActive: true }, select: { id: true, name: true } })
+      : null
+    if ((command.statusId && !nextStatus) || (command.conditionId && !nextCondition)) {
+      throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_MASTER_NOT_FOUND")
+    }
+    assertAllowedResolution(review.issueType, nextStatus?.name, nextCondition)
+
+    const assetUpdate = await tx.asset.updateMany({
+      where: {
+        id: review.assetId,
+        updatedAt: review.observedAssetUpdatedAt,
+        statusId: review.asset.statusId,
+        conditionId: review.asset.conditionId,
+        custodianId: review.observedCustodianId,
+      },
+      data: {
+        ...(nextStatus ? { statusId: nextStatus.id } : {}),
+        ...(nextCondition ? { conditionId: nextCondition.id } : {}),
+        updatedBy: actorId,
+      },
+    })
+    if (assetUpdate.count !== 1) throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_STALE")
+
+    await tx.assetMovement.create({
+      data: {
+        assetId: review.assetId,
+        movementType: "state_review_resolution",
+        fromValue: nextStatus ? review.observedStatusId : review.observedConditionId,
+        toValue: nextStatus?.id ?? nextCondition?.id ?? null,
+        reason: command.reason.trim(),
+        referenceType: "asset_state_review",
+        referenceId: review.id,
+        performedBy: actorId,
+        remark: review.issueType,
+      },
+    })
+    await writeAuditLog(tx, {
+      userId: actorId,
+      action: "asset_state_review_resolve",
+      module: "asset",
+      recordId: review.assetId,
+      oldValue: {
+        assetTag: review.asset.assetTag,
+        issueType: review.issueType,
+        statusId: review.observedStatusId,
+        conditionId: review.observedConditionId,
+      },
+      newValue: {
+        assetTag: review.asset.assetTag,
+        issueType: review.issueType,
+        statusId: nextStatus?.id ?? review.observedStatusId,
+        conditionId: nextCondition?.id ?? review.observedConditionId,
+        resolutionReason: command.reason.trim(),
+      },
+    })
+    const resolvedAt = new Date()
+    const reviewUpdate = await tx.assetStateReview.updateMany({
+      where: { id: review.id, reviewStatus: "pending", observedAssetUpdatedAt: review.observedAssetUpdatedAt },
+      data: {
+        reviewStatus: "resolved",
+        resolvedAt,
+        resolvedBy: actorId,
+        resolutionReason: command.reason.trim(),
+        resolvedStatusId: nextStatus?.id ?? null,
+        resolvedConditionId: nextCondition?.id ?? null,
+      },
+    })
+    if (reviewUpdate.count !== 1) throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_STALE")
+    return { id: review.id, reviewStatus: "resolved" as const, resolvedAt }
+  })
+}
+
+export async function dismissAssetStateReview(
+  db: PrismaClient,
+  reviewId: string,
+  reason: string,
+  actorId: string,
+) {
+  assertResolutionReason(reason)
+  return db.$transaction(async (tx) => {
+    const review = await tx.assetStateReview.findUnique({
+      where: { id: reviewId },
+      include: { asset: { select: { assetTag: true } } },
+    })
+    if (!review) throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_NOT_FOUND")
+    if (review.reviewStatus !== "pending") throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_NOT_PENDING")
+
+    await writeAuditLog(tx, {
+      userId: actorId,
+      action: "asset_state_review_dismiss",
+      module: "asset",
+      recordId: review.assetId,
+      oldValue: { assetTag: review.asset.assetTag, issueType: review.issueType, reviewStatus: "pending" },
+      newValue: { assetTag: review.asset.assetTag, issueType: review.issueType, reviewStatus: "dismissed", resolutionReason: reason.trim() },
+    })
+    const resolvedAt = new Date()
+    const update = await tx.assetStateReview.updateMany({
+      where: { id: review.id, reviewStatus: "pending" },
+      data: { reviewStatus: "dismissed", resolvedAt, resolvedBy: actorId, resolutionReason: reason.trim() },
+    })
+    if (update.count !== 1) throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_NOT_PENDING")
+    return { id: review.id, reviewStatus: "dismissed" as const, resolvedAt }
+  })
+}
+
+function assertFreshReview(review: {
+  observedStatusId: string | null
+  observedConditionId: string | null
+  observedCustodianId: string | null
+  observedAssetUpdatedAt: Date
+  asset: { statusId: string; conditionId: string; custodianId: string | null; updatedAt: Date }
+}) {
+  if (
+    review.asset.statusId !== review.observedStatusId
+    || review.asset.conditionId !== review.observedConditionId
+    || review.asset.custodianId !== review.observedCustodianId
+    || review.asset.updatedAt.getTime() !== review.observedAssetUpdatedAt.getTime()
+  ) throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_STALE")
+}
+
+function assertAllowedResolution(
+  issueType: AssetStateReviewIssueType,
+  statusName: string | undefined,
+  condition: { name: string } | null,
+) {
+  if (statusName && !allowedStatusTargets[issueType].some((target) => normalizeAssetStateName(target) === normalizeAssetStateName(statusName))) {
+    throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_TARGET_NOT_ALLOWED")
+  }
+  if (condition && (!conditionResolutionIssues.has(issueType) || filterSelectableConditions([condition]).length !== 1)) {
+    throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_TARGET_NOT_ALLOWED")
+  }
+  if (statusName && condition) throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_TARGET_NOT_ALLOWED")
+}
+
+function assertResolutionReason(reason: string) {
+  if (reason.trim().length < 10) throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_REASON_REQUIRED")
 }
 
 export async function scanAssetStateReviews(
