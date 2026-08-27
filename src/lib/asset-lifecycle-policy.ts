@@ -25,6 +25,16 @@ export type AssetCustodyContext = {
   custodianId?: string | null
 }
 
+export type AssetStateMaster = {
+  name?: string | null
+  isActive?: boolean
+}
+
+export type AssetStateSelectionError =
+  | AssetLifecycleErrorCode
+  | "ASSET_STATE_MASTER_NOT_FOUND"
+  | "ASSET_CONDITION_NOT_SELECTABLE"
+
 export const assetCreateStatusNames = ["Draft", "Ready"] as const
 export const selectableConditionNames = [
   "Not Assessed",
@@ -100,6 +110,48 @@ export function getAssetRegisterStatusNames(currentStatusName: string | null | u
 
 export function getSelectableConditionNames(): string[] {
   return [...selectableConditionNames]
+}
+
+export function filterAssetCreateStatuses<T extends AssetStateMaster>(statuses: readonly T[]): T[] {
+  const allowed = new Set(assetCreateStatusNames.map(normalizeAssetStateName))
+  return statuses.filter((status) => status.isActive !== false && allowed.has(normalizeAssetStateName(status.name)))
+}
+
+export function filterSelectableConditions<T extends AssetStateMaster>(conditions: readonly T[]): T[] {
+  const allowed = new Set(selectableConditionNames.map(normalizeAssetStateName))
+  return conditions.filter((condition) => condition.isActive !== false && allowed.has(normalizeAssetStateName(condition.name)))
+}
+
+export function getAssetStateSelectionError({
+  operation,
+  currentStatusName,
+  currentConditionName,
+  status,
+  condition,
+}: {
+  operation: "create" | "register_edit"
+  currentStatusName?: string | null
+  currentConditionName?: string | null
+  status: AssetStateMaster | null | undefined
+  condition: AssetStateMaster | null | undefined
+}): AssetStateSelectionError | null {
+  if (!status || !condition || status.isActive === false || condition.isActive === false) {
+    return "ASSET_STATE_MASTER_NOT_FOUND"
+  }
+
+  const statusError = getAssetLifecycleTransitionError(operation, currentStatusName, status.name)
+  if (statusError) return statusError
+
+  const nextCondition = normalizeAssetStateName(condition.name)
+  const currentCondition = normalizeAssetStateName(currentConditionName)
+  const conditionIsSelectable = selectableConditionNames.some(
+    (name) => normalizeAssetStateName(name) === nextCondition
+  )
+  if (!conditionIsSelectable && !(operation === "register_edit" && nextCondition === currentCondition)) {
+    return "ASSET_CONDITION_NOT_SELECTABLE"
+  }
+
+  return null
 }
 
 export function getMaintenanceOperationalTarget(context: AssetCustodyContext): "In Use" | "Ready" {

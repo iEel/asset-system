@@ -5,7 +5,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { syncInstalledComponentsWithParent, type ComponentSyncChanges } from "@/lib/asset-component-sync"
-import { getAssetRegisterStatusChangeError } from "@/lib/asset-lifecycle-exception-policy"
+import { getAssetStateSelectionError } from "@/lib/asset-lifecycle-policy"
 import { assetSchema } from "@/lib/validations/asset"
 
 type AssetRouteContext = {
@@ -57,24 +57,36 @@ export async function PUT(request: NextRequest, context: AssetRouteContext) {
     const input = assetSchema.parse(await request.json())
     const existing = await prisma.asset.findFirst({
       where: { id, isActive: true },
-      include: { status: { select: { name: true, nameTh: true } } },
+      include: {
+        status: { select: { name: true, nameTh: true } },
+        condition: { select: { name: true, nameTh: true } },
+      },
     })
 
     if (!existing) {
       return NextResponse.json({ error: "Asset not found" }, { status: 404 })
     }
 
-    const nextStatus = input.statusId !== existing.statusId
-      ? await prisma.assetStatus.findFirst({
-          where: { id: input.statusId, isActive: true },
-          select: { id: true, name: true, nameTh: true },
-        })
-      : null
-    if (input.statusId !== existing.statusId && !nextStatus) {
-      return NextResponse.json({ error: "Asset status not found" }, { status: 404 })
+    const [nextStatus, nextCondition] = await Promise.all([
+      prisma.assetStatus.findFirst({
+        where: { id: input.statusId, isActive: true },
+        select: { id: true, name: true, isActive: true },
+      }),
+      prisma.assetCondition.findFirst({
+        where: { id: input.conditionId, isActive: true },
+        select: { id: true, name: true, isActive: true },
+      }),
+    ])
+    const stateError = getAssetStateSelectionError({
+      operation: "register_edit",
+      currentStatusName: existing.status.name,
+      currentConditionName: existing.condition.name,
+      status: nextStatus,
+      condition: nextCondition,
+    })
+    if (stateError) {
+      return NextResponse.json({ code: stateError, error: stateError }, { status: 400 })
     }
-    const statusChangeError = getAssetRegisterStatusChangeError(existing.status, nextStatus)
-    if (statusChangeError) return NextResponse.json({ error: statusChangeError }, { status: 400 })
 
     await assertUniqueSerial(input.serialNumber, id)
 

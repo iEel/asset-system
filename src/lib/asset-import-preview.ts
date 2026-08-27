@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs"
 import { prisma } from "@/lib/db"
 import { assetOwnershipTypes, defaultAssetOwnershipType } from "@/lib/asset-ownership"
+import { filterAssetCreateStatuses, filterSelectableConditions } from "@/lib/asset-lifecycle-policy"
 import {
   buildAssetImportColumnMapping,
   buildTemplateAssetImportColumnMapping,
@@ -133,13 +134,13 @@ export async function getAssetImportReferences(): Promise<AssetImportReferences>
     ),
     locations: new Map(locations.map((location) => [location.code.trim().toLowerCase(), { id: location.id, branchId: location.branchId }])),
     statuses: new Map(
-      statuses.flatMap((status) => [
+      filterAssetCreateStatuses(statuses).flatMap((status) => [
         [status.name.trim().toLowerCase(), status.id] as const,
         [status.nameTh.trim().toLowerCase(), status.id] as const,
       ])
     ),
     conditions: new Map(
-      conditions.flatMap((condition) => [
+      filterSelectableConditions(conditions).flatMap((condition) => [
         [condition.name.trim().toLowerCase(), condition.id] as const,
         [condition.nameTh.trim().toLowerCase(), condition.id] as const,
       ])

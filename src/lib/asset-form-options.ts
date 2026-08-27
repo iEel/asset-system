@@ -1,7 +1,13 @@
 import { prisma } from "@/lib/db"
 import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
+import {
+  filterAssetCreateStatuses,
+  filterSelectableConditions,
+  getAssetRegisterStatusNames,
+  normalizeAssetStateName,
+} from "@/lib/asset-lifecycle-policy"
 
-export async function getAssetFormOptions() {
+export async function getAssetFormOptions(context?: { currentStatusId?: string | null; currentConditionId?: string | null }) {
   const [
     companies,
     branches,
@@ -87,12 +93,12 @@ export async function getAssetFormOptions() {
     }),
     prisma.assetStatus.findMany({
       where: { isActive: true },
-      select: { id: true, name: true, nameTh: true },
+      select: { id: true, name: true, nameTh: true, description: true, isActive: true },
       orderBy: { sortOrder: "asc" },
     }),
     prisma.assetCondition.findMany({
       where: { isActive: true },
-      select: { id: true, nameTh: true },
+      select: { id: true, name: true, nameTh: true, description: true, isActive: true },
       orderBy: { sortOrder: "asc" },
     }),
     prisma.supplier.findMany({
@@ -122,6 +128,16 @@ export async function getAssetFormOptions() {
   })
   const photoChecklistByCategoryId = new Map(
     photoChecklistSettings.map((setting) => [setting.key.replace("asset_category_photo_checklist:", ""), parsePhotoChecklist(setting.value)])
+  )
+
+  const currentStatus = statuses.find((status) => status.id === context?.currentStatusId)
+  const allowedStatusNames = new Set(
+    (currentStatus ? getAssetRegisterStatusNames(currentStatus.name) : filterAssetCreateStatuses(statuses).map((status) => status.name))
+      .map(normalizeAssetStateName)
+  )
+  const visibleStatuses = statuses.filter((status) => allowedStatusNames.has(normalizeAssetStateName(status.name)))
+  const visibleConditions = conditions.filter(
+    (condition) => condition.id === context?.currentConditionId || filterSelectableConditions([condition]).length === 1
   )
 
   return {
@@ -177,8 +193,8 @@ export async function getAssetFormOptions() {
       categoryId: model.categoryId,
       brandId: model.brandId,
     })),
-    statuses: statuses.map((status) => ({ id: status.id, label: status.nameTh, name: status.name })),
-    conditions: conditions.map((condition) => ({ id: condition.id, label: condition.nameTh })),
+    statuses: visibleStatuses.map((status) => ({ id: status.id, label: status.nameTh, name: status.name, description: status.description })),
+    conditions: visibleConditions.map((condition) => ({ id: condition.id, label: condition.nameTh, name: condition.name, description: condition.description })),
     suppliers: suppliers.map((supplier) => ({
       id: supplier.id,
       label: `${supplier.code} - ${supplier.name}`,

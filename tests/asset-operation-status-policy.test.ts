@@ -93,7 +93,7 @@ test("lifecycle mutation layers call exception policy helpers", () => {
   const routes = [
     ["src/lib/maintenance-ticket-service.ts", /getMaintenanceCloseStatusError/],
     ["src/app/api/disposal-requests/[id]/route.ts", /getDisposalStatusTargetError/],
-    ["src/app/api/assets/[id]/route.ts", /getAssetRegisterStatusChangeError/],
+    ["src/app/api/assets/[id]/route.ts", /getAssetStateSelectionError/],
     ["src/app/api/assets/[id]/status-correction/route.ts", /getAssetStatusCorrectionError/],
   ] as const
 
@@ -117,8 +117,9 @@ test("asset edit form guides protected lifecycle changes to the right workflow",
   const optionsSource = readFileSync("src/lib/asset-form-options.ts", "utf8")
   const formSource = readFileSync("src/components/assets/asset-form.tsx", "utf8")
 
-  assert.match(optionsSource, /select: \{ id: true, name: true, nameTh: true \}/)
-  assert.match(optionsSource, /statuses: statuses\.map\(\(status\) => \(\{ id: status\.id, label: status\.nameTh, name: status\.name \}\)\)/)
+  assert.match(optionsSource, /description: true/)
+  assert.match(optionsSource, /statuses: visibleStatuses\.map/)
+  assert.match(optionsSource, /conditions: visibleConditions\.map/)
   assert.match(formSource, /protectedAssetWorkflowStatuses/)
   assert.match(formSource, /isProtectedStatusChange/)
   assert.match(formSource, /protectedStatusEditBlocked/)

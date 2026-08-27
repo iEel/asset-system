@@ -14,6 +14,7 @@ import {
 } from "@/lib/asset-batch-create"
 import { assetSchema } from "@/lib/validations/asset"
 import { assetBatchCreateSchema } from "@/lib/validations/asset-batch"
+import { getAssetStateSelectionError } from "@/lib/asset-lifecycle-policy"
 
 export async function POST(request: Request) {
   try {
@@ -21,6 +22,20 @@ export async function POST(request: Request) {
     requirePermission(user, "asset", "create")
 
     const input = assetBatchCreateSchema.parse(await request.json())
+    const [status, condition] = await Promise.all([
+      prisma.assetStatus.findFirst({
+        where: { id: input.common.statusId, isActive: true },
+        select: { id: true, name: true, isActive: true },
+      }),
+      prisma.assetCondition.findFirst({
+        where: { id: input.common.conditionId, isActive: true },
+        select: { id: true, name: true, isActive: true },
+      }),
+    ])
+    const stateError = getAssetStateSelectionError({ operation: "create", status, condition })
+    if (stateError) {
+      return NextResponse.json({ code: stateError, error: stateError }, { status: 400 })
+    }
     const duplicateBatchValues = findDuplicateBatchValues(input.rows)
     const manualAssetTags = input.rows.map((row) => row.assetTag?.trim()).filter(Boolean) as string[]
     const serialNumbers = input.rows.map((row) => row.serialNumber?.trim()).filter(Boolean) as string[]

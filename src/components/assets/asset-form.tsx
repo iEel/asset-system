@@ -20,6 +20,7 @@ type Option = {
   id: string
   label: string
   name?: string | null
+  description?: string | null
   code?: string | null
   companyId?: string | null
   branchId?: string | null
@@ -1054,6 +1055,7 @@ export function AssetForm({
               <option value="">{t("selectStatus")}</option>
               {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
             </select>
+            {selectedStatus?.description ? <p className="mt-1 text-xs text-muted-foreground">{selectedStatus.description}</p> : null}
             {isProtectedStatusChange && (
               <div className="mt-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">
                 <div className="flex gap-2">
@@ -1082,6 +1084,11 @@ export function AssetForm({
               <option value="">{t("selectCondition")}</option>
               {conditions.map((condition) => <option key={condition.id} value={condition.id}>{condition.label}</option>)}
             </select>
+            {conditions.find((condition) => condition.id === values.conditionId)?.description ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {conditions.find((condition) => condition.id === values.conditionId)?.description}
+              </p>
+            ) : null}
           </div>
         </Section>
 

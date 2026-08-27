@@ -8,6 +8,7 @@ import { generateAssetTag } from "@/lib/asset-tag"
 import { buildAssetOrderBy, buildAssetWhere, parseAssetListParams } from "@/lib/asset-list-query"
 import { applyAssetCrossScopeFilter } from "@/lib/asset-cross-scope"
 import { buildCustodianScopeAudit } from "@/lib/asset-custodian-scope"
+import { getAssetStateSelectionError } from "@/lib/asset-lifecycle-policy"
 
 const assetInclude = {
   category: { select: { code: true, name: true } },
@@ -52,6 +53,20 @@ export async function POST(request: NextRequest) {
     requirePermission(user, "asset", "create")
 
     const input = assetSchema.parse(await request.json())
+    const [status, condition] = await Promise.all([
+      prisma.assetStatus.findFirst({
+        where: { id: input.statusId, isActive: true },
+        select: { id: true, name: true, isActive: true },
+      }),
+      prisma.assetCondition.findFirst({
+        where: { id: input.conditionId, isActive: true },
+        select: { id: true, name: true, isActive: true },
+      }),
+    ])
+    const stateError = getAssetStateSelectionError({ operation: "create", status, condition })
+    if (stateError) {
+      return NextResponse.json({ code: stateError, error: stateError }, { status: 400 })
+    }
     await assertUniqueSerial(input.serialNumber)
     const assetTag =
       input.assetTag ??

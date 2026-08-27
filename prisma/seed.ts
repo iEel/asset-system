@@ -14,49 +14,50 @@ async function main() {
   // Asset Statuses (14 items from requirement)
   // ============================================================
   const statuses = [
-    { name: "Draft", nameTh: "ร่าง", colorCode: "#94A3B8", sortOrder: 1 },
-    { name: "Ready", nameTh: "พร้อมใช้งาน", colorCode: "#22C55E", sortOrder: 2 },
-    { name: "In Use", nameTh: "ใช้งานอยู่", colorCode: "#3B82F6", sortOrder: 3 },
-    { name: "Reserved", nameTh: "จอง", colorCode: "#8B5CF6", sortOrder: 4 },
-    { name: "Checked Out", nameTh: "ถูกเบิก", colorCode: "#F59E0B", sortOrder: 5 },
-    { name: "In Transit", nameTh: "อยู่ระหว่างโอนย้าย", colorCode: "#06B6D4", sortOrder: 6 },
-    { name: "Under Maintenance", nameTh: "อยู่ระหว่างซ่อม", colorCode: "#F97316", sortOrder: 7 },
-    { name: "Pending Repair", nameTh: "รอซ่อม", colorCode: "#EF4444", sortOrder: 8 },
-    { name: "Under Inspection", nameTh: "อยู่ระหว่างตรวจสอบ", colorCode: "#A855F7", sortOrder: 9 },
-    { name: "Lost", nameTh: "สูญหาย", colorCode: "#DC2626", sortOrder: 10 },
-    { name: "Missing", nameTh: "หาไม่พบ", colorCode: "#B91C1C", sortOrder: 11 },
-    { name: "Pending Disposal", nameTh: "รอตัดจำหน่าย", colorCode: "#78716C", sortOrder: 12 },
-    { name: "Disposed", nameTh: "ตัดจำหน่ายแล้ว", colorCode: "#57534E", sortOrder: 13 },
-    { name: "Retired", nameTh: "ปลดระวาง", colorCode: "#44403C", sortOrder: 14 },
+    { name: "Draft", nameTh: "ร่าง", description: "บันทึกข้อมูลเบื้องต้นและยังไม่พร้อมนำไปใช้งาน", colorCode: "#94A3B8", sortOrder: 1 },
+    { name: "Ready", nameTh: "พร้อมใช้งาน", description: "พร้อมสำหรับมอบหมาย เบิกใช้ หรือเริ่มกระบวนการอื่น", colorCode: "#22C55E", sortOrder: 2 },
+    { name: "In Use", nameTh: "ใช้งานอยู่", description: "ทรัพย์สินระยะยาวที่มีผู้ครอบครองและกำลังใช้งาน", colorCode: "#3B82F6", sortOrder: 3 },
+    { name: "Reserved", nameTh: "จอง", description: "กันทรัพย์สินไว้สำหรับรายการหรือผู้ใช้งานที่กำหนด", colorCode: "#8B5CF6", sortOrder: 4 },
+    { name: "Checked Out", nameTh: "ถูกเบิก", description: "ถูกเบิกใช้งานชั่วคราวและมีรายการเบิกที่ยังเปิดอยู่", colorCode: "#F59E0B", sortOrder: 5 },
+    { name: "In Transit", nameTh: "อยู่ระหว่างโอนย้าย", description: "อยู่ระหว่างการขนส่งหรือโอนย้ายที่ยังไม่เสร็จสิ้น", colorCode: "#06B6D4", sortOrder: 6 },
+    { name: "Under Maintenance", nameTh: "อยู่ระหว่างซ่อม", description: "มีงานซ่อมที่เริ่มดำเนินการแล้ว", colorCode: "#F97316", sortOrder: 7 },
+    { name: "Pending Repair", nameTh: "รอซ่อม", description: "มีรายการซ่อมที่เปิดและกำลังรอเริ่มดำเนินการ", colorCode: "#EF4444", sortOrder: 8 },
+    { name: "Under Inspection", nameTh: "อยู่ระหว่างตรวจสอบ", description: "สถานะควบคุมเดิมสำหรับข้อมูลที่ต้องตรวจสอบโดยผู้ดูแล", colorCode: "#A855F7", sortOrder: 9 },
+    { name: "Lost", nameTh: "สูญหาย", description: "ยืนยันแล้วว่าทรัพย์สินสูญหาย", colorCode: "#DC2626", sortOrder: 10 },
+    { name: "Missing", nameTh: "หาไม่พบ", description: "ยังไม่พบทรัพย์สินและอยู่ระหว่างติดตาม", colorCode: "#B91C1C", sortOrder: 11 },
+    { name: "Pending Disposal", nameTh: "รอตัดจำหน่าย", description: "มีคำขอตัดจำหน่ายที่ยังไม่เสร็จสิ้น", colorCode: "#78716C", sortOrder: 12 },
+    { name: "Disposed", nameTh: "ตัดจำหน่ายแล้ว", description: "ตัดจำหน่ายออกจากการใช้งานแล้ว", colorCode: "#57534E", sortOrder: 13 },
+    { name: "Retired", nameTh: "ปลดระวาง", description: "ยุติการใช้งานและเก็บเป็นประวัติ", colorCode: "#44403C", sortOrder: 14 },
   ]
 
   for (const s of statuses) {
     await prisma.assetStatus.upsert({
       where: { name: s.name },
-      update: { nameTh: s.nameTh, colorCode: s.colorCode, sortOrder: s.sortOrder },
+      update: { nameTh: s.nameTh, description: s.description, colorCode: s.colorCode, sortOrder: s.sortOrder },
       create: s,
     })
   }
   console.log(`  ✅ Asset Statuses: ${statuses.length} items`)
 
   // ============================================================
-  // Asset Conditions (8 items from requirement)
+  // Asset Conditions (9 items; Excellent/Poor retained for historical readability)
   // ============================================================
   const conditions = [
-    { name: "New", nameTh: "ใหม่", colorCode: "#22C55E", sortOrder: 1 },
-    { name: "Excellent", nameTh: "ดีมาก", colorCode: "#16A34A", sortOrder: 2 },
-    { name: "Good", nameTh: "ดี", colorCode: "#3B82F6", sortOrder: 3 },
-    { name: "Fair", nameTh: "พอใช้", colorCode: "#F59E0B", sortOrder: 4 },
-    { name: "Poor", nameTh: "แย่", colorCode: "#F97316", sortOrder: 5 },
-    { name: "Damaged", nameTh: "เสียหาย", colorCode: "#EF4444", sortOrder: 6 },
-    { name: "Non-functional", nameTh: "ใช้งานไม่ได้", colorCode: "#DC2626", sortOrder: 7 },
-    { name: "Salvage", nameTh: "ซาก", colorCode: "#78716C", sortOrder: 8 },
+    { name: "Not Assessed", nameTh: "ยังไม่ประเมิน", description: "ยังไม่ได้ตรวจยืนยันสภาพจริงของทรัพย์สิน", colorCode: "#64748B", sortOrder: 1 },
+    { name: "New", nameTh: "ใหม่", description: "ทรัพย์สินใหม่หรือยังไม่ผ่านการใช้งาน", colorCode: "#22C55E", sortOrder: 2 },
+    { name: "Excellent", nameTh: "ดีมาก", description: "ค่าเดิมสำหรับอ่านประวัติ ไม่ใช้กับรายการใหม่", colorCode: "#16A34A", sortOrder: 3 },
+    { name: "Good", nameTh: "ดี", description: "ใช้งานได้ตามปกติและไม่พบความเสียหายสำคัญ", colorCode: "#3B82F6", sortOrder: 4 },
+    { name: "Fair", nameTh: "พอใช้", description: "ยังใช้งานได้แต่มีการสึกหรอหรือข้อสังเกต", colorCode: "#F59E0B", sortOrder: 5 },
+    { name: "Poor", nameTh: "แย่", description: "ค่าเดิมสำหรับอ่านประวัติ ไม่ใช้กับรายการใหม่", colorCode: "#F97316", sortOrder: 6 },
+    { name: "Damaged", nameTh: "เสียหาย", description: "พบความเสียหายและควรประเมินการซ่อม", colorCode: "#EF4444", sortOrder: 7 },
+    { name: "Non-functional", nameTh: "ใช้งานไม่ได้", description: "ไม่สามารถใช้งานตามหน้าที่หลักได้", colorCode: "#DC2626", sortOrder: 8 },
+    { name: "Salvage", nameTh: "ซาก", description: "ไม่เหมาะกับการใช้งานและรอพิจารณาตัดจำหน่าย", colorCode: "#78716C", sortOrder: 9 },
   ]
 
   for (const c of conditions) {
     await prisma.assetCondition.upsert({
       where: { name: c.name },
-      update: { nameTh: c.nameTh, colorCode: c.colorCode, sortOrder: c.sortOrder },
+      update: { nameTh: c.nameTh, description: c.description, colorCode: c.colorCode, sortOrder: c.sortOrder },
       create: c,
     })
   }

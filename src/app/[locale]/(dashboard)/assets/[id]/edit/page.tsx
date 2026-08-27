@@ -16,8 +16,7 @@ export default async function EditAssetPage({ params, searchParams }: EditAssetP
   await requirePagePermission(locale, "asset", "edit")
   const returnToHref = normalizeAssetReturnTo(locale, rawSearchParams.returnTo)
 
-  const [asset, options] = await Promise.all([
-    prisma.asset.findFirst({
+  const asset = await prisma.asset.findFirst({
       where: { id, isActive: true },
       include: {
         attachments: {
@@ -33,11 +32,10 @@ export default async function EditAssetPage({ params, searchParams }: EditAssetP
           select: { purchaseDocumentId: true },
         },
       },
-    }),
-    getAssetFormOptions(),
-  ])
+    })
 
   if (!asset) notFound()
+  const options = await getAssetFormOptions({ currentStatusId: asset.statusId, currentConditionId: asset.conditionId })
 
   return (
     <div className="space-y-6">
