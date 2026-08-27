@@ -37,6 +37,10 @@ Minimum evidence to keep:
 - Result status
 - Checksum or integrity result if available
 
+The `--backup-confirmed` flag used by `npm run migration:init` and `npm run migration:apply` is an operator attestation only. It does not start, verify, or retain a SQL Server backup. Complete the backup using the organization's normal process and retain the evidence above before running either command.
+
+After the manual migration ledger is initialized, retain the corresponding `migration:status`, `migration:apply`, or `migration:baseline` terminal output with the backup/change evidence. A ledger success row proves that the SQL command completed; it does not replace backup integrity verification or restore testing.
+
 ## Upload Directory Backup
 
 Back up the configured `UPLOAD_DIR`, for example:

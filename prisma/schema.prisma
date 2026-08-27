@@ -1038,6 +1038,24 @@ model IntegrationApiClient {
   @@map("integration_api_clients")
 }
 
+model ManualMigrationHistory {
+  id             String   @id @default(uuid()) @db.NVarChar(1000)
+  migrationName  String   @db.NVarChar(255)
+  checksumSha256 String   @db.Char(64)
+  databaseName   String   @db.NVarChar(255)
+  status         String   @db.NVarChar(20)
+  appliedAt      DateTime @default(now())
+  appliedBy      String   @db.NVarChar(255)
+  reason         String   @db.NVarChar(500)
+  executionMs    Int
+  errorMessage   String?  @db.NVarChar(2000)
+  createdAt      DateTime @default(now())
+
+  // Filtered unique accepted-history enforcement lives in the manual SQL migration.
+  @@index([databaseName, migrationName, appliedAt], map: "IX_manual_migration_history_database_name_applied")
+  @@map("manual_migration_history")
+}
+
 model SystemSetting {
   id          String   @id @default(uuid())
   key         String   @unique @db.NVarChar(100)

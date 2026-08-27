@@ -20,7 +20,7 @@
 - Maintenance: `MaintenancePlan`, `MaintenanceTicket`
 - Disposal: `DisposalRequest`
 - Admin/RBAC: `User`, `Role`, `Permission`, `UserRole`, `RolePermission`
-- System: `SystemLog`, `SystemSetting`, `Notification`, `NotificationUserState`, `IntegrationApiClient`
+- System: `SystemLog`, `SystemSetting`, `Notification`, `NotificationUserState`, `IntegrationApiClient`, `ManualMigrationHistory`
 
 - Audit rounds treat installed component assets as first-class `AuditItem` rows. `AssetComponent` remains the relationship source; no audit-specific component relationship table is added.
 - Parent-to-component master-data sync updates only supported ownership/location fields and records `AssetMovement` rows on each component asset.
@@ -67,11 +67,51 @@ These `.env` database connection settings are unchanged by Integration API token
 - Production schema changes require a database backup before deployment.
 - Production schema changes require an approved change record.
 - Production schema changes require a rollback plan or a tested restore procedure.
-- Production schema changes that need deterministic SQL should be stored under `prisma/manual-migrations/` and executed with `npx prisma db execute --file <script>` after approval.
+- Production schema changes that need deterministic SQL should be stored under `prisma/manual-migrations/`. After the migration ledger is initialized, execute them only through `npm run migration:apply`; direct `npx prisma db execute --file ...` commands below are preserved as pre-ledger historical instructions.
 - `prisma/manual-migrations/2026-06-12-add-performance-indexes.sql` is the current production performance-index script. Its index names match the `@@index(..., map: "...")` names in `prisma/schema.prisma`, so rerunning the script is safe and future schema checks do not create differently named duplicate indexes.
 - `prisma/manual-migrations/2026-06-14-add-integration-api-clients.sql` adds the `integration_api_clients` table for DB-backed Integration API token clients. Apply it in production after backup/approval and before deploying or using the admin token manager.
-- `prisma/manual-migrations/2026-07-13-add-disposal-evidence-exception.sql` adds the disposal-request historical-evidence exception reason, granting user ID, and grant timestamp. Apply it only after a fresh backup has been completed and verified; use `npx prisma db execute --file prisma/manual-migrations/2026-07-13-add-disposal-evidence-exception.sql` only after the operator confirms that backup.
+- `prisma/manual-migrations/2026-07-13-add-disposal-evidence-exception.sql` adds the disposal-request historical-evidence exception reason, granting user ID, and grant timestamp. Apply it only after a fresh backup has been completed and verified; after ledger initialization use `npm run migration:apply -- 2026-07-13-add-disposal-evidence-exception.sql --backup-confirmed --reason "<approved change reason>"`.
 - Do not assume Prisma migrate support until it is validated against this project's SQL Server setup.
+
+### Manual Migration Ledger
+
+The ledger records manual SQL execution per database with the exact filename, SHA-256 checksum, operator, reason, completion time, duration, and `success`, `failed`, or `baselined` result. It never stores connection strings or credentials.
+
+Initialize it once, only after a fresh verified backup:
+
+```powershell
+npm run migration:init -- --backup-confirmed --reason "Verified backup before initializing migration ledger"
+```
+
+Check the target database without changing it:
+
+```powershell
+npm run migration:status
+```
+
+Apply exactly one new repository migration:
+
+```powershell
+npm run migration:apply -- 2026-08-27-example.sql --backup-confirmed --reason "Approved production change record CHG-0001"
+```
+
+Record a migration that was applied before the ledger existed, after verifying its database effect:
+
+```powershell
+npm run migration:baseline -- 2026-08-27-example.sql --confirm-baseline --reason "Verified existing table and indexes against CHG-0001"
+```
+
+Status meanings:
+
+- `pending`: no accepted record exists for the current file checksum.
+- `applied`: a successful or baselined record matches the current checksum.
+- `failed`: the latest current-checksum attempt failed and no accepted record exists.
+- `checksum_mismatch`: an accepted filename exists with different file bytes; stop deployment and create a new migration instead of editing the accepted file.
+- `untracked`: the ledger has not been initialized, so status is read-only and cannot determine history.
+
+Exit code `0` means the status/operation is acceptable, `1` means usage or execution failure, and `2` means the ledger is not initialized or a checksum mismatch exists. Pending files are informational and do not make an initialized `migration:status` fail.
+
+Historical migrations must be baselined individually. Do not infer application merely because a SQL file exists in Git. Start by verifying the Asset State Governance structures and the active `Under Inspection` master row before baselining those two 2026-08-27 scripts; verify every older migration against its documented table, column, or index effects.
 
 ## Operational Notes
 
