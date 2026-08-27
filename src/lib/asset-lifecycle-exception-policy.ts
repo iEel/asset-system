@@ -31,13 +31,8 @@ export function getAssetRegisterStatusChangeError(
   currentStatus: AssetLifecycleStatus | null | undefined,
   nextStatus: AssetLifecycleStatus | null | undefined
 ) {
-  const currentStatusName = normalizeStatusName(currentStatus?.name)
-  const nextStatusName = normalizeStatusName(nextStatus?.name)
-  if (!nextStatusName || currentStatusName === nextStatusName) return null
-  if (protectedLifecycleStatuses.has(currentStatusName) || protectedLifecycleStatuses.has(nextStatusName)) {
-    return "Protected lifecycle statuses must be changed through the proper workflow or status correction"
-  }
-  return null
+  const error = getAssetLifecycleTransitionError("register_edit", currentStatus?.name, nextStatus?.name)
+  return error ? "Protected lifecycle statuses must be changed through the proper workflow or status correction" : null
 }
 
 export function getAssetStatusCorrectionError(
@@ -60,5 +55,9 @@ export function canCorrectAssetStatus(status: AssetLifecycleStatus | null | unde
 }
 
 function normalizeStatusName(value: string | null | undefined) {
-  return value?.trim().toLowerCase() ?? ""
+  return normalizeAssetStateName(value)
 }
+import {
+  getAssetLifecycleTransitionError,
+  normalizeAssetStateName,
+} from "./asset-lifecycle-policy.ts"

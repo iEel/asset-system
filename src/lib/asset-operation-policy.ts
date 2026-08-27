@@ -1,3 +1,10 @@
+import {
+  getAssetLifecycleTransitionError,
+  getTransferTargetStatusName,
+} from "./asset-lifecycle-policy.ts"
+
+export { getTransferTargetStatusName }
+
 export type AssetOperation = "checkout" | "transfer"
 
 export type AssetOperationStatus = {
@@ -5,35 +12,12 @@ export type AssetOperationStatus = {
   nameTh?: string | null
 }
 
-const checkoutBlockedStatusNames = new Set([
-  "disposed",
-  "retired",
-  "pending disposal",
-  "under maintenance",
-  "lost",
-  "missing",
-])
-
-const transferBlockedStatusNames = new Set([
-  "disposed",
-  "retired",
-  "pending disposal",
-])
-
 export function getAssetOperationStatusError(operation: AssetOperation, status: AssetOperationStatus | null | undefined) {
-  const statusName = normalizeStatusName(status?.name)
-  const blockedStatuses = operation === "checkout" ? checkoutBlockedStatusNames : transferBlockedStatusNames
-  if (!statusName || !blockedStatuses.has(statusName)) return null
+  const lifecycleOperation = operation === "checkout" ? "checkout" : "assign_custodian"
+  const error = getAssetLifecycleTransitionError(lifecycleOperation, status?.name)
+  if (!error) return null
 
   return operation === "checkout"
     ? "Asset status does not allow checkout"
     : "Asset status does not allow transfer"
-}
-
-export function getTransferTargetStatusName(toCustodianId?: string | null): "In Use" | null {
-  return toCustodianId ? "In Use" : null
-}
-
-function normalizeStatusName(value: string | null | undefined) {
-  return value?.trim().toLowerCase() ?? ""
 }

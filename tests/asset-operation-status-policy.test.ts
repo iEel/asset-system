@@ -23,8 +23,8 @@ test("blocks checkout for closed and review-required asset statuses", () => {
   assert.equal(getAssetOperationStatusError("checkout", { name: "Ready", nameTh: "พร้อมใช้งาน" }), null)
 })
 
-test("blocks normal transfer for closed and pending-disposal asset statuses", () => {
-  for (const statusName of ["Disposed", "Retired", "Pending Disposal"]) {
+test("allows personal transfer only from Ready or In Use", () => {
+  for (const statusName of ["Draft", "Checked Out", "Pending Repair", "Under Maintenance", "Under Inspection", "Missing", "Lost", "Disposed", "Retired", "Pending Disposal"]) {
     assert.equal(
       getAssetOperationStatusError("transfer", { name: statusName, nameTh: statusName }),
       "Asset status does not allow transfer",
@@ -32,8 +32,8 @@ test("blocks normal transfer for closed and pending-disposal asset statuses", ()
     )
   }
 
-  assert.equal(getAssetOperationStatusError("transfer", { name: "Under Maintenance", nameTh: "อยู่ระหว่างซ่อม" }), null)
   assert.equal(getAssetOperationStatusError("transfer", { name: "Ready", nameTh: "พร้อมใช้งาน" }), null)
+  assert.equal(getAssetOperationStatusError("transfer", { name: "In Use", nameTh: "ใช้งานอยู่" }), null)
 })
 
 test("restricts maintenance close to ready or pending disposal asset states", () => {
@@ -59,7 +59,10 @@ test("blocks protected lifecycle status changes through generic asset edit", () 
     getAssetRegisterStatusChangeError({ name: "Disposed" }, { name: "Ready" }),
     "Protected lifecycle statuses must be changed through the proper workflow or status correction"
   )
-  assert.equal(getAssetRegisterStatusChangeError({ name: "Ready" }, { name: "Checked Out" }), null)
+  assert.equal(
+    getAssetRegisterStatusChangeError({ name: "Ready" }, { name: "Checked Out" }),
+    "Protected lifecycle statuses must be changed through the proper workflow or status correction"
+  )
   assert.equal(getAssetRegisterStatusChangeError({ name: "Ready" }, { name: "Ready" }), null)
 })
 
