@@ -1765,6 +1765,7 @@
   },
   "transfer": {
     "title": "Transfer Asset",
+    "printDocument": "Print transfer document",
     "asset": "Asset",
     "selectAsset": "Select asset",
     "toLocation": "Destination Location",
@@ -3980,6 +3981,37 @@
     "advancedSettings": "Advanced settings",
     "advancedSettingsDescription": "Additional settings without a dedicated editor. Change only when needed.",
     "savedSuccess": "System settings saved"
+  },
+  "transactionCancellation": {
+    "action": "Cancel transaction",
+    "title": "Confirm transaction cancellation",
+    "description": "The system verifies the latest workflow state and restores the prior state while retaining all documents and history.",
+    "reasonLabel": "Cancellation reason",
+    "reasonPlaceholder": "Describe what was recorded incorrectly and why it must be restored",
+    "confirm": "Confirm cancellation",
+    "cancel": "Go back",
+    "loading": "Checking whether this transaction can be cancelled",
+    "blockedTitle": "Automatic restoration is blocked",
+    "blockedDescription": "A review item is created if you confirm a cancellation with blockers.",
+    "success": "Transaction cancelled and prior state restored",
+    "error": "Could not cancel the transaction. Refresh the data and try again.",
+    "reasonTooShort": "Enter a reason of at least 5 characters",
+    "operator": "Original operator",
+    "currentState": "Current state",
+    "restoreState": "State to restore",
+    "components": "Affected components",
+    "voidLabel": "VOID / Cancelled",
+    "voidReason": "Cancellation reason",
+    "voidedBy": "Cancelled by",
+    "voidedAt": "Cancelled at",
+    "blockers": {
+      "unsupported_snapshot": "This historical transaction has no complete supported snapshot.",
+      "not_active": "This transaction is already cancelled.",
+      "not_latest": "A newer transaction exists for this asset.",
+      "asset_changed": "The current asset state no longer matches this transaction.",
+      "components_changed": "Affected component state no longer matches this transaction.",
+      "downstream_work": "A downstream workflow already depends on this state."
+    }
   },
   "integrationApiPage": {
     "title": "Integration API Clients",

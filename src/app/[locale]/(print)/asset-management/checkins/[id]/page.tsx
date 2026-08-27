@@ -6,6 +6,9 @@ import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-docum
 import { formatDate, formatDateTime } from "@/lib/utils"
 import { OperationDocumentPrint } from "@/components/asset-operations/operation-document-print"
 import { normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
+import { hasPermission } from "@/lib/auth-utils"
+import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
+import { TransactionCancelDialog } from "@/components/asset-operations/transaction-cancel-dialog"
 
 type CheckinPrintPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -15,12 +18,13 @@ type CheckinPrintPageProps = {
 export default async function CheckinPrintPage({ params, searchParams }: CheckinPrintPageProps) {
   const { locale, id } = await params
   const filters = await searchParams
-  await requirePagePermission(locale, "asset", "view")
+  const user = await requirePagePermission(locale, "asset", "view")
 
   const t = await getTranslations("checkin")
   const tCheckout = await getTranslations("checkout")
   const tAsset = await getTranslations("asset")
   const tCommon = await getTranslations("common")
+  const tCancellation = await getTranslations("transactionCancellation")
 
   const checkin = await prisma.assetCheckin.findUnique({
     where: { id },
@@ -55,6 +59,9 @@ export default async function CheckinPrintPage({ params, searchParams }: Checkin
   })
   if (!checkin) notFound()
 
+  const beforeSnapshot = parseAssetTransactionSnapshot(checkin.beforeSnapshotJson)
+  const afterSnapshot = parseAssetTransactionSnapshot(checkin.afterSnapshotJson)
+
   const [photoAttachments, returnSignatureAttachment, receiveSignatureAttachment] = await Promise.all([
     prisma.attachment.findMany({
       where: { module: "checkin_photo_after", referenceId: checkin.id },
@@ -80,6 +87,10 @@ export default async function CheckinPrintPage({ params, searchParams }: Checkin
     checkin.conditionAfter,
     checkin.nextStatus,
     checkin.nextLocationId,
+    beforeSnapshot?.statusId,
+    beforeSnapshot?.currentLocationId,
+    afterSnapshot?.statusId,
+    afterSnapshot?.currentLocationId,
   ])
   const checkoutDestination = getCheckoutDestination(checkin.checkout.checkoutType, {
     custodian: checkin.checkout.custodian ? `${checkin.checkout.custodian.code} - ${checkin.checkout.custodian.fullNameTh}` : null,
@@ -97,6 +108,23 @@ export default async function CheckinPrintPage({ params, searchParams }: Checkin
         : `/${locale}/assets/${checkin.asset.id}`}
       backLabel={tCommon("back")}
       printLabel={t("printReturn")}
+      toolbarActions={hasPermission(user, "asset", "edit") && checkin.transactionStatus === "active" ? (
+        <TransactionCancelDialog
+          type="checkin"
+          transactionId={checkin.id}
+          expectedUpdatedAt={checkin.updatedAt.toISOString()}
+          originalOperator={checkin.receiveBy}
+          currentState={formatSnapshotState(afterSnapshot, labels)}
+          restoreState={formatSnapshotState(beforeSnapshot, labels)}
+          componentCount={beforeSnapshot?.components.length ?? 0}
+          labels={buildCancellationLabels(tCancellation)}
+        />
+      ) : null}
+      voidInfo={checkin.transactionStatus === "void" ? {
+        label: tCancellation("voidLabel"), voidReasonLabel: tCancellation("voidReason"), voidedByLabel: tCancellation("voidedBy"),
+        voidedAtLabel: tCancellation("voidedAt"), voidReason: checkin.voidReason, voidedBy: checkin.voidedBy,
+        voidedAt: formatDateTime(checkin.voidedAt),
+      } : null}
       sections={[
         {
           title: t("documentInfo"),
@@ -142,6 +170,24 @@ export default async function CheckinPrintPage({ params, searchParams }: Checkin
       ]}
     />
   )
+}
+
+function formatSnapshotState(snapshot: ReturnType<typeof parseAssetTransactionSnapshot>, labels: Map<string, string>) {
+  if (!snapshot) return "-"
+  return `${labelOrDash(labels, snapshot.statusId)} · ${labelOrDash(labels, snapshot.currentLocationId)}`
+}
+
+function buildCancellationLabels(t: Awaited<ReturnType<typeof getTranslations>>) {
+  return {
+    action: t("action"), title: t("title"), description: t("description"), reasonLabel: t("reasonLabel"),
+    reasonPlaceholder: t("reasonPlaceholder"), confirm: t("confirm"), cancel: t("cancel"), loading: t("loading"),
+    blockedTitle: t("blockedTitle"), blockedDescription: t("blockedDescription"), success: t("success"), error: t("error"),
+    reasonTooShort: t("reasonTooShort"), operator: t("operator"), currentState: t("currentState"), restoreState: t("restoreState"),
+    components: t("components"), blockers: {
+      unsupported_snapshot: t("blockers.unsupported_snapshot"), not_active: t("blockers.not_active"), not_latest: t("blockers.not_latest"),
+      asset_changed: t("blockers.asset_changed"), components_changed: t("blockers.components_changed"), downstream_work: t("blockers.downstream_work"),
+    },
+  }
 }
 
 function getCheckoutDestination(

@@ -60,6 +60,9 @@ import { withPerformanceTiming } from "@/lib/performance-timing"
 import { splitRelationshipPreview } from "@/lib/asset-relationship-preview"
 import { getAuditRoundItemResultLabelKey, getAuditRoundItemStatusLabelKey } from "@/lib/audit-round-result-filters"
 import { getAssetDetailLoadPolicy } from "@/lib/asset-detail-data"
+import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-document"
+import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
+import { TransactionCancelDialog } from "@/components/asset-operations/transaction-cancel-dialog"
 import {
   compactMovementDetails,
   createHealthItem,
@@ -127,6 +130,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const tMaintenance = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
   const tAudit = await getTranslations("auditRound")
+  const tCancellation = await getTranslations("transactionCancellation")
   const [rawAsset, qrBaseUrlSetting, readyStatus] = await withPerformanceTiming(
     "asset-detail.initial-data",
     () => Promise.all([
@@ -263,6 +267,52 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     : null
 
   if (!asset) notFound()
+
+  const latestTransactionSelect = {
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+    transactionStatus: true,
+    beforeSnapshotJson: true,
+    afterSnapshotJson: true,
+  } as const
+  const [latestCancellationCheckout, latestCancellationCheckin, latestCancellationTransfer] = canEditAsset
+    ? await Promise.all([
+        prisma.assetCheckout.findFirst({
+          where: { assetId: asset.id },
+          orderBy: { createdAt: "desc" },
+          select: { ...latestTransactionSelect, checkedOutBy: true },
+        }),
+        prisma.assetCheckin.findFirst({
+          where: { assetId: asset.id },
+          orderBy: { createdAt: "desc" },
+          select: { ...latestTransactionSelect, receiveBy: true },
+        }),
+        prisma.assetTransfer.findFirst({
+          where: { assetId: asset.id },
+          orderBy: { createdAt: "desc" },
+          select: { ...latestTransactionSelect, createdBy: true },
+        }),
+      ])
+    : [null, null, null]
+  const latestAssetTransaction = [
+    latestCancellationCheckout ? { ...latestCancellationCheckout, type: "checkout" as const, operator: latestCancellationCheckout.checkedOutBy } : null,
+    latestCancellationCheckin ? { ...latestCancellationCheckin, type: "checkin" as const, operator: latestCancellationCheckin.receiveBy } : null,
+    latestCancellationTransfer ? { ...latestCancellationTransfer, type: "transfer" as const, operator: latestCancellationTransfer.createdBy } : null,
+  ].filter((transaction): transaction is NonNullable<typeof transaction> => transaction !== null)
+    .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0] ?? null
+  const cancellationBeforeSnapshot = latestAssetTransaction
+    ? parseAssetTransactionSnapshot(latestAssetTransaction.beforeSnapshotJson)
+    : null
+  const cancellationAfterSnapshot = latestAssetTransaction
+    ? parseAssetTransactionSnapshot(latestAssetTransaction.afterSnapshotJson)
+    : null
+  const cancellationReferenceLabels = await buildReferenceLabelMap([
+    cancellationBeforeSnapshot?.statusId,
+    cancellationBeforeSnapshot?.currentLocationId,
+    cancellationAfterSnapshot?.statusId,
+    cancellationAfterSnapshot?.currentLocationId,
+  ])
 
   const [evidenceCheckoutReferences, evidenceMaintenanceReferences, evidenceAuditFindingReferences, evidenceDisposalReferences] = await withPerformanceTiming(
     "asset-detail.evidence-references",
@@ -617,7 +667,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           ? t("dataHealthLicenseResponsibility")
           : t("dataHealthResponsibleDepartment")
   const modelSpecs = parseModelSpecs(asset.model?.specs)
-  const activeCheckout = asset.checkouts.find((checkout) => !checkout.isReturned)
+  const activeCheckout = asset.checkouts.find((checkout) => checkout.transactionStatus === "active" && !checkout.isReturned)
   const latestCheckout = asset.checkouts[0]
   const warrantyState = getWarrantyState(asset.warrantyEndDate)
   const licenseTotalSeats = asset.licenseTotalSeats ?? null
@@ -875,6 +925,20 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             </Link>
           ) : null}
           <AssetDetailActionMenu label={t("detailMoreActions")} closeLabel={tCommon("close")}>
+            {canEditAsset && latestAssetTransaction?.transactionStatus === "active" ? (
+              <div className="[&_button]:w-full">
+                <TransactionCancelDialog
+                  type={latestAssetTransaction.type}
+                  transactionId={latestAssetTransaction.id}
+                  expectedUpdatedAt={latestAssetTransaction.updatedAt.toISOString()}
+                  originalOperator={latestAssetTransaction.operator}
+                  currentState={formatCancellationSnapshot(cancellationAfterSnapshot, cancellationReferenceLabels)}
+                  restoreState={formatCancellationSnapshot(cancellationBeforeSnapshot, cancellationReferenceLabels)}
+                  componentCount={cancellationBeforeSnapshot?.components.length ?? 0}
+                  labels={buildCancellationLabels(tCancellation)}
+                />
+              </div>
+            ) : null}
             <div className="[&_button]:w-full">
               <ActivityDrawer
                 title={t("activityDrawerTitle")}
@@ -2418,6 +2482,27 @@ function getMovementTone(movementType: string): MovementTone {
   if (movementType.includes("audit") || movementType.includes("maintenance")) return "warning"
   if (movementType.includes("remove") || movementType.includes("disposal")) return "danger"
   return "neutral"
+}
+
+function formatCancellationSnapshot(
+  snapshot: ReturnType<typeof parseAssetTransactionSnapshot>,
+  labels: Map<string, string>,
+) {
+  if (!snapshot) return "-"
+  return `${labelOrDash(labels, snapshot.statusId)} · ${labelOrDash(labels, snapshot.currentLocationId)}`
+}
+
+function buildCancellationLabels(t: Awaited<ReturnType<typeof getTranslations>>) {
+  return {
+    action: t("action"), title: t("title"), description: t("description"), reasonLabel: t("reasonLabel"),
+    reasonPlaceholder: t("reasonPlaceholder"), confirm: t("confirm"), cancel: t("cancel"), loading: t("loading"),
+    blockedTitle: t("blockedTitle"), blockedDescription: t("blockedDescription"), success: t("success"), error: t("error"),
+    reasonTooShort: t("reasonTooShort"), operator: t("operator"), currentState: t("currentState"), restoreState: t("restoreState"),
+    components: t("components"), blockers: {
+      unsupported_snapshot: t("blockers.unsupported_snapshot"), not_active: t("blockers.not_active"), not_latest: t("blockers.not_latest"),
+      asset_changed: t("blockers.asset_changed"), components_changed: t("blockers.components_changed"), downstream_work: t("blockers.downstream_work"),
+    },
+  }
 }
 
 function getMovementCategory(movementType: string) {

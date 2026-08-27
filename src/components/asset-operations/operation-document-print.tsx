@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { ArrowLeft, Printer } from "lucide-react"
+import { VoidDocumentBanner, type VoidDocumentInfo } from "@/components/asset-operations/void-document-banner"
 
 type DocumentField = {
   label: string
@@ -25,6 +26,8 @@ type OperationDocumentPrintProps = {
     fields: DocumentField[]
   }>
   signatures: SignatureBox[]
+  voidInfo?: VoidDocumentInfo | null
+  toolbarActions?: React.ReactNode
 }
 
 export function OperationDocumentPrint({
@@ -35,6 +38,8 @@ export function OperationDocumentPrint({
   printLabel,
   sections,
   signatures,
+  voidInfo,
+  toolbarActions,
 }: OperationDocumentPrintProps) {
   return (
     <main className="min-h-screen bg-background text-foreground print:bg-white">
@@ -60,6 +65,10 @@ export function OperationDocumentPrint({
             padding: 0 !important;
             max-width: none !important;
           }
+
+          [data-void-watermark] {
+            display: flex !important;
+          }
         }
       `}</style>
 
@@ -69,26 +78,32 @@ export function OperationDocumentPrint({
             <ArrowLeft className="h-4 w-4" />
             {backLabel}
           </Link>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
-          >
-            <Printer className="h-4 w-4" />
-            {printLabel}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {toolbarActions}
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+            >
+              <Printer className="h-4 w-4" />
+              {printLabel}
+            </button>
+          </div>
         </div>
       </div>
 
       <section className="px-6 py-8 print:px-0 print:py-0">
-        <div className="operation-print-page mx-auto max-w-5xl rounded-md border border-slate-300 bg-white p-8 text-slate-950 shadow-sm">
-          <header className="border-b border-slate-300 pb-5">
-            <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">Asset Management System</div>
-            <h1 className="mt-2 text-2xl font-bold text-slate-950">{title}</h1>
-            <p className="mt-1 text-sm text-slate-600">{subtitle}</p>
-          </header>
+        <div className="operation-print-page relative mx-auto max-w-5xl overflow-hidden rounded-md border border-slate-300 bg-white p-8 text-slate-950 shadow-sm">
+          {voidInfo ? <div data-void-watermark className="pointer-events-none absolute inset-0 z-0 hidden items-center justify-center print:flex" aria-hidden="true"><span className="-rotate-12 text-8xl font-black tracking-[-0.03em] text-red-600/10">VOID</span></div> : null}
+          <div className="relative z-10">
+            {voidInfo ? <VoidDocumentBanner info={voidInfo} /> : null}
+            <header className="border-b border-slate-300 pb-5">
+              <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">Asset Management System</div>
+              <h1 className="mt-2 text-2xl font-bold text-slate-950">{title}</h1>
+              <p className="mt-1 text-sm text-slate-600">{subtitle}</p>
+            </header>
 
-          <div className="mt-6 grid grid-cols-1 gap-5">
+            <div className="mt-6 grid grid-cols-1 gap-5">
             {sections.map((section) => (
               <section key={section.title} className="break-inside-avoid">
                 <h2 className="mb-2 text-sm font-bold text-slate-950">{section.title}</h2>
@@ -102,9 +117,9 @@ export function OperationDocumentPrint({
                 </div>
               </section>
             ))}
-          </div>
+            </div>
 
-          <section className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-3">
+            <section className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-3">
             {signatures.map((signature) => (
               <div key={signature.title} className="break-inside-avoid rounded-sm border border-slate-300 p-4">
                 <div className="flex h-20 items-center justify-center border-b border-slate-300">
@@ -117,7 +132,8 @@ export function OperationDocumentPrint({
                 <div className="mt-1 text-center text-xs text-slate-500">{signature.helper}</div>
               </div>
             ))}
-          </section>
+            </section>
+          </div>
         </div>
       </section>
     </main>

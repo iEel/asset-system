@@ -6,6 +6,9 @@ import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-docum
 import { formatDate, formatDateTime } from "@/lib/utils"
 import { OperationDocumentPrint } from "@/components/asset-operations/operation-document-print"
 import { normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
+import { hasPermission } from "@/lib/auth-utils"
+import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
+import { TransactionCancelDialog } from "@/components/asset-operations/transaction-cancel-dialog"
 
 type CheckoutPrintPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -15,11 +18,12 @@ type CheckoutPrintPageProps = {
 export default async function CheckoutPrintPage({ params, searchParams }: CheckoutPrintPageProps) {
   const { locale, id } = await params
   const filters = await searchParams
-  await requirePagePermission(locale, "asset", "view")
+  const user = await requirePagePermission(locale, "asset", "view")
 
   const t = await getTranslations("checkout")
   const tAsset = await getTranslations("asset")
   const tCommon = await getTranslations("common")
+  const tCancellation = await getTranslations("transactionCancellation")
 
   const checkout = await prisma.assetCheckout.findUnique({
     where: { id },
@@ -43,11 +47,18 @@ export default async function CheckoutPrintPage({ params, searchParams }: Checko
   })
   if (!checkout) notFound()
 
+  const beforeSnapshot = parseAssetTransactionSnapshot(checkout.beforeSnapshotJson)
+  const afterSnapshot = parseAssetTransactionSnapshot(checkout.afterSnapshotJson)
+
   const labels = await buildReferenceLabelMap([
     checkout.departmentId,
     checkout.locationId,
     checkout.parentAssetId,
     checkout.conditionBefore,
+    beforeSnapshot?.statusId,
+    beforeSnapshot?.currentLocationId,
+    afterSnapshot?.statusId,
+    afterSnapshot?.currentLocationId,
   ])
   const receiverSignatureAttachment = await prisma.attachment.findFirst({
     where: {
@@ -74,6 +85,27 @@ export default async function CheckoutPrintPage({ params, searchParams }: Checko
         : `/${locale}/assets/${checkout.asset.id}`}
       backLabel={tCommon("back")}
       printLabel={t("printHandover")}
+      toolbarActions={hasPermission(user, "asset", "edit") && checkout.transactionStatus === "active" ? (
+        <TransactionCancelDialog
+          type="checkout"
+          transactionId={checkout.id}
+          expectedUpdatedAt={checkout.updatedAt.toISOString()}
+          originalOperator={checkout.checkedOutBy}
+          currentState={formatSnapshotState(afterSnapshot, labels)}
+          restoreState={formatSnapshotState(beforeSnapshot, labels)}
+          componentCount={beforeSnapshot?.components.length ?? 0}
+          labels={buildCancellationLabels(tCancellation)}
+        />
+      ) : null}
+      voidInfo={checkout.transactionStatus === "void" ? {
+        label: tCancellation("voidLabel"),
+        voidReasonLabel: tCancellation("voidReason"),
+        voidedByLabel: tCancellation("voidedBy"),
+        voidedAtLabel: tCancellation("voidedAt"),
+        voidReason: checkout.voidReason,
+        voidedBy: checkout.voidedBy,
+        voidedAt: formatDateTime(checkout.voidedAt),
+      } : null}
       sections={[
         {
           title: t("documentInfo"),
@@ -117,6 +149,24 @@ export default async function CheckoutPrintPage({ params, searchParams }: Checko
       ]}
     />
   )
+}
+
+function formatSnapshotState(snapshot: ReturnType<typeof parseAssetTransactionSnapshot>, labels: Map<string, string>) {
+  if (!snapshot) return "-"
+  return `${labelOrDash(labels, snapshot.statusId)} · ${labelOrDash(labels, snapshot.currentLocationId)}`
+}
+
+function buildCancellationLabels(t: Awaited<ReturnType<typeof getTranslations>>) {
+  return {
+    action: t("action"), title: t("title"), description: t("description"), reasonLabel: t("reasonLabel"),
+    reasonPlaceholder: t("reasonPlaceholder"), confirm: t("confirm"), cancel: t("cancel"), loading: t("loading"),
+    blockedTitle: t("blockedTitle"), blockedDescription: t("blockedDescription"), success: t("success"), error: t("error"),
+    reasonTooShort: t("reasonTooShort"), operator: t("operator"), currentState: t("currentState"), restoreState: t("restoreState"),
+    components: t("components"), blockers: {
+      unsupported_snapshot: t("blockers.unsupported_snapshot"), not_active: t("blockers.not_active"), not_latest: t("blockers.not_latest"),
+      asset_changed: t("blockers.asset_changed"), components_changed: t("blockers.components_changed"), downstream_work: t("blockers.downstream_work"),
+    },
+  }
 }
 
 function getCheckoutDestination(
