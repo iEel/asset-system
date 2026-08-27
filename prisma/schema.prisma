@@ -312,6 +312,7 @@ model Asset {
   auditFindings         AuditFinding[]
   auditScanHistory      AuditScanHistory[]
   labelPrints           AssetLabelPrint[]
+  stateReviews          AssetStateReview[]
 
   @@index([licenseAssignedAssetId])
   @@index([isActive, createdAt], map: "IX_assets_isActive_createdAt")
@@ -328,6 +329,35 @@ model Asset {
   @@index([warrantyEndDate], map: "IX_assets_warrantyEndDate")
   @@index([serialNumber], map: "IX_assets_serialNumber")
   @@map("assets")
+}
+
+model AssetStateReview {
+  id                     String    @id @default(uuid())
+  assetId                String
+  asset                  Asset     @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  issueType              String    @db.NVarChar(80)
+  reviewStatus           String    @default("pending") @db.NVarChar(20)
+  severity               String    @db.NVarChar(20)
+  observedStatusId       String?
+  observedConditionId    String?
+  observedCustodianId    String?
+  observedAssetUpdatedAt DateTime
+  suggestedStatusId      String?
+  suggestedConditionId   String?
+  metadataJson           String?   @db.NVarChar(Max)
+  detectedAt             DateTime  @default(now())
+  lastDetectedAt         DateTime  @default(now())
+  resolvedAt             DateTime?
+  resolvedBy             String?   @db.NVarChar(100)
+  resolutionReason       String?   @db.NVarChar(Max)
+  resolvedStatusId       String?
+  resolvedConditionId    String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([reviewStatus, severity, lastDetectedAt], map: "IX_asset_state_reviews_status_severity_detected")
+  @@index([assetId, issueType], map: "IX_asset_state_reviews_asset_issue")
+  @@map("asset_state_reviews")
 }
 
 model AssetLabelPrintBatch {
