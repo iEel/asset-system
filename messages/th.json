@@ -283,6 +283,7 @@
     "inUse": "ใช้งานอยู่",
     "readyToDeploy": "พร้อมใช้งาน",
     "pendingRepair": "รอซ่อม",
+    "underMaintenance": "อยู่ระหว่างซ่อม",
     "warrantyExpiring": "ใกล้หมดประกัน",
     "crossScopeAssets": "ทรัพย์สินนอก Scope",
     "crossScopeAssetsDetail": "ถือครองหรืออยู่คนละ Scope กับเจ้าของรหัส",

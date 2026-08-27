@@ -18,7 +18,11 @@ import {
 } from "lucide-react"
 import { getSessionUser } from "@/lib/auth-utils"
 import { getApprovalInboxAccess, getApprovalInboxCounts, type ApprovalInboxCounts } from "@/lib/approval-inbox-query"
-import { buildDashboardActionCardKeys, type DashboardActionCardKey } from "@/lib/dashboard-action-cards"
+import {
+  buildDashboardActionCardKeys,
+  buildDashboardAssetStatusMetrics,
+  type DashboardActionCardKey,
+} from "@/lib/dashboard-action-cards"
 import { shouldUseEmployeeHome } from "@/lib/default-home"
 import { prisma } from "@/lib/db"
 import { auditRoundCoverageWhere, auditRoundOperationalWhere } from "@/lib/audit-round-status"
@@ -79,7 +83,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   const dashboardTimingMeta = { route: "/dashboard", locale, approvalInbox: Boolean(approvalInboxAccess?.canAnyApproval) }
 
   const [
-    [totalAssets, inUse, ready, pendingRepair, warrantyExpiring],
+    [totalAssets, inUse, ready, repairStatusRows, warrantyExpiring],
     recentLogs,
     [overdueMaintenance, pendingAuditFindings, pendingDisposals, approvedDisposals],
     approvalInboxCounts,
@@ -113,10 +117,12 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
               status: { OR: [{ name: { contains: "Ready" } }, { nameTh: { contains: "พร้อม" } }] },
             },
           }),
-          prisma.asset.count({
-            where: {
-              isActive: true,
-              status: { OR: [{ name: { contains: "Repair" } }, { nameTh: { contains: "ซ่อม" } }] },
+          prisma.assetStatus.findMany({
+            where: { isActive: true, name: { in: ["Pending Repair", "Under Maintenance"] } },
+            select: {
+              id: true,
+              name: true,
+              _count: { select: { assets: { where: { isActive: true } } } },
             },
           }),
           prisma.asset.count({
@@ -183,11 +189,18 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
 
   const crossScopeTotal = crossScopeSummary.all
   const crossScopeAssetsHref = buildDashboardCrossScopeHref(locale, "all")
+  const repairStatusMetrics = buildDashboardAssetStatusMetrics(
+    locale,
+    repairStatusRows.map((row) => ({ id: row.id, name: row.name, count: row._count.assets })),
+  )
+  const pendingRepair = repairStatusMetrics.pendingRepair.count
+  const underMaintenance = repairStatusMetrics.underMaintenance.count
   const kpiCards = [
     { label: t("totalAssets"), value: totalAssets.toLocaleString("th-TH"), icon: <Package size={24} />, color: "text-primary", href: `/${locale}/assets` },
     { label: t("inUse"), value: inUse.toLocaleString("th-TH"), icon: <Monitor size={24} />, color: "text-success", href: `/${locale}/assets` },
     { label: t("readyToDeploy"), value: ready.toLocaleString("th-TH"), icon: <Shield size={24} />, color: "text-info", href: `/${locale}/assets` },
-    { label: t("pendingRepair"), value: pendingRepair.toLocaleString("th-TH"), icon: <Wrench size={24} />, color: "text-warning", href: `/${locale}/maintenance` },
+    { label: t("pendingRepair"), value: pendingRepair.toLocaleString("th-TH"), icon: <Wrench size={24} />, color: "text-warning", href: repairStatusMetrics.pendingRepair.href },
+    { label: t("underMaintenance"), value: underMaintenance.toLocaleString("th-TH"), icon: <Wrench size={24} />, color: "text-danger", href: repairStatusMetrics.underMaintenance.href },
     { label: t("warrantyExpiring"), value: warrantyExpiring.toLocaleString("th-TH"), icon: <AlertTriangle size={24} />, color: "text-danger", href: `/${locale}/assets` },
     { label: t("crossScopeAssets"), value: crossScopeTotal.toLocaleString("th-TH"), icon: <AlertTriangle size={24} />, color: "text-warning", href: crossScopeAssetsHref },
   ]
@@ -320,7 +333,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       <h1 className="mb-6 text-2xl font-bold text-foreground">{t("title")}</h1>
 
       {/* KPI Cards */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-7">
         {kpiCards.map((card) => (
           <Link
             key={card.label}
@@ -435,7 +448,8 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
             {[
               { label: t("inUse"), value: inUse, href: `/${locale}/assets`, tone: "border-success/30 bg-success/5" },
               { label: t("readyToDeploy"), value: ready, href: `/${locale}/assets`, tone: "border-info/30 bg-info/5" },
-              { label: t("pendingRepair"), value: pendingRepair, href: `/${locale}/maintenance`, tone: "border-warning/30 bg-warning/5" },
+              { label: t("pendingRepair"), value: pendingRepair, href: repairStatusMetrics.pendingRepair.href, tone: "border-warning/30 bg-warning/5" },
+              { label: t("underMaintenance"), value: underMaintenance, href: repairStatusMetrics.underMaintenance.href, tone: "border-danger/30 bg-danger/5" },
             ].map((item) => (
               <Link key={item.label} href={item.href} className={`flex items-center justify-between rounded-md border p-3 transition-colors hover:bg-accent ${item.tone}`}>
                 <span className="text-sm font-medium text-foreground">{item.label}</span>

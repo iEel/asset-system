@@ -283,6 +283,7 @@
     "inUse": "In Use",
     "readyToDeploy": "Ready to Deploy",
     "pendingRepair": "Pending Repair",
+    "underMaintenance": "Under Maintenance",
     "warrantyExpiring": "Warranty Expiring",
     "crossScopeAssets": "Out-of-scope assets",
     "crossScopeAssetsDetail": "Held or located outside the owner/tag scope",
