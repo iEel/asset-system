@@ -6,6 +6,7 @@ import { canDeleteMaintenanceEvidence } from "../src/lib/maintenance-policy.ts"
 
 test("closed maintenance evidence is append-only", () => {
   assert.equal(canDeleteMaintenanceEvidence("closed"), false)
+  assert.equal(canDeleteMaintenanceEvidence("cancelled"), false)
   assert.equal(canDeleteMaintenanceEvidence("in_progress"), true)
 })
 
@@ -18,5 +19,5 @@ test("generic attachment delete consults maintenance ticket state", () => {
 test("post-close uploads are recorded as audited addenda", () => {
   const source = readFileSync("src/app/api/maintenance-tickets/[id]/attachments/route.ts", "utf8")
   assert.match(source, /repairStatus/)
-  assert.match(source, /postCloseAddendum:\s*ticket\.repairStatus === "closed"/)
+  assert.match(source, /postCloseAddendum:\s*isMaintenanceTerminalStatus\(ticket\.repairStatus\)/)
 })

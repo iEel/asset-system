@@ -25,8 +25,9 @@ test("clamps maintenance pagination and reports an exact visible range", () => {
   })
 })
 
-test("closed and legacy open status filters require table layout", () => {
+test("terminal and legacy open status filters require table layout", () => {
   assert.equal(getMaintenanceBoardCompatibility("closed"), "table_required")
+  assert.equal(getMaintenanceBoardCompatibility("cancelled"), "table_required")
   assert.equal(getMaintenanceBoardCompatibility("open"), "table_required")
   assert.equal(getMaintenanceBoardCompatibility("waiting_parts"), "compatible")
   assert.equal(getMaintenanceBoardCompatibility(""), "compatible")

@@ -85,7 +85,7 @@ test("builds a duplicate guard for open PM tickets of the same plan", () => {
     }),
     {
       isActive: true,
-      repairStatus: { not: "closed" },
+      repairStatus: { notIn: ["closed", "cancelled"] },
       OR: [
         { maintenancePlanId: "plan-1" },
         {

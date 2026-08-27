@@ -2,6 +2,7 @@ export type AssetLifecycleOperation =
   | "create"
   | "register_edit"
   | "checkout"
+  | "legacy_return_backfill"
   | "checkin"
   | "assign_custodian"
   | "move_scope"
@@ -48,6 +49,7 @@ export const selectableConditionNames = [
 
 const allowedSources: Partial<Record<AssetLifecycleOperation, ReadonlySet<string>>> = {
   checkout: new Set(["ready"]),
+  legacy_return_backfill: new Set(["ready", "in use"]),
   checkin: new Set(["checked out"]),
   assign_custodian: new Set(["ready", "in use"]),
   maintenance_create: new Set(["ready", "in use"]),
@@ -60,6 +62,7 @@ const operationErrorCodes: Record<AssetLifecycleOperation, AssetLifecycleErrorCo
   create: "ASSET_STATUS_CREATE_NOT_ALLOWED",
   register_edit: "ASSET_STATUS_EDIT_NOT_ALLOWED",
   checkout: "ASSET_STATUS_CHECKOUT_NOT_ALLOWED",
+  legacy_return_backfill: "ASSET_STATUS_CHECKOUT_NOT_ALLOWED",
   checkin: "ASSET_STATUS_CHECKIN_NOT_ALLOWED",
   assign_custodian: "ASSET_STATUS_TRANSFER_NOT_ALLOWED",
   move_scope: null,
@@ -135,6 +138,20 @@ export function getAssetOperationConditionError(
 
 export function filterCheckoutEligibleAssets<T extends { status?: AssetStateMaster | null }>(assets: readonly T[]): T[] {
   return assets.filter((asset) => getAssetLifecycleTransitionError("checkout", asset.status?.name) === null)
+}
+
+export function filterLegacyReturnEligibleAssets<T extends {
+  status?: AssetStateMaster | null
+  custodianId?: string | null
+  hasOpenCheckout: boolean
+  hasActiveMaintenance: boolean
+}>(assets: readonly T[]): T[] {
+  return assets.filter((asset) =>
+    Boolean(asset.custodianId)
+    && !asset.hasOpenCheckout
+    && !asset.hasActiveMaintenance
+    && getAssetLifecycleTransitionError("legacy_return_backfill", asset.status?.name) === null
+  )
 }
 
 export function filterPersonalTransferEligibleAssets<T extends { status?: AssetStateMaster | null }>(assets: readonly T[]): T[] {

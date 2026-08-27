@@ -32,7 +32,7 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
       },
     })
     if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
-    const statusError = getAssetLifecycleTransitionError("checkout", asset.status.name)
+    const statusError = getAssetLifecycleTransitionError("legacy_return_backfill", asset.status.name)
     if (statusError) return NextResponse.json({ code: statusError, error: statusError }, { status: 409 })
     if (!asset.custodianId) {
       return NextResponse.json({ error: "Asset has no current custodian to backfill" }, { status: 400 })
@@ -45,6 +45,23 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
     })
     if (activeCheckout) {
       return NextResponse.json({ error: "Asset already has an active checkout" }, { status: 400 })
+    }
+
+    const activeCorrectiveMaintenance = await prisma.maintenanceTicket.findFirst({
+      where: {
+        assetId: id,
+        isActive: true,
+        repairStatus: { notIn: ["closed", "cancelled"] },
+        maintenancePlanId: null,
+        NOT: { problem: { startsWith: "[PM] " } },
+      },
+      select: { id: true },
+    })
+    if (activeCorrectiveMaintenance) {
+      return NextResponse.json({
+        code: "ASSET_LEGACY_RETURN_MAINTENANCE_ACTIVE",
+        error: "Cancel or close the active corrective maintenance ticket before creating a legacy return",
+      }, { status: 409 })
     }
 
     const checkoutDate = new Date()

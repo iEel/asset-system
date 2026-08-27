@@ -5,11 +5,13 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { getMaintenanceErrorPayload } from "@/lib/maintenance-api-errors"
 import {
+  cancelMaintenanceTicket,
   closeMaintenanceTicket,
   transitionMaintenanceTicket,
   updateMaintenanceTicketPlanning,
 } from "@/lib/maintenance-ticket-service"
 import {
+  maintenanceTicketCancelSchema,
   maintenanceTicketCloseSchema,
   maintenanceTicketPlanningSchema,
   maintenanceTicketStatusSchema,
@@ -63,6 +65,30 @@ export async function PATCH(request: NextRequest, context: MaintenanceTicketCont
           assignedToId: input.assignedToId ?? null,
           dueDate: input.dueDate ?? null,
         },
+      })
+
+      return NextResponse.json(result.ticket)
+    }
+
+    if (action === "cancel") {
+      const input = maintenanceTicketCancelSchema.parse(body)
+      const result = await cancelMaintenanceTicket(prisma, id, input, user)
+
+      await logAudit({
+        userId: user.id,
+        action: "cancel",
+        module: "maintenance",
+        recordId: id,
+        oldValue: {
+          repairStatus: result.previous.repairStatus,
+          assetStatusId: result.previous.asset.statusId,
+        },
+        newValue: {
+          repairStatus: "cancelled",
+          assetStatusId: result.lifecycleStatus.id,
+          reason: input.reason,
+        },
+        remark: input.reason,
       })
 
       return NextResponse.json(result.ticket)

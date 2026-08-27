@@ -55,7 +55,7 @@ export default async function MaintenancePrintPage({ params }: MaintenancePrintP
           title: t("ticketDetail"),
           fields: [
             { label: t("repairNo"), value: ticket.repairNo },
-            { label: tCommon("status"), value: ticket.repairStatus === "open" ? t("statuses.open") : ticket.repairStatus === "closed" ? t("statuses.closed") : ticket.repairStatus },
+            { label: tCommon("status"), value: ["open", "closed", "cancelled"].includes(ticket.repairStatus) ? t(`statuses.${ticket.repairStatus}`) : ticket.repairStatus },
             { label: t("reportedBy"), value: `${ticket.reportedBy.code} - ${ticket.reportedBy.fullNameTh}` },
             { label: t("reportedDate"), value: formatDateTime(ticket.reportedDate) },
             { label: t("dueDate"), value: formatDateTime(ticket.dueDate) },

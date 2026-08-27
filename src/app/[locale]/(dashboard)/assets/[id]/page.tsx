@@ -618,7 +618,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         total: licenseTotalSeats.toLocaleString("th-TH"),
         remaining: licenseRemainingSeats?.toLocaleString("th-TH") ?? "0",
       })
-  const openMaintenanceCount = asset.maintenanceTickets.filter((ticket) => ticket.repairStatus !== "closed").length
+  const openMaintenanceCount = asset.maintenanceTickets.filter((ticket) => !["closed", "cancelled"].includes(ticket.repairStatus)).length
   const latestMaintenanceTicket = asset.maintenanceTickets[0]
   const totalMaintenanceCost = asset.maintenanceTickets.reduce((total, ticket) => total + Number(ticket.repairCost ?? 0), 0)
   const maintenanceReplacementWarning =
@@ -1408,7 +1408,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                           {ticket.reportedBy.code} - {ticket.reportedBy.fullNameTh}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {ticket.repairStatus === "open" ? tMaintenance("statuses.open") : ticket.repairStatus === "closed" ? tMaintenance("statuses.closed") : ticket.repairStatus}
+                          {["open", "closed", "cancelled"].includes(ticket.repairStatus) ? tMaintenance(`statuses.${ticket.repairStatus}`) : ticket.repairStatus}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(ticket.reportedDate)}</td>
                       </ClickableTableRow>
@@ -2580,7 +2580,7 @@ function buildMaintenanceTimelineItems(
     title: isPreventiveMaintenanceTicket(ticket.problem) ? t("timelinePmTicket") : t("timelineMaintenanceTicket"),
     summary: `${ticket.repairNo}: ${ticket.problem}`,
     category: "maintenance",
-    tone: (ticket.repairStatus === "closed" ? "success" : "warning") as MovementTone,
+    tone: (ticket.repairStatus === "closed" ? "success" : ticket.repairStatus === "cancelled" ? "info" : "warning") as MovementTone,
     performedAt: ticket.reportedDate,
     from: null,
     to: null,

@@ -114,3 +114,11 @@ export const maintenanceTicketPlanningSchema = z.object({
 })
 
 export type MaintenanceTicketPlanningInput = z.infer<typeof maintenanceTicketPlanningSchema>
+
+export const maintenanceTicketCancelSchema = z.object({
+  action: z.literal("cancel"),
+  expectedUpdatedAt: z.coerce.date(),
+  reason: z.string().trim().min(1).max(1000),
+})
+
+export type MaintenanceTicketCancelInput = z.infer<typeof maintenanceTicketCancelSchema>

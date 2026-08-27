@@ -60,7 +60,7 @@ export async function getNotificationCenter(user: SessionUser, locale: string) {
           where: {
             isActive: true,
             dueDate: { lt: today },
-            repairStatus: { notIn: ["completed", "closed"] },
+            repairStatus: { notIn: ["completed", "closed", "cancelled"] },
           },
         })
       : Promise.resolve(0),

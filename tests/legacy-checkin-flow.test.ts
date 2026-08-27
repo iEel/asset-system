@@ -15,7 +15,8 @@ test("check-in options expose legacy return candidates from current custodians w
   assert.match(source, /conditionId: true/)
   assert.match(source, /legacyReturnCandidates/)
   assert.match(source, /asset is LegacyReturnAsset/)
-  assert.match(source, /Boolean\(asset\.custodianId\) && !activeCheckoutAssetIds\.has\(asset\.id\)/)
+  assert.match(source, /filterLegacyReturnEligibleAssets/)
+  assert.match(source, /hasActiveMaintenance:\s*activeMaintenanceAssetIds\.has\(asset\.id\)/)
 })
 
 test("check-in page passes legacy return candidates to the form", () => {
@@ -43,7 +44,8 @@ test("legacy checkout API creates an auditable backfilled handover instead of ch
   const source = readFileSync(legacyCheckoutRoutePath, "utf8")
 
   assert.match(source, /legacy_return_backfill/)
-  assert.match(source, /getAssetLifecycleTransitionError\("checkout", asset\.status\.name\)/)
+  assert.match(source, /getAssetLifecycleTransitionError\("legacy_return_backfill", asset\.status\.name\)/)
+  assert.match(source, /ASSET_LEGACY_RETURN_MAINTENANCE_ACTIVE/)
   assert.match(source, /const custodianId = asset\.custodianId/)
   assert.match(source, /custodianId,/)
   assert.match(source, /conditionBefore: asset\.conditionId/)

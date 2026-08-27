@@ -94,7 +94,7 @@ export function buildPreventiveMaintenanceTicketPrefix(planNo: string) {
 export function buildPreventiveMaintenanceDuplicateTicketWhere(plan: PreventiveMaintenanceDuplicatePlanInput) {
   return {
     isActive: true,
-    repairStatus: { not: "closed" },
+    repairStatus: { notIn: ["closed", "cancelled"] },
     OR: [
       { maintenancePlanId: plan.id },
       {

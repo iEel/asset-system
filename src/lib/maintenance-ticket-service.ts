@@ -3,6 +3,7 @@ import { getMaintenanceOperationalTarget } from "./asset-lifecycle-policy.ts"
 import { MaintenanceApiError } from "./maintenance-api-errors.ts"
 import {
   canCloseMaintenanceTicket,
+  canCancelMaintenanceTicket,
   getCorrectiveAssetEligibilityError,
   getCorrectiveLifecycleTarget,
   isMaintenanceTransitionAllowed,
@@ -11,6 +12,7 @@ import {
 import { withPrismaUniqueRetry } from "./prisma-unique-retry.ts"
 import type {
   MaintenanceTicketCloseInput,
+  MaintenanceTicketCancelInput,
   MaintenanceTicketInput,
   MaintenanceTicketPlanningInput,
   MaintenanceTicketStatusInput,
@@ -62,7 +64,7 @@ export async function createCorrectiveMaintenanceTicket(
       where: {
         assetId: input.assetId,
         isActive: true,
-        repairStatus: { not: "closed" },
+        repairStatus: { notIn: ["closed", "cancelled"] },
         maintenancePlanId: null,
         NOT: { problem: { startsWith: "[PM] " } },
       },
@@ -227,7 +229,7 @@ export async function updateMaintenanceTicketPlanning(
 ) {
   return db.$transaction(async (tx) => {
     const ticket = await getActiveTicket(tx, id)
-    if (ticket.repairStatus === "closed") {
+    if (ticket.repairStatus === "closed" || ticket.repairStatus === "cancelled") {
       throw new MaintenanceApiError(
         "MAINTENANCE_INVALID_TRANSITION",
         "Closed tickets cannot be replanned",
@@ -358,6 +360,77 @@ export async function closeMaintenanceTicket(
     })
     if (!updatedTicket) throw conflictError()
     return { ticket: updatedTicket, previous: ticket }
+  })
+}
+
+export async function cancelMaintenanceTicket(
+  db: MaintenanceServiceDb,
+  id: string,
+  input: Omit<MaintenanceTicketCancelInput, "action">,
+  user: MaintenanceServiceUser,
+) {
+  return db.$transaction(async (tx) => {
+    const ticket = await getActiveTicket(tx, id)
+    if (isPreventiveMaintenanceTicket(ticket) || !canCancelMaintenanceTicket(ticket.repairStatus)) {
+      throw new MaintenanceApiError(
+        "MAINTENANCE_INVALID_TRANSITION",
+        "Only reported or accepted corrective maintenance tickets can be cancelled",
+      )
+    }
+    const reason = input.reason.trim()
+    if (!reason) {
+      throw new MaintenanceApiError(
+        "MAINTENANCE_CANCEL_REASON_REQUIRED",
+        "Cancellation reason is required",
+      )
+    }
+
+    const lifecycleTarget = getMaintenanceOperationalTarget(ticket.asset)
+    const lifecycleStatus = await tx.assetStatus.findFirst({
+      where: { isActive: true, name: lifecycleTarget },
+      select: { id: true, name: true },
+    })
+    if (!lifecycleStatus) throw new Error(`${lifecycleTarget} asset status is not configured`)
+
+    const updateResult = await tx.maintenanceTicket.updateMany({
+      where: {
+        id,
+        isActive: true,
+        updatedAt: input.expectedUpdatedAt,
+        repairStatus: ticket.repairStatus,
+      },
+      data: {
+        repairStatus: "cancelled",
+        updatedBy: user.id,
+      },
+    })
+    if (updateResult.count === 0) throw conflictError()
+
+    if (lifecycleStatus.id !== ticket.asset.statusId) {
+      await tx.asset.update({
+        where: { id: ticket.assetId },
+        data: { statusId: lifecycleStatus.id, updatedBy: user.id },
+      })
+    }
+    await tx.assetMovement.create({
+      data: {
+        assetId: ticket.assetId,
+        movementType: "maintenance_cancel",
+        fromValue: ticket.asset.statusId,
+        toValue: lifecycleStatus.id,
+        reason,
+        referenceType: "maintenance",
+        referenceId: ticket.id,
+        performedBy: user.id,
+      },
+    })
+
+    const updatedTicket = await tx.maintenanceTicket.findUnique({
+      where: { id },
+      include: maintenanceTicketInclude,
+    })
+    if (!updatedTicket) throw conflictError()
+    return { ticket: updatedTicket, previous: ticket, lifecycleStatus }
   })
 }
 

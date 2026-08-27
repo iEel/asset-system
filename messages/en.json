@@ -2519,7 +2519,7 @@
       "completed": "Completed pending close"
     },
     "boardTableRequired": "This status is available in table view",
-    "boardTableRequiredHelp": "Closed and legacy open tickets are not board stages. Switch to the table to review every matching ticket without omissions.",
+    "boardTableRequiredHelp": "Closed, cancelled, and legacy open tickets are not board stages. Switch to the table to review every matching ticket without omissions.",
     "emptyTitle": "No repair tickets match the filters",
     "emptyHelp": "Clear the filters or open a new repair ticket from the form above.",
     "repairNo": "Repair No.",
@@ -2645,6 +2645,7 @@
       "create": "Repair ticket opened",
       "statusUpdate": "Repair status updated",
       "close": "Repair ticket closed",
+      "cancel": "Repair ticket cancelled",
       "pmCreate": "PM work order created",
       "fallback": "Maintenance activity"
     },
@@ -2679,6 +2680,11 @@
     "editPlanning": "Edit assignee and due date",
     "editPlanningTitle": "Edit Work Assignment",
     "planningUpdateSuccess": "Assignee and due date updated",
+    "cancelAction": "Cancel Ticket",
+    "cancelTitle": "Cancel Repair Ticket",
+    "cancelReason": "Cancellation Reason",
+    "cancelHelp": "Available only before repair work starts. The asset status will be restored from its current custody and the cancellation will be audited.",
+    "cancelSuccess": "Ticket cancelled and asset status restored",
     "statusConsequences": {
       "accepted": "Accept the ticket and prepare the work",
       "in_progress_corrective": "Start repair and mark the asset as under maintenance",
@@ -2705,6 +2711,7 @@
       "MAINTENANCE_ACTIVE_TICKET_EXISTS": "This asset already has an active repair ticket. Open that ticket instead of creating a duplicate.",
       "MAINTENANCE_INVALID_TRANSITION": "This status change is no longer valid. Refresh the ticket and review its current status.",
       "MAINTENANCE_WAITING_REMARK_REQUIRED": "Add a reason or update before moving this ticket to a waiting status.",
+      "MAINTENANCE_CANCEL_REASON_REQUIRED": "Add a reason for cancelling this ticket.",
       "MAINTENANCE_EVIDENCE_REQUIRED": "Attach repair evidence before closing this ticket.",
       "MAINTENANCE_INVALID_CLOSE_STATUS": "Choose Ready or Pending Disposal as the asset status after corrective repair.",
       "MAINTENANCE_EVIDENCE_LOCKED": "Evidence on a closed ticket cannot be deleted. Add a new audited addendum if clarification is needed.",
@@ -2720,7 +2727,8 @@
       "waiting_parts": "Waiting for Parts",
       "waiting_vendor": "Waiting for Vendor",
       "completed": "Completed",
-      "closed": "Closed"
+      "closed": "Closed",
+      "cancelled": "Cancelled"
     }
   },
   "disposalPage": {

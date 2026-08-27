@@ -7,6 +7,7 @@ export const maintenanceStatuses = [
   "waiting_vendor",
   "completed",
   "closed",
+  "cancelled",
 ] as const
 
 export type MaintenanceStatus = (typeof maintenanceStatuses)[number]
@@ -14,7 +15,7 @@ export type MaintenanceStatus = (typeof maintenanceStatuses)[number]
 export const closeableMaintenanceStatuses = new Set<string>(["open", "completed"])
 
 export function isMaintenanceClosed(status: string) {
-  return status === "closed"
+  return status === "closed" || status === "cancelled"
 }
 
 export function isMaintenanceOverdue(status: string, dueDate?: Date | string | null, now = new Date()) {
@@ -25,7 +26,7 @@ export function isMaintenanceOverdue(status: string, dueDate?: Date | string | n
 }
 
 export function getMaintenanceStatusTone(status: string) {
-  if (status === "closed") return "info"
+  if (status === "closed" || status === "cancelled") return "info"
   if (status === "completed") return "success"
   if (status === "waiting_parts" || status === "waiting_vendor") return "warning"
   if (status === "in_progress") return "primary"

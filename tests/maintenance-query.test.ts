@@ -50,13 +50,13 @@ test("builds exact KPI queue filters", () => {
   assert.equal(parseMaintenanceListParams({ queue: "unknown" }).queue, "")
 })
 
-test("overdue maintenance excludes completed and closed tickets", () => {
+test("overdue maintenance excludes completed, closed, and cancelled tickets", () => {
   const overdue = parseMaintenanceListParams({ overdue: "yes" })
 
   assert.deepEqual(buildMaintenanceWhere(overdue), {
     isActive: true,
     dueDate: { lt: assertDate() },
-    repairStatus: { notIn: ["completed", "closed"] },
+    repairStatus: { notIn: ["completed", "closed", "cancelled"] },
   })
 })
 

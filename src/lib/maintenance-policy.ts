@@ -12,6 +12,9 @@ export type MaintenanceStatus =
   | "waiting_vendor"
   | "completed"
   | "closed"
+  | "cancelled"
+
+export const maintenanceTerminalStatuses = ["closed", "cancelled"] as const
 
 export const maintenanceTerminalAssetStatuses = [
   "Pending Disposal",
@@ -36,6 +39,7 @@ const maintenanceTransitions: Record<MaintenanceStatus, readonly MaintenanceStat
   waiting_vendor: ["in_progress", "completed"],
   completed: ["closed"],
   closed: [],
+  cancelled: [],
 }
 
 export function isPreventiveMaintenanceTicket(ticket: MaintenanceTicketKindInput) {
@@ -71,8 +75,16 @@ export function canCloseMaintenanceTicket(ticket: { repairStatus: string }) {
   return ticket.repairStatus === "open" || ticket.repairStatus === "completed"
 }
 
+export function canCancelMaintenanceTicket(status: string) {
+  return status === "reported" || status === "accepted"
+}
+
+export function isMaintenanceTerminalStatus(status: string) {
+  return maintenanceTerminalStatuses.includes(status as (typeof maintenanceTerminalStatuses)[number])
+}
+
 export function canDeleteMaintenanceEvidence(ticketStatus: string) {
-  return ticketStatus !== "closed"
+  return !isMaintenanceTerminalStatus(ticketStatus)
 }
 
 function normalizeStatus(status: string) {

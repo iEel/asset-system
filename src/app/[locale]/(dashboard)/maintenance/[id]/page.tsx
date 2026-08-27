@@ -8,6 +8,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { MaintenanceAttachments } from "@/components/maintenance/maintenance-attachments"
 import { MaintenanceTicketCloseButton } from "@/components/maintenance/maintenance-ticket-close-button"
+import { MaintenanceTicketCancelButton } from "@/components/maintenance/maintenance-ticket-cancel-button"
 import { MaintenanceTicketPlanningButton } from "@/components/maintenance/maintenance-ticket-planning-button"
 import { MaintenanceTicketStatusButton } from "@/components/maintenance/maintenance-ticket-status-button"
 import { getMaintenanceMovementLabel, getMovementDisplayLabels } from "@/lib/movement-labels"
@@ -144,6 +145,13 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
                 initialDueDate={ticket.dueDate}
                 expectedUpdatedAt={ticket.updatedAt}
               />
+              {["reported", "accepted"].includes(ticket.repairStatus) && !isPreventive ? (
+                <MaintenanceTicketCancelButton
+                  ticketId={ticket.id}
+                  repairNo={ticket.repairNo}
+                  expectedUpdatedAt={ticket.updatedAt}
+                />
+              ) : null}
               {getMaintenanceStatusUpdateTargets(ticket.repairStatus).length > 0 ? <MaintenanceTicketStatusButton
                 ticketId={ticket.id}
                 repairNo={ticket.repairNo}
@@ -257,6 +265,7 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
                           create: t("movementLabels.create"),
                           statusUpdate: t("movementLabels.statusUpdate"),
                           close: t("movementLabels.close"),
+                          cancel: t("movementLabels.cancel"),
                           pmCreate: t("movementLabels.pmCreate"),
                           fallback: t("movementLabels.fallback"),
                         })}</div>

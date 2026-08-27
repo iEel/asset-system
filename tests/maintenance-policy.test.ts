@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  canCancelMaintenanceTicket,
   canDeleteMaintenanceEvidence,
   getAllowedMaintenanceTransitions,
   getCorrectiveAssetEligibilityError,
@@ -47,4 +48,12 @@ test("interactive status updates never expose closure transitions", () => {
 test("closed maintenance evidence cannot be deleted", () => {
   assert.equal(canDeleteMaintenanceEvidence("closed"), false)
   assert.equal(canDeleteMaintenanceEvidence("in_progress"), true)
+})
+
+test("only early corrective maintenance stages can be cancelled", () => {
+  assert.equal(canCancelMaintenanceTicket("reported"), true)
+  assert.equal(canCancelMaintenanceTicket("accepted"), true)
+  for (const status of ["in_progress", "waiting_parts", "waiting_vendor", "completed", "closed", "cancelled"]) {
+    assert.equal(canCancelMaintenanceTicket(status), false, status)
+  }
 })

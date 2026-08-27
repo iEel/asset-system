@@ -28,11 +28,11 @@ test("maintenance ticket optional date helper accepts omitted and blank values",
   assert.deepEqual(schema.parse({ dueDate: "", returnDate: "" }), { dueDate: undefined, returnDate: undefined })
 })
 
-test("maintenance status and close mutations require an optimistic concurrency timestamp", () => {
+test("maintenance status, planning, close, and cancellation mutations require an optimistic concurrency timestamp", () => {
   const source = readFileSync("src/lib/validations/maintenance.ts", "utf8")
   const occurrences = source.match(/expectedUpdatedAt:\s*z\.coerce\.date\(\)/g) ?? []
 
-  assert.equal(occurrences.length, 3)
+  assert.equal(occurrences.length, 4)
 })
 
 test("planning input accepts cleared assignee and due date", () => {

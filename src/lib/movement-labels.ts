@@ -14,6 +14,7 @@ export type MaintenanceMovementLabels = {
   create: string
   statusUpdate: string
   close: string
+  cancel: string
   pmCreate: string
   fallback: string
 }
@@ -22,6 +23,7 @@ export function getMaintenanceMovementLabel(movementType: string, labels: Mainte
   if (movementType === "maintenance_create") return labels.create
   if (movementType === "maintenance_status_update") return labels.statusUpdate
   if (movementType === "maintenance_close") return labels.close
+  if (movementType === "maintenance_cancel") return labels.cancel
   if (movementType === "maintenance_pm_create") return labels.pmCreate
   return labels.fallback
 }

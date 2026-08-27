@@ -3,6 +3,7 @@ import test from "node:test"
 
 import { MaintenanceApiError } from "../src/lib/maintenance-api-errors.ts"
 import {
+  cancelMaintenanceTicket,
   closeMaintenanceTicket,
   createCorrectiveMaintenanceTicket,
   transitionMaintenanceTicket,
@@ -111,6 +112,50 @@ test("corrective close updates ticket, asset, and movement atomically", async ()
   await closeMaintenanceTicket(db, "ticket-1", closeInput, { id: "user-1" })
 
   assert.deepEqual(db.events, ["ticket:closed", "asset:Ready", "movement:maintenance_close"])
+})
+
+test("accepted corrective cancellation restores In Use for a personal custodian", async () => {
+  const db = fakeDb({
+    ticketStatus: "accepted",
+    assetStatus: "Pending Repair",
+    ownershipType: "personal",
+    custodianId: "employee-1",
+  })
+
+  await cancelMaintenanceTicket(
+    db,
+    "ticket-1",
+    { expectedUpdatedAt, reason: "Created only for return-flow testing" },
+    { id: "user-1" },
+  )
+
+  assert.deepEqual(db.events, [
+    "ticket:cancelled",
+    "asset:In Use",
+    "movement:maintenance_cancel",
+  ])
+})
+
+test("maintenance cancellation rejects started work and blank reasons", async () => {
+  await assert.rejects(
+    () => cancelMaintenanceTicket(
+      fakeDb({ ticketStatus: "in_progress" }),
+      "ticket-1",
+      { expectedUpdatedAt, reason: "Created by mistake" },
+      { id: "user-1" },
+    ),
+    hasMaintenanceCode("MAINTENANCE_INVALID_TRANSITION"),
+  )
+
+  await assert.rejects(
+    () => cancelMaintenanceTicket(
+      fakeDb({ ticketStatus: "accepted" }),
+      "ticket-1",
+      { expectedUpdatedAt, reason: " " },
+      { id: "user-1" },
+    ),
+    hasMaintenanceCode("MAINTENANCE_CANCEL_REASON_REQUIRED"),
+  )
 })
 
 test("corrective close restores In Use when a personal custodian remains", async () => {
@@ -245,6 +290,8 @@ function fakeDb(config: {
     assetStatus: {
       findFirst: async ({ where }: { where: { id?: string; name?: string } }) => {
         if (where.id === "status-in-use") return { id: "status-in-use", name: "In Use", nameTh: "ใช้งานอยู่" }
+        if (where.name === "In Use") return { id: "status-in-use", name: "In Use", nameTh: "ใช้งานอยู่" }
+        if (where.name === "Ready") return { id: "status-ready", name: "Ready", nameTh: "พร้อมใช้งาน" }
         if (where.id === "status-pending-disposal") return { id: "status-pending-disposal", name: "Pending Disposal", nameTh: "รอตัดจำหน่าย" }
         if (where.id) return { id: "status-ready", name: config.nextAssetStatus ?? "Ready", nameTh: "พร้อมใช้งาน" }
         return { id: "status-maintenance", name: where.name ?? "Under Maintenance", nameTh: "กำลังซ่อม" }

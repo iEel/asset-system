@@ -7,6 +7,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { buildMaintenanceAttachmentName, normalizeMaintenanceAttachmentType } from "@/lib/maintenance-attachments"
+import { isMaintenanceTerminalStatus } from "@/lib/maintenance-policy"
 import { scanWrittenUploadFile } from "@/lib/upload-server"
 import { getUploadRoot, sanitizeFileName, validateUploadFile, validateUploadFileContent } from "@/lib/uploads"
 
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest, context: MaintenanceAttachmentC
         originalName: attachment.originalName,
         attachmentType,
         fileSize: attachment.fileSize,
-        postCloseAddendum: ticket.repairStatus === "closed",
+        postCloseAddendum: isMaintenanceTerminalStatus(ticket.repairStatus),
       },
     })
 

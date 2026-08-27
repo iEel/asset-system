@@ -435,7 +435,7 @@ export async function loadAssetStateReviewSnapshots(db: PrismaClient): Promise<A
         where: {
           assetId: { in: assetIds },
           isActive: true,
-          repairStatus: { not: "closed" },
+          repairStatus: { notIn: ["closed", "cancelled"] },
           maintenancePlanId: null,
           NOT: { problem: { startsWith: "[PM] " } },
         },

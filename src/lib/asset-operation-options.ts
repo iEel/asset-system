@@ -2,12 +2,13 @@ import { prisma } from "@/lib/db"
 import { getCheckinReturnStatuses } from "@/lib/asset-status-flow"
 import {
   filterCheckoutEligibleAssets,
+  filterLegacyReturnEligibleAssets,
   filterPersonalTransferEligibleAssets,
   getAssetOperationConditionOptions,
 } from "@/lib/asset-lifecycle-policy"
 
 export async function getAssetOperationOptions() {
-  const [assets, activeCheckouts, employees, departments, locations, statuses, conditions] = await Promise.all([
+  const [assets, activeCheckouts, activeMaintenanceTickets, employees, departments, locations, statuses, conditions] = await Promise.all([
     prisma.asset.findMany({
       where: { isActive: true },
       select: {
@@ -41,6 +42,15 @@ export async function getAssetOperationOptions() {
       },
       orderBy: { checkoutDate: "desc" },
     }),
+    prisma.maintenanceTicket.findMany({
+      where: {
+        isActive: true,
+        repairStatus: { notIn: ["closed", "cancelled"] },
+        maintenancePlanId: null,
+        NOT: { problem: { startsWith: "[PM] " } },
+      },
+      select: { assetId: true },
+    }),
     prisma.employee.findMany({
       where: { isActive: true },
       select: { id: true, code: true, fullNameTh: true },
@@ -65,15 +75,18 @@ export async function getAssetOperationOptions() {
   ])
 
   const activeCheckoutAssetIds = new Set(activeCheckouts.map((checkout) => checkout.assetId))
+  const activeMaintenanceAssetIds = new Set(activeMaintenanceTickets.map((ticket) => ticket.assetId))
   const assetLabelById = new Map(assets.map((asset) => [asset.id, `${asset.assetTag} - ${asset.name}`]))
   const departmentLabelById = new Map(departments.map((department) => [department.id, `${department.code} - ${department.name}`]))
   const locationLabelById = new Map(locations.map((location) => [location.id, `${location.code} - ${location.name}`]))
   type LegacyReturnAsset = (typeof assets)[number] & { custodianId: string }
   const checkoutEligibleAssets = filterCheckoutEligibleAssets(assets)
   const personalTransferEligibleIds = new Set(filterPersonalTransferEligibleAssets(assets).map((asset) => asset.id))
-  const legacyReturnAssets = checkoutEligibleAssets.filter((asset): asset is LegacyReturnAsset =>
-    Boolean(asset.custodianId) && !activeCheckoutAssetIds.has(asset.id)
-  )
+  const legacyReturnAssets = filterLegacyReturnEligibleAssets(assets.map((asset) => ({
+    ...asset,
+    hasOpenCheckout: activeCheckoutAssetIds.has(asset.id),
+    hasActiveMaintenance: activeMaintenanceAssetIds.has(asset.id),
+  }))).filter((asset): asset is LegacyReturnAsset & { hasOpenCheckout: boolean; hasActiveMaintenance: boolean } => Boolean(asset.custodianId))
 
   const mapAssetOption = (asset: (typeof assets)[number]) => ({
     id: asset.id,

@@ -107,7 +107,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
       _sum: { totalAmount: true },
     }),
     prisma.maintenanceTicket.count({ where: { vendorId: id, isActive: true } }),
-    prisma.maintenanceTicket.count({ where: { vendorId: id, isActive: true, repairStatus: { not: "closed" } } }),
+    prisma.maintenanceTicket.count({ where: { vendorId: id, isActive: true, repairStatus: { notIn: ["closed", "cancelled"] } } }),
     prisma.maintenanceTicket.findMany({
       where: { vendorId: id, isActive: true },
       select: {

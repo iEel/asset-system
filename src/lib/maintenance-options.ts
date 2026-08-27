@@ -65,7 +65,7 @@ export async function searchMaintenanceOptions(
         where: {
           assetId: { in: assets.map((asset) => asset.id) },
           isActive: true,
-          repairStatus: { not: "closed" },
+          repairStatus: { notIn: ["closed", "cancelled"] },
           maintenancePlanId: null,
           NOT: { problem: { startsWith: "[PM] " } },
         },
