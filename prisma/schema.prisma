@@ -221,8 +221,9 @@ model AssetStatus {
   sortOrder   Int     @default(0)
   isActive    Boolean @default(true)
 
-  assets      Asset[]
-  auditRounds AuditRound[]
+  assets                   Asset[]
+  auditRounds              AuditRound[]
+  disposalPreviousStatuses DisposalRequest[] @relation("DisposalPreviousAssetStatus")
 
   @@map("asset_statuses")
 }
@@ -690,26 +691,26 @@ model AuditScanHistory {
 // ============================================================
 
 model MaintenancePlan {
-  id              String    @id @default(uuid())
-  planNo          String    @unique @db.NVarChar(50)
+  id              String              @id @default(uuid())
+  planNo          String              @unique @db.NVarChar(50)
   assetId         String
-  asset           Asset     @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  title           String    @db.NVarChar(200)
-  frequency       String    @default("monthly") @db.NVarChar(30)
-  intervalDays    Int       @default(30)
+  asset           Asset               @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  title           String              @db.NVarChar(200)
+  frequency       String              @default("monthly") @db.NVarChar(30)
+  intervalDays    Int                 @default(30)
   nextDueDate     DateTime
   lastGeneratedAt DateTime?
   assignedToId    String?
-  assignedTo      Employee? @relation("MaintenancePlanAssignedTo", fields: [assignedToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assignedTo      Employee?           @relation("MaintenancePlanAssignedTo", fields: [assignedToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   vendorId        String?
-  vendor          Supplier? @relation(fields: [vendorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  notes           String?   @db.NVarChar(Max)
-  createdBy       String    @db.NVarChar(100)
-  updatedBy       String?   @db.NVarChar(100)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  isActive        Boolean   @default(true)
-  planState       String    @default("active") @db.NVarChar(20)
+  vendor          Supplier?           @relation(fields: [vendorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  notes           String?             @db.NVarChar(Max)
+  createdBy       String              @db.NVarChar(100)
+  updatedBy       String?             @db.NVarChar(100)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  isActive        Boolean             @default(true)
+  planState       String              @default("active") @db.NVarChar(20)
   tickets         MaintenanceTicket[] @relation("MaintenancePlanTickets")
 
   @@index([isActive, nextDueDate], map: "IX_maintenance_plans_isActive_nextDueDate")
@@ -719,39 +720,39 @@ model MaintenancePlan {
 }
 
 model MaintenanceTicket {
-  id            String    @id @default(uuid())
-  repairNo      String    @unique @db.NVarChar(50)
-  assetId       String
-  asset         Asset     @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                String           @id @default(uuid())
+  repairNo          String           @unique @db.NVarChar(50)
+  assetId           String
+  asset             Asset            @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   maintenancePlanId String?
   maintenancePlan   MaintenancePlan? @relation("MaintenancePlanTickets", fields: [maintenancePlanId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  problem       String    @db.NVarChar(Max)
-  reportedById  String
-  reportedBy    Employee  @relation("MaintenanceReportedBy", fields: [reportedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  reportedDate  DateTime  @default(now())
-  assignedToId  String?
-  assignedTo    Employee? @relation("MaintenanceAssignedTo", fields: [assignedToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  dueDate       DateTime?
-  repairType    String    @db.NVarChar(30)
-  vendorId      String?
-  vendor        Supplier? @relation(fields: [vendorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  repairStatus  String    @default("open") @db.NVarChar(30)
-  laborCost     Decimal?  @db.Decimal(18, 2)
-  partsCost     Decimal?  @db.Decimal(18, 2)
-  repairCost    Decimal?  @db.Decimal(18, 2)
-  quotationNo   String?   @db.NVarChar(100)
-  invoiceNo     String?   @db.NVarChar(100)
-  warrantyClaim Boolean   @default(false)
-  rootCause     String?   @db.NVarChar(Max)
-  resolution    String?   @db.NVarChar(Max)
-  returnDate    DateTime?
-  inspectedById String?
-  inspectedBy   Employee? @relation("MaintenanceInspectedBy", fields: [inspectedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  createdBy     String    @db.NVarChar(100)
-  updatedBy     String?   @db.NVarChar(100)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  isActive      Boolean   @default(true)
+  problem           String           @db.NVarChar(Max)
+  reportedById      String
+  reportedBy        Employee         @relation("MaintenanceReportedBy", fields: [reportedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reportedDate      DateTime         @default(now())
+  assignedToId      String?
+  assignedTo        Employee?        @relation("MaintenanceAssignedTo", fields: [assignedToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  dueDate           DateTime?
+  repairType        String           @db.NVarChar(30)
+  vendorId          String?
+  vendor            Supplier?        @relation(fields: [vendorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  repairStatus      String           @default("open") @db.NVarChar(30)
+  laborCost         Decimal?         @db.Decimal(18, 2)
+  partsCost         Decimal?         @db.Decimal(18, 2)
+  repairCost        Decimal?         @db.Decimal(18, 2)
+  quotationNo       String?          @db.NVarChar(100)
+  invoiceNo         String?          @db.NVarChar(100)
+  warrantyClaim     Boolean          @default(false)
+  rootCause         String?          @db.NVarChar(Max)
+  resolution        String?          @db.NVarChar(Max)
+  returnDate        DateTime?
+  inspectedById     String?
+  inspectedBy       Employee?        @relation("MaintenanceInspectedBy", fields: [inspectedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy         String           @db.NVarChar(100)
+  updatedBy         String?          @db.NVarChar(100)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  isActive          Boolean          @default(true)
 
   @@index([isActive, repairStatus, dueDate], map: "IX_maintenance_tickets_isActive_repairStatus_dueDate")
   @@index([assetId, reportedDate], map: "IX_maintenance_tickets_assetId_reportedDate")
@@ -762,23 +763,23 @@ model MaintenanceTicket {
 }
 
 model DisposalBatch {
-  id               String            @id @default(uuid())
-  batchNo          String            @unique @db.NVarChar(50)
-  disposalType     String            @db.NVarChar(30)
-  reason           String            @db.NVarChar(Max)
-  requestedById    String
-  requestedBy      Employee          @relation("DisposalBatchRequestedBy", fields: [requestedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  requestDate      DateTime          @default(now())
-  approverId       String?
-  approver         Employee?         @relation("DisposalBatchApprover", fields: [approverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  saleValue        Decimal?          @db.Decimal(18, 2)
-  salvageValue     Decimal?          @db.Decimal(18, 2)
-  batchStatus      String            @default("pending") @db.NVarChar(30)
-  createdBy        String            @db.NVarChar(100)
-  updatedBy        String?           @db.NVarChar(100)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  isActive         Boolean           @default(true)
+  id            String    @id @default(uuid())
+  batchNo       String    @unique @db.NVarChar(50)
+  disposalType  String    @db.NVarChar(30)
+  reason        String    @db.NVarChar(Max)
+  requestedById String
+  requestedBy   Employee  @relation("DisposalBatchRequestedBy", fields: [requestedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  requestDate   DateTime  @default(now())
+  approverId    String?
+  approver      Employee? @relation("DisposalBatchApprover", fields: [approverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  saleValue     Decimal?  @db.Decimal(18, 2)
+  salvageValue  Decimal?  @db.Decimal(18, 2)
+  batchStatus   String    @default("pending") @db.NVarChar(30)
+  createdBy     String    @db.NVarChar(100)
+  updatedBy     String?   @db.NVarChar(100)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  isActive      Boolean   @default(true)
 
   disposalRequests DisposalRequest[]
 
@@ -789,48 +790,51 @@ model DisposalBatch {
 }
 
 model DisposalRequest {
-  id                 String    @id @default(uuid())
-  disposalNo         String    @unique @db.NVarChar(50)
-  assetId            String
-  asset              Asset     @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  batchId            String?
-  batch              DisposalBatch? @relation(fields: [batchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  disposalType       String    @db.NVarChar(30)
-  reason             String    @db.NVarChar(Max)
-  requestedById      String
-  requestedBy        Employee  @relation("DisposalRequestedBy", fields: [requestedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  requestDate        DateTime  @default(now())
-  approverId         String?
-  approver           Employee? @relation("DisposalApprover", fields: [approverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  requestStatus      String    @default("pending") @db.NVarChar(30)
-  saleValue          Decimal?  @db.Decimal(18, 2)
-  salvageValue       Decimal?  @db.Decimal(18, 2)
-  approvalRemark     String?   @db.NVarChar(Max)
-  approvedAt         DateTime?
-  sourceType         String?   @db.NVarChar(50)
-  sourceId           String?   @db.NVarChar(100)
-  executionDate      DateTime?
-  executedById       String?
-  executedBy         Employee? @relation("DisposalExecutedBy", fields: [executedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  recipientName      String?   @db.NVarChar(200)
-  documentNo         String?   @db.NVarChar(100)
-  actualSaleValue    Decimal?  @db.Decimal(18, 2)
-  actualSalvageValue Decimal?  @db.Decimal(18, 2)
-  executionRemark    String?   @db.NVarChar(Max)
-  evidenceExceptionReason    String?   @db.NVarChar(Max)
-  evidenceExceptionGrantedBy String?   @db.NVarChar(100)
+  id                         String         @id @default(uuid())
+  disposalNo                 String         @unique @db.NVarChar(50)
+  assetId                    String
+  asset                      Asset          @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  previousAssetStatusId      String?
+  previousAssetStatus        AssetStatus?   @relation("DisposalPreviousAssetStatus", fields: [previousAssetStatusId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  batchId                    String?
+  batch                      DisposalBatch? @relation(fields: [batchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  disposalType               String         @db.NVarChar(30)
+  reason                     String         @db.NVarChar(Max)
+  requestedById              String
+  requestedBy                Employee       @relation("DisposalRequestedBy", fields: [requestedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  requestDate                DateTime       @default(now())
+  approverId                 String?
+  approver                   Employee?      @relation("DisposalApprover", fields: [approverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  requestStatus              String         @default("pending") @db.NVarChar(30)
+  saleValue                  Decimal?       @db.Decimal(18, 2)
+  salvageValue               Decimal?       @db.Decimal(18, 2)
+  approvalRemark             String?        @db.NVarChar(Max)
+  approvedAt                 DateTime?
+  sourceType                 String?        @db.NVarChar(50)
+  sourceId                   String?        @db.NVarChar(100)
+  executionDate              DateTime?
+  executedById               String?
+  executedBy                 Employee?      @relation("DisposalExecutedBy", fields: [executedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  recipientName              String?        @db.NVarChar(200)
+  documentNo                 String?        @db.NVarChar(100)
+  actualSaleValue            Decimal?       @db.Decimal(18, 2)
+  actualSalvageValue         Decimal?       @db.Decimal(18, 2)
+  executionRemark            String?        @db.NVarChar(Max)
+  evidenceExceptionReason    String?        @db.NVarChar(Max)
+  evidenceExceptionGrantedBy String?        @db.NVarChar(100)
   evidenceExceptionGrantedAt DateTime?
-  completedAt        DateTime?
-  createdBy          String    @db.NVarChar(100)
-  updatedBy          String?   @db.NVarChar(100)
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  isActive           Boolean   @default(true)
+  completedAt                DateTime?
+  createdBy                  String         @db.NVarChar(100)
+  updatedBy                  String?        @db.NVarChar(100)
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
+  isActive                   Boolean        @default(true)
 
   @@index([isActive, requestStatus, requestDate], map: "IX_disposal_requests_isActive_requestStatus_requestDate")
   @@index([assetId], map: "IX_disposal_requests_assetId")
   @@index([requestedById], map: "IX_disposal_requests_requestedById")
   @@index([batchId], map: "IX_disposal_requests_batchId")
+  @@index([previousAssetStatusId], map: "IX_disposal_requests_previousAssetStatusId")
   @@map("disposal_requests")
 }
 

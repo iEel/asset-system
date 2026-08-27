@@ -131,6 +131,7 @@ export async function POST(request: NextRequest) {
             data: {
               disposalNo: `DP-${datePart}-${String(requestCount + index + 1).padStart(4, "0")}`,
               assetId,
+              previousAssetStatusId: asset.statusId,
               batchId: batch.id,
               disposalType: packet.disposalType,
               reason: packet.reason,

@@ -53,7 +53,7 @@ test("blocks approval when the asset no longer remains pending disposal", () => 
   assert.notEqual(getDisposalApprovalAssetStatusError({ name: "Ready" }), null)
 })
 
-test("orders decision options with pending disposal before the only valid rejection target", () => {
+test("decision options expose only the approval status because rejection restores its snapshot", () => {
   const options = getDisposalDecisionStatusOptions([
     { id: "lost", name: "Lost" },
     { id: "ready", name: "Ready" },
@@ -61,7 +61,7 @@ test("orders decision options with pending disposal before the only valid reject
     { id: "disposed", name: "Disposed" },
   ])
 
-  assert.deepEqual(options.map((option) => option.id), ["pending", "ready"])
+  assert.deepEqual(options.map((option) => option.id), ["pending"])
 })
 
 test("requires the disposal approval permission for decisions and edit permission for execution", () => {

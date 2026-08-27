@@ -1,7 +1,13 @@
 export type DisposalLifecycleStatus = {
   name?: string | null
   nameTh?: string | null
+  isActive?: boolean
 }
+
+export type DisposalRestoreStatusError =
+  | "DISPOSAL_PREVIOUS_STATUS_MISSING"
+  | "DISPOSAL_PREVIOUS_STATUS_INACTIVE"
+  | "DISPOSAL_ASSET_STATUS_CHANGED"
 
 export type DisposalAction = "approve" | "reject" | "execute"
 
@@ -73,14 +79,22 @@ export function getDisposalStatusTargetError(
   return "Disposal execution can only set asset status to Disposed or Retired"
 }
 
+export function getDisposalRestoreStatusError(
+  currentStatus: DisposalLifecycleStatus | null | undefined,
+  previousStatus: DisposalLifecycleStatus | null | undefined,
+): DisposalRestoreStatusError | null {
+  if (normalizeStatus(currentStatus) !== "pending disposal") return "DISPOSAL_ASSET_STATUS_CHANGED"
+  if (!previousStatus) return "DISPOSAL_PREVIOUS_STATUS_MISSING"
+  if (previousStatus.isActive === false) return "DISPOSAL_PREVIOUS_STATUS_INACTIVE"
+  return null
+}
+
 export function getDisposalActionPermission(action: DisposalAction) {
   return actionPermissions[action]
 }
 
 export function getDisposalDecisionStatusOptions<T extends DisposalStatusOption>(statuses: T[]) {
-  return ["pending disposal", "ready"].flatMap((statusName) =>
-    statuses.filter((status) => normalizeStatus(status) === statusName)
-  )
+  return statuses.filter((status) => normalizeStatus(status) === "pending disposal")
 }
 
 export function getDisposalExecutionStatusOptions<T extends DisposalStatusOption>(statuses: T[]) {

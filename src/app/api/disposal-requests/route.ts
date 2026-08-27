@@ -104,6 +104,7 @@ export async function POST(request: NextRequest) {
           data: {
             disposalNo,
             assetId: input.assetId,
+            previousAssetStatusId: asset.statusId,
             disposalType: input.disposalType,
             reason: input.reason,
             requestedById: input.requestedById,

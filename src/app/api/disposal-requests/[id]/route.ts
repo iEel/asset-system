@@ -5,6 +5,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import {
+  getDisposalRestoreStatusError,
   getDisposalSegregationError,
   getDisposalStatusTargetError,
 } from "@/lib/disposal-policy"
@@ -62,7 +63,10 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
       prisma.disposalRequest.findFirst({
         where: { id, isActive: true },
         omit: { batchId: true },
-        include: { asset: { select: { id: true, statusId: true, status: { select: { name: true, nameTh: true } } } } },
+        include: {
+          asset: { select: { id: true, statusId: true, status: { select: { name: true, nameTh: true, isActive: true } } } },
+          previousAssetStatus: { select: { id: true, name: true, nameTh: true, isActive: true } },
+        },
       }),
       prisma.systemSetting.findMany({
         where: { key: { in: [...workflowApprovalSettingKeys] } },
@@ -130,13 +134,12 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
       createdByUserId: disposalRequest.createdBy,
     })
     if (segregationError) return disposalApiError("DISPOSAL_SOD_CONFLICT", segregationError, 403)
-    const nextStatus = await prisma.assetStatus.findFirst({
-      where: { id: input.nextStatusId, isActive: true },
-      select: { id: true, name: true, nameTh: true },
-    })
-    if (!nextStatus) return disposalApiError("DISPOSAL_STATUS_NOT_FOUND", "Next asset status not found", 404)
-    const nextStatusError = getDisposalStatusTargetError(input.decision, nextStatus)
-    if (nextStatusError) return disposalApiError("DISPOSAL_INVALID_STATUS_TARGET", nextStatusError)
+    const restoreError = getDisposalRestoreStatusError(
+      disposalRequest.asset.status,
+      disposalRequest.previousAssetStatus,
+    )
+    if (restoreError) return disposalApiError(restoreError, restoreError, 409)
+    const restoreStatus = disposalRequest.previousAssetStatus!
 
     const requestStatus = "rejected"
     const updatedRequest = await prisma.$transaction(async (tx) => {
@@ -156,7 +159,7 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
 
       await tx.asset.update({
         where: { id: disposalRequest.assetId },
-        data: { statusId: input.nextStatusId, updatedBy: user.id },
+        data: { statusId: restoreStatus.id, updatedBy: user.id },
       })
 
       await tx.assetMovement.create({
@@ -164,7 +167,7 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
           assetId: disposalRequest.assetId,
           movementType: "disposal_reject",
           fromValue: disposalRequest.asset.statusId,
-          toValue: input.nextStatusId,
+          toValue: restoreStatus.id,
           reason: input.approvalRemark ?? disposalRequest.reason,
           referenceType: "disposal",
           referenceId: disposalRequest.id,
@@ -194,7 +197,7 @@ export async function PATCH(request: NextRequest, context: DisposalRequestContex
       },
       newValue: {
         requestStatus,
-        assetStatusId: input.nextStatusId,
+        assetStatusId: restoreStatus.id,
         saleValue: input.saleValue,
         salvageValue: input.salvageValue,
         approvalRemark: input.approvalRemark,

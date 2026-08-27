@@ -40,7 +40,6 @@ export function DisposalDecisionButton({
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const pendingDisposalStatus = statuses.find((status) => status.name === "Pending Disposal")
-  const readyStatus = statuses.find((status) => status.name === "Ready")
   const defaultStatus = pendingDisposalStatus
   const [values, setValues] = useState<DecisionValues>({
     decision: "approve",
@@ -53,7 +52,7 @@ export function DisposalDecisionButton({
   function setField(field: keyof DecisionValues, value: string) {
     setValues((current) => {
       if (field === "decision" && value === "reject") {
-        return { ...current, decision: value, nextStatusId: readyStatus?.id ?? current.nextStatusId }
+        return { ...current, decision: value }
       }
       if (field === "decision" && value === "approve") {
         return { ...current, decision: value, nextStatusId: defaultStatus?.id ?? current.nextStatusId }
@@ -224,12 +223,16 @@ function DecisionDialog({
               <option value="reject">{t("reject")}</option>
             </select>
           </Field>
-          <Field label={t("nextStatus")} required>
+          {values.decision === "approve" ? <Field label={t("nextStatus")} required>
             <select value={values.nextStatusId} required disabled={saving || values.decision === "approve"} onChange={(event) => onFieldChange("nextStatusId", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0">
               {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
             </select>
-            {values.decision === "approve" ? <p className="mt-1 text-xs text-muted-foreground">{t("approveKeepsPendingDisposal")}</p> : null}
-          </Field>
+            <p className="mt-1 text-xs text-muted-foreground">{t("approveKeepsPendingDisposal")}</p>
+          </Field> : (
+            <div className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+              {t("rejectRestoresPreviousStatus")}
+            </div>
+          )}
           {showSaleValue ? <Field label={t("saleValue")}>
             <input type="number" min="0" step="0.01" value={values.saleValue} disabled={saving} onChange={(event) => onFieldChange("saleValue", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0" />
           </Field> : null}
