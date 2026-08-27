@@ -363,22 +363,30 @@ export async function listAssetStateReviews(db: PrismaClient, filters: AssetStat
     }),
   ])
 
-  const suggestedStatusIds = rows.flatMap((row) => row.suggestedStatusId ? [row.suggestedStatusId] : [])
-  const suggestedConditionIds = rows.flatMap((row) => row.suggestedConditionId ? [row.suggestedConditionId] : [])
   const [suggestedStatuses, suggestedConditions] = await Promise.all([
-    suggestedStatusIds.length ? db.assetStatus.findMany({ where: { id: { in: suggestedStatusIds } }, select: { id: true, name: true, nameTh: true } }) : [],
-    suggestedConditionIds.length ? db.assetCondition.findMany({ where: { id: { in: suggestedConditionIds } }, select: { id: true, name: true, nameTh: true } }) : [],
+    db.assetStatus.findMany({ where: { isActive: true }, select: { id: true, name: true, nameTh: true } }),
+    db.assetCondition.findMany({ where: { isActive: true }, select: { id: true, name: true, nameTh: true } }),
   ])
   const statusById = new Map(suggestedStatuses.map((status) => [status.id, status]))
   const conditionById = new Map(suggestedConditions.map((condition) => [condition.id, condition]))
 
   return {
-    data: rows.map((row) => ({
-      ...row,
-      metadata: parseMetadata(row.metadataJson),
-      suggestedStatus: row.suggestedStatusId ? statusById.get(row.suggestedStatusId) ?? null : null,
-      suggestedCondition: row.suggestedConditionId ? conditionById.get(row.suggestedConditionId) ?? null : null,
-    })),
+    data: rows.map((row) => {
+      const issueType = isAssetStateReviewIssueType(row.issueType) ? row.issueType : null
+      const allowedStatusNames = issueType ? allowedStatusTargets[issueType] : []
+      return {
+        ...row,
+        metadata: parseMetadata(row.metadataJson),
+        suggestedStatus: row.suggestedStatusId ? statusById.get(row.suggestedStatusId) ?? null : null,
+        suggestedCondition: row.suggestedConditionId ? conditionById.get(row.suggestedConditionId) ?? null : null,
+        allowedStatusTargets: suggestedStatuses.filter((status) =>
+          allowedStatusNames.some((name) => normalizeAssetStateName(name) === normalizeAssetStateName(status.name))
+        ),
+        allowedConditionTargets: issueType && conditionResolutionIssues.has(issueType)
+          ? filterSelectableConditions(suggestedConditions)
+          : [],
+      }
+    }),
     total,
     page: filters.page,
     pageSize: filters.pageSize,

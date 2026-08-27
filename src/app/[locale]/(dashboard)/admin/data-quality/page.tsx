@@ -2,11 +2,14 @@ import Link from "next/link"
 import { AlertTriangle, CheckCircle2, FileWarning } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
+import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
+import { listAssetStateReviews } from "@/lib/asset-state-review-service"
 import { assetMissingResponsibilityWhere } from "@/lib/asset-ownership"
 import { assetDataQualityRulesKey, parseAssetDataQualityRules, type AssetDataQualityRule } from "@/lib/data-quality-rules"
 import { buildDataQualityRuleHref } from "@/lib/data-quality-drilldown"
 import { DataQualityRuleForm } from "@/components/admin/data-quality-rule-form"
+import { AssetStateReviewWorkspace, type AssetStateReviewResponse } from "@/components/admin/asset-state-review-workspace"
 
 type DataQualityPageProps = {
   params: Promise<{ locale: string }>
@@ -14,15 +17,16 @@ type DataQualityPageProps = {
 
 export default async function DataQualityPage({ params }: DataQualityPageProps) {
   const { locale } = await params
-  await requirePagePermission(locale, "setting", "view")
+  const user = await requirePagePermission(locale, "setting", "view")
   const t = await getTranslations("dataQualityPage")
   const tCommon = await getTranslations("common")
   const warrantyThreshold = new Date()
   warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
 
-  const [setting, counts] = await Promise.all([
+  const [setting, counts, reviewResult] = await Promise.all([
     prisma.systemSetting.findUnique({ where: { key: assetDataQualityRulesKey }, select: { value: true } }),
     getRuleCounts(warrantyThreshold),
+    listAssetStateReviews(prisma, { page: 1, pageSize: 25, reviewStatus: "pending" }),
   ])
   const rules = parseAssetDataQualityRules(setting?.value)
   const enabledRules = rules.filter((rule) => rule.enabled)
@@ -62,6 +66,79 @@ export default async function DataQualityPage({ params }: DataQualityPageProps) 
           />
         ))}
       </section>
+
+      <AssetStateReviewWorkspace
+        locale={locale}
+        canEdit={hasPermission(user, "setting", "edit")}
+        initialData={JSON.parse(JSON.stringify(reviewResult)) as AssetStateReviewResponse}
+        labels={{
+          title: t("assetStateReviews.title"),
+          description: t("assetStateReviews.description"),
+          scan: t("assetStateReviews.scan"),
+          scanning: t("assetStateReviews.scanning"),
+          scanSuccess: t("assetStateReviews.scanSuccess"),
+          scanError: t("assetStateReviews.scanError"),
+          loadError: t("assetStateReviews.loadError"),
+          saveError: t("assetStateReviews.saveError"),
+          staleError: t("assetStateReviews.staleError"),
+          resolveSuccess: t("assetStateReviews.resolveSuccess"),
+          dismissSuccess: t("assetStateReviews.dismissSuccess"),
+          reviewStatus: t("assetStateReviews.reviewStatus"),
+          severity: t("assetStateReviews.severity"),
+          issueType: t("assetStateReviews.issueType"),
+          pending: t("assetStateReviews.pending"),
+          resolved: t("assetStateReviews.resolved"),
+          dismissed: t("assetStateReviews.dismissed"),
+          all: t("assetStateReviews.all"),
+          critical: t("assetStateReviews.critical"),
+          warning: t("assetStateReviews.warning"),
+          info: t("assetStateReviews.info"),
+          asset: t("assetStateReviews.asset"),
+          currentState: t("assetStateReviews.currentState"),
+          issue: t("assetStateReviews.issue"),
+          lastDetected: t("assetStateReviews.lastDetected"),
+          actions: t("assetStateReviews.actions"),
+          custodian: t("assetStateReviews.custodian"),
+          unassigned: t("assetStateReviews.unassigned"),
+          status: t("assetStateReviews.status"),
+          condition: t("assetStateReviews.condition"),
+          resolve: t("assetStateReviews.resolve"),
+          dismiss: t("assetStateReviews.dismiss"),
+          readOnly: t("assetStateReviews.readOnly"),
+          workflowRequired: t("assetStateReviews.workflowRequired"),
+          loading: t("assetStateReviews.loading"),
+          emptyTitle: t("assetStateReviews.emptyTitle"),
+          emptyDescription: t("assetStateReviews.emptyDescription"),
+          total: t("assetStateReviews.total"),
+          previous: t("assetStateReviews.previous"),
+          next: t("assetStateReviews.next"),
+          resolveTitle: t("assetStateReviews.resolveTitle"),
+          resolveDescription: t("assetStateReviews.resolveDescription"),
+          dismissTitle: t("assetStateReviews.dismissTitle"),
+          dismissDescription: t("assetStateReviews.dismissDescription"),
+          nextStatus: t("assetStateReviews.nextStatus"),
+          nextCondition: t("assetStateReviews.nextCondition"),
+          reason: t("assetStateReviews.reason"),
+          reasonPlaceholder: t("assetStateReviews.reasonPlaceholder"),
+          reasonHelp: t("assetStateReviews.reasonHelp"),
+          cancel: tCommon("cancel"),
+          saving: tCommon("saving"),
+          confirmResolve: t("assetStateReviews.confirmResolve"),
+          confirmDismiss: t("assetStateReviews.confirmDismiss"),
+        }}
+        issueTypes={{
+          repair_status_without_active_ticket: t("assetStateReviews.issueTypes.repair_status_without_active_ticket"),
+          active_repair_ticket_status_mismatch: t("assetStateReviews.issueTypes.active_repair_ticket_status_mismatch"),
+          checked_out_without_open_checkout: t("assetStateReviews.issueTypes.checked_out_without_open_checkout"),
+          open_checkout_status_mismatch: t("assetStateReviews.issueTypes.open_checkout_status_mismatch"),
+          personal_in_use_without_custodian: t("assetStateReviews.issueTypes.personal_in_use_without_custodian"),
+          personal_ready_with_custodian: t("assetStateReviews.issueTypes.personal_ready_with_custodian"),
+          incompatible_status_condition: t("assetStateReviews.issueTypes.incompatible_status_condition"),
+          legacy_condition_value: t("assetStateReviews.issueTypes.legacy_condition_value"),
+          controlled_legacy_status: t("assetStateReviews.issueTypes.controlled_legacy_status"),
+          legacy_disposal_missing_previous_status: t("assetStateReviews.issueTypes.legacy_disposal_missing_previous_status"),
+        }}
+      />
 
       <DataQualityRuleForm
         rules={rules}
