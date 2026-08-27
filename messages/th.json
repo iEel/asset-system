@@ -2697,6 +2697,8 @@
     "closeChecklistEvidence": "แนบรูปหลังซ่อมหรือเอกสารหลักฐานแล้ว",
     "closeChecklistInspector": "ระบุผู้ตรวจรับงานแล้ว",
     "nextStatus": "สถานะทรัพย์สินหลังซ่อม",
+    "recommendedCloseStatus": "แนะนำ {status} ตามผู้ครอบครองปัจจุบัน",
+    "missingCloseStatus": "ไม่พบสถานะที่ระบบแนะนำ กรุณาติดต่อผู้ดูแลระบบ",
     "closedEvidenceAppendOnlyHelp": "ใบงานนี้ปิดแล้ว หลักฐานเดิมจะถูกล็อกไม่ให้ลบ แต่ผู้มีสิทธิ์ยังเพิ่มเอกสารชี้แจงภายหลังได้และระบบจะบันทึกใน Audit Trail",
     "errors": {
       "MAINTENANCE_ASSET_INELIGIBLE": "ทรัพย์สินนี้ยังไม่อยู่ในสถานะที่สามารถเข้าสู่กระบวนการซ่อมได้",

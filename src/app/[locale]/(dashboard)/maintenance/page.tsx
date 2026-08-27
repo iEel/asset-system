@@ -30,6 +30,7 @@ import {
 import { getMaintenanceBoardCompatibility } from "@/lib/maintenance-list"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { getMaintenanceOperationalTarget } from "@/lib/asset-lifecycle-policy"
 
 type MaintenancePageProps = {
   params: Promise<{ locale: string }>
@@ -64,7 +65,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
     activeView === "tickets" ? getTicketWorkspaceData(listFilters, evidenceTicketIds, today) : Promise.resolve(emptyTicketWorkspace()),
     activeView === "pm" ? getPlanWorkspaceData(hasMaintenancePlanSupport, listFilters, today) : Promise.resolve(emptyPlanWorkspace()),
     activeView === "tickets" && canEdit ? prisma.assetStatus.findMany({
-      where: { isActive: true, name: { in: ["Ready", "Pending Disposal"] } },
+      where: { isActive: true, name: { in: ["Ready", "In Use", "Pending Disposal"] } },
       select: { id: true, name: true, nameTh: true },
       orderBy: { sortOrder: "asc" },
     }) : Promise.resolve([]),
@@ -126,6 +127,9 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
             quotationNo: ticket.quotationNo,
             invoiceNo: ticket.invoiceNo,
             warrantyClaim: ticket.warrantyClaim,
+            recommendedStatusId: closeStatusRows.find(
+              (status) => status.name === getMaintenanceOperationalTarget(ticket.asset)
+            )?.id ?? null,
           }))}
           closeStatuses={closeStatuses}
         />
@@ -632,7 +636,7 @@ async function getTicketWorkspaceData(listFilters: ParsedMaintenanceListParams, 
     prisma.maintenanceTicket.findMany({
       where,
       include: {
-        asset: { select: { assetTag: true, name: true } },
+        asset: { select: { assetTag: true, name: true, ownershipType: true, custodianId: true } },
         reportedBy: { select: { code: true, fullNameTh: true } },
         assignedTo: { select: { code: true, fullNameTh: true } },
         inspectedBy: { select: { code: true, fullNameTh: true } },

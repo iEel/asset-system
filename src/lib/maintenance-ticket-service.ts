@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client"
-import { getMaintenanceCloseStatusError } from "./asset-lifecycle-exception-policy.ts"
+import { getMaintenanceOperationalTarget } from "./asset-lifecycle-policy.ts"
 import { MaintenanceApiError } from "./maintenance-api-errors.ts"
 import {
   canCloseMaintenanceTicket,
@@ -35,6 +35,8 @@ const mutationTicketInclude = {
       assetTag: true,
       name: true,
       statusId: true,
+      ownershipType: true,
+      custodianId: true,
       status: { select: { id: true, name: true, nameTh: true } },
     },
   },
@@ -297,9 +299,12 @@ export async function closeMaintenanceTicket(
       throw new MaintenanceApiError("MAINTENANCE_INVALID_CLOSE_STATUS", "Next asset status not found")
     }
     if (nextStatus) {
-      const nextStatusError = getMaintenanceCloseStatusError(nextStatus)
-      if (nextStatusError) {
-        throw new MaintenanceApiError("MAINTENANCE_INVALID_CLOSE_STATUS", nextStatusError)
+      const operationalTarget = getMaintenanceOperationalTarget(ticket.asset)
+      if (nextStatus.name !== operationalTarget && nextStatus.name !== "Pending Disposal") {
+        throw new MaintenanceApiError(
+          "MAINTENANCE_INVALID_CLOSE_STATUS",
+          `Close target must be ${operationalTarget} or Pending Disposal`,
+        )
       }
     }
 

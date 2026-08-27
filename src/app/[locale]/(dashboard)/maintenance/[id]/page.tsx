@@ -19,6 +19,7 @@ import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { getMaintenanceStatusUpdateTargets, isPreventiveMaintenanceTicket } from "@/lib/maintenance-policy"
+import { getMaintenanceOperationalTarget } from "@/lib/asset-lifecycle-policy"
 
 type MaintenanceDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -48,6 +49,8 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
           currentLocation: { select: { code: true, name: true } },
           custodian: { select: { code: true, fullNameTh: true } },
           purchasePrice: true,
+          ownershipType: true,
+          custodianId: true,
         },
       },
       reportedBy: { select: { code: true, fullNameTh: true } },
@@ -73,13 +76,16 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
       _sum: { repairCost: true },
     }),
     canEdit ? prisma.assetStatus.findMany({
-      where: { isActive: true, name: { in: ["Ready", "Pending Disposal"] } },
+      where: { isActive: true, name: { in: ["Ready", "In Use", "Pending Disposal"] } },
       select: { id: true, name: true, nameTh: true },
       orderBy: { sortOrder: "asc" },
     }) : Promise.resolve([]),
   ])
   const movementLabels = await getMovementDisplayLabels(movements)
   const statuses = closeStatusRows.map((status) => ({ id: status.id, name: status.name, label: status.nameTh }))
+  const recommendedStatusId = closeStatusRows.find(
+    (status) => status.name === getMaintenanceOperationalTarget(ticket.asset)
+  )?.id ?? null
   const isPreventive = isPreventiveMaintenanceTicket(ticket)
   const totalRepairCount = assetRepairSummary._count._all
   const totalRepairCost = Number(assetRepairSummary._sum.repairCost ?? 0)
@@ -157,6 +163,7 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
                 defaultWarrantyClaim={ticket.warrantyClaim}
                 expectedUpdatedAt={ticket.updatedAt}
                 isPreventive={isPreventive}
+                recommendedStatusId={recommendedStatusId}
                 disabled={!hasAfterRepairEvidence}
               /> : null}
             </>

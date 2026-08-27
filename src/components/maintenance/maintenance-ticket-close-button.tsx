@@ -24,6 +24,7 @@ export function MaintenanceTicketCloseButton({
   defaultWarrantyClaim,
   expectedUpdatedAt,
   isPreventive,
+  recommendedStatusId,
   open: controlledOpen,
   hideTrigger = false,
   disabled = false,
@@ -40,6 +41,7 @@ export function MaintenanceTicketCloseButton({
   defaultWarrantyClaim: boolean
   expectedUpdatedAt: Date | string
   isPreventive: boolean
+  recommendedStatusId?: string | null
   open?: boolean
   hideTrigger?: boolean
   disabled?: boolean
@@ -52,7 +54,7 @@ export function MaintenanceTicketCloseButton({
   const open = controlledOpen ?? internalOpen
   const setOpen = (next: boolean) => onOpenChange ? onOpenChange(next) : setInternalOpen(next)
   const [saving, setSaving] = useState(false)
-  const readyStatus = statuses.find((status) => status.name === "Ready") ?? statuses[0]
+  const recommendedStatus = statuses.find((status) => status.id === recommendedStatusId)
   const [values, setValues] = useState({
     rootCause: "",
     resolution: "",
@@ -64,7 +66,7 @@ export function MaintenanceTicketCloseButton({
     invoiceNo: defaultInvoiceNo ?? "",
     warrantyClaim: defaultWarrantyClaim,
     inspectedById: "",
-    nextStatusId: readyStatus?.id ?? "",
+    nextStatusId: recommendedStatus?.id ?? "",
   })
 
   function setField(field: string, value: string | boolean) {
@@ -152,6 +154,9 @@ export function MaintenanceTicketCloseButton({
                     </option>
                   ))}
                 </select>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  {recommendedStatus ? t("recommendedCloseStatus", { status: recommendedStatus.label }) : t("missingCloseStatus")}
+                </span>
               </Field> : null}
               <MaintenanceOptionSelect
                 type="employee"

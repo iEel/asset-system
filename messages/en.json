@@ -2697,6 +2697,8 @@
     "closeChecklistEvidence": "After-repair photo or evidence is attached",
     "closeChecklistInspector": "Inspector is selected",
     "nextStatus": "Asset Status After Repair",
+    "recommendedCloseStatus": "Recommended: {status}, based on the current custodian",
+    "missingCloseStatus": "The recommended status is not configured. Contact an administrator.",
     "closedEvidenceAppendOnlyHelp": "This ticket is closed. Existing evidence is locked, but authorized users may add a clearly audited addendum.",
     "errors": {
       "MAINTENANCE_ASSET_INELIGIBLE": "This asset is not eligible to enter the repair workflow.",

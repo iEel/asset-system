@@ -113,6 +113,33 @@ test("corrective close updates ticket, asset, and movement atomically", async ()
   assert.deepEqual(db.events, ["ticket:closed", "asset:Ready", "movement:maintenance_close"])
 })
 
+test("corrective close restores In Use when a personal custodian remains", async () => {
+  const db = fakeDb({
+    ticketStatus: "completed",
+    assetStatus: "Under Maintenance",
+    ownershipType: "personal",
+    custodianId: "employee-1",
+  })
+
+  await closeMaintenanceTicket(db, "ticket-1", { ...closeInput, nextStatusId: "status-in-use" }, { id: "user-1" })
+
+  assert.deepEqual(db.events, ["ticket:closed", "asset:In Use", "movement:maintenance_close"])
+})
+
+test("corrective close rejects Ready when a personal custodian remains", async () => {
+  const db = fakeDb({
+    ticketStatus: "completed",
+    assetStatus: "Under Maintenance",
+    ownershipType: "personal",
+    custodianId: "employee-1",
+  })
+
+  await assert.rejects(
+    () => closeMaintenanceTicket(db, "ticket-1", closeInput, { id: "user-1" }),
+    hasMaintenanceCode("MAINTENANCE_INVALID_CLOSE_STATUS"),
+  )
+})
+
 test("close requires maintenance evidence", async () => {
   const db = fakeDb({ ticketStatus: "completed", attachmentCount: 0 })
 
@@ -177,6 +204,8 @@ function fakeDb(config: {
   nextAssetStatus?: string
   attachmentCount?: number
   ticketKind?: "corrective" | "pm"
+  ownershipType?: string
+  custodianId?: string | null
 } = {}) {
   const events: string[] = []
   const ticket = {
@@ -191,6 +220,8 @@ function fakeDb(config: {
     asset: {
       id: "asset-1",
       statusId: "status-current",
+      ownershipType: config.ownershipType ?? "shared",
+      custodianId: config.custodianId ?? null,
       status: { id: "status-current", name: config.assetStatus ?? "Available", nameTh: "พร้อมใช้งาน" },
     },
   }
@@ -200,15 +231,24 @@ function fakeDb(config: {
       update: async ({ data }: { data: { statusId: string } }) => {
         const status = data.statusId === "status-maintenance"
           ? "Under Maintenance"
-          : data.statusId === "status-ready" ? "Ready" : data.statusId
+          : data.statusId === "status-ready"
+            ? "Ready"
+            : data.statusId === "status-in-use"
+              ? "In Use"
+              : data.statusId === "status-pending-disposal"
+                ? "Pending Disposal"
+                : data.statusId
         events.push(`asset:${status}`)
         return ticket.asset
       },
     },
     assetStatus: {
-      findFirst: async ({ where }: { where: { id?: string } }) => where.id
-        ? { id: "status-ready", name: config.nextAssetStatus ?? "Ready", nameTh: "พร้อมใช้งาน" }
-        : { id: "status-maintenance", name: "Under Maintenance", nameTh: "กำลังซ่อม" },
+      findFirst: async ({ where }: { where: { id?: string; name?: string } }) => {
+        if (where.id === "status-in-use") return { id: "status-in-use", name: "In Use", nameTh: "ใช้งานอยู่" }
+        if (where.id === "status-pending-disposal") return { id: "status-pending-disposal", name: "Pending Disposal", nameTh: "รอตัดจำหน่าย" }
+        if (where.id) return { id: "status-ready", name: config.nextAssetStatus ?? "Ready", nameTh: "พร้อมใช้งาน" }
+        return { id: "status-maintenance", name: where.name ?? "Under Maintenance", nameTh: "กำลังซ่อม" }
+      },
     },
     employee: { findFirst: async () => ({ id: "employee-1" }) },
     supplier: { findFirst: async () => ({ id: "vendor-1" }) },
