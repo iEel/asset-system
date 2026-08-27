@@ -56,20 +56,16 @@ Selectable physical conditions are `Not Assessed`, `New`, `Good`, `Fair`, `Damag
 | Checked Out | Ready | Check-in / return with normal result |
 | Checked Out | Pending Repair | Check-in / return with repair needed |
 | Checked Out | Pending Disposal | Check-in / return with disposal recommendation |
-| Ready | Under Maintenance | Maintenance job starts or asset is taken for service |
+| Ready / In Use | Pending Repair | Corrective maintenance ticket opened |
 | Pending Repair | Under Maintenance | Repair ticket is accepted / in progress |
-| Under Maintenance | Ready | Maintenance job closed and asset is usable |
+| Under Maintenance | Ready / In Use | Maintenance job closed and asset is usable; personal custody returns to `In Use`, otherwise `Ready` |
 | Under Maintenance | Pending Disposal | Maintenance result recommends disposal |
-| Ready | Pending Disposal | Disposal request opened |
+| Ready / In Use | Pending Disposal | Disposal request opened and the prior status is captured for rejection restoration |
+| Pending Disposal | Previous captured status | Disposal request rejected |
 | Pending Disposal | Disposed | Disposal execution completed |
 | Pending Disposal | Retired | Retirement completed |
-| Ready / In Use | Under Inspection | A controlled inspection or audit follow-up starts |
+| Reserved / In Transit | Ready / In Use / Missing / Lost | Controlled legacy-status resolution from the Data Quality review queue |
 | Under Inspection | Ready | Inspection confirms the asset is usable and available |
-| Under Inspection | In Use | Inspection confirms an existing personal custodian; restore to `Ready`, then use personal transfer so custody sets `In Use` atomically |
-| Under Inspection | Pending Repair | Inspection finds damage; open a corrective maintenance ticket |
-| Under Inspection | Pending Disposal | Inspection recommends disposal; open the disposal workflow |
-| Under Inspection | Lost / Missing | Investigation confirms loss or the asset remains unlocated |
-| Ready | Lost / Missing | Audit or operational investigation marks unresolved loss |
 | Lost / Missing | Ready | Finding resolved and asset is confirmed usable |
 
 ## Operational Meaning And Next Actions
@@ -82,10 +78,10 @@ Selectable physical conditions are `Not Assessed`, `New`, `Good`, `Fair`, `Damag
 | Reserved | Legacy or planning status for an asset held for a future use. | Move to Ready or a controlled custody workflow when released. |
 | Checked Out | Asset is currently issued to a person/location/department. | Check-in to `Ready`, `Pending Repair`, or `Pending Disposal`. |
 | In Transit | Legacy or logistics movement status. | Confirm arrival through the relevant movement workflow and return to an active status. |
-| Under Inspection | Asset is being reviewed because data, location, custody, or condition needs confirmation. | If usable, resolve to `Ready`; if damaged, open a maintenance ticket so the asset becomes `Pending Repair`; if disposal is recommended, use disposal/maintenance close workflow; if unresolved, follow lost/missing policy. |
+| Under Inspection | Asset is being reviewed because data, location, custody, condition, or master data needs confirmation. | The currently enforced exit is controlled correction to `Ready`. After that correction, use personal transfer, maintenance, or disposal workflow as required. Recording an audit item as not found creates a finding but does not change the asset to `Missing` or `Lost`. |
 | Pending Repair | Repair is needed but work has not started. | Accept/start the maintenance work and move to `Under Maintenance`. |
-| Under Maintenance | Asset is under repair or service. | Close maintenance to `Ready` or `Pending Disposal`. |
-| Pending Disposal | Asset is approved/recommended for disposal and should not be used in normal operations. | Execute disposal as `Disposed` or retire as `Retired`. |
+| Under Maintenance | Asset is under repair or service. | Close maintenance to `In Use` when valid personal custody remains, otherwise `Ready`; or choose `Pending Disposal`. |
+| Pending Disposal | Asset is approved/recommended for disposal and should not be used in normal operations. | Execute disposal as `Disposed`/`Retired`; rejection restores the status captured when the request was created. |
 | Lost | Asset is reported lost. | Investigate and correct back to `Ready` only when found and usable. |
 | Missing | Asset was not found during audit or operation. | Investigate and correct back to `Ready` only when found and usable. |
 | Disposed | Asset has been disposed. | Closed lifecycle status. Do not use normal checkout/transfer. |
@@ -100,11 +96,13 @@ The status diagram used for operator handoff is stored as `docs/asset-lifecycle-
 - Check-in requires `asset:edit`, requires an active checkout, and only accepts return statuses from `Ready`, `Pending Repair`, and `Pending Disposal`.
 - Check-in can create a maintenance ticket only when the return status is `Pending Repair` and the user has `maintenance:create`.
 - Transfer requires `asset:edit`, blocks assets that already have an active checkout, and accepts personal custody assignment only from `Ready` or `In Use`; `Under Inspection` therefore remains blocked. A transfer with `toCustodianId` resolves the required `In Use` status server-side and updates it atomically with the new custodian; location-only or department-only transfers preserve the current status.
-- Maintenance close only allows next asset status `Ready` or `Pending Disposal`.
+- Corrective maintenance close computes the operational target from custody: `In Use` when the asset still has valid personal custody, otherwise `Ready`; `Pending Disposal` is the other allowed result. PM ticket closure does not change asset lifecycle.
 - Disposal execution only allows final asset status `Disposed` or `Retired`.
 - Generic asset edit cannot change protected lifecycle statuses such as `Pending Disposal`, `Disposed`, `Retired`, `Lost`, `Missing`, `Under Maintenance`, `Pending Repair`, or `Under Inspection`; use status correction or the proper workflow.
 - Asset create/edit loads canonical status names with the localized labels and blocks direct protected status changes in the form before submit. Operators should not rely on the generic edit page to move assets into repair, disposal, lost/missing, maintenance, or closed statuses.
-- Status correction can restore accidental `Pending Disposal`, `Disposed`, `Retired`, `Lost`, `Missing`, `Under Maintenance`, `Pending Repair`, or completed `Under Inspection` statuses back to `Ready` with a required reason, asset movement, and audit log. Damaged or disposal-recommended inspection results must use maintenance or disposal instead of correction.
+- Status correction can restore accidental `Pending Disposal`, `Disposed`, `Retired`, `Lost`, `Missing`, `Under Maintenance`, `Pending Repair`, or completed `Under Inspection` statuses back to `Ready` with a required reason, asset movement, and audit log. Because corrective maintenance creation currently accepts only `Ready`/`In Use`, an inspected asset that needs repair or disposal must first complete the controlled inspection correction to `Ready`, then enter the appropriate workflow.
+- Rejecting a current disposal request does not assume `Ready`; it restores the active `previousAssetStatusId` captured when the request claimed the asset. A legacy request without a valid captured status is sent to the review queue instead of being guessed.
+- Marking an audit item as not found creates a pending investigation finding and does not automatically change `Asset.statusId` to `Missing` or `Lost`. There is not yet a dedicated normal loss-confirmation transition.
 - Maintenance ticket creation moves the asset to `Pending Repair` when that status exists. Creating a ticket does not require `returnDate`; `returnDate` is required only when closing the repair ticket.
 - Default audit-round target selection excludes `Disposed` and `Retired` unless the user explicitly includes closed assets.
 - Audit status dropdowns hide closed statuses by default to avoid confusing “all assets” with disposed/retired assets.
@@ -117,7 +115,7 @@ The status diagram used for operator handoff is stored as `docs/asset-lifecycle-
 - Check-in must be tied to an active checkout.
 - Check-in next status must be one of `Ready`, `Pending Repair`, or `Pending Disposal`.
 - Maintenance ticket creation from check-in must require `Pending Repair`.
-- Maintenance close next status must be `Ready` or `Pending Disposal`.
+- Corrective maintenance close next status must be the custody-derived operational target (`In Use` for valid personal custody, otherwise `Ready`) or `Pending Disposal`; PM close must preserve asset status.
 - Disposal execution next status must be `Disposed` or `Retired`.
 - Status correction must only return protected lifecycle statuses, including `Under Inspection`, to `Ready` and must require a reason.
 - Maintenance create validation must allow omitted, blank, or null `returnDate`; close-ticket validation must still require a real `returnDate`.
@@ -130,8 +128,10 @@ These are recommended hardening items for future work. They should be implemente
 - If the organization needs to move `Pending Disposal` assets before final execution, add a privileged transfer workflow with separate approval/audit evidence instead of using normal transfer.
 - If the organization needs richer return-to-service steps than status correction, add a dedicated workflow with inspection evidence before checkout.
 - Disposal execution should remain the only normal workflow that moves an asset to `Disposed` or `Retired`.
-- Maintenance close should keep documenting whether the asset returns to `Ready` or moves to `Pending Disposal`.
-- Keep `Under Inspection` controlled: do not expose it in generic create/edit, do not allow normal checkout/transfer while it is active, and require an auditable inspection/audit decision before choosing status correction, maintenance, disposal, lost, or missing handling.
+- Maintenance close should keep documenting whether the asset returns to custody-derived `In Use`/`Ready` or moves to `Pending Disposal`.
+- Keep `Under Inspection` controlled: do not expose it in generic create/edit and do not allow normal checkout/transfer while it is active. Until a dedicated inspection-resolution workflow exists, complete it through reasoned correction to `Ready` before personal transfer, maintenance, or disposal.
+- Add a dedicated, evidence-backed loss workflow before allowing normal transitions into `Missing` or `Lost`; the existing audit not-found action intentionally creates a finding without changing asset lifecycle.
+- Align disposal-request route eligibility with the central lifecycle policy so only supported operational sources (`Ready` and `In Use`) can start a request. Broader route acceptance must not be treated as a supported transition.
 
 ## Audit Behavior
 

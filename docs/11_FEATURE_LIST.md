@@ -160,9 +160,9 @@ Implemented status lifecycle and enforcement from docs/code:
 
 - Check-out sets status to `Checked Out`.
 - Check-in can return only to `Ready`, `Pending Repair`, or `Pending Disposal`.
-- Check-out blocks `Disposed`, `Retired`, `Pending Disposal`, `Under Maintenance`, `Lost`, and `Missing`.
-- Transfer blocks assets with an active checkout and blocks normal transfer for `Disposed`, `Retired`, and `Pending Disposal`.
-- Maintenance close only allows `Ready` or `Pending Disposal`.
+- Check-out accepts only assets in `Ready` and blocks assets with an active checkout.
+- Personal transfer accepts only `Ready` or `In Use` and blocks assets with an active checkout; location-only or department-only movement preserves the current status.
+- Corrective maintenance close returns to `In Use` when valid personal custody remains, otherwise `Ready`, or moves to `Pending Disposal`; PM close preserves asset lifecycle.
 - Disposal execution only allows `Disposed` or `Retired`.
 - Generic asset edit cannot directly assign protected lifecycle statuses, and the asset form blocks these changes before submit with workflow guidance.
 - Status correction can restore protected lifecycle statuses to `Ready` with a required reason and audit trail.
@@ -210,7 +210,7 @@ Implemented status lifecycle and enforcement from docs/code:
 | Maintenance return navigation | Ticket detail, print, and Kanban/status drilldowns preserve the originating maintenance tab/status/search/asset filter through sanitized return context |
 | Ticket creation validation | Opening a ticket moves the asset to Pending Repair when available and does not require `returnDate`; return date is required only when closing the ticket |
 | Check-in integration | Optional ticket creation from check-in when returned asset needs repair |
-| Maintenance status | Corrective `Pending Repair -> Under Maintenance -> Ready/Pending Disposal`; PM work orders never mutate asset lifecycle |
+| Maintenance status | Corrective `Pending Repair -> Under Maintenance -> In Use/Ready/Pending Disposal`, with the operational result derived from custody; PM work orders never mutate asset lifecycle |
 | Evidence | Drag/drop preview/download; closed evidence is append-only with audited post-close addenda |
 | Costs/vendor/assignee | Ticket fields and options support internal/vendor repair workflows |
 | PM plans | Dedicated create/edit routes, explicit ticket relation, active/paused/terminal-ended state actions, and visible automation blockers |
