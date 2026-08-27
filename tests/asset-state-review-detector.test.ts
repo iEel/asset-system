@@ -41,11 +41,16 @@ test("detects incompatible status and physical condition without flagging dispos
   assert.deepEqual(issueTypes(snapshot({ statusName: "Disposed", conditionName: "Good" })), [])
 })
 
-test("detects legacy condition and controlled lifecycle values", () => {
+test("keeps Under Inspection operational while detecting legacy condition values", () => {
   assert.deepEqual(
     issueTypes(snapshot({ statusName: "Under Inspection", conditionName: "Excellent" })).sort(),
-    ["controlled_legacy_status", "legacy_condition_value"],
+    ["legacy_condition_value"],
   )
+})
+
+test("detects only Reserved and In Transit as controlled legacy statuses", () => {
+  assert.deepEqual(issueTypes(snapshot({ statusName: "Reserved" })), ["controlled_legacy_status"])
+  assert.deepEqual(issueTypes(snapshot({ statusName: "In Transit" })), ["controlled_legacy_status"])
 })
 
 test("detects disposal records that cannot restore a prior status", () => {

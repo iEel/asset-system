@@ -13,6 +13,7 @@ const protectedLifecycleStatuses = new Set([
   "missing",
   "under maintenance",
   "pending repair",
+  "under inspection",
 ])
 const correctionSourceStatuses = protectedLifecycleStatuses
 const correctionTargetStatus = "ready"

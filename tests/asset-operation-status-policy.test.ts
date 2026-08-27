@@ -12,7 +12,7 @@ import {
 import { getAssetOperationStatusError } from "../src/lib/asset-operation-policy.ts"
 
 test("blocks checkout for closed and review-required asset statuses", () => {
-  for (const statusName of ["Disposed", "Retired", "Pending Disposal", "Under Maintenance", "Lost", "Missing"]) {
+  for (const statusName of ["Disposed", "Retired", "Pending Disposal", "Under Maintenance", "Under Inspection", "Lost", "Missing"]) {
     assert.equal(
       getAssetOperationStatusError("checkout", { name: statusName, nameTh: statusName }),
       "Asset status does not allow checkout",
@@ -67,7 +67,7 @@ test("blocks protected lifecycle status changes through generic asset edit", () 
 })
 
 test("allows controlled status correction from protected states back to ready", () => {
-  for (const statusName of ["Pending Disposal", "Disposed", "Retired", "Lost", "Missing", "Under Maintenance", "Pending Repair"]) {
+  for (const statusName of ["Pending Disposal", "Disposed", "Retired", "Lost", "Missing", "Under Maintenance", "Pending Repair", "Under Inspection"]) {
     assert.equal(getAssetStatusCorrectionError({ name: statusName }, { name: "Ready" }), null, statusName)
   }
 
@@ -82,7 +82,7 @@ test("allows controlled status correction from protected states back to ready", 
 })
 
 test("status correction action is only visible for recoverable statuses", () => {
-  for (const statusName of ["Pending Disposal", "Disposed", "Retired", "Lost", "Missing", "Under Maintenance", "Pending Repair"]) {
+  for (const statusName of ["Pending Disposal", "Disposed", "Retired", "Lost", "Missing", "Under Maintenance", "Pending Repair", "Under Inspection"]) {
     assert.equal(canCorrectAssetStatus({ name: statusName }), true, statusName)
   }
   assert.equal(canCorrectAssetStatus({ name: "Ready" }), false)

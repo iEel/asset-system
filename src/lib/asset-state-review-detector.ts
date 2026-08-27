@@ -10,7 +10,7 @@ import type {
 } from "./asset-state-review-types.ts"
 
 const repairStatuses = new Set(["pending repair", "under maintenance"])
-const controlledLegacyStatuses = new Set(["reserved", "in transit", "under inspection"])
+const controlledLegacyStatuses = new Set(["reserved", "in transit"])
 const legacyConditions = new Map([
   ["excellent", "Good"],
   ["poor", "Damaged"],

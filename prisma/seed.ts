@@ -22,7 +22,7 @@ async function main() {
     { name: "In Transit", nameTh: "อยู่ระหว่างโอนย้าย", description: "อยู่ระหว่างการขนส่งหรือโอนย้ายที่ยังไม่เสร็จสิ้น", colorCode: "#06B6D4", sortOrder: 6 },
     { name: "Under Maintenance", nameTh: "อยู่ระหว่างซ่อม", description: "มีงานซ่อมที่เริ่มดำเนินการแล้ว", colorCode: "#F97316", sortOrder: 7 },
     { name: "Pending Repair", nameTh: "รอซ่อม", description: "มีรายการซ่อมที่เปิดและกำลังรอเริ่มดำเนินการ", colorCode: "#EF4444", sortOrder: 8 },
-    { name: "Under Inspection", nameTh: "อยู่ระหว่างตรวจสอบ", description: "สถานะควบคุมเดิมสำหรับข้อมูลที่ต้องตรวจสอบโดยผู้ดูแล", colorCode: "#A855F7", sortOrder: 9 },
+    { name: "Under Inspection", nameTh: "อยู่ระหว่างตรวจสอบ", description: "กำลังตรวจสอบตำแหน่ง ผู้ถือครอง สภาพ หรือข้อมูล ก่อนสรุปขั้นตอนงานถัดไป", colorCode: "#A855F7", sortOrder: 9 },
     { name: "Lost", nameTh: "สูญหาย", description: "ยืนยันแล้วว่าทรัพย์สินสูญหาย", colorCode: "#DC2626", sortOrder: 10 },
     { name: "Missing", nameTh: "หาไม่พบ", description: "ยังไม่พบทรัพย์สินและอยู่ระหว่างติดตาม", colorCode: "#B91C1C", sortOrder: 11 },
     { name: "Pending Disposal", nameTh: "รอตัดจำหน่าย", description: "มีคำขอตัดจำหน่ายที่ยังไม่เสร็จสิ้น", colorCode: "#78716C", sortOrder: 12 },
