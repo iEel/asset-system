@@ -21,6 +21,11 @@ import { ActionButton } from "@/components/ui/action-button"
 import { getFieldControlClasses } from "@/lib/design-system"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { withPerformanceTiming } from "@/lib/performance-timing"
+import { hasPermission } from "@/lib/auth-utils"
+import {
+  buildAssetRegisterTransactionHref,
+  getAssetRegisterTransactionActions,
+} from "@/lib/asset-operation-policy"
 
 type AssetsPageProps = {
   params: Promise<{ locale: string }>
@@ -95,7 +100,8 @@ type AssetModelPhotoPreview = {
 export default async function AssetsPage({ params, searchParams }: AssetsPageProps) {
   const { locale } = await params
   const rawSearchParams = await searchParams
-  await requirePagePermission(locale, "asset", "view")
+  const user = await requirePagePermission(locale, "asset", "view")
+  const canEditAssets = hasPermission(user, "asset", "edit")
 
   const t = await getTranslations("asset")
   const tCommon = await getTranslations("common")
@@ -197,28 +203,55 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   const modelIds = Array.from(
     new Set(assets.map((asset) => asset.model?.id).filter((modelId): modelId is string => Boolean(modelId)))
   )
-  const modelPhotos = await withPerformanceTiming<AssetModelPhotoPreview[]>(
-    "assets.model-photos",
-    () => modelIds.length
-      ? prisma.attachment.findMany({
-          where: {
-            module: "asset_model",
-            referenceId: { in: modelIds },
-            isActive: true,
-            fileType: { startsWith: "image/" },
-          },
-          select: { id: true, referenceId: true, originalName: true, fileType: true },
-          orderBy: { uploadedAt: "desc" },
+  const assetIds = assets.map((asset) => asset.id)
+  const [modelPhotos, openCheckouts, activeMaintenanceTickets] = await Promise.all([
+    withPerformanceTiming<AssetModelPhotoPreview[]>(
+      "assets.model-photos",
+      () => modelIds.length
+        ? prisma.attachment.findMany({
+            where: {
+              module: "asset_model",
+              referenceId: { in: modelIds },
+              isActive: true,
+              fileType: { startsWith: "image/" },
+            },
+            select: { id: true, referenceId: true, originalName: true, fileType: true },
+            orderBy: { uploadedAt: "desc" },
+          })
+        : Promise.resolve<AssetModelPhotoPreview[]>([]),
+      { route: "/assets", locale, modelCount: modelIds.length }
+    ),
+    assetIds.length
+      ? prisma.assetCheckout.findMany({
+          where: { assetId: { in: assetIds }, isReturned: false },
+          select: { id: true, assetId: true },
+          orderBy: { createdAt: "desc" },
         })
-      : Promise.resolve<AssetModelPhotoPreview[]>([]),
-    { route: "/assets", locale, modelCount: modelIds.length }
-  )
+      : Promise.resolve([]),
+    assetIds.length
+      ? prisma.maintenanceTicket.findMany({
+          where: {
+            assetId: { in: assetIds },
+            isActive: true,
+            repairStatus: { notIn: ["closed", "cancelled"] },
+            maintenancePlanId: null,
+            NOT: { problem: { startsWith: "[PM] " } },
+          },
+          select: { assetId: true },
+        })
+      : Promise.resolve([]),
+  ])
   const modelPhotoByModelId = new Map<string, (typeof modelPhotos)[number]>()
   for (const photo of modelPhotos) {
     if (!modelPhotoByModelId.has(photo.referenceId)) {
       modelPhotoByModelId.set(photo.referenceId, photo)
     }
   }
+  const openCheckoutByAssetId = new Map<string, string>()
+  for (const checkout of openCheckouts) {
+    if (!openCheckoutByAssetId.has(checkout.assetId)) openCheckoutByAssetId.set(checkout.assetId, checkout.id)
+  }
+  const activeMaintenanceAssetIds = new Set(activeMaintenanceTickets.map((ticket) => ticket.assetId))
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize))
   const fromRow = total === 0 ? 0 : (filters.page - 1) * filters.pageSize + 1
   const toRow = Math.min(total, filters.page * filters.pageSize)
@@ -238,7 +271,26 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
         }
       : null,
   ].filter((item): item is { key: string; label: string; href: string } => Boolean(item))
-  const tableAssets: AssetRegisterRow[] = assets.map((asset) => ({
+  const tableAssets: AssetRegisterRow[] = assets.map((asset) => {
+    const openCheckoutId = openCheckoutByAssetId.get(asset.id) ?? null
+    const transactions = getAssetRegisterTransactionActions({
+      statusName: asset.status.name,
+      custodianId: asset.custodianId,
+      openCheckoutId,
+      hasActiveMaintenance: activeMaintenanceAssetIds.has(asset.id),
+      canEdit: canEditAssets,
+    }).map((transaction) => ({
+      ...transaction,
+      href: buildAssetRegisterTransactionHref(
+        locale,
+        asset.id,
+        transaction.action,
+        registerReturnHref,
+        openCheckoutId,
+      ),
+    }))
+
+    return ({
     id: asset.id,
     assetTag: asset.assetTag,
     name: asset.name,
@@ -267,7 +319,8 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
             fileType: asset.attachments[0].fileType,
           }
         : null,
-  }))
+    transactions,
+  })})
 
   return (
     <div>
@@ -381,6 +434,17 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           downloadTemplate: t("downloadTemplate"),
           edit: tCommon("edit"),
           cloneAsset: t("cloneAsset"),
+          transaction: t("transactionMenu"),
+          more: t("moreActions"),
+          checkout: t("transactionCheckout"),
+          checkin: t("transactionCheckin"),
+          transfer: t("transactionTransfer"),
+          transactionReasonPermission: t("transactionReasonPermission"),
+          transactionReasonStatusNotReady: t("transactionReasonStatusNotReady"),
+          transactionReasonNoReturnRecord: t("transactionReasonNoReturnRecord"),
+          transactionReasonActiveMaintenance: t("transactionReasonActiveMaintenance"),
+          transactionReasonStatusNotReturnable: t("transactionReasonStatusNotReturnable"),
+          transactionReasonStatusNotTransferable: t("transactionReasonStatusNotTransferable"),
           exportFiltered: t("exportFiltered"),
           exportSelected: t("exportSelected"),
           bulkActions: t("bulkActions"),

@@ -17,7 +17,9 @@ import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
 import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
+import { AssetRegisterMoreMenu, AssetRegisterTransactionMenu } from "@/components/assets/asset-register-action-menus"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import type { AssetRegisterTransaction } from "@/lib/asset-operation-policy"
 import { getAssetStateTone, getDesktopTableOnlyClasses, getMobileCardListClasses, normalizeAssetStateValue } from "@/lib/design-system"
 import {
   assetRegisterColumnOrder,
@@ -43,6 +45,7 @@ export type AssetRegisterRow = {
   condition: { value: string; label: string }
   purchasePrice: number | null
   photo: { id: string; alt: string; fileType: string } | null
+  transactions: Array<AssetRegisterTransaction & { href: string }>
 }
 
 type AssetRegisterTableProps = {
@@ -90,6 +93,17 @@ type AssetRegisterTableProps = {
     downloadTemplate: string
     edit: string
     cloneAsset: string
+    transaction: string
+    more: string
+    checkout: string
+    checkin: string
+    transfer: string
+    transactionReasonPermission: string
+    transactionReasonStatusNotReady: string
+    transactionReasonNoReturnRecord: string
+    transactionReasonActiveMaintenance: string
+    transactionReasonStatusNotReturnable: string
+    transactionReasonStatusNotTransferable: string
     exportFiltered: string
     exportSelected: string
     bulkActions: string
@@ -154,7 +168,7 @@ const assetRegisterStickyHeaderColumnClasses = "z-30 bg-muted/95"
 const assetRegisterStickyBodyColumnClasses = "z-20 bg-surface group-hover:bg-accent/50 group-focus:bg-accent/50"
 const assetRegisterAssetTagColumnClasses = "w-44 min-w-44 max-w-44"
 const assetRegisterNameColumnClasses = "w-80 min-w-80 max-w-80"
-const assetRegisterActionsColumnClasses = "w-36 min-w-36"
+const assetRegisterActionsColumnClasses = "w-44 min-w-44"
 
 export function AssetRegisterTable({
   locale,
@@ -207,6 +221,22 @@ export function AssetRegisterTable({
       labels.conditionHelpNeedsReview,
       labels.conditionHelpMissing,
     ],
+  }
+  const transactionLabels = {
+    transaction: labels.transaction,
+    more: labels.more,
+    checkout: labels.checkout,
+    checkin: labels.checkin,
+    transfer: labels.transfer,
+    cloneAsset: labels.cloneAsset,
+    reason: {
+      permission_required: labels.transactionReasonPermission,
+      status_not_ready: labels.transactionReasonStatusNotReady,
+      no_return_record: labels.transactionReasonNoReturnRecord,
+      active_maintenance: labels.transactionReasonActiveMaintenance,
+      status_not_returnable: labels.transactionReasonStatusNotReturnable,
+      status_not_transferable: labels.transactionReasonStatusNotTransferable,
+    },
   }
 
   useEffect(() => {
@@ -587,9 +617,16 @@ export function AssetRegisterTable({
                   {labels.edit}
                 </Link>
               </div>
+              <div className="mt-2">
+                <AssetRegisterTransactionMenu
+                  actions={asset.transactions}
+                  labels={transactionLabels}
+                  variant="full"
+                />
+              </div>
               <details className="mt-2 border-t border-border pt-2">
                 <summary className="flex min-h-11 w-full cursor-pointer items-center rounded-md px-3 text-sm font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 hover:text-foreground">
-                  {labels.actions}
+                  {labels.more}
                 </summary>
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                   <Link
@@ -780,14 +817,12 @@ export function AssetRegisterTable({
                       >
                         <Edit className="h-4 w-4" />
                       </Link>
-                      <Link
-                        href={buildAssetCloneHref(asset.id)}
-                        title={labels.cloneAsset}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Link>
-                      <AssetDeleteButton id={asset.id} />
+                      <AssetRegisterTransactionMenu actions={asset.transactions} labels={transactionLabels} />
+                      <AssetRegisterMoreMenu
+                        assetId={asset.id}
+                        cloneHref={buildAssetCloneHref(asset.id)}
+                        labels={transactionLabels}
+                      />
                     </div>
                   </td>
                 </ClickableTableRow>

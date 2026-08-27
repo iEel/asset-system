@@ -12,6 +12,7 @@ import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
+import { appendReturnTo } from "@/lib/asset-return-navigation"
 
 type Option = { id: string; label: string }
 type StatusOption = Option & { name?: string }
@@ -50,6 +51,8 @@ export function CheckinForm({
   statuses,
   conditions,
   initialCheckoutId,
+  initialLegacyAssetId,
+  returnTo,
 }: {
   activeCheckouts: CheckoutOption[]
   legacyReturnCandidates: LegacyReturnCandidate[]
@@ -58,6 +61,8 @@ export function CheckinForm({
   statuses: StatusOption[]
   conditions: StatusOption[]
   initialCheckoutId?: string
+  initialLegacyAssetId?: string
+  returnTo?: string
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -66,7 +71,8 @@ export function CheckinForm({
   const [saving, setSaving] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [legacyBackfillSavingId, setLegacyBackfillSavingId] = useState<string | null>(null)
-  const [legacyReturnSearch, setLegacyReturnSearch] = useState("")
+  const initialLegacyCandidate = legacyReturnCandidates.find((asset) => asset.id === initialLegacyAssetId)
+  const [legacyReturnSearch, setLegacyReturnSearch] = useState(initialLegacyCandidate?.assetTag ?? "")
   const [photoType, setPhotoType] = useState("overview")
   const [photosAfter, setPhotosAfter] = useState<QueuedPhoto[]>([])
   const [returnSignatureDataUrl, setReturnSignatureDataUrl] = useState<string | null>(null)
@@ -204,7 +210,8 @@ export function CheckinForm({
           nextLocationId: current.nextLocationId || candidate.currentLocationId,
         }))
       }
-      router.replace(`/${locale}/asset-management/checkin?checkoutId=${payload.id}`)
+      const checkinHref = `/${locale}/asset-management/checkin?checkoutId=${payload.id}`
+      router.replace(returnTo ? appendReturnTo(checkinHref, returnTo) : checkinHref)
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("legacyReturnFailed"))
@@ -264,7 +271,8 @@ export function CheckinForm({
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
       toast.success(t("success"))
-      router.push(`/${locale}/asset-management/checkins/${payload.id}`)
+      const documentHref = `/${locale}/asset-management/checkins/${payload.id}`
+      router.push(returnTo ? appendReturnTo(documentHref, returnTo) : documentHref)
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))

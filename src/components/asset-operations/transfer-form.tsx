@@ -18,12 +18,14 @@ export function TransferForm({
   departments,
   locations,
   initialAssetId,
+  returnTo,
 }: {
   assets: Option[]
   employees: Option[]
   departments: Option[]
   locations: Option[]
   initialAssetId?: string
+  returnTo?: string
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -102,7 +104,7 @@ export function TransferForm({
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
       toast.success(t("success"))
-      router.push(`/${locale}/assets/${values.assetId}`)
+      router.push(returnTo ?? `/${locale}/assets/${values.assetId}`)
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))

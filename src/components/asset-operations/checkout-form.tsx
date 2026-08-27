@@ -11,6 +11,7 @@ import { FormContextBanner } from "@/components/ui/form-context-banner"
 import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
+import { appendReturnTo } from "@/lib/asset-return-navigation"
 
 type Option = { id: string; label: string; disabled?: boolean }
 type CheckoutType = "user" | "department" | "location" | "asset"
@@ -22,6 +23,7 @@ export function CheckoutForm({
   locations,
   conditions,
   initialAssetId,
+  returnTo,
 }: {
   assets: Option[]
   employees: Option[]
@@ -29,6 +31,7 @@ export function CheckoutForm({
   locations: Option[]
   conditions: Option[]
   initialAssetId?: string
+  returnTo?: string
 }) {
   const locale = useLocale()
   const router = useRouter()
@@ -115,7 +118,8 @@ export function CheckoutForm({
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
       toast.success(t("success"))
-      router.push(`/${locale}/asset-management/checkouts/${payload.id}`)
+      const documentHref = `/${locale}/asset-management/checkouts/${payload.id}`
+      router.push(returnTo ? appendReturnTo(documentHref, returnTo) : documentHref)
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))

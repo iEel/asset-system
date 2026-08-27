@@ -5,13 +5,16 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-document"
 import { formatDate, formatDateTime } from "@/lib/utils"
 import { OperationDocumentPrint } from "@/components/asset-operations/operation-document-print"
+import { normalizeAssetReturnTo } from "@/lib/asset-return-navigation"
 
 type CheckoutPrintPageProps = {
   params: Promise<{ locale: string; id: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function CheckoutPrintPage({ params }: CheckoutPrintPageProps) {
+export default async function CheckoutPrintPage({ params, searchParams }: CheckoutPrintPageProps) {
   const { locale, id } = await params
+  const filters = await searchParams
   await requirePagePermission(locale, "asset", "view")
 
   const t = await getTranslations("checkout")
@@ -66,7 +69,9 @@ export default async function CheckoutPrintPage({ params }: CheckoutPrintPagePro
     <OperationDocumentPrint
       title={t("handoverDocumentTitle")}
       subtitle={`${checkout.asset.assetTag} - ${checkout.asset.name}`}
-      backHref={`/${locale}/assets/${checkout.asset.id}`}
+      backHref={filters.returnTo
+        ? normalizeAssetReturnTo(locale, filters.returnTo)
+        : `/${locale}/assets/${checkout.asset.id}`}
       backLabel={tCommon("back")}
       printLabel={t("printHandover")}
       sections={[
