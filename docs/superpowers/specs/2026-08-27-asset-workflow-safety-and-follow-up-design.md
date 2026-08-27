@@ -153,7 +153,8 @@ Attachments use `module=asset_loss_case` and the case ID.
 - Recover: allow from `investigating` or `lost`, set case `recovered_inspection`, set Asset status `Under Inspection`, and retain custody/Checkout accountability.
 - Complete inspection with open Checkout: restore `Checked Out`. A later physical return uses Check-in.
 - Complete inspection without open Checkout: resolve to custody-derived `In Use` or `Ready`.
-- Complete inspection with damage: require Maintenance creation and resolve to `Pending Repair` atomically.
+- Complete inspection with damage and no open Checkout: require Maintenance creation and resolve to `Pending Repair` atomically.
+- Complete inspection with an open Checkout: restore `Checked Out` even when damage is observed; the later physical return records condition and starts repair through the normal Check-in workflow.
 - Successful inspection completion sets `closed_recovered`.
 
 Data Quality treats an open Checkout combined with Missing/Lost as valid only when it is linked to the current active/lost case. Unexplained status/Checkout combinations remain findings.
