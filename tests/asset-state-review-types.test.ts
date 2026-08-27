@@ -20,6 +20,7 @@ test("review issue types cover every approved inconsistency", () => {
     "legacy_condition_value",
     "controlled_legacy_status",
     "legacy_disposal_missing_previous_status",
+    "transaction_cancellation_blocked",
   ])
 })
 

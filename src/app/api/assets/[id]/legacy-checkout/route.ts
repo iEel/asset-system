@@ -40,7 +40,7 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
     const custodianId = asset.custodianId
 
     const activeCheckout = await prisma.assetCheckout.findFirst({
-      where: { assetId: id, isReturned: false },
+      where: { assetId: id, isReturned: false, transactionStatus: "active" },
       select: { id: true },
     })
     if (activeCheckout) {

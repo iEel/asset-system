@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     const activeCheckouts = await prisma.assetCheckout.findMany({
-      where: { assetId: { in: uniqueAssetIds }, isReturned: false },
+      where: { assetId: { in: uniqueAssetIds }, isReturned: false, transactionStatus: "active" },
       select: { assetId: true },
     })
     if (activeCheckouts.length > 0) {

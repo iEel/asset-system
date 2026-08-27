@@ -223,7 +223,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
     ),
     assetIds.length
       ? prisma.assetCheckout.findMany({
-          where: { assetId: { in: assetIds }, isReturned: false },
+          where: { assetId: { in: assetIds }, isReturned: false, transactionStatus: "active" },
           select: { id: true, assetId: true },
           orderBy: { createdAt: "desc" },
         })

@@ -55,6 +55,7 @@ const allowedStatusTargets: Record<AssetStateReviewIssueType, readonly string[]>
   legacy_condition_value: [],
   controlled_legacy_status: ["Ready", "In Use", "Missing", "Lost"],
   legacy_disposal_missing_previous_status: ["Ready", "In Use"],
+  transaction_cancellation_blocked: [],
 }
 
 const conditionResolutionIssues = new Set<AssetStateReviewIssueType>([
@@ -428,7 +429,7 @@ export async function loadAssetStateReviewSnapshots(db: PrismaClient): Promise<A
     const [checkoutGroups, correctiveTickets, disposalGroups] = await Promise.all([
       db.assetCheckout.groupBy({
         by: ["assetId"],
-        where: { assetId: { in: assetIds }, isReturned: false },
+        where: { assetId: { in: assetIds }, isReturned: false, transactionStatus: "active" },
         _count: { _all: true },
       }),
       db.maintenanceTicket.findMany({

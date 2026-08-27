@@ -25,7 +25,7 @@ export async function getAssetOperationOptions() {
       orderBy: { assetTag: "asc" },
     }),
     prisma.assetCheckout.findMany({
-      where: { isReturned: false },
+      where: { isReturned: false, transactionStatus: "active" },
       select: {
         id: true,
         assetId: true,

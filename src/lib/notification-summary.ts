@@ -99,7 +99,11 @@ export async function getNotificationCenter(user: SessionUser, locale: string) {
     canDisposal ? prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "approved" } }) : Promise.resolve(0),
     canCheckout
       ? prisma.assetCheckout.count({
-          where: { isReturned: false, expectedReturnDate: { lte: addDays(today, rules[notificationReturnDueSoonDaysKey]) } },
+          where: {
+            isReturned: false,
+            transactionStatus: "active",
+            expectedReturnDate: { lte: addDays(today, rules[notificationReturnDueSoonDaysKey]) },
+          },
         })
       : Promise.resolve(0),
     canAsset

@@ -103,7 +103,7 @@ export async function DELETE(_request: NextRequest, context: EmployeeRouteContex
 
     const [userAccounts, openCheckouts] = await Promise.all([
       prisma.user.count({ where: { employeeId: id, isActive: true } }),
-      prisma.assetCheckout.count({ where: { custodianId: id, isReturned: false } }),
+      prisma.assetCheckout.count({ where: { custodianId: id, isReturned: false, transactionStatus: "active" } }),
     ])
     const blockReason = getEmployeeDeleteBlockReason({
       custodianAssets: existing._count.custodianAssets,

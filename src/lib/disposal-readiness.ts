@@ -26,7 +26,7 @@ export const disposalReadinessAssetSelect = {
   licenseAssignedAssetId: true,
   _count: {
     select: {
-      checkouts: { where: { isReturned: false } },
+      checkouts: { where: { isReturned: false, transactionStatus: "active" } },
       maintenanceTickets: { where: { isActive: true, repairStatus: { notIn: ["closed", "cancelled"] } } },
       auditItems: {
         where: { auditRound: { isActive: true, status: { notIn: ["closed", "cancelled"] } } },

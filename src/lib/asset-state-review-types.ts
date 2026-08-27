@@ -9,6 +9,7 @@ export const assetStateReviewIssueTypes = [
   "legacy_condition_value",
   "controlled_legacy_status",
   "legacy_disposal_missing_previous_status",
+  "transaction_cancellation_blocked",
 ] as const
 
 export const assetStateReviewStatuses = ["pending", "resolved", "dismissed"] as const
