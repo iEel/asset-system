@@ -35,6 +35,12 @@ Use this checklist with realistic master data and at least one asset in each imp
 
 ## asset_admin / IT Staff
 
+- [ ] After applying `2026-08-27-add-reversible-asset-transactions.sql`, create one Check-out, one Check-in, and one Transfer. Confirm each document stores an active transaction and its print page shows **ยกเลิกรายการ** only to a user with `asset:edit`.
+- [ ] From Asset Detail > More actions, cancel the latest transaction with a reason of at least 5 characters. Confirm preview values, restored status/location/custodian/department/condition/component state, `VOID` document banner/watermark, compensating Asset Movement, and System Log all agree.
+- [ ] Cancel a latest Check-in and confirm its related Check-out becomes open again; then complete a corrected Check-in and confirm the VOID Check-in remains readable while only one active Check-in exists.
+- [ ] Attempt cancellation after changing the asset, changing an installed component, or creating a newer/downstream transaction. Confirm no partial asset/component/document changes occur and a pending `transaction_cancellation_blocked` review appears in Admin > Data Quality.
+- [ ] Open a legacy Check-out/Check-in created before snapshot support and confirm automatic cancellation is blocked as `unsupported_snapshot`; resolve it through controlled review instead of editing lifecycle state directly.
+- [ ] With an `asset:view` user who lacks `asset:edit`, confirm VOID documents remain readable/printable but cancellation actions and APIs are unavailable.
 - [ ] Add a single asset.
 - [ ] On single asset create/edit, scroll through the long form and confirm Save/Cancel remain visible in the fixed bottom action bar without covering the final fields.
 - [ ] Clone an existing asset from Asset Register or Asset Detail, confirm the create form shows the clone banner, copies shared details, and leaves Asset Tag, Serial Number, and FA/accounting code blank before saving.
