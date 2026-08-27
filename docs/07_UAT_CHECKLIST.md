@@ -70,7 +70,7 @@ Use this checklist with realistic master data and at least one asset in each imp
 - [ ] Check-out an asset.
 - [ ] Check-in an asset.
 - [ ] For a legacy/imported asset that has a current custodian but no open checkout, search the Check-in `ข้อมูลเก่า` panel by Asset Tag/holder/location, create the backfilled handover, and complete the normal return form; confirm the activity/audit history includes `legacy_return_backfill`.
-- [ ] Transfer an asset.
+- [ ] Transfer a `Ready` asset to a destination custodian and confirm the review shows `ใช้งานอยู่ / In Use`, the save does not ask the operator to select a status, Asset Detail shows `In Use`, and movement/audit history contains the before/after status. Repeat with a location-only or department-only transfer and confirm the existing status is preserved.
 - [ ] On Maintenance, switch between `ตาราง` and `บอร์ด`, confirm the current search/status filters remain in the URL, and verify both layouts show the same ticket set and open the same ticket detail workflow.
 - [ ] On Maintenance Repair Tickets, verify exact range/total and 25/50/100 pagination, KPI drilldowns, active filter chips, invalid date feedback, tab-specific `เปิดใบแจ้งซ่อม`, and that `open`/`closed` board filters offer the complete table instead of silently omitting rows.
 - [ ] Using keyboard only, open status, planning, close, attachment-delete, and PM state dialogs; verify initial focus, Tab containment, Escape dismissal when not saving, focus restoration, visible focus rings, and 390px mobile layout without body overflow. In the status dialog, confirm no radio is selected initially, Save is disabled, arrow/Space keys select a native radio row, and each choice exposes its consequence text without relying on color alone.

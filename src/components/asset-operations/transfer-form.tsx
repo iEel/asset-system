@@ -47,6 +47,7 @@ export function TransferForm({
   const reviewItems = buildOperationReviewSummary({
     assetLabel: selectedAsset?.label ?? "",
     destinationLabels: [selectedLocation?.label, selectedCustodian?.label, selectedDepartment?.label],
+    nextStatusLabel: values.toCustodianId ? t("inUseStatus") : t("statusUnchanged"),
     details: values.reason ? [{ label: t("reason"), value: values.reason }] : [],
     evidenceLabel: t("reviewNoEvidence"),
     labels: {

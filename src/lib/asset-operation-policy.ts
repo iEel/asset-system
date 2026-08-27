@@ -30,6 +30,10 @@ export function getAssetOperationStatusError(operation: AssetOperation, status: 
     : "Asset status does not allow transfer"
 }
 
+export function getTransferTargetStatusName(toCustodianId?: string | null): "In Use" | null {
+  return toCustodianId ? "In Use" : null
+}
+
 function normalizeStatusName(value: string | null | undefined) {
   return value?.trim().toLowerCase() ?? ""
 }

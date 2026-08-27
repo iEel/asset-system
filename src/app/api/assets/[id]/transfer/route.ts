@@ -3,9 +3,10 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { getAssetOperationStatusError } from "@/lib/asset-operation-policy"
+import { getAssetOperationStatusError, getTransferTargetStatusName } from "@/lib/asset-operation-policy"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { assetTransferSchema } from "@/lib/validations/asset-operations"
+import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
 
 type TransferContext = {
   params: Promise<{ id: string }>
@@ -15,6 +16,7 @@ type TransferSnapshot = {
   locationId: string
   custodianId: string | null
   departmentId: string | null
+  statusId: string
 }
 
 export async function POST(request: NextRequest, context: TransferContext) {
@@ -40,15 +42,22 @@ export async function POST(request: NextRequest, context: TransferContext) {
       return NextResponse.json({ error: "Asset already has an active checkout" }, { status: 400 })
     }
 
+    const targetStatusName = getTransferTargetStatusName(input.toCustodianId)
+    const targetStatusId = targetStatusName
+      ? await getRequiredAssetStatusId(targetStatusName)
+      : asset.statusId
+
     const fromSnapshot: TransferSnapshot = {
       locationId: asset.currentLocationId,
       custodianId: asset.custodianId,
       departmentId: asset.departmentId,
+      statusId: asset.statusId,
     }
     const toSnapshot: TransferSnapshot = {
       locationId: input.toLocationId ?? asset.currentLocationId,
       custodianId: input.toCustodianId ?? asset.custodianId,
       departmentId: input.toDepartmentId ?? asset.departmentId,
+      statusId: targetStatusId,
     }
 
     const { record: updatedAsset, componentSync } = await prisma.$transaction(async (tx) => {
@@ -58,6 +67,7 @@ export async function POST(request: NextRequest, context: TransferContext) {
           currentLocationId: toSnapshot.locationId,
           custodianId: toSnapshot.custodianId,
           departmentId: toSnapshot.departmentId,
+          statusId: toSnapshot.statusId,
           updatedBy: user.id,
         },
       })

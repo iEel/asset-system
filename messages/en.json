@@ -1768,6 +1768,8 @@
     "reviewDescription": "Confirm the asset, destination, and reason before recording this transfer.",
     "reviewDestination": "Destination",
     "reviewNextStatus": "Next status",
+    "inUseStatus": "In Use",
+    "statusUnchanged": "Keep current status",
     "reviewEvidence": "Evidence",
     "reviewNoEvidence": "No evidence files are attached to this transfer.",
     "reviewConfirm": "Confirm transfer"

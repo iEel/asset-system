@@ -38,6 +38,7 @@ The application shows this guidance inline through help icons beside status and 
 |---|---|---|
 | Draft | Ready | Asset registration completed |
 | Ready | Checked Out | Check-out / handover |
+| Ready | In Use | Transfer custody to a person |
 | Checked Out | Ready | Check-in / return with normal result |
 | Checked Out | Pending Repair | Check-in / return with repair needed |
 | Checked Out | Pending Disposal | Check-in / return with disposal recommendation |
@@ -57,7 +58,7 @@ The application shows this guidance inline through help icons beside status and 
 |---|---|---|
 | Draft | Asset record is being prepared. | Complete required master data and set to `Ready`. |
 | Ready | Asset is usable and available for normal operations. | Check-out, transfer, maintenance, disposal request, audit, or stay Ready. |
-| In Use | Legacy or imported active-use status. | Prefer controlled checkout/custody workflows for new movements. |
+| In Use | Asset is assigned to a person through personal transfer, or represents an imported active-use record. | Continue custody transfer as needed, or use the controlled return/check-in workflow when applicable. |
 | Reserved | Legacy or planning status for an asset held for a future use. | Move to Ready or a controlled custody workflow when released. |
 | Checked Out | Asset is currently issued to a person/location/department. | Check-in to `Ready`, `Pending Repair`, or `Pending Disposal`. |
 | In Transit | Legacy or logistics movement status. | Confirm arrival through the relevant movement workflow and return to an active status. |
@@ -78,7 +79,7 @@ The status diagram used for operator handoff is stored as `docs/asset-lifecycle-
 - Check-out sets asset status to `Checked Out` using `getRequiredAssetStatusId("Checked Out")`.
 - Check-in requires `asset:edit`, requires an active checkout, and only accepts return statuses from `Ready`, `Pending Repair`, and `Pending Disposal`.
 - Check-in can create a maintenance ticket only when the return status is `Pending Repair` and the user has `maintenance:create`.
-- Transfer requires `asset:edit`, blocks assets that already have an active checkout, and blocks normal transfer for `Disposed`, `Retired`, and `Pending Disposal`.
+- Transfer requires `asset:edit`, blocks assets that already have an active checkout, and blocks normal transfer for `Disposed`, `Retired`, and `Pending Disposal`. A transfer with `toCustodianId` resolves the required `In Use` status server-side and updates it atomically with the new custodian; location-only or department-only transfers preserve the current status.
 - Maintenance close only allows next asset status `Ready` or `Pending Disposal`.
 - Disposal execution only allows final asset status `Disposed` or `Retired`.
 - Generic asset edit cannot change protected lifecycle statuses such as `Pending Disposal`, `Disposed`, `Retired`, `Lost`, `Missing`, `Under Maintenance`, or `Pending Repair`; use status correction or the proper workflow.
@@ -92,6 +93,7 @@ The status diagram used for operator handoff is stored as `docs/asset-lifecycle-
 
 - An asset with an active checkout must not be checked out again.
 - An asset with an active checkout must not be transferred through the normal transfer flow.
+- A personal transfer must set the asset status to `In Use` without requiring a client-supplied status; a location-only or department-only transfer must preserve the current status.
 - Check-in must be tied to an active checkout.
 - Check-in next status must be one of `Ready`, `Pending Repair`, or `Pending Disposal`.
 - Maintenance ticket creation from check-in must require `Pending Repair`.

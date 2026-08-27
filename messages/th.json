@@ -1768,6 +1768,8 @@
     "reviewDescription": "ยืนยันทรัพย์สิน ปลายทาง และเหตุผลก่อนบันทึกรายการ",
     "reviewDestination": "ปลายทาง",
     "reviewNextStatus": "สถานะถัดไป",
+    "inUseStatus": "ใช้งานอยู่",
+    "statusUnchanged": "คงสถานะเดิม",
     "reviewEvidence": "หลักฐาน",
     "reviewNoEvidence": "ไม่มีไฟล์หลักฐานในรายการโอนย้ายนี้",
     "reviewConfirm": "ยืนยันโอนย้าย"

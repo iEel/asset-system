@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-08-27
+
+| Area | Update |
+|---|---|
+| Personal transfer asset status | Personal asset transfers now set status to `In Use` automatically when `toCustodianId` is supplied, removing the separate operator status-selection risk. Location-only and department-only transfers preserve the existing status. The transfer review dialog shows the resulting status, while movement and audit snapshots include the before/after `statusId`. Added focused regression coverage; repository verification passed 1,125/1,125 tests, lint with zero errors (existing bundled skill warnings remain), Prisma generation, TypeScript, and the Next.js 16.2.4 production build with 59/59 static pages. No schema or migration changed. |
+
+---
+
 ## 2026-07-16
 
 | Area | Update |
