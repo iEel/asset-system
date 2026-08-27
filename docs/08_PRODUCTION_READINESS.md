@@ -32,6 +32,7 @@ Use this checklist before go-live, before a production schema change, and before
 - [ ] Production schema changes have an approved rollback or restore plan.
 - [ ] If the release includes `prisma/manual-migrations/*.sql`, each required script has been run against Production after backup and approval. For this disposal release, run `prisma/manual-migrations/2026-07-13-add-disposal-batches.sql`; for the performance-index pass, run `prisma/manual-migrations/2026-06-12-add-performance-indexes.sql` with `npx prisma db execute --file ...`.
 - [ ] Before `prisma/manual-migrations/2026-07-13-add-disposal-evidence-exception.sql` is applied, a fresh database backup has been completed and verified. After explicit backup confirmation, apply it with `npx prisma db execute --file prisma/manual-migrations/2026-07-13-add-disposal-evidence-exception.sql`, run `npm run prisma:generate`, and manually verify one approved historical request without attachments and one normal approved request with evidence.
+- [ ] Before deploying Asset State Governance, take and verify a fresh backup, then apply `prisma/manual-migrations/2026-08-27-add-asset-state-governance.sql` with `npx prisma db execute --file prisma/manual-migrations/2026-08-27-add-asset-state-governance.sql`. Run `npm run prisma:generate` afterward and verify `asset_state_reviews`, `disposal_requests.previousAssetStatusId`, active `Not Assessed`, and the filtered pending-review unique index. The migration must not rewrite existing `assets.statusId` or `assets.conditionId` values.
 
 ## Uploads And Evidence
 
@@ -66,6 +67,7 @@ To restore a file, move it from `.archive/YYYY-MM-DD/<relativePath>` back to `UP
 
 - [ ] Asset create, batch create, import, export, and QR label print are tested.
 - [ ] Check-out, check-in, and transfer are tested with evidence.
+- [ ] Asset State Review scan/list/resolve/dismiss is tested with `setting:view` and `setting:edit`, including stale-snapshot rejection, 10-character reasons, movement/audit history, and confirmation that scans/dismissals never change asset state.
 - [ ] Audit round create, scan, findings review, and close-round flow are tested.
 - [ ] Maintenance ticket and PM plan workflows are tested.
 - [ ] Disposal queue/create/detail, approval, execution, rejection, evidence retry, and 2-100 item batch workflows are tested.

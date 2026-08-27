@@ -4,7 +4,7 @@ This document describes the intended asset status lifecycle and the validation p
 
 ## Main Statuses
 
-Seed data currently includes these operational statuses:
+Canonical operational statuses are:
 
 - Draft
 - Ready
@@ -21,6 +21,8 @@ Seed data currently includes these operational statuses:
 - Disposed
 - Retired
 
+`Reserved`, `In Transit`, and `Under Inspection` remain legacy/controlled values for existing records. They are not offered in normal create/edit selectors; resolve them through the relevant custody, maintenance, audit, disposal, or controlled review workflow.
+
 ## Status Versus Condition
 
 Asset status and asset condition are related but not the same field.
@@ -31,6 +33,18 @@ Asset status and asset condition are related but not the same field.
 - Inconsistent combinations should be treated as follow-up work. For example, `Ready` + damaged condition should usually open a maintenance ticket; `Under Maintenance` + good condition should usually be closed back to `Ready`; `Disposed` + good condition remains closed until a privileged business decision changes it.
 
 The application shows this guidance inline through help icons beside status and condition fields on Asset Create/Edit, Asset Detail, Asset Register filters, and Asset Register table headers. Keep these popovers aligned with the workflow rules in this document whenever lifecycle behavior changes.
+
+Selectable physical conditions are `Not Assessed`, `New`, `Good`, `Fair`, `Damaged`, `Non-functional`, and `Salvage`. Legacy `Excellent` and `Poor` values remain readable for historical records but are not selectable for new changes.
+
+## Review-First State Governance
+
+`asset_state_reviews` stores detected inconsistencies as a review queue. A scan records the observed asset status, condition, custodian, and `updatedAt` snapshot; it does **not** automatically change existing asset status or condition. The detector covers repair-ticket mismatches, checkout mismatches, personal-custody inconsistencies, incompatible status/condition combinations, legacy status/condition values, and disposal rows that cannot restore a prior status.
+
+- `setting:view` can view and filter the queue at `/{locale}/admin/data-quality`.
+- `setting:edit` can run a scan, resolve an allowed correction, or dismiss a finding with a reason.
+- Resolution requires a reason of at least 10 characters, an active allowed master value, a matching observed snapshot, an optimistic asset update, an `AssetMovement` row, and a System Log audit entry.
+- Dismissal changes only the review record and audit trail; it never changes the asset.
+- Re-running the scan refreshes persistent findings, suppresses an unchanged dismissed snapshot, and closes pending findings that are no longer detected.
 
 ## Allowed Transitions
 

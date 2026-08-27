@@ -1,5 +1,14 @@
 # Workflows
 
+## Asset State Review Queue
+
+- Open `Admin > Data Quality` and use **Asset state review queue / รายการรอตรวจสอบสถานะและสภาพทรัพย์สิน**.
+- Users with `setting:view` can filter pending, resolved, and dismissed findings by severity and issue type. Users with `setting:edit` can scan current data and act on pending findings.
+- Scan is review-first: it creates or refreshes `asset_state_reviews` and never updates `assets.statusId` or `assets.conditionId` automatically.
+- Use **Resolve** only for the issue-specific active status or selectable condition offered by the server. The system rejects stale snapshots and asks the operator to scan again.
+- Use **Dismiss** only after confirming the current data is correct. Both actions require an auditable reason of at least 10 characters.
+- Issues representing a real transaction should be completed through checkout/check-in, transfer, maintenance, disposal, or audit workflow rather than by inventing a direct status change.
+
 ## Asset Registration
 
 - Add a single asset from `/assets/new`.

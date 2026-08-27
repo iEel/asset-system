@@ -4,6 +4,12 @@ Use this checklist with realistic master data and at least one asset in each imp
 
 ## system_admin
 
+- [ ] Open `/{locale}/admin/data-quality`, run **Scan now**, and confirm the queue shows current status, condition, custodian, issue label, severity, and last-detected time without changing any asset automatically.
+- [ ] Resolve a `personal_ready_with_custodian` review to `In Use` with a reason of at least 10 characters; confirm Asset Detail, Asset Movement (`state_review_resolution`), System Log (`asset_state_review_resolve`), and the resolved queue agree.
+- [ ] Open a pending review in two sessions, change the asset in one session, then resolve from the older session; confirm the API returns the stale-review conflict and no partial movement/audit/review update is committed.
+- [ ] Dismiss a confirmed false positive with a reason, confirm the asset is unchanged, and verify a later scan suppresses the same dismissed snapshot but reopens the issue after the asset snapshot changes and the inconsistency still exists.
+- [ ] At 390px and desktop width, confirm the review queue uses mobile cards/desktop table, has no body-level horizontal overflow, keeps controls at least 44px on mobile, traps/restores dialog focus, and exposes Thai/English labels without relying on color alone.
+
 - [ ] Login successfully.
 - [ ] On Login at 390px and desktop, confirm the real application icon, Light Slate background, Navy headings, Surface White form, Action Blue submit button, and Electric Blue focus state match the authenticated shell without horizontal overflow.
 - [ ] Confirm Username and Password have associated accessible labels, password-manager autocomplete values (`username` / `current-password`), 44px mobile targets, and 16px mobile input text. Toggle Eye/EyeOff and confirm the password remains focused and the value does not change.

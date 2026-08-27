@@ -2980,7 +2980,10 @@
       "DISPOSAL_EVIDENCE_EXCEPTION_NOT_APPLICABLE": "The historical exception is available only when no active evidence exists.",
       "DISPOSAL_BULK_INVALID_SELECTION": "Select between 1 and 20 disposal requests to execute.",
       "DISPOSAL_BULK_MIXED_TYPES": "Bulk execution can only include one disposal type.",
-      "DISPOSAL_BULK_EXECUTION_FAILED": "Bulk disposal execution could not be completed. Please try again."
+      "DISPOSAL_BULK_EXECUTION_FAILED": "Bulk disposal execution could not be completed. Please try again.",
+      "DISPOSAL_PREVIOUS_STATUS_MISSING": "This request has no recorded prior status. Send it to the asset state review queue.",
+      "DISPOSAL_PREVIOUS_STATUS_INACTIVE": "The recorded prior status is inactive. Send it to the asset state review queue.",
+      "DISPOSAL_ASSET_STATUS_CHANGED": "The asset is no longer Pending Disposal. Reload and review the request."
     },
     "batchStatuses": { "partial": "Partially completed" },
     "errors": {

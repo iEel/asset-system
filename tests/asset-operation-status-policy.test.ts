@@ -91,7 +91,7 @@ test("status correction action is only visible for recoverable statuses", () => 
 
 test("lifecycle mutation layers call exception policy helpers", () => {
   const routes = [
-    ["src/lib/maintenance-ticket-service.ts", /getMaintenanceCloseStatusError/],
+    ["src/lib/maintenance-ticket-service.ts", /getMaintenanceOperationalTarget/],
     ["src/app/api/disposal-requests/[id]/route.ts", /getDisposalStatusTargetError/],
     ["src/app/api/assets/[id]/route.ts", /getAssetStateSelectionError/],
     ["src/app/api/assets/[id]/status-correction/route.ts", /getAssetStatusCorrectionError/],
