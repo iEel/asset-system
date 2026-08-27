@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/db"
 import { getCheckinReturnStatuses } from "@/lib/asset-status-flow"
+import {
+  filterCheckoutEligibleAssets,
+  filterPersonalTransferEligibleAssets,
+} from "@/lib/asset-lifecycle-policy"
 
 export async function getAssetOperationOptions() {
   const [assets, activeCheckouts, employees, departments, locations, statuses, conditions] = await Promise.all([
@@ -13,6 +17,7 @@ export async function getAssetOperationOptions() {
         custodianId: true,
         conditionId: true,
         departmentId: true,
+        status: { select: { name: true, nameTh: true } },
         custodian: { select: { code: true, fullNameTh: true } },
       },
       orderBy: { assetTag: "asc" },
@@ -63,16 +68,24 @@ export async function getAssetOperationOptions() {
   const departmentLabelById = new Map(departments.map((department) => [department.id, `${department.code} - ${department.name}`]))
   const locationLabelById = new Map(locations.map((location) => [location.id, `${location.code} - ${location.name}`]))
   type LegacyReturnAsset = (typeof assets)[number] & { custodianId: string }
-  const legacyReturnAssets = assets.filter((asset): asset is LegacyReturnAsset =>
+  const checkoutEligibleAssets = filterCheckoutEligibleAssets(assets)
+  const personalTransferEligibleIds = new Set(filterPersonalTransferEligibleAssets(assets).map((asset) => asset.id))
+  const legacyReturnAssets = checkoutEligibleAssets.filter((asset): asset is LegacyReturnAsset =>
     Boolean(asset.custodianId) && !activeCheckoutAssetIds.has(asset.id)
   )
 
+  const mapAssetOption = (asset: (typeof assets)[number]) => ({
+    id: asset.id,
+    label: `${asset.assetTag} - ${asset.name}`,
+    disabled: activeCheckoutAssetIds.has(asset.id),
+    statusName: asset.status.name,
+    personalTransferEligible: personalTransferEligibleIds.has(asset.id),
+  })
+
   return {
-    assets: assets.map((asset) => ({
-      id: asset.id,
-      label: `${asset.assetTag} - ${asset.name}`,
-      disabled: activeCheckoutAssetIds.has(asset.id),
-    })),
+    assets: assets.map(mapAssetOption),
+    checkoutAssets: checkoutEligibleAssets.map(mapAssetOption),
+    personalTransferAssets: filterPersonalTransferEligibleAssets(assets).map(mapAssetOption),
     activeCheckouts: activeCheckouts.map((checkout) => ({
       id: checkout.id,
       assetId: checkout.assetId,

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { getAssetOperationStatusError } from "@/lib/asset-operation-policy"
+import { getAssetLifecycleTransitionError } from "@/lib/asset-lifecycle-policy"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
 import { generateCheckoutDocumentNo } from "@/lib/operation-document-number"
 
@@ -32,8 +32,8 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
       },
     })
     if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
-    const statusError = getAssetOperationStatusError("checkout", asset.status)
-    if (statusError) return NextResponse.json({ error: statusError }, { status: 400 })
+    const statusError = getAssetLifecycleTransitionError("checkout", asset.status.name)
+    if (statusError) return NextResponse.json({ code: statusError, error: statusError }, { status: 409 })
     if (!asset.custodianId) {
       return NextResponse.json({ error: "Asset has no current custodian to backfill" }, { status: 400 })
     }

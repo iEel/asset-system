@@ -122,6 +122,14 @@ export function filterSelectableConditions<T extends AssetStateMaster>(condition
   return conditions.filter((condition) => condition.isActive !== false && allowed.has(normalizeAssetStateName(condition.name)))
 }
 
+export function filterCheckoutEligibleAssets<T extends { status?: AssetStateMaster | null }>(assets: readonly T[]): T[] {
+  return assets.filter((asset) => getAssetLifecycleTransitionError("checkout", asset.status?.name) === null)
+}
+
+export function filterPersonalTransferEligibleAssets<T extends { status?: AssetStateMaster | null }>(assets: readonly T[]): T[] {
+  return assets.filter((asset) => getAssetLifecycleTransitionError("assign_custodian", asset.status?.name) === null)
+}
+
 export function getAssetStateSelectionError({
   operation,
   currentStatusName,

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { getAssetOperationStatusError, getTransferTargetStatusName } from "@/lib/asset-operation-policy"
+import { getAssetLifecycleTransitionError, getTransferTargetStatusName } from "@/lib/asset-lifecycle-policy"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { assetTransferSchema } from "@/lib/validations/asset-operations"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
@@ -31,8 +31,9 @@ export async function POST(request: NextRequest, context: TransferContext) {
       include: { status: { select: { name: true, nameTh: true } } },
     })
     if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
-    const statusError = getAssetOperationStatusError("transfer", asset.status)
-    if (statusError) return NextResponse.json({ error: statusError }, { status: 400 })
+    const operation = input.toCustodianId ? "assign_custodian" : "move_scope"
+    const statusError = getAssetLifecycleTransitionError(operation, asset.status.name)
+    if (statusError) return NextResponse.json({ code: statusError, error: statusError }, { status: 409 })
 
     const activeCheckout = await prisma.assetCheckout.findFirst({
       where: { assetId: id, isReturned: false },

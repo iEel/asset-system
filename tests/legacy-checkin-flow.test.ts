@@ -43,7 +43,7 @@ test("legacy checkout API creates an auditable backfilled handover instead of ch
   const source = readFileSync(legacyCheckoutRoutePath, "utf8")
 
   assert.match(source, /legacy_return_backfill/)
-  assert.match(source, /getAssetOperationStatusError\("checkout", asset\.status\)/)
+  assert.match(source, /getAssetLifecycleTransitionError\("checkout", asset\.status\.name\)/)
   assert.match(source, /const custodianId = asset\.custodianId/)
   assert.match(source, /custodianId,/)
   assert.match(source, /conditionBefore: asset\.conditionId/)

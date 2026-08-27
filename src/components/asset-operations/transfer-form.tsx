@@ -10,7 +10,7 @@ import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 
-type Option = { id: string; label: string; disabled?: boolean }
+type Option = { id: string; label: string; disabled?: boolean; personalTransferEligible?: boolean }
 
 export function TransferForm({
   assets,
@@ -40,6 +40,9 @@ export function TransferForm({
     reason: "",
     remark: "",
   })
+  const availableAssets = values.toCustodianId
+    ? assets.filter((asset) => asset.personalTransferEligible)
+    : assets
   const selectedAsset = assets.find((asset) => asset.id === values.assetId)
   const selectedLocation = locations.find((location) => location.id === values.toLocationId)
   const selectedCustodian = employees.find((employee) => employee.id === values.toCustodianId)
@@ -60,7 +63,17 @@ export function TransferForm({
   })
 
   function setField(field: string, value: string) {
-    setValues((current) => ({ ...current, [field]: value }))
+    setValues((current) => {
+      if (field === "toCustodianId" && value) {
+        const currentAsset = assets.find((asset) => asset.id === current.assetId)
+        return {
+          ...current,
+          toCustodianId: value,
+          assetId: currentAsset?.personalTransferEligible ? current.assetId : "",
+        }
+      }
+      return { ...current, [field]: value }
+    })
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -110,7 +123,7 @@ export function TransferForm({
               <FormContextBanner label={t("asset")} value={initialAsset.label} />
             </div>
           ) : null}
-          <SearchableSelect label={t("asset")} value={values.assetId} required options={assets} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assetId", value)} />
+          <SearchableSelect label={t("asset")} value={values.assetId} required options={availableAssets} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("assetId", value)} />
           <SearchableSelect label={t("toLocation")} value={values.toLocationId} options={locations} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toLocationId", value)} />
           <SearchableSelect label={t("toCustodian")} value={values.toCustodianId} options={employees} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toCustodianId", value)} />
           <SearchableSelect label={t("toDepartment")} value={values.toDepartmentId} options={departments} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toDepartmentId", value)} />

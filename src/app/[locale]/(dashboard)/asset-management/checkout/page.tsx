@@ -15,7 +15,7 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
 
   return (
     <CheckoutForm
-      assets={options.assets}
+      assets={options.checkoutAssets}
       employees={options.employees}
       departments={options.departments}
       locations={options.locations}
