@@ -100,6 +100,60 @@ BEGIN
       CONSTRAINT [DF_asset_checkins_updatedAt] DEFAULT SYSUTCDATETIME();
 END;
 
+DECLARE @checkoutUniqueName SYSNAME;
+DECLARE @checkoutUniqueIsConstraint BIT;
+
+SELECT TOP (1)
+  @checkoutUniqueName = i.[name],
+  @checkoutUniqueIsConstraint = CASE WHEN kc.[name] IS NULL THEN 0 ELSE 1 END
+FROM sys.indexes i
+INNER JOIN sys.index_columns ic
+  ON ic.[object_id] = i.[object_id] AND ic.[index_id] = i.[index_id]
+INNER JOIN sys.columns c
+  ON c.[object_id] = ic.[object_id] AND c.[column_id] = ic.[column_id]
+LEFT JOIN sys.key_constraints kc
+  ON kc.[parent_object_id] = i.[object_id] AND kc.[unique_index_id] = i.[index_id]
+WHERE i.[object_id] = OBJECT_ID(N'[dbo].[asset_checkins]')
+  AND i.[is_unique] = 1
+  AND i.[is_primary_key] = 0
+  AND c.[name] = N'checkoutId'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM sys.index_columns other_ic
+    WHERE other_ic.[object_id] = i.[object_id]
+      AND other_ic.[index_id] = i.[index_id]
+      AND other_ic.[key_ordinal] > 1
+  );
+
+IF @checkoutUniqueName IS NOT NULL
+BEGIN
+  IF @checkoutUniqueIsConstraint = 1
+    EXEC(N'ALTER TABLE [dbo].[asset_checkins] DROP CONSTRAINT ' + QUOTENAME(@checkoutUniqueName));
+  ELSE
+    EXEC(N'DROP INDEX ' + QUOTENAME(@checkoutUniqueName) + N' ON [dbo].[asset_checkins]');
+END;
+
+IF NOT EXISTS (
+  SELECT 1 FROM sys.indexes
+  WHERE object_id = OBJECT_ID(N'[dbo].[asset_checkins]')
+    AND name = N'IX_asset_checkins_checkoutId'
+)
+BEGIN
+  CREATE INDEX [IX_asset_checkins_checkoutId]
+    ON [dbo].[asset_checkins]([checkoutId]);
+END;
+
+IF NOT EXISTS (
+  SELECT 1 FROM sys.indexes
+  WHERE object_id = OBJECT_ID(N'[dbo].[asset_checkins]')
+    AND name = N'UX_asset_checkins_active_checkoutId'
+)
+BEGIN
+  CREATE UNIQUE INDEX [UX_asset_checkins_active_checkoutId]
+    ON [dbo].[asset_checkins]([checkoutId])
+    WHERE [transactionStatus] = N'active';
+END;
+
 IF NOT EXISTS (
   SELECT 1 FROM sys.indexes
   WHERE object_id = OBJECT_ID(N'[dbo].[asset_checkins]')

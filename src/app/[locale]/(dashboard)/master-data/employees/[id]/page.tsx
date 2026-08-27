@@ -110,7 +110,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
       orderBy: { assetTag: "asc" },
       take: 10,
     }),
-    prisma.assetCheckout.count({ where: { custodianId: id, isReturned: false } }),
+    prisma.assetCheckout.count({ where: { custodianId: id, isReturned: false, transactionStatus: "active" } }),
     prisma.assetCheckout.findMany({
       where: { custodianId: id },
       select: {
@@ -121,7 +121,9 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
         checkedOutBy: true,
         isReturned: true,
         asset: { select: { id: true, assetTag: true, name: true } },
-        checkin: {
+        checkins: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
           select: {
             documentNo: true,
             returnDate: true,
@@ -374,9 +376,9 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(checkout.checkoutDate)}</td>
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(checkout.expectedReturnDate)}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(checkout.checkin?.returnDate)}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(checkout.checkins[0]?.returnDate)}</td>
                         <td className="min-w-36 px-4 py-3 text-muted-foreground">{checkout.checkedOutBy || "-"}</td>
-                        <td className="min-w-36 px-4 py-3 text-muted-foreground">{checkout.checkin?.receiveBy || "-"}</td>
+                        <td className="min-w-36 px-4 py-3 text-muted-foreground">{checkout.checkins[0]?.receiveBy || "-"}</td>
                         <td className="whitespace-nowrap px-4 py-3">
                           <StatusBadge label={checkout.isReturned ? t("handoverReturned") : t("handoverOpen")} tone={checkout.isReturned ? "success" : "warning"} size="xs" />
                         </td>

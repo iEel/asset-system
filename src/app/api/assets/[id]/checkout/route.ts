@@ -9,6 +9,11 @@ import { assetCheckoutSchema } from "@/lib/validations/asset-operations"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
 import { generateCheckoutDocumentNo } from "@/lib/operation-document-number"
 import {
+  createAssetTransactionSnapshot,
+  serializeAssetComponentTransactionSnapshots,
+  serializeAssetTransactionSnapshot,
+} from "@/lib/asset-transaction-snapshot"
+import {
   optionalFormFile,
   optionalFormText,
   requiredFormText,
@@ -36,7 +41,7 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
     if (statusError) return NextResponse.json({ code: statusError, error: statusError }, { status: 409 })
 
     const activeCheckout = await prisma.assetCheckout.findFirst({
-      where: { assetId: id, isReturned: false },
+      where: { assetId: id, isReturned: false, transactionStatus: "active" },
       select: { id: true },
     })
     if (activeCheckout) {
@@ -59,6 +64,21 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
     const nextDepartmentId = input.checkoutType === "department" ? input.departmentId : asset.departmentId
 
     const { record: checkout, componentSync } = await prisma.$transaction(async (tx) => {
+      const beforeAsset = await tx.asset.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          updatedAt: true,
+          statusId: true,
+          conditionId: true,
+          branchId: true,
+          currentLocationId: true,
+          custodianId: true,
+          departmentId: true,
+        },
+      })
+      if (!beforeAsset) throw new Error("Asset not found")
+
       const documentNo = await generateCheckoutDocumentNo(tx, input.checkoutDate)
       const record = await tx.assetCheckout.create({
         data: {
@@ -76,6 +96,11 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
           remark: input.remark,
           checkedOutBy: user.id,
           receiverSignature: receiverSignature?.filePath ?? input.receiverSignature,
+          beforeSnapshotJson: serializeAssetTransactionSnapshot(createAssetTransactionSnapshot({
+            asset: beforeAsset,
+            checkout: null,
+            components: [],
+          })),
         },
       })
 
@@ -99,7 +124,7 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
         })
       }
 
-      await tx.asset.update({
+      const afterAsset = await tx.asset.update({
         where: { id },
         data: {
           statusId: checkedOutStatusId,
@@ -107,6 +132,16 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
           custodianId: nextCustodianId,
           departmentId: nextDepartmentId,
           updatedBy: user.id,
+        },
+        select: {
+          id: true,
+          updatedAt: true,
+          statusId: true,
+          conditionId: true,
+          branchId: true,
+          currentLocationId: true,
+          custodianId: true,
+          departmentId: true,
         },
       })
 
@@ -137,9 +172,34 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
         performedBy: user.id,
         reason: "Parent asset checkout",
         remark: input.remark,
+        captureSnapshots: true,
       })
 
-      return { record, componentSync }
+      const beforeSnapshot = createAssetTransactionSnapshot({
+        asset: beforeAsset,
+        checkout: null,
+        components: componentSync.componentSnapshots.map((change) => change.before),
+      })
+      const afterSnapshot = createAssetTransactionSnapshot({
+        asset: afterAsset,
+        checkout: { id: record.id, isReturned: false },
+        components: componentSync.componentSnapshots.map((change) => change.after),
+      })
+      const finalizedRecord = await tx.assetCheckout.update({
+        where: { id: record.id },
+        data: {
+          beforeSnapshotJson: serializeAssetTransactionSnapshot(beforeSnapshot),
+          afterSnapshotJson: serializeAssetTransactionSnapshot(afterSnapshot),
+          componentSnapshotJson: serializeAssetComponentTransactionSnapshots(componentSync.componentSnapshots),
+        },
+      })
+      const componentSyncSummary = {
+        updated: componentSync.updated,
+        skipped: componentSync.skipped,
+        movements: componentSync.movements,
+      }
+
+      return { record: finalizedRecord, componentSync: componentSyncSummary }
     })
 
     await logAudit({

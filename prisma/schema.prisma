@@ -528,7 +528,7 @@ model AssetCheckout {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  checkin AssetCheckin?
+  checkins AssetCheckin[]
 
   @@index([documentNo])
   @@index([assetId, transactionStatus, createdAt])
@@ -540,7 +540,7 @@ model AssetCheckin {
   documentNo            String?       @db.NVarChar(50)
   assetId               String
   asset                 Asset         @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  checkoutId            String        @unique
+  checkoutId            String
   checkout              AssetCheckout @relation(fields: [checkoutId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   returnDate            DateTime
   returnByEmployeeId    String?
@@ -567,6 +567,7 @@ model AssetCheckin {
   updatedAt             DateTime      @updatedAt
 
   @@index([documentNo])
+  @@index([checkoutId])
   @@index([assetId, transactionStatus, createdAt])
   @@map("asset_checkins")
 }

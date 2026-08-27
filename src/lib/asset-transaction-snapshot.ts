@@ -30,6 +30,42 @@ export type AssetTransactionSnapshotV1 = {
   components: AssetComponentTransactionSnapshotV1[]
 }
 
+export type AssetComponentTransactionSnapshotChangeV1 = {
+  before: AssetComponentTransactionSnapshotV1
+  after: AssetComponentTransactionSnapshotV1
+}
+
+export type AssetComponentTransactionSnapshotSetV1 = {
+  version: typeof assetTransactionSnapshotVersion
+  changes: AssetComponentTransactionSnapshotChangeV1[]
+}
+
+export type AssetTransactionSnapshotAssetInput = {
+  id: string
+  updatedAt: Date | string
+  statusId: string
+  conditionId: string
+  branchId: string
+  currentLocationId: string
+  custodianId: string | null
+  departmentId: string | null
+}
+
+export type AssetComponentTransactionSnapshotInput = {
+  componentLinkId: string
+  componentAssetId: string
+  parentAssetId: string
+  relationshipStatus: string
+  relationshipUpdatedAt: Date | string
+  assetUpdatedAt: Date | string
+  statusId: string
+  conditionId: string
+  branchId: string
+  currentLocationId: string
+  custodianId: string | null
+  departmentId: string | null
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
@@ -103,4 +139,62 @@ export function serializeAssetTransactionSnapshot(snapshot: AssetTransactionSnap
     throw new TypeError("Invalid asset transaction snapshot")
   }
   return JSON.stringify(snapshot)
+}
+
+function toIsoString(value: Date | string): string {
+  const date = value instanceof Date ? value : new Date(value)
+  if (!Number.isFinite(date.getTime())) throw new TypeError("Invalid transaction snapshot date")
+  return date.toISOString()
+}
+
+export function createComponentTransactionSnapshot(
+  input: AssetComponentTransactionSnapshotInput
+): AssetComponentTransactionSnapshotV1 {
+  return {
+    ...input,
+    relationshipUpdatedAt: toIsoString(input.relationshipUpdatedAt),
+    assetUpdatedAt: toIsoString(input.assetUpdatedAt),
+  }
+}
+
+export function createAssetTransactionSnapshot(input: {
+  asset: AssetTransactionSnapshotAssetInput
+  checkout?: { id: string; isReturned: boolean } | null
+  components: AssetComponentTransactionSnapshotV1[]
+}): AssetTransactionSnapshotV1 {
+  const snapshot: AssetTransactionSnapshotV1 = {
+    version: assetTransactionSnapshotVersion,
+    assetId: input.asset.id,
+    assetUpdatedAt: toIsoString(input.asset.updatedAt),
+    statusId: input.asset.statusId,
+    conditionId: input.asset.conditionId,
+    branchId: input.asset.branchId,
+    currentLocationId: input.asset.currentLocationId,
+    custodianId: input.asset.custodianId,
+    departmentId: input.asset.departmentId,
+    checkout: input.checkout ?? null,
+    components: input.components,
+  }
+
+  if (!isAssetTransactionSnapshotV1(snapshot)) throw new TypeError("Invalid asset transaction snapshot input")
+  return snapshot
+}
+
+export function serializeAssetComponentTransactionSnapshots(
+  changes: AssetComponentTransactionSnapshotChangeV1[]
+): string {
+  if (changes.length > maxAssetTransactionSnapshotComponents) {
+    throw new TypeError("Too many component transaction snapshots")
+  }
+  for (const change of changes) {
+    if (!isComponentSnapshot(change.before) || !isComponentSnapshot(change.after)) {
+      throw new TypeError("Invalid component transaction snapshot")
+    }
+  }
+
+  const snapshotSet: AssetComponentTransactionSnapshotSetV1 = {
+    version: assetTransactionSnapshotVersion,
+    changes,
+  }
+  return JSON.stringify(snapshotSet)
 }

@@ -6,6 +6,7 @@ import {
   defaultCheckoutDocumentTemplate,
   operationDocumentRunningDigitsKey,
 } from "@/lib/system-setting-defaults"
+import { renderTransferDocumentNo } from "@/lib/asset-transfer-document-number"
 
 export const operationDocumentTemplateTokens = [
   "yyyyMM",
@@ -30,6 +31,19 @@ export async function generateCheckoutDocumentNo(tx: Prisma.TransactionClient, d
 
 export async function generateCheckinDocumentNo(tx: Prisma.TransactionClient, date: Date) {
   return generateOperationDocumentNo(tx, "checkin", date)
+}
+
+export async function generateTransferDocumentNo(tx: Prisma.TransactionClient, date: Date) {
+  const renderedPrefix = renderTransferDocumentNo(date, 0).slice(0, -4)
+  const count = await tx.assetTransfer.count({ where: { documentNo: { startsWith: renderedPrefix } } })
+
+  for (let index = count + 1; index < count + 1000; index += 1) {
+    const documentNo = renderTransferDocumentNo(date, index)
+    const existing = await tx.assetTransfer.findUnique({ where: { documentNo }, select: { id: true } })
+    if (!existing) return documentNo
+  }
+
+  throw new Error("Cannot generate a unique transfer document number")
 }
 
 export function renderOperationDocumentTemplate(template: string, date: Date, running: number, runningDigits: number) {

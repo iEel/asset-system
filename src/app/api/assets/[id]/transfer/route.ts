@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { randomUUID } from "node:crypto"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
@@ -7,6 +8,12 @@ import { getAssetLifecycleTransitionError, getTransferTargetStatusName } from "@
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { assetTransferSchema } from "@/lib/validations/asset-operations"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
+import { generateTransferDocumentNo } from "@/lib/operation-document-number"
+import {
+  createAssetTransactionSnapshot,
+  serializeAssetComponentTransactionSnapshots,
+  serializeAssetTransactionSnapshot,
+} from "@/lib/asset-transaction-snapshot"
 
 type TransferContext = {
   params: Promise<{ id: string }>
@@ -36,7 +43,7 @@ export async function POST(request: NextRequest, context: TransferContext) {
     if (statusError) return NextResponse.json({ code: statusError, error: statusError }, { status: 409 })
 
     const activeCheckout = await prisma.assetCheckout.findFirst({
-      where: { assetId: id, isReturned: false },
+      where: { assetId: id, isReturned: false, transactionStatus: "active" },
       select: { id: true },
     })
     if (activeCheckout) {
@@ -48,21 +55,38 @@ export async function POST(request: NextRequest, context: TransferContext) {
       ? await getRequiredAssetStatusId(targetStatusName)
       : asset.statusId
 
-    const fromSnapshot: TransferSnapshot = {
-      locationId: asset.currentLocationId,
-      custodianId: asset.custodianId,
-      departmentId: asset.departmentId,
-      statusId: asset.statusId,
-    }
-    const toSnapshot: TransferSnapshot = {
-      locationId: input.toLocationId ?? asset.currentLocationId,
-      custodianId: input.toCustodianId ?? asset.custodianId,
-      departmentId: input.toDepartmentId ?? asset.departmentId,
-      statusId: targetStatusId,
-    }
+    const { transfer, componentSync, fromSnapshot, toSnapshot } = await prisma.$transaction(async (tx) => {
+      const beforeAsset = await tx.asset.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          updatedAt: true,
+          statusId: true,
+          conditionId: true,
+          branchId: true,
+          currentLocationId: true,
+          custodianId: true,
+          departmentId: true,
+        },
+      })
+      if (!beforeAsset) throw new Error("Asset not found")
 
-    const { record: updatedAsset, componentSync } = await prisma.$transaction(async (tx) => {
-      const record = await tx.asset.update({
+      const fromSnapshot: TransferSnapshot = {
+        locationId: beforeAsset.currentLocationId,
+        custodianId: beforeAsset.custodianId,
+        departmentId: beforeAsset.departmentId,
+        statusId: beforeAsset.statusId,
+      }
+      const toSnapshot: TransferSnapshot = {
+        locationId: input.toLocationId ?? beforeAsset.currentLocationId,
+        custodianId: input.toCustodianId ?? beforeAsset.custodianId,
+        departmentId: input.toDepartmentId ?? beforeAsset.departmentId,
+        statusId: targetStatusId,
+      }
+      const transferId = randomUUID()
+      const documentNo = await generateTransferDocumentNo(tx, new Date())
+
+      const afterAsset = await tx.asset.update({
         where: { id },
         data: {
           currentLocationId: toSnapshot.locationId,
@@ -70,6 +94,16 @@ export async function POST(request: NextRequest, context: TransferContext) {
           departmentId: toSnapshot.departmentId,
           statusId: toSnapshot.statusId,
           updatedBy: user.id,
+        },
+        select: {
+          id: true,
+          updatedAt: true,
+          statusId: true,
+          conditionId: true,
+          branchId: true,
+          currentLocationId: true,
+          custodianId: true,
+          departmentId: true,
         },
       })
 
@@ -81,7 +115,7 @@ export async function POST(request: NextRequest, context: TransferContext) {
           toValue: JSON.stringify(toSnapshot),
           reason: input.reason,
           referenceType: "transfer",
-          referenceId: id,
+          referenceId: transferId,
           performedBy: user.id,
           remark: input.remark,
         },
@@ -96,13 +130,43 @@ export async function POST(request: NextRequest, context: TransferContext) {
         },
         movementType: "parent_transfer_sync",
         referenceType: "transfer",
-        referenceId: id,
+        referenceId: transferId,
         performedBy: user.id,
         reason: input.reason,
         remark: input.remark,
+        captureSnapshots: true,
       })
 
-      return { record, componentSync }
+      const beforeTransactionSnapshot = createAssetTransactionSnapshot({
+        asset: beforeAsset,
+        checkout: null,
+        components: componentSync.componentSnapshots.map((change) => change.before),
+      })
+      const afterTransactionSnapshot = createAssetTransactionSnapshot({
+        asset: afterAsset,
+        checkout: null,
+        components: componentSync.componentSnapshots.map((change) => change.after),
+      })
+      const transfer = await tx.assetTransfer.create({
+        data: {
+          id: transferId,
+          documentNo,
+          assetId: id,
+          reason: input.reason,
+          remark: input.remark,
+          beforeSnapshotJson: serializeAssetTransactionSnapshot(beforeTransactionSnapshot),
+          afterSnapshotJson: serializeAssetTransactionSnapshot(afterTransactionSnapshot),
+          componentSnapshotJson: serializeAssetComponentTransactionSnapshots(componentSync.componentSnapshots),
+          createdBy: user.id,
+        },
+      })
+      const componentSyncSummary = {
+        updated: componentSync.updated,
+        skipped: componentSync.skipped,
+        movements: componentSync.movements,
+      }
+
+      return { transfer, componentSync: componentSyncSummary, fromSnapshot, toSnapshot }
     })
 
     await logAudit({
@@ -114,7 +178,7 @@ export async function POST(request: NextRequest, context: TransferContext) {
       newValue: { ...toSnapshot, reason: input.reason, remark: input.remark, componentSync },
     })
 
-    return NextResponse.json(updatedAsset)
+    return NextResponse.json(transfer, { status: 201 })
   } catch (error) {
     return errorResponse(error, 400)
   }

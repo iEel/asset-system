@@ -127,7 +127,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const tMaintenance = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
   const tAudit = await getTranslations("auditRound")
-  const [asset, qrBaseUrlSetting, readyStatus] = await withPerformanceTiming(
+  const [rawAsset, qrBaseUrlSetting, readyStatus] = await withPerformanceTiming(
     "asset-detail.initial-data",
     () => Promise.all([
       prisma.asset.findFirst({
@@ -154,7 +154,9 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             take: loadPolicy.checkoutLimit,
             include: {
               custodian: { select: { code: true, fullNameTh: true } },
-              checkin: {
+              checkins: {
+                orderBy: { createdAt: "desc" },
+                take: 1,
                 include: {
                   returnByEmployee: { select: { code: true, fullNameTh: true } },
                   receiveByEmployee: { select: { code: true, fullNameTh: true } },
@@ -250,6 +252,16 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     { route: "/assets/[id]", locale }
   )
 
+  const asset = rawAsset
+    ? {
+        ...rawAsset,
+        checkouts: rawAsset.checkouts.map((checkout) => ({
+          ...checkout,
+          checkin: checkout.checkins[0] ?? null,
+        })),
+      }
+    : null
+
   if (!asset) notFound()
 
   const [evidenceCheckoutReferences, evidenceMaintenanceReferences, evidenceAuditFindingReferences, evidenceDisposalReferences] = await withPerformanceTiming(
@@ -257,7 +269,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     () => Promise.all([
       prisma.assetCheckout.findMany({
         where: { assetId: asset.id },
-        select: { id: true, checkin: { select: { id: true } } },
+        select: { id: true, checkins: { select: { id: true } } },
       }),
       prisma.maintenanceTicket.findMany({
         where: { assetId: asset.id, isActive: true },
@@ -275,7 +287,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     { route: "/assets/[id]", locale },
   )
   const evidenceCheckoutIds = evidenceCheckoutReferences.map((checkout) => checkout.id)
-  const evidenceCheckinIds = evidenceCheckoutReferences.flatMap((checkout) => checkout.checkin ? [checkout.checkin.id] : [])
+  const evidenceCheckinIds = evidenceCheckoutReferences.flatMap((checkout) => checkout.checkins.map((checkin) => checkin.id))
   const evidenceMaintenanceTicketIds = evidenceMaintenanceReferences.map((ticket) => ticket.id)
   const evidenceAuditFindingIds = evidenceAuditFindingReferences.map((finding) => finding.id)
   const evidenceDisposalRequestIds = evidenceDisposalReferences.map((request) => request.id)

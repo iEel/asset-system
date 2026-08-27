@@ -1,4 +1,8 @@
 import type { Prisma } from "@prisma/client"
+import {
+  createComponentTransactionSnapshot,
+  type AssetComponentTransactionSnapshotChangeV1,
+} from "./asset-transaction-snapshot.ts"
 
 export const requiredComponentSyncFields = ["branchId", "currentLocationId"] as const
 export const nullableComponentSyncFields = ["departmentId", "custodianId"] as const
@@ -36,12 +40,14 @@ export type ParentComponentSyncInput = {
   reason: string
   remark?: string | null
   restrictToAssetIds?: string[]
+  captureSnapshots?: boolean
 }
 
 export type ParentComponentSyncResult = {
   updated: number
   skipped: number
   movements: number
+  componentSnapshots: AssetComponentTransactionSnapshotChangeV1[]
 }
 
 export function normalizeComponentSyncChanges(changes: ComponentSyncChanges): NormalizedComponentSyncChanges {
@@ -101,7 +107,9 @@ export async function syncInstalledComponentsWithParent(
   input: ParentComponentSyncInput
 ): Promise<ParentComponentSyncResult> {
   const changes = normalizeComponentSyncChanges(input.changes)
-  if (Object.keys(changes).length === 0) return { updated: 0, skipped: 0, movements: 0 }
+  if (Object.keys(changes).length === 0) {
+    return { updated: 0, skipped: 0, movements: 0, componentSnapshots: [] }
+  }
 
   const restrictToAssetIds = input.restrictToAssetIds ? Array.from(new Set(input.restrictToAssetIds)) : null
   const links = await tx.assetComponent.findMany({
@@ -113,10 +121,17 @@ export async function syncInstalledComponentsWithParent(
       componentAsset: { isActive: true },
     },
     select: {
+      id: true,
+      parentAssetId: true,
       componentAssetId: true,
+      status: true,
+      updatedAt: true,
       componentAsset: {
         select: {
           id: true,
+          updatedAt: true,
+          statusId: true,
+          conditionId: true,
           branchId: true,
           currentLocationId: true,
           departmentId: true,
@@ -130,12 +145,13 @@ export async function syncInstalledComponentsWithParent(
   const componentIds = uniqueLinks.map((link) => link.componentAssetId)
   const activeCheckouts = componentIds.length
     ? await tx.assetCheckout.findMany({
-        where: { assetId: { in: componentIds }, isReturned: false },
+        where: { assetId: { in: componentIds }, isReturned: false, transactionStatus: "active" },
         select: { assetId: true },
       })
     : []
   const checkedOutAssetIds = new Set(activeCheckouts.map((checkout) => checkout.assetId))
   const movementRows: Prisma.AssetMovementCreateManyInput[] = []
+  const componentSnapshots: AssetComponentTransactionSnapshotChangeV1[] = []
   let updated = 0
   let skipped = 0
 
@@ -148,14 +164,55 @@ export async function syncInstalledComponentsWithParent(
     const update = buildComponentSyncUpdate(link.componentAsset, changes)
     if (!update) continue
 
-    await tx.asset.update({
+    const updatedComponent = await tx.asset.update({
       where: { id: link.componentAssetId },
       data: {
         ...update.data,
         updatedBy: input.performedBy,
       },
+      select: {
+        id: true,
+        updatedAt: true,
+        statusId: true,
+        conditionId: true,
+        branchId: true,
+        currentLocationId: true,
+        departmentId: true,
+        custodianId: true,
+      },
     })
     updated += 1
+    if (input.captureSnapshots) {
+      const relationship = {
+        componentLinkId: link.id,
+        componentAssetId: link.componentAssetId,
+        parentAssetId: link.parentAssetId,
+        relationshipStatus: link.status,
+        relationshipUpdatedAt: link.updatedAt,
+      }
+      componentSnapshots.push({
+        before: createComponentTransactionSnapshot({
+          ...relationship,
+          assetUpdatedAt: link.componentAsset.updatedAt,
+          statusId: link.componentAsset.statusId,
+          conditionId: link.componentAsset.conditionId,
+          branchId: link.componentAsset.branchId,
+          currentLocationId: link.componentAsset.currentLocationId,
+          custodianId: link.componentAsset.custodianId,
+          departmentId: link.componentAsset.departmentId,
+        }),
+        after: createComponentTransactionSnapshot({
+          ...relationship,
+          assetUpdatedAt: updatedComponent.updatedAt,
+          statusId: updatedComponent.statusId,
+          conditionId: updatedComponent.conditionId,
+          branchId: updatedComponent.branchId,
+          currentLocationId: updatedComponent.currentLocationId,
+          custodianId: updatedComponent.custodianId,
+          departmentId: updatedComponent.departmentId,
+        }),
+      })
+    }
     movementRows.push({
       assetId: link.componentAssetId,
       movementType: input.movementType,
@@ -173,5 +230,5 @@ export async function syncInstalledComponentsWithParent(
     await tx.assetMovement.createMany({ data: movementRows })
   }
 
-  return { updated, skipped, movements: movementRows.length }
+  return { updated, skipped, movements: movementRows.length, componentSnapshots }
 }

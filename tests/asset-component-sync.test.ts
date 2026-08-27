@@ -21,6 +21,10 @@ const snapshot: ComponentSyncSnapshot = {
 type ComponentLink = {
   componentAssetId: string
   componentAsset: ComponentSyncSnapshot
+  id?: string
+  parentAssetId?: string
+  status?: string
+  updatedAt?: Date
 }
 
 type FakeTxCalls = {
@@ -70,7 +74,9 @@ function makeFakeTx(options: { links?: ComponentLink[]; checkouts?: Array<{ asse
     asset: {
       update: async (args: unknown) => {
         calls.assetUpdates.push(args)
-        return {}
+        const update = args as { where: { id: string }; data: Partial<ComponentSyncSnapshot> }
+        const link = options.links?.find((item) => item.componentAssetId === update.where.id)
+        return { ...link?.componentAsset, ...update.data, updatedAt: new Date("2026-08-27T09:30:00.000Z") }
       },
     },
     assetMovement: {
@@ -180,7 +186,7 @@ test("syncInstalledComponentsWithParent returns without querying when there are 
     makeSyncInput({ changes: { branchId: null, currentLocationId: undefined } })
   )
 
-  assert.deepEqual(result, { updated: 0, skipped: 0, movements: 0 })
+  assert.deepEqual(result, { updated: 0, skipped: 0, movements: 0, componentSnapshots: [] })
   assert.deepEqual(calls, {
     assetComponentFindMany: [],
     assetCheckoutFindMany: [],
@@ -197,7 +203,7 @@ test("syncInstalledComponentsWithParent skips checked-out components", async () 
 
   const result = await syncInstalledComponentsWithParent(tx, makeSyncInput())
 
-  assert.deepEqual(result, { updated: 0, skipped: 1, movements: 0 })
+  assert.deepEqual(result, { updated: 0, skipped: 1, movements: 0, componentSnapshots: [] })
   assert.equal(calls.assetUpdates.length, 0)
   assert.equal(calls.assetMovementCreateMany.length, 0)
 })
@@ -214,7 +220,7 @@ test("syncInstalledComponentsWithParent ignores unchanged non-checked-out compon
 
   const result = await syncInstalledComponentsWithParent(tx, makeSyncInput())
 
-  assert.deepEqual(result, { updated: 0, skipped: 0, movements: 0 })
+  assert.deepEqual(result, { updated: 0, skipped: 0, movements: 0, componentSnapshots: [] })
   assert.equal(calls.assetUpdates.length, 0)
   assert.equal(calls.assetMovementCreateMany.length, 0)
 })
@@ -229,17 +235,15 @@ test("syncInstalledComponentsWithParent updates changed components and creates s
     makeSyncInput({ changes: { currentLocationId: "loc-new", custodianId: null } })
   )
 
-  assert.deepEqual(result, { updated: 1, skipped: 0, movements: 1 })
-  assert.deepEqual(calls.assetUpdates, [
-    {
-      where: { id: "component-1" },
-      data: {
-        currentLocationId: "loc-new",
-        custodianId: null,
-        updatedBy: "user-1",
-      },
-    },
-  ])
+  assert.deepEqual(result, { updated: 1, skipped: 0, movements: 1, componentSnapshots: [] })
+  assert.equal(calls.assetUpdates.length, 1)
+  const updateCall = calls.assetUpdates[0] as { where: unknown; data: unknown }
+  assert.deepEqual(updateCall.where, { id: "component-1" })
+  assert.deepEqual(updateCall.data, {
+    currentLocationId: "loc-new",
+    custodianId: null,
+    updatedBy: "user-1",
+  })
 
   const movementCall = calls.assetMovementCreateMany[0] as { data: Array<Record<string, unknown>> }
   assert.equal(movementCall.data.length, 1)
@@ -255,6 +259,37 @@ test("syncInstalledComponentsWithParent updates changed components and creates s
     remark: "sync remark",
   })
   assert.equal("updatedBy" in (JSON.parse(movementCall.data[0].toValue as string) as Record<string, unknown>), false)
+})
+
+test("component sync returns exact before and after snapshots when requested", async () => {
+  const componentAsset = {
+    ...snapshot,
+    statusId: "status-ready",
+    conditionId: "condition-good",
+    updatedAt: new Date("2026-08-27T09:00:00.000Z"),
+  }
+  const { tx } = makeFakeTx({
+    links: [{
+      id: "link-1",
+      parentAssetId: "parent-1",
+      componentAssetId: "component-1",
+      status: "installed",
+      updatedAt: new Date("2026-08-27T08:00:00.000Z"),
+      componentAsset,
+    }],
+  })
+
+  const result = await syncInstalledComponentsWithParent(
+    tx,
+    makeSyncInput({ changes: { currentLocationId: "loc-new" }, captureSnapshots: true })
+  )
+
+  assert.equal(result.componentSnapshots.length, 1)
+  assert.equal(result.componentSnapshots[0].before.currentLocationId, "loc-old")
+  assert.equal(result.componentSnapshots[0].after.currentLocationId, "loc-new")
+  assert.equal(result.componentSnapshots[0].before.assetUpdatedAt, "2026-08-27T09:00:00.000Z")
+  assert.equal(result.componentSnapshots[0].after.assetUpdatedAt, "2026-08-27T09:30:00.000Z")
+  assert.equal(result.componentSnapshots[0].after.componentLinkId, "link-1")
 })
 
 test("syncInstalledComponentsWithParent dedupes restrictToAssetIds in the query filter", async () => {
@@ -279,7 +314,7 @@ test("syncInstalledComponentsWithParent processes duplicate installed links once
 
   const result = await syncInstalledComponentsWithParent(tx, makeSyncInput())
 
-  assert.deepEqual(result, { updated: 1, skipped: 0, movements: 1 })
+  assert.deepEqual(result, { updated: 1, skipped: 0, movements: 1, componentSnapshots: [] })
   assert.equal(calls.assetUpdates.length, 1)
   assert.equal(calls.assetMovementCreateMany.length, 1)
 

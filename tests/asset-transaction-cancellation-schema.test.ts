@@ -24,6 +24,21 @@ test("checkout and checkin retain reversible transaction metadata", () => {
   }
 })
 
+test("a void checkin does not prevent a new active checkin for the reopened checkout", () => {
+  const body = modelBody("AssetCheckin")
+  assert.match(body, /checkoutId\s+String(?:\s|$)/)
+  assert.doesNotMatch(body, /checkoutId\s+String\s+@unique/)
+  assert.match(body, /@@index\(\[checkoutId\]\)/)
+
+  const migration = readFileSync(
+    "prisma/manual-migrations/2026-08-27-add-reversible-asset-transactions.sql",
+    "utf8"
+  )
+  assert.match(migration, /DROP INDEX|DROP CONSTRAINT/)
+  assert.match(migration, /CREATE UNIQUE INDEX \[UX_asset_checkins_active_checkoutId\]/)
+  assert.match(migration, /WHERE \[transactionStatus\] = N'active'/)
+})
+
 test("transfer documents preserve snapshots and cancellation history", () => {
   const body = modelBody("AssetTransfer")
   assert.match(body, /documentNo\s+String\s+@unique\s+@db\.NVarChar\(50\)/)
