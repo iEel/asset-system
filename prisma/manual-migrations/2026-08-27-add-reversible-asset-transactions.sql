@@ -52,8 +52,8 @@ IF NOT EXISTS (
     AND name = N'IX_asset_checkouts_assetId_transactionStatus_createdAt'
 )
 BEGIN
-  CREATE INDEX [IX_asset_checkouts_assetId_transactionStatus_createdAt]
-    ON [dbo].[asset_checkouts]([assetId], [transactionStatus], [createdAt]);
+  EXEC sys.sp_executesql N'CREATE INDEX [IX_asset_checkouts_assetId_transactionStatus_createdAt]
+    ON [dbo].[asset_checkouts]([assetId], [transactionStatus], [createdAt]);';
 END;
 
 IF COL_LENGTH('dbo.asset_checkins', 'transactionStatus') IS NULL
@@ -102,6 +102,7 @@ END;
 
 DECLARE @checkoutUniqueName SYSNAME;
 DECLARE @checkoutUniqueIsConstraint BIT;
+DECLARE @checkoutDropSql NVARCHAR(MAX);
 
 SELECT TOP (1)
   @checkoutUniqueName = i.[name],
@@ -128,9 +129,11 @@ WHERE i.[object_id] = OBJECT_ID(N'[dbo].[asset_checkins]')
 IF @checkoutUniqueName IS NOT NULL
 BEGIN
   IF @checkoutUniqueIsConstraint = 1
-    EXEC(N'ALTER TABLE [dbo].[asset_checkins] DROP CONSTRAINT ' + QUOTENAME(@checkoutUniqueName));
+    SET @checkoutDropSql = N'ALTER TABLE [dbo].[asset_checkins] DROP CONSTRAINT ' + QUOTENAME(@checkoutUniqueName);
   ELSE
-    EXEC(N'DROP INDEX ' + QUOTENAME(@checkoutUniqueName) + N' ON [dbo].[asset_checkins]');
+    SET @checkoutDropSql = N'DROP INDEX ' + QUOTENAME(@checkoutUniqueName) + N' ON [dbo].[asset_checkins]';
+
+  EXEC sys.sp_executesql @checkoutDropSql;
 END;
 
 IF NOT EXISTS (
@@ -149,9 +152,9 @@ IF NOT EXISTS (
     AND name = N'UX_asset_checkins_active_checkoutId'
 )
 BEGIN
-  CREATE UNIQUE INDEX [UX_asset_checkins_active_checkoutId]
+  EXEC sys.sp_executesql N'CREATE UNIQUE INDEX [UX_asset_checkins_active_checkoutId]
     ON [dbo].[asset_checkins]([checkoutId])
-    WHERE [transactionStatus] = N'active';
+    WHERE [transactionStatus] = N''active'';';
 END;
 
 IF NOT EXISTS (
@@ -160,8 +163,8 @@ IF NOT EXISTS (
     AND name = N'IX_asset_checkins_assetId_transactionStatus_createdAt'
 )
 BEGIN
-  CREATE INDEX [IX_asset_checkins_assetId_transactionStatus_createdAt]
-    ON [dbo].[asset_checkins]([assetId], [transactionStatus], [createdAt]);
+  EXEC sys.sp_executesql N'CREATE INDEX [IX_asset_checkins_assetId_transactionStatus_createdAt]
+    ON [dbo].[asset_checkins]([assetId], [transactionStatus], [createdAt]);';
 END;
 
 IF OBJECT_ID(N'[dbo].[asset_transfers]', N'U') IS NULL
@@ -192,9 +195,9 @@ END;
 
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_asset_transfers_assetId')
 BEGIN
-  ALTER TABLE [dbo].[asset_transfers] WITH CHECK
+  EXEC sys.sp_executesql N'ALTER TABLE [dbo].[asset_transfers] WITH CHECK
     ADD CONSTRAINT [FK_asset_transfers_assetId]
-    FOREIGN KEY ([assetId]) REFERENCES [dbo].[assets]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;
+    FOREIGN KEY ([assetId]) REFERENCES [dbo].[assets]([id]) ON DELETE NO ACTION ON UPDATE NO ACTION;';
 END;
 
 IF NOT EXISTS (
@@ -203,8 +206,8 @@ IF NOT EXISTS (
     AND name = N'UX_asset_transfers_documentNo'
 )
 BEGIN
-  CREATE UNIQUE INDEX [UX_asset_transfers_documentNo]
-    ON [dbo].[asset_transfers]([documentNo]);
+  EXEC sys.sp_executesql N'CREATE UNIQUE INDEX [UX_asset_transfers_documentNo]
+    ON [dbo].[asset_transfers]([documentNo]);';
 END;
 
 IF NOT EXISTS (
@@ -213,6 +216,6 @@ IF NOT EXISTS (
     AND name = N'IX_asset_transfers_assetId_transactionStatus_createdAt'
 )
 BEGIN
-  CREATE INDEX [IX_asset_transfers_assetId_transactionStatus_createdAt]
-    ON [dbo].[asset_transfers]([assetId], [transactionStatus], [createdAt]);
+  EXEC sys.sp_executesql N'CREATE INDEX [IX_asset_transfers_assetId_transactionStatus_createdAt]
+    ON [dbo].[asset_transfers]([assetId], [transactionStatus], [createdAt]);';
 END;

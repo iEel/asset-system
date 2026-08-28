@@ -36,7 +36,12 @@ test("a void checkin does not prevent a new active checkin for the reopened chec
   )
   assert.match(migration, /DROP INDEX|DROP CONSTRAINT/)
   assert.match(migration, /CREATE UNIQUE INDEX \[UX_asset_checkins_active_checkoutId\]/)
-  assert.match(migration, /WHERE \[transactionStatus\] = N'active'/)
+  assert.match(migration, /WHERE \[transactionStatus\] = N''active''/)
+  assert.match(migration, /EXEC sys\.sp_executesql @checkoutDropSql/)
+  assert.doesNotMatch(migration, /EXEC\([^\r\n]*\+\s*QUOTENAME\(/)
+  assert.match(migration, /sp_executesql N'CREATE UNIQUE INDEX \[UX_asset_checkins_active_checkoutId\]/)
+  assert.match(migration, /sp_executesql N'CREATE INDEX \[IX_asset_checkouts_assetId_transactionStatus_createdAt\]/)
+  assert.match(migration, /sp_executesql N'CREATE INDEX \[IX_asset_checkins_assetId_transactionStatus_createdAt\]/)
 })
 
 test("transfer documents preserve snapshots and cancellation history", () => {
