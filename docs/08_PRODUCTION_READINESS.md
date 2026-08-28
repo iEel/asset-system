@@ -34,8 +34,12 @@ Use this checklist before go-live, before a production schema change, and before
 - [ ] The migration command output, operator, reason, target database, and release commit are attached to the change record. `--backup-confirmed` records operator attestation and does not take a backup automatically.
 - [ ] Historical migration files were baselined only after their database effects were individually verified; no accepted migration file was edited to force its checksum to match.
 - [ ] If the release includes `prisma/manual-migrations/*.sql`, each required script has been applied against Production after backup and approval through `npm run migration:apply -- <filename.sql> --backup-confirmed --reason "<approved change reason>"`. Historical scripts already present before ledger initialization are verified and baselined instead of re-executed.
-- [ ] Before `2026-07-13-add-disposal-evidence-exception.sql` is applied, a fresh database backup has been completed and verified. Apply it through `migration:apply`, run `npm run prisma:generate`, and manually verify one approved historical request without attachments plus one normal approved request with evidence.
-- [ ] Before deploying Asset State Governance, take and verify a fresh backup, then apply `2026-08-27-add-asset-state-governance.sql` through `migration:apply`. Run `npm run prisma:generate` afterward and verify `asset_state_reviews`, `disposal_requests.previousAssetStatusId`, active `Not Assessed`, and the filtered pending-review unique index. The migration must not rewrite existing `assets.statusId` or `assets.conditionId` values.
+- [x] For `asset_management`, `2026-07-13-add-disposal-evidence-exception.sql` is recorded as applied. For another target database, require a fresh verified backup and apply it through `migration:apply` instead of executing the SQL directly.
+- [ ] Generate Prisma Client and manually verify one approved historical disposal request without attachments plus one normal approved request with evidence on the deployment target.
+- [x] For `asset_management`, `2026-08-27-add-asset-state-governance.sql` and `2026-08-27-keep-under-inspection-operational.sql` are recorded as applied, and the production rescan did not rewrite asset status/condition/update snapshots.
+- [ ] Generate Prisma Client and verify `asset_state_reviews`, `disposal_requests.previousAssetStatusId`, active `Not Assessed`, active operational `Under Inspection`, and the filtered pending-review unique index on the deployment target.
+- [x] For `asset_management`, `2026-08-27-add-reversible-asset-transactions.sql` was applied on 2026-08-28 with checksum prefix `53f0d2d5bd11`; schema verification found all expected columns, `asset_transfers`, six indexes, its foreign key, and no duplicate active Check-in.
+- [ ] Complete the reversible-transaction UAT cases after Prisma generation/deployment; migration application alone does not mark workflow acceptance as passed.
 
 ## Uploads And Evidence
 
@@ -70,6 +74,8 @@ To restore a file, move it from `.archive/YYYY-MM-DD/<relativePath>` back to `UP
 
 - [ ] Asset create, batch create, import, export, and QR label print are tested.
 - [ ] Check-out, check-in, and transfer are tested with evidence.
+- [ ] Latest-transaction cancellation is tested for Check-out, Check-in, and Transfer with `asset:edit`, including exact snapshot restoration, component restoration, compensating Movement/System Log, VOID document metadata/watermark, and Check-in reopening its related Check-out.
+- [ ] Cancellation blockers are tested for downstream work, stale state, non-latest transactions, and legacy snapshot-less documents; confirm master data is unchanged and `transaction_cancellation_blocked` appears in Asset State Review. Confirm an `asset:view` user can read/print VOID documents but cannot cancel.
 - [ ] Asset State Review scan/list/resolve/dismiss is tested with `setting:view` and `setting:edit`, including stale-snapshot rejection, 10-character reasons, movement/audit history, and confirmation that scans/dismissals never change asset state.
 - [ ] Audit round create, scan, findings review, and close-round flow are tested.
 - [ ] Maintenance ticket and PM plan workflows are tested.

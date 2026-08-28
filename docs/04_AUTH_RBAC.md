@@ -48,6 +48,13 @@ Permissions follow the established `module:action` pattern, for example:
 - `disposal:approve`
 - `setting:edit`
 
+Transaction cancellation follows the existing permissions instead of adding a new permission key:
+
+- `asset:edit` is required to cancel the latest eligible Check-out, Check-in, or Transfer.
+- `asset:view` may read and print active or VOID operation documents but cannot cancel them.
+- `setting:view` may view the Asset State Review/Data Quality queue; `setting:edit` is required to resolve or dismiss findings, including `transaction_cancellation_blocked` reviews.
+- API authorization is enforced server-side even when the UI hides or disables an action.
+
 ## Dashboard Navigation And Unauthorized Pages
 
 - Dashboard sidebar items declare required permissions and are filtered before rendering. Users should not see menu entries for modules they cannot access.

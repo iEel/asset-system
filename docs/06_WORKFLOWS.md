@@ -106,7 +106,7 @@
 - Scheduled PM generation uses the scheduler heartbeat and web-configured schedule, reads only `planState=active`, uses a bounded larger candidate window to avoid starvation, and prevents duplicate open work orders for one plan.
 - Asset/employee/vendor choices use bounded server search rather than loading full master-data tables into the list or form.
 - PM history is visible from related asset detail flows.
-- Existing SQL Server databases must apply `prisma/manual-migrations/2026-07-14-add-maintenance-plan-ticket-link.sql` followed by `prisma/manual-migrations/2026-07-14-add-maintenance-plan-state.sql` after a verified backup and approval, then run `npx prisma generate` before build/restart.
+- Both maintenance migrations are already recorded as applied for `asset_management`. A different existing SQL Server database must apply `2026-07-14-add-maintenance-plan-ticket-link.sql` followed by `2026-07-14-add-maintenance-plan-state.sql` after a verified backup and approval, then run `npx prisma generate` before build/restart.
 
 ## Disposal
 
@@ -130,8 +130,8 @@
 - `POST /api/disposal-requests/bulk-execution` uses non-mutating preview and mutating commit modes. Commit accepts only IDs that preview marked eligible, revalidates each request in its own serializable transaction, and returns item-level executed/blocked/failed outcomes without rolling back successful siblings. The UI locks commit to the successful preview snapshot, retains preview-blocked rows in the final result, refreshes successful queue changes, and retries only unresolved IDs. Changing filters, pagination, stage, or navigating away clears selection after warning.
 - Each Preview/Commit item always returns the server-resolved `recipientName` and `recipientSource`. `recipientSource` is `request` for the authoritative request value, `shared` for the shared fallback, or `null` when no effective recipient exists; Preview blocks a recipient-required request without an effective value as `DISPOSAL_RECIPIENT_REQUIRED`.
 - Desktop exposes queue-table checkboxes, Select page, and a contextual review-and-approve toolbar. Mobile requires explicit selection mode before showing card checks and keeps selection controls in the list header/content flow rather than adding a fixed bottom bar, avoiding collision with Mobile Field Navigation. The preview/result dialog supports keyboard focus trapping, Escape dismissal when safe, and focus restoration.
-- Apply `prisma/manual-migrations/2026-07-13-add-disposal-batches.sql` only after an approved backup/change window. Roll back by restoring the pre-change database backup; do not drop packet/child relations after production records exist.
-- Apply `prisma/manual-migrations/2026-07-13-add-disposal-evidence-exception.sql` only after a fresh verified database backup. Do not run the migration until an operator explicitly confirms that backup; after applying it, generate Prisma Client and manually verify one approved historical request without attachments plus one normal approved request with evidence.
+- Both disposal migrations are already recorded as applied for `asset_management`. For a different target database, apply `2026-07-13-add-disposal-batches.sql` only after an approved backup/change window. Roll back by restoring the pre-change database backup; do not drop packet/child relations after production records exist.
+- For a different target database, apply `2026-07-13-add-disposal-evidence-exception.sql` only after a fresh verified backup and explicit operator confirmation. After applying it, generate Prisma Client and manually verify one approved historical request without attachments plus one normal approved request with evidence.
 
 ## Reports And Export
 

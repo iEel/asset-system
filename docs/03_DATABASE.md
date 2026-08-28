@@ -15,16 +15,17 @@
 - Reference data: `AssetStatus`, `AssetCondition`
 - Asset register: `Asset`, `AssetComponent`, custom fields, label print tracking
 - Procurement documents: `PurchaseDocument`, `PurchaseDocumentAsset`
-- Transactions: `AssetCheckout`, `AssetCheckin`, `AssetMovement`
+- Transactions: `AssetCheckout`, `AssetCheckin`, `AssetTransfer`, `AssetMovement`
 - Audit: `AuditRound`, `AuditItem`, `AuditFinding`, `AuditScanHistory`
 - Maintenance: `MaintenancePlan`, `MaintenanceTicket`
 - Disposal: `DisposalRequest`
 - Admin/RBAC: `User`, `Role`, `Permission`, `UserRole`, `RolePermission`
-- System: `SystemLog`, `SystemSetting`, `Notification`, `NotificationUserState`, `IntegrationApiClient`, `ManualMigrationHistory`
+- System and governance: `SystemLog`, `SystemSetting`, `Notification`, `NotificationUserState`, `IntegrationApiClient`, `ManualMigrationHistory`, `AssetStateReview`
 
 - Audit rounds treat installed component assets as first-class `AuditItem` rows. `AssetComponent` remains the relationship source; no audit-specific component relationship table is added.
 - Parent-to-component master-data sync updates only supported ownership/location fields and records `AssetMovement` rows on each component asset.
 - `DisposalRequest` stores `evidenceExceptionReason`, `evidenceExceptionGrantedBy`, and `evidenceExceptionGrantedAt` only when the controlled historical-evidence exception is used. The normal execution evidence policy remains authoritative for ordinary disposal work.
+- New Check-out, Check-in, and Transfer documents store versioned authoritative before/after snapshots for the asset and installed components. Cancellation metadata marks the source document `void` without deleting it; Check-in cancellation reopens its related Check-out, and a filtered unique index permits at most one active Check-in per Check-out.
 
 ## Asset Organization And Custody Semantics
 
@@ -69,8 +70,9 @@ These `.env` database connection settings are unchanged by Integration API token
 - Production schema changes require a rollback plan or a tested restore procedure.
 - Production schema changes that need deterministic SQL should be stored under `prisma/manual-migrations/`. After the migration ledger is initialized, execute them only through `npm run migration:apply`; direct `npx prisma db execute --file ...` commands below are preserved as pre-ledger historical instructions.
 - `prisma/manual-migrations/2026-06-12-add-performance-indexes.sql` is the current production performance-index script. Its index names match the `@@index(..., map: "...")` names in `prisma/schema.prisma`, so rerunning the script is safe and future schema checks do not create differently named duplicate indexes.
-- `prisma/manual-migrations/2026-06-14-add-integration-api-clients.sql` adds the `integration_api_clients` table for DB-backed Integration API token clients. Apply it in production after backup/approval and before deploying or using the admin token manager.
-- `prisma/manual-migrations/2026-07-13-add-disposal-evidence-exception.sql` adds the disposal-request historical-evidence exception reason, granting user ID, and grant timestamp. Apply it only after a fresh backup has been completed and verified; after ledger initialization use `npm run migration:apply -- 2026-07-13-add-disposal-evidence-exception.sql --backup-confirmed --reason "<approved change reason>"`.
+- `prisma/manual-migrations/2026-06-14-add-integration-api-clients.sql` adds the `integration_api_clients` table for DB-backed Integration API token clients. It is already recorded as applied for `asset_management`; a different target database must apply it after backup/approval before deploying or using the admin token manager.
+- `prisma/manual-migrations/2026-07-13-add-disposal-evidence-exception.sql` adds the disposal-request historical-evidence exception reason, granting user ID, and grant timestamp. It is already recorded as applied for `asset_management`; a different target database must apply it only after a fresh verified backup.
+- `prisma/manual-migrations/2026-08-27-add-reversible-asset-transactions.sql` adds transaction snapshots, cancellation metadata, `asset_transfers`, supporting indexes, and the active Check-in uniqueness guard. It was applied to `asset_management` on 2026-08-28 with accepted checksum prefix `53f0d2d5bd11`.
 - Do not assume Prisma migrate support until it is validated against this project's SQL Server setup.
 
 ### Manual Migration Ledger
@@ -111,7 +113,11 @@ Status meanings:
 
 Exit code `0` means the status/operation is acceptable, `1` means usage or execution failure, and `2` means the ledger is not initialized or a checksum mismatch exists. Pending files are informational and do not make an initialized `migration:status` fail.
 
-Historical migrations must be baselined individually. Do not infer application merely because a SQL file exists in Git. Start by verifying the Asset State Governance structures and the active `Under Inspection` master row before baselining those two 2026-08-27 scripts; verify every older migration against its documented table, column, or index effects.
+Historical migrations must be baselined individually. Do not infer application merely because a SQL file exists in Git. Verify each migration against its documented table, column, or index effects before baselining it.
+
+### Current `asset_management` Ledger Snapshot
+
+As verified on 2026-08-28, all 11 SQL files under `prisma/manual-migrations/` are recorded as `applied`, including Asset State Governance, operational `Under Inspection`, and reversible asset transactions. There are no pending files or checksum mismatches. This is a dated snapshot for this database only; always run `npm run migration:status` against the actual deployment target.
 
 ## Operational Notes
 

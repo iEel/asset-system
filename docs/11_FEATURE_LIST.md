@@ -1,6 +1,6 @@
 # Asset Management System - Feature List
 
-Last updated: 2026-06-17
+Last updated: 2026-08-28
 
 This feature list is based on the current repository documents and source code, not only on the original plan. It focuses on features that are represented by the current docs, routes, API endpoints, Prisma schema, and component/library structure.
 
@@ -76,14 +76,14 @@ The Prisma schema contains current models for:
 - Asset register: `Asset`, `AssetComponent`, `CustomFieldDefinition`, `CustomFieldValue`
 - Label printing: `AssetLabelPrintBatch`, `AssetLabelPrint`
 - Procurement: `PurchaseDocument`, `PurchaseDocumentAsset`
-- Operations: `AssetCheckout`, `AssetCheckin`, `AssetMovement`
+- Operations: `AssetCheckout`, `AssetCheckin`, `AssetTransfer`, `AssetMovement`
 - Audit: `AuditRound`, `AuditItem`, `AuditFinding`, `AuditScanHistory`
 - Maintenance: `MaintenancePlan`, `MaintenanceTicket`
 - Disposal: `DisposalRequest`
 - Supplier: `Supplier`
 - Files: `Attachment`
 - Auth/RBAC: `User`, `Role`, `Permission`, `UserRole`, `RolePermission`
-- System: `SystemLog`, `SystemSetting`, `Notification`, `NotificationUserState`, `IntegrationApiClient`
+- System and governance: `SystemLog`, `SystemSetting`, `Notification`, `NotificationUserState`, `IntegrationApiClient`, `ManualMigrationHistory`, `AssetStateReview`
 
 Important data semantics:
 
@@ -148,6 +148,10 @@ Important data semantics:
 | Check-in evidence | After-return photos, return signature, receive signature |
 | Check-in maintenance link | Can create maintenance ticket only when next status is Pending Repair and permission allows |
 | Transfer | Move asset location/custodian/department through controlled operation |
+| Contextual transaction shortcuts | Asset Register and Asset Detail expose Handover, Return, and Transfer without requiring users to memorize the Asset Tag; unavailable actions remain visible in a faded state with a recovery-oriented reason |
+| Reversible transactions | A user with `asset:edit` can cancel only the latest eligible Check-out, Check-in, or Transfer; the system restores the exact versioned asset/component snapshot and never asks the operator to guess a replacement status |
+| VOID documents | Cancelled operation documents remain readable and printable with cancellation user/time/reason and VOID presentation instead of being deleted |
+| Cancellation safety review | Stale, downstream-dependent, non-latest, or legacy snapshot-less cancellation attempts do not mutate asset data and create/update `transaction_cancellation_blocked` in Asset State Review |
 | Bulk move | Bulk location movement for multiple assets |
 | Bulk update | API support for selected asset location/custodian updates |
 | Movement history | Every key operation creates `AssetMovement` records |

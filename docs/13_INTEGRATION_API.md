@@ -253,7 +253,7 @@ Use `companyCode` and `branchCode` filters to disambiguate repeated branch or lo
 
 ## UAT
 
-1. Confirm the manual SQL migration `prisma/manual-migrations/2026-06-14-add-integration-api-clients.sql` has been applied in the target non-production database.
+1. Run `npm run migration:status` and confirm `2026-06-14-add-integration-api-clients.sql` is `applied` in the target non-production database. Apply it through `migration:apply` after backup/approval only when that target reports it as pending.
 2. Open `Admin > Integration API` and create a UAT client with the required read-only scopes.
 3. Copy the one-time plain token into the test external system or a temporary UAT secret store.
 4. Call `/api/integrations/v1/health`.
@@ -268,7 +268,7 @@ Use `companyCode` and `branchCode` filters to disambiguate repeated branch or lo
 ## Production Notes
 
 - Store the plain token only in the external system secret manager.
-- Apply `prisma/manual-migrations/2026-06-14-add-integration-api-clients.sql` after backup and approval before deploying or using the DB-backed token manager in production.
+- The migration is already recorded as applied for `asset_management`. For a different production target, run `npm run migration:status` and apply `2026-06-14-add-integration-api-clients.sql` after backup and approval only when it is pending, before deploying or using the DB-backed token manager.
 - Keep existing database connection settings unchanged.
 - Use separate `clientId` values per external system.
 - Start with least-privilege scopes. Scope changes can be made from `Admin > Integration API`; adding scopes affects the existing token immediately and is audited with old/new safe values.

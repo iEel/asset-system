@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-08-28
+
+| Area | Update |
+|---|---|
+| Current documentation alignment | Reconciled the active handoff, overview, database, RBAC, workflow, production-readiness, feature-list, Integration API, and changelog documents with the `asset_management` manual migration ledger. The current database records all 11 repository migrations as applied, including reversible asset transactions applied on 2026-08-28 with checksum prefix `53f0d2d5bd11`; instructions for other target databases remain backup/approval gated and use `migration:status`/`migration:apply`. Added `AssetTransfer`, transaction snapshot/VOID/cancellation semantics, cancellation permissions, blocked-review handling, and deployment UAT coverage. Historical plans, specifications, and dated implementation records remain unchanged. Documentation only; no schema, migration, or runtime code changed. |
+
+---
+
 ## 2026-08-27
 
 | Area | Update |
