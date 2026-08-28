@@ -68,6 +68,18 @@ Selectable physical conditions are `Not Assessed`, `New`, `Good`, `Fair`, `Damag
 | Under Inspection | Ready | Inspection confirms the asset is usable and available |
 | Lost / Missing | Ready | Finding resolved and asset is confirmed usable |
 
+## Transaction Cancellation And Snapshot Restoration
+
+Cancelling a Check-out, Check-in, or Transfer is a compensating transaction, not a normal lifecycle transition and not a Status Correction. The system restores the authoritative before-snapshot captured by the original transaction instead of selecting or inferring a replacement status.
+
+- Cancellation requires `asset:edit`, an active document, a reason of at least 5 characters, and a matching optimistic `expectedUpdatedAt` value.
+- Only the latest asset transaction can be cancelled automatically. The current asset and installed-component state must still match the transaction's after-snapshot, and no downstream workflow may depend on it.
+- A successful cancellation marks the source document `void`, records cancellation metadata, restores the asset and component snapshot atomically, and writes a compensating `AssetMovement` plus System Log entry.
+- Cancelling a Check-in also reopens its related Check-out. A later corrected Check-in is allowed, while the VOID Check-in remains immutable historical evidence. The filtered database index permits no more than one active Check-in per Check-out.
+- Cancelling a Check-out or Transfer restores its captured pre-transaction status, condition, location, custody, department, branch, and installed-component state as applicable.
+- If the document is not latest, state has changed, components have changed, downstream work exists, or the document predates snapshot capture, the system makes no partial restoration and upserts a pending `transaction_cancellation_blocked` Asset State Review.
+- Legacy Check-out and Check-in rows intentionally retain null snapshots. They remain readable but cannot be auto-cancelled; an authorized reviewer must investigate and use the appropriate controlled workflow.
+
 ## Operational Meaning And Next Actions
 
 | Status | Meaning | Normal next action |
