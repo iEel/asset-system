@@ -145,6 +145,15 @@ These are recommended hardening items for future work. They should be implemente
 - Add a dedicated, evidence-backed loss workflow before allowing normal transitions into `Missing` or `Lost`; the existing audit not-found action intentionally creates a finding without changing asset lifecycle.
 - Align disposal-request route eligibility with the central lifecycle policy so only supported operational sources (`Ready` and `In Use`) can start a request. Broader route acceptance must not be treated as a supported transition.
 
+## Checkout custody modes
+
+| Mode | Valid destination | Due date | Status while held | Check-in source |
+|---|---|---|---|---|
+| `permanent_assignment` | Employee with custodian | Not allowed | `In Use` | `In Use` |
+| `temporary_loan` | Employee, department, location, or another asset | Required | `Checked Out` | `Checked Out` |
+
+The mode is explicit and server-derived; users do not choose the resulting lifecycle status. An active Checkout with a missing/unknown mode or a status mismatch creates a critical Asset State Review. Unknown mode has no automatic status target. Completed legacy Checkouts may remain null and display as unspecified.
+
 ## Audit Behavior
 
 When creating an audit round with “all assets”, the system should mean all active, countable assets. Closed statuses are handled separately:

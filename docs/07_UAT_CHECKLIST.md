@@ -315,3 +315,15 @@ Controller evidence on 2026-07-15 used the authenticated Chrome `system_admin` s
 | department_manager |  |  |  |  |
 | employee |  |  |  |  |
 | viewer |  |  |  |  |
+
+## Handover Mode UAT (pending)
+
+- [ ] User Checkout initially shows no selected mode in Thai/English on desktop and mobile.
+- [ ] Permanent assignment requires employee/custodian, hides due date, previews and saves `In Use`.
+- [ ] Temporary loan requires a non-past due date, previews and saves `Checked Out`; non-user destination forces temporary mode.
+- [ ] Check-in shows read-only current custody and accepts permanent from `In Use` and temporary from `Checked Out` only.
+- [ ] Mode/status mismatch and active null mode are blocked with recovery guidance and appear in Asset State Review.
+- [ ] Check-in cancellation restores `In Use` or `Checked Out` according to mode; Checkout cancellation restores the original snapshot and retains VOID history.
+- [ ] Due notifications include temporary loans only; Asset Detail, Timeline, Checkout print, and Check-in print show the same mode.
+- [ ] Completed legacy null-mode history displays as unspecified without guessing from the due date.
+- [ ] After approved migration apply, verify `GRL-COM-06-0001 / HO-202606-0002` and `SNI-EQU-19-0336 / HO-202608-0003` are permanent assignments in `In Use` with movement/log evidence.

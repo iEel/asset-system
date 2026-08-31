@@ -213,6 +213,15 @@ npm run build
 - Master Data for organization, locations, categories, brands/models, employees, suppliers
 - Admin settings, RBAC, system logs, readiness, storage governance, scheduler settings, LDAP/AD
 
+## Handover Mode Change (2026-08-31)
+
+- New Check-outs require `handoverMode`: `permanent_assignment` changes the asset from `Ready` to `In Use`; `temporary_loan` changes it to `Checked Out`.
+- Permanent assignment is employee-only, requires a custodian, and has no expected-return date. Temporary loan requires an expected-return date on or after the handover date.
+- Check-in validates the active Checkout and its authoritative source status inside the transaction. Permanent assignments return from `In Use`; temporary loans return from `Checked Out`.
+- Active legacy rows with no mode are disabled on Check-in and surfaced by Asset State Review; completed legacy history remains readable as unspecified and is never inferred from a null due date.
+- `prisma/manual-migrations/2026-08-31-add-checkout-handover-mode.sql` is pending. It is guarded to backfill only `GRL-COM-06-0001 / HO-202606-0002` and `SNI-EQU-19-0336 / HO-202608-0003`, including status/snapshot alignment and audit evidence.
+- Do not apply the pending migration without a fresh verified backup and explicit operator approval. Latest read-only status checksum prefix: `37874f3a6a43`.
+
 ## Open Go-Live Decisions
 
 - Confirm production database user and least-privilege permissions.

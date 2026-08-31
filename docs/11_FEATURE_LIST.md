@@ -367,3 +367,11 @@ From `DEVELOPER_HANDOFF.md`, the following decisions remain to be confirmed befo
 - Verify Brother printer tape-size driver settings and app label profile.
 - Verify LDAP login/sync in preview/manual mode before scheduled sync.
 - Verify audit, maintenance, disposal, reports, and exports with realistic data.
+
+## Explicit asset custody modes
+
+- Asset Handover distinguishes permanent employee assignment from temporary loan.
+- Resulting lifecycle state is derived server-side (`In Use` / `Checked Out`).
+- Asset Return validates the current custody mode/status pair and displays it read-only.
+- Data Quality detects missing mode, conflicting modes, and mode/status mismatch without unsafe guessing.
+- Due reminders apply only to temporary loans; detail, timeline, and printable documents present the mode consistently.

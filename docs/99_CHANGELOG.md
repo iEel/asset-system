@@ -1360,3 +1360,10 @@ await logAudit({
 | UI/UX Requirements | `Enterprise Web UI UX Requirements.md` |
 | Tech Stack Decision | `Tech Stack.md` |
 | Implementation Plan | `Implementation Plan.md` |
+
+## 15. 2026-08-31 — Explicit Handover Mode
+
+- Added explicit `permanent_assignment` and `temporary_loan` Checkout modes with server-derived `In Use` and `Checked Out` lifecycle states.
+- Added mode-aware Check-in validation/current-custody UI, legacy null-mode blocking, permanent legacy-return backfill behavior, and cancellation-safe snapshots.
+- Added mode-aware Asset State Review, temporary-only return reminders, and consistent Asset Detail/Timeline/print presentation.
+- Added pending guarded migration `2026-08-31-add-checkout-handover-mode.sql` for exactly two approved active assignments. It has not been applied; backup verification and explicit approval remain required.

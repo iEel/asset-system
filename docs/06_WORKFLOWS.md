@@ -158,3 +158,12 @@
 - System Settings includes a key/description/section finder and changed-setting links that return the operator to the relevant existing settings tab. The unsaved-change review and save semantics remain unchanged. Empty, error, and access-denied surfaces reuse `ActionEmptyState` so state messaging and action spacing stay consistent across the dashboard.
 - Storage Governance dry-run actions show an action column for archive/review decisions. Only orphan file actions expose the archive button, and translation coverage tests guard every storage page message key in Thai and English.
 - System logs present readable record labels and before/after summaries where available.
+
+## Permanent assignment and temporary loan
+
+1. On Asset Handover, choose the destination. A user destination must explicitly choose `มอบหมายใช้งานประจำ` or `เบิกใช้งานชั่วคราว`; non-user destinations are temporary loans.
+2. Permanent assignment requires an employee custodian, hides the due date, and saves the asset as `In Use`.
+3. Temporary loan requires a due date on/after the handover date and saves the asset as `Checked Out`.
+4. Asset Return shows read-only current-custody context (`ใช้งานประจำ` / `เบิกชั่วคราว`) and validates mode plus current status before any write.
+5. Return completes to the existing allowed statuses (`Ready`, `Pending Repair`, or `Pending Disposal`). Cancelling a return restores the mode-authoritative before snapshot; cancelling a handover restores its original snapshot.
+6. Do not manually change the lifecycle status while an active handover exists. Use Return, transaction cancellation, or Asset State Review.
