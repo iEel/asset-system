@@ -51,11 +51,11 @@ Selectable physical conditions are `Not Assessed`, `New`, `Good`, `Fair`, `Damag
 | From | To | Trigger |
 |---|---|---|
 | Draft | Ready | Asset registration completed |
-| Ready | Checked Out | Check-out / handover |
-| Ready | In Use | Transfer custody to a person |
-| Checked Out | Ready | Check-in / return with normal result |
-| Checked Out | Pending Repair | Check-in / return with repair needed |
-| Checked Out | Pending Disposal | Check-in / return with disposal recommendation |
+| Ready | In Use | Permanent assignment to an employee, or transfer custody to a person |
+| Ready | Checked Out | Temporary loan to an employee, department, location, or another asset |
+| In Use / Checked Out | Ready | Check-in / return with normal result |
+| In Use / Checked Out | Pending Repair | Check-in / return with repair needed |
+| In Use / Checked Out | Pending Disposal | Check-in / return with disposal recommendation |
 | Ready / In Use | Pending Repair | Corrective maintenance ticket opened |
 | Pending Repair | Under Maintenance | Repair ticket is accepted / in progress |
 | Under Maintenance | Ready / In Use | Maintenance job closed and asset is usable; personal custody returns to `In Use`, otherwise `Ready` |
@@ -86,9 +86,9 @@ Cancelling a Check-out, Check-in, or Transfer is a compensating transaction, not
 |---|---|---|
 | Draft | Asset record is being prepared. | Complete required master data and set to `Ready`. |
 | Ready | Asset is usable and available for normal operations. | Check-out, transfer, maintenance, disposal request, audit, or stay Ready. |
-| In Use | Asset is assigned to a person through personal transfer, or represents an imported active-use record. | Continue custody transfer as needed, or use the controlled return/check-in workflow when applicable. |
+| In Use | Asset is permanently assigned to an employee, assigned through personal transfer, or represents an imported active-use record. | Continue custody transfer as needed, or return an active permanent assignment through Check-in. |
 | Reserved | Legacy or planning status for an asset held for a future use. | Move to Ready or a controlled custody workflow when released. |
-| Checked Out | Asset is currently issued to a person/location/department. | Check-in to `Ready`, `Pending Repair`, or `Pending Disposal`. |
+| Checked Out | Asset is temporarily loaned to a person, location, department, or another asset. | Check-in to `Ready`, `Pending Repair`, or `Pending Disposal`. |
 | In Transit | Legacy or logistics movement status. | Confirm arrival through the relevant movement workflow and return to an active status. |
 | Under Inspection | Asset is being reviewed because data, location, custody, condition, or master data needs confirmation. | The currently enforced exit is controlled correction to `Ready`. After that correction, use personal transfer, maintenance, or disposal workflow as required. Recording an audit item as not found creates a finding but does not change the asset to `Missing` or `Lost`. |
 | Pending Repair | Repair is needed but work has not started. | Accept/start the maintenance work and move to `Under Maintenance`. |
@@ -104,8 +104,8 @@ The status diagram used for operator handoff is stored as `docs/asset-lifecycle-
 ## Current Code Enforcement
 
 - Check-out requires `asset:edit`, loads active assets only, blocks an asset that already has an active checkout, and accepts only `Ready`; `Under Inspection` therefore remains blocked.
-- Check-out sets asset status to `Checked Out` using `getRequiredAssetStatusId("Checked Out")`.
-- Check-in requires `asset:edit`, requires an active checkout, and only accepts return statuses from `Ready`, `Pending Repair`, and `Pending Disposal`.
+- Check-out requires an explicit custody mode for user destinations. `permanent_assignment` requires an employee custodian, forbids a due date, and sets `In Use`; `temporary_loan` requires a valid due date and sets `Checked Out`. Non-user destinations are always temporary loans. The server derives the status rather than accepting a user-selected lifecycle value.
+- Check-in requires `asset:edit` and an active checkout, verifies `permanent_assignment` from `In Use` or `temporary_loan` from `Checked Out`, and only accepts return results `Ready`, `Pending Repair`, or `Pending Disposal`.
 - Check-in can create a maintenance ticket only when the return status is `Pending Repair` and the user has `maintenance:create`.
 - Transfer requires `asset:edit`, blocks assets that already have an active checkout, and accepts personal custody assignment only from `Ready` or `In Use`; `Under Inspection` therefore remains blocked. A transfer with `toCustodianId` resolves the required `In Use` status server-side and updates it atomically with the new custodian; location-only or department-only transfers preserve the current status.
 - Corrective maintenance close computes the operational target from custody: `In Use` when the asset still has valid personal custody, otherwise `Ready`; `Pending Disposal` is the other allowed result. PM ticket closure does not change asset lifecycle.
@@ -124,7 +124,7 @@ The status diagram used for operator handoff is stored as `docs/asset-lifecycle-
 - An asset with an active checkout must not be checked out again.
 - An asset with an active checkout must not be transferred through the normal transfer flow.
 - A personal transfer must set the asset status to `In Use` without requiring a client-supplied status; a location-only or department-only transfer must preserve the current status.
-- Check-in must be tied to an active checkout.
+- Check-in must be tied to an active checkout whose mode and source status agree: permanent assignment from `In Use`, temporary loan from `Checked Out`.
 - Check-in next status must be one of `Ready`, `Pending Repair`, or `Pending Disposal`.
 - Maintenance ticket creation from check-in must require `Pending Repair`.
 - Corrective maintenance close next status must be the custody-derived operational target (`In Use` for valid personal custody, otherwise `Ready`) or `Pending Disposal`; PM close must preserve asset status.

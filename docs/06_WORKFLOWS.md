@@ -167,3 +167,5 @@
 4. Asset Return shows read-only current-custody context (`ใช้งานประจำ` / `เบิกชั่วคราว`) and validates mode plus current status before any write.
 5. Return completes to the existing allowed statuses (`Ready`, `Pending Repair`, or `Pending Disposal`). Cancelling a return restores the mode-authoritative before snapshot; cancelling a handover restores its original snapshot.
 6. Do not manually change the lifecycle status while an active handover exists. Use Return, transaction cancellation, or Asset State Review.
+
+The same return outcomes apply to both custody modes. The difference is the authoritative source status before return: permanent assignment returns from `In Use`, while temporary loan returns from `Checked Out`.
