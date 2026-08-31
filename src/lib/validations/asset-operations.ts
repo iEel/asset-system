@@ -1,5 +1,6 @@
 import { z } from "zod"
-import { optionalText } from "@/lib/validations/shared"
+import { assetHandoverModes, assertHandoverModeFields } from "../asset-handover-mode.ts"
+import { optionalText } from "./shared.ts"
 
 const optionalDate = z.preprocess(
   (value) => (typeof value === "string" && value.trim().length === 0 ? null : value),
@@ -19,6 +20,7 @@ export const checkoutTypes = ["user", "department", "location", "asset"] as cons
 
 export const assetCheckoutSchema = z
   .object({
+    handoverMode: z.enum(assetHandoverModes),
     checkoutType: z.enum(checkoutTypes),
     custodianId: optionalText,
     departmentId: optionalText,
@@ -42,6 +44,22 @@ export const assetCheckoutSchema = z
     }
     if (input.checkoutType === "asset" && !input.parentAssetId) {
       context.addIssue({ code: "custom", path: ["parentAssetId"], message: "Parent asset is required" })
+    }
+
+    try {
+      assertHandoverModeFields(input)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "HANDOVER_MODE_REQUIRED"
+      const path = message === "HANDOVER_PERMANENT_CUSTODIAN_REQUIRED"
+        ? ["custodianId"]
+        : [
+            "HANDOVER_PERMANENT_DUE_DATE_NOT_ALLOWED",
+            "HANDOVER_TEMPORARY_DUE_DATE_REQUIRED",
+            "HANDOVER_RETURN_BEFORE_CHECKOUT",
+          ].includes(message)
+          ? ["expectedReturnDate"]
+          : ["handoverMode"]
+      context.addIssue({ code: "custom", path, message })
     }
   })
 
