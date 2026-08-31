@@ -505,6 +505,7 @@ model AssetCheckout {
   assetId               String
   asset                 Asset     @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   checkoutType          String    @db.NVarChar(20) // user, department, location, asset
+  handoverMode          String?   @db.NVarChar(30)
   custodianId           String?
   custodian             Employee? @relation("CheckoutCustodian", fields: [custodianId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   departmentId          String?   @db.NVarChar(100)
