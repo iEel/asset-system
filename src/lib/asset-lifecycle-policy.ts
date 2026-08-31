@@ -36,6 +36,10 @@ export type AssetStateSelectionError =
   | "ASSET_STATE_MASTER_NOT_FOUND"
   | "ASSET_CONDITION_NOT_SELECTABLE"
 
+export type CheckinHandoverStatusError =
+  | "ASSET_HANDOVER_MODE_MISSING"
+  | "ASSET_HANDOVER_STATUS_MISMATCH"
+
 export const assetCreateStatusNames = ["Draft", "Ready"] as const
 export const selectableConditionNames = [
   "Not Assessed",
@@ -98,6 +102,16 @@ export function getAssetLifecycleTransitionError(
   const allowed = allowedSources[operation]
   if (allowed?.has(current)) return null
   return operationErrorCodes[operation]
+}
+
+export function getCheckinHandoverStatusError(
+  mode: AssetHandoverMode | string | null | undefined,
+  currentStatusName: string | null | undefined,
+): CheckinHandoverStatusError | null {
+  if (!isAssetHandoverMode(mode)) return "ASSET_HANDOVER_MODE_MISSING"
+  return normalizeAssetStateName(currentStatusName) === normalizeAssetStateName(getHandoverRequiredSourceStatusName(mode))
+    ? null
+    : "ASSET_HANDOVER_STATUS_MISMATCH"
 }
 
 export function getAssetCreateStatusNames(): string[] {
@@ -222,3 +236,5 @@ export function getAssetConditionCompatibilityIssue(
 export function normalizeAssetStateName(value: string | null | undefined): string {
   return value?.trim().toLowerCase() ?? ""
 }
+import { getHandoverRequiredSourceStatusName, isAssetHandoverMode } from "./asset-handover-mode.ts"
+import type { AssetHandoverMode } from "./asset-handover-mode.ts"

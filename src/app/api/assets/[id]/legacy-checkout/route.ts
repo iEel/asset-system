@@ -65,7 +65,7 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
     }
 
     const checkoutDate = new Date()
-    const checkedOutStatusId = await getRequiredAssetStatusId("Checked Out")
+    const inUseStatusId = await getRequiredAssetStatusId("In Use")
 
     const checkout = await prisma.$transaction(async (tx) => {
       const documentNo = await generateCheckoutDocumentNo(tx, checkoutDate)
@@ -74,6 +74,7 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
           documentNo,
           assetId: id,
           checkoutType: "user",
+          handoverMode: "permanent_assignment",
           custodianId,
           checkoutDate,
           expectedReturnDate: null,
@@ -86,7 +87,7 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
       await tx.asset.update({
         where: { id },
         data: {
-          statusId: checkedOutStatusId,
+          statusId: inUseStatusId,
           updatedBy: user.id,
         },
       })
@@ -117,6 +118,7 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
       newValue: {
         checkoutId: checkout.id,
         checkoutType: "user",
+        handoverMode: "permanent_assignment",
         custodianId,
         conditionBefore: asset.conditionId,
         source: "legacy_return_backfill",

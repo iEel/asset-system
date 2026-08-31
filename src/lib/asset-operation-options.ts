@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { getCheckinReturnStatuses } from "@/lib/asset-status-flow"
+import { isAssetHandoverMode } from "@/lib/asset-handover-mode"
 import {
   filterCheckoutEligibleAssets,
   filterLegacyReturnEligibleAssets,
@@ -28,6 +29,7 @@ export async function getAssetOperationOptions() {
       where: { isReturned: false, transactionStatus: "active" },
       select: {
         id: true,
+        documentNo: true,
         assetId: true,
         departmentId: true,
         locationId: true,
@@ -35,10 +37,18 @@ export async function getAssetOperationOptions() {
         checkoutDate: true,
         expectedReturnDate: true,
         checkoutType: true,
+        handoverMode: true,
         conditionBefore: true,
         remark: true,
         custodian: { select: { code: true, fullNameTh: true } },
-        asset: { select: { assetTag: true, name: true, serialNumber: true } },
+        asset: {
+          select: {
+            assetTag: true,
+            name: true,
+            serialNumber: true,
+            status: { select: { name: true, nameTh: true } },
+          },
+        },
       },
       orderBy: { checkoutDate: "desc" },
     }),
@@ -102,12 +112,18 @@ export async function getAssetOperationOptions() {
     personalTransferAssets: filterPersonalTransferEligibleAssets(assets).map(mapAssetOption),
     activeCheckouts: activeCheckouts.map((checkout) => ({
       id: checkout.id,
+      documentNo: checkout.documentNo,
       assetId: checkout.assetId,
       label: `${checkout.asset.assetTag} - ${checkout.asset.name}`,
+      disabled: !isAssetHandoverMode(checkout.handoverMode),
+      disabledReason: "ASSET_HANDOVER_MODE_MISSING",
       assetTag: checkout.asset.assetTag,
       assetName: checkout.asset.name,
       serialNumber: checkout.asset.serialNumber,
       checkoutType: checkout.checkoutType,
+      handoverMode: checkout.handoverMode,
+      statusName: checkout.asset.status.name,
+      statusLabel: checkout.asset.status.nameTh,
       checkoutDate: checkout.checkoutDate.toISOString(),
       expectedReturnDate: checkout.expectedReturnDate?.toISOString() ?? null,
       conditionBefore: checkout.conditionBefore,

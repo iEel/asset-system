@@ -14,14 +14,18 @@ import { SignaturePad } from "@/components/asset-operations/signature-pad"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
 
-type Option = { id: string; label: string }
+type Option = { id: string; label: string; disabled?: boolean }
 type StatusOption = Option & { name?: string }
 type CheckoutOption = Option & {
+  documentNo?: string | null
   assetId?: string
   assetTag?: string
   assetName?: string
   serialNumber?: string | null
   checkoutType?: string
+  handoverMode?: string | null
+  statusName?: string
+  statusLabel?: string
   checkoutDate?: string
   expectedReturnDate?: string | null
   conditionBefore?: string | null
@@ -80,7 +84,7 @@ export function CheckinForm({
   const [createMaintenance, setCreateMaintenance] = useState(false)
   const [returnByEmployeeId, setReturnByEmployeeId] = useState("")
   const [receiveByEmployeeId, setReceiveByEmployeeId] = useState("")
-  const initialCheckout = activeCheckouts.find((checkout) => checkout.id === initialCheckoutId)
+  const initialCheckout = activeCheckouts.find((checkout) => checkout.id === initialCheckoutId && !checkout.disabled)
   const [values, setValues] = useState({
     checkoutId: initialCheckout?.id ?? "",
     returnDate: new Date().toISOString().slice(0, 10),
@@ -107,7 +111,12 @@ export function CheckinForm({
   const selectedLocation = locations.find((location) => location.id === values.nextLocationId)
   const pendingRepairStatus = statuses.find((status) => status.name === "Pending Repair")
   const canCreateMaintenance = selectedStatus?.name === "Pending Repair"
-  const hasActiveCheckouts = activeCheckouts.length > 0
+  const hasActiveCheckoutRecords = activeCheckouts.length > 0
+  const hasActiveCheckouts = activeCheckouts.some((checkout) => !checkout.disabled)
+  const activeCheckoutOptions = activeCheckouts.map((checkout) => ({
+    ...checkout,
+    label: checkout.disabled ? `${checkout.label} — ${t("handoverModeMissing")}` : checkout.label,
+  }))
   const hasLegacyReturnCandidates = legacyReturnCandidates.length > 0
   const filteredLegacyReturnCandidates = useMemo(() => {
     const query = normalizeText(legacyReturnSearch)
@@ -269,7 +278,14 @@ export function CheckinForm({
         body,
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) {
+        const message = payload?.code === "ASSET_HANDOVER_MODE_MISSING"
+          ? t("handoverModeMissing")
+          : payload?.code === "ASSET_HANDOVER_STATUS_MISMATCH"
+            ? t("handoverStatusMismatch")
+            : payload?.error ?? tCommon("error")
+        throw new Error(message)
+      }
       toast.success(t("success"))
       const documentHref = `/${locale}/asset-management/checkins/${payload.id}`
       router.push(returnTo ? appendReturnTo(documentHref, returnTo) : documentHref)
@@ -297,15 +313,15 @@ export function CheckinForm({
             label={t("asset")}
             value={values.checkoutId}
             required
-            disabled={!hasActiveCheckouts}
-            options={activeCheckouts}
-            placeholder={hasActiveCheckouts ? t("selectCheckout") : t("noActiveCheckoutsOption")}
+            disabled={!hasActiveCheckoutRecords}
+            options={activeCheckoutOptions}
+            placeholder={hasActiveCheckoutRecords ? t("selectCheckout") : t("noActiveCheckoutsOption")}
             searchPlaceholder={tCommon("searchSelectPlaceholder")}
             emptyLabel={tCommon("searchSelectNoResults")}
             onChange={(value) => setField("checkoutId", value)}
           />
 
-          {!hasActiveCheckouts && (
+          {!hasActiveCheckoutRecords && (
             <div className="md:col-span-2 rounded-md border border-dashed border-border bg-background p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3">
@@ -323,6 +339,13 @@ export function CheckinForm({
               </div>
             </div>
           )}
+
+          {hasActiveCheckoutRecords && !hasActiveCheckouts ? (
+            <div className="md:col-span-2 rounded-md border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+              <div className="font-medium">{t("handoverReviewRequired")}</div>
+              <div className="mt-1">{t("handoverModeMissing")}</div>
+            </div>
+          ) : null}
 
           {hasLegacyReturnCandidates && (
             <div className="md:col-span-2 rounded-md border border-warning/30 bg-warning/5 p-4">
@@ -395,8 +418,16 @@ export function CheckinForm({
 
           {selectedCheckout && (
             <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
-              <div className="mb-3 text-sm font-semibold text-foreground">{t("previousCheckout")}</div>
+              <div className="mb-3 text-sm font-semibold text-foreground">{t("currentCustody")}</div>
               <div className="grid gap-3 text-sm md:grid-cols-3">
+                <ReadOnly label={t("handoverDocumentNo")} value={selectedCheckout.documentNo ?? "-"} />
+                <ReadOnly
+                  label={t("custodyType")}
+                  value={selectedCheckout.handoverMode === "permanent_assignment"
+                    ? t("permanentAssignmentShort")
+                    : t("temporaryLoanShort")}
+                />
+                <ReadOnly label={t("currentAssetStatus")} value={selectedCheckout.statusLabel ?? selectedCheckout.statusName ?? "-"} />
                 <ReadOnly label={t("assetTag")} value={selectedCheckout.assetTag ?? "-"} />
                 <ReadOnly label={t("assetName")} value={selectedCheckout.assetName ?? "-"} />
                 <ReadOnly label={t("serialNumber")} value={selectedCheckout.serialNumber ?? "-"} />
@@ -404,7 +435,9 @@ export function CheckinForm({
                 <ReadOnly label={t("checkoutTo")} value={selectedCheckout.destinationLabel ?? "-"} />
                 <ReadOnly label={t("conditionBefore")} value={selectedCheckout.conditionBefore ? conditionLabelById.get(selectedCheckout.conditionBefore) ?? selectedCheckout.conditionBefore : "-"} />
                 <ReadOnly label={t("checkoutDate")} value={formatDate(selectedCheckout.checkoutDate)} />
-                <ReadOnly label={t("expectedReturnDate")} value={formatDate(selectedCheckout.expectedReturnDate)} />
+                {selectedCheckout.handoverMode === "temporary_loan" ? (
+                  <ReadOnly label={t("expectedReturnDate")} value={formatDate(selectedCheckout.expectedReturnDate)} />
+                ) : null}
                 <ReadOnly label={t("checkoutRemark")} value={selectedCheckout.remark ?? "-"} />
               </div>
             </div>

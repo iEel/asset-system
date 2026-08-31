@@ -6,7 +6,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { assetCheckinSchema } from "@/lib/validations/asset-operations"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
-import { getAssetOperationConditionError } from "@/lib/asset-lifecycle-policy"
+import { getAssetOperationConditionError, getCheckinHandoverStatusError } from "@/lib/asset-lifecycle-policy"
 import { isValidCheckinReturnStatus } from "@/lib/asset-status-flow"
 import { generateCheckinDocumentNo } from "@/lib/operation-document-number"
 import {
@@ -70,6 +70,30 @@ export async function POST(request: NextRequest, context: CheckinContext) {
     }
 
     const { record: checkin, componentSync } = await prisma.$transaction(async (tx) => {
+      const activeCheckout = await tx.assetCheckout.findFirst({
+        where: {
+          id: input.checkoutId,
+          assetId: id,
+          isReturned: false,
+          transactionStatus: "active",
+        },
+        select: {
+          id: true,
+          handoverMode: true,
+          asset: {
+            select: {
+              status: { select: { name: true } },
+            },
+          },
+        },
+      })
+      if (!activeCheckout) throw new Error("Active checkout not found")
+      const handoverStatusError = getCheckinHandoverStatusError(
+        activeCheckout.handoverMode,
+        activeCheckout.asset.status.name,
+      )
+      if (handoverStatusError) throw new Error(handoverStatusError)
+
       const beforeAsset = await tx.asset.findUnique({
         where: { id },
         select: {
@@ -90,7 +114,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
         data: {
           documentNo,
           assetId: id,
-          checkoutId: checkout.id,
+          checkoutId: activeCheckout.id,
           returnDate: input.returnDate,
           returnByEmployeeId: input.returnByEmployeeId,
           returnBy: input.returnBy,
@@ -105,7 +129,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
           remark: input.remark,
           beforeSnapshotJson: serializeAssetTransactionSnapshot(createAssetTransactionSnapshot({
             asset: beforeAsset,
-            checkout: { id: checkout.id, isReturned: false },
+            checkout: { id: activeCheckout.id, isReturned: false },
             components: [],
           })),
         },
@@ -133,7 +157,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
       }
 
       const returnedCheckout = await tx.assetCheckout.update({
-        where: { id: checkout.id },
+        where: { id: activeCheckout.id },
         data: { isReturned: true },
         select: { id: true, isReturned: true },
       })
@@ -222,7 +246,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
 
       const beforeSnapshot = createAssetTransactionSnapshot({
         asset: beforeAsset,
-        checkout: { id: checkout.id, isReturned: false },
+        checkout: { id: activeCheckout.id, isReturned: false },
         components: componentSync.componentSnapshots.map((change) => change.before),
       })
       const afterSnapshot = createAssetTransactionSnapshot({
@@ -258,6 +282,12 @@ export async function POST(request: NextRequest, context: CheckinContext) {
 
     return NextResponse.json(checkin, { status: 201 })
   } catch (error) {
+    if (
+      error instanceof Error
+      && ["ASSET_HANDOVER_MODE_MISSING", "ASSET_HANDOVER_STATUS_MISMATCH"].includes(error.message)
+    ) {
+      return NextResponse.json({ code: error.message, error: error.message }, { status: 409 })
+    }
     return errorResponse(error, 400)
   }
 }

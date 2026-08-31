@@ -5,9 +5,20 @@ import {
   getAssetCreateStatusNames,
   getAssetLifecycleTransitionError,
   getAssetRegisterStatusNames,
+  getCheckinHandoverStatusError,
   getMaintenanceOperationalTarget,
   getSelectableConditionNames,
 } from "../src/lib/asset-lifecycle-policy.ts"
+
+test("checkin requires the mode-authoritative source status", () => {
+  assert.equal(getCheckinHandoverStatusError("permanent_assignment", "In Use"), null)
+  assert.equal(getCheckinHandoverStatusError("temporary_loan", "Checked Out"), null)
+  assert.equal(
+    getCheckinHandoverStatusError("permanent_assignment", "Checked Out"),
+    "ASSET_HANDOVER_STATUS_MISMATCH",
+  )
+  assert.equal(getCheckinHandoverStatusError(null, "In Use"), "ASSET_HANDOVER_MODE_MISSING")
+})
 
 test("checkout rejects every source status except Ready", () => {
   assert.equal(getAssetLifecycleTransitionError("checkout", "Ready"), null)

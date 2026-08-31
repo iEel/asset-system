@@ -45,11 +45,12 @@ test("legacy checkout API creates an auditable backfilled handover instead of ch
 
   assert.match(source, /legacy_return_backfill/)
   assert.match(source, /getAssetLifecycleTransitionError\("legacy_return_backfill", asset\.status\.name\)/)
+  assert.match(source, /handoverMode:\s*"permanent_assignment"/)
+  assert.match(source, /getRequiredAssetStatusId\("In Use"\)/)
   assert.match(source, /ASSET_LEGACY_RETURN_MAINTENANCE_ACTIVE/)
   assert.match(source, /const custodianId = asset\.custodianId/)
   assert.match(source, /custodianId,/)
   assert.match(source, /conditionBefore: asset\.conditionId/)
-  assert.match(source, /getRequiredAssetStatusId\("Checked Out"\)/)
   assert.match(source, /generateCheckoutDocumentNo/)
   assert.match(source, /Asset already has an active checkout/)
 })
