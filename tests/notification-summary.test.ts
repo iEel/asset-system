@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { readFileSync } from "node:fs"
 
 import { buildNotificationSummaryItems } from "../src/lib/notification-summary-items.ts"
 
@@ -63,4 +64,9 @@ test("separates completed maintenance awaiting closure from overdue maintenance"
     ["overdueMaintenance", "/th/maintenance?overdue=yes", "danger"],
     ["completedMaintenanceAwaitingClose", "/th/maintenance?queue=completed", "warning"],
   ])
+})
+
+test("return reminders count temporary loans only", () => {
+  const source = readFileSync("src/lib/notification-summary.ts", "utf8")
+  assert.match(source, /handoverMode:\s*"temporary_loan"/)
 })

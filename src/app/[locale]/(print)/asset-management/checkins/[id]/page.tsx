@@ -46,6 +46,7 @@ export default async function CheckinPrintPage({ params, searchParams }: Checkin
           id: true,
           documentNo: true,
           checkoutType: true,
+          handoverMode: true,
           checkoutDate: true,
           expectedReturnDate: true,
           custodianId: true,
@@ -98,6 +99,11 @@ export default async function CheckinPrintPage({ params, searchParams }: Checkin
     location: labelOrDash(labels, checkin.checkout.locationId),
     parentAsset: labelOrDash(labels, checkin.checkout.parentAssetId),
   })
+  const custodyTypeLabel = checkin.checkout.handoverMode === "permanent_assignment"
+    ? t("permanentAssignmentShort")
+    : checkin.checkout.handoverMode === "temporary_loan"
+      ? t("temporaryLoanShort")
+      : t("handoverModeMissing")
 
   return (
     <OperationDocumentPrint
@@ -132,6 +138,7 @@ export default async function CheckinPrintPage({ params, searchParams }: Checkin
             { label: t("documentNo"), value: checkin.documentNo ?? checkin.id },
             { label: t("returnDate"), value: formatDate(checkin.returnDate) },
             { label: tCheckout("documentNo"), value: checkin.checkout.documentNo ?? checkin.checkout.id },
+            { label: t("custodyType"), value: custodyTypeLabel },
             { label: t("createdAt"), value: formatDateTime(checkin.createdAt) },
           ],
         },

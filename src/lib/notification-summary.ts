@@ -102,6 +102,7 @@ export async function getNotificationCenter(user: SessionUser, locale: string) {
           where: {
             isReturned: false,
             transactionStatus: "active",
+            handoverMode: "temporary_loan",
             expectedReturnDate: { lte: addDays(today, rules[notificationReturnDueSoonDaysKey]) },
           },
         })

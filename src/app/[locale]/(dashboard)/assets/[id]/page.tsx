@@ -595,6 +595,9 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         summary = destination ? `${t("movementTypes.checkout")}: ${destination}` : t("movementTypes.checkout")
         details.push(
           { label: t("documentNo"), value: checkout.documentNo ?? checkout.id, href: `/${locale}/asset-management/checkouts/${checkout.id}` },
+          { label: t("handoverMode"), value: getAssetHandoverModeLabel(checkout.handoverMode, {
+            permanent: t("handoverPermanentAssignment"), temporary: t("handoverTemporaryLoan"), legacy: t("handoverModeLegacy"),
+          }) },
           { label: t("handoverTo"), value: destination },
           { label: t("handoverBy"), value: handoverBy }
         )
@@ -618,6 +621,9 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
         summary = `${t("movementTypes.checkin")}: ${returnBy}`
         details.push(
           { label: t("documentNo"), value: checkin.documentNo ?? checkin.id, href: `/${locale}/asset-management/checkins/${checkin.id}` },
+          { label: t("handoverMode"), value: getAssetHandoverModeLabel(checkin.checkout.handoverMode, {
+            permanent: t("handoverPermanentAssignment"), temporary: t("handoverTemporaryLoan"), legacy: t("handoverModeLegacy"),
+          }) },
           { label: t("returnedFrom"), value: returnedFrom },
           { label: t("returnBy"), value: returnBy },
           { label: t("receiveBy"), value: receiveBy }
@@ -1290,6 +1296,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                     parentAssets: checkoutParentAssetLabels,
                   })
                   const returnLabel = checkout.checkin ? `${checkout.checkin.documentNo ?? checkout.checkin.id} · ${formatDate(checkout.checkin.returnDate)}` : "-"
+                  const handoverModeLabel = getAssetHandoverModeLabel(checkout.handoverMode, {
+                    permanent: t("handoverPermanentAssignment"),
+                    temporary: t("handoverTemporaryLoan"),
+                    legacy: t("handoverModeLegacy"),
+                  })
                   const evidenceGrid = (
                     <HandoverEvidenceGrid
                       checkoutAttachments={checkoutAttachments}
@@ -1316,8 +1327,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                           </div>
                           <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
                             <Info label={t("documentNo")} value={checkout.documentNo ?? checkout.id} compact />
+                            <Info label={t("handoverMode")} value={handoverModeLabel} compact />
                             <Info label={t("handoverTo")} value={destination} compact />
-                            <Info label={t("expectedReturnDate")} value={formatDate(checkout.expectedReturnDate)} compact />
+                            {checkout.handoverMode === "temporary_loan" ? (
+                              <Info label={t("expectedReturnDate")} value={formatDate(checkout.expectedReturnDate)} compact />
+                            ) : null}
                             <Info label={t("returnDate")} value={returnLabel} compact />
                             <Info label={t("remark")} value={checkout.remark} compact />
                           </div>
@@ -1345,6 +1359,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                           </div>
                           <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2 xl:grid-cols-4">
                             <Info label={t("documentNo")} value={checkout.documentNo ?? checkout.id} compact />
+                            <Info label={t("handoverMode")} value={handoverModeLabel} compact />
                             <Info label={t("handoverTo")} value={destination} compact />
                             <Info label={t("returnDate")} value={returnLabel} compact />
                             <Info label={t("remark")} value={checkout.remark} compact />
@@ -2482,6 +2497,15 @@ function getMovementTone(movementType: string): MovementTone {
   if (movementType.includes("audit") || movementType.includes("maintenance")) return "warning"
   if (movementType.includes("remove") || movementType.includes("disposal")) return "danger"
   return "neutral"
+}
+
+function getAssetHandoverModeLabel(
+  handoverMode: string | null | undefined,
+  labels: { permanent: string; temporary: string; legacy: string },
+) {
+  if (handoverMode === "permanent_assignment") return labels.permanent
+  if (handoverMode === "temporary_loan") return labels.temporary
+  return labels.legacy
 }
 
 function formatCancellationSnapshot(

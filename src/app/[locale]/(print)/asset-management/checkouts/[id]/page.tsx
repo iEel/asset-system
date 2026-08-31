@@ -75,6 +75,11 @@ export default async function CheckoutPrintPage({ params, searchParams }: Checko
     location: labelOrDash(labels, checkout.locationId),
     parentAsset: labelOrDash(labels, checkout.parentAssetId),
   })
+  const handoverModeLabel = checkout.handoverMode === "permanent_assignment"
+    ? t("permanentAssignment")
+    : checkout.handoverMode === "temporary_loan"
+      ? t("temporaryLoan")
+      : t("handoverModeLegacy")
 
   return (
     <OperationDocumentPrint
@@ -112,7 +117,9 @@ export default async function CheckoutPrintPage({ params, searchParams }: Checko
           fields: [
             { label: t("documentNo"), value: checkout.documentNo ?? checkout.id },
             { label: t("checkoutDate"), value: formatDate(checkout.checkoutDate) },
-            { label: t("expectedReturn"), value: formatDate(checkout.expectedReturnDate) },
+            ...(checkout.handoverMode === "temporary_loan"
+              ? [{ label: t("expectedReturn"), value: formatDate(checkout.expectedReturnDate) }]
+              : []),
             { label: t("createdAt"), value: formatDateTime(checkout.createdAt) },
           ],
         },
@@ -133,6 +140,7 @@ export default async function CheckoutPrintPage({ params, searchParams }: Checko
           title: t("handoverInfo"),
           fields: [
             { label: t("checkoutType"), value: t(`type_${checkout.checkoutType}`) },
+            { label: t("handoverMode"), value: handoverModeLabel },
             { label: t("checkoutTo"), value: destination },
             { label: t("conditionBefore"), value: labelOrDash(labels, checkout.conditionBefore) },
             { label: t("photoBefore"), value: checkout.photoBefore ? t("evidenceAttached") : "-" },
