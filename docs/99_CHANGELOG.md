@@ -1366,4 +1366,5 @@ await logAudit({
 - Added explicit `permanent_assignment` and `temporary_loan` Checkout modes with server-derived `In Use` and `Checked Out` lifecycle states.
 - Added mode-aware Check-in validation/current-custody UI, legacy null-mode blocking, permanent legacy-return backfill behavior, and cancellation-safe snapshots.
 - Added mode-aware Asset State Review, temporary-only return reminders, and consistent Asset Detail/Timeline/print presentation.
-- Added pending guarded migration `2026-08-31-add-checkout-handover-mode.sql` for exactly two approved active assignments. It has not been applied; backup verification and explicit approval remain required.
+- Applied guarded migration `2026-08-31-add-checkout-handover-mode.sql` to `asset_management` after backup confirmation and explicit approval. Accepted checksum: `9063246fff57`. It changed exactly the two approved active assignments to `permanent_assignment` / `In Use`, recorded one movement and one System Log per asset, and left no active null-mode Checkout.
+- The initial apply attempt (`37874f3a6a43`) safely rolled back because SQL Server compiled new-column references before executing `ALTER TABLE`. The migration now defers those references with `sp_executesql`; the migration runner also reports nested SQL Server AggregateError details.

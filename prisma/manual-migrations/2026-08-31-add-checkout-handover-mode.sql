@@ -12,24 +12,28 @@ BEGIN TRY
     ALTER TABLE [dbo].[asset_checkouts] ADD [handoverMode] NVARCHAR(30) NULL;
   END;
 
-  IF NOT EXISTS (
-    SELECT 1
-    FROM sys.check_constraints
-    WHERE [parent_object_id] = OBJECT_ID(N'[dbo].[asset_checkouts]')
-      AND [name] = N'CK_asset_checkouts_handoverMode'
-  )
-  BEGIN
-    ALTER TABLE [dbo].[asset_checkouts] WITH CHECK
-      ADD CONSTRAINT [CK_asset_checkouts_handoverMode]
-      CHECK ([handoverMode] IS NULL OR [handoverMode] IN (N'permanent_assignment', N'temporary_loan'));
-  END;
+  -- SQL Server compiles a batch before executing ALTER TABLE, so every statement
+  -- that references the newly added column must compile in a deferred inner batch.
+  EXEC sys.sp_executesql N'
+    IF NOT EXISTS (
+      SELECT 1
+      FROM sys.check_constraints
+      WHERE [parent_object_id] = OBJECT_ID(N''[dbo].[asset_checkouts]'')
+        AND [name] = N''CK_asset_checkouts_handoverMode''
+    )
+    BEGIN
+      ALTER TABLE [dbo].[asset_checkouts] WITH CHECK
+        ADD CONSTRAINT [CK_asset_checkouts_handoverMode]
+        CHECK ([handoverMode] IS NULL OR [handoverMode] IN (N''permanent_assignment'', N''temporary_loan''));
+    END;
+  ';
 
-  DECLARE @Approved TABLE (
+  CREATE TABLE #Approved (
     [assetTag] NVARCHAR(50) NOT NULL PRIMARY KEY,
     [documentNo] NVARCHAR(50) NOT NULL UNIQUE
   );
 
-  INSERT INTO @Approved ([assetTag], [documentNo])
+  INSERT INTO #Approved ([assetTag], [documentNo])
   VALUES
     (N'GRL-COM-06-0001', N'HO-202606-0002'),
     (N'SNI-EQU-19-0336', N'HO-202608-0003');
@@ -51,7 +55,7 @@ BEGIN TRY
   FROM [dbo].[asset_statuses] WITH (UPDLOCK, HOLDLOCK)
   WHERE [name] = N'Checked Out' AND [isActive] = 1;
 
-  DECLARE @Resolved TABLE (
+  CREATE TABLE #Resolved (
     [assetId] NVARCHAR(1000) NOT NULL PRIMARY KEY,
     [checkoutId] NVARCHAR(1000) NOT NULL UNIQUE,
     [assetTag] NVARCHAR(50) NOT NULL,
@@ -60,63 +64,70 @@ BEGIN TRY
     [oldAfterSnapshotJson] NVARCHAR(MAX) NULL
   );
 
-  INSERT INTO @Resolved (
-    [assetId], [checkoutId], [assetTag], [documentNo], [oldStatusId], [oldAfterSnapshotJson]
-  )
-  SELECT
-    a.[id], c.[id], a.[assetTag], c.[documentNo], a.[statusId], c.[afterSnapshotJson]
-  FROM @Approved approved
-  INNER JOIN [dbo].[assets] a WITH (UPDLOCK, HOLDLOCK)
-    ON a.[assetTag] = approved.[assetTag]
-  INNER JOIN [dbo].[asset_checkouts] c WITH (UPDLOCK, HOLDLOCK)
-    ON c.[assetId] = a.[id]
-   AND c.[documentNo] = approved.[documentNo]
-  WHERE c.[transactionStatus] = N'active'
-    AND c.[isReturned] = 0
-    AND c.[checkoutType] = N'user'
-    AND c.[custodianId] IS NOT NULL
-    AND c.[expectedReturnDate] IS NULL
-    AND c.[handoverMode] IS NULL
-    AND a.[isActive] = 1
-    AND a.[statusId] = @CheckedOutStatusId
-    AND NOT EXISTS (
-      SELECT 1
-      FROM [dbo].[asset_checkins] ci WITH (UPDLOCK, HOLDLOCK)
-      WHERE ci.[checkoutId] = c.[id]
-        AND ci.[transactionStatus] = N'active'
-    );
+  EXEC sys.sp_executesql N'
+    INSERT INTO #Resolved (
+      [assetId], [checkoutId], [assetTag], [documentNo], [oldStatusId], [oldAfterSnapshotJson]
+    )
+    SELECT
+      a.[id], c.[id], a.[assetTag], c.[documentNo], a.[statusId], c.[afterSnapshotJson]
+    FROM #Approved approved
+    INNER JOIN [dbo].[assets] a WITH (UPDLOCK, HOLDLOCK)
+      ON a.[assetTag] = approved.[assetTag]
+    INNER JOIN [dbo].[asset_checkouts] c WITH (UPDLOCK, HOLDLOCK)
+      ON c.[assetId] = a.[id]
+     AND c.[documentNo] = approved.[documentNo]
+    WHERE c.[transactionStatus] = N''active''
+      AND c.[isReturned] = 0
+      AND c.[checkoutType] = N''user''
+      AND c.[custodianId] IS NOT NULL
+      AND c.[expectedReturnDate] IS NULL
+      AND c.[handoverMode] IS NULL
+      AND a.[isActive] = 1
+      AND a.[statusId] = @CheckedOutStatusId
+      AND NOT EXISTS (
+        SELECT 1
+        FROM [dbo].[asset_checkins] ci WITH (UPDLOCK, HOLDLOCK)
+        WHERE ci.[checkoutId] = c.[id]
+          AND ci.[transactionStatus] = N''active''
+      );
+  ', N'@CheckedOutStatusId NVARCHAR(1000)', @CheckedOutStatusId;
 
-  IF (SELECT COUNT(*) FROM @Resolved) <> 2
+  IF (SELECT COUNT(*) FROM #Resolved) <> 2
     THROW 51003, 'Approved handover records do not match all required preconditions.', 1;
 
   IF EXISTS (
     SELECT 1
-    FROM @Approved approved
-    LEFT JOIN @Resolved resolved
+    FROM #Approved approved
+    LEFT JOIN #Resolved resolved
       ON resolved.[assetTag] = approved.[assetTag]
      AND resolved.[documentNo] = approved.[documentNo]
     WHERE resolved.[assetId] IS NULL
   )
     THROW 51004, 'At least one approved asset and Checkout document pair is missing.', 1;
 
-  IF (
+  CREATE TABLE #CandidateCount ([value] INT NOT NULL);
+
+  EXEC sys.sp_executesql N'
+    INSERT INTO #CandidateCount ([value])
     SELECT COUNT(*)
     FROM [dbo].[asset_checkouts] c WITH (UPDLOCK, HOLDLOCK)
     INNER JOIN [dbo].[assets] a WITH (UPDLOCK, HOLDLOCK) ON a.[id] = c.[assetId]
-    WHERE c.[transactionStatus] = N'active'
+    WHERE c.[transactionStatus] = N''active''
       AND c.[isReturned] = 0
-      AND c.[checkoutType] = N'user'
+      AND c.[checkoutType] = N''user''
       AND c.[custodianId] IS NOT NULL
       AND c.[expectedReturnDate] IS NULL
       AND c.[handoverMode] IS NULL
       AND a.[isActive] = 1
-      AND a.[statusId] = @CheckedOutStatusId
-  ) <> 2
+      AND a.[statusId] = @CheckedOutStatusId;
+  ', N'@CheckedOutStatusId NVARCHAR(1000)', @CheckedOutStatusId;
+
+  IF (SELECT [value] FROM #CandidateCount) <> 2
     THROW 51005, 'The active indefinite user Checkout candidate set is not exactly the approved two records.', 1;
 
   IF EXISTS (
     SELECT 1
-    FROM @Resolved resolved
+    FROM #Resolved resolved
     WHERE resolved.[oldAfterSnapshotJson] IS NOT NULL
       AND (
         ISJSON(resolved.[oldAfterSnapshotJson]) <> 1
@@ -126,17 +137,19 @@ BEGIN TRY
   )
     THROW 51006, 'A Checkout after snapshot is invalid or does not contain the expected Checked Out status.', 1;
 
-  UPDATE c
-  SET
-    c.[handoverMode] = N'permanent_assignment',
-    c.[afterSnapshotJson] = CASE
-      WHEN c.[afterSnapshotJson] IS NOT NULL AND ISJSON(c.[afterSnapshotJson]) = 1
-        THEN JSON_MODIFY(c.[afterSnapshotJson], '$.statusId', @InUseStatusId)
-      ELSE c.[afterSnapshotJson]
-    END,
-    c.[updatedAt] = SYSUTCDATETIME()
-  FROM [dbo].[asset_checkouts] c
-  INNER JOIN @Resolved resolved ON resolved.[checkoutId] = c.[id];
+  EXEC sys.sp_executesql N'
+    UPDATE c
+    SET
+      c.[handoverMode] = N''permanent_assignment'',
+      c.[afterSnapshotJson] = CASE
+        WHEN c.[afterSnapshotJson] IS NOT NULL AND ISJSON(c.[afterSnapshotJson]) = 1
+          THEN JSON_MODIFY(c.[afterSnapshotJson], ''$.statusId'', @InUseStatusId)
+        ELSE c.[afterSnapshotJson]
+      END,
+      c.[updatedAt] = SYSUTCDATETIME()
+    FROM [dbo].[asset_checkouts] c
+    INNER JOIN #Resolved resolved ON resolved.[checkoutId] = c.[id];
+  ', N'@InUseStatusId NVARCHAR(1000)', @InUseStatusId;
 
   UPDATE a
   SET
@@ -144,7 +157,7 @@ BEGIN TRY
     a.[updatedBy] = N'migration:handover-mode-backfill',
     a.[updatedAt] = SYSUTCDATETIME()
   FROM [dbo].[assets] a
-  INNER JOIN @Resolved resolved ON resolved.[assetId] = a.[id];
+  INNER JOIN #Resolved resolved ON resolved.[assetId] = a.[id];
 
   INSERT INTO [dbo].[asset_movements] (
     [id], [assetId], [movementType], [fromValue], [toValue], [reason],
@@ -162,7 +175,7 @@ BEGIN TRY
     N'migration:handover-mode-backfill',
     SYSUTCDATETIME(),
     CONCAT(N'Asset ', resolved.[assetTag], N'; Checkout ', resolved.[documentNo])
-  FROM @Resolved resolved;
+  FROM #Resolved resolved;
 
   INSERT INTO [dbo].[system_logs] (
     [id], [userId], [action], [module], [recordId], [oldValue], [newValue],
@@ -196,27 +209,29 @@ BEGIN TRY
     N'manual-migration',
     N'Operator-approved permanent assignment backfill; old snapshot retained in oldValue',
     SYSUTCDATETIME()
-  FROM @Resolved resolved
+  FROM #Resolved resolved
   INNER JOIN [dbo].[asset_checkouts] c ON c.[id] = resolved.[checkoutId];
 
-  IF EXISTS (
-    SELECT 1
-    FROM @Resolved resolved
-    INNER JOIN [dbo].[asset_checkouts] c ON c.[id] = resolved.[checkoutId]
-    INNER JOIN [dbo].[assets] a ON a.[id] = resolved.[assetId]
-    WHERE c.[handoverMode] <> N'permanent_assignment'
-      OR c.[transactionStatus] <> N'active'
-      OR c.[isReturned] <> 0
-      OR c.[expectedReturnDate] IS NOT NULL
-      OR a.[statusId] <> @InUseStatusId
-      OR (c.[afterSnapshotJson] IS NOT NULL AND JSON_VALUE(c.[afterSnapshotJson], '$.statusId') <> @InUseStatusId)
-  )
-    THROW 51007, 'Handover mode backfill postconditions failed.', 1;
+  EXEC sys.sp_executesql N'
+    IF EXISTS (
+      SELECT 1
+      FROM #Resolved resolved
+      INNER JOIN [dbo].[asset_checkouts] c ON c.[id] = resolved.[checkoutId]
+      INNER JOIN [dbo].[assets] a ON a.[id] = resolved.[assetId]
+      WHERE c.[handoverMode] <> N''permanent_assignment''
+        OR c.[transactionStatus] <> N''active''
+        OR c.[isReturned] <> 0
+        OR c.[expectedReturnDate] IS NOT NULL
+        OR a.[statusId] <> @InUseStatusId
+        OR (c.[afterSnapshotJson] IS NOT NULL AND JSON_VALUE(c.[afterSnapshotJson], ''$.statusId'') <> @InUseStatusId)
+    )
+      THROW 51007, ''Handover mode backfill postconditions failed.'', 1;
+  ', N'@InUseStatusId NVARCHAR(1000)', @InUseStatusId;
 
-  IF (SELECT COUNT(*) FROM [dbo].[asset_movements] movement INNER JOIN @Resolved resolved ON resolved.[checkoutId] = movement.[referenceId] WHERE movement.[performedBy] = N'migration:handover-mode-backfill') <> 2
+  IF (SELECT COUNT(*) FROM [dbo].[asset_movements] movement INNER JOIN #Resolved resolved ON resolved.[checkoutId] = movement.[referenceId] WHERE movement.[performedBy] = N'migration:handover-mode-backfill') <> 2
     THROW 51008, 'Expected exactly two migration asset movements.', 1;
 
-  IF (SELECT COUNT(*) FROM [dbo].[system_logs] log INNER JOIN @Resolved resolved ON resolved.[assetId] = log.[recordId] WHERE log.[action] = N'migration_backfill' AND log.[userAgent] = N'manual-migration') <> 2
+  IF (SELECT COUNT(*) FROM [dbo].[system_logs] log INNER JOIN #Resolved resolved ON resolved.[assetId] = log.[recordId] WHERE log.[action] = N'migration_backfill' AND log.[userAgent] = N'manual-migration') <> 2
     THROW 51009, 'Expected exactly two migration system logs.', 1;
 
   COMMIT TRANSACTION;

@@ -302,6 +302,26 @@ test("apply records sanitized failure and attempts rollback", async () => {
   assert.doesNotMatch(output.text(), /DB-SERVER|DB-USER|SecretPass/i)
 })
 
+test("apply reports nested SQL Server errors from an aggregate failure", async () => {
+  const root = await createMigrationRoot()
+  const store = new FakeStore({
+    executeError: new AggregateError([
+      Object.assign(new Error("Invalid column name 'handoverMode'."), { number: 207, lineNumber: 25 }),
+    ]),
+  })
+  const output = new OutputCollector()
+
+  const exitCode = await runManualMigrationCommand(applyCommand(), {
+    migrationRoot: root,
+    store,
+    output,
+  })
+
+  assert.equal(exitCode, 1)
+  assert.match(output.text(), /Invalid column name 'handoverMode'\./)
+  assert.match(store.attempts[0]?.errorMessage ?? "", /SQL 207, line 25/)
+})
+
 test("baseline records history without executing migration SQL", async () => {
   const root = await createMigrationRoot()
   const store = new FakeStore()

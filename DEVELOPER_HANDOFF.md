@@ -219,8 +219,9 @@ npm run build
 - Permanent assignment is employee-only, requires a custodian, and has no expected-return date. Temporary loan requires an expected-return date on or after the handover date.
 - Check-in validates the active Checkout and its authoritative source status inside the transaction. Permanent assignments return from `In Use`; temporary loans return from `Checked Out`.
 - Active legacy rows with no mode are disabled on Check-in and surfaced by Asset State Review; completed legacy history remains readable as unspecified and is never inferred from a null due date.
-- `prisma/manual-migrations/2026-08-31-add-checkout-handover-mode.sql` is pending. It is guarded to backfill only `GRL-COM-06-0001 / HO-202606-0002` and `SNI-EQU-19-0336 / HO-202608-0003`, including status/snapshot alignment and audit evidence.
-- Do not apply the pending migration without a fresh verified backup and explicit operator approval. Latest read-only status checksum prefix: `37874f3a6a43`.
+- `prisma/manual-migrations/2026-08-31-add-checkout-handover-mode.sql` was applied to `asset_management` on 2026-08-31 after the operator confirmed a fresh backup. The accepted checksum prefix is `9063246fff57`.
+- The migration backfilled only `GRL-COM-06-0001 / HO-202606-0002` and `SNI-EQU-19-0336 / HO-202608-0003`. Both are active `permanent_assignment` Checkouts in `In Use`, each with one migration movement and one System Log entry; no active null-mode Checkout remained after verification.
+- The first apply attempt (`37874f3a6a43`) failed before any change because SQL Server compiled references to the newly added column in the same batch. The transaction rolled back. The accepted migration defers those statements with `sp_executesql`, and the migration runner now preserves nested SQL Server error details instead of recording an empty AggregateError message.
 
 ## Open Go-Live Decisions
 

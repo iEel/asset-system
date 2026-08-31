@@ -526,7 +526,25 @@ function migrationLockResource(databaseName: string, filename: string) {
 }
 
 function sanitizeError(error: unknown, dependencies: ManualMigrationDependencies) {
-  return sanitizeManualMigrationError(error instanceof Error ? error.message : String(error), dependencies.secrets ?? [])
+  return sanitizeManualMigrationError(formatManualMigrationError(error), dependencies.secrets ?? [])
+}
+
+function formatManualMigrationError(error: unknown): string {
+  if (error instanceof AggregateError) {
+    const nested = error.errors.map(formatManualMigrationError).filter(Boolean)
+    if (nested.length > 0) return nested.join("\n")
+  }
+
+  if (error instanceof Error) {
+    const sqlError = error as Error & { number?: unknown; lineNumber?: unknown }
+    const metadata = [
+      typeof sqlError.number === "number" ? `SQL ${sqlError.number}` : null,
+      typeof sqlError.lineNumber === "number" ? `line ${sqlError.lineNumber}` : null,
+    ].filter(Boolean)
+    return `${metadata.length > 0 ? `${metadata.join(", ")}: ` : ""}${error.message || error.name}`
+  }
+
+  return String(error)
 }
 
 function getClock(dependencies: ManualMigrationDependencies) {

@@ -117,11 +117,11 @@ Historical migrations must be baselined individually. Do not infer application m
 
 ### Current `asset_management` Ledger Snapshot
 
-As verified on 2026-08-31, the 11 previously accepted SQL files under `prisma/manual-migrations/` are recorded as `applied` with no checksum mismatch. `2026-08-31-add-checkout-handover-mode.sql` is `pending` with checksum prefix `37874f3a6a43`. This is a dated snapshot for this database only; always run `npm run migration:status` against the actual deployment target.
+As verified on 2026-08-31, all 12 SQL files under `prisma/manual-migrations/` are recorded as `applied` with no checksum mismatch. `2026-08-31-add-checkout-handover-mode.sql` was applied with checksum prefix `9063246fff57` after a verified rollback-only rehearsal. This is a dated snapshot for this database only; always run `npm run migration:status` against the actual deployment target.
 
 ### Checkout handover mode
 
-`AssetCheckout.handoverMode` is nullable `NVARCHAR(30)` so completed legacy history remains readable. New application writes allow only `permanent_assignment` and `temporary_loan`; the pending SQL adds the matching database constraint. Its data backfill aborts unless the candidate set is exactly the two approved Asset Tag/document pairs, preserves the old Checkout after-snapshot in System Log evidence, updates valid snapshots, and records Asset Movement/System Log rows.
+`AssetCheckout.handoverMode` is nullable `NVARCHAR(30)` so completed legacy history remains readable. New application writes allow only `permanent_assignment` and `temporary_loan`; the applied SQL adds the matching trusted database constraint. Its data backfill aborts unless the candidate set is exactly the two approved Asset Tag/document pairs, preserves the old Checkout after-snapshot in System Log evidence, updates valid snapshots, and records Asset Movement/System Log rows.
 
 ## Operational Notes
 

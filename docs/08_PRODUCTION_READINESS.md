@@ -126,10 +126,11 @@ To restore a file, move it from `.archive/YYYY-MM-DD/<relativePath>` back to `UP
 | Backup / restore | `<OWNER>` |  |  |
 | Deployment | `<OWNER>` |  |  |
 
-## Pending Handover Migration Gate
+## Handover Migration Gate
 
-- [ ] Run `npm run verify`, `npx tsc --noEmit`, and `git diff --check` on the release commit.
-- [ ] Confirm `npm run migration:status` reports the prior 11 migrations applied, no checksum mismatch, and `2026-08-31-add-checkout-handover-mode.sql` pending (`37874f3a6a43`).
-- [ ] Create and verify a fresh database backup with a documented restore path.
-- [ ] Obtain explicit approval for the exact two-record backfill scope.
-- [ ] Apply the migration, rerun status, verify both records/postconditions, then complete Handover Mode UAT. Until then, do not mark this gate complete.
+- [x] Run `npm run verify`, `npx tsc --noEmit`, and `git diff --check` on the release commit.
+- [x] Confirm the prior 11 migrations have no checksum mismatch and the handover migration is the only pending file before apply.
+- [x] Operator confirmed a fresh database backup before apply; retain the backup evidence and documented restore path with the change record.
+- [x] Obtain explicit approval for the exact two-record backfill scope.
+- [x] Apply `2026-08-31-add-checkout-handover-mode.sql`, rerun status, and verify checksum `9063246fff57`, both records, trusted constraint, movements, logs, and no active null-mode Checkout.
+- [ ] Complete the Handover Mode desktop/mobile UAT in `docs/07_UAT_CHECKLIST.md`.
