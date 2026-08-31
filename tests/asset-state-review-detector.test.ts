@@ -20,9 +20,24 @@ test("detects checkout status and transaction mismatches in both directions", ()
   assert.deepEqual(issueTypes(snapshot({ statusName: "Checked Out", openCheckouts: 0 })), [
     "checked_out_without_open_checkout",
   ])
-  assert.deepEqual(issueTypes(snapshot({ statusName: "Ready", openCheckouts: 1 })), [
+  assert.deepEqual(issueTypes(snapshot({ statusName: "Ready", openCheckouts: 1, openTemporaryLoans: 1 })), [
     "open_checkout_status_mismatch",
   ])
+})
+
+test("uses the active handover mode as the authoritative lifecycle state", () => {
+  assert.deepEqual(issueTypes(snapshot({
+    statusName: "In Use", openCheckouts: 1, openPermanentAssignments: 1,
+  })), [])
+  assert.deepEqual(issueTypes(snapshot({
+    statusName: "Checked Out", openCheckouts: 1, openTemporaryLoans: 1,
+  })), [])
+  assert.deepEqual(issueTypes(snapshot({
+    statusName: "Checked Out", openCheckouts: 1, openPermanentAssignments: 1,
+  })), ["open_checkout_status_mismatch"])
+  assert.deepEqual(issueTypes(snapshot({
+    statusName: "In Use", openCheckouts: 1, openUnknownHandovers: 1,
+  })), ["open_checkout_mode_missing"])
 })
 
 test("detects personal custody inconsistencies", () => {
@@ -78,6 +93,9 @@ function snapshot(overrides: Partial<AssetStateObservedSnapshot> = {}): AssetSta
     custodianId: null,
     assetUpdatedAt: new Date("2026-08-01T00:00:00.000Z"),
     openCheckouts: 0,
+    openPermanentAssignments: 0,
+    openTemporaryLoans: 0,
+    openUnknownHandovers: 0,
     activeCorrectiveTickets: 0,
     activeCorrectiveStatusNames: [],
     openDisposalsMissingPreviousStatus: 0,

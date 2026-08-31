@@ -50,10 +50,27 @@ export function detectAssetStateIssues(snapshot: AssetStateObservedSnapshot): As
     }))
   }
 
-  if (snapshot.openCheckouts > 0 && status !== "checked out") {
+  const hasConflictingKnownModes = snapshot.openPermanentAssignments > 0 && snapshot.openTemporaryLoans > 0
+  const classifiedCheckouts = snapshot.openPermanentAssignments + snapshot.openTemporaryLoans + snapshot.openUnknownHandovers
+  if (snapshot.openCheckouts > 0 && (snapshot.openUnknownHandovers > 0 || hasConflictingKnownModes || classifiedCheckouts !== snapshot.openCheckouts)) {
+    issues.push(candidate("open_checkout_mode_missing", "critical", {
+      metadata: {
+        openCheckouts: snapshot.openCheckouts,
+        openPermanentAssignments: snapshot.openPermanentAssignments,
+        openTemporaryLoans: snapshot.openTemporaryLoans,
+        openUnknownHandovers: snapshot.openUnknownHandovers,
+        conflictingKnownModes: hasConflictingKnownModes,
+      },
+    }))
+  } else if (snapshot.openPermanentAssignments > 0 && status !== "in use") {
+    issues.push(candidate("open_checkout_status_mismatch", "critical", {
+      suggestedStatusName: "In Use",
+      metadata: { statusName: snapshot.statusName, openCheckouts: snapshot.openCheckouts, handoverMode: "permanent_assignment" },
+    }))
+  } else if (snapshot.openTemporaryLoans > 0 && status !== "checked out") {
     issues.push(candidate("open_checkout_status_mismatch", "critical", {
       suggestedStatusName: "Checked Out",
-      metadata: { statusName: snapshot.statusName, openCheckouts: snapshot.openCheckouts },
+      metadata: { statusName: snapshot.statusName, openCheckouts: snapshot.openCheckouts, handoverMode: "temporary_loan" },
     }))
   }
 

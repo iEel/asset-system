@@ -50,7 +50,8 @@ const allowedStatusTargets: Record<AssetStateReviewIssueType, readonly string[]>
   personal_in_use_without_custodian: ["Ready"],
   repair_status_without_active_ticket: ["Ready", "In Use"],
   active_repair_ticket_status_mismatch: ["Pending Repair", "Under Maintenance"],
-  open_checkout_status_mismatch: ["Checked Out"],
+  open_checkout_status_mismatch: ["In Use", "Checked Out"],
+  open_checkout_mode_missing: [],
   incompatible_status_condition: [],
   legacy_condition_value: [],
   controlled_legacy_status: ["Ready", "In Use", "Missing", "Lost"],
@@ -100,6 +101,12 @@ export async function resolveAssetStateReview(
       : null
     if ((command.statusId && !nextStatus) || (command.conditionId && !nextCondition)) {
       throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_MASTER_NOT_FOUND")
+    }
+    if (
+      review.issueType === "open_checkout_status_mismatch"
+      && (!review.suggestedStatusId || nextStatus?.id !== review.suggestedStatusId)
+    ) {
+      throw new AssetStateReviewServiceError("ASSET_STATE_REVIEW_TARGET_NOT_ALLOWED")
     }
     assertAllowedResolution(review.issueType, nextStatus?.name, nextCondition)
 
@@ -374,7 +381,11 @@ export async function listAssetStateReviews(db: PrismaClient, filters: AssetStat
   return {
     data: rows.map((row) => {
       const issueType = isAssetStateReviewIssueType(row.issueType) ? row.issueType : null
-      const allowedStatusNames = issueType ? allowedStatusTargets[issueType] : []
+      const allowedStatusNames = issueType === "open_checkout_status_mismatch" && row.suggestedStatusId
+        ? [statusById.get(row.suggestedStatusId)?.name].filter((name): name is string => Boolean(name))
+        : issueType
+          ? allowedStatusTargets[issueType]
+          : []
       return {
         ...row,
         metadata: parseMetadata(row.metadataJson),
@@ -426,11 +437,10 @@ export async function loadAssetStateReviewSnapshots(db: PrismaClient): Promise<A
     if (assets.length === 0) break
 
     const assetIds = assets.map((asset) => asset.id)
-    const [checkoutGroups, correctiveTickets, disposalGroups] = await Promise.all([
-      db.assetCheckout.groupBy({
-        by: ["assetId"],
+    const [activeCheckouts, correctiveTickets, disposalGroups] = await Promise.all([
+      db.assetCheckout.findMany({
         where: { assetId: { in: assetIds }, isReturned: false, transactionStatus: "active" },
-        _count: { _all: true },
+        select: { assetId: true, handoverMode: true },
       }),
       db.maintenanceTicket.findMany({
         where: {
@@ -454,7 +464,20 @@ export async function loadAssetStateReviewSnapshots(db: PrismaClient): Promise<A
       }),
     ])
 
-    const checkoutCountByAsset = new Map(checkoutGroups.map((row) => [row.assetId, row._count._all]))
+    const checkoutCountsByAsset = new Map<string, {
+      total: number
+      permanent: number
+      temporary: number
+      unknown: number
+    }>()
+    for (const checkout of activeCheckouts) {
+      const counts = checkoutCountsByAsset.get(checkout.assetId) ?? { total: 0, permanent: 0, temporary: 0, unknown: 0 }
+      counts.total += 1
+      if (checkout.handoverMode === "permanent_assignment") counts.permanent += 1
+      else if (checkout.handoverMode === "temporary_loan") counts.temporary += 1
+      else counts.unknown += 1
+      checkoutCountsByAsset.set(checkout.assetId, counts)
+    }
     const disposalCountByAsset = new Map(disposalGroups.map((row) => [row.assetId, row._count._all]))
     const correctiveStatusesByAsset = new Map<string, string[]>()
     for (const ticket of correctiveTickets) {
@@ -465,6 +488,7 @@ export async function loadAssetStateReviewSnapshots(db: PrismaClient): Promise<A
 
     snapshots.push(...assets.map((asset) => {
       const activeCorrectiveStatusNames = correctiveStatusesByAsset.get(asset.id) ?? []
+      const checkoutCounts = checkoutCountsByAsset.get(asset.id) ?? { total: 0, permanent: 0, temporary: 0, unknown: 0 }
       return {
         assetId: asset.id,
         assetTag: asset.assetTag,
@@ -478,7 +502,10 @@ export async function loadAssetStateReviewSnapshots(db: PrismaClient): Promise<A
         conditionName: asset.condition.name,
         custodianId: asset.custodianId,
         assetUpdatedAt: asset.updatedAt,
-        openCheckouts: checkoutCountByAsset.get(asset.id) ?? 0,
+        openCheckouts: checkoutCounts.total,
+        openPermanentAssignments: checkoutCounts.permanent,
+        openTemporaryLoans: checkoutCounts.temporary,
+        openUnknownHandovers: checkoutCounts.unknown,
         activeCorrectiveTickets: activeCorrectiveStatusNames.length,
         activeCorrectiveStatusNames,
         openDisposalsMissingPreviousStatus: disposalCountByAsset.get(asset.id) ?? 0,

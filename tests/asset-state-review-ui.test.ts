@@ -22,4 +22,14 @@ test("Thai and English expose the same review workspace message keys", () => {
   const en = JSON.parse(readFileSync("messages/en.json", "utf8")).dataQualityPage.assetStateReviews
   assert.deepEqual(Object.keys(th).sort(), Object.keys(en).sort())
   assert.ok(Object.keys(th.issueTypes).length >= 10)
+  assert.ok(th.issueTypes.open_checkout_mode_missing)
+  assert.ok(en.issueTypes.open_checkout_mode_missing)
+})
+
+test("snapshot loading groups active checkouts by handover mode", () => {
+  const service = readFileSync("src/lib/asset-state-review-service.ts", "utf8")
+  assert.match(service, /handoverMode:\s*true/)
+  assert.match(service, /openPermanentAssignments/)
+  assert.match(service, /openTemporaryLoans/)
+  assert.match(service, /openUnknownHandovers/)
 })

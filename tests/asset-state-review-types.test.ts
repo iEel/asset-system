@@ -14,6 +14,7 @@ test("review issue types cover every approved inconsistency", () => {
     "active_repair_ticket_status_mismatch",
     "checked_out_without_open_checkout",
     "open_checkout_status_mismatch",
+    "open_checkout_mode_missing",
     "personal_in_use_without_custodian",
     "personal_ready_with_custodian",
     "incompatible_status_condition",

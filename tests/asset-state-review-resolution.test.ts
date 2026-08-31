@@ -43,13 +43,34 @@ test("dismissal records a reason and audit without changing the asset", async ()
   assert.deepEqual(db.events, ["audit:asset_state_review_dismiss", "review:dismissed"])
 })
 
-function fakeResolutionDb(options: { currentAssetUpdatedAt?: Date } = {}) {
+test("checkout mismatch resolution only accepts its mode-derived suggested status", async () => {
+  const db = fakeResolutionDb({
+    issueType: "open_checkout_status_mismatch",
+    suggestedStatusId: "status-checked-out",
+  })
+  await assert.rejects(
+    resolveAssetStateReview(db.client, {
+      reviewId: "review-1",
+      statusId: "status-in-use",
+      reason: "ยืนยันสถานะตามประเภทการถือครอง",
+    }, "admin-1"),
+    (error) => error instanceof AssetStateReviewServiceError && error.code === "ASSET_STATE_REVIEW_TARGET_NOT_ALLOWED",
+  )
+  assert.deepEqual(db.events, [])
+})
+
+function fakeResolutionDb(options: {
+  currentAssetUpdatedAt?: Date
+  issueType?: string
+  suggestedStatusId?: string | null
+} = {}) {
   const events: string[] = []
   const observedAt = new Date("2026-08-01T00:00:00.000Z")
   const review = {
     id: "review-1",
     assetId: "asset-1",
-    issueType: "personal_ready_with_custodian",
+    issueType: options.issueType ?? "personal_ready_with_custodian",
+    suggestedStatusId: options.suggestedStatusId ?? "status-in-use",
     reviewStatus: "pending",
     observedStatusId: "status-ready",
     observedConditionId: "condition-good",

@@ -131,6 +131,7 @@ export default async function DataQualityPage({ params }: DataQualityPageProps) 
           active_repair_ticket_status_mismatch: t("assetStateReviews.issueTypes.active_repair_ticket_status_mismatch"),
           checked_out_without_open_checkout: t("assetStateReviews.issueTypes.checked_out_without_open_checkout"),
           open_checkout_status_mismatch: t("assetStateReviews.issueTypes.open_checkout_status_mismatch"),
+          open_checkout_mode_missing: t("assetStateReviews.issueTypes.open_checkout_mode_missing"),
           personal_in_use_without_custodian: t("assetStateReviews.issueTypes.personal_in_use_without_custodian"),
           personal_ready_with_custodian: t("assetStateReviews.issueTypes.personal_ready_with_custodian"),
           incompatible_status_condition: t("assetStateReviews.issueTypes.incompatible_status_condition"),
