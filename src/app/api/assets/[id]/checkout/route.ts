@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
+import { ZodError } from "zod"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { getAssetLifecycleTransitionError, getAssetOperationConditionError } from "@/lib/asset-lifecycle-policy"
+import { getHandoverTargetStatusName } from "@/lib/asset-handover-mode"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { assetCheckoutSchema } from "@/lib/validations/asset-operations"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
@@ -57,7 +59,8 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
       return NextResponse.json({ code: conditionError, error: "Invalid asset condition for checkout" }, { status: 400 })
     }
 
-    const checkedOutStatusId = await getRequiredAssetStatusId("Checked Out")
+    const targetStatusName = getHandoverTargetStatusName(input.handoverMode)
+    const targetStatusId = await getRequiredAssetStatusId(targetStatusName)
 
     const nextLocationId = input.locationId ?? asset.currentLocationId
     const nextCustodianId = input.checkoutType === "user" ? input.custodianId : asset.custodianId
@@ -85,6 +88,7 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
           documentNo,
           assetId: id,
           checkoutType: input.checkoutType,
+          handoverMode: input.handoverMode,
           custodianId: input.checkoutType === "user" ? input.custodianId : null,
           departmentId: input.checkoutType === "department" ? input.departmentId : null,
           locationId: input.checkoutType === "location" ? input.locationId : null,
@@ -127,7 +131,7 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
       const afterAsset = await tx.asset.update({
         where: { id },
         data: {
-          statusId: checkedOutStatusId,
+          statusId: targetStatusId,
           currentLocationId: nextLocationId,
           custodianId: nextCustodianId,
           departmentId: nextDepartmentId,
@@ -208,11 +212,15 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
       module: "asset",
       recordId: id,
       oldValue: asset,
-      newValue: { ...input, checkoutId: checkout.id, componentSync },
+      newValue: { ...input, targetStatusName, checkoutId: checkout.id, componentSync },
     })
 
     return NextResponse.json(checkout, { status: 201 })
   } catch (error) {
+    if (error instanceof ZodError) {
+      const issue = error.issues.find(({ message }) => message.startsWith("HANDOVER_"))
+      if (issue) return NextResponse.json({ code: issue.message, error: issue.message }, { status: 400 })
+    }
     return errorResponse(error, 400)
   }
 }
@@ -237,6 +245,7 @@ async function parseCheckoutRequest(request: NextRequest) {
 
   return {
     input: assetCheckoutSchema.parse({
+      handoverMode: requiredFormText(formData, "handoverMode"),
       checkoutType: requiredFormText(formData, "checkoutType"),
       custodianId: optionalFormText(formData, "custodianId"),
       departmentId: optionalFormText(formData, "departmentId"),

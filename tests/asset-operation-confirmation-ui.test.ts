@@ -16,6 +16,12 @@ test("asset operation forms use a shared review dialog before submitting", () =>
   }
 })
 
+test("checkout review names the selected handover mode and resulting status", () => {
+  const source = readFileSync("src/components/asset-operations/checkout-form.tsx", "utf8")
+  assert.match(source, /t\("handoverMode"\)/)
+  assert.match(source, /t\("resultingStatus"\)/)
+})
+
 test("operation review dialog is focus-managed and mobile-safe", () => {
   const dialogPath = "src/components/ui/operation-review-dialog.tsx"
   assert.ok(existsSync(dialogPath))

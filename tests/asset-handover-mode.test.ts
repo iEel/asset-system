@@ -103,7 +103,11 @@ test("checkout validation requires a coherent handover mode", () => {
     expectedReturnDate: "2026-09-01",
   }).success, true)
 
-  assert.equal(assetCheckoutSchema.safeParse(baseInput).success, false)
+  const missingMode = assetCheckoutSchema.safeParse(baseInput)
+  assert.equal(missingMode.success, false)
+  if (!missingMode.success) {
+    assert.equal(missingMode.error.issues[0]?.message, "HANDOVER_MODE_REQUIRED")
+  }
 
   const permanentWithDueDate = assetCheckoutSchema.safeParse({
     ...baseInput,

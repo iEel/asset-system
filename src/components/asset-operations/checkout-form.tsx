@@ -12,9 +12,24 @@ import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
+import type { AssetHandoverMode } from "@/lib/asset-handover-mode"
 
 type Option = { id: string; label: string; disabled?: boolean }
 type CheckoutType = "user" | "department" | "location" | "asset"
+type HandoverModeSelection = "" | AssetHandoverMode
+type CheckoutFormValues = {
+  assetId: string
+  checkoutType: CheckoutType
+  handoverMode: HandoverModeSelection
+  custodianId: string
+  departmentId: string
+  locationId: string
+  parentAssetId: string
+  checkoutDate: string
+  expectedReturnDate: string
+  conditionBefore: string
+  remark: string
+}
 
 export function CheckoutForm({
   assets,
@@ -42,9 +57,10 @@ export function CheckoutForm({
   const [photoBefore, setPhotoBefore] = useState<File | null>(null)
   const [receiverSignatureDataUrl, setReceiverSignatureDataUrl] = useState<string | null>(null)
   const initialAsset = assets.find((asset) => asset.id === initialAssetId && !asset.disabled)
-  const [values, setValues] = useState({
+  const [values, setValues] = useState<CheckoutFormValues>({
     assetId: initialAsset?.id ?? "",
     checkoutType: "user" as CheckoutType,
+    handoverMode: "",
     custodianId: "",
     departmentId: "",
     locationId: "",
@@ -64,11 +80,27 @@ export function CheckoutForm({
   const selectedAsset = assets.find((asset) => asset.id === values.assetId)
   const selectedDestination = destinationOptions.find((option) => option.id === destinationValue(values))
   const selectedCondition = conditions.find((condition) => condition.id === values.conditionBefore)
+  const handoverModeLabel = values.handoverMode === "permanent_assignment"
+    ? t("permanentAssignment")
+    : values.handoverMode === "temporary_loan"
+      ? t("temporaryLoan")
+      : ""
+  const resultingStatusLabel = values.handoverMode === "permanent_assignment"
+    ? t("statusInUse")
+    : values.handoverMode === "temporary_loan"
+      ? t("statusCheckedOut")
+      : ""
   const reviewItems = buildOperationReviewSummary({
     assetLabel: selectedAsset?.label ?? "",
     destinationLabels: [selectedDestination?.label],
     nextStatusLabel: selectedCondition?.label,
-    details: values.expectedReturnDate ? [{ label: t("expectedReturn"), value: values.expectedReturnDate }] : [],
+    details: [
+      { label: t("handoverMode"), value: handoverModeLabel },
+      { label: t("resultingStatus"), value: resultingStatusLabel },
+      ...(values.handoverMode === "temporary_loan" && values.expectedReturnDate
+        ? [{ label: t("expectedReturn"), value: values.expectedReturnDate }]
+        : []),
+    ],
     evidenceLabel: photoBefore || receiverSignatureDataUrl ? t("reviewEvidenceAttached") : t("reviewNoEvidence"),
     labels: {
       asset: t("asset"),
@@ -89,12 +121,25 @@ export function CheckoutForm({
       toast.error(t("reviewIncomplete"))
       return
     }
+    if (!values.handoverMode) {
+      toast.error(t("handoverModeRequired"))
+      return
+    }
+    if (values.handoverMode === "temporary_loan" && !values.expectedReturnDate) {
+      toast.error(t("temporaryDueDateRequired"))
+      return
+    }
+    if (values.expectedReturnDate && values.expectedReturnDate < values.checkoutDate) {
+      toast.error(t("returnBeforeCheckout"))
+      return
+    }
     setReviewOpen(true)
   }
 
   async function submitCheckout() {
     setSaving(true)
     const body = new FormData()
+    body.set("handoverMode", values.handoverMode)
     body.set("checkoutType", values.checkoutType)
     body.set("custodianId", values.checkoutType === "user" ? values.custodianId : "")
     body.set("departmentId", values.checkoutType === "department" ? values.departmentId : "")
@@ -116,7 +161,7 @@ export function CheckoutForm({
         body,
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
+      if (!response.ok) throw new Error(getCheckoutErrorMessage(payload?.code ?? payload?.error))
       toast.success(t("success"))
       const documentHref = `/${locale}/asset-management/checkouts/${payload.id}`
       router.push(returnTo ? appendReturnTo(documentHref, returnTo) : documentHref)
@@ -154,10 +199,12 @@ export function CheckoutForm({
             setValues((current) => ({
               ...current,
               checkoutType: value as CheckoutType,
+              handoverMode: value === "user" ? "" : "temporary_loan",
               custodianId: "",
               departmentId: "",
               locationId: "",
               parentAssetId: "",
+              expectedReturnDate: "",
             }))
           }}
         >
@@ -176,6 +223,55 @@ export function CheckoutForm({
           emptyLabel={tCommon("searchSelectNoResults")}
           onChange={(value) => setDestinationValue(values.checkoutType, value)}
         />
+        <div className="md:col-span-2">
+          {values.checkoutType === "user" ? (
+            <fieldset>
+              <legend className="mb-2 text-sm font-medium text-foreground">
+                {t("handoverMode")}
+                <span className="ml-1 text-danger">*</span>
+              </legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {([
+                  ["permanent_assignment", t("permanentAssignment"), t("permanentAssignmentHelp")],
+                  ["temporary_loan", t("temporaryLoan"), t("temporaryLoanHelp")],
+                ] as const).map(([mode, label, help]) => {
+                  const selected = values.handoverMode === mode
+                  return (
+                    <label
+                      key={mode}
+                      className={`flex min-h-16 cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
+                        selected ? "border-primary bg-primary/5" : "border-border bg-background hover:border-primary/60"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="handoverModeChoice"
+                        value={mode}
+                        checked={selected}
+                        required
+                        className="mt-1 h-4 w-4 accent-primary"
+                        onChange={() => setValues((current) => ({
+                          ...current,
+                          handoverMode: mode,
+                          expectedReturnDate: mode === "permanent_assignment" ? "" : current.expectedReturnDate,
+                        }))}
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-foreground">{label}</span>
+                        <span className="mt-1 block text-sm text-muted-foreground">{help}</span>
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+            </fieldset>
+          ) : (
+            <div>
+              <FormContextBanner label={t("handoverMode")} value={t("temporaryLoan")} />
+              <p className="mt-2 text-sm text-muted-foreground">{t("nonUserTemporaryHelp")}</p>
+            </div>
+          )}
+        </div>
         <Select label={t("conditionBefore")} value={values.conditionBefore} required onChange={(value) => setField("conditionBefore", value)}>
           <option value="">{t("selectCondition")}</option>
           {conditions.map((condition) => (
@@ -187,9 +283,18 @@ export function CheckoutForm({
         <Field label={t("checkoutDate")} required>
           <input type="date" value={values.checkoutDate} onChange={(event) => setField("checkoutDate", event.target.value)} required className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
         </Field>
-        <Field label={t("expectedReturn")}>
-          <input type="date" value={values.expectedReturnDate} onChange={(event) => setField("expectedReturnDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
-        </Field>
+        {values.handoverMode === "temporary_loan" ? (
+          <Field label={t("expectedReturn")} required>
+            <input
+              type="date"
+              value={values.expectedReturnDate}
+              min={values.checkoutDate}
+              onChange={(event) => setField("expectedReturnDate", event.target.value)}
+              required
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </Field>
+        ) : null}
         <div className="md:col-span-2">
           <Field label={t("remark")}>
             <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
@@ -245,6 +350,18 @@ export function CheckoutForm({
     if (type === "department") setField("departmentId", value)
     if (type === "location") setField("locationId", value)
     if (type === "asset") setField("parentAssetId", value)
+  }
+
+  function getCheckoutErrorMessage(code: unknown) {
+    switch (code) {
+      case "HANDOVER_MODE_REQUIRED": return t("handoverModeRequired")
+      case "HANDOVER_PERMANENT_USER_ONLY": return t("permanentUserOnly")
+      case "HANDOVER_PERMANENT_CUSTODIAN_REQUIRED": return t("permanentCustodianRequired")
+      case "HANDOVER_PERMANENT_DUE_DATE_NOT_ALLOWED": return t("permanentDueDateNotAllowed")
+      case "HANDOVER_TEMPORARY_DUE_DATE_REQUIRED": return t("temporaryDueDateRequired")
+      case "HANDOVER_RETURN_BEFORE_CHECKOUT": return t("returnBeforeCheckout")
+      default: return typeof code === "string" && code ? code : tCommon("error")
+    }
   }
 }
 

@@ -20,7 +20,7 @@ export const checkoutTypes = ["user", "department", "location", "asset"] as cons
 
 export const assetCheckoutSchema = z
   .object({
-    handoverMode: z.enum(assetHandoverModes),
+    handoverMode: z.enum(assetHandoverModes, { error: "HANDOVER_MODE_REQUIRED" }),
     checkoutType: z.enum(checkoutTypes),
     custodianId: optionalText,
     departmentId: optionalText,
