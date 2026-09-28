@@ -54,3 +54,18 @@ test("maintenance list passes authoritative PM classification to status actions"
   assert.match(controller, /isPreventive=\{ticket\.isPreventive\}/)
   assert.doesNotMatch(controller, /Boolean\(ticket\.maintenancePlanId\)/)
 })
+
+test("maintenance close flow remains accessible while evidence is missing", () => {
+  const list = readFileSync("src/app/[locale]/(dashboard)/maintenance/page.tsx", "utf8")
+  const detail = readFileSync("src/app/[locale]/(dashboard)/maintenance/[id]/page.tsx", "utf8")
+  const controller = readFileSync("src/components/maintenance/maintenance-ticket-actions.tsx", "utf8")
+  const dialog = readFileSync("src/components/maintenance/maintenance-ticket-close-button.tsx", "utf8")
+
+  assert.doesNotMatch(list, /data-maintenance-action="close"[^>]*disabled=/)
+  assert.match(list, /hasEvidence:\s*closeEvidenceTicketIds\.includes\(ticket\.id\)/)
+  assert.match(controller, /hasEvidence=\{ticket\.hasEvidence\}/)
+  assert.match(detail, /hasEvidence=\{attachments\.length > 0\}/)
+  assert.match(detail, /id="attachments"/)
+  assert.match(dialog, /href=\{`\/\$\{locale\}\/maintenance\/\$\{ticketId\}#attachments`\}/)
+  assert.match(dialog, /disabled=\{saving \|\| !hasEvidence\}/)
+})

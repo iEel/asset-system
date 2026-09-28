@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { useTranslations } from "next-intl"
+import Link from "next/link"
+import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { CheckCircle2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
@@ -27,7 +28,7 @@ export function MaintenanceTicketCloseButton({
   recommendedStatusId,
   open: controlledOpen,
   hideTrigger = false,
-  disabled = false,
+  hasEvidence,
   onOpenChange,
 }: {
   ticketId: string
@@ -44,10 +45,11 @@ export function MaintenanceTicketCloseButton({
   recommendedStatusId?: string | null
   open?: boolean
   hideTrigger?: boolean
-  disabled?: boolean
+  hasEvidence: boolean
   onOpenChange?: (open: boolean) => void
 }) {
   const router = useRouter()
+  const locale = useLocale()
   const t = useTranslations("maintenancePage")
   const tCommon = useTranslations("common")
   const [internalOpen, setInternalOpen] = useState(false)
@@ -75,6 +77,7 @@ export function MaintenanceTicketCloseButton({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!hasEvidence) return
     setSaving(true)
     try {
       const response = await fetch(`/api/maintenance-tickets/${ticketId}`, {
@@ -112,9 +115,7 @@ export function MaintenanceTicketCloseButton({
       {!hideTrigger ? <button
         type="button"
         onClick={() => setOpen(true)}
-        disabled={disabled}
-        title={disabled ? t("closeChecklistEvidence") : undefined}
-        className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:min-h-0"
+        className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-8 sm:min-h-0"
       >
         <CheckCircle2 className="h-3.5 w-3.5" />
         {t("closeTicket")}
@@ -131,6 +132,18 @@ export function MaintenanceTicketCloseButton({
                   <li>{t("closeChecklistInspector")}</li>
                 </ul>
               </div>
+              {!hasEvidence ? (
+                <div role="alert" className="mb-5 rounded-md border border-warning/40 bg-warning/5 p-3 text-sm text-foreground">
+                  <p>{t("closeMissingEvidence")}</p>
+                  <Link
+                    href={`/${locale}/maintenance/${ticketId}#attachments`}
+                    onClick={() => setOpen(false)}
+                    className="mt-2 inline-flex min-h-11 items-center font-medium text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9"
+                  >
+                    {t("goToEvidenceUpload")}
+                  </Link>
+                </div>
+              ) : null}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <Field label={t("returnDate")} required>
                 <input
@@ -259,7 +272,7 @@ export function MaintenanceTicketCloseButton({
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || !hasEvidence}
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0"
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}

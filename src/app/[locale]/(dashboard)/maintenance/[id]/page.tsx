@@ -12,7 +12,6 @@ import { MaintenanceTicketCancelButton } from "@/components/maintenance/maintena
 import { MaintenanceTicketPlanningButton } from "@/components/maintenance/maintenance-ticket-planning-button"
 import { MaintenanceTicketStatusButton } from "@/components/maintenance/maintenance-ticket-status-button"
 import { getMaintenanceMovementLabel, getMovementDisplayLabels } from "@/lib/movement-labels"
-import { getMaintenanceAttachmentType } from "@/lib/maintenance-attachments"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceClosed, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { MobileActionBar } from "@/components/ui/mobile-action-bar"
@@ -93,7 +92,6 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
   const purchasePrice = Number(ticket.asset.purchasePrice ?? 0)
   const repairCostRatio = purchasePrice > 0 ? totalRepairCost / purchasePrice : 0
   const shouldReviewDisposal = totalRepairCount >= 3 || repairCostRatio >= 0.5
-  const hasAfterRepairEvidence = attachments.some((attachment) => getMaintenanceAttachmentType(attachment.originalName) === "after_repair")
   const returnToHref = normalizeOperationalReturnTo(locale, "maintenance", rawSearchParams.returnTo)
   const printHref = appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}/print`, returnToHref)
   const disposalReason = `${t("disposalReasonPrefix")} ${ticket.asset.assetTag} / ${ticket.repairNo}: ${t("disposalReasonDetail", {
@@ -172,7 +170,7 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
                 expectedUpdatedAt={ticket.updatedAt}
                 isPreventive={isPreventive}
                 recommendedStatusId={recommendedStatusId}
-                disabled={!hasAfterRepairEvidence}
+                hasEvidence={attachments.length > 0}
               /> : null}
             </>
           ) : null}
@@ -237,7 +235,7 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
               <div className="mt-3 grid gap-2 text-sm md:grid-cols-2">
                 <ChecklistItem done={Boolean(ticket.rootCause)} label={t("closeChecklistRootCause")} />
                 <ChecklistItem done={Boolean(ticket.resolution)} label={t("closeChecklistResolution")} />
-                <ChecklistItem done={hasAfterRepairEvidence || attachments.length > 0} label={t("closeChecklistEvidence")} />
+                <ChecklistItem done={attachments.length > 0} label={t("closeChecklistEvidence")} />
                 <ChecklistItem done={Boolean(ticket.inspectedById)} label={t("closeChecklistInspector")} />
               </div>
             </div>
@@ -323,12 +321,14 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
             </section>
           ) : null}
 
-          <MaintenanceAttachments
-            ticketId={ticket.id}
-            attachments={attachments}
-            canEdit={canEdit}
-            canDelete={canEdit && ticket.repairStatus !== "closed"}
-          />
+          <div id="attachments" className="scroll-mt-6">
+            <MaintenanceAttachments
+              ticketId={ticket.id}
+              attachments={attachments}
+              canEdit={canEdit}
+              canDelete={canEdit && ticket.repairStatus !== "closed"}
+            />
+          </div>
         </aside>
       </div>
     </div>

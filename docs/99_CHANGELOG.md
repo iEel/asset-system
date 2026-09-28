@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-09-28
+
+| Area | Update |
+|---|---|
+| Maintenance close evidence guidance | Removed the premature disabled state from Close actions on the maintenance list and ticket detail. Operators can inspect the close checklist without evidence, see a localized missing-evidence warning, and navigate to the ticket attachment upload section; Submit remains disabled until active maintenance evidence exists. The checklist and list/detail controls now use the same active-evidence predicate as the close API. No asset/ticket data, API rules, schema, or migration changed. Focused regression tests, full `npm test` (1,260 passed, 1 skipped), TypeScript, and scoped ESLint passed; browser/deployment UAT remains pending. |
+
+---
+
 ## 2026-08-28
 
 | Area | Update |

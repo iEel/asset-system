@@ -127,6 +127,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
             quotationNo: ticket.quotationNo,
             invoiceNo: ticket.invoiceNo,
             warrantyClaim: ticket.warrantyClaim,
+            hasEvidence: closeEvidenceTicketIds.includes(ticket.id),
             recommendedStatusId: closeStatusRows.find(
               (status) => status.name === getMaintenanceOperationalTarget(ticket.asset)
             )?.id ?? null,
@@ -407,7 +408,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                           </button>
                         ) : null}
                         {["open", "completed"].includes(ticket.repairStatus) ? (
-                          <button type="button" data-maintenance-action="close" data-ticket-id={ticket.id} disabled={!closeEvidenceTicketIds.includes(ticket.id)} title={!closeEvidenceTicketIds.includes(ticket.id) ? t("closeChecklistEvidence") : undefined} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
+                          <button type="button" data-maintenance-action="close" data-ticket-id={ticket.id} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent">
                             {t("closeTicket")}
                           </button>
                         ) : null}
@@ -515,7 +516,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                               </button>
                             ) : null}
                             {canEdit && ["open", "completed"].includes(ticket.repairStatus) ? (
-                              <button type="button" data-maintenance-action="close" data-ticket-id={ticket.id} disabled={!closeEvidenceTicketIds.includes(ticket.id)} title={!closeEvidenceTicketIds.includes(ticket.id) ? t("closeChecklistEvidence") : undefined} className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
+                              <button type="button" data-maintenance-action="close" data-ticket-id={ticket.id} className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent">
                                 {t("closeTicket")}
                               </button>
                             ) : null}

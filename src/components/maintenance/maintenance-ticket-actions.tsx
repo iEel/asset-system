@@ -20,6 +20,7 @@ export type MaintenanceActionTicket = {
   invoiceNo?: string | null
   warrantyClaim: boolean
   recommendedStatusId: string | null
+  hasEvidence: boolean
 }
 
 type SelectedAction = { ticketId: string; action: "status" | "planning" | "close" } | null
@@ -89,6 +90,7 @@ export function MaintenanceTicketActions({
       expectedUpdatedAt={ticket.updatedAt}
       isPreventive={ticket.isPreventive}
       recommendedStatusId={ticket.recommendedStatusId}
+      hasEvidence={ticket.hasEvidence}
       open
       hideTrigger
       onOpenChange={(open) => { if (!open) setSelected(null) }}

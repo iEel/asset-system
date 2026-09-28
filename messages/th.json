@@ -2742,6 +2742,8 @@
     "closeChecklistRootCause": "ระบุสาเหตุของปัญหาแล้ว",
     "closeChecklistResolution": "ระบุวิธีแก้ไข/ผลการซ่อมแล้ว",
     "closeChecklistEvidence": "แนบรูปหลังซ่อมหรือเอกสารหลักฐานแล้ว",
+    "closeMissingEvidence": "ยังไม่มีหลักฐานการซ่อม จึงยังบันทึกปิดงานไม่ได้ กรุณาแนบรูปหลังซ่อมหรือเอกสารหลักฐานก่อน",
+    "goToEvidenceUpload": "ไปแนบหลักฐานในใบงาน",
     "closeChecklistInspector": "ระบุผู้ตรวจรับงานแล้ว",
     "nextStatus": "สถานะทรัพย์สินหลังซ่อม",
     "recommendedCloseStatus": "แนะนำ {status} ตามผู้ครอบครองปัจจุบัน",

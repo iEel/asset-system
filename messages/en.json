@@ -2742,6 +2742,8 @@
     "closeChecklistRootCause": "Root cause is entered",
     "closeChecklistResolution": "Resolution / repair result is entered",
     "closeChecklistEvidence": "After-repair photo or evidence is attached",
+    "closeMissingEvidence": "Repair evidence is missing. Add an after-repair photo or supporting document before closing this ticket.",
+    "goToEvidenceUpload": "Go to evidence upload",
     "closeChecklistInspector": "Inspector is selected",
     "nextStatus": "Asset Status After Repair",
     "recommendedCloseStatus": "Recommended: {status}, based on the current custodian",
