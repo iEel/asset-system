@@ -1,3 +1,5 @@
+import { buttonVariants } from "../components/ui/button-variants.ts"
+
 export const uiTones = ["neutral", "info", "success", "warning", "danger", "muted"] as const
 export const uiButtonVariants = ["primary", "secondary", "danger", "ghost"] as const
 export const uiButtonSizes = ["sm", "md"] as const
@@ -72,15 +74,20 @@ export function getFieldControlClasses() {
   return "min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0"
 }
 
+const legacyButtonVariant = {
+  primary: "default",
+  secondary: "outline",
+  danger: "destructive",
+  ghost: "ghost",
+} as const
+
+const legacyButtonSize = {
+  md: "default",
+  sm: "sm",
+} as const
+
 export function getActionButtonClasses(variant: UiButtonVariant = "secondary", size: UiButtonSize = "md") {
-  const sizeClass = size === "sm" ? "min-h-11 px-3 text-xs sm:h-8 sm:min-h-0" : "min-h-11 px-4 text-sm sm:h-10 sm:min-h-0"
-  const variantClass = {
-    primary: "bg-primary text-white hover:bg-primary-hover",
-    secondary: "border border-border bg-surface text-foreground hover:bg-accent",
-    danger: "bg-danger text-white hover:bg-danger-hover",
-    ghost: "text-foreground hover:bg-accent",
-  }[variant]
-  return `inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${sizeClass} ${variantClass}`
+  return buttonVariants({ variant: legacyButtonVariant[variant], size: legacyButtonSize[size] })
 }
 
 export function getSafeActionLinkClasses(variant: Extract<UiButtonVariant, "primary" | "secondary" | "ghost"> = "secondary") {

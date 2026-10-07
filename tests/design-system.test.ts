@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import * as designSystem from "../src/lib/design-system.ts"
+import { buttonVariants } from "../src/components/ui/button-variants.ts"
 
 import {
   getActionButtonClasses,
@@ -76,4 +77,25 @@ test("maps seeded asset status and condition values to explicit semantic tones",
   for (const [value, expectedTone] of cases) {
     assert.equal(resolveTone(value), expectedTone, value ?? "undefined")
   }
+})
+
+test("button variants keep 44px mobile touch targets and AA hover fills", () => {
+  const primary = buttonVariants({ variant: "default" })
+  assert.match(primary, /bg-primary text-primary-foreground/)
+  assert.match(primary, /hover:bg-primary-hover/)
+  assert.match(primary, /min-h-11/)
+  assert.match(primary, /sm:h-10 sm:min-h-0/)
+  assert.match(buttonVariants({ variant: "destructive" }), /bg-destructive text-destructive-foreground hover:bg-danger-hover/)
+  assert.match(buttonVariants({ variant: "warning" }), /bg-warning text-warning-foreground hover:bg-warning-hover/)
+  assert.match(buttonVariants({ variant: "outline" }), /border border-border bg-surface/)
+  assert.match(buttonVariants({ size: "sm" }), /min-h-11 px-3 text-xs sm:h-8 sm:min-h-0/)
+  assert.match(buttonVariants({ size: "icon" }), /min-h-11 min-w-11 sm:size-10 sm:min-h-0 sm:min-w-0/)
+  assert.doesNotMatch(`${primary} ${buttonVariants({ variant: "destructive" })}`, /dark:/)
+})
+
+test("legacy action button classes map onto shadcn variants", () => {
+  assert.equal(getActionButtonClasses("primary", "md"), buttonVariants({ variant: "default", size: "default" }))
+  assert.equal(getActionButtonClasses("secondary", "sm"), buttonVariants({ variant: "outline", size: "sm" }))
+  assert.equal(getActionButtonClasses("danger"), buttonVariants({ variant: "destructive", size: "default" }))
+  assert.equal(getActionButtonClasses("ghost"), buttonVariants({ variant: "ghost", size: "default" }))
 })
