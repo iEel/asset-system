@@ -510,6 +510,7 @@ function DisposalBulkApprovalDialog() {
     busy,
     error,
     triggerRef,
+    restoreTargetRef,
     setApprovalRemark,
     commit,
     closeDialog,
@@ -536,6 +537,7 @@ function DisposalBulkApprovalDialog() {
       size="xl"
       closeLabel={copy.close}
       returnFocusRef={triggerRef}
+      fallbackFocusRef={restoreTargetRef}
       onClose={closeDialog}
     >
       <form data-disposal-bulk-dialog="true" onSubmit={handleSubmit}>

@@ -21,6 +21,7 @@ export function AccessibleDialog({
   busy = false,
   initialFocusRef,
   returnFocusRef,
+  fallbackFocusRef,
   size = "md",
   closeLabel,
   onClose,
@@ -32,6 +33,7 @@ export function AccessibleDialog({
   busy?: boolean
   initialFocusRef?: RefObject<HTMLElement | null>
   returnFocusRef?: RefObject<HTMLElement | null>
+  fallbackFocusRef?: RefObject<HTMLElement | null>
   size?: AccessibleDialogSize
   closeLabel?: string
   onClose: () => void
@@ -66,8 +68,8 @@ export function AccessibleDialog({
           target.focus()
         }}
         onCloseAutoFocus={(event) => {
-          const target = returnFocusRef?.current ?? restoreFocusRef.current
-          if (!target?.isConnected) return
+          const target = [returnFocusRef?.current, restoreFocusRef.current, fallbackFocusRef?.current].find((candidate) => candidate?.isConnected)
+          if (!target) return
           event.preventDefault()
           target.focus()
         }}

@@ -760,6 +760,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
     permanentConfirmed,
     error,
     triggerRef,
+    restoreTargetRef,
     setExecutionDate,
     setExecutedById,
     setNextStatusId,
@@ -815,6 +816,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
       size="xl"
       closeLabel={previewing ? copy.cancelPreview : copy.close}
       returnFocusRef={triggerRef}
+      fallbackFocusRef={restoreTargetRef}
       onClose={closeDialog}
     >
       <form
@@ -933,7 +935,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
           ) : null}
         </div>
 
-        <footer className="flex flex-col-reverse gap-2 border-t border-border px-4 py-3 sm:flex-row sm:justify-end sm:px-6">
+        <footer className="sticky bottom-0 z-10 flex flex-col-reverse gap-2 border-t border-border bg-surface px-4 py-3 sm:flex-row sm:justify-end sm:px-6">
           {dialogState !== "committing" ? (
             <button
               type="button"

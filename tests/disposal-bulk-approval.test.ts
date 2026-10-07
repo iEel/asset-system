@@ -77,6 +77,7 @@ test("bulk approval dialog uses the shared accessible dialog", () => {
   const dialogSource = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8").replace(/\r\n/g, "\n")
   assert.match(dialogSource, /<AccessibleDialog[\s\S]*?busy=\{busy\}/)
   assert.match(dialogSource, /returnFocusRef=\{triggerRef\}/)
+  assert.match(dialogSource, /fallbackFocusRef=\{restoreTargetRef\}/)
   assert.match(dialogSource, /size="xl"/)
   assert.match(dialogSource, /data-disposal-bulk-dialog="true"/)
   // The provider wrapper keeps its own tabIndex={-1}; only the dialog must drop the hand-rolled focus surface.
