@@ -40,7 +40,7 @@
 
 ### 3.3 ผลต่อสถานะทรัพย์สิน
 
-"สถานะตามผู้ถือครอง" = `In Use` ถ้ามีผู้ถือครองที่ถูกต้อง มิฉะนั้น `Ready` (ใช้ `getMaintenanceOperationalTarget` เดิม)
+"สถานะตามผู้ถือครอง" = `In Use` ถ้ามี checkout ที่ยัง active (ส่งมอบถาวร) หรือเป็นของส่วนตัวที่มีผู้ถือครอง (`getMaintenanceOperationalTarget` เดิม) มิฉะนั้น `Ready` — ข้อแรกเพิ่มตอนเขียนแผน เพื่อให้ของที่ส่งมอบถาวรยังคืนได้หลังซ่อม
 
 | การกระทำ | เงื่อนไข | สถานะทรัพย์สินหลังบันทึก |
 |---|---|---|
@@ -87,7 +87,7 @@
 
 ช่องเดิมที่ไม่ใช้ในฟอร์มใหม่: `assignedToId`, `dueDate`, `laborCost`, `partsCost`, `quotationNo`, `warrantyClaim`, `rootCause`, `inspectedById` (คงคอลัมน์ ข้อมูลเดิมแสดงในหน้ารายละเอียดถ้ามีค่า)
 
-`repairType`: `external` เมื่อเลือกร้าน มิฉะนั้น `internal` · `reportedDate` = วันที่ในฟอร์ม · `returnDate` = วันที่ซ่อมเสร็จ
+`repairType`: `vendor` เมื่อเลือกร้าน มิฉะนั้น `internal` (ค่าเดิมในระบบ) · `reportedDate` = วันที่ในฟอร์ม · `returnDate` = วันที่ซ่อมเสร็จ
 
 ### 4.2 จุดที่บันทึกได้
 
