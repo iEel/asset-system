@@ -84,12 +84,15 @@ test("the camera locks after one read, prefers the rear camera and never exposes
   assert.match(source, /getFallbackCameraAfterEnvironmentFailure\(selection, cameras\)/)
   assert.doesNotMatch(source, /selectedCameraId|handleCameraChange|role="switch"/)
   assert.doesNotMatch(source, /t\("cameraDevice"\)|t\("cameraRear"\)|t\("continuousScan"\)|t\("fastMode"\)/)
+  assert.doesNotMatch(source, /t\("cameraStatus"\)|t\("cameraReady"\)|t\("cameraRunning"\)/)
+  assert.match(read("src/components/audit/audit-scan-workspace.tsx"), /function handleDecoded\(text: string\) \{\s*setCameraOpen\(false\)/)
 })
 
 test("the camera uses the large square target with the shared overlay", () => {
   const source = read("src/components/audit/audit-scan-camera.tsx")
   const panels = read("src/components/audit/audit-scan-panels.tsx")
   assert.match(source, /aspect-square w-full sm:aspect-\[4\/3\]/)
+  assert.doesNotMatch(source, /aspect-\[4\/3\] min-h-0/)
   assert.match(source, /<AuditQrScannerOverlay \/>/)
   assert.match(panels, /export function AuditQrScannerOverlay/)
   assert.match(panels, /aspect-square h-\[78%\] max-h-72 sm:max-h-80/)

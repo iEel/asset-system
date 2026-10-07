@@ -24,3 +24,10 @@ test("the scan page keeps its URL contract and timing labels", () => {
 test("the old 2,000-line form is gone and nothing imports it", () => {
   assert.equal(existsSync("src/components/audit/audit-scan-form.tsx"), false)
 })
+
+test("the pending list link returns to the scan page, which returns to the round", () => {
+  const source = page()
+  assert.match(source, /const scanHref = appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}\/scan`, returnToHref\)/)
+  assert.match(source, /const pendingHref = appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}\/pending`, scanHref\)/)
+  assert.match(source, /pendingHref=\{pendingHref\}/)
+})
