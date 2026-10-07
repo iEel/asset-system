@@ -1,26 +1,30 @@
 import assert from "node:assert/strict"
-import { existsSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
-test("accessible dialog defines modal semantics, escape, focus trap, and restoration", () => {
-  const path = "src/components/ui/accessible-dialog.tsx"
-  assert.equal(existsSync(path), true)
-  const source = readFileSync(path, "utf8")
-  assert.match(source, /role="dialog"/)
-  assert.match(source, /aria-modal="true"/)
-  assert.match(source, /event\.key === "Escape"/)
-  assert.match(source, /restoreFocusRef/)
-  assert.match(source, /event\.key === "Tab"/)
+const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+
+test("accessible dialog is a Radix dialog that cannot be dismissed while busy", () => {
+  const source = read("src/components/ui/accessible-dialog.tsx")
+  assert.match(source, /from "@\/components\/ui\/dialog"/)
+  assert.match(source, /if \(!nextOpen && !busy\) onClose\(\)/)
+  assert.match(source, /onEscapeKeyDown=\{\(event\) => \{\s*if \(busy\) event\.preventDefault\(\)/)
+  assert.match(source, /onInteractOutside=\{\(event\) => \{\s*if \(busy\) event\.preventDefault\(\)/)
+  assert.match(source, /closeDisabled=\{busy\}/)
+  assert.doesNotMatch(source, /document\.addEventListener|role="dialog"|fixed inset-0|event\.key === "Tab"/)
 })
 
-test("accessible dialog keeps focus stable while open props change", () => {
-  const source = readFileSync("src/components/ui/accessible-dialog.tsx", "utf8")
+test("accessible dialog keeps caller focus targets", () => {
+  const source = read("src/components/ui/accessible-dialog.tsx")
+  assert.match(source, /onOpenAutoFocus=\{\(event\) => \{[\s\S]*initialFocusRef\?\.current[\s\S]*event\.preventDefault\(\)/)
+  assert.match(source, /onCloseAutoFocus=\{\(event\) => \{[\s\S]*returnFocusRef\?\.current[\s\S]*isConnected[\s\S]*event\.preventDefault\(\)/)
+})
 
-  assert.match(source, /useEffectEvent/)
-  assert.match(source, /const closeOnEscape = useEffectEvent\(\(\) => \{\s+if \(busy\) return false\s+onClose\(\)\s+return true\s+\}\)/)
-  assert.match(source, /const resolveInitialFocus = useEffectEvent\(\(\) =>\s+initialFocusRef\?\.current \?\? panelRef\.current\?\.querySelector/)
-  assert.match(source, /event\.key === "Escape" && closeOnEscape\(\)/)
-  assert.match(source, /const target = resolveInitialFocus\(\)/)
-  assert.match(source, /\}, \[open\]\)/)
-  assert.doesNotMatch(source, /\[busy, initialFocusRef, onClose, open\]/)
+test("dialog close button is labelled, disable-able and touch sized", () => {
+  const source = read("src/components/ui/dialog.tsx")
+  assert.match(source, /closeLabel = "Close"/)
+  assert.match(source, /aria-label=\{closeLabel\}/)
+  assert.match(source, /disabled=\{closeDisabled\}/)
+  assert.match(source, /min-h-11 min-w-11/)
+  assert.doesNotMatch(source, /dark:/)
 })

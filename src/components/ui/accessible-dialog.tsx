@@ -1,15 +1,18 @@
 "use client"
 
-import { useEffect, useEffectEvent, useId, useRef, type ReactNode, type RefObject } from "react"
+import type { ReactNode, RefObject } from "react"
+import { useTranslations } from "next-intl"
+import { cn } from "@/lib/utils"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
-const focusableSelector = [
-  "button:not([disabled])",
-  "a[href]",
-  "input:not([disabled])",
-  "select:not([disabled])",
-  "textarea:not([disabled])",
-  "[tabindex]:not([tabindex='-1'])",
-].join(",")
+export type AccessibleDialogSize = "sm" | "md" | "lg" | "xl"
+
+const sizeClasses: Record<AccessibleDialogSize, string> = {
+  sm: "sm:max-w-lg",
+  md: "sm:max-w-2xl",
+  lg: "sm:max-w-4xl",
+  xl: "sm:max-w-5xl",
+}
 
 export function AccessibleDialog({
   open,
@@ -17,6 +20,9 @@ export function AccessibleDialog({
   description,
   busy = false,
   initialFocusRef,
+  returnFocusRef,
+  size = "md",
+  closeLabel,
   onClose,
   children,
 }: {
@@ -25,80 +31,57 @@ export function AccessibleDialog({
   description?: string
   busy?: boolean
   initialFocusRef?: RefObject<HTMLElement | null>
+  returnFocusRef?: RefObject<HTMLElement | null>
+  size?: AccessibleDialogSize
+  closeLabel?: string
   onClose: () => void
   children: ReactNode
 }) {
-  const titleId = useId()
-  const descriptionId = useId()
-  const panelRef = useRef<HTMLElement | null>(null)
-  const restoreFocusRef = useRef<HTMLElement | null>(null)
-  const closeOnEscape = useEffectEvent(() => {
-    if (busy) return false
-    onClose()
-    return true
-  })
-  const resolveInitialFocus = useEffectEvent(() =>
-    initialFocusRef?.current ?? panelRef.current?.querySelector<HTMLElement>(focusableSelector)
-  )
+  const tCommon = useTranslations("common")
 
-  useEffect(() => {
-    if (!open) return
-    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    const frame = window.requestAnimationFrame(() => {
-      const target = resolveInitialFocus()
-      target?.focus()
-    })
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && closeOnEscape()) {
-        event.preventDefault()
-        return
-      }
-      if (event.key === "Tab" && panelRef.current) {
-        const focusable = Array.from(panelRef.current.querySelectorAll<HTMLElement>(focusableSelector))
-        if (focusable.length === 0) return
-        const first = focusable[0]
-        const last = focusable[focusable.length - 1]
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault()
-          last.focus()
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault()
-          first.focus()
-        }
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown)
-    return () => {
-      window.cancelAnimationFrame(frame)
-      document.removeEventListener("keydown", handleKeyDown)
-      restoreFocusRef.current?.focus()
-    }
-  }, [open])
-
-  if (!open) return null
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !busy) onClose()
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && !busy) onClose()
       }}
     >
-      <section
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={description ? descriptionId : undefined}
-        className="max-h-[calc(100vh-1.5rem)] w-full max-w-2xl overflow-hidden rounded-lg bg-surface shadow-lg"
+      <DialogContent
+        closeLabel={closeLabel ?? tCommon("close")}
+        closeDisabled={busy}
+        aria-busy={busy || undefined}
+        {...(description ? {} : { "aria-describedby": undefined })}
+        onEscapeKeyDown={(event) => {
+          if (busy) event.preventDefault()
+        }}
+        onInteractOutside={(event) => {
+          if (busy) event.preventDefault()
+        }}
+        onOpenAutoFocus={(event) => {
+          const target = initialFocusRef?.current
+          if (!target) return
+          event.preventDefault()
+          target.focus()
+        }}
+        onCloseAutoFocus={(event) => {
+          const target = returnFocusRef?.current
+          if (!target?.isConnected) return
+          event.preventDefault()
+          target.focus()
+        }}
+        className={cn(
+          "top-auto bottom-3 flex max-h-[92dvh] w-[calc(100%-1.5rem)] max-w-none translate-y-0 flex-col gap-0 overflow-hidden rounded-lg border-border bg-surface p-0 shadow-xl sm:top-[50%] sm:bottom-auto sm:translate-y-[-50%]",
+          sizeClasses[size],
+        )}
       >
-        <div className="border-b border-border px-5 py-4">
-          <h2 id={titleId} className="text-base font-semibold text-foreground">{title}</h2>
-          {description ? <p id={descriptionId} className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
-        </div>
-        {children}
-      </section>
-    </div>
+        <DialogHeader className="shrink-0 border-b border-border px-5 py-4 pr-16 text-left">
+          <DialogTitle className="text-base font-semibold text-foreground">{title}</DialogTitle>
+          {description ? (
+            <DialogDescription className="text-sm text-muted-foreground">{description}</DialogDescription>
+          ) : null}
+        </DialogHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+      </DialogContent>
+    </Dialog>
   )
 }

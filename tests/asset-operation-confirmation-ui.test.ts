@@ -26,9 +26,8 @@ test("operation review dialog is focus-managed and mobile-safe", () => {
   const dialogPath = "src/components/ui/operation-review-dialog.tsx"
   assert.ok(existsSync(dialogPath))
   const source = readFileSync(dialogPath, "utf8")
-
-  assert.match(source, /role="dialog"/)
-  assert.match(source, /aria-modal="true"/)
-  assert.match(source, /restoreFocusRef/)
-  assert.match(source, /min-h-11/)
+  assert.match(source, /<AccessibleDialog/)
+  assert.match(source, /initialFocusRef=\{confirmButtonRef\}/)
+  assert.match(source, /<Button/)
+  assert.doesNotMatch(source, /onKeyDown=|restoreFocusRef|role="dialog"/)
 })
