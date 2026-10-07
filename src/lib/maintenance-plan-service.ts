@@ -44,7 +44,6 @@ export async function mutateMaintenancePlan(
     const currentState = normalizeMaintenancePlanState(current.planState, current.isActive)
     const nextState = getMaintenancePlanNextState(currentState, input.action)
 
-    const assignedToId = input.action === "update" ? input.assignedToId : current.assignedToId
     const vendorId = input.action === "update" ? input.vendorId : current.vendorId
     if (input.action === "update" || input.action === "resume") {
       const asset = await tx.asset.findFirst({
@@ -52,13 +51,6 @@ export async function mutateMaintenancePlan(
         select: { id: true },
       })
       if (!asset) throw new Error("Maintenance plan asset not found or inactive")
-      if (assignedToId) {
-        const employee = await tx.employee.findFirst({
-          where: { id: assignedToId, isActive: true },
-          select: { id: true },
-        })
-        if (!employee) throw new Error("PM assignee not found or inactive")
-      }
       if (vendorId) {
         const vendor = await tx.supplier.findFirst({
           where: { id: vendorId, isActive: true },
@@ -76,7 +68,6 @@ export async function mutateMaintenancePlan(
             frequency: input.frequency,
             intervalDays: getMaintenancePlanIntervalDays(input.frequency, input.intervalDays),
             nextDueDate: input.nextDueDate,
-            assignedToId: input.assignedToId,
             vendorId: input.vendorId,
             notes: input.notes,
             updatedBy: userId,

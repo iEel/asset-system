@@ -2881,7 +2881,8 @@
     "disposalReviewCount": "Repaired {count} times",
     "disposalReviewCost": "Total repair cost {cost}",
     "disposalReviewRatio": "{percent}% of the purchase price",
-    "openDisposalRequest": "Request disposal"
+    "openDisposalRequest": "Request disposal",
+    "pmRecordDone": "Record as done"
   },
   "disposalPage": {
     "title": "Disposal",

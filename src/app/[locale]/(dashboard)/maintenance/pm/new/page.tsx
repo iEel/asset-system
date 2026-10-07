@@ -3,12 +3,11 @@ import { getTranslations } from "next-intl/server"
 import { MaintenancePlanForm } from "@/components/maintenance/maintenance-plan-form"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { prisma } from "@/lib/db"
-import { normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { requirePagePermission } from "@/lib/page-auth"
 
 type Props = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ assetId?: string; returnTo?: string | string[] }>
+  searchParams: Promise<{ assetId?: string }>
 }
 
 export default async function NewMaintenancePlanPage({ params, searchParams }: Props) {
@@ -17,7 +16,7 @@ export default async function NewMaintenancePlanPage({ params, searchParams }: P
   await requirePagePermission(locale, "maintenance", "create")
   const t = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
-  const returnTo = normalizeOperationalReturnTo(locale, "maintenance", query.returnTo)
+  const returnTo = `/${locale}/maintenance/pm`
   const asset = query.assetId
     ? await prisma.asset.findFirst({
         where: { id: query.assetId, isActive: true },
@@ -30,7 +29,7 @@ export default async function NewMaintenancePlanPage({ params, searchParams }: P
 
   return (
     <div className="space-y-5">
-      <Breadcrumbs items={[{ label: t("title"), href: returnTo }, { label: t("pmCreateTitle") }]} />
+      <Breadcrumbs items={[{ label: t("pmTitle"), href: returnTo }, { label: t("pmCreateTitle") }]} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("pmCreateTitle")}</h1>

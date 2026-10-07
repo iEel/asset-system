@@ -16,6 +16,7 @@ type FakeState = {
   assetStatusId: string
   movements: Array<Record<string, unknown>>
   logs: Array<Record<string, unknown>>
+  endedPlans: Array<Record<string, unknown>>
 }
 
 const baseCommand: DisposalExecutionCommand = {
@@ -112,6 +113,18 @@ test("rolls back request, asset, movement, and metadata when audit persistence f
   assert.equal(state.assetStatusId, "status-pending")
   assert.equal(state.movements.length, 0)
   assert.equal(state.logs.length, 0)
+})
+
+test("executing a disposal ends the asset's PM plans in the same transaction", async () => {
+  const state = makeState()
+  const database = makeDatabase(state)
+
+  await executeDisposalRequest(baseCommand, { database, batchSchemaReadiness: "absent" })
+
+  assert.deepEqual(state.endedPlans, [{
+    where: { assetId: "asset-1", planState: { not: "ended" } },
+    data: { planState: "ended", isActive: false, updatedBy: "user-executor" },
+  }])
 })
 
 test("fails closed without opening a transaction when batch schema readiness is unknown", async () => {
@@ -257,6 +270,7 @@ function makeState(overrides: Partial<FakeState> = {}): FakeState {
     assetStatusId: "status-pending",
     movements: [],
     logs: [],
+    endedPlans: [],
     ...overrides,
   }
 }
@@ -338,6 +352,12 @@ function makeTransaction(state: FakeState, options: { forceRequestConflict?: boo
       async create({ data }: { data: Record<string, unknown> }) {
         state.movements.push(data)
         return data
+      },
+    },
+    maintenancePlan: {
+      async updateMany(args: Record<string, unknown>) {
+        state.endedPlans.push(args)
+        return { count: 1 }
       },
     },
     disposalBatch: {

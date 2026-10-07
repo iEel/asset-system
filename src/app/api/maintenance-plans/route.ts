@@ -9,7 +9,6 @@ import { parseMaintenanceListParams } from "@/lib/maintenance-query"
 
 const planInclude = {
   asset: { select: { assetTag: true, name: true } },
-  assignedTo: { select: { code: true, fullNameTh: true } },
   vendor: { select: { code: true, name: true } },
 } as const
 
@@ -47,13 +46,6 @@ export async function POST(request: NextRequest) {
       select: { id: true },
     })
     if (!asset) return NextResponse.json({ error: "Asset not found" }, { status: 404 })
-    if (input.assignedToId) {
-      const assignee = await prisma.employee.findFirst({
-        where: { id: input.assignedToId, isActive: true },
-        select: { id: true },
-      })
-      if (!assignee) return NextResponse.json({ error: "PM assignee not found or inactive" }, { status: 400 })
-    }
     if (input.vendorId) {
       const vendor = await prisma.supplier.findFirst({
         where: { id: input.vendorId, isActive: true },
@@ -72,7 +64,6 @@ export async function POST(request: NextRequest) {
         frequency: input.frequency,
         intervalDays,
         nextDueDate: input.nextDueDate,
-        assignedToId: input.assignedToId,
         vendorId: input.vendorId,
         notes: input.notes,
         createdBy: user.id,

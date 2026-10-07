@@ -23,7 +23,7 @@ test("due generation uses a larger bounded candidate window", () => {
 test("PM plans persist distinct active, paused, and ended states", () => {
   const schema = readFileSync("prisma/schema.prisma", "utf8")
   const migration = readFileSync("prisma/manual-migrations/2026-07-14-add-maintenance-plan-state.sql", "utf8")
-  const page = readFileSync("src/app/[locale]/(dashboard)/maintenance/page.tsx", "utf8")
+  const page = readFileSync("src/app/[locale]/(dashboard)/maintenance/pm/page.tsx", "utf8")
   assert.match(schema, /planState\s+String\s+@default\("active"\)/)
   assert.match(migration, /planState/)
   assert.match(page, /MaintenancePlanStateActions/)

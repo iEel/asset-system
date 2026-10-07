@@ -25,7 +25,6 @@ export function MaintenancePlanForm({
     frequency: string
     intervalDays: string
     nextDueDate: string
-    assignedToId: string
     vendorId: string
     notes: string
   }>
@@ -40,7 +39,6 @@ export function MaintenancePlanForm({
     frequency: initialValues?.frequency ?? "monthly",
     intervalDays: initialValues?.intervalDays ?? "30",
     nextDueDate: initialValues?.nextDueDate ?? toLocalDateInputValue(),
-    assignedToId: initialValues?.assignedToId ?? "",
     vendorId: initialValues?.vendorId ?? "",
     notes: initialValues?.notes ?? "",
   })
@@ -62,7 +60,6 @@ export function MaintenancePlanForm({
           frequency: values.frequency,
           intervalDays: values.frequency === "custom" ? values.intervalDays : null,
           nextDueDate: values.nextDueDate,
-          assignedToId: values.assignedToId || null,
           vendorId: values.vendorId || null,
           notes: values.notes || null,
         }),
@@ -70,7 +67,7 @@ export function MaintenancePlanForm({
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(getMaintenanceErrorMessage(payload?.code, t, tCommon("error")))
       toast.success(t("pmCreateSuccess"))
-      router.push(`/${locale}/maintenance?view=pm`)
+      router.push(`/${locale}/maintenance/pm`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))
     } finally {
@@ -130,7 +127,6 @@ export function MaintenancePlanForm({
             className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </Field>
-        <MaintenanceOptionSelect type="employee" label={t("pmInternalResponsible")} value={values.assignedToId} placeholder={t("unassigned")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={t("loading")} onChange={(value) => setField("assignedToId", value)} />
         <MaintenanceOptionSelect type="supplier" label={t("pmExternalProvider")} value={values.vendorId} placeholder={t("pmNoExternalProvider")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={t("loading")} onChange={(value) => setField("vendorId", value)} />
         <div className="md:col-span-2 xl:col-span-3">
           <Field label={t("pmNotes")}>

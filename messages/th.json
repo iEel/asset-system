@@ -2881,7 +2881,8 @@
     "disposalReviewCount": "ซ่อมแล้ว {count} ครั้ง",
     "disposalReviewCost": "ค่าซ่อมรวม {cost}",
     "disposalReviewRatio": "คิดเป็น {percent}% ของราคาซื้อ",
-    "openDisposalRequest": "ขอจำหน่าย"
+    "openDisposalRequest": "ขอจำหน่าย",
+    "pmRecordDone": "บันทึกว่าทำแล้ว"
   },
   "disposalPage": {
     "title": "ตัดจำหน่าย",

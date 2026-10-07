@@ -54,7 +54,6 @@ export const maintenancePlanSchema = z.object({
   frequency: z.enum(maintenancePlanFrequencies),
   intervalDays: optionalIntervalDays,
   nextDueDate: z.coerce.date(),
-  assignedToId: optionalText,
   vendorId: optionalText,
   notes: optionalText,
 })
@@ -67,7 +66,6 @@ const maintenancePlanUpdateSchema = z.object({
   frequency: z.enum(maintenancePlanFrequencies),
   intervalDays: optionalIntervalDays,
   nextDueDate: z.coerce.date(),
-  assignedToId: optionalText,
   vendorId: optionalText,
   notes: optionalText,
 })

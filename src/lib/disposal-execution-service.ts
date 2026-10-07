@@ -238,6 +238,12 @@ export async function executeDisposalRequest(
         throw new DisposalExecutionServiceError("DISPOSAL_CONCURRENT_UPDATE")
       }
 
+      // A disposed or retired asset needs no more PM reminders.
+      await transaction.maintenancePlan.updateMany({
+        where: { assetId: candidate.assetId, planState: { not: "ended" } },
+        data: { planState: "ended", isActive: false, updatedBy: command.actor.userId },
+      })
+
       await transaction.assetMovement.create({
         data: {
           assetId: candidate.assetId,

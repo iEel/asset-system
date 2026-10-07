@@ -4,22 +4,19 @@ import { getTranslations } from "next-intl/server"
 import { MaintenancePlanForm } from "@/components/maintenance/maintenance-plan-form"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { prisma } from "@/lib/db"
-import { normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { requirePagePermission } from "@/lib/page-auth"
 import { toLocalDateInputValue } from "@/lib/local-date"
 
 type Props = {
   params: Promise<{ locale: string; id: string }>
-  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function EditMaintenancePlanPage({ params, searchParams }: Props) {
+export default async function EditMaintenancePlanPage({ params }: Props) {
   const { locale, id } = await params
-  const query = await searchParams
   await requirePagePermission(locale, "maintenance", "edit")
   const t = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
-  const returnTo = normalizeOperationalReturnTo(locale, "maintenance", query.returnTo)
+  const returnTo = `/${locale}/maintenance/pm`
   const plan = await prisma.maintenancePlan.findFirst({
     where: { id, planState: { not: "ended" } },
     include: { asset: { select: { id: true, assetTag: true, name: true, status: { select: { nameTh: true } } } } },
@@ -28,7 +25,7 @@ export default async function EditMaintenancePlanPage({ params, searchParams }: 
 
   return (
     <div className="space-y-5">
-      <Breadcrumbs items={[{ label: t("title"), href: returnTo }, { label: plan.planNo }]} />
+      <Breadcrumbs items={[{ label: t("pmTitle"), href: returnTo }, { label: plan.planNo }]} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{plan.planNo}</h1>
@@ -47,7 +44,6 @@ export default async function EditMaintenancePlanPage({ params, searchParams }: 
           frequency: plan.frequency,
           intervalDays: String(plan.intervalDays),
           nextDueDate: toLocalDateInputValue(plan.nextDueDate),
-          assignedToId: plan.assignedToId ?? "",
           vendorId: plan.vendorId ?? "",
           notes: plan.notes ?? "",
         }}
