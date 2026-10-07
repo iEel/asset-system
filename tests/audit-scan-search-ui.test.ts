@@ -8,7 +8,8 @@ const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${lo
 test("the search field sticks to the top on phones, avoids iOS zoom and holds the camera button", () => {
   const source = read("src/components/audit/audit-scan-search.tsx")
   assert.match(source, /<form[\s\S]*?role="search"/)
-  assert.match(source, /sticky top-0[^"]*md:static/)
+  assert.match(source, /sticky top-0/)
+  assert.doesNotMatch(source, /md:static/)
   assert.match(source, /text-base/)
   assert.match(source, /inputMode="search"/)
   assert.match(source, /enterKeyHint="search"/)
@@ -29,6 +30,12 @@ test("results highlight the match, warn about another room, and fall back to the
   assert.match(source, /<mark/)
   assert.match(source, /room\.locationId && match\.item\.expectedLocationId !== room\.locationId/)
   assert.match(source, /matches\.length === 0 \? lookup/)
+})
+
+test("results announce only the count through one quiet live region", () => {
+  const source = read("src/components/audit/audit-scan-search.tsx")
+  assert.doesNotMatch(source, /<section[^>]*aria-live/)
+  assert.match(source, /<p role="status" className="sr-only">\{matches\.length > 0 \? t\("searchResultCount", \{ count: matches\.length \}\) : t\("searchNoResult"\)\}<\/p>/)
 })
 
 test("the lookup card never says not-found for offline or server errors", () => {

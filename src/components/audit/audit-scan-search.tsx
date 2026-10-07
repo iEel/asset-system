@@ -44,7 +44,7 @@ export function AuditScanSearchField({
         event.preventDefault()
         onSubmit()
       }}
-      className="sticky top-0 z-20 -mx-4 bg-background px-4 py-2 sm:-mx-6 sm:px-6 md:static md:mx-0 md:px-0"
+      className="sticky top-0 z-20 -mx-4 bg-background px-4 py-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0"
     >
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
@@ -140,7 +140,8 @@ export function AuditScanSearchResults({
   }
 
   return (
-    <section data-audit-scan-results aria-live="polite">
+    <section data-audit-scan-results>
+      <p role="status" className="sr-only">{matches.length > 0 ? t("searchResultCount", { count: matches.length }) : t("searchNoResult")}</p>
       {matches.length === 0 ? lookup : (
         <>
           <p className="px-1 pb-1 text-xs text-muted-foreground">{t("searchResultCount", { count: matches.length })}</p>
