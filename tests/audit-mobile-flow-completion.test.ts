@@ -2,20 +2,22 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-test("audit component missing uses in-app dialog instead of browser prompt", () => {
-  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+test("audit component missing uses the shared in-app dialog instead of a browser prompt", () => {
+  const dialog = readFileSync("src/components/audit/audit-scan-component-missing-dialog.tsx", "utf8")
+  const workspace = readFileSync("src/components/audit/audit-scan-workspace.tsx", "utf8")
 
-  assert.doesNotMatch(form, /window\.prompt/)
-  assert.match(form, /const \[componentMissingDraft, setComponentMissingDraft\] = useState<AuditScanComponent \| null>\(null\)/)
-  assert.match(form, /const \[componentMissingRemark, setComponentMissingRemark\] = useState\(""\)/)
-  assert.match(form, /const \[componentMissingEvidenceFile, setComponentMissingEvidenceFile\] = useState<File \| null>\(null\)/)
-  assert.match(form, /function openComponentMissingDialog\(component: AuditScanComponent\)/)
-  assert.match(form, /async function submitComponentMissing\(event: FormEvent<HTMLFormElement>\)/)
-  assert.match(form, /const body = new FormData\(\)/)
-  assert.match(form, /body\.append\("remark", componentMissingRemark\.trim\(\) \|\| t\("componentMissingDefaultRemark"/)
-  assert.match(form, /if \(componentMissingEvidenceFile\) body\.append\("evidence", componentMissingEvidenceFile\)/)
-  assert.match(form, /<AccessibleDialog[\s\S]*?open=\{componentMissingDraft !== null\}/)
-  assert.match(form, /FileDropzone/)
+  for (const source of [dialog, workspace]) assert.doesNotMatch(source, /window\.prompt/)
+  assert.match(dialog, /<AccessibleDialog/)
+  assert.match(dialog, /<FileDropzone/)
+  assert.match(dialog, /const \[remark, setRemark\] = useState\(""\)/)
+  assert.match(dialog, /const \[evidence, setEvidence\] = useState<File \| null>\(null\)/)
+  assert.match(dialog, /onSubmit\(remark\.trim\(\) \|\| t\("componentMissingDefaultRemark", \{ assetTag: parentAssetTag \}\), evidence\)/)
+  assert.match(workspace, /const \[missingComponent, setMissingComponent\] = useState<AuditScanComponent \| null>\(null\)/)
+  assert.match(workspace, /async function submitComponentMissing\(remark: string, evidence: File \| null\)/)
+  assert.match(workspace, /const body = new FormData\(\)/)
+  assert.match(workspace, /body\.append\("remark", remark\)/)
+  assert.match(workspace, /if \(evidence\) body\.append\("evidence", evidence\)/)
+  assert.match(workspace, /missingComponent && target\?\.kind === "item" \? \(\s*<AuditScanComponentMissingDialog/)
 })
 
 test("audit component missing dialog copy is translated", () => {

@@ -2,58 +2,56 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-test("audit scan page passes component relationships to the client form", () => {
-  const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/scan/page.tsx", "utf8")
+const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 
-  assert.match(page, /parentComponents/)
-  assert.match(page, /installedInLinks/)
-  assert.match(page, /buildAuditScanComponentRows/)
-  assert.match(page, /components:/)
-  assert.match(page, /installedIn:/)
+test("the scan page no longer preloads component relationships; the workspace loads them per asset", () => {
+  const page = read("src/app/[locale]/(dashboard)/audit/rounds/[id]/scan/page.tsx")
+  const workspace = read("src/components/audit/audit-scan-workspace.tsx")
+
+  assert.doesNotMatch(page, /parentComponents|installedInLinks|buildAuditScanComponentRows/)
+  assert.match(workspace, /const loadComponents = useCallback\(async \(assetId: string\) =>/)
+  assert.match(workspace, /fetch\(`\/api\/audit-rounds\/\$\{roundId\}\/scan-lookup`/)
+  assert.match(workspace, /components: normalizeAuditLookupComponents\(payload\.asset\.components\)/)
+  assert.match(workspace, /installedIn: normalizeAuditLookupInstalledIn\(payload\.asset\.installedIn\)/)
+  assert.match(workspace, /void loadComponents\(item\.assetId\)/)
 })
 
-test("audit scan form renders installed component panel and confirmation actions", () => {
-  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
-  const panels = readFileSync("src/components/audit/audit-scan-panels.tsx", "utf8")
-  const types = readFileSync("src/components/audit/audit-scan-types.ts", "utf8")
+test("the check form renders the installed component panel with its confirmation actions wired", () => {
+  const form = read("src/components/audit/audit-scan-check-form.tsx")
+  const workspace = read("src/components/audit/audit-scan-workspace.tsx")
+  const panels = read("src/components/audit/audit-scan-panels.tsx")
+  const types = read("src/components/audit/audit-scan-types.ts")
 
   assert.match(types, /export type AuditScanComponent/)
   assert.match(panels, /export function AuditComponentPanel/)
-  assert.match(form, /confirmComponentWithParent/)
-  assert.match(form, /openComponentMissingDialog/)
-  assert.match(form, /submitComponentMissing/)
-  assert.doesNotMatch(form, /window\.prompt/)
-  assert.match(form, /confirmedWithParentAssetId/)
-  assert.match(form, /componentConfirmationReason/)
-  assert.match(form, /mark-not-found/)
   assert.match(panels, /componentStatusConfirmedWithParent/)
+  assert.match(form, /<AuditComponentPanel/)
+  assert.match(form, /onScanComponent=\{onScanComponent\}/)
+  assert.match(form, /onConfirmWithParent=\{\(component\) => onConfirmComponent\(component, \{ values, remark \}\)\}/)
+  assert.match(form, /onMarkMissing=\{onMarkComponentMissing\}/)
+  assert.match(workspace, /onConfirmComponent=\{\(component, context\) => void confirmComponent\(component, context\)\}/)
+  assert.match(workspace, /onScanComponent=\{scanComponent\}/)
+  assert.match(workspace, /setMissingComponent\(component\)/)
+  assert.match(workspace, /submitComponentMissing/)
+  assert.doesNotMatch(form, /window\.prompt/)
+  assert.doesNotMatch(workspace, /window\.prompt/)
+  assert.match(workspace, /confirmedWithParentAssetId/)
+  assert.match(workspace, /componentConfirmationReason/)
+  assert.match(workspace, /mark-not-found/)
 })
 
-test("audit scan form preserves and renders component context for out-of-scope assets", () => {
-  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
-  const helpers = readFileSync("src/components/audit/audit-scan-helpers.ts", "utf8")
-  const types = readFileSync("src/components/audit/audit-scan-types.ts", "utf8")
+test("out-of-scope assets keep their component context from the lookup", () => {
+  const workspace = read("src/components/audit/audit-scan-workspace.tsx")
+  const form = read("src/components/audit/audit-scan-check-form.tsx")
+  const types = read("src/components/audit/audit-scan-types.ts")
 
   assert.match(types, /export type AuditLookupComponent/)
   assert.match(types, /components:\s*AuditLookupComponent\[\]/)
   assert.match(types, /installedIn:\s*AuditLookupInstalledInParent\[\]/)
-  assert.match(helpers, /export function normalizeOutOfScopeAuditAsset/)
-  assert.match(helpers, /components:\s*normalizeAuditLookupComponents\(asset\.components/)
-  assert.match(helpers, /installedIn:\s*normalizeAuditLookupInstalledIn\(asset\.installedIn/)
-  assert.match(form, /outOfScopeAsset\.installedIn\.length > 0/)
-  assert.match(form, /outOfScopeAsset\.components\.length > 0/)
-  assert.match(form, /components=\{outOfScopeAsset\.components\}/)
-})
-
-test("audit scan renders component work in the supporting region", () => {
-  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
-  const supportingRegion = form.indexOf("data-audit-scan-supporting")
-  const selectedComponents = form.indexOf("components={selectedItem.components}", supportingRegion)
-  const outOfScopeComponents = form.indexOf("outOfScopeAsset.components.length > 0", supportingRegion)
-
-  assert.ok(supportingRegion > -1)
-  assert.ok(selectedComponents > supportingRegion)
-  assert.ok(outOfScopeComponents > supportingRegion)
+  assert.match(workspace, /function openOutOfScope\(asset: AuditLookupAsset\)[\s\S]*?components: normalizeAuditLookupComponents\(asset\.components\), installedIn: normalizeAuditLookupInstalledIn\(asset\.installedIn\)/)
+  assert.match(form, /components\.installedIn\.length > 0/)
+  assert.match(form, /components\.components\.length > 0/)
+  assert.match(form, /components=\{components\.components\}/)
 })
 
 test("audit scan component UI copy is translated", () => {

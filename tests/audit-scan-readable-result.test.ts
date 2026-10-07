@@ -2,32 +2,25 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-test("audit QR scan keeps raw QR value separate from readable scan input", () => {
-  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
-  const helpers = readFileSync("src/components/audit/audit-scan-helpers.ts", "utf8")
+const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 
-  assert.match(form, /setLastDecodedText\(decodedText\)/)
-  assert.match(form, /setScanText\(getReadableAuditScanValue\(matchedItem\)\)/)
-  assert.match(helpers, /export function getReadableAuditScanValue\(item: AuditScanItem\)/)
-  assert.match(helpers, /return assetTag \|\| item\.label/)
+test("the camera hands the decoded text to the workspace, which matches it against the round", () => {
+  const camera = read("src/components/audit/audit-scan-camera.tsx")
+  const workspace = read("src/components/audit/audit-scan-workspace.tsx")
+
+  assert.match(camera, /onScanSuccess: \(decodedText\) => onDecodedRef\.current\(decodedText\.trim\(\)\)/)
+  assert.match(workspace, /<AuditScanCamera onDecoded=\{handleDecoded\}/)
+  assert.match(workspace, /extractAssetLookupCandidatesFromScanValue\(text\)/)
 })
 
-test("audit QR scan uses native-resolution asset QR decoder and locks after a read", () => {
-  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+test("audit QR scan uses the native-resolution decoder and locks after a read", () => {
+  const camera = read("src/components/audit/audit-scan-camera.tsx")
 
-  assert.match(form, /startNativeAssetQrScanner/)
-  assert.match(form, /readerId: "audit-qr-reader"/)
-  assert.match(form, /stopAfterSuccess: true/)
-  assert.doesNotMatch(form, /new Html5Qrcode\("audit-qr-reader"\)/)
-  assert.match(form, /AuditQrScannerOverlay/)
-})
-
-test("audit scan readable result copy is translated", () => {
-  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
-  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
-
-  assert.equal(typeof th.auditScan.scanInputHelp, "string")
-  assert.equal(typeof en.auditScan.scanInputHelp, "string")
-  assert.match(th.auditScan.lastDecoded, /QR/)
-  assert.match(en.auditScan.lastDecoded, /QR/)
+  assert.match(camera, /startNativeAssetQrScanner/)
+  assert.match(camera, /readerId: "audit-qr-reader"/)
+  assert.match(camera, /stopAfterSuccess: true/)
+  assert.match(camera, /AuditQrScannerOverlay/)
+  for (const name of ["audit-scan-camera.tsx", "audit-scan-workspace.tsx", "audit-scan-search.tsx"]) {
+    assert.doesNotMatch(read(`src/components/audit/${name}`), /new Html5Qrcode\("audit-qr-reader"\)/, name)
+  }
 })

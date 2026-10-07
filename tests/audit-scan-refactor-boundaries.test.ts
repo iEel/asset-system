@@ -2,48 +2,9 @@ import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
 import test from "node:test"
 
-const item = {
-  id: "item-1",
-  assetId: "asset-1",
-  assetTag: "AST-001",
-  label: "AST-001 - Notebook",
-  auditStatus: "pending",
-  auditResult: null,
-  expectedDepartmentId: "dep-1",
-  expectedLocationId: "loc-1",
-  expectedCustodianId: "emp-1",
-  expectedConditionId: "condition-1",
-  actualDepartmentId: null,
-  actualLocationId: null,
-  actualCustodianId: null,
-  actualConditionId: null,
-  ownershipType: "assigned",
-  photoChecklist: [],
-  components: [],
-  installedIn: [],
-}
+const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 
-test("audit scan extracted helpers preserve current value behavior", async () => {
-  const helpers = await import("../src/components/audit/audit-scan-helpers.ts").catch(() => null)
-  const types = await import("../src/components/audit/audit-scan-types.ts").catch(() => null)
-  assert.ok(helpers, "audit-scan-helpers.ts must be importable")
-  assert.ok(types, "audit-scan-types.ts must be importable")
-
-  assert.equal(types.MAX_RECENT_AUDIT_SCANS, 8)
-  assert.equal(helpers.getReadableAuditScanValue(item), "AST-001")
-  assert.deepEqual(helpers.getEditableAuditValues(item), {
-    actualLocationId: "loc-1",
-    actualCustodianId: "emp-1",
-    actualDepartmentId: "dep-1",
-    actualConditionId: "condition-1",
-  })
-  assert.deepEqual(helpers.emptyToNull({ locationId: "", remark: "kept" }), {
-    locationId: null,
-    remark: "kept",
-  })
-})
-
-test("audit scan extracted helpers preserve lookup normalization and bounded suggestions", async () => {
+test("audit scan helpers keep lookup normalization for components", async () => {
   const helpers = await import("../src/components/audit/audit-scan-helpers.ts").catch(() => null)
   assert.ok(helpers, "audit-scan-helpers.ts must be importable")
 
@@ -71,49 +32,31 @@ test("audit scan extracted helpers preserve lookup normalization and bounded sug
       },
     ]
   )
-
-  const maps = {
-    locations: new Map([["loc-1", "Bangkok"]]),
-    employees: new Map([["emp-1", "Somchai"]]),
-    departments: new Map([["dep-1", "IT"]]),
-    conditions: new Map<string, string>(),
-  }
-  assert.deepEqual(helpers.buildManualScanSuggestions("ast", [item], maps).map((row) => row.id), ["item-1"])
-  assert.deepEqual(helpers.buildManualScanSuggestions("a", [item], maps), [])
 })
 
-test("audit scan controller imports extracted types and helpers instead of redeclaring them", () => {
-  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
-  assert.match(form, /from "\.\/audit-scan-types"/)
-  assert.match(form, /from "\.\/audit-scan-helpers"/)
-  assert.doesNotMatch(form, /^type AuditScanItem =/m)
-  assert.doesNotMatch(form, /^function getReadableAuditScanValue/m)
-  assert.doesNotMatch(form, /^function normalizeOutOfScopeAuditAsset/m)
+test("the old scan controller is gone", () => {
+  assert.equal(existsSync("src/components/audit/audit-scan-form.tsx"), false)
 })
 
-test("audit scan presentation panels have a focused owner outside the controller", () => {
-  const form = readFileSync("src/components/audit/audit-scan-form.tsx", "utf8")
+test("audit scan presentation panels stay free of data, storage and camera work", () => {
   assert.ok(existsSync("src/components/audit/audit-scan-panels.tsx"), "audit-scan-panels.tsx must exist")
-  const panels = readFileSync("src/components/audit/audit-scan-panels.tsx", "utf8")
+  const panels = read("src/components/audit/audit-scan-panels.tsx")
 
-  for (const component of [
-    "ScanResultPanel",
-    "RecentScansPanel",
-    "AuditComponentPanel",
-    "ManualScanSuggestionList",
-    "PendingQueuePanel",
-    "AssetFallbackPicker",
-    "AuditQrScannerOverlay",
-    "OptionList",
-    "Field",
-    "Select",
-  ]) {
+  for (const component of ["AuditComponentPanel", "AuditQrScannerOverlay"]) {
     assert.match(panels, new RegExp(`export function ${component}\\b`))
-    assert.doesNotMatch(form, new RegExp(`^function ${component}\\b`, "m"))
   }
-
-  assert.match(form, /from "\.\/audit-scan-panels"/)
+  assert.match(panels, /export type AuditScanTranslator/)
   assert.doesNotMatch(panels, /\bfetch\(/)
   assert.doesNotMatch(panels, /localStorage/)
   assert.doesNotMatch(panels, /startNativeAssetQrScanner/)
+})
+
+test("the workspace takes its rules from the pure session module, which depends on nothing in the app", () => {
+  const workspace = read("src/components/audit/audit-scan-workspace.tsx")
+  const session = read("src/lib/audit-scan-session.ts")
+
+  assert.match(workspace, /from "@\/lib\/audit-scan-session"/)
+  assert.doesNotMatch(session, /from "@\//)
+  assert.doesNotMatch(session, /src\/components|components\/audit/)
+  assert.doesNotMatch(workspace, /^type AuditScanLookupResponse =/m)
 })
