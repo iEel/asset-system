@@ -99,6 +99,7 @@
     "deliveredDigestEmpty": "ยังไม่มี digest ที่ถูกส่งถึงผู้ใช้นี้"
   },
   "nav": {
+    "mainNavigation": "เมนูหลัก",
     "dashboard": "แดชบอร์ด",
     "mobileNavigationLabel": "เมนูงานภาคสนาม",
     "mobileHome": "หน้าหลัก",

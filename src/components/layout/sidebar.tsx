@@ -37,8 +37,9 @@ import {
   Rocket,
   X,
 } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { cn } from "@/lib/utils"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import {
   filterNavigationItemsByPermission,
   type NavigationPermission,
@@ -70,14 +71,7 @@ export function Sidebar({
   const t = useTranslations("nav")
   const locale = useLocale()
   const pathname = usePathname()
-  const closeButtonRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => {
-    if (!mobileOpen) return
-
-    const frame = window.requestAnimationFrame(() => closeButtonRef.current?.focus())
-    return () => window.cancelAnimationFrame(frame)
-  }, [mobileOpen])
+  const mobileRestoreFocusRef = useRef<HTMLElement | null>(null)
 
   const menuItems: MenuItem[] = [
     {
@@ -194,46 +188,89 @@ export function Sidebar({
   ]
   const visibleMenuItems = filterNavigationItemsByPermission(menuItems, user)
 
-  return (
-    <aside
-      id="mobile-primary-navigation-drawer"
-      className={cn(
-        "fixed inset-y-0 left-0 z-40 flex max-h-dvh flex-col border-r border-white/10 bg-sidebar text-sidebar-foreground transition-all duration-300 lg:relative",
-        collapsed ? "w-[min(18rem,85vw)] lg:w-16" : "w-[min(18rem,85vw)] lg:w-64",
-        mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-      )}
-    >
-      {/* Logo */}
-      <div className="flex h-16 min-w-0 items-center border-b border-white/10 px-4">
-        <Package className="h-8 w-8 shrink-0 text-brand-accent" />
-        <span className={cn("ml-3 truncate text-lg font-semibold text-white", collapsed && "lg:hidden")}>
-          AMS
-        </span>
-        <button
-          type="button"
-          ref={closeButtonRef}
-          onClick={onMobileClose}
-          className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-hover hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar lg:hidden"
-          aria-label="Close menu"
-        >
-          <X size={18} />
-        </button>
-      </div>
+  const renderBody = (mobile: boolean) => {
+    const bodyCollapsed = mobile ? false : collapsed
 
-      {/* Menu */}
-      <nav className="min-h-0 flex-1 overflow-y-auto py-4">
-        {visibleMenuItems.map((item) => (
-          <SidebarItem
-            key={item.labelKey}
-            item={item}
-            collapsed={collapsed}
-            pathname={pathname}
-            t={t}
-            onNavigate={onMobileNavigate}
-          />
-        ))}
-      </nav>
-    </aside>
+    return (
+      <>
+        {/* Logo */}
+        <div className="flex h-16 min-w-0 items-center border-b border-white/10 px-4">
+          <Package className="h-8 w-8 shrink-0 text-brand-accent" />
+          <span className={cn("ml-3 truncate text-lg font-semibold text-white", bodyCollapsed && "lg:hidden")}>
+            AMS
+          </span>
+          {mobile ? (
+            <button
+              type="button"
+              onClick={onMobileClose}
+              className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-hover hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+              aria-label="Close menu"
+            >
+              <X size={18} />
+            </button>
+          ) : null}
+        </div>
+
+        {/* Menu */}
+        <nav className="min-h-0 flex-1 overflow-y-auto py-4">
+          {visibleMenuItems.map((item) => (
+            <SidebarItem
+              key={item.labelKey}
+              item={item}
+              collapsed={bodyCollapsed}
+              pathname={pathname}
+              t={t}
+              onNavigate={onMobileNavigate}
+            />
+          ))}
+        </nav>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <aside
+        className={cn(
+          "relative hidden max-h-dvh flex-col border-r border-white/10 bg-sidebar text-sidebar-foreground transition-all duration-300 lg:flex",
+          collapsed ? "lg:w-16" : "lg:w-64"
+        )}
+      >
+        {renderBody(false)}
+      </aside>
+
+      <Sheet
+        open={mobileOpen}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) onMobileClose()
+        }}
+      >
+        <SheetContent
+          side="left"
+          id="mobile-primary-navigation-drawer"
+          showCloseButton={false}
+          aria-describedby={undefined}
+          onOpenAutoFocus={() => {
+            mobileRestoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+          }}
+          onCloseAutoFocus={(event) => {
+            // The bottom "More" button unmounts while the drawer is open, so fall back to its re-rendered copy.
+            const opener = mobileRestoreFocusRef.current
+            const target =
+              opener?.isConnected && opener !== document.body
+                ? opener
+                : document.querySelector<HTMLElement>('[aria-controls="mobile-primary-navigation-drawer"]')
+            if (!target?.isConnected) return
+            event.preventDefault()
+            target.focus()
+          }}
+          className="w-[min(18rem,85vw)] gap-0 border-r border-white/10 bg-sidebar p-0 text-sidebar-foreground lg:hidden"
+        >
+          <SheetTitle className="sr-only">{t("mainNavigation")}</SheetTitle>
+          {renderBody(true)}
+        </SheetContent>
+      </Sheet>
+    </>
   )
 }
 

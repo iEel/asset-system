@@ -19,8 +19,6 @@ export function DashboardShell({
 }) {
   const shellRef = useRef<HTMLDivElement>(null)
   const mainRef = useRef<HTMLElement>(null)
-  const mobileMoreTriggerRef = useRef<HTMLButtonElement | null>(null)
-  const restoreMobileMoreFocusRef = useRef(false)
   const pathname = usePathname()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
@@ -37,8 +35,7 @@ export function DashboardShell({
     if (shell.scrollLeft !== 0) shell.scrollLeft = 0
   }, [])
 
-  const closeMobileSidebar = useCallback((restoreFocus: boolean) => {
-    restoreMobileMoreFocusRef.current = restoreFocus
+  const closeMobileSidebar = useCallback(() => {
     setMobileSidebarOpen(false)
   }, [])
 
@@ -86,28 +83,6 @@ export function DashboardShell({
   }, [resetShellScroll, scrollMainToHash])
 
   useEffect(() => {
-    if (mobileSidebarOpen || !restoreMobileMoreFocusRef.current) return
-
-    const frame = window.requestAnimationFrame(() => {
-      mobileMoreTriggerRef.current?.focus()
-      restoreMobileMoreFocusRef.current = false
-    })
-
-    return () => window.cancelAnimationFrame(frame)
-  }, [mobileSidebarOpen])
-
-  useEffect(() => {
-    if (!mobileSidebarOpen) return
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeMobileSidebar(true)
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [closeMobileSidebar, mobileSidebarOpen])
-
-  useEffect(() => {
     const viewport = window.visualViewport
 
     if (!viewport) return
@@ -134,8 +109,8 @@ export function DashboardShell({
           collapsed={sidebarCollapsed}
           mobileOpen={mobileSidebarOpen}
           user={user}
-          onMobileClose={() => closeMobileSidebar(true)}
-          onMobileNavigate={() => closeMobileSidebar(false)}
+          onMobileClose={closeMobileSidebar}
+          onMobileNavigate={closeMobileSidebar}
         />
 
         <div className="flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden">
@@ -163,19 +138,9 @@ export function DashboardShell({
             pathname={pathname}
             user={user}
             sidebarOpen={mobileSidebarOpen}
-            onOpenMore={(trigger) => {
-              mobileMoreTriggerRef.current = trigger
-              setMobileSidebarOpen(true)
-            }}
+            onOpenMore={() => setMobileSidebarOpen(true)}
           />
         ) : null}
-
-        {mobileSidebarOpen && (
-          <div
-            className="fixed inset-0 z-30 bg-black/50 lg:hidden"
-            onClick={() => closeMobileSidebar(true)}
-          />
-        )}
       </div>
     </ConfirmProvider>
   )
