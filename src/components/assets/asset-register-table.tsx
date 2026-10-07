@@ -1,13 +1,14 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { Copy, Download, Edit, Eye, ImageIcon, Loader2, Printer, X } from "lucide-react"
 import { toast } from "sonner"
-import { formatCurrency } from "@/lib/utils"
+import { cn, formatCurrency } from "@/lib/utils"
+import { hasRemainingHorizontalContent } from "@/lib/horizontal-scroll"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
 import { rememberAssetRegisterScrollPosition } from "@/lib/asset-register-view-memory"
@@ -15,8 +16,9 @@ import type { AssetActivityFilter } from "@/lib/asset-activity-filter"
 import type { AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
 import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
-import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
+import { AssetThumbnail } from "@/components/assets/asset-thumbnail"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { AssetRegisterTransactionMenu } from "@/components/assets/asset-register-action-menus"
 import { AssetRegisterRowActions, type AssetRegisterRowPermissions } from "@/components/assets/asset-register-row-actions"
@@ -32,6 +34,8 @@ import { getAssetStateTone, getDesktopTableOnlyClasses, getMobileCardListClasses
 import {
   assetRegisterColumnOrder,
   assetRegisterColumnPresets,
+  assetRegisterColumnWidths,
+  getAssetRegisterTableMinWidth,
   assetRegisterColumnStorageKey,
   normalizeAssetRegisterColumns,
   type AssetRegisterColumnKey,
@@ -170,13 +174,12 @@ type AssetRegisterTableProps = {
 
 const previewableAssetPhotoTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"])
 const assetRegisterStickyFirstColumnClasses = "sticky left-0"
-const assetRegisterStickyNameColumnClasses = "sticky [left:11rem]"
 const assetRegisterStickyActionsColumnClasses = "sticky right-0"
-const assetRegisterStickyHeaderColumnClasses = "z-30 bg-muted/95"
+const assetRegisterStickyHeaderColumnClasses = "z-30 bg-muted"
 const assetRegisterStickyBodyColumnClasses = "z-20 bg-surface group-hover:bg-accent/50 group-focus:bg-accent/50"
-const assetRegisterAssetTagColumnClasses = "w-44 min-w-44 max-w-44"
-const assetRegisterNameColumnClasses = "w-80 min-w-80 max-w-80"
-const assetRegisterActionsColumnClasses = "w-44 min-w-44"
+const assetRegisterActionsShadowClasses = "shadow-[-8px_0_8px_-8px_rgb(15_23_42/0.25)]"
+const cellClasses = "px-3 py-2"
+const headerClasses = "px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground"
 
 export function AssetRegisterTable({
   locale,
@@ -217,7 +220,23 @@ export function AssetRegisterTable({
   )
   const allCurrentPageSelected = assets.length > 0 && assets.every((asset) => selectedIds.has(asset.id))
   const visibleColumnCount = assetRegisterColumnOrder.filter((column) => visibleColumns.has(column)).length
-  const stickyNameColumnClass = visibleColumns.has("assetTag") ? assetRegisterStickyNameColumnClasses : assetRegisterStickyFirstColumnClasses
+  const visibleColumnList = assetRegisterColumnOrder.filter((column) => visibleColumns.has(column))
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const [isOverflowing, setIsOverflowing] = useState(false)
+  const [hasMoreRight, setHasMoreRight] = useState(false)
+
+  useEffect(() => {
+    const element = scrollRef.current
+    if (!element) return
+    const measure = () => {
+      setIsOverflowing(element.scrollWidth > element.clientWidth + 1)
+      setHasMoreRight(hasRemainingHorizontalContent(element))
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    if (element.firstElementChild) observer.observe(element.firstElementChild)
+    return () => observer.disconnect()
+  }, [])
   const assetStatusHelp = {
     title: labels.statusHelpTitle,
     description: labels.statusHelpDescription,
@@ -540,7 +559,7 @@ export function AssetRegisterTable({
                     <Link onClick={rememberDetailReturnScroll} href={buildAssetDetailHref(asset.id)} className="min-w-0 break-words text-sm font-semibold text-foreground hover:text-primary">
                       {asset.assetTag}
                     </Link>
-                    <StatusPill label={asset.status.label} value={asset.status.value} />
+                    <StatusBadge size="xs" label={asset.status.label} tone={getAssetStateTone(asset.status.value)} />
                   </div>
                   <p className="mt-1 line-clamp-2 text-sm font-medium leading-snug text-foreground">{asset.name}</p>
                   <p className="mt-1 break-words text-xs text-muted-foreground">
@@ -554,9 +573,9 @@ export function AssetRegisterTable({
               </dl>
               {needsFieldAttention(asset) ? (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <StatusPill label={asset.condition.label} value={asset.condition.value} />
+                  <StatusBadge size="xs" label={asset.condition.label} tone={getAssetStateTone(asset.condition.value)} />
                   {asset.ownershipType.value === "shared" ? (
-                    <OwnershipTypePill value={asset.ownershipType.value} label={asset.ownershipType.label} />
+                    <StatusBadge size="xs" label={asset.ownershipType.label} tone={ownershipTypeTone(asset.ownershipType.value)} />
                   ) : null}
                 </div>
               ) : null}
@@ -604,18 +623,31 @@ export function AssetRegisterTable({
         )}
       </div>
 
-      <div
-        data-asset-table-scroll-hint
-        className={`${getDesktopTableOnlyClasses()} border-t border-border bg-muted/20 px-4 py-2 text-xs text-muted-foreground`}
-      >
-        {labels.tableScrollHint}
-      </div>
+      {isOverflowing ? (
+        <div
+          data-asset-table-scroll-hint
+          className={`${getDesktopTableOnlyClasses()} border-b border-border bg-muted px-4 py-1.5 text-xs text-muted-foreground`}
+        >
+          {labels.tableScrollHint}
+        </div>
+      ) : null}
 
-      <div data-asset-desktop-table className={`${getDesktopTableOnlyClasses()} relative overflow-x-auto overscroll-x-contain`}>
-        <table className="min-w-full divide-y divide-border text-sm">
-          <thead className="bg-muted/40">
+      <div
+        data-asset-desktop-table className={`${getDesktopTableOnlyClasses()} relative overflow-x-auto overscroll-x-contain`}
+        ref={scrollRef}
+        onScroll={(event) => setHasMoreRight(hasRemainingHorizontalContent(event.currentTarget))}
+      >
+        <table className="w-full table-fixed divide-y divide-border text-sm" style={{ minWidth: getAssetRegisterTableMinWidth(visibleColumnList) }}>
+          <colgroup>
+            <col style={{ width: assetRegisterColumnWidths.select }} />
+            {visibleColumnList.map((column) => (
+              <col key={column} style={column === "name" ? undefined : { width: assetRegisterColumnWidths[column] }} />
+            ))}
+            <col style={{ width: assetRegisterColumnWidths.actions }} />
+          </colgroup>
+          <thead className="bg-muted">
             <tr>
-              <ColumnHeader>
+              <th scope="col" className={headerClasses}>
                 <input
                   type="checkbox"
                   checked={allCurrentPageSelected}
@@ -623,14 +655,14 @@ export function AssetRegisterTable({
                   aria-label={labels.all}
                   className="h-4 w-4 rounded border-border text-primary"
                 />
-              </ColumnHeader>
+              </th>
               {visibleColumns.has("assetTag") && (
                 <SortableHeader
                   filters={filters}
                   field="assetTag"
                   label={labels.assetTag}
                   buildHref={buildHref}
-                  className={`${assetRegisterStickyHeaderColumnClasses} ${assetRegisterStickyFirstColumnClasses} ${assetRegisterAssetTagColumnClasses} border-r border-border`}
+                  className={`${assetRegisterStickyHeaderColumnClasses} ${assetRegisterStickyFirstColumnClasses} border-r border-border`}
                   linkClassName="block truncate"
                 />
               )}
@@ -640,31 +672,31 @@ export function AssetRegisterTable({
                   field="name"
                   label={labels.assetName}
                   buildHref={buildHref}
-                  className={`${assetRegisterStickyHeaderColumnClasses} ${stickyNameColumnClass} ${assetRegisterNameColumnClasses} border-r border-border`}
+                  className=""
                   linkClassName="block truncate"
                 />
               )}
-              {visibleColumns.has("category") && <ColumnHeader>{labels.category}</ColumnHeader>}
-              {visibleColumns.has("companyBranch") && <ColumnHeader>{labels.company}</ColumnHeader>}
-              {visibleColumns.has("currentLocation") && <ColumnHeader>{labels.currentLocation}</ColumnHeader>}
-              {visibleColumns.has("custodian") && <ColumnHeader>{labels.custodian}</ColumnHeader>}
-              {visibleColumns.has("ownershipType") && <ColumnHeader>{labels.ownershipType}</ColumnHeader>}
+              {visibleColumns.has("category") && <th scope="col" className={`${headerClasses} truncate`}>{labels.category}</th>}
+              {visibleColumns.has("companyBranch") && <th scope="col" className={`${headerClasses} truncate`}>{labels.company}</th>}
+              {visibleColumns.has("currentLocation") && <th scope="col" className={`${headerClasses} truncate`}>{labels.currentLocation}</th>}
+              {visibleColumns.has("custodian") && <th scope="col" className={`${headerClasses} truncate`}>{labels.custodian}</th>}
+              {visibleColumns.has("ownershipType") && <th scope="col" className={`${headerClasses} truncate`}>{labels.ownershipType}</th>}
               {visibleColumns.has("status") && (
-                <ColumnHeader>
+                <th scope="col" className={headerClasses}>
                   <HeaderWithHelp label={labels.status} help={assetStatusHelp} />
-                </ColumnHeader>
+                </th>
               )}
               {visibleColumns.has("condition") && (
-                <ColumnHeader>
+                <th scope="col" className={headerClasses}>
                   <HeaderWithHelp label={labels.condition} help={assetConditionHelp} />
-                </ColumnHeader>
+                </th>
               )}
               {visibleColumns.has("purchasePrice") && (
-                <SortableHeader filters={filters} field="purchasePrice" label={labels.purchasePrice} buildHref={buildHref} />
+                <SortableHeader filters={filters} field="purchasePrice" label={labels.purchasePrice} buildHref={buildHref} linkClassName="block truncate" />
               )}
               <th
                 scope="col"
-                className={`${assetRegisterStickyHeaderColumnClasses} ${assetRegisterStickyActionsColumnClasses} ${assetRegisterActionsColumnClasses} border-l border-border px-4 py-3 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground`}
+                className={cn(headerClasses, "text-right", assetRegisterStickyHeaderColumnClasses, assetRegisterStickyActionsColumnClasses, "border-l border-border", hasMoreRight && assetRegisterActionsShadowClasses)}
               >
                 {labels.actions}
               </th>
@@ -686,7 +718,7 @@ export function AssetRegisterTable({
                   className="group"
                   onNavigate={rememberDetailReturnScroll}
                 >
-                  <td className="whitespace-nowrap px-4 py-3">
+                  <td className={cellClasses}>
                     <input
                       type="checkbox"
                       checked={selectedIds.has(asset.id)}
@@ -696,71 +728,44 @@ export function AssetRegisterTable({
                     />
                   </td>
                   {visibleColumns.has("assetTag") && (
-                    <td
-                      className={`${assetRegisterStickyBodyColumnClasses} ${assetRegisterStickyFirstColumnClasses} ${assetRegisterAssetTagColumnClasses} border-r border-border px-4 py-3 font-medium text-foreground`}
-                    >
-                      <span className="block truncate">{asset.assetTag}</span>
+                    <td className={`${assetRegisterStickyBodyColumnClasses} ${assetRegisterStickyFirstColumnClasses} ${cellClasses} truncate border-r border-border font-medium text-foreground`} title={asset.assetTag}>
+                      {asset.assetTag}
                     </td>
                   )}
                   {visibleColumns.has("name") && (
-                    <td
-                      className={`${assetRegisterStickyBodyColumnClasses} ${stickyNameColumnClass} ${assetRegisterNameColumnClasses} border-r border-border px-4 py-3 text-foreground`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">
-                          {asset.photo && previewableAssetPhotoTypes.has(asset.photo.fileType) ? (
-                            <Image
-                              src={`/api/attachments/${asset.photo.id}?inline=1`}
-                              alt={asset.photo.alt}
-                              fill
-                              unoptimized
-                              className="object-contain p-1"
-                              sizes="48px"
-                            />
-                          ) : (
-                            <ImageIcon className="h-5 w-5" aria-hidden="true" />
-                          )}
-                        </div>
+                    <td className={`${cellClasses} text-foreground`}>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <AssetThumbnail photo={asset.photo} assetTag={asset.assetTag} assetName={asset.name} size={40} />
                         <div className="min-w-0">
-                          <div className="line-clamp-2 font-medium leading-snug" title={asset.name}>
-                            {asset.name}
-                          </div>
-                          {asset.serialNumber && <div className="truncate text-xs text-muted-foreground">{asset.serialNumber}</div>}
+                          <div className="truncate font-medium" title={asset.name}>{asset.name}</div>
+                          {asset.serialNumber ? (
+                            <div className="truncate text-xs text-muted-foreground" title={asset.serialNumber}>{asset.serialNumber}</div>
+                          ) : null}
                         </div>
                       </div>
                     </td>
                   )}
-                  {visibleColumns.has("category") && <td className="min-w-40 px-4 py-3 text-muted-foreground">{asset.category}</td>}
-                  {visibleColumns.has("companyBranch") && (
-                    <td className="min-w-44 px-4 py-3 text-muted-foreground">{asset.companyBranch}</td>
-                  )}
-                  {visibleColumns.has("currentLocation") && (
-                    <td className="min-w-44 px-4 py-3 text-muted-foreground">{asset.currentLocation}</td>
-                  )}
-                  {visibleColumns.has("custodian") && (
-                    <td className="min-w-44 px-4 py-3 text-muted-foreground">{asset.custodian || "-"}</td>
-                  )}
+                  {visibleColumns.has("category") && <td className={`${cellClasses} truncate text-muted-foreground`} title={asset.category}>{asset.category}</td>}
+                  {visibleColumns.has("companyBranch") && <td className={`${cellClasses} truncate text-muted-foreground`} title={asset.companyBranch}>{asset.companyBranch}</td>}
+                  {visibleColumns.has("currentLocation") && <td className={`${cellClasses} truncate text-muted-foreground`} title={asset.currentLocation}>{asset.currentLocation}</td>}
+                  {visibleColumns.has("custodian") && <td className={`${cellClasses} truncate text-muted-foreground`} title={asset.custodian ?? undefined}>{asset.custodian || "-"}</td>}
                   {visibleColumns.has("ownershipType") && (
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <OwnershipTypePill value={asset.ownershipType.value} label={asset.ownershipType.label} />
+                    <td className={cellClasses}>
+                      <StatusBadge size="xs" label={asset.ownershipType.label} tone={ownershipTypeTone(asset.ownershipType.value)} />
                     </td>
                   )}
                   {visibleColumns.has("status") && (
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <StatusPill label={asset.status.label} value={asset.status.value} />
+                    <td className={cellClasses}>
+                      <StatusBadge size="xs" label={asset.status.label} tone={getAssetStateTone(asset.status.value)} />
                     </td>
                   )}
                   {visibleColumns.has("condition") && (
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <StatusPill label={asset.condition.label} value={asset.condition.value} />
+                    <td className={cellClasses}>
+                      <StatusBadge size="xs" label={asset.condition.label} tone={getAssetStateTone(asset.condition.value)} />
                     </td>
                   )}
-                  {visibleColumns.has("purchasePrice") && (
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCurrency(asset.purchasePrice)}</td>
-                  )}
-                  <td
-                    className={`${assetRegisterStickyBodyColumnClasses} ${assetRegisterStickyActionsColumnClasses} ${assetRegisterActionsColumnClasses} border-l border-border px-4 py-3 text-right`}
-                  >
+                  {visibleColumns.has("purchasePrice") && <td className={`${cellClasses} truncate text-muted-foreground`}>{formatCurrency(asset.purchasePrice)}</td>}
+                  <td className={cn(assetRegisterStickyBodyColumnClasses, assetRegisterStickyActionsColumnClasses, cellClasses, "border-l border-border", hasMoreRight && assetRegisterActionsShadowClasses)}>
                     <AssetRegisterRowActions
                       variant="desktop"
                       assetId={asset.id}
@@ -898,7 +903,7 @@ function SortableHeader({
   return (
     <th
       scope="col"
-      className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground ${className}`}
+      className={`px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground ${className}`}
     >
       <Link href={buildHref({ sort: field, direction, page: 1 })} className={`hover:text-primary ${linkClassName}`}>
         {label}
@@ -932,40 +937,16 @@ function HeaderWithHelp({
   )
 }
 
-function StatusPill({ label, value }: { label: string; value?: string | null }) {
-  const tone = getAssetStateTone(value)
-  const toneClasses = {
-    success: "bg-success-soft text-success",
-    warning: "bg-warning-soft text-warning",
-    danger: "bg-danger-soft text-danger",
-    neutral: "bg-muted text-muted-foreground",
-    muted: "bg-muted text-muted-foreground",
-    info: "bg-info-soft text-info",
-  }[tone]
-
-  return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${toneClasses}`}>{label}</span>
-}
-
 function needsFieldAttention(asset: AssetRegisterRow) {
   return ["fair", "poor", "damaged", "non functional", "salvage"].includes(normalizeAssetStateValue(asset.condition.value)) || asset.ownershipType.value === "shared"
 }
 
-function OwnershipTypePill({ value, label }: { value: string; label: string }) {
-  const tone = ownershipTypeTone(value)
-
-  return (
-    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${tone}`}>
-      {label}
-    </span>
-  )
-}
-
-function ownershipTypeTone(value: string) {
-  if (value === "software_license") return "bg-info-soft text-info"
-  if (value === "stock") return "bg-warning-soft text-warning"
-  if (value === "shared") return "bg-success-soft text-success"
-  if (value === "component") return "bg-primary-soft text-primary"
-  return "bg-muted text-muted-foreground"
+function ownershipTypeTone(value: string): StatusTone {
+  if (value === "software_license") return "info"
+  if (value === "stock") return "warning"
+  if (value === "shared") return "success"
+  if (value === "component") return "primary"
+  return "muted"
 }
 
 function columnLabel(column: AssetRegisterColumnKey, labels: AssetRegisterTableProps["labels"]) {

@@ -93,3 +93,35 @@ test("summary and sort copy exists in Thai and English", () => {
   }
   assert.equal(messages("th").registerRange, "{from}–{to} จาก {total} รายการ")
 })
+
+test("the desktop table has fixed column widths that fit the default columns", () => {
+  const source = table()
+
+  assert.match(source, /className="w-full table-fixed/)
+  assert.match(source, /style=\{\{ minWidth: getAssetRegisterTableMinWidth\(visibleColumnList\) \}\}/)
+  assert.match(source, /<colgroup>/)
+  assert.match(source, /assetRegisterColumnWidths\.select/)
+  assert.match(source, /assetRegisterColumnWidths\.actions/)
+  assert.match(source, /column === "name" \? undefined : \{ width: assetRegisterColumnWidths\[column\] \}/)
+})
+
+test("desktop rows use small thumbnails, one-line cells and shared status badges", () => {
+  const source = table()
+
+  assert.match(source, /<AssetThumbnail photo=\{asset\.photo\} assetTag=\{asset\.assetTag\} assetName=\{asset\.name\} size=\{40\}/)
+  assert.match(source, /<div className="truncate font-medium" title=\{asset\.name\}>/)
+  assert.match(source, /title=\{asset\.currentLocation\}/)
+  assert.match(source, /title=\{asset\.custodian \?\? undefined\}/)
+  assert.match(source, /<StatusBadge size="xs" label=\{asset\.status\.label\} tone=\{getAssetStateTone\(asset\.status\.value\)\}/)
+  assert.match(source, /<StatusBadge size="xs" label=\{asset\.condition\.label\} tone=\{getAssetStateTone\(asset\.condition\.value\)\}/)
+  assert.doesNotMatch(source, /function StatusPill/)
+})
+
+test("the scroll hint and the actions shadow follow real overflow", () => {
+  const source = table()
+
+  assert.match(source, /new ResizeObserver\(/)
+  assert.match(source, /\{isOverflowing \? \(/)
+  assert.match(source, /hasRemainingHorizontalContent\(/)
+  assert.match(source, /hasMoreRight && /)
+})

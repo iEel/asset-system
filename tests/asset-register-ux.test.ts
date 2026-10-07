@@ -89,13 +89,12 @@ test("asset register table starts in the operational column preset before stored
   assert.doesNotMatch(source, /useState<Set<AssetRegisterColumnKey>>\(new Set\(assetRegisterColumnPresets\.all\)\)/)
 })
 
-test("asset register desktop table keeps key columns frozen during horizontal scroll", () => {
+test("asset register desktop table pins the tag and actions columns only", () => {
   const source = registerTableSource()
 
   assert.match(source, /assetRegisterStickyFirstColumnClasses/)
-  assert.match(source, /assetRegisterStickyNameColumnClasses/)
   assert.match(source, /assetRegisterStickyActionsColumnClasses/)
-  assert.match(source, /visibleColumns\.has\("assetTag"\) \? assetRegisterStickyNameColumnClasses : assetRegisterStickyFirstColumnClasses/)
+  assert.doesNotMatch(source, /assetRegisterStickyNameColumnClasses|\[left:11rem\]/)
   assert.match(source, /right-0/)
   assert.match(source, /group-hover:bg-accent\/50/)
 })
@@ -220,20 +219,21 @@ test("asset register reuses the authoritative activity filter type", () => {
   assert.doesNotMatch(source, /activity: "" \| "idle_180d"/)
 })
 
-test("asset register desktop table exposes horizontal scroll affordance", () => {
+test("asset register desktop table explains horizontal scroll only when it overflows", () => {
   const source = registerTableSource()
 
   assert.match(source, /data-asset-table-scroll-hint/)
   assert.match(source, /tableScrollHint/)
   assert.match(source, /overscroll-x-contain/)
+  assert.match(source, /\{isOverflowing \? \(/)
 })
 
-test("asset register table improves frozen name readability and row focus", () => {
+test("asset register table keeps names on one line with the full name on hover and visible row focus", () => {
   const tableSource = registerTableSource()
   const rowSource = readFileSync("src/components/ui/clickable-table-row.tsx", "utf8")
 
   assert.match(tableSource, /title=\{asset\.name\}/)
-  assert.match(tableSource, /line-clamp-2 font-medium leading-snug/)
+  assert.match(tableSource, /truncate font-medium/)
   assert.match(rowSource, /focus-visible:ring-2/)
   assert.match(rowSource, /focus-visible:ring-inset/)
 })

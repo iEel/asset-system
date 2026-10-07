@@ -803,7 +803,7 @@
     "advancedFilters": "More filters",
     "advancedFiltersHelp": "Status, condition, ownership type, and row count",
     "selectedCount": "selected",
-    "tableScrollHint": "Scroll left/right to see more columns. Asset tag, name, and actions stay pinned.",
+    "tableScrollHint": "Scroll left/right to see more columns. Asset tag and actions stay pinned.",
     "viewPhoto": "View photo of {assetTag}",
     "searchPlaceholder": "Search tag, name, serial, custodian or location",
     "searchClear": "Clear search",
