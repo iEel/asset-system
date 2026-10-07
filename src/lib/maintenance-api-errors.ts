@@ -10,6 +10,10 @@ export const maintenanceErrorCodes = [
   "MAINTENANCE_CONFLICT",
   "MAINTENANCE_PM_REPORTER_REQUIRED",
   "MAINTENANCE_PLAN_INVALID_TRANSITION",
+  "MAINTENANCE_ASSET_WRITTEN_OFF",
+  "MAINTENANCE_ASSET_ON_LOAN",
+  "MAINTENANCE_OPEN_RECORD_EXISTS",
+  "MAINTENANCE_REPORTER_REQUIRED",
 ] as const
 
 export type MaintenanceErrorCode = (typeof maintenanceErrorCodes)[number]
