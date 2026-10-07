@@ -56,11 +56,12 @@ Selectable physical conditions are `Not Assessed`, `New`, `Good`, `Fair`, `Damag
 | In Use / Checked Out | Ready | Check-in / return with normal result |
 | In Use / Checked Out | Pending Repair | Check-in / return with repair needed |
 | In Use / Checked Out | Pending Disposal | Check-in / return with disposal recommendation |
-| Ready / In Use | Pending Repair | Corrective maintenance ticket opened |
+| Ready / In Use | Pending Repair | Corrective maintenance ticket opened (a `Pending Repair` asset with no active ticket can also get its missing ticket) |
 | Pending Repair | Under Maintenance | Repair ticket is accepted / in progress |
 | Under Maintenance | Ready / In Use | Maintenance job closed and asset is usable; personal custody returns to `In Use`, otherwise `Ready` |
 | Under Maintenance | Pending Disposal | Maintenance result recommends disposal |
 | Ready / In Use | Pending Disposal | Disposal request opened and the prior status is captured for rejection restoration |
+| Pending Disposal (no open request) | Pending Disposal | Disposal request opened for an asset a repair or return already moved to Pending Disposal; rejection restores the custody-derived `In Use` or `Ready` |
 | Pending Disposal | Previous captured status | Disposal request rejected |
 | Pending Disposal | Disposed | Disposal execution completed |
 | Pending Disposal | Retired | Retirement completed |
@@ -91,7 +92,7 @@ Cancelling a Check-out, Check-in, or Transfer is a compensating transaction, not
 | Checked Out | Asset is temporarily loaned to a person, location, department, or another asset. | Check-in to `Ready`, `Pending Repair`, or `Pending Disposal`. |
 | In Transit | Legacy or logistics movement status. | Confirm arrival through the relevant movement workflow and return to an active status. |
 | Under Inspection | Asset is being reviewed because data, location, custody, condition, or master data needs confirmation. | The currently enforced exit is controlled correction to `Ready`. After that correction, use personal transfer, maintenance, or disposal workflow as required. Recording an audit item as not found creates a finding but does not change the asset to `Missing` or `Lost`. |
-| Pending Repair | Repair is needed but work has not started. | Accept/start the maintenance work and move to `Under Maintenance`. |
+| Pending Repair | Repair is needed but work has not started. | Accept/start the maintenance work and move to `Under Maintenance`. If no corrective ticket exists (for example a damaged return saved without one), open the missing ticket from Maintenance. |
 | Under Maintenance | Asset is under repair or service. | Close maintenance to `In Use` when valid personal custody remains, otherwise `Ready`; or choose `Pending Disposal`. |
 | Pending Disposal | Asset is approved/recommended for disposal and should not be used in normal operations. | Execute disposal as `Disposed`/`Retired`; rejection restores the status captured when the request was created. |
 | Lost | Asset is reported lost. | Investigate and correct back to `Ready` only when found and usable. |
