@@ -69,10 +69,15 @@
 - **ไม่แก้ API**: ข้อความ error ของ API คงเดิม (ระบบอื่นที่เรียก API และโค้ดที่เทียบข้อความอยู่ เช่น หน้าสแกนเทียบ "Audit round is closed" ทำงานต่อได้)
 - `src/lib/api-error-catalog.ts` (ล้วน · test import ได้): ตาราง `ข้อความอังกฤษ → key` เช่น `"Asset not found" → "assetNotFound"` และ `getApiErrorKey(raw): string | null`
 - หมวดข้อความใหม่ `apiErrors` ใน `messages/th.json` และ `en.json` (en ใช้ข้อความอังกฤษเดิม)
-- `useApiErrorMessage()` (client hook): คืนฟังก์ชัน `(raw?: string | null) => string`
-  - รู้จัก → ข้อความไทยจาก `apiErrors`
-  - ไม่รู้จักแต่มีข้อความ → "เกิดข้อผิดพลาด (ข้อความเดิม)"
-  - ไม่มีข้อความ → `common.error`
+- `useApiErrorMessage()` (client hook): คืนฟังก์ชัน `(raw?: string | null) => { message: string; detail: string | null }`
+  - รู้จัก → `message` = ข้อความไทยจาก `apiErrors` · `detail` = ข้อความอังกฤษเดิม
+  - ไม่รู้จักแต่มีข้อความ → `message` = "เกิดข้อผิดพลาด" · `detail` = ข้อความเดิม
+  - ไม่มีข้อความ → `message` = `common.error` · `detail` = null
+- **แสดงทั้งสองบรรทัด (ผู้ใช้เลือก 2026-10-08)**: ข้อความไทยเป็นบรรทัดหลัก และข้อความเดิมจากเซิร์ฟเวอร์เป็นบรรทัดเล็กสีเทาด้านล่าง เพื่อให้ผู้ดูแลระบบเห็นจากรูปหน้าจอและค้นต่อใน log/โค้ดได้ทันที
+  - toast: `toast.error(message, { description: detail })`
+  - กล่อง error ในฟอร์ม/หน้า: บรรทัดหลัก + `<span className="block text-xs text-muted-foreground">{detail}</span>`
+  - ทุกครั้งพิมพ์ข้อความเดิมลง `console.warn` ด้วย
+- ฝั่งเซิร์ฟเวอร์ (API · log ของ service · บันทึกระบบ) ยังเป็นภาษาอังกฤษตามเดิม
 - แก้หน้าจอที่แสดง `result.error`/`payload.error` ตรง ๆ (ราว 33 ไฟล์ใน `src/components`) ให้ผ่านตัวช่วยนี้ · ข้อความ `errors.*` ของหน้าซ่อมที่มีอยู่แล้วคงเดิม
 - **test กันหลุด**: อ่านไฟล์ใน `src/app/api` และ `src/lib` หาข้อความ error อังกฤษ (`error: "…"`, `new Error("…")` ฯลฯ) ทุกข้อความต้องมีในตาราง และทุก key ในตารางต้องมีใน `apiErrors` ทั้งไทยและอังกฤษ
 
