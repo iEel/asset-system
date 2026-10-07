@@ -53,3 +53,9 @@ test("delete confirm returns focus to the menu trigger once the menu item is gon
   assert.match(action, /options\?: \{ returnFocusRef\?: \{ current: HTMLElement \| null \} \}/)
   assert.match(action, /returnFocusRef: options\?\.returnFocusRef/)
 })
+
+test("notification bell is a Radix popover", () => {
+  const source = read("src/components/layout/topbar.tsx")
+  assert.match(source, /<Popover open=\{notificationOpen\} onOpenChange=/)
+  assert.match(source, /<PopoverContent[\s\S]*?align="end"/)
+})

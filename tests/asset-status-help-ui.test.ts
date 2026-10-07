@@ -8,18 +8,19 @@ const assetDetailSource = () => readFileSync("src/app/[locale]/(dashboard)/asset
 const assetRegisterTableSource = () => readFileSync("src/components/assets/asset-register-table.tsx", "utf8")
 const assetRegisterPageSource = () => readFileSync("src/app/[locale]/(dashboard)/assets/page.tsx", "utf8")
 
-test("asset status and condition help uses an accessible popover component", () => {
+test("asset status and condition help uses a Radix popover that opens on hover, focus and tap", () => {
   const source = helpComponentSource()
 
   assert.match(source, /"use client"/)
   assert.match(source, /CircleHelp/)
-  assert.match(source, /aria-expanded=\{open\}/)
+  assert.match(source, /<Popover open=\{open\} onOpenChange=\{setOpen\}>/)
+  assert.match(source, /<PopoverTrigger asChild>/)
   assert.match(source, /onMouseEnter/)
   assert.match(source, /onFocus/)
-  assert.match(source, /onClick/)
-  assert.match(source, /role="status"/)
+  assert.match(source, /onOpenAutoFocus=\{\(event\) => event\.preventDefault\(\)\}/)
   assert.match(source, /size = "default"/)
   assert.match(source, /isCompact/)
+  assert.doesNotMatch(source, /getBoundingClientRect|addEventListener|style=\{\{ top/)
 })
 
 test("asset form, detail, and register expose status and condition help", () => {

@@ -24,6 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { getUserDisplayLabel, getUserInitial, getUserSecondaryLabel } from "@/lib/user-display"
 import type { SessionUser } from "@/lib/auth-utils"
 import {
@@ -158,22 +159,23 @@ export function Topbar({
 
         {/* Notifications */}
         <div className="relative shrink-0">
-          <button
-            type="button"
-            onClick={() => setNotificationOpen(!notificationOpen)}
-            className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
-            aria-label={tNotifications("title")}
-            title={tNotifications("title")}
-          >
-            <Bell size={20} />
-            {notificationSummary.total > 0 ? (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold leading-none text-white">
-                {notificationSummary.total > 99 ? "99+" : notificationSummary.total}
-              </span>
-            ) : null}
-          </button>
-          {notificationOpen ? (
-            <div className="absolute right-0 top-full z-50 mt-1 w-[calc(100vw-2rem)] max-w-[20rem] rounded-md border border-border bg-surface shadow-lg">
+          <Popover open={notificationOpen} onOpenChange={setNotificationOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
+                aria-label={tNotifications("title")}
+                title={tNotifications("title")}
+              >
+                <Bell size={20} />
+                {notificationSummary.total > 0 ? (
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold leading-none text-white">
+                    {notificationSummary.total > 99 ? "99+" : notificationSummary.total}
+                  </span>
+                ) : null}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-[calc(100vw-2rem)] max-w-[20rem] p-0">
               <div className="border-b border-border px-4 py-3">
                 <p className="text-sm font-semibold text-foreground">{tNotifications("title")}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{tNotifications("subtitle")}</p>
@@ -223,8 +225,8 @@ export function Topbar({
                   {tNotifications("openWorkCenter")}
                 </Link>
               </div>
-            </div>
-          ) : null}
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Language Switcher */}
