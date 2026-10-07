@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { AssetOperationConflictError, claimAssetForCustodyChange } from "@/lib/asset-operation-claim"
 import { getAssetLifecycleTransitionError, getAssetOperationConditionError } from "@/lib/asset-lifecycle-policy"
 import { getHandoverTargetStatusName } from "@/lib/asset-handover-mode"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
     const nextDepartmentId = input.checkoutType === "department" ? input.departmentId : asset.departmentId
 
     const { record: checkout, componentSync } = await prisma.$transaction(async (tx) => {
+      await claimAssetForCustodyChange(tx, { assetId: id, expectedStatusId: asset.statusId, updatedBy: user.id })
       const beforeAsset = await tx.asset.findUnique({
         where: { id },
         select: {
@@ -217,6 +219,9 @@ export async function POST(request: NextRequest, context: CheckoutContext) {
 
     return NextResponse.json(checkout, { status: 201 })
   } catch (error) {
+    if (error instanceof AssetOperationConflictError) {
+      return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
+    }
     if (error instanceof ZodError) {
       const issue = error.issues.find(({ message }) => message.startsWith("HANDOVER_"))
       if (issue) return NextResponse.json({ code: issue.message, error: issue.message }, { status: 400 })

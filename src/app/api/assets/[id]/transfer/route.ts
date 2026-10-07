@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { AssetOperationConflictError, claimAssetForCustodyChange } from "@/lib/asset-operation-claim"
 import { getAssetLifecycleTransitionError, getTransferTargetStatusName } from "@/lib/asset-lifecycle-policy"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { assetTransferSchema } from "@/lib/validations/asset-operations"
@@ -56,6 +57,7 @@ export async function POST(request: NextRequest, context: TransferContext) {
       : asset.statusId
 
     const { transfer, componentSync, fromSnapshot, toSnapshot } = await prisma.$transaction(async (tx) => {
+      await claimAssetForCustodyChange(tx, { assetId: id, expectedStatusId: asset.statusId, updatedBy: user.id })
       const beforeAsset = await tx.asset.findUnique({
         where: { id },
         select: {
@@ -180,6 +182,9 @@ export async function POST(request: NextRequest, context: TransferContext) {
 
     return NextResponse.json(transfer, { status: 201 })
   } catch (error) {
+    if (error instanceof AssetOperationConflictError) {
+      return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
+    }
     return errorResponse(error, 400)
   }
 }

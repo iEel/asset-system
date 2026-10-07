@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
+import { AssetOperationConflictError, claimAssetForCustodyChange } from "@/lib/asset-operation-claim"
 import { getAssetLifecycleTransitionError } from "@/lib/asset-lifecycle-policy"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
 import { generateCheckoutDocumentNo } from "@/lib/operation-document-number"
@@ -28,6 +29,7 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
         currentLocationId: true,
         custodianId: true,
         conditionId: true,
+        statusId: true,
         status: { select: { name: true, nameTh: true } },
       },
     })
@@ -68,6 +70,7 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
     const inUseStatusId = await getRequiredAssetStatusId("In Use")
 
     const checkout = await prisma.$transaction(async (tx) => {
+      await claimAssetForCustodyChange(tx, { assetId: id, expectedStatusId: asset.statusId, updatedBy: user.id })
       const documentNo = await generateCheckoutDocumentNo(tx, checkoutDate)
       const record = await tx.assetCheckout.create({
         data: {
@@ -128,6 +131,9 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
 
     return NextResponse.json(checkout, { status: 201 })
   } catch (error) {
+    if (error instanceof AssetOperationConflictError) {
+      return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
+    }
     return errorResponse(error, 400)
   }
 }
