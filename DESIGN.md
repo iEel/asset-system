@@ -241,6 +241,18 @@ The app uses a fixed dashboard shell with a Brand Navy sidebar and light topbar.
 
 Tables are core product surfaces. Use bordered shells, readable row spacing, clear sortable/filterable headers, stable status badges, and responsive fallback cards below medium breakpoints where needed. Prioritize scanning, comparison, and bulk operations over decorative presentation.
 
+**List page pattern (asset register, 2026-10-07).** New list pages follow the register (`/[locale]/assets`):
+
+- **Search bar card:** a search field that searches while typing (400ms pause, 2+ characters, not during IME composition, Enter searches at once, × clears) plus the two or three scope selects a person uses most. Below `md` the bar holds only search and ⚙, and it sticks to the top while the list scrolls.
+- **Status tabs with live counts** for the handful of states people switch between; any other state lives in the filter sheet.
+- **⚙ filter Sheet** (right on desktop, bottom on phones) for everything else. Changes apply at once, the sheet stays open, and its footer reads "ล้าง" and "แสดง N รายการ" with the real result count.
+- **Removable chips** for every active filter that is not visible on screen, plus "ล้างทั้งหมด".
+- **Filters live in the URL.** Changes go through `router.replace` with an optimistic state (`AssetRegisterNavigationProvider`), so the back button leaves the page in one step and controls never bounce back.
+- **Rows:** one next-step button chosen by status (for example "ส่งมอบ" / "รับคืน") plus a ⋯ menu that holds every action, with disabled items explaining why. The ⋯ menu is a `DropdownMenu` on desktop and a bottom `Sheet` on phones. Clicking a row opens the detail page.
+- **Desktop table:** `table-fixed` with a `<colgroup>`, only the key column and the actions column pinned, one-line truncated cells with a `title`. The default column set must fit 1440px without horizontal scroll, and the scroll hint appears only when the table really overflows.
+- **Phone rows:** about 80px each — 44px thumbnail, tag, name, then location and a status badge on one line, and ⋯. A "เลือก" mode turns rows into checkboxes, and its bulk bar floats above the bottom navigation.
+- **Thumbnails:** list images come from `/api/attachments/{id}/thumbnail` (96px WebP, cached); never load original files in a list.
+
 ### Field Audit / QR Workflows
 
 Scanner and field workflows need touch-safe controls, square or contained camera preview areas, visible fallback text input, readable status, and clear evidence upload states. Audit pages may lean into the Audit Console lens, but must remain calm and workflow-driven.

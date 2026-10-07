@@ -245,6 +245,15 @@ npm run build
 - Focus return: dialogs opened from a menu item or other non-Trigger control would otherwise lose focus (Radix sends it to a missing Trigger). `AccessibleDialog` takes `returnFocusRef` and an optional `fallbackFocusRef` (used when the opener has left the DOM); `confirm({ …, returnFocusRef })` does the same for confirmations.
 - Rules: menus never contain dialogs; busy dialogs pass `busy`; database status colors only color the badge dot. Design spec: `docs/superpowers/specs/2026-10-07-ui-shadcn-foundation-design.md`.
 
+## Asset Register Redesign (2026-10-07)
+
+- `/[locale]/assets` is split into single-purpose components in `src/components/assets/asset-register-*.tsx`: toolbar, search field, filter sheet, status tabs, filter chips, row actions, sort/column/export menus, mobile list, and the table orchestrator. Pure view-model helpers (`asset-register-filters`, `-status-tabs`, `-chips`, `-sort`, `-columns`) live in `src/lib` and are unit-tested.
+- Filter state stays in the existing URL params (`src/lib/asset-list-query.ts`). `AssetRegisterNavigationProvider` applies changes with `router.replace(…, { scroll: false })` inside `startTransition`, shows them at once through `useOptimistic`, and merges changes made inside one debounce window through a ref. Status tabs and chips are plain links.
+- Status counts come from one `prisma.asset.groupBy({ by: ["statusId"] })` over `buildAssetStatusCountWhere(filters)`, the list's own where clause without `statusId`. The cross-scope filter runs once and serves both the counts and the list.
+- Thumbnails: `GET /api/attachments/[id]/thumbnail` returns a `sharp` 96px WebP with `Cache-Control: private, max-age=604800, immutable` and `ETag "{id}-96"`. It answers 304 after the permission check, 415 for non-images, 404 for a missing row or file, and 422 when an image can't be read. The view rule shared with the full-file route lives in `src/lib/attachment-access.ts` (`assertCanViewAttachment`). `sharp` is now a direct dependency; check that the Production `npm ci` log installs `@img/sharp-linux-x64`.
+- `MasterDataHeader` takes `compactOnMobile` (title and create button share one row, subtitle hidden below `md`); only the register uses it so far.
+- Design spec: `docs/superpowers/specs/2026-10-07-asset-register-redesign-design.md`. Plan: `docs/superpowers/plans/2026-10-07-asset-register-redesign.md`.
+
 ## Open Go-Live Decisions
 
 - Confirm production database user and least-privilege permissions.
