@@ -1,4 +1,4 @@
-import NextAuth from "next-auth"
+import NextAuth, { CredentialsSignin } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { prisma } from "@/lib/db"
 import { authenticateLdapUser, getLdapConfig, type LdapConfigInput } from "@/lib/ldap-auth"
@@ -9,6 +9,9 @@ import {
   type LdapProvisionProfile,
 } from "@/lib/ldap-user-provisioning"
 import { ldapSettingKeys } from "@/lib/system-setting-defaults"
+import { buildAccessSnapshot, refreshSessionToken } from "@/lib/session-access"
+import { getUserAccessSnapshot } from "@/lib/session-access-cache"
+import { createLoginRateLimiter, getClientIp, guardLoginAttempt } from "@/lib/login-rate-limit"
 import bcrypt from "bcryptjs"
 import { randomUUID } from "node:crypto"
 
@@ -27,6 +30,23 @@ const userWithAccess = {
   employee: true,
 }
 
+class LoginRateLimitedError extends CredentialsSignin {
+  code = "rate_limited"
+}
+
+// One Node process serves production (systemd `node server.js`), so an in-memory limiter
+// is shared by every login. It also caps how many failed LDAP binds reach Active Directory.
+const globalForLoginRateLimit = globalThis as unknown as {
+  loginRateLimiter?: ReturnType<typeof createLoginRateLimiter>
+}
+const loginRateLimiter =
+  globalForLoginRateLimit.loginRateLimiter ??
+  createLoginRateLimiter({
+    username: { maxFailures: 5, windowMs: 15 * 60_000, lockMs: 15 * 60_000 },
+    ip: { maxFailures: 20, windowMs: 15 * 60_000, lockMs: 15 * 60_000 },
+  })
+globalForLoginRateLimit.loginRateLimiter = loginRateLimiter
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
@@ -34,7 +54,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         username: { label: "Username", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.username || !credentials?.password) {
           return null
         }
@@ -42,27 +62,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const username = String(credentials.username).trim()
         const password = String(credentials.password)
 
-        const user = await prisma.user.findUnique({
-          where: { username },
-          include: userWithAccess,
+        const result = await guardLoginAttempt({
+          limiter: loginRateLimiter,
+          username,
+          ip: request ? getClientIp(request.headers) : null,
+          attempt: () => authenticateCredentials(username, password),
         })
+        if (result.status === "rate_limited") throw new LoginRateLimitedError()
 
-        if (user?.isActive) {
-          const isValid = await bcrypt.compare(password, user.passwordHash)
-
-          if (isValid) {
-            return toSessionUser(user)
-          }
-        }
-
-        const ldapSettings = await getLdapSettings()
-        const ldapProfile = await authenticateLdapUser(username, password, ldapSettings)
-        if (!ldapProfile) return null
-
-        const ldapUser = await resolveLdapAppUser(ldapProfile, ldapSettings)
-        if (!ldapUser?.isActive) return null
-
-        return toSessionUser(ldapUser)
+        return result.status === "ok" ? result.user : null
       },
     }),
   ],
@@ -77,8 +85,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.roles = user.roles
         token.permissions = user.permissions
         token.employeeId = user.employeeId
+        return token
       }
-      return token
+      return refreshSessionToken(token, getUserAccessSnapshot)
     },
     async session({ session, token }) {
       if (session.user) {
@@ -94,6 +103,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
   },
 })
+
+async function authenticateCredentials(username: string, password: string) {
+  const user = await prisma.user.findUnique({
+    where: { username },
+    include: userWithAccess,
+  })
+
+  if (user?.isActive) {
+    const isValid = await bcrypt.compare(password, user.passwordHash)
+
+    if (isValid) {
+      return toSessionUser(user)
+    }
+  }
+
+  const ldapSettings = await getLdapSettings()
+  const ldapProfile = await authenticateLdapUser(username, password, ldapSettings)
+  if (!ldapProfile) return null
+
+  const ldapUser = await resolveLdapAppUser(ldapProfile, ldapSettings)
+  if (!ldapUser?.isActive) return null
+
+  return toSessionUser(ldapUser)
+}
 
 async function getLdapSettings(): Promise<LdapConfigInput> {
   const settings = await prisma.systemSetting.findMany({
@@ -179,12 +212,7 @@ async function toSessionUser(user: NonNullable<Awaited<ReturnType<typeof resolve
     data: { lastLoginAt: new Date() },
   })
 
-  const roles = user.userRoles.map((ur) => ur.role.name)
-  const permissions = user.userRoles.flatMap((ur) =>
-    ur.role.rolePermissions.map(
-      (rp) => `${rp.permission.module}:${rp.permission.action}`
-    )
-  )
+  const { roles, permissions } = buildAccessSnapshot(user)
 
   return {
     id: user.id,

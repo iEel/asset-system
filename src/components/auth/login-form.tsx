@@ -36,7 +36,7 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
 
       if (result?.error) {
         setPassword("")
-        setError(t("loginFailed"))
+        setError(result.code === "rate_limited" ? t("loginRateLimited") : t("loginFailed"))
         passwordRef.current?.focus()
         return
       }

@@ -268,6 +268,7 @@
     "loggingIn": "Signing in...",
     "directoryLoginHint": "Use a local account or AD/LDAP credentials when directory login is enabled",
     "loginFailed": "Invalid username or password",
+    "loginRateLimited": "Too many failed sign-in attempts. Please wait 15 minutes and try again.",
     "sessionExpired": "Session expired. Please sign in again."
   },
   "accessDeniedPage": {
