@@ -30,7 +30,7 @@ export async function getAuditRoundOptions() {
     }),
     prisma.employee.findMany({
       where: { isActive: true },
-      select: { id: true, code: true, fullNameTh: true },
+      select: { id: true, code: true, fullNameTh: true, departmentId: true },
       orderBy: { code: "asc" },
     }),
     prisma.assetStatus.findMany({
@@ -51,7 +51,7 @@ export async function getAuditRoundOptions() {
     departments: departments.map((department) => ({ id: department.id, label: `${department.code} - ${department.name}` })),
     locations: locations.map((location) => ({ id: location.id, label: `${location.code} - ${location.name}` })),
     categories: categories.map((category) => ({ id: category.id, label: `${category.code} - ${category.name}` })),
-    employees: employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` })),
+    employees: employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}`, departmentId: employee.departmentId })),
     statuses: statuses.map((status) => ({
       id: status.id,
       label: status.nameTh || status.name,
