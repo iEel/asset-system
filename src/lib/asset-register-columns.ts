@@ -52,3 +52,25 @@ export function assetRegisterColumnsMatchPreset(
   if (current.length !== preset.length) return false
   return preset.every((column) => current.includes(column))
 }
+
+/** Desktop widths in px. `name` is the minimum; the name column takes the remaining space. */
+export const assetRegisterColumnWidths = {
+  select: 44,
+  assetTag: 172,
+  name: 200,
+  category: 160,
+  companyBranch: 120,
+  currentLocation: 140,
+  custodian: 160,
+  ownershipType: 120,
+  status: 132,
+  condition: 96,
+  purchasePrice: 120,
+  actions: 150,
+} satisfies Record<AssetRegisterColumnKey | "select" | "actions", number>
+
+export function getAssetRegisterTableMinWidth(columns: Iterable<AssetRegisterColumnKey>) {
+  let width = assetRegisterColumnWidths.select + assetRegisterColumnWidths.actions
+  for (const column of columns) width += assetRegisterColumnWidths[column]
+  return width
+}
