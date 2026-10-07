@@ -311,7 +311,7 @@ function throwIfRepairError(effect: RepairAssetEffect): asserts effect is { erro
 }
 
 // asset_movements.reason is NVarChar(500); the record itself keeps the full text.
-function toMovementReason(text: string | null | undefined) {
+export function toMovementReason(text: string | null | undefined) {
   return text ? text.slice(0, 500) : null
 }
 

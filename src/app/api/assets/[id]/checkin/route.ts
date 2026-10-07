@@ -9,7 +9,7 @@ import { getAssetOperationConditionError, getCheckinHandoverStatusError } from "
 import { isValidCheckinReturnStatus } from "@/lib/asset-status-flow"
 import { generateCheckinDocumentNo } from "@/lib/operation-document-number"
 import { openRepairRecordWhere } from "@/lib/repair-record-policy"
-import { generateRepairNo } from "@/lib/repair-record-service"
+import { generateRepairNo, toMovementReason } from "@/lib/repair-record-service"
 import {
   createAssetTransactionSnapshot,
   serializeAssetComponentTransactionSnapshots,
@@ -244,7 +244,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
               movementType: "maintenance_create",
               fromValue: beforeAsset.statusId,
               toValue: input.nextStatusId,
-              reason: problem,
+              reason: toMovementReason(problem),
               referenceType: "maintenance",
               referenceId: ticket.id,
               performedBy: user.id,

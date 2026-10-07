@@ -156,3 +156,18 @@ test("returning to Ready does not create a repair record", async () => {
   assert.equal(response.status, 201, await response.clone().text())
   assert.equal(state.calls.some(({ call }) => call === "maintenanceTicket.create"), false)
 })
+
+test("a long damage note is capped to the movement reason column but kept in full on the repair record", async () => {
+  state.calls = []
+  state.openRecords = 0
+  const longNote = "ก".repeat(600)
+  const response = await route.POST(checkinRequest("status:Under Maintenance", { damageNote: longNote }), context)
+
+  assert.equal(response.status, 201, await response.clone().text())
+  const movement = state.calls.find(({ call, args }) =>
+    call === "assetMovement.create" && (args.data as Record<string, unknown>)?.movementType === "maintenance_create",
+  )?.args.data as Record<string, unknown>
+  assert.equal(String(movement.reason).length, 500)
+  const ticket = state.calls.find(({ call }) => call === "maintenanceTicket.create")?.args.data as Record<string, unknown>
+  assert.ok(String(ticket.problem).includes(longNote))
+})
