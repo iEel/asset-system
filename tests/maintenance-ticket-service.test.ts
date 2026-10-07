@@ -14,7 +14,7 @@ import {
 const expectedUpdatedAt = new Date("2026-07-14T03:00:00.000Z")
 
 test("corrective creation rejects a second active corrective ticket", async () => {
-  const db = fakeDb({ activeCorrectiveCount: 1 })
+  const db = fakeDb({ activeCorrectiveCount: 1, assetStatus: "Ready" })
 
   await assert.rejects(
     () => createCorrectiveMaintenanceTicket(db, createInput, { id: "user-1" }),
@@ -273,6 +273,7 @@ function fakeDb(config: {
   const tx = {
     asset: {
       findFirst: async () => ticket.asset,
+      updateMany: async () => ({ count: 1 }),
       update: async ({ data }: { data: { statusId: string } }) => {
         const status = data.statusId === "status-maintenance"
           ? "Under Maintenance"

@@ -16,22 +16,15 @@ export type MaintenanceStatus =
 
 export const maintenanceTerminalStatuses = ["closed", "cancelled"] as const
 
-export const maintenanceTerminalAssetStatuses = [
-  "Pending Disposal",
-  "Disposed",
-  "Retired",
-  "Lost",
-  "Missing",
-  "Under Maintenance",
-  "Pending Repair",
-] as const
-
-const blockedCorrectiveAssetStatuses = new Set(
-  maintenanceTerminalAssetStatuses.map((status) => normalizeStatus(status)),
-)
+// Corrective repairs start from an operational asset. Pending Repair is accepted only so an
+// asset returned as damaged without a ticket can get the ticket it is missing; the active-ticket
+// check below still prevents a second ticket. Checked Out (temporary loans) must be returned first.
+const correctiveSourceAssetStatuses = new Set(["ready", "in use", "pending repair"])
 
 const maintenanceTransitions: Record<MaintenanceStatus, readonly MaintenanceStatus[]> = {
-  open: ["closed"],
+  // "open" is the schema default that check-in used for repair tickets before they started as
+  // "reported"; let those tickets join the normal workflow instead of only closing.
+  open: ["accepted", "closed"],
   reported: ["accepted"],
   accepted: ["in_progress"],
   in_progress: ["waiting_parts", "waiting_vendor", "completed"],
@@ -48,7 +41,7 @@ export function isPreventiveMaintenanceTicket(ticket: MaintenanceTicketKindInput
 }
 
 export function getCorrectiveAssetEligibilityError(statusName: string, activeCorrectiveCount: number) {
-  if (blockedCorrectiveAssetStatuses.has(normalizeStatus(statusName))) {
+  if (!correctiveSourceAssetStatuses.has(normalizeStatus(statusName))) {
     return "MAINTENANCE_ASSET_INELIGIBLE" as const
   }
   if (activeCorrectiveCount > 0) return "MAINTENANCE_ACTIVE_TICKET_EXISTS" as const

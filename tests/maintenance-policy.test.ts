@@ -42,7 +42,7 @@ test("interactive status updates never expose closure transitions", () => {
   assert.deepEqual(getMaintenanceStatusUpdateTargets("reported"), ["accepted"])
   assert.deepEqual(getMaintenanceStatusUpdateTargets("in_progress"), ["waiting_parts", "waiting_vendor", "completed"])
   assert.deepEqual(getMaintenanceStatusUpdateTargets("completed"), [])
-  assert.deepEqual(getMaintenanceStatusUpdateTargets("open"), [])
+  assert.deepEqual(getMaintenanceStatusUpdateTargets("open"), ["accepted"])
 })
 
 test("closed maintenance evidence cannot be deleted", () => {
@@ -56,4 +56,21 @@ test("only early corrective maintenance stages can be cancelled", () => {
   for (const status of ["in_progress", "waiting_parts", "waiting_vendor", "completed", "closed", "cancelled"]) {
     assert.equal(canCancelMaintenanceTicket(status), false, status)
   }
+})
+
+test("corrective maintenance starts only from Ready or In Use", () => {
+  for (const statusName of ["Checked Out", "Reserved", "Under Inspection", "Draft", "In Transit", "Under Maintenance", "Pending Disposal", "Disposed", "Lost"]) {
+    assert.equal(getCorrectiveAssetEligibilityError(statusName, 0), "MAINTENANCE_ASSET_INELIGIBLE", statusName)
+  }
+  assert.equal(getCorrectiveAssetEligibilityError("In Use", 0), null)
+})
+
+test("a Pending Repair asset without a ticket can get the ticket it is missing", () => {
+  assert.equal(getCorrectiveAssetEligibilityError("Pending Repair", 0), null)
+  assert.equal(getCorrectiveAssetEligibilityError("Pending Repair", 1), "MAINTENANCE_ACTIVE_TICKET_EXISTS")
+})
+
+test("legacy tickets left in the default 'open' status can be accepted and continue the repair workflow", () => {
+  assert.ok(getAllowedMaintenanceTransitions("open").includes("accepted"))
+  assert.ok(getAllowedMaintenanceTransitions("open").includes("closed"))
 })

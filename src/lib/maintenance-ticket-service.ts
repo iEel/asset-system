@@ -59,6 +59,21 @@ export async function createCorrectiveMaintenanceTicket(
       },
     })
     if (!asset) throw new Error("Asset not found or inactive")
+    throwIfCorrectiveIneligible(getCorrectiveAssetEligibilityError(asset.status.name, 0))
+
+    const pendingRepairStatus = await tx.assetStatus.findFirst({
+      where: { isActive: true, OR: [{ name: "Pending Repair" }, { nameTh: "รอซ่อม" }] },
+      select: { id: true },
+    })
+    if (!pendingRepairStatus) throw new Error("Pending Repair asset status is not configured")
+
+    // Claim the asset row before counting open tickets: a concurrent request for the same asset
+    // waits on this lock and then either finds the status changed or sees the committed ticket.
+    const claim = await tx.asset.updateMany({
+      where: { id: asset.id, isActive: true, statusId: asset.statusId },
+      data: { statusId: pendingRepairStatus.id, updatedBy: user.id },
+    })
+    if (claim.count !== 1) throw conflictError()
 
     const activeCorrectiveCount = await tx.maintenanceTicket.count({
       where: {
@@ -69,26 +84,11 @@ export async function createCorrectiveMaintenanceTicket(
         NOT: { problem: { startsWith: "[PM] " } },
       },
     })
-    const eligibilityError = getCorrectiveAssetEligibilityError(asset.status.name, activeCorrectiveCount)
-    if (eligibilityError) {
-      throw new MaintenanceApiError(
-        eligibilityError,
-        eligibilityError === "MAINTENANCE_ACTIVE_TICKET_EXISTS"
-          ? "This asset already has an active corrective maintenance ticket"
-          : "This asset status cannot start a corrective maintenance ticket",
-        409,
-      )
-    }
+    throwIfCorrectiveIneligible(getCorrectiveAssetEligibilityError(asset.status.name, activeCorrectiveCount))
 
     await requireActiveEmployee(tx, input.reportedById, "Reporter")
     if (input.assignedToId) await requireActiveEmployee(tx, input.assignedToId, "Assignee")
     if (input.vendorId) await requireActiveSupplier(tx, input.vendorId)
-
-    const pendingRepairStatus = await tx.assetStatus.findFirst({
-      where: { isActive: true, OR: [{ name: "Pending Repair" }, { nameTh: "รอซ่อม" }] },
-      select: { id: true },
-    })
-    if (!pendingRepairStatus) throw new Error("Pending Repair asset status is not configured")
 
     const now = new Date()
     const repairNo = await generateRepairNo(tx, now)
@@ -119,12 +119,6 @@ export async function createCorrectiveMaintenanceTicket(
       include: maintenanceTicketInclude,
     })
 
-    if (pendingRepairStatus.id !== asset.statusId) {
-      await tx.asset.update({
-        where: { id: asset.id },
-        data: { statusId: pendingRepairStatus.id, updatedBy: user.id },
-      })
-    }
     await tx.assetMovement.create({
       data: {
         assetId: asset.id,
@@ -459,6 +453,17 @@ async function generateRepairNo(tx: Prisma.TransactionClient, now: Date) {
   const count = await tx.maintenanceTicket.count({ where: { createdAt: { gte: start, lt: end } } })
   const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`
   return `MT-${datePart}-${String(count + 1).padStart(4, "0")}`
+}
+
+function throwIfCorrectiveIneligible(error: ReturnType<typeof getCorrectiveAssetEligibilityError>) {
+  if (!error) return
+  throw new MaintenanceApiError(
+    error,
+    error === "MAINTENANCE_ACTIVE_TICKET_EXISTS"
+      ? "This asset already has an active corrective maintenance ticket"
+      : "This asset status cannot start a corrective maintenance ticket",
+    409,
+  )
 }
 
 function conflictError() {

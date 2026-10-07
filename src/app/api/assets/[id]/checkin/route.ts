@@ -223,6 +223,7 @@ export async function POST(request: NextRequest, context: CheckinContext) {
             reportedById: input.maintenanceReportedById!,
             reportedDate: input.returnDate,
             repairType: "internal",
+            repairStatus: "reported",
             createdBy: user.id,
             updatedBy: user.id,
           },

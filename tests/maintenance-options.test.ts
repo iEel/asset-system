@@ -16,7 +16,7 @@ test("maintenance option search caps active results at fifty", async () => {
 })
 
 test("asset options explain lifecycle conflicts instead of hiding records", async () => {
-  const db = fakeDb({ assetStatus: "Pending Repair" })
+  const db = fakeDb({ assetStatus: "Checked Out" })
   const options = await searchMaintenanceOptions(db, { type: "asset", q: "UP" })
   assert.equal(options[0]?.disabled, true)
   assert.equal(options[0]?.reason, "MAINTENANCE_ASSET_INELIGIBLE")
