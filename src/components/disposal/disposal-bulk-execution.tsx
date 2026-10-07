@@ -9,13 +9,12 @@ import {
   useRef,
   useState,
   type FormEvent,
-  type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
   type RefObject,
 } from "react"
 import { useRouter } from "next/navigation"
-import { CheckSquare2, ListChecks, Loader2, ShieldAlert, X } from "lucide-react"
+import { CheckSquare2, ListChecks, Loader2, ShieldAlert } from "lucide-react"
 import { CLICKABLE_ROW_BEFORE_NAVIGATE_EVENT } from "@/lib/clickable-row-navigation"
 import {
   MAX_DISPOSAL_BULK_EXECUTION_ITEMS,
@@ -38,6 +37,7 @@ import {
   type BulkExecutionSelectionMessage,
   type BulkExecutionSelectionState,
 } from "@/lib/disposal-bulk-execution-ui"
+import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 
@@ -583,7 +583,7 @@ export function DisposalBulkExecutionProvider({
       >
         {children}
         {dialogState !== "closed" ? (
-          <Dialog employees={employees} executionStatuses={executionStatuses} />
+          <BulkExecutionDialog employees={employees} executionStatuses={executionStatuses} />
         ) : null}
       </div>
     </Context.Provider>
@@ -740,7 +740,7 @@ export function DisposalBulkExecutionCheckbox({
   )
 }
 
-function Dialog({ employees, executionStatuses }: { employees: Option[]; executionStatuses: Option[] }) {
+function BulkExecutionDialog({ employees, executionStatuses }: { employees: Option[]; executionStatuses: Option[] }) {
   const {
     copy,
     items,
@@ -760,7 +760,6 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
     permanentConfirmed,
     error,
     triggerRef,
-    restoreTargetRef,
     setExecutionDate,
     setExecutedById,
     setNextStatusId,
@@ -775,13 +774,8 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
     closeDialog,
     getErrorLabel,
   } = useBulk()
-  const titleId = useId()
-  const descriptionId = useId()
   const historicalWarningId = useId()
   const historicalHelpId = useId()
-  const dialogRef = useRef<HTMLFormElement | null>(null)
-  const closeRef = useRef<HTMLButtonElement | null>(null)
-  const restoreFocusRef = useRef<HTMLElement | null>(null)
   const previewing = dialogState === "previewing"
   const committing = dialogState === "committing"
   const busy = previewing || committing
@@ -806,40 +800,6 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
       ? copy.committing
       : copy.preflightHelp
 
-  useEffect(() => {
-    const fallbackTarget = restoreTargetRef.current
-    restoreFocusRef.current = triggerRef.current
-      ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
-    closeRef.current?.focus()
-    return () => {
-      const target = restoreFocusRef.current
-      if (target?.isConnected) target.focus()
-      else fallbackTarget?.focus()
-    }
-  }, [restoreTargetRef, triggerRef])
-
-  function handleKeyDown(event: KeyboardEvent<HTMLFormElement>) {
-    if (event.key === "Escape" && !committing) {
-      event.preventDefault()
-      closeDialog()
-      return
-    }
-    if (event.key !== "Tab") return
-    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-      "button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])",
-    )
-    if (!focusable?.length) return
-    const first = focusable[0]
-    const last = focusable[focusable.length - 1]
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault()
-      last.focus()
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault()
-      first.focus()
-    }
-  }
-
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (dialogState === "review") void preview()
@@ -847,42 +807,23 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-navy/60 p-3 sm:p-6"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !committing) closeDialog()
-      }}
+    <AccessibleDialog
+      open
+      title={title}
+      description={description}
+      busy={committing}
+      size="xl"
+      closeLabel={previewing ? copy.cancelPreview : copy.close}
+      returnFocusRef={triggerRef}
+      onClose={closeDialog}
     >
       <form
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
         aria-busy={busy}
         data-disposal-bulk-dialog
         onSubmit={handleSubmit}
-        onKeyDown={handleKeyDown}
-        className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-md border border-border bg-surface shadow-xl"
+        className="flex flex-col"
       >
-        <header className="flex items-start justify-between gap-4 border-b border-border px-4 py-3 sm:px-6">
-          <div>
-            <h2 id={titleId} className="text-lg font-semibold text-foreground">{title}</h2>
-            <p id={descriptionId} className="mt-1 text-sm text-muted-foreground">{description}</p>
-          </div>
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={closeDialog}
-            disabled={committing}
-            aria-label={previewing ? copy.cancelPreview : copy.close}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </header>
-
-        <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4 sm:px-6">
+        <div className="space-y-5 px-4 py-4 sm:px-6">
           <div aria-live="polite" className="min-h-5 text-sm">
             {previewing ? <BusyLabel label={copy.previewLoading} /> : null}
             {committing ? <BusyLabel label={copy.committing} /> : null}
@@ -1039,7 +980,7 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
           ) : null}
         </footer>
       </form>
-    </div>
+    </AccessibleDialog>
   )
 }
 

@@ -68,21 +68,21 @@ test("bulk approval UI keeps selection page-scoped and uses server preflight", (
   assert.match(source, /mode:\s*"preview"/)
   assert.match(source, /mode:\s*"commit"/)
   assert.match(source, /aria-live="polite"/)
-  assert.match(source, /role="dialog"/)
-  assert.match(source, /aria-modal="true"/)
   assert.match(source, /MAX_DISPOSAL_BULK_APPROVAL_ITEMS/)
   assert.match(source, /if \(!link \|\| !shouldGuardLinkClick\(event, link\)\) return/)
   assert.doesNotMatch(source, /fixed\s+bottom-0/)
 })
 
-test("bulk approval dialog focuses a stable surface and restores to a persistent queue target", () => {
-  const source = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8")
-
-  assert.match(source, /restoreTargetRef/)
-  assert.match(source, /tabIndex=\{-1\}/)
-  assert.match(source, /busy \? dialogRef\.current : closeRef\.current/)
-  assert.match(source, /restoreFocusRef\.current\?\.isConnected/)
-  assert.match(source, /fallbackTarget\?\.focus\(\)/)
+test("bulk approval dialog uses the shared accessible dialog", () => {
+  const dialogSource = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(dialogSource, /<AccessibleDialog[\s\S]*?busy=\{busy\}/)
+  assert.match(dialogSource, /returnFocusRef=\{triggerRef\}/)
+  assert.match(dialogSource, /size="xl"/)
+  assert.match(dialogSource, /data-disposal-bulk-dialog="true"/)
+  // The provider wrapper keeps its own tabIndex={-1}; only the dialog must drop the hand-rolled focus surface.
+  const dialogFunction = dialogSource.slice(dialogSource.indexOf("function DisposalBulkApprovalDialog"))
+  assert.doesNotMatch(dialogSource, /fixed inset-0|role="dialog"|restoreFocusRef/)
+  assert.doesNotMatch(dialogFunction.slice(0, dialogFunction.indexOf("\nfunction ", 1)), /tabIndex=\{-1\}/)
 })
 
 test("bulk approval mobile selection uses 44px targets and exposes blocked reasons", () => {

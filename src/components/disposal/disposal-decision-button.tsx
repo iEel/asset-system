@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react"
+import { useRef, useState, type FormEvent } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { CheckCircle2, ClipboardCheck, Loader2, X } from "lucide-react"
+import { CheckCircle2, ClipboardCheck, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { getDisposalApiErrorMessage } from "@/lib/disposal-error-message"
 import { showsEstimatedSaleValue, showsEstimatedSalvageValue, type DisposalType } from "@/lib/disposal-type-policy"
 
@@ -140,82 +141,28 @@ function DecisionDialog({
 }) {
   const t = useTranslations("disposalPage")
   const tCommon = useTranslations("common")
-  const titleId = useId()
-  const descriptionId = useId()
-  const dialogRef = useRef<HTMLFormElement | null>(null)
   const decisionRef = useRef<HTMLSelectElement | null>(null)
-  const restoreFocusRef = useRef<HTMLElement | null>(null)
   const normalizedDisposalType = disposalType as DisposalType
   const showSaleValue = showsEstimatedSaleValue(normalizedDisposalType)
   const showSalvageValue = showsEstimatedSalvageValue(normalizedDisposalType)
   const rejectionReasonRequired = values.decision === "reject"
 
-  useEffect(() => {
-    restoreFocusRef.current = triggerRef.current ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
-    const frame = window.requestAnimationFrame(() => decisionRef.current?.focus())
-
-    return () => {
-      window.cancelAnimationFrame(frame)
-      restoreFocusRef.current?.focus()
-      restoreFocusRef.current = null
-    }
-  }, [triggerRef])
-
   function closeDialog() {
     if (!saving) onClose()
   }
 
-  function handleKeyDown(event: KeyboardEvent<HTMLFormElement>) {
-    if (event.defaultPrevented) return
-    if (event.key === "Escape") {
-      event.preventDefault()
-      closeDialog()
-      return
-    }
-    if (event.key !== "Tab") return
-
-    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), textarea:not([disabled]), [href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    )
-    if (!focusable || focusable.length === 0) return
-
-    const first = focusable[0]
-    const last = focusable[focusable.length - 1]
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault()
-      last.focus()
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault()
-      first.focus()
-    }
-  }
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center sm:p-4"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) closeDialog()
-      }}
+    <AccessibleDialog
+      open
+      title={t("decisionTitle")}
+      description={disposalNo}
+      busy={saving}
+      size="md"
+      initialFocusRef={decisionRef}
+      returnFocusRef={triggerRef}
+      onClose={closeDialog}
     >
-      <form
-        ref={dialogRef}
-        onSubmit={onSubmit}
-        onKeyDown={handleKeyDown}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-        className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-lg border border-border bg-surface shadow-lg sm:rounded-lg"
-      >
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <div>
-            <h2 id={titleId} className="text-base font-semibold text-foreground">{t("decisionTitle")}</h2>
-            <p id={descriptionId} className="mt-1 text-sm text-muted-foreground">{disposalNo}</p>
-          </div>
-          <button type="button" onClick={closeDialog} disabled={saving} className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 sm:h-8 sm:w-8" aria-label={tCommon("close")}>
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+      <form onSubmit={onSubmit}>
         <div className="grid grid-cols-1 gap-5 p-4 sm:p-5 md:grid-cols-2">
           <Field label={t("decision")} required>
             <select ref={decisionRef} value={values.decision} required disabled={saving} onChange={(event) => onFieldChange("decision", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0">
@@ -254,7 +201,7 @@ function DecisionDialog({
           </div>
         </div>
       </form>
-    </div>
+    </AccessibleDialog>
   )
 }
 

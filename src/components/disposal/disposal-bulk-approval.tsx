@@ -4,22 +4,21 @@ import {
   createContext,
   useContext,
   useEffect,
-  useId,
   useRef,
   useState,
   type FormEvent,
-  type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
   type RefObject,
 } from "react"
 import { useRouter } from "next/navigation"
-import { CheckSquare2, ListChecks, Loader2, ShieldAlert, X } from "lucide-react"
+import { CheckSquare2, ListChecks, Loader2, ShieldAlert } from "lucide-react"
 import type {
   DisposalBulkApprovalCode,
   DisposalBulkApprovalItem,
   DisposalBulkApprovalSummary,
 } from "@/lib/disposal-bulk-approval"
+import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 
@@ -511,17 +510,11 @@ function DisposalBulkApprovalDialog() {
     busy,
     error,
     triggerRef,
-    restoreTargetRef,
     setApprovalRemark,
     commit,
     closeDialog,
     getErrorLabel,
   } = useDisposalBulkApproval()
-  const titleId = useId()
-  const descriptionId = useId()
-  const dialogRef = useRef<HTMLFormElement | null>(null)
-  const closeRef = useRef<HTMLButtonElement | null>(null)
-  const restoreFocusRef = useRef<HTMLElement | null>(null)
   const eligible = response?.items.filter((item) => item.outcome === "eligible") ?? []
   const blocked = response?.items.filter((item) => item.outcome === "blocked") ?? []
   const failed = response?.items.filter((item) => item.outcome === "failed") ?? []
@@ -529,63 +522,23 @@ function DisposalBulkApprovalDialog() {
   const groups = groupByCode([...blocked, ...failed])
   const description = dialogState === "previewing" ? copy.previewLoading : dialogState === "committing" ? copy.committing : copy.preflightHelp
 
-  useEffect(() => {
-    const fallbackTarget = restoreTargetRef.current
-    restoreFocusRef.current = triggerRef.current ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
-    return () => {
-      if (restoreFocusRef.current?.isConnected) restoreFocusRef.current.focus()
-      else fallbackTarget?.focus()
-      restoreFocusRef.current = null
-    }
-  }, [restoreTargetRef, triggerRef])
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      const focusTarget = busy ? dialogRef.current : closeRef.current
-      focusTarget?.focus()
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [busy])
-
-  function handleKeyDown(event: KeyboardEvent<HTMLFormElement>) {
-    if (event.defaultPrevented) return
-    if (event.key === "Escape") {
-      event.preventDefault()
-      closeDialog()
-      return
-    }
-    if (event.key !== "Tab") return
-    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), textarea:not([disabled]), [href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    )
-    if (!focusable?.length) {
-      event.preventDefault()
-      dialogRef.current?.focus()
-      return
-    }
-    const first = focusable[0]
-    const last = focusable[focusable.length - 1]
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault()
-      last.focus()
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault()
-      first.focus()
-    }
-  }
-
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (dialogState === "preview") void commit()
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDialog() }}>
-      <form ref={dialogRef} tabIndex={-1} data-disposal-bulk-dialog="true" onSubmit={handleSubmit} onKeyDown={handleKeyDown} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId} className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-lg border border-border bg-surface shadow-lg outline-none sm:rounded-lg">
-        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-          <div><h2 id={titleId} className="text-base font-semibold text-foreground">{dialogState === "result" ? copy.resultTitle : copy.previewTitle}</h2><p id={descriptionId} className="mt-1 text-sm text-muted-foreground">{description}</p></div>
-          <button ref={closeRef} type="button" onClick={closeDialog} disabled={busy} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 sm:h-8 sm:w-8" aria-label={copy.close}><X className="h-4 w-4" /></button>
-        </div>
+    <AccessibleDialog
+      open
+      title={dialogState === "result" ? copy.resultTitle : copy.previewTitle}
+      description={description}
+      busy={busy}
+      size="xl"
+      closeLabel={copy.close}
+      returnFocusRef={triggerRef}
+      onClose={closeDialog}
+    >
+      <form data-disposal-bulk-dialog="true" onSubmit={handleSubmit}>
         <div className="space-y-5 p-4 sm:p-5">
           {dialogState === "previewing" ? <div className="flex min-h-24 items-center gap-3 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" />{copy.previewLoading}</div> : null}
           {dialogState === "committing" ? <div className="flex min-h-24 items-center gap-3 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" />{copy.committing}</div> : null}
@@ -604,7 +557,7 @@ function DisposalBulkApprovalDialog() {
           </div>
         </div>
       </form>
-    </div>
+    </AccessibleDialog>
   )
 }
 

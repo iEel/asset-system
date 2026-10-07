@@ -68,22 +68,20 @@ test("disposal history uses existing movement translations rather than raw under
   assert.doesNotMatch(source, /movement\.movementType\.replaceAll\("_", " "\)/)
 })
 
-test("decision and execution dialogs implement the existing accessible focus contract", () => {
+test("decision and execution dialogs use the shared accessible dialog", () => {
   for (const path of [
     "src/components/disposal/disposal-decision-button.tsx",
     "src/components/disposal/disposal-execution-button.tsx",
   ]) {
-    const source = readFileSync(path, "utf8")
-    assert.match(source, /role="dialog"/)
-    assert.match(source, /aria-modal="true"/)
-    assert.match(source, /restoreFocusRef/)
-    assert.match(source, /requestAnimationFrame/)
-    assert.match(source, /event\.key === "Escape"/)
-    assert.match(source, /event\.key !== "Tab"/)
-    assert.match(source, /event\.target === event\.currentTarget/)
-    assert.match(source, /if \(!saving\) onClose\(\)/)
-    assert.match(source, /max-h-\[92dvh\]/)
+    const dialogSource = readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+    assert.match(dialogSource, /<AccessibleDialog[\s\S]*?busy=\{saving\}/, path)
+    assert.match(dialogSource, /returnFocusRef=\{triggerRef\}/, path)
+    assert.doesNotMatch(dialogSource, /fixed inset-0|role="dialog"|restoreFocusRef|event\.key === "Tab"|handleKeyDown/, path)
   }
+  assert.match(
+    readFileSync("src/components/disposal/disposal-execution-button.tsx", "utf8"),
+    /initialFocusRef=\{executionDateRef\}/,
+  )
 })
 
 test("the print action is structured for pending-request versus final-document copy", () => {
