@@ -65,6 +65,7 @@
 | `card` / `card-foreground` | #FFFFFF / #0F172A | ใหม่ · `surface` เป็นชื่อแฝง `var(--card)` (ใช้ 580 จุด ไม่ต้องแก้) |
 | `popover` / `popover-foreground` | #FFFFFF / #0F172A | ใหม่ |
 | `primary` / `primary-foreground` | #2563EB / #FFFFFF | เท่าเดิม |
+| `primary-soft` / `primary-hover` | #EFF6FF / #1D4ED8 | ใหม่ (แก้ตอนเขียน plan: `text-primary` บน `bg-primary/10` วัดได้ 4.4999:1 ไม่ผ่าน · ขาวบน `bg-primary/90` ได้ 4.34:1 ไม่ผ่าน) |
 | `secondary` / `secondary-foreground` | #F1F5F9 / #0F172A | **เปลี่ยนความหมาย** (เดิม #64748B) · ใช้อยู่ 1 จุด `disabled:bg-secondary` ใน `asset-label-batch-tool.tsx:377` ต้องแก้ · scrollbar hover ใน `globals.css` เปลี่ยนเป็น `var(--muted-foreground)` |
 | `muted` / `muted-foreground` | #F1F5F9 / #475569 | เท่าเดิม |
 | `accent` / `accent-foreground` | #F1F5F9 / #0F172A | เท่าเดิม |
@@ -75,22 +76,25 @@
 
 สีสถานะ — แต่ละโทนมี 4 ค่า
 
-| โทน | `{tone}` ตัวอักษร/ไอคอน/พื้นทึบ | `{tone}-foreground` | `{tone}-soft` | `{tone}-border` |
-|---|---|---|---|---|
-| success | #15803D | #FFFFFF | #F0FDF4 | #BBF7D0 |
-| warning | #B45309 | #FFFFFF | #FFFBEB | #FDE68A |
-| danger | #B91C1C | #FFFFFF | #FEF2F2 | #FECACA |
-| info | #2563EB | #FFFFFF | #EFF6FF | #BFDBFE |
+| โทน | `{tone}` ตัวอักษร/ไอคอน/พื้นทึบ | `{tone}-foreground` | `{tone}-soft` | `{tone}-border` | `{tone}-hover` |
+|---|---|---|---|---|---|
+| success | #15803D | #FFFFFF | #F0FDF4 | #BBF7D0 | #166534 |
+| warning | #B45309 | #FFFFFF | #FFFBEB | #FDE68A | #92400E |
+| danger | #B91C1C | #FFFFFF | #FEF2F2 | #FECACA | #991B1B |
+| info | #2563EB | #FFFFFF | #EFF6FF | #BFDBFE | #1D4ED8 |
+
+`{tone}-hover` ใช้เป็นพื้นตอน hover ของปุ่มทึบ (เข้มขึ้น ไม่ใช่จางลง) เพราะขาวบน `/90` ของ success/warning/primary ได้แค่ 4.2–4.3:1
 
 ทุกค่าใน `@theme inline` ต้องมี `--color-*` คู่กัน (เช่น `--color-warning-soft: var(--warning-soft)`)
 
 ### 3.3 Codemod และกติกาสี
 
-1. `bg-{success|warning|danger|info}/{5|10|15|20}` → `bg-{tone}-soft` (ราว 320 จุด รวม prefix เช่น `hover:`) — เหตุผล: ถ้าใช้พื้นโปร่ง /10 ของสีที่เข้มขึ้น เขียว/ส้มยังได้แค่ 4.4:1 และพื้นเหลืองจะหม่นเป็นน้ำตาล
-2. `text-{tone}-foreground` เดิม (24 จุด ใช้เป็นตัวเข้มบนพื้นอ่อน) → `text-{tone}`
-3. `bg-primary/15` (2 จุด) → `bg-primary/10` · `text-primary/60`, `text-primary/70` (3 จุด) → ค่าที่ผ่าน AA (`text-primary` หรือ `text-muted-foreground` ตามบริบท)
-4. สีจากพาเลต Tailwind ที่ใส่ตรง (72 จุด เช่น `text-amber-600`) — ตรวจด้วยสคริปต์ แก้**เฉพาะคู่ที่ไม่ผ่าน AA** ให้ใช้ token
-5. `border-{tone}/NN` ไม่ต้องแก้ (เส้นตกแต่ง ไม่ใช่ข้อความ)
+1. `bg-{success|warning|danger|info}/{5|10|15|20}` → `bg-{tone}-soft` (ราว 320 จุด รวม prefix เช่น `hover:`) · `bg-primary/{5|10|15}` → `bg-primary-soft` (153 จุด)
+2. `bg-{primary|success|warning|danger|info}/90` → `bg-{tone}-hover` (115 จุด ส่วนใหญ่เป็น `hover:bg-primary/90`) — เหตุผล: ถ้าใช้พื้นโปร่ง /10 ของสีที่เข้มขึ้น เขียว/ส้มยังได้แค่ 4.4:1 และพื้นเหลืองจะหม่นเป็นน้ำตาล
+3. `text-{tone}-foreground` เดิม (24 จุด ใช้เป็นตัวเข้มบนพื้นอ่อน) → `text-{tone}`
+4. `text-primary/60`, `text-primary/70` (3 จุด) → ค่าที่ผ่าน AA (`text-primary` หรือ `text-muted-foreground` ตามบริบท)
+5. สีจากพาเลต Tailwind ที่ใส่ตรง (72 จุด เช่น `text-amber-600`) — ตรวจด้วยสคริปต์ แก้**เฉพาะคู่ที่ไม่ผ่าน AA** ให้ใช้ token
+6. `border-{tone}/NN` ไม่ต้องแก้ (เส้นตกแต่ง ไม่ใช่ข้อความ)
 
 ### 3.4 test สี
 
@@ -99,9 +103,9 @@
 - `{tone}` บน #FFFFFF, `background`, `muted`, `{tone}-soft` — ทั้ง 4 โทน
 - `{tone}-foreground` บน `{tone}` — ทั้ง 4 โทน
 - `primary-foreground` บน `primary` · `foreground` บน `background`/`card`/`muted` · `muted-foreground` บน `background`/`card`/`muted` · `secondary-foreground` บน `secondary`
-- `primary` บน `primary` /10 ผสมกับขาว (คู่ที่ใช้มากที่สุด 88 จุด)
+- `primary` บน `primary-soft` · `primary-foreground` บน `primary-hover` · `{tone}-foreground` บน `{tone}-hover` ทั้ง 4 โทน
 
-ค่าที่วัดไว้แล้ว: success/warning ink 5.02 บนขาว · 4.79–4.80 บน #F8FAFC · ~4.9 บน soft · danger 6.47 · info 5.17 · ขาวบนพื้นทึบเท่ากันกับบนขาว
+ค่าที่วัดไว้แล้ว: success/warning ink 5.02 บนขาว · 4.79–4.80 บน #F8FAFC · 4.58 บน muted · 4.79–4.84 บน soft · danger 6.47 (5.9 บน soft) · info/primary 5.17 (4.75 บน soft) · ขาวบนพื้นทึบเท่ากันกับบนขาว · ขาวบน hover 6.7–8.3
 
 ### 3.5 ฟอนต์
 
@@ -199,7 +203,7 @@
 - **test ใหม่**
   - `tests/design-tokens-contrast.test.ts` (ข้อ 3.4)
   - `tests/confirm-queue.test.ts` — คิว FIFO · resolve true/false · เรียกซ้อน
-  - `tests/ui-overlay-guards.test.ts` — สแกน `src`: ไม่มี `window.confirm` · ไม่มี `fixed inset-0` นอก `src/components/ui/` และ `dashboard-shell.tsx` (ตัว shell เอง) · ไม่มี `bg-{tone}/NN` ของ 4 โทน · ไม่มี `text-{success|warning|danger|info}-foreground` นอก `src/components/ui/` (ข้างนอกใช้คู่พื้นทึบผ่าน `Button`/`Badge` เท่านั้น) · ไม่มี import `status-pill`
+  - `tests/ui-overlay-guards.test.ts` — สแกน `src`: ไม่มี `window.confirm` · ไม่มี `fixed inset-0` นอก `src/components/ui/` และ `dashboard-shell.tsx` (ตัว shell เอง) · ไม่มี `bg-{success|warning|danger|info}/NN` และ `bg-primary/{5|10|15|90}` · ไม่มี `text-{success|warning|danger|info}-foreground` นอก `src/components/ui/` (ข้างนอกใช้คู่พื้นทึบผ่าน `Button`/`Badge` เท่านั้น) · ไม่มี import `status-pill`
   - button/badge variant mapping ใน `tests/design-system.test.ts` (import จาก `button-variants.ts`)
   - ตรรกะกรองของ `SearchableSelect` (ถ้าย้ายเป็นฟังก์ชันล้วน)
 - **test เดิมที่จับ markup เก่าด้วย regex — เขียนใหม่ให้ตรวจข้อกำหนดใหม่:** `accessible-dialog`, `confirm-text-dialog-ui`, `asset-operation-confirmation-ui`, `disposal-detail-workspace` (:71-87), `disposal-bulk-approval` (:71-90), `disposal-bulk-execution-ui`, `audit-not-found-dialog`, `audit-round-cancellation`, `audit-mobile-flow-completion`, `mobile-field-navigation-ui`, `asset-status-help-ui`, `searchable-select-accessibility`, `searchable-select-navigation`, `integration-api-client-admin` (:144), `storage-archive-ui` (:57) · ตรวจสิ่งที่ยังมีความหมาย เช่น dialog จำหน่ายส่ง `busy` · ตัวกันออกจากหน้าเรียก `confirm` · ปุ่ม "เพิ่มเติม" คง `aria-expanded` · ไม่มี dialog อยู่ในเมนู
