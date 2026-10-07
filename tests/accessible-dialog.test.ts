@@ -18,6 +18,8 @@ test("accessible dialog keeps caller focus targets", () => {
   const source = read("src/components/ui/accessible-dialog.tsx")
   assert.match(source, /onOpenAutoFocus=\{\(event\) => \{[\s\S]*initialFocusRef\?\.current[\s\S]*event\.preventDefault\(\)/)
   assert.match(source, /onCloseAutoFocus=\{\(event\) => \{[\s\S]*returnFocusRef\?\.current[\s\S]*isConnected[\s\S]*event\.preventDefault\(\)/)
+  assert.match(source, /restoreFocusRef\.current = document\.activeElement instanceof HTMLElement/)
+  assert.match(source, /returnFocusRef\?\.current \?\? restoreFocusRef\.current/)
 })
 
 test("dialog close button is labelled, disable-able and touch sized", () => {

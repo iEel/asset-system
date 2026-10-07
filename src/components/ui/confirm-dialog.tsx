@@ -29,6 +29,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<ConfirmQueue>(emptyConfirmQueue)
   const queueRef = useRef<ConfirmQueue>(emptyConfirmQueue)
   const nextIdRef = useRef(0)
+  const restoreFocusRef = useRef<HTMLElement | null>(null)
 
   const commit = useCallback((next: ConfirmQueue) => {
     queueRef.current = next
@@ -66,7 +67,19 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         }}
       >
         {current ? (
-          <AlertDialogContent key={current.id} {...(current.description ? {} : { "aria-describedby": undefined })}>
+          <AlertDialogContent
+            key={current.id}
+            {...(current.description ? {} : { "aria-describedby": undefined })}
+            onOpenAutoFocus={() => {
+              restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+            }}
+            onCloseAutoFocus={(event) => {
+              const target = restoreFocusRef.current
+              if (!target?.isConnected) return
+              event.preventDefault()
+              target.focus()
+            }}
+          >
             <AlertDialogHeader>
               <AlertDialogTitle>{current.title}</AlertDialogTitle>
               {current.description ? <AlertDialogDescription>{current.description}</AlertDialogDescription> : null}

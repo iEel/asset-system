@@ -11,6 +11,8 @@ test("confirm provider renders an alert dialog and settles by request id", () =>
   assert.match(source, /<AlertDialogCancel[\s\S]*?event\.preventDefault\(\)[\s\S]*?settle\(current\.id, false\)/)
   assert.match(source, /<AlertDialogAction[\s\S]*?event\.preventDefault\(\)[\s\S]*?settle\(current\.id, true\)/)
   assert.match(source, /variant=\{current\.tone === "destructive" \? "destructive" : "default"\}/)
+  assert.match(source, /onOpenAutoFocus=\{\(\) => \{\s*restoreFocusRef\.current = document\.activeElement instanceof HTMLElement/)
+  assert.match(source, /onCloseAutoFocus=\{\(event\) => \{[\s\S]*?restoreFocusRef\.current[\s\S]*?event\.preventDefault\(\)/)
   assert.match(source, /throw new Error\("useConfirm must be used inside <ConfirmProvider>"\)/)
 })
 

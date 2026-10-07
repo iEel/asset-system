@@ -1,6 +1,6 @@
 "use client"
 
-import type { ReactNode, RefObject } from "react"
+import { useRef, type ReactNode, type RefObject } from "react"
 import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -38,6 +38,7 @@ export function AccessibleDialog({
   children: ReactNode
 }) {
   const tCommon = useTranslations("common")
+  const restoreFocusRef = useRef<HTMLElement | null>(null)
 
   return (
     <Dialog
@@ -58,13 +59,14 @@ export function AccessibleDialog({
           if (busy) event.preventDefault()
         }}
         onOpenAutoFocus={(event) => {
+          restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
           const target = initialFocusRef?.current
           if (!target) return
           event.preventDefault()
           target.focus()
         }}
         onCloseAutoFocus={(event) => {
-          const target = returnFocusRef?.current
+          const target = returnFocusRef?.current ?? restoreFocusRef.current
           if (!target?.isConnected) return
           event.preventDefault()
           target.focus()
