@@ -257,6 +257,14 @@ Tables are core product surfaces. Use bordered shells, readable row spacing, cle
 
 Scanner and field workflows need touch-safe controls, square or contained camera preview areas, visible fallback text input, readable status, and clear evidence upload states. Audit pages may lean into the Audit Console lens, but must remain calm and workflow-driven.
 
+Field-work page pattern (audit scan, 2026-10-07): **room → list or typed search → check sheet → one save button.**
+- **Context first:** a room button sets where the person is standing; it filters the list and becomes the default "actual" location. It is remembered per round.
+- **Search is the primary input** (QR labels are optional): a sticky field at the top of the scroll area (`-top-4 sm:-top-6` to sit flush over `main`'s padding), `text-base` so iOS does not zoom, IME-safe, 2+ characters, Enter opens the first result, camera button inside the field.
+- **Check sheet:** bottom `Sheet` below 1024px, an inline sticky panel beside the list at ≥1024px (the open row is marked with `aria-current`). Each field shows the value that will be saved; a mismatch gets the warning tone (`bg-warning-soft`, `border-warning-border`) with an "ในระบบ: …" line.
+- **One save button whose label states the result** ("บันทึก · ตรงทุกข้อ" / "ไม่ตรง N ข้อ (…)"); warning variant when anything differs; disabled with the reason shown when required evidence is missing.
+- **After saving:** update rows in place (no `router.refresh()`), a `role="status"` banner with an "แก้" link, and focus back to the search field (from search) or to the row now in the same position (from the list).
+- **Offline:** saves queue on the device, rows show "รอส่ง", a bar shows the count, and the queue sends itself when the connection returns.
+
 ## 6. Do's and Don'ts
 
 ### Do:

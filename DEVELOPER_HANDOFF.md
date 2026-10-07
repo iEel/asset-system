@@ -254,6 +254,17 @@ npm run build
 - `MasterDataHeader` takes `compactOnMobile` (title and create button share one row, subtitle hidden below `md`); only the register uses it so far.
 - Design spec: `docs/superpowers/specs/2026-10-07-asset-register-redesign-design.md`. Plan: `docs/superpowers/plans/2026-10-07-asset-register-redesign.md`.
 
+## Audit Scan Redesign (2026-10-07)
+
+- `/[locale]/audit/rounds/[id]/scan` renders `AuditScanWorkspace` (`src/components/audit/audit-scan-workspace.tsx`). The 2,065-line `audit-scan-form.tsx` is gone; the screen is split into header, room picker, room list, search, lookup card, camera, check form/field/panel, missing-component dialog, saved banner and offline bar. `audit-scan-panels.tsx` keeps only `AuditComponentPanel` and `AuditQrScannerOverlay`.
+- All rules are pure and unit-tested in `src/lib/audit-scan-session.ts`: room list and room options, progress, in-round search (exact → prefix → contains, pending first, max 10), check defaults (new check → expected values with location = selected room; edit → saved actual values, never the room; out of scope → register values with location = room), mismatch diff mirroring the scan route (location skipped for licences, custodian only for `personal`), photo rule, department suggestion, `applyScanResult`, `mergeStatusUpdates`.
+- **Photo rule (user decision 2026-10-07):** an in-round save needs a photo only when the condition differs; out-of-scope keeps the old rule (any difference). Client-side only; the server rule is unchanged.
+- Data: the page loads slim rows with `loadAuditScanRows` (`src/lib/audit-scan-data.ts` + pure mapper `src/lib/audit-scan-rows.ts`) — no per-row component includes; component counts come from one `groupBy` filtered by relation (never an id list, so no 2,100-parameter risk). Components load lazily through `scan-lookup` when a sheet opens.
+- Sharing progress: `GET /api/audit-rounds/[id]/scan-status?since=<ISO>` (`audit:edit`) returns `{ serverTime, roundStatus, items }` for rows with `updatedAt > since − 10 s`. `serverTime` is taken before the query; the 10 s overlap catches Serializable scan transactions that commit after their `updatedAt` stamp; the client merges by `itemId`. The client polls every 30 s while visible, on tab return (at most once per 5 s), on room change and after each save.
+- Scan route changes: re-saving closes pending findings whose mismatch no longer applies (`reviewStatus: "rejected"`, remark "ยกเลิกเพราะแก้ผลตรวจ"; `not_found` and component findings untouched), refreshes `actualValue` on findings that still apply, and returns `scannedByName`. `scan-lookup` returns `{ status: "candidates", matches }` (≤5, `contains` on tag/serial/fixed-asset code) when the exact lookup misses and the input has ≥3 characters. The pending page accepts `?locationId=` and shows/keeps the room filter.
+- Offline: `upsertQueuedAuditScanAsync` keeps one queued save per asset (newer result wins, earlier photos are kept); the queue sends itself on `online` and after each poll; failed entries stay with their error until sent manually or removed.
+- Staff guide: `docs/18_AUDIT_SCAN_GUIDE_TH.md`. Design spec: `docs/superpowers/specs/2026-10-07-audit-scan-redesign-design.md`. Plan: `docs/superpowers/plans/2026-10-07-audit-scan-redesign.md`. No migration and no new dependency.
+
 ## Open Go-Live Decisions
 
 - Confirm production database user and least-privilege permissions.
