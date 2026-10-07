@@ -16,6 +16,13 @@ test("an unfinished record offers one finish action and a confirmed cancel", () 
   assert.match(source, /isOpen \?/)
 })
 
+test("finishing a repair starts from the existing remark instead of replacing it", () => {
+  const source = readFileSync(actionsPath, "utf8")
+  const completeState = source.match(/useState\(\{\s*returnDate: toLocalDateInputValue\(\),[^}]*\}\)/)
+  assert.ok(completeState, "complete dialog state not found")
+  assert.match(completeState[0], /remark: details\.remark/)
+})
+
 test("editing changes details only, never status or result", () => {
   const source = readFileSync(actionsPath, "utf8")
   const updateBody = source.slice(source.indexOf('action: "update"'), source.indexOf('action: "update"') + 400)

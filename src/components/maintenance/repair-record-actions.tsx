@@ -45,7 +45,7 @@ export function RepairRecordActions({
     vendorId: details.vendor?.id ?? "",
     repairCost: details.repairCost,
     invoiceNo: details.invoiceNo,
-    remark: "",
+    remark: details.remark,
   })
   const [reason, setReason] = useState("")
   const [edit, setEdit] = useState({
