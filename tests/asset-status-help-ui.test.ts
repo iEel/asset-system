@@ -39,21 +39,16 @@ test("asset form, detail, and register expose status and condition help", () => 
   assert.match(assetRegisterPageSource(), /conditionHelpTitle: t\("conditionHelpTitle"\)/)
 })
 
-test("asset register keeps status and condition filters grouped", () => {
-  const source = assetRegisterPageSource()
-  const groupStart = source.indexOf('aria-label={labels.assetStateFilterGroup}')
-  const statusIndex = source.indexOf('name="statusId"', groupStart)
-  const conditionIndex = source.indexOf('name="conditionId"', groupStart)
+test("asset register keeps status and condition filters together with their help", () => {
+  const source = readFileSync("src/components/assets/asset-register-filter-sheet.tsx", "utf8")
+  const statusIndex = source.indexOf('label={t("status")}')
+  const conditionIndex = source.indexOf('label={t("condition")}')
 
-  assert.notEqual(groupStart, -1)
-  assert.match(source, /lg:grid-cols-4 xl:grid-cols-5/)
-  assert.match(source, /className="lg:col-span-2"/)
-  assert.doesNotMatch(source, /xl:grid-cols-6/)
-  assert.doesNotMatch(source, /2xl:grid-cols-7/)
-  assert.match(source, /className="grid gap-3 sm:grid-cols-2 lg:col-span-2"/)
+  assert.ok(statusIndex > -1, "status select is missing")
+  assert.ok(conditionIndex > statusIndex, "condition must follow status")
+  assert.match(source, /help=\{statusHelp\}/)
+  assert.match(source, /help=\{conditionHelp\}/)
   assert.match(source, /<AssetStateHelpPopover \{\.\.\.help\} size="compact" \/>/)
-  assert.ok(statusIndex > groupStart)
-  assert.ok(conditionIndex > statusIndex)
 })
 
 test("asset status and condition help messages are localized", () => {
