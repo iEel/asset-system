@@ -4,6 +4,9 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { loadAuditScanRows } from "@/lib/audit-scan-data"
 
+// Overlap catches saves committed after their updatedAt stamp; re-sending a few rows is harmless because the client merges by itemId.
+const auditScanStatusOverlapMs = 10_000
+
 type AuditScanStatusContext = {
   params: Promise<{ id: string }>
 }
@@ -28,7 +31,7 @@ export async function GET(request: NextRequest, context: AuditScanStatusContext)
 
     // Taken before the query: a save that lands while it runs is picked up next time instead of lost.
     const serverTime = new Date()
-    const items = await loadAuditScanRows(id, { since })
+    const items = await loadAuditScanRows(id, { since: new Date(since.getTime() - auditScanStatusOverlapMs) })
     return NextResponse.json({ serverTime: serverTime.toISOString(), roundStatus: round.status, items })
   } catch (error) {
     return errorResponse(error)

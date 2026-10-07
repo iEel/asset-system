@@ -108,7 +108,14 @@ test("only items changed after since are returned, as scan rows, with the server
 
   const findMany = state.calls.find((entry) => entry.call === "auditItem.findMany")!.args as { where: { auditRoundId: string; updatedAt: { gt: Date } } }
   assert.equal(findMany.where.auditRoundId, "round-1")
-  assert.equal(findMany.where.updatedAt.gt.toISOString(), "2026-10-07T03:00:00.000Z")
+  assert.equal(findMany.where.updatedAt.gt.toISOString(), "2026-10-07T02:59:50.000Z")
+
+  const groupBy = state.calls.find((entry) => entry.call === "assetComponent.groupBy")!.args as {
+    where: Record<string, unknown> & { parentAsset: { auditItems: { some: { auditRoundId: string; updatedAt: { gt: Date } } } } }
+  }
+  assert.equal("parentAssetId" in groupBy.where, false)
+  assert.equal(groupBy.where.parentAsset.auditItems.some.auditRoundId, "round-1")
+  assert.equal(groupBy.where.parentAsset.auditItems.some.updatedAt.gt.toISOString(), "2026-10-07T02:59:50.000Z")
 })
 
 test("a closed round still reports its status so the screen can stop saving", async () => {

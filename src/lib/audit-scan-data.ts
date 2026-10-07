@@ -52,10 +52,10 @@ export async function loadAuditScanRows(roundId: string, options: { since?: Date
         status: "installed",
         removedAt: null,
         componentAsset: { isActive: true },
-        // A full round can exceed SQL Server's 2,100 parameters, so it filters by relation; deltas are small lists.
-        ...(options.since
-          ? { parentAssetId: { in: records.map((record) => record.assetId) } }
-          : { parentAsset: { auditItems: { some: { auditRoundId: roundId } } } }),
+        // Both paths filter by relation (never an id list), so neither can hit SQL Server's 2,100-parameter limit.
+        parentAsset: {
+          auditItems: { some: { auditRoundId: roundId, ...(options.since ? { updatedAt: { gt: options.since } } : {}) } },
+        },
       },
       _count: { _all: true },
     }),
