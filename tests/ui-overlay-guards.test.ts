@@ -46,3 +46,13 @@ test("primary text is never faded below AA", () => {
 test("nothing imports the removed status pill", () => {
   assert.deepEqual(findMatches(/components\/ui\/status-pill/g), [])
 })
+
+const pendingNavigationGuards = new Set([
+  "src/components/disposal/disposal-bulk-approval.tsx",
+  "src/components/disposal/disposal-bulk-execution.tsx",
+  "src/components/master-data/supplier-form.tsx",
+])
+
+test("no browser confirm dialogs", () => {
+  assert.deepEqual(findMatches(/window\.confirm\(/g, (path) => pendingNavigationGuards.has(path)), [])
+})

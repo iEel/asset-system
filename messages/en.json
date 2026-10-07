@@ -26,6 +26,7 @@
     "unexpectedErrorDescription": "Try again. If the problem continues, contact an administrator with the time the error occurred.",
     "tryAgain": "Try again",
     "savedSuccess": "Saved successfully",
+    "deletedSuccess": "Deleted",
     "deleteConfirm": "Are you sure you want to delete this item?",
     "required": "This field is required",
     "rowsPerPage": "Rows per page",

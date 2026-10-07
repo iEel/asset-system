@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Download, FileText, Loader2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { formatFileSize } from "@/lib/uploads"
 
 type PurchaseDocument = {
@@ -37,11 +38,12 @@ export function AssetPurchaseDocuments({
   const router = useRouter()
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
+  const confirm = useConfirm()
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const hasDocuments = documents.length > 0 || legacyAttachments.length > 0
 
   async function handleDelete(id: string) {
-    if (!window.confirm(tCommon("deleteConfirm"))) return
+    if (!(await confirm({ title: tCommon("deleteConfirm"), confirmLabel: tCommon("delete"), tone: "destructive" }))) return
     setDeletingId(id)
 
     try {
@@ -51,7 +53,7 @@ export function AssetPurchaseDocuments({
         throw new Error(result?.error ?? tCommon("error"))
       }
 
-      toast.success(tCommon("savedSuccess"))
+      toast.success(tCommon("deletedSuccess"))
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))

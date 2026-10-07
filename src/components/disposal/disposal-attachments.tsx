@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Download, FileText, Image as ImageIcon, Loader2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { formatFileSize } from "@/lib/uploads"
 
@@ -31,6 +32,7 @@ export function DisposalAttachments({
   const router = useRouter()
   const t = useTranslations("disposalPage")
   const tCommon = useTranslations("common")
+  const confirm = useConfirm()
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -56,13 +58,13 @@ export function DisposalAttachments({
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm(tCommon("deleteConfirm"))) return
+    if (!(await confirm({ title: tCommon("deleteConfirm"), confirmLabel: tCommon("delete"), tone: "destructive" }))) return
     setDeletingId(id)
     try {
       const response = await fetch(`/api/attachments/${id}`, { method: "DELETE" })
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
-      toast.success(tCommon("savedSuccess"))
+      toast.success(tCommon("deletedSuccess"))
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))

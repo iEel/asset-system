@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { CheckCircle2, Loader2, Lock } from "lucide-react"
 import { toast } from "sonner"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 
 type ChecklistItem = {
   label: string
@@ -27,10 +28,11 @@ export function AuditRoundCloseButton({
   const router = useRouter()
   const t = useTranslations("auditRound")
   const tCommon = useTranslations("common")
+  const confirm = useConfirm()
   const [saving, setSaving] = useState(false)
 
   async function closeRound() {
-    if (!window.confirm(t("closeConfirm"))) return
+    if (!(await confirm({ title: t("closeConfirm"), confirmLabel: t("closeRound") }))) return
     setSaving(true)
     try {
       const response = await fetch(`/api/audit-rounds/${roundId}`, {

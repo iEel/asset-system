@@ -5,14 +5,16 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { Loader2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 
 export function MasterDataDeleteButton({ endpoint, showLabel = false }: { endpoint: string; showLabel?: boolean }) {
   const router = useRouter()
   const tCommon = useTranslations("common")
+  const confirm = useConfirm()
   const [deleting, setDeleting] = useState(false)
 
   async function handleDelete() {
-    if (!window.confirm(tCommon("deleteConfirm"))) return
+    if (!(await confirm({ title: tCommon("deleteConfirm"), confirmLabel: tCommon("delete"), tone: "destructive" }))) return
 
     setDeleting(true)
     try {
@@ -25,7 +27,7 @@ export function MasterDataDeleteButton({ endpoint, showLabel = false }: { endpoi
         throw new Error(result?.error ?? tCommon("error"))
       }
 
-      toast.success(tCommon("savedSuccess"))
+      toast.success(tCommon("deletedSuccess"))
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))

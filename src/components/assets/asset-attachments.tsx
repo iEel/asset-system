@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { CheckCircle2, Download, FileText, ImageIcon, Loader2, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { getAssetPhotoGalleryState } from "@/lib/asset-photo-gallery"
 import { formatFileSize } from "@/lib/uploads"
 import { FileDropzone } from "@/components/ui/file-dropzone"
@@ -37,6 +38,7 @@ export function AssetAttachments({
   const router = useRouter()
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
+  const confirm = useConfirm()
   const [uploading, setUploading] = useState(false)
   const [uploadingPhotoLabel, setUploadingPhotoLabel] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -123,7 +125,7 @@ export function AssetAttachments({
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm(tCommon("deleteConfirm"))) return
+    if (!(await confirm({ title: tCommon("deleteConfirm"), confirmLabel: tCommon("delete"), tone: "destructive" }))) return
     setDeletingId(id)
 
     try {
@@ -136,7 +138,7 @@ export function AssetAttachments({
         throw new Error(result?.error ?? tCommon("error"))
       }
 
-      toast.success(tCommon("savedSuccess"))
+      toast.success(tCommon("deletedSuccess"))
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))

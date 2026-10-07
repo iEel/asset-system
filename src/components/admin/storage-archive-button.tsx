@@ -5,14 +5,16 @@ import { Archive, Loader2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 
 export function StorageArchiveButton({ relativePath }: { relativePath: string }) {
   const router = useRouter()
   const t = useTranslations("storagePage")
+  const confirm = useConfirm()
   const [archiving, setArchiving] = useState(false)
 
   async function handleClick() {
-    if (!window.confirm(t("archiveConfirm", { file: relativePath }))) return
+    if (!(await confirm({ title: t("archiveConfirm", { file: relativePath }), confirmLabel: t("archiveOrphanFile") }))) return
 
     setArchiving(true)
     try {

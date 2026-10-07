@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { MobileFieldNavigation } from "@/components/layout/mobile-field-navigation"
 import { Sidebar } from "@/components/layout/sidebar"
 import { Topbar } from "@/components/layout/topbar"
+import { ConfirmProvider } from "@/components/ui/confirm-dialog"
 import type { SessionUser } from "@/lib/auth-utils"
 import { getMobileShellMode, isMobileVirtualKeyboardVisible } from "@/lib/mobile-field-navigation"
 import { cn } from "@/lib/utils"
@@ -127,53 +128,55 @@ export function DashboardShell({
   }, [])
 
   return (
-    <div ref={shellRef} onScroll={resetShellScroll} className="fixed inset-0 flex max-w-full overflow-hidden bg-background">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        mobileOpen={mobileSidebarOpen}
-        user={user}
-        onMobileClose={() => closeMobileSidebar(true)}
-        onMobileNavigate={() => closeMobileSidebar(false)}
-      />
-
-      <div className="flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden">
-        <Topbar
+    <ConfirmProvider>
+      <div ref={shellRef} onScroll={resetShellScroll} className="fixed inset-0 flex max-w-full overflow-hidden bg-background">
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          mobileOpen={mobileSidebarOpen}
           user={user}
-          onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
-          onMobileMenuToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-          mobileNavigationMode={isNavigationMode}
+          onMobileClose={() => closeMobileSidebar(true)}
+          onMobileNavigate={() => closeMobileSidebar(false)}
         />
 
-        <main ref={mainRef} data-dashboard-main className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
+        <div className="flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden">
+          <Topbar
+            user={user}
+            onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+            onMobileMenuToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            mobileNavigationMode={isNavigationMode}
+          />
+
+          <main ref={mainRef} data-dashboard-main className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
+            <div
+              className={cn(
+                "min-w-0 max-w-full",
+                mobileFieldNavigationVisible && "pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:pb-0",
+              )}
+            >
+              {children}
+            </div>
+          </main>
+        </div>
+
+        {mobileFieldNavigationVisible ? (
+          <MobileFieldNavigation
+            pathname={pathname}
+            user={user}
+            sidebarOpen={mobileSidebarOpen}
+            onOpenMore={(trigger) => {
+              mobileMoreTriggerRef.current = trigger
+              setMobileSidebarOpen(true)
+            }}
+          />
+        ) : null}
+
+        {mobileSidebarOpen && (
           <div
-            className={cn(
-              "min-w-0 max-w-full",
-              mobileFieldNavigationVisible && "pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:pb-0",
-            )}
-          >
-            {children}
-          </div>
-        </main>
+            className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+            onClick={() => closeMobileSidebar(true)}
+          />
+        )}
       </div>
-
-      {mobileFieldNavigationVisible ? (
-        <MobileFieldNavigation
-          pathname={pathname}
-          user={user}
-          sidebarOpen={mobileSidebarOpen}
-          onOpenMore={(trigger) => {
-            mobileMoreTriggerRef.current = trigger
-            setMobileSidebarOpen(true)
-          }}
-        />
-      ) : null}
-
-      {mobileSidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
-          onClick={() => closeMobileSidebar(true)}
-        />
-      )}
-    </div>
+    </ConfirmProvider>
   )
 }

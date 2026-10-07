@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { ArrowLeft, ImageIcon, Loader2, Plus, Save, Sparkles, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import Link from "next/link"
 import { formatFileSize } from "@/lib/uploads"
 import { FileDropzone } from "@/components/ui/file-dropzone"
@@ -73,6 +74,7 @@ export function AssetModelForm({
   const router = useRouter()
   const t = useTranslations("brandModel")
   const tCommon = useTranslations("common")
+  const confirm = useConfirm()
   const [values, setValues] = useState<AssetModelFormValues>(model ?? emptyModel)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -186,7 +188,7 @@ export function AssetModelForm({
   }
 
   async function handlePhotoDelete(id: string) {
-    if (!window.confirm(tCommon("deleteConfirm"))) return
+    if (!(await confirm({ title: tCommon("deleteConfirm"), confirmLabel: tCommon("delete"), tone: "destructive" }))) return
     setDeletingId(id)
 
     try {
@@ -197,7 +199,7 @@ export function AssetModelForm({
         throw new Error(result?.error ?? tCommon("error"))
       }
 
-      toast.success(tCommon("savedSuccess"))
+      toast.success(tCommon("deletedSuccess"))
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tCommon("error"))

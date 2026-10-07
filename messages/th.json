@@ -26,6 +26,7 @@
     "unexpectedErrorDescription": "ลองดำเนินการอีกครั้ง หากปัญหายังเกิดขึ้น โปรดแจ้งผู้ดูแลระบบพร้อมเวลาที่พบปัญหา",
     "tryAgain": "ลองอีกครั้ง",
     "savedSuccess": "บันทึกสำเร็จ",
+    "deletedSuccess": "ลบแล้ว",
     "deleteConfirm": "ต้องการลบรายการนี้หรือไม่?",
     "required": "กรุณากรอกข้อมูล",
     "rowsPerPage": "แสดง",

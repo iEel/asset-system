@@ -7,6 +7,7 @@ import {
   type IntegrationClientOperationSummary,
   type IntegrationPowerShellExample,
 } from "@/lib/integration-client-operations"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 
 type IntegrationClient = {
   id: string
@@ -96,6 +97,7 @@ const scopeOptions = [
 ] as const
 
 export function IntegrationClientManager({ labels }: { labels: Labels }) {
+  const confirm = useConfirm()
   const [clients, setClients] = useState<IntegrationClient[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -184,9 +186,10 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
     })
   }
 
-  function confirmScopeExpansion(client: IntegrationClient, nextScopes: string[]) {
+  async function confirmScopeExpansion(client: IntegrationClient, nextScopes: string[]): Promise<boolean> {
     const hasNewScope = nextScopes.some((scope) => !client.scopes.includes(scope))
-    return !hasNewScope || window.confirm(labels.confirmScopeExpansion)
+    if (!hasNewScope) return true
+    return confirm({ title: labels.confirmScopeExpansion })
   }
 
   async function createClient(event: React.FormEvent<HTMLFormElement>) {
@@ -218,7 +221,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
   async function updateEditingClient(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!editingClient) return
-    if (!confirmScopeExpansion(editingClient, editScopes)) return
+    if (!(await confirmScopeExpansion(editingClient, editScopes))) return
 
     setUpdatingClient(true)
     setMutatingId(editingClient.id)
@@ -242,12 +245,17 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
   }
 
   async function rotateClient(client: IntegrationClient) {
-    if (!window.confirm(labels.confirmRotate)) return
+    if (!(await confirm({ title: labels.confirmRotate, confirmLabel: labels.rotate, tone: "destructive" }))) return
     await mutateClient(client, "rotate")
   }
 
   async function setClientEnabled(client: IntegrationClient, enabled: boolean) {
-    if (!window.confirm(enabled ? labels.confirmEnable : labels.confirmDisable)) return
+    const confirmed = await confirm(
+      enabled
+        ? { title: labels.confirmEnable, confirmLabel: labels.enable }
+        : { title: labels.confirmDisable, confirmLabel: labels.disable, tone: "destructive" },
+    )
+    if (!confirmed) return
     await mutateClient(client, enabled ? "enable" : "disable")
   }
 

@@ -141,7 +141,7 @@ test("integration client manager keeps one-time tokens in React state only and s
   assert.match(source, /role="status"/)
   assert.match(source, /tokenAcknowledgement/)
   assert.match(source, /dismissToken/)
-  assert.match(source, /window\.confirm\(/)
+  assert.match(source, /await confirm\(\{/)
   assert.doesNotMatch(source, /tokenHash/)
   assert.doesNotMatch(source, /localStorage/)
   assert.doesNotMatch(source, /sessionStorage/)
