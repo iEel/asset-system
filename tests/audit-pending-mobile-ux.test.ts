@@ -5,14 +5,14 @@ import test from "node:test"
 test("audit pending page exposes mobile-first searchable pending cards", () => {
   const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/pending/page.tsx", "utf8")
 
-  assert.match(page, /searchParams: Promise<\{ returnTo\?: string \| string\[\]; search\?: string \| string\[\] \}>/)
+  assert.match(page, /searchParams: Promise<\{ returnTo\?: string \| string\[\]; search\?: string \| string\[\]; locationId\?: string \| string\[\] \}>/)
   assert.match(page, /const \{ search = "" \} = rawSearchParams/)
   assert.match(page, /const searchText = resolveFirstSearchParam\(search\)\.trim\(\)/)
   assert.match(page, /assetTag: \{ contains: searchText \}/)
   assert.match(page, /currentLocation: \{\s*OR: \[/)
   assert.match(page, /custodian: \{\s*OR: \[/)
   assert.match(page, /MasterDataSearch/)
-  assert.match(page, /hiddenInputs=\{\{ returnTo: returnToHref \}\}/)
+  assert.match(page, /hiddenInputs=\{\{ returnTo: returnToHref, \.\.\.\(locationFilter \? \{ locationId: locationFilter \} : \{\}\) \}\}/)
   assert.match(page, /const scanReturnToHref = resolveAuditPendingScanReturnTo/)
   assert.match(page, /scanReturnToHref=\{scanReturnToHref\}/)
   assert.match(page, /normalizeAuditRoundDetailReturnTo/)

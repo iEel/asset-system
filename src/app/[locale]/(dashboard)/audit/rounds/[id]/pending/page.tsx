@@ -15,7 +15,7 @@ import { isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
 
 type AuditPendingPageProps = {
   params: Promise<{ locale: string; id: string }>
-  searchParams: Promise<{ returnTo?: string | string[]; search?: string | string[] }>
+  searchParams: Promise<{ returnTo?: string | string[]; search?: string | string[]; locationId?: string | string[] }>
 }
 
 type AuditPendingItem = {
@@ -38,6 +38,7 @@ export default async function AuditPendingPage({ params, searchParams }: AuditPe
   const t = await getTranslations("auditPending")
   const tCommon = await getTranslations("common")
   const searchText = resolveFirstSearchParam(search).trim()
+  const locationFilter = resolveFirstSearchParam(rawSearchParams.locationId ?? "").trim()
 
   const round = await prisma.auditRound.findFirst({
     where: { id, isActive: true },
@@ -49,6 +50,7 @@ export default async function AuditPendingPage({ params, searchParams }: AuditPe
       items: {
         where: {
           auditStatus: "pending",
+          ...(locationFilter ? { expectedLocationId: locationFilter } : {}),
           ...(searchText
             ? {
                 asset: {
@@ -101,7 +103,19 @@ export default async function AuditPendingPage({ params, searchParams }: AuditPe
   if (!round || isAuditRoundReadOnlyStatus(round.status)) notFound()
   const returnToHref = normalizeAuditRoundWorkflowReturnTo(locale, round.id, rawSearchParams.returnTo)
   const scanReturnToHref = resolveAuditPendingScanReturnTo(locale, round.id, returnToHref)
-  const clearSearchHref = appendOperationalReturnTo(`/${locale}/audit/rounds/${round.id}/pending`, returnToHref)
+  const pendingHref = `/${locale}/audit/rounds/${round.id}/pending`
+  const clearSearchHref = appendOperationalReturnTo(
+    locationFilter ? `${pendingHref}?locationId=${encodeURIComponent(locationFilter)}` : pendingHref,
+    returnToHref,
+  )
+  const clearRoomFilterHref = appendOperationalReturnTo(
+    searchText ? `${pendingHref}?search=${encodeURIComponent(searchText)}` : pendingHref,
+    returnToHref,
+  )
+  const filterLocation = locationFilter
+    ? await prisma.location.findFirst({ where: { id: locationFilter }, select: { code: true, name: true } })
+    : null
+  const locationFilterLabel = filterLocation ? `${filterLocation.code} - ${filterLocation.name}` : locationFilter
   const emptyTitle = searchText ? t("emptySearchTitle") : t("emptyTitle")
   const emptyHelp = searchText ? t("emptySearchHelp") : t("emptyHelp")
   const emptyActionHref = searchText ? clearSearchHref : returnToHref
@@ -121,6 +135,14 @@ export default async function AuditPendingPage({ params, searchParams }: AuditPe
 
       <div className="mb-4 rounded-lg border border-border bg-surface p-3 text-sm text-muted-foreground shadow-sm sm:p-4">
         {t("pendingCount", { count: round.items.length })}
+        {locationFilter ? (
+          <div className="mt-1 flex flex-wrap items-center gap-x-3">
+            <span>{t("roomFilter", { location: locationFilterLabel })}</span>
+            <Link href={clearRoomFilterHref} className="inline-flex min-h-11 items-center text-sm text-primary hover:underline">
+              {t("roomFilterClear")}
+            </Link>
+          </div>
+        ) : null}
       </div>
 
       <MasterDataSearch
@@ -128,7 +150,7 @@ export default async function AuditPendingPage({ params, searchParams }: AuditPe
         defaultValue={searchText}
         placeholder={t("searchPlaceholder")}
         submitLabel={tCommon("search")}
-        hiddenInputs={{ returnTo: returnToHref }}
+        hiddenInputs={{ returnTo: returnToHref, ...(locationFilter ? { locationId: locationFilter } : {}) }}
       />
 
       <div className={`${getMobileCardListClasses()} mb-4`}>

@@ -2369,6 +2369,8 @@
     "expectedCustodian": "Expected Custodian",
     "lastAuditDate": "Last Audit Date",
     "pendingCount": "Showing {count, plural, one {# pending asset} other {# pending assets}}",
+    "roomFilter": "Only {location}",
+    "roomFilterClear": "Show all rooms",
     "searchPlaceholder": "Search Asset Tag, name, location, or custodian",
     "scanPendingAsset": "Scan this item",
     "viewAsset": "View asset",

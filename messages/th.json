@@ -2369,6 +2369,8 @@
     "expectedCustodian": "ผู้ถือครองตามระบบ",
     "lastAuditDate": "ตรวจล่าสุด",
     "pendingCount": "แสดงรายการรอตรวจ {count} รายการ",
+    "roomFilter": "เฉพาะห้อง {location}",
+    "roomFilterClear": "ดูทุกห้อง",
     "searchPlaceholder": "ค้นหารหัสทรัพย์สิน ชื่อ พื้นที่ หรือผู้ถือครอง",
     "scanPendingAsset": "สแกนรายการนี้",
     "viewAsset": "ดูทรัพย์สิน",

@@ -40,6 +40,8 @@ const resultByFindingType: Record<string, string> = {
 }
 
 const immediateCorrectionTypes = new Set(["wrong_location", "wrong_custodian"])
+const auditCorrectableFindingTypes = ["wrong_location", "wrong_custodian", "wrong_department", "wrong_condition"] as const
+const staleFindingReviewRemark = "ยกเลิกเพราะแก้ผลตรวจ"
 
 const movementTypeByFindingType: Record<string, string> = {
   wrong_location: "audit_location_correction",
@@ -498,7 +500,7 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
             reviewStatus: "pending",
             findingType: { in: mismatches.map((mismatch) => mismatch.type) },
           },
-          select: { id: true, findingType: true },
+          select: { id: true, findingType: true, actualValue: true },
         })
         const existingByType = new Map(existingFindings.map((finding) => [finding.findingType, finding]))
         const assetUpdateData: { currentLocationId?: string; custodianId?: string | null; updatedBy?: string } = {}
@@ -521,6 +523,11 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
                   reportedBy: user.id,
                   reviewStatus: "pending",
                 },
+              })
+            } else if ((existingFinding.actualValue ?? null) !== (mismatch.actualValue ?? null)) {
+              await tx.auditFinding.update({
+                where: { id: existingFinding.id },
+                data: { actualValue: mismatch.actualValue, remark: input.remark },
               })
             }
             continue
@@ -613,6 +620,24 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
         }
       }
 
+      const staleFindingTypes = auditCorrectableFindingTypes.filter((type) => !mismatches.some((mismatch) => mismatch.type === type))
+      if (staleFindingTypes.length > 0) {
+        await tx.auditFinding.updateMany({
+          where: {
+            auditItemId: item.id,
+            reviewStatus: "pending",
+            findingType: { in: [...staleFindingTypes] },
+            OR: [{ actionTaken: null }, { actionTaken: { not: "component_confirmed_with_parent_mismatch" } }],
+          },
+          data: {
+            reviewStatus: "rejected",
+            reviewRemark: staleFindingReviewRemark,
+            reviewedBy: user.id,
+            reviewedAt: scannedAt,
+          },
+        })
+      }
+
       return updatedItem
     })
 
@@ -651,6 +676,10 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
       remark: input.remark ?? undefined,
     })
 
+    const scannedByUser = result.scannedBy
+      ? await prisma.user.findUnique({ where: { id: result.scannedBy }, select: { displayName: true } })
+      : null
+
     return NextResponse.json({
       item: result,
       auditResult,
@@ -658,6 +687,7 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
       appliedCorrections: correctionMismatches,
       correctionsDeferred: input.applyCorrections && !correctionsAllowed,
       resolvedNotFoundFinding,
+      scannedByName: scannedByUser?.displayName ?? null,
     })
   } catch (error) {
     return errorResponse(error, 400)

@@ -106,6 +106,39 @@ export async function POST(request: NextRequest, context: AuditScanLookupContext
     })
 
     if (!asset) {
+      const term = input.rawValue.trim()
+      if (Array.from(term).length >= 3) {
+        const partialMatches = await prisma.asset.findMany({
+          where: {
+            isActive: true,
+            OR: [
+              { assetTag: { contains: term } },
+              { serialNumber: { contains: term } },
+              { fixedAssetCode: { contains: term } },
+            ],
+          },
+          select: { id: true, assetTag: true, name: true },
+          orderBy: { assetTag: "asc" },
+          take: 5,
+        })
+        if (partialMatches.length > 0) {
+          const inRoundItems = await prisma.auditItem.findMany({
+            where: { auditRoundId: id, assetId: { in: partialMatches.map((match) => match.id) } },
+            select: { assetId: true },
+          })
+          const inRoundAssetIds = new Set(inRoundItems.map((roundItem) => roundItem.assetId))
+          return NextResponse.json({
+            status: "candidates",
+            candidates,
+            matches: partialMatches.map((match) => ({
+              assetId: match.id,
+              assetTag: match.assetTag,
+              title: match.name,
+              inRound: inRoundAssetIds.has(match.id),
+            })),
+          })
+        }
+      }
       return NextResponse.json({ status: "unknown_asset", candidates })
     }
 

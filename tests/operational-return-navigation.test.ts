@@ -63,10 +63,10 @@ test("audit rounds preserve list context across round detail, scan, and pending 
   assert.match(detailSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}\/scan`, roundDetailReturnHref\)/)
   assert.match(detailSource, /buildAuditRoundResultListHref\(\{ locale, roundId: round\.id, result: "found", returnTo: returnToHref/)
 
-  assert.match(pendingSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\]; search\?: string \| string\[\] \}>/)
+  assert.match(pendingSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\]; search\?: string \| string\[\]; locationId\?: string \| string\[\] \}>/)
   assert.match(pendingSource, /normalizeAuditRoundWorkflowReturnTo\(locale, round\.id, rawSearchParams\.returnTo\)/)
   assert.match(pendingSource, /href=\{returnToHref\}/)
-  assert.match(pendingSource, /hiddenInputs=\{\{ returnTo: returnToHref \}\}/)
+  assert.match(pendingSource, /hiddenInputs=\{\{ returnTo: returnToHref, \.\.\.\(locationFilter \? \{ locationId: locationFilter \} : \{\}\) \}\}/)
   assert.match(pendingSource, /resolveAuditPendingScanReturnTo/)
   assert.match(pendingSource, /normalizeAuditRoundDetailReturnTo/)
 
@@ -83,4 +83,16 @@ test("audit findings preserve resolution context for disposal follow-up links", 
   assert.match(source, /hiddenInputs=\{\{ status, \.\.\.\(roundId \? \{ roundId \} : \{\}\), \.\.\.\(findingType \? \{ findingType \} : \{\}\) \}\}/)
   assert.match(source, /appendOperationalReturnTo\(`\/\$\{locale\}\/disposal\/new\?assetId=\$\{finding\.asset\.id\}&reason=/)
   assert.match(source, /auditFindingsReturnHref\)/)
+})
+
+test("the pending list can be narrowed to one room from the scan screen", () => {
+  const pendingSource = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/pending/page.tsx", "utf8")
+  assert.match(pendingSource, /\.\.\.\(locationFilter \? \{ expectedLocationId: locationFilter \} : \{\}\)/)
+  assert.match(pendingSource, /t\("roomFilter", \{ location: /)
+  assert.match(pendingSource, /t\("roomFilterClear"\)/)
+  for (const locale of ["th", "en"]) {
+    const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { auditPending: Record<string, unknown> }
+    assert.equal(typeof messages.auditPending.roomFilter, "string")
+    assert.equal(typeof messages.auditPending.roomFilterClear, "string")
+  }
 })
