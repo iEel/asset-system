@@ -44,7 +44,7 @@ export function AuditScanSearchField({
         event.preventDefault()
         onSubmit()
       }}
-      className="sticky top-0 z-20 -mx-4 bg-background px-4 py-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0"
+      className="sticky -top-4 sm:-top-6 z-20 -mx-4 bg-background px-4 py-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0"
     >
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />

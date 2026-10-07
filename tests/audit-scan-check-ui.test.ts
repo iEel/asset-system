@@ -58,6 +58,25 @@ test("the panel is a bottom sheet on phones that returns focus, and an inline as
   assert.match(source, /if \(isWide\)/)
 })
 
+test("the save button names mismatched fields with the same words as the field labels", () => {
+  const source = form()
+  assert.match(source, /const fields = diff\.map\(\(field\) => t\(fieldLabelKey\[field\]\)\)\.join\(", "\)/)
+  assert.doesNotMatch(source, /mismatchShortKey/)
+  assert.doesNotMatch(source, /wrongLocation/)
+})
+
+test("the phone sheet falls back to a list target when its return target is gone", () => {
+  const source = read("src/components/audit/audit-scan-check-panel.tsx")
+  assert.match(source, /onReturnFocusMissing\?: \(\) => void/)
+  assert.match(source, /if \(target\?\.isConnected\) target\.focus\(\)\s*\n\s*else onReturnFocusMissing\?\.\(\)/)
+})
+
+test("the wide panel moves focus to its heading when an item opens", () => {
+  const source = read("src/components/audit/audit-scan-check-panel.tsx")
+  assert.match(source, /<h2 ref=\{headingRef\} tabIndex=\{-1\}/)
+  assert.match(source, /useEffect\(\(\) => \{\s*\n\s*if \(isWide && open\) headingRef\.current\?\.focus\(\)\s*\n\s*\}, \[isWide, open, title\]\)/)
+})
+
 test("components keep their three actions and the missing dialog keeps its shared dialog and dropzone", () => {
   assert.match(form(), /<AuditComponentPanel/)
   const dialog = read("src/components/audit/audit-scan-component-missing-dialog.tsx")

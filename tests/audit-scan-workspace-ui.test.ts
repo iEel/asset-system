@@ -56,6 +56,45 @@ test("lookups use the scan-lookup endpoint and report offline separately from no
   assert.match(source, /setLookup\(\{ status: "offline" \}\)/)
 })
 
+test("the saved banner names mismatched fields with the field-label words", () => {
+  const source = read("src/components/audit/audit-scan-saved-banner.tsx")
+  assert.match(source, /location: "expectedLocation"/)
+  assert.match(source, /condition: "expectedCondition"/)
+  assert.doesNotMatch(source, /wrongLocation|wrongCustodian|wrongDepartment|wrongCondition/)
+})
+
+test("returning to the tab pulls at most once per 5 seconds", () => {
+  const source = workspace()
+  assert.match(source, /^const visibilitySyncMinGapMs = 5_000$/m)
+  assert.match(source, /lastSyncAtRef\.current = Date\.now\(\)/)
+  assert.match(source, /document\.visibilityState === "visible" && Date\.now\(\) - lastSyncAtRef\.current >= visibilitySyncMinGapMs/)
+})
+
+test("focus lands on a list row after the sheet closes without a return target", () => {
+  const source = workspace()
+  assert.match(source, /<div ref=\{listAreaRef\}>/)
+  assert.match(source, /returnRowIndexRef\.current = /)
+  assert.match(source, /querySelectorAll<HTMLElement>\("\[data-audit-scan-row\]"\)/)
+  assert.match(source, /function focusListAfterClose\(\)/)
+  assert.match(source, /onReturnFocusMissing=\{focusListAfterClose\}/)
+})
+
+test("wide screens restore focus after dismissing or saving a list-opened item", () => {
+  const source = workspace()
+  const closeTarget = source.slice(source.indexOf("function closeTarget"), source.indexOf("function openOutOfScope"))
+  assert.match(closeTarget, /setTarget\(null\)/)
+  assert.match(closeTarget, /if \(isWide\)/)
+  assert.match(closeTarget, /focusListAfterClose\(\)/)
+  assert.match(source, /onDismiss=\{closeTarget\}/)
+  assert.match(source, /if \(!open\) closeTarget\(\)/)
+  const finishSave = source.slice(source.indexOf("function finishSave"), source.indexOf("async function uploadPhotos"))
+  assert.match(finishSave, /else if \(isWide\) \{\s*\n\s*window\.setTimeout\(focusListAfterClose, 0\)/)
+})
+
+test("the open item is marked in the room list only on wide screens", () => {
+  assert.match(workspace(), /activeItemId=\{isWide && target\?\.kind === "item" \? target\.item\.itemId : null\}/)
+})
+
 test("workspace copy exists in Thai and English", () => {
   const keys = ["savedAllMatch", "savedMismatch", "savedOutOfScope", "savedQueued", "editAgain", "photoRetryMessage", "retryPhotos", "offlineBarOffline", "offlineBarPending", "sendNow", "removeFromQueue", "queueFailed", "roundClosedError", "backToRound"]
   for (const locale of ["th", "en"] as const) {

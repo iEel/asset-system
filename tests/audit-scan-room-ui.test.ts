@@ -42,6 +42,23 @@ test("the room list has three counted tabs, 44px rows, show-more and a link to t
   assert.match(source, /href=\{pendingHref\}/)
 })
 
+test("opening the room picker focuses a room, not the search box, so the phone keyboard stays down", () => {
+  const source = read("src/components/audit/audit-scan-room-picker.tsx")
+  assert.match(source, /<ul ref=\{listRef\}/)
+  assert.match(source, /onOpenAutoFocus=\{\(event\) => \{\s*(?:\/\/[^\n]*\n\s*)?event\.preventDefault\(\)/)
+  assert.match(source, /querySelector<HTMLButtonElement>\('button\[aria-pressed="true"\]'\) \?\? list\?\.querySelector<HTMLButtonElement>\("button"\)\)\?\.focus\(\)/)
+  assert.doesNotMatch(source, /autoFocus/)
+})
+
+test("the room list marks the row whose check panel is open", () => {
+  const source = read("src/components/audit/audit-scan-room-list.tsx")
+  assert.match(source, /activeItemId\?: string \| null/)
+  assert.match(source, /const active = item\.itemId === activeItemId/)
+  assert.match(source, /aria-current=\{active \? "true" : undefined\}/)
+  assert.match(source, /active && "bg-accent"/)
+  assert.match(source, /hover:bg-accent/)
+})
+
 test("room and list copy exists in Thai and English", () => {
   const keys = ["progressChecked", "progressMismatch", "roomPick", "roomChange", "roomSheetTitle", "roomSheetHelp", "roomSheetSearch", "roomPendingOfTotal", "roomDepartment", "roomAllDepartments", "roomClear", "roomListLabel", "roomListTabs", "tabPending", "tabChecked", "tabAll", "showMore", "checkedBy", "badgeFound", "badgeMismatch", "badgeNotFound", "badgeOutOfScope", "badgeQueued", "emptyPending", "emptyChecked", "emptyAll", "pendingLink"]
   for (const locale of ["th", "en"] as const) {

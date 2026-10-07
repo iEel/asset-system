@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { Check, ChevronDown, MapPin } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -23,6 +23,7 @@ export function AuditScanRoomPicker({
   const isDesktop = useMediaQuery("(min-width: 48rem)")
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
+  const listRef = useRef<HTMLUListElement | null>(null)
   const selected = rooms.find((option) => option.locationId === room.locationId)
   const selectedDepartment = selected?.departments.find((department) => department.departmentId === room.departmentId)
   const filtered = useMemo(() => {
@@ -59,6 +60,12 @@ export function AuditScanRoomPicker({
         side={isDesktop ? "right" : "bottom"}
         closeLabel={tCommon("close")}
         className={isDesktop ? "w-full gap-0 sm:max-w-md" : "max-h-[85dvh] gap-0 rounded-t-xl"}
+        onOpenAutoFocus={(event) => {
+          // Radix would focus the search box first, which raises the phone keyboard over the list.
+          event.preventDefault()
+          const list = listRef.current
+          ;(list?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]') ?? list?.querySelector<HTMLButtonElement>("button"))?.focus()
+        }}
       >
         <SheetHeader className="border-b border-border pr-14">
           <SheetTitle>{t("roomSheetTitle")}</SheetTitle>
@@ -91,7 +98,7 @@ export function AuditScanRoomPicker({
             </label>
           ) : null}
         </div>
-        <ul className="min-h-0 flex-1 overflow-y-auto p-2">
+        <ul ref={listRef} className="min-h-0 flex-1 overflow-y-auto p-2">
           {filtered.map((option) => {
             const active = option.locationId === room.locationId
             return (

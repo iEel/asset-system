@@ -50,6 +50,8 @@ import {
 } from "@/lib/audit-scan-session"
 
 const emptyComponents: AuditCheckComponentsState = { status: "ready", components: [], installedIn: [] }
+/** A flickering tab can fire visibilitychange many times a second; returning to it pulls at most this often. */
+const visibilitySyncMinGapMs = 5_000
 
 function isRoundClosedError(message: unknown) {
   return message === "Audit round is closed" || message === "Audit round is cancelled"
@@ -108,6 +110,9 @@ export function AuditScanWorkspace({
   const [sendingQueue, setSendingQueue] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const returnFocusRef = useRef<HTMLElement | null>(null)
+  const listAreaRef = useRef<HTMLDivElement | null>(null)
+  const returnRowIndexRef = useRef(-1)
+  const lastSyncAtRef = useRef(0)
   const serverTimeRef = useRef(initialServerTime)
   const storageRef = useRef<AuditOfflineQueueStorage | null>(null)
   const syncingRef = useRef(false)
@@ -171,6 +176,7 @@ export function AuditScanWorkspace({
   const syncNow = useCallback(async (): Promise<AuditScanItemRow[]> => {
     if (syncingRef.current || !navigator.onLine) return []
     syncingRef.current = true
+    lastSyncAtRef.current = Date.now()
     try {
       const response = await fetch(`/api/audit-rounds/${roundId}/scan-status?since=${encodeURIComponent(serverTimeRef.current)}`, { cache: "no-store" })
       if (!response.ok) return []
@@ -266,7 +272,7 @@ export function AuditScanWorkspace({
       void syncNow().then(() => sendQueue())
     }
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") tick()
+      if (document.visibilityState === "visible" && Date.now() - lastSyncAtRef.current >= visibilitySyncMinGapMs) tick()
     }
     const interval = window.setInterval(tick, auditScanPollIntervalMs)
     document.addEventListener("visibilitychange", handleVisibility)
@@ -294,11 +300,40 @@ export function AuditScanWorkspace({
 
   function openItem(item: AuditScanItemRow, fromSearch: boolean) {
     returnFocusRef.current = fromSearch ? inputRef.current : (document.activeElement as HTMLElement | null)
+    if (!fromSearch) {
+      // Remember the row's position: saving can drop it from the "pending" tab, leaving no element to return to.
+      const rows = Array.from(listAreaRef.current?.querySelectorAll<HTMLElement>("[data-audit-scan-row]") ?? [])
+      returnRowIndexRef.current = rows.indexOf(document.activeElement as HTMLElement)
+    }
     setTarget({ kind: "item", item, openedMode: getCheckMode(item) })
     setTargetKey((key) => key + 1)
     setOpenedFromSearch(fromSearch)
     setSaved(null)
     void loadComponents(item.assetId)
+  }
+
+  /** Focuses the row now at the opened row's position (or the last row), else the selected tab. */
+  function focusListAfterClose() {
+    const area = listAreaRef.current
+    if (!area) return
+    const rows = area.querySelectorAll<HTMLElement>("[data-audit-scan-row]")
+    if (rows.length > 0) {
+      rows[Math.min(Math.max(returnRowIndexRef.current, 0), rows.length - 1)].focus()
+      return
+    }
+    area.querySelector<HTMLElement>('[aria-pressed="true"]')?.focus()
+  }
+
+  function closeTarget() {
+    setTarget(null)
+    if (isWide) {
+      // The inline panel has no Radix focus return; put focus back where the check started.
+      window.setTimeout(() => {
+        const el = returnFocusRef.current
+        if (el?.isConnected) el.focus()
+        else focusListAfterClose()
+      }, 0)
+    }
   }
 
   function openOutOfScope(asset: AuditLookupAsset) {
@@ -408,6 +443,8 @@ export function AuditScanWorkspace({
       changeTerm("")
       returnFocusRef.current = inputRef.current
       window.setTimeout(() => inputRef.current?.focus(), 0)
+    } else if (isWide) {
+      window.setTimeout(focusListAfterClose, 0)
     }
   }
 
@@ -622,42 +659,45 @@ export function AuditScanWorkspace({
             }}
           />
         ) : null}
-        {searching ? (
-          <AuditScanSearchResults
-            term={term}
-            matches={matches}
-            room={room}
-            locationLabels={locationLabels}
-            queuedAssetIds={queuedAssetIds}
-            onOpen={(item) => openItem(item, true)}
-            lookup={
-              <AuditScanLookupCard
-                state={lookup}
-                onSearchRegister={() => void searchRegister()}
-                onRecordOutOfScope={openOutOfScope}
-                onPickMatch={pickRegisterMatch}
-              />
-            }
-          />
-        ) : (
-          <AuditScanRoomList
-            rows={list.rows}
-            total={list.total}
-            counts={list.counts}
-            tab={tab}
-            onTabChange={(next) => {
-              setTab(next)
-              setLimit(auditScanListPageSize)
-            }}
-            onShowMore={() => setLimit((current) => current + auditScanListPageSize)}
-            onOpen={(item) => openItem(item, false)}
-            queuedAssetIds={queuedAssetIds}
-            custodianLabels={custodianLabels}
-            locationLabels={locationLabels}
-            showLocation={!room.locationId}
-            pendingHref={roomPendingHref}
-          />
-        )}
+        <div ref={listAreaRef}>
+          {searching ? (
+            <AuditScanSearchResults
+              term={term}
+              matches={matches}
+              room={room}
+              locationLabels={locationLabels}
+              queuedAssetIds={queuedAssetIds}
+              onOpen={(item) => openItem(item, true)}
+              lookup={
+                <AuditScanLookupCard
+                  state={lookup}
+                  onSearchRegister={() => void searchRegister()}
+                  onRecordOutOfScope={openOutOfScope}
+                  onPickMatch={pickRegisterMatch}
+                />
+              }
+            />
+          ) : (
+            <AuditScanRoomList
+              rows={list.rows}
+              total={list.total}
+              counts={list.counts}
+              tab={tab}
+              onTabChange={(next) => {
+                setTab(next)
+                setLimit(auditScanListPageSize)
+              }}
+              onShowMore={() => setLimit((current) => current + auditScanListPageSize)}
+              onOpen={(item) => openItem(item, false)}
+              queuedAssetIds={queuedAssetIds}
+              custodianLabels={custodianLabels}
+              locationLabels={locationLabels}
+              showLocation={!room.locationId}
+              pendingHref={roomPendingHref}
+              activeItemId={isWide && target?.kind === "item" ? target.item.itemId : null}
+            />
+          )}
+        </div>
       </div>
 
       <AuditScanCheckPanel
@@ -666,9 +706,10 @@ export function AuditScanWorkspace({
         title={targetTitle}
         description={targetDescription}
         onOpenChange={(open) => {
-          if (!open) setTarget(null)
+          if (!open) closeTarget()
         }}
         returnFocusRef={returnFocusRef}
+        onReturnFocusMissing={focusListAfterClose}
       >
         {target ? (
           <AuditScanCheckForm
@@ -683,7 +724,7 @@ export function AuditScanWorkspace({
             disabled={roundClosed}
             components={components}
             onSubmit={(submission) => void submitCheck(submission)}
-            onDismiss={() => setTarget(null)}
+            onDismiss={closeTarget}
             onConfirmComponent={(component, context) => void confirmComponent(component, context)}
             onMarkComponentMissing={(component) => {
               if (!component.auditItemId) toast.error(t("componentOutOfRound"))

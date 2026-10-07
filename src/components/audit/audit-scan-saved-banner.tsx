@@ -12,11 +12,12 @@ export type AuditSavedNotice = {
   queued: boolean
 }
 
+// Same words as the check sheet's field labels, so the banner and the sheet agree.
 const mismatchShortKey = {
-  location: "wrongLocation",
-  custodian: "wrongCustodian",
-  department: "wrongDepartment",
-  condition: "wrongCondition",
+  location: "expectedLocation",
+  custodian: "expectedCustodian",
+  department: "expectedDepartment",
+  condition: "expectedCondition",
 } as const
 
 export function AuditScanSavedBanner({

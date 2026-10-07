@@ -51,12 +51,6 @@ const fieldLabelKey = {
   department: "expectedDepartment",
   condition: "expectedCondition",
 } as const
-const mismatchShortKey = {
-  location: "wrongLocation",
-  custodian: "wrongCustodian",
-  department: "wrongDepartment",
-  condition: "wrongCondition",
-} as const
 
 function lookupMasterValues(asset: AuditLookupAsset): AuditMasterValues {
   return {
@@ -192,7 +186,7 @@ export function AuditScanCheckForm({
     return t("sheetStatusEdit", { time, name: target.item.scannedByName ?? "-" })
   })()
 
-  const fields = diff.map((field) => t(mismatchShortKey[field])).join(", ")
+  const fields = diff.map((field) => t(fieldLabelKey[field])).join(", ")
   const saveLabel = mode === "out_of_scope"
     ? t("saveOutOfScope")
     : mode === "edit"

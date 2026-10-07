@@ -37,6 +37,7 @@ export function AuditScanRoomList({
   locationLabels,
   showLocation,
   pendingHref,
+  activeItemId = null,
 }: {
   rows: AuditScanItemRow[]
   total: number
@@ -50,6 +51,8 @@ export function AuditScanRoomList({
   locationLabels: ReadonlyMap<string, string>
   showLocation: boolean
   pendingHref: string | null
+  /** The row whose check panel is open beside the list (wide screens). */
+  activeItemId?: string | null
 }) {
   const t = useTranslations("auditScan")
   const locale = useLocale()
@@ -90,13 +93,18 @@ export function AuditScanRoomList({
         <ul className="mt-2 divide-y divide-border overflow-hidden rounded-md border border-border bg-surface">
           {rows.map((item) => {
             const badge = queuedAssetIds.has(item.assetId) ? "queued" : getAuditItemBadge(item)
+            const active = item.itemId === activeItemId
             return (
               <li key={item.itemId}>
                 <button
                   type="button"
                   data-audit-scan-row
+                  aria-current={active ? "true" : undefined}
                   onClick={() => onOpen(item)}
-                  className="flex min-h-14 w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                  className={cn(
+                    "flex min-h-14 w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                    active && "bg-accent",
+                  )}
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold text-foreground">{item.assetTag}</span>

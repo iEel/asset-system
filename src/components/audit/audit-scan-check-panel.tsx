@@ -1,6 +1,6 @@
 "use client"
 
-import type { ReactNode, RefObject } from "react"
+import { useEffect, useRef, type ReactNode, type RefObject } from "react"
 import { useTranslations } from "next-intl"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
@@ -11,6 +11,7 @@ export function AuditScanCheckPanel({
   description,
   onOpenChange,
   returnFocusRef,
+  onReturnFocusMissing,
   children,
 }: {
   isWide: boolean
@@ -19,15 +20,23 @@ export function AuditScanCheckPanel({
   description: string
   onOpenChange: (open: boolean) => void
   returnFocusRef: RefObject<HTMLElement | null>
+  /** Called when the sheet closes and its return target left the page (row saved off the tab, deep link). */
+  onReturnFocusMissing?: () => void
   children: ReactNode
 }) {
   const t = useTranslations("auditScan")
   const tCommon = useTranslations("common")
+  const headingRef = useRef<HTMLHeadingElement | null>(null)
+
+  // The inline panel sits beside the list; jump focus to it so keyboard users need not tab through every row.
+  useEffect(() => {
+    if (isWide && open) headingRef.current?.focus()
+  }, [isWide, open, title])
 
   if (isWide) {
     return open ? (
       <aside data-audit-check-panel aria-label={title} className="sticky top-4 self-start rounded-lg border border-border bg-surface p-4 shadow-sm">
-        <h2 className="text-base font-semibold text-foreground">{title}</h2>
+        <h2 ref={headingRef} tabIndex={-1} className="text-base font-semibold text-foreground">{title}</h2>
         <p className="mb-3 truncate text-sm text-muted-foreground">{description}</p>
         {children}
       </aside>
@@ -49,6 +58,7 @@ export function AuditScanCheckPanel({
           event.preventDefault()
           const target = returnFocusRef.current
           if (target?.isConnected) target.focus()
+          else onReturnFocusMissing?.()
         }}
       >
         <SheetHeader className="border-b border-border pr-14">

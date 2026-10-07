@@ -8,7 +8,9 @@ const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${lo
 test("the search field sticks to the top on phones, avoids iOS zoom and holds the camera button", () => {
   const source = read("src/components/audit/audit-scan-search.tsx")
   assert.match(source, /<form[\s\S]*?role="search"/)
-  assert.match(source, /sticky top-0/)
+  // Negative top cancels <main>'s py-4 sm:py-6 so the box sticks flush to the top edge.
+  assert.match(source, /sticky -top-4 sm:-top-6/)
+  assert.doesNotMatch(source, /sticky top-0/)
   assert.doesNotMatch(source, /md:static/)
   assert.match(source, /text-base/)
   assert.match(source, /inputMode="search"/)
