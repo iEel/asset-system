@@ -3,7 +3,6 @@ export type AssetLifecycleStatus = {
   nameTh?: string | null
 }
 
-const maintenanceCloseNextStatuses = new Set(["ready", "pending disposal"])
 const disposalExecutionNextStatuses = new Set(["disposed", "retired"])
 const protectedLifecycleStatuses = new Set([
   "pending disposal",
@@ -17,11 +16,6 @@ const protectedLifecycleStatuses = new Set([
 ])
 const correctionSourceStatuses = protectedLifecycleStatuses
 const correctionTargetStatus = "ready"
-
-export function getMaintenanceCloseStatusError(status: AssetLifecycleStatus | null | undefined) {
-  if (maintenanceCloseNextStatuses.has(normalizeStatusName(status?.name))) return null
-  return "Maintenance close can only set asset status to Ready or Pending Disposal"
-}
 
 export function getDisposalExecutionStatusError(status: AssetLifecycleStatus | null | undefined) {
   if (disposalExecutionNextStatuses.has(normalizeStatusName(status?.name))) return null

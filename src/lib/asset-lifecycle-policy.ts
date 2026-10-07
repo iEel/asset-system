@@ -215,10 +215,6 @@ export function getMaintenanceOperationalTarget(context: AssetCustodyContext): "
     : "Ready"
 }
 
-export function getMaintenanceCloseStatusNames(context: AssetCustodyContext): Array<"In Use" | "Ready" | "Pending Disposal"> {
-  return [getMaintenanceOperationalTarget(context), "Pending Disposal"]
-}
-
 export function getTransferTargetStatusName(toCustodianId?: string | null): "In Use" | null {
   return toCustodianId ? "In Use" : null
 }

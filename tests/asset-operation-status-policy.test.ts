@@ -7,7 +7,6 @@ import {
   getAssetRegisterStatusChangeError,
   getAssetStatusCorrectionError,
   getDisposalExecutionStatusError,
-  getMaintenanceCloseStatusError,
 } from "../src/lib/asset-lifecycle-exception-policy.ts"
 import { getAssetOperationStatusError } from "../src/lib/asset-operation-policy.ts"
 
@@ -34,13 +33,6 @@ test("allows personal transfer only from Ready or In Use", () => {
 
   assert.equal(getAssetOperationStatusError("transfer", { name: "Ready", nameTh: "พร้อมใช้งาน" }), null)
   assert.equal(getAssetOperationStatusError("transfer", { name: "In Use", nameTh: "ใช้งานอยู่" }), null)
-})
-
-test("restricts maintenance close to ready or pending disposal asset states", () => {
-  assert.equal(getMaintenanceCloseStatusError({ name: "Ready" }), null)
-  assert.equal(getMaintenanceCloseStatusError({ name: "Pending Disposal" }), null)
-  assert.equal(getMaintenanceCloseStatusError({ name: "Disposed" }), "Maintenance close can only set asset status to Ready or Pending Disposal")
-  assert.equal(getMaintenanceCloseStatusError({ name: "Checked Out" }), "Maintenance close can only set asset status to Ready or Pending Disposal")
 })
 
 test("restricts disposal execution to final disposed or retired states", () => {
