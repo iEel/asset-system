@@ -399,8 +399,14 @@ export function AuditScanWorkspace({
         }
         return
       }
-      if (payload.status === "out_of_scope") setLookup({ status: "out_of_scope", asset: payload.asset })
-      else if (payload.status === "candidates") setLookup({ status: "candidates", matches: payload.matches })
+      if (payload.status === "out_of_scope") {
+        // Show the asset tag instead of the raw QR text; setTerm (not changeTerm) keeps this lookup card.
+        if (rawValue !== payload.asset.assetTag) {
+          setDraft(payload.asset.assetTag)
+          setTerm(payload.asset.assetTag)
+        }
+        setLookup({ status: "out_of_scope", asset: payload.asset })
+      } else if (payload.status === "candidates") setLookup({ status: "candidates", matches: payload.matches })
       else setLookup({ status: "unknown" })
     } catch {
       if (navigator.onLine) setLookup({ status: "error", message: tCommon("error") })

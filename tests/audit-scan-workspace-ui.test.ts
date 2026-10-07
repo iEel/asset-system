@@ -103,6 +103,18 @@ test("the open item is marked in the room list only on wide screens", () => {
   assert.match(workspace(), /activeItemId=\{isWide && target\?\.kind === "item" \? target\.item\.itemId : null\}/)
 })
 
+test("an out-of-scope register lookup shows the asset tag in the search box instead of the raw text", () => {
+  const source = workspace()
+  const branch = source.match(/if \(payload\.status === "out_of_scope"\) \{([\s\S]*?)\n      \}/)?.[1]
+  assert.ok(branch, "out_of_scope branch of searchRegister")
+  const draftAt = branch.indexOf("setDraft(payload.asset.assetTag)")
+  const termAt = branch.indexOf("setTerm(payload.asset.assetTag)")
+  const lookupAt = branch.indexOf('setLookup({ status: "out_of_scope"')
+  assert.ok(draftAt >= 0 && termAt >= 0 && lookupAt >= 0)
+  assert.ok(draftAt < lookupAt && termAt < lookupAt)
+  assert.doesNotMatch(branch, /changeTerm\(/)
+})
+
 test("workspace copy exists in Thai and English", () => {
   const keys = ["savedAllMatch", "savedMismatch", "savedOutOfScope", "savedQueued", "editAgain", "photoRetryMessage", "retryPhotos", "offlineBarOffline", "offlineBarPending", "sendNow", "removeFromQueue", "queueFailed", "roundClosedError", "backToRound"]
   for (const locale of ["th", "en"] as const) {

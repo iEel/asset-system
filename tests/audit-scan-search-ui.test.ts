@@ -62,6 +62,12 @@ test("the camera starts after mount, stops on unmount, reads one code and explai
   assert.match(source, /\}, \[\]\)/)
 })
 
+test("the camera panel scrolls into view below the sticky search bar", () => {
+  const source = read("src/components/audit/audit-scan-camera.tsx")
+  assert.match(source, /<div ref=\{panelRef\} data-audit-scan-camera className="[^"]*\bscroll-mt-20\b[^"]*"/)
+  assert.match(source, /panelRef\.current\?\.scrollIntoView\(/)
+})
+
 test("search and lookup copy exists in Thai and English", () => {
   const keys = ["searchItemsLabel", "searchItemsPlaceholder", "searchClear", "openCamera", "searchResultCount", "searchNoResult", "searchRegister", "searchRegisterLoading", "lookupOutOfScope", "lookupCandidates", "lookupInRound", "lookupNotInRound", "lookupUnknown", "lookupOffline", "matchedSerial", "matchedFixedAsset", "matchedCustodian", "inLocation", "badgePending", "cameraPermissionDenied"]
   for (const locale of ["th", "en"] as const) {

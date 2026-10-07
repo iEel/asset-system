@@ -138,7 +138,7 @@ export function AuditScanCamera({ onDecoded, onClose }: { onDecoded: (text: stri
   }
 
   return (
-    <div ref={panelRef} data-audit-scan-camera className="relative isolate mb-2 overflow-hidden rounded-md border border-border bg-surface">
+    <div ref={panelRef} data-audit-scan-camera className="relative isolate mb-2 scroll-mt-20 overflow-hidden rounded-md border border-border bg-surface">
       <div className="relative aspect-square w-full sm:aspect-[4/3]">
         <div id="audit-qr-reader" className="w-full [&_video]:!h-auto [&_video]:!w-full" />
         {running ? <AuditQrScannerOverlay /> : null}
