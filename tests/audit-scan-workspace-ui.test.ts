@@ -83,12 +83,20 @@ test("wide screens restore focus after dismissing or saving a list-opened item",
   const source = workspace()
   const closeTarget = source.slice(source.indexOf("function closeTarget"), source.indexOf("function openOutOfScope"))
   assert.match(closeTarget, /setTarget\(null\)/)
-  assert.match(closeTarget, /if \(isWide\)/)
-  assert.match(closeTarget, /focusListAfterClose\(\)/)
+  assert.match(closeTarget, /if \(isWide\) focusListPendingRef\.current = "return"/)
   assert.match(source, /onDismiss=\{closeTarget\}/)
   assert.match(source, /if \(!open\) closeTarget\(\)/)
   const finishSave = source.slice(source.indexOf("function finishSave"), source.indexOf("async function uploadPhotos"))
-  assert.match(finishSave, /else if \(isWide\) \{\s*\n\s*window\.setTimeout\(focusListAfterClose, 0\)/)
+  assert.match(finishSave, /else if \(isWide\) \{\s*\n\s*(?:\/\/[^\n]*\n\s*)*focusListPendingRef\.current = "list"/)
+  // A timeout can run before React renders the saved row away; focus must move after the commit instead.
+  assert.doesNotMatch(source, /setTimeout\(focusListAfterClose/)
+  assert.doesNotMatch(closeTarget, /setTimeout/)
+})
+
+test("pending list focus is applied by an effect that runs after every commit", () => {
+  const source = workspace()
+  assert.match(source, /const focusListPendingRef = useRef<"list" \| "return" \| null>\(null\)/)
+  assert.match(source, /useEffect\(\(\) => \{\s*\n\s*const pending = focusListPendingRef\.current\s*\n\s*if \(!pending\) return\s*\n\s*focusListPendingRef\.current = null\s*\n\s*const el = returnFocusRef\.current\s*\n\s*if \(pending === "return" && el\?\.isConnected\) el\.focus\(\)\s*\n\s*else focusListAfterClose\(\)\s*\n\s*\}\)\n/)
 })
 
 test("the open item is marked in the room list only on wide screens", () => {

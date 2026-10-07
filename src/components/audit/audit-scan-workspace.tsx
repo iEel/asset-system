@@ -113,6 +113,8 @@ export function AuditScanWorkspace({
   const listAreaRef = useRef<HTMLDivElement | null>(null)
   const returnRowIndexRef = useRef(-1)
   const lastSyncAtRef = useRef(0)
+  /** Wide screens: where focus goes once React has committed the close/save (the saved row may be gone by then). */
+  const focusListPendingRef = useRef<"list" | "return" | null>(null)
   const serverTimeRef = useRef(initialServerTime)
   const storageRef = useRef<AuditOfflineQueueStorage | null>(null)
   const syncingRef = useRef(false)
@@ -298,6 +300,16 @@ export function AuditScanWorkspace({
     }
   }, [sendQueue])
 
+  // Runs after every commit (no dependency list): applies wide-screen focus once the close/save has rendered.
+  useEffect(() => {
+    const pending = focusListPendingRef.current
+    if (!pending) return
+    focusListPendingRef.current = null
+    const el = returnFocusRef.current
+    if (pending === "return" && el?.isConnected) el.focus()
+    else focusListAfterClose()
+  })
+
   function openItem(item: AuditScanItemRow, fromSearch: boolean) {
     returnFocusRef.current = fromSearch ? inputRef.current : (document.activeElement as HTMLElement | null)
     if (!fromSearch) {
@@ -326,14 +338,8 @@ export function AuditScanWorkspace({
 
   function closeTarget() {
     setTarget(null)
-    if (isWide) {
-      // The inline panel has no Radix focus return; put focus back where the check started.
-      window.setTimeout(() => {
-        const el = returnFocusRef.current
-        if (el?.isConnected) el.focus()
-        else focusListAfterClose()
-      }, 0)
-    }
+    // The inline panel has no Radix focus return; the after-commit effect puts focus back where the check started.
+    if (isWide) focusListPendingRef.current = "return"
   }
 
   function openOutOfScope(asset: AuditLookupAsset) {
@@ -444,7 +450,8 @@ export function AuditScanWorkspace({
       returnFocusRef.current = inputRef.current
       window.setTimeout(() => inputRef.current?.focus(), 0)
     } else if (isWide) {
-      window.setTimeout(focusListAfterClose, 0)
+      // Applied after the commit that removes the saved row from "pending", so focus lands on the next row.
+      focusListPendingRef.current = "list"
     }
   }
 
