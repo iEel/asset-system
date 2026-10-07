@@ -23,6 +23,10 @@ test("activity and evidence drawers are Radix sheets that can be opened from out
   }
 })
 
+test("evidence drawer keeps its wide panel", () => {
+  assert.match(read("src/components/assets/asset-evidence-drawer.tsx"), /sm:max-w-2xl/)
+})
+
 test("mobile navigation drawer is a left sheet; desktop sidebar stays static", () => {
   const sidebar = read("src/components/layout/sidebar.tsx")
   const shell = read("src/components/layout/dashboard-shell.tsx")

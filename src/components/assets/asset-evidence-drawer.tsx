@@ -77,7 +77,7 @@ export function AssetEvidenceDrawer({
           event.preventDefault()
           target.focus()
         }}
-        className="w-full gap-0 bg-surface p-0 sm:max-w-md"
+        className="w-full gap-0 bg-surface p-0 sm:max-w-2xl"
       >
         <SheetHeader className="border-b border-border px-4 py-3 pr-16">
           <SheetTitle className="text-base font-semibold text-foreground">{labels.title}</SheetTitle>
