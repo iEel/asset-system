@@ -8,7 +8,6 @@ import {
   ArrowRight,
   Building2,
   CheckCircle2,
-  Copy,
   Cpu,
   Edit,
   FileText,
@@ -18,7 +17,6 @@ import {
   Info as InfoIcon,
   MapPin,
   PackageCheck,
-  Printer,
   Puzzle,
   QrCode,
   RotateCcw,
@@ -33,7 +31,6 @@ import { hasPermission } from "@/lib/auth-utils"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 import { AssetQrCode } from "@/components/assets/asset-qr-code"
 import { AssetAttachments } from "@/components/assets/asset-attachments"
-import { AssetEvidenceDrawer } from "@/components/assets/asset-evidence-drawer"
 import { AssetStatusCorrectionButton } from "@/components/assets/asset-status-correction-button"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -50,7 +47,6 @@ import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AssetMovementTimeline, type AssetMovementTimelineItem } from "@/components/assets/asset-movement-timeline"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { MobileActionBar } from "@/components/ui/mobile-action-bar"
-import { ActivityDrawer } from "@/components/ui/activity-drawer"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { canCorrectAssetStatus } from "@/lib/asset-lifecycle-exception-policy"
@@ -64,7 +60,6 @@ import { getAssetDetailLoadPolicy } from "@/lib/asset-detail-data"
 import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-document"
 import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
 import { toRepairRecordStatus } from "@/lib/repair-record-policy"
-import { TransactionCancelDialog } from "@/components/asset-operations/transaction-cancel-dialog"
 import {
   compactMovementDetails,
   createHealthItem,
@@ -932,79 +927,48 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               {tCommon("edit")}
             </Link>
           ) : null}
-          <AssetDetailActionMenu label={t("detailMoreActions")} closeLabel={tCommon("close")}>
-            {canEditAsset && latestAssetTransaction?.transactionStatus === "active" ? (
-              <div className="[&_button]:w-full">
-                <TransactionCancelDialog
-                  type={latestAssetTransaction.type}
-                  transactionId={latestAssetTransaction.id}
-                  expectedUpdatedAt={latestAssetTransaction.updatedAt.toISOString()}
-                  originalOperator={latestAssetTransaction.operator}
-                  currentState={formatCancellationSnapshot(cancellationAfterSnapshot, cancellationReferenceLabels)}
-                  restoreState={formatCancellationSnapshot(cancellationBeforeSnapshot, cancellationReferenceLabels)}
-                  componentCount={cancellationBeforeSnapshot?.components.length ?? 0}
-                  labels={buildCancellationLabels(tCancellation)}
-                />
-              </div>
-            ) : null}
-            <div className="[&_button]:w-full">
-              <ActivityDrawer
-                title={t("activityDrawerTitle")}
-                triggerLabel={t("activityDrawerOpen")}
-                emptyLabel={tCommon("noData")}
-                items={activityDrawerItems}
-              />
-            </div>
-            <div className="[&_button]:w-full">
-              <AssetEvidenceDrawer
-                items={evidenceDrawerItems}
-                labels={{
-                  title: t("evidenceCenter"),
-                  triggerLabel: t("detailSections.evidence"),
-                  emptyLabel: t("noEvidenceHelp"),
-                  total: t("evidenceTotal"),
-                  images: t("evidenceImages"),
-                  documents: t("evidenceDocuments"),
-                  all: t("movementFilters.all"),
-                  openFile: t("openEvidenceFile"),
-                }}
-              />
-            </div>
-            <Link
-              href={`/${locale}/assets/${asset.id}/label`}
-              className="inline-flex min-h-11 w-full items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-            >
-              <Printer className="h-4 w-4" />
-              {t("printLabel")}
-            </Link>
-            {canEditAsset ? (
-              <Link
-                href={componentsManagerHref}
-                className="inline-flex min-h-11 w-full items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-              >
-                <Puzzle className="h-4 w-4" />
-                {t("manageComponents")}
-              </Link>
-            ) : null}
-            {canCreateAsset ? (
-              <Link
-                href={cloneHref}
-                className="inline-flex min-h-11 w-full items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-              >
-                <Copy className="h-4 w-4" />
-                {t("cloneAsset")}
-              </Link>
-            ) : null}
-            {canEditAsset ? (
-              <Link
-                href={editHref}
-                className="inline-flex min-h-11 w-full items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover md:hidden"
-              >
-                <Edit className="h-4 w-4" />
-                {tCommon("edit")}
-              </Link>
-            ) : null}
-          </AssetDetailActionMenu>
+          <AssetDetailActionMenu
+            label={t("detailMoreActions")}
+            cancelTransaction={
+              canEditAsset && latestAssetTransaction?.transactionStatus === "active"
+                ? {
+                    type: latestAssetTransaction.type,
+                    transactionId: latestAssetTransaction.id,
+                    expectedUpdatedAt: latestAssetTransaction.updatedAt.toISOString(),
+                    originalOperator: latestAssetTransaction.operator,
+                    currentState: formatCancellationSnapshot(cancellationAfterSnapshot, cancellationReferenceLabels),
+                    restoreState: formatCancellationSnapshot(cancellationBeforeSnapshot, cancellationReferenceLabels),
+                    componentCount: cancellationBeforeSnapshot?.components.length ?? 0,
+                    labels: buildCancellationLabels(tCancellation),
+                  }
+                : undefined
+            }
+            activity={{
+              title: t("activityDrawerTitle"),
+              triggerLabel: t("activityDrawerOpen"),
+              emptyLabel: tCommon("noData"),
+              items: activityDrawerItems,
+            }}
+            evidence={{
+              items: evidenceDrawerItems,
+              labels: {
+                title: t("evidenceCenter"),
+                triggerLabel: t("detailSections.evidence"),
+                emptyLabel: t("noEvidenceHelp"),
+                total: t("evidenceTotal"),
+                images: t("evidenceImages"),
+                documents: t("evidenceDocuments"),
+                all: t("movementFilters.all"),
+                openFile: t("openEvidenceFile"),
+              },
+            }}
+            links={[
+              { key: "print", href: `/${locale}/assets/${asset.id}/label`, label: t("printLabel") },
+              ...(canEditAsset ? [{ key: "components" as const, href: componentsManagerHref, label: t("manageComponents") }] : []),
+              ...(canCreateAsset ? [{ key: "clone" as const, href: cloneHref, label: t("cloneAsset") }] : []),
+              ...(canEditAsset ? [{ key: "edit" as const, href: editHref, label: tCommon("edit"), mobileOnly: true }] : []),
+            ]}
+          />
         </div>
       </div>
       <AssetComponentContextBanner

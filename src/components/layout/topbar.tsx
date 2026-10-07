@@ -16,6 +16,14 @@ import {
 import { useCallback, useEffect, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { cn } from "@/lib/utils"
 import { GlobalSearch } from "@/components/layout/global-search"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { getUserDisplayLabel, getUserInitial, getUserSecondaryLabel } from "@/lib/user-display"
 import type { SessionUser } from "@/lib/auth-utils"
 import {
@@ -56,8 +64,6 @@ export function Topbar({
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const [langMenuOpen, setLangMenuOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [notificationSummary, setNotificationSummary] = useState<NotificationClientSummary>({ total: 0, items: [] })
   const [notificationRequestGuard] = useState(createLatestNotificationRequestGuard)
@@ -107,7 +113,6 @@ export function Topbar({
   const switchLocale = (newLocale: string) => {
     const newPath = pathname.replace(`/${locale}`, `/${newLocale}`)
     router.push(newPath)
-    setLangMenuOpen(false)
   }
 
   return (
@@ -224,68 +229,54 @@ export function Topbar({
 
         {/* Language Switcher */}
         <div className="relative shrink-0">
-          <button
-            onClick={() => setLangMenuOpen(!langMenuOpen)}
-            className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
-            aria-label="Change language"
-          >
-            <Globe size={18} />
-            <span className="hidden sm:inline">{locale === "th" ? "TH" : "EN"}</span>
-          </button>
-          {langMenuOpen && (
-            <div className="absolute right-0 top-full z-50 mt-1 w-32 rounded-md border border-border bg-surface py-1 shadow-lg">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <button
-                onClick={() => switchLocale("th")}
-                className={cn(
-                  "block w-full px-4 py-2 text-left text-sm hover:bg-accent",
-                  locale === "th" && "font-medium text-primary"
-                )}
+                className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
+                aria-label="Change language"
               >
+                <Globe size={18} />
+                <span className="hidden sm:inline">{locale === "th" ? "TH" : "EN"}</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onSelect={() => switchLocale("th")} className={cn(locale === "th" && "font-medium text-primary")}>
                 🇹🇭 ภาษาไทย
-              </button>
-              <button
-                onClick={() => switchLocale("en")}
-                className={cn(
-                  "block w-full px-4 py-2 text-left text-sm hover:bg-accent",
-                  locale === "en" && "font-medium text-primary"
-                )}
-              >
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => switchLocale("en")} className={cn(locale === "en" && "font-medium text-primary")}>
                 🇺🇸 English
-              </button>
-            </div>
-          )}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* User Menu */}
         <div className="relative shrink-0">
-          <button
-            onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md px-2 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 sm:px-3"
-            aria-label="User menu"
-          >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-white">
-              {getUserInitial(user)}
-            </div>
-            <span className="hidden max-w-36 truncate text-sm font-medium sm:inline">{userDisplayLabel}</span>
-            <ChevronDown size={16} className="hidden sm:block" />
-          </button>
-          {userMenuOpen && (
-            <div className="absolute right-0 top-full z-50 mt-1 w-[calc(100vw-2rem)] max-w-[16rem] rounded-md border border-border bg-surface py-1 shadow-lg">
-              <div className="border-b border-border px-4 py-2">
-                <p className="truncate text-sm font-medium">{userDisplayLabel}</p>
-                {userSecondaryLabel ? (
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{userSecondaryLabel}</p>
-                ) : null}
-              </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <button
-                onClick={() => signOut({ callbackUrl: `/${locale}/login` })}
-                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-danger hover:bg-accent"
+                className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md px-2 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 sm:px-3"
+                aria-label="User menu"
               >
-                <LogOut size={16} />
-                {tAuth("logout")}
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-white">
+                  {getUserInitial(user)}
+                </div>
+                <span className="hidden max-w-36 truncate text-sm font-medium sm:inline">{userDisplayLabel}</span>
+                <ChevronDown size={16} className="hidden sm:block" />
               </button>
-            </div>
-          )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] max-w-[16rem]">
+              <DropdownMenuLabel className="font-normal">
+                <span className="block truncate text-sm font-medium">{userDisplayLabel}</span>
+                {userSecondaryLabel ? <span className="mt-0.5 block truncate text-xs text-muted-foreground">{userSecondaryLabel}</span> : null}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onSelect={() => void signOut({ callbackUrl: `/${locale}/login` })}>
+                <LogOut aria-hidden="true" />
+                {tAuth("logout")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

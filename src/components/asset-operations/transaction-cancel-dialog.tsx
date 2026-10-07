@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useImperativeHandle, useRef, useState, type Ref, type RefObject } from "react"
 import { useRouter } from "next/navigation"
 import { AlertTriangle, Loader2, Undo2 } from "lucide-react"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
@@ -28,6 +28,19 @@ export type TransactionCancellationLabels = {
   blockers: Record<string, string>
 }
 
+export type TransactionCancelDialogProps = {
+  type: TransactionType
+  transactionId: string
+  expectedUpdatedAt: string
+  originalOperator: string
+  currentState: string
+  restoreState: string
+  componentCount: number
+  labels: TransactionCancellationLabels
+}
+
+export type TransactionCancelDialogHandle = { open: () => void }
+
 export function TransactionCancelDialog({
   type,
   transactionId,
@@ -37,15 +50,13 @@ export function TransactionCancelDialog({
   restoreState,
   componentCount,
   labels,
-}: {
-  type: TransactionType
-  transactionId: string
-  expectedUpdatedAt: string
-  originalOperator: string
-  currentState: string
-  restoreState: string
-  componentCount: number
-  labels: TransactionCancellationLabels
+  ref,
+  hideTrigger = false,
+  returnFocusRef,
+}: TransactionCancelDialogProps & {
+  ref?: Ref<TransactionCancelDialogHandle>
+  hideTrigger?: boolean
+  returnFocusRef?: RefObject<HTMLElement | null>
 }) {
   const router = useRouter()
   const reasonRef = useRef<HTMLTextAreaElement | null>(null)
@@ -73,6 +84,8 @@ export function TransactionCancelDialog({
       setLoading(false)
     }
   }
+
+  useImperativeHandle(ref, () => ({ open: () => void openPreview() }))
 
   async function submitCancellation() {
     if (reason.trim().length < 5) {
@@ -105,11 +118,13 @@ export function TransactionCancelDialog({
 
   return (
     <>
-      <button type="button" onClick={() => void openPreview()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-danger/40 bg-surface px-3 text-sm font-medium text-danger transition-colors hover:bg-danger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/40">
-        <Undo2 className="h-4 w-4" aria-hidden="true" />
-        {labels.action}
-      </button>
-      <AccessibleDialog open={open} title={labels.title} description={labels.description} busy={saving} initialFocusRef={reasonRef} onClose={() => setOpen(false)}>
+      {hideTrigger ? null : (
+        <button type="button" onClick={() => void openPreview()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-danger/40 bg-surface px-3 text-sm font-medium text-danger transition-colors hover:bg-danger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/40">
+          <Undo2 className="h-4 w-4" aria-hidden="true" />
+          {labels.action}
+        </button>
+      )}
+      <AccessibleDialog open={open} title={labels.title} description={labels.description} busy={saving} initialFocusRef={reasonRef} returnFocusRef={returnFocusRef} onClose={() => setOpen(false)}>
         <div className="max-h-[calc(100dvh-12rem)] overflow-y-auto px-5 py-4">
           {loading ? (
             <div className="flex min-h-28 items-center justify-center gap-2 text-sm text-muted-foreground" aria-live="polite"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />{labels.loading}</div>

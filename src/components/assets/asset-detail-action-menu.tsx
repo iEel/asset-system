@@ -1,84 +1,115 @@
 "use client"
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react"
-import { MoreHorizontal, X } from "lucide-react"
+import { useRef, useState } from "react"
+import Link from "next/link"
+import { Activity, Copy, Edit, FolderOpen, MoreHorizontal, Printer, Puzzle, Undo2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ActivityDrawer, type ActivityDrawerItem } from "@/components/ui/activity-drawer"
+import {
+  AssetEvidenceDrawer,
+  type AssetEvidenceDrawerItem,
+  type AssetEvidenceDrawerLabels,
+} from "@/components/assets/asset-evidence-drawer"
+import {
+  TransactionCancelDialog,
+  type TransactionCancelDialogHandle,
+  type TransactionCancelDialogProps,
+} from "@/components/asset-operations/transaction-cancel-dialog"
+
+const linkIcons = { print: Printer, components: Puzzle, clone: Copy, edit: Edit }
 
 export function AssetDetailActionMenu({
   label,
-  closeLabel,
-  children,
+  cancelTransaction,
+  activity,
+  evidence,
+  links,
 }: {
   label: string
-  closeLabel: string
-  children: ReactNode
+  cancelTransaction?: TransactionCancelDialogProps
+  activity: { title: string; triggerLabel: string; emptyLabel: string; items: ActivityDrawerItem[] }
+  evidence: { items: AssetEvidenceDrawerItem[]; labels: AssetEvidenceDrawerLabels }
+  links: Array<{ key: keyof typeof linkIcons; href: string; label: string; mobileOnly?: boolean }>
 }) {
-  const [open, setOpen] = useState(false)
-  const panelId = useId()
   const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const openingDialogRef = useRef(false)
+  const cancelDialogRef = useRef<TransactionCancelDialogHandle | null>(null)
+  const [panel, setPanel] = useState<"activity" | "evidence" | null>(null)
 
-  useEffect(() => {
-    if (!open) return
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape") return
-      event.preventDefault()
-      setOpen(false)
-      triggerRef.current?.focus()
-    }
-
-    document.addEventListener("keydown", onKeyDown)
-    return () => document.removeEventListener("keydown", onKeyDown)
-  }, [open])
-
-  function closeMenu() {
-    setOpen(false)
-    triggerRef.current?.focus()
+  function openFromMenu(open: () => void) {
+    openingDialogRef.current = true
+    open()
   }
 
   return (
-    <div className="relative">
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        aria-expanded={open}
-        aria-controls={panelId}
-        aria-label={label}
-        title={label}
-        className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border bg-surface text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-10 sm:w-10"
-      >
-        <MoreHorizontal className="h-5 w-5" />
-      </button>
-
-      {open ? (
-        <>
-          <button
-            type="button"
-            aria-label={closeLabel}
-            onClick={closeMenu}
-            className="fixed inset-0 z-40 bg-black/30 md:hidden"
-          />
-          <section
-            id={panelId}
-            aria-label={label}
-            className="fixed inset-x-3 bottom-3 z-50 max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-lg border border-border bg-surface p-3 shadow-xl md:absolute md:inset-auto md:right-0 md:top-full md:mt-2 md:w-72"
-          >
-            <div className="mb-3 flex items-center justify-between gap-3 md:hidden">
-              <h2 className="text-sm font-semibold text-foreground">{label}</h2>
-              <button
-                type="button"
-                onClick={closeMenu}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                aria-label={closeLabel}
-                title={closeLabel}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="grid gap-2">{children}</div>
-          </section>
-        </>
+    <>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button ref={triggerRef} variant="outline" size="icon" aria-label={label} title={label}>
+            <MoreHorizontal className="size-5" aria-hidden="true" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          className="w-72"
+          onCloseAutoFocus={(event) => {
+            if (!openingDialogRef.current) return
+            openingDialogRef.current = false
+            event.preventDefault()
+          }}
+        >
+          {cancelTransaction ? (
+            <DropdownMenuItem variant="destructive" onSelect={() => openFromMenu(() => cancelDialogRef.current?.open())}>
+              <Undo2 aria-hidden="true" />
+              {cancelTransaction.labels.action}
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem onSelect={() => openFromMenu(() => setPanel("activity"))}>
+            <Activity aria-hidden="true" />
+            {activity.triggerLabel}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => openFromMenu(() => setPanel("evidence"))}>
+            <FolderOpen aria-hidden="true" />
+            {evidence.labels.triggerLabel}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {links.map((link) => {
+            const Icon = linkIcons[link.key]
+            return (
+              <DropdownMenuItem key={link.key} asChild className={link.mobileOnly ? "md:hidden" : undefined}>
+                <Link href={link.href}>
+                  <Icon aria-hidden="true" />
+                  {link.label}
+                </Link>
+              </DropdownMenuItem>
+            )
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {cancelTransaction ? (
+        <TransactionCancelDialog ref={cancelDialogRef} hideTrigger returnFocusRef={triggerRef} {...cancelTransaction} />
       ) : null}
-    </div>
+      <ActivityDrawer
+        hideTrigger
+        open={panel === "activity"}
+        onOpenChange={(open) => setPanel(open ? "activity" : null)}
+        returnFocusRef={triggerRef}
+        {...activity}
+      />
+      <AssetEvidenceDrawer
+        hideTrigger
+        open={panel === "evidence"}
+        onOpenChange={(open) => setPanel(open ? "evidence" : null)}
+        returnFocusRef={triggerRef}
+        {...evidence}
+      />
+    </>
   )
 }

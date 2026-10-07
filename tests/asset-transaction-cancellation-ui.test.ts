@@ -32,9 +32,13 @@ test("checkout, checkin, transfer, and asset detail surfaces expose cancellation
   ]
   for (const path of paths) {
     const source = readFileSync(path, "utf8")
-    assert.match(source, /TransactionCancelDialog/, path)
+    assert.match(source, path.includes("(dashboard)/assets/[id]") ? /cancelTransaction=\{/ : /TransactionCancelDialog/, path)
     assert.match(source, /transactionStatus === "active"/, path)
   }
+  assert.match(
+    readFileSync("src/components/assets/asset-detail-action-menu.tsx", "utf8"),
+    /<TransactionCancelDialog ref=\{cancelDialogRef\}/,
+  )
 })
 
 test("transaction cancellation copy is complete in Thai and English", () => {

@@ -69,8 +69,11 @@ test("asset detail makes component management discoverable from custody and More
   const thaiMessages = readFileSync("messages/th.json", "utf8")
   const englishMessages = readFileSync("messages/en.json", "utf8")
 
-  assert.match(source, /href=\{componentsManagerHref\}/)
-  assert.match(source, /\{t\("manageComponents"\)\}/)
+  const menuSource = readFileSync("src/components/assets/asset-detail-action-menu.tsx", "utf8")
+
+  assert.match(source, /manageHref=\{componentsManagerHref\}/)
+  assert.match(source, /\{ key: "components" as const, href: componentsManagerHref, label: t\("manageComponents"\) \}/)
+  assert.match(menuSource, /<Link href=\{link\.href\}>/)
   assert.match(thaiMessages, /"custody": "การถือครอง \/ ส่วนควบ"/)
   assert.match(englishMessages, /"custody": "Custody & Components"/)
 })
