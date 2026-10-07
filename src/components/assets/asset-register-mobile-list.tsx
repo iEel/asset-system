@@ -32,7 +32,7 @@ export function AssetRegisterMobileList({
   ...rowProps
 }: MobileListProps) {
   return (
-    <ul data-asset-mobile-list className={cn("divide-y divide-border md:hidden", reserveBulkBarSpace && "pb-40")}>
+    <ul data-asset-mobile-list className={cn("divide-y divide-border md:hidden", reserveBulkBarSpace && "pb-44")}>
       {assets.map((asset) =>
         selectMode ? (
           <MobileSelectableRow key={asset.id} asset={asset} checked={selectedIds.has(asset.id)} onToggle={() => onToggleAsset(asset.id)} />
@@ -46,7 +46,7 @@ export function AssetRegisterMobileList({
 
 function MobileAssetRow({ asset, permissions, detailHref, editHref, cloneHref, onNavigate }: RowProps & { asset: AssetRegisterRow }) {
   return (
-    <li data-asset-mobile-row className="relative flex min-h-20 items-center gap-3 px-3 py-2.5 transition-colors hover:bg-accent/50">
+    <li data-asset-mobile-row className="relative flex min-h-20 items-center gap-3 px-3 py-2 transition-colors hover:bg-accent/50">
       <AssetThumbnail photo={asset.photo} assetTag={asset.assetTag} assetName={asset.name} size={44} className="relative z-10" />
       <div className="min-w-0 flex-1">
         <Link
@@ -57,14 +57,14 @@ function MobileAssetRow({ asset, permissions, detailHref, editHref, cloneHref, o
           {asset.assetTag}
         </Link>
         <p className="truncate text-sm text-foreground">{asset.name}</p>
-        <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="min-w-0 truncate text-xs text-muted-foreground">{asset.currentLocation}</span>
-          <StatusBadge size="xs" label={asset.status.label} tone={getAssetStateTone(asset.status.value)} />
+        <div className="mt-0.5 flex min-w-0 flex-nowrap items-center gap-2 text-xs leading-5">
+          <span className="min-w-0 truncate text-muted-foreground">{asset.currentLocation}</span>
+          <StatusBadge size="xs" label={asset.status.label} tone={getAssetStateTone(asset.status.value)} className="shrink-0" />
           {needsFieldAttention(asset) ? (
             <>
-              <StatusBadge size="xs" label={asset.condition.label} tone={getAssetStateTone(asset.condition.value)} />
+              <StatusBadge size="xs" label={asset.condition.label} tone={getAssetStateTone(asset.condition.value)} className="shrink-0" />
               {asset.ownershipType.value === "shared" ? (
-                <StatusBadge size="xs" label={asset.ownershipType.label} tone="success" />
+                <StatusBadge size="xs" label={asset.ownershipType.label} tone="success" className="shrink-0" />
               ) : null}
             </>
           ) : null}

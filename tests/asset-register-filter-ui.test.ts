@@ -103,3 +103,17 @@ test("filter copy exists in Thai and English", () => {
   assert.equal(messages("th").filterSheetShowResults, "แสดง {count} รายการ")
   assert.equal(messages("th").dataQualityDepartment, "แผนกไม่ครบ")
 })
+
+test("the asset register page uses the compact mobile header", () => {
+  assert.match(page(), /<MasterDataHeader\s+compactOnMobile/)
+  assert.match(tabs(), /mb-2 [^"]*md:mb-3/)
+})
+
+test("master data header hides the subtitle below md only when compactOnMobile is set", () => {
+  const layout = read("src/components/master-data/master-data-layout.tsx")
+
+  assert.match(layout, /compactOnMobile\?: boolean/)
+  assert.match(layout, /compactOnMobile \? "hidden text-sm text-muted-foreground md:mt-1 md:block" : "mt-1 text-sm text-muted-foreground"/)
+  assert.match(layout, /compactOnMobile \? "mb-4 space-y-4 md:mb-6" : "mb-6 space-y-4"/)
+  assert.match(layout, /compactOnMobile \? "text-xl font-bold text-foreground md:text-2xl" : "text-2xl font-bold text-foreground"/)
+})

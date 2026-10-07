@@ -8,21 +8,23 @@ export function MasterDataHeader({
   createHref,
   createLabel,
   actions,
+  compactOnMobile = false,
 }: {
   title: string
   subtitle: string
   createHref: string
   createLabel: string
   actions?: React.ReactNode
+  compactOnMobile?: boolean
 }) {
   return (
-    <div className="mb-6 space-y-4">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+    <div className={compactOnMobile ? "mb-4 space-y-4 md:mb-6" : "mb-6 space-y-4"}>
+      <div className={compactOnMobile ? "flex flex-row items-center justify-between gap-3" : "flex flex-col gap-4 md:flex-row md:items-center md:justify-between"}>
+        <div className={compactOnMobile ? "min-w-0" : undefined}>
+          <h1 className={compactOnMobile ? "text-xl font-bold text-foreground md:text-2xl" : "text-2xl font-bold text-foreground"}>{title}</h1>
+          <p className={compactOnMobile ? "hidden text-sm text-muted-foreground md:mt-1 md:block" : "mt-1 text-sm text-muted-foreground"}>{subtitle}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className={compactOnMobile ? "flex shrink-0 flex-wrap gap-2" : "flex flex-wrap gap-2"}>
           {actions}
           <Link
             href={createHref}

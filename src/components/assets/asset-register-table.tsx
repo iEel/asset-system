@@ -429,7 +429,7 @@ export function AssetRegisterTable({
 
   return (
     <div aria-busy={isPending} className="min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-      <div data-asset-register-summary className="flex items-center justify-between gap-2 border-b border-border px-3 py-1.5 md:px-4 md:py-2">
+      <div data-asset-register-summary className="flex items-center justify-between gap-2 border-b border-border px-3 md:px-4 py-0 md:py-2">
         <p className="text-sm text-muted-foreground">{rangeLabel}</p>
         <div className="flex items-center gap-2">
           <AssetRegisterSortMenu />
@@ -453,8 +453,8 @@ export function AssetRegisterTable({
           className="fixed inset-x-3 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-30 flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-lg md:static md:z-auto md:rounded-none md:border-0 md:border-b md:bg-primary-soft md:px-4 md:py-3 md:shadow-none lg:flex-row lg:items-center lg:justify-between"
         >
           <div>
-            <div className="text-sm font-semibold text-foreground">{labels.bulkActions}</div>
-            <div className="mt-0.5 text-sm text-muted-foreground">
+            <div className="hidden text-sm font-semibold text-foreground md:block">{labels.bulkActions}</div>
+            <div className="text-sm text-muted-foreground md:mt-0.5">
               {selectedAssets.length} {labels.selectedCount}
             </div>
           </div>

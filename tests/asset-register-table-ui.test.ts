@@ -182,3 +182,21 @@ test("select mode copy exists in Thai and English", () => {
   assert.equal(typeof messages("en").selectMode, "string")
   assert.equal(typeof messages("en").selectModeDone, "string")
 })
+
+test("mobile rows keep line 3 on one line and the summary bar adds no vertical padding on phones", () => {
+  const row = functionBody(mobileList(), "MobileAssetRow")
+  const source = table()
+
+  assert.match(row, /className="mt-0\.5 flex min-w-0 flex-nowrap items-center gap-2 text-xs leading-5"/)
+  assert.doesNotMatch(row, /flex-wrap/)
+  assert.match(row, /className="relative flex min-h-20 items-center gap-3 px-3 py-2 /)
+  assert.equal(row.match(/<StatusBadge [^>]*className="shrink-0"/g)?.length, 3)
+  assert.match(source, /data-asset-register-summary className="[^"]*py-0 md:py-2/)
+})
+
+test("the floating bulk bar hides its heading on phones and the list reserves at least its height", () => {
+  const source = table()
+
+  assert.match(source, /<div className="hidden text-sm font-semibold text-foreground md:block">\{labels\.bulkActions\}<\/div>/)
+  assert.match(mobileList(), /reserveBulkBarSpace && "pb-44"/)
+})

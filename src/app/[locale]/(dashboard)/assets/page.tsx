@@ -325,6 +325,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   return (
     <div>
       <MasterDataHeader
+        compactOnMobile
         title={t("title")}
         subtitle={t("subtitle")}
         createHref={`/${locale}/assets/new`}
