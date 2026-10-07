@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { adminRoleSchema } from "@/lib/validations/admin-role"
+import { getRolePermissionChangeError } from "@/lib/admin-access-policy"
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,11 +18,17 @@ export async function POST(request: NextRequest) {
 
     const existingPermissions = await prisma.permission.findMany({
       where: { id: { in: permissionIds } },
-      select: { id: true },
+      select: { id: true, module: true, action: true },
     })
     if (existingPermissions.length !== permissionIds.length) {
       return NextResponse.json({ error: "Invalid permission selection" }, { status: 400 })
     }
+    const escalationError = getRolePermissionChangeError({
+      actor: user,
+      currentPermissionKeys: [],
+      requestedPermissionKeys: existingPermissions.map((permission) => `${permission.module}:${permission.action}`),
+    })
+    if (escalationError) return NextResponse.json({ error: escalationError }, { status: 403 })
 
     const role = await prisma.$transaction(async (tx) => {
       const record = await tx.role.create({

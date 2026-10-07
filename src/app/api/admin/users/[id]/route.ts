@@ -5,6 +5,16 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { adminUserSchema } from "@/lib/validations/admin-user"
+import { invalidateUserAccess } from "@/lib/session-access-cache"
+import { adminUserSecretOmit, toAdminUserResponse } from "@/lib/admin-user-response"
+import { getUserAccessChangeError } from "@/lib/admin-access-policy"
+import {
+  accessChangeErrorStatus,
+  countOtherActiveSystemAdmins,
+  loadGrantableRoles,
+  toExistingUserAccess,
+  userAccessInclude,
+} from "@/lib/admin-access-data"
 
 type AdminUserRouteContext = {
   params: Promise<{ id: string }>
@@ -19,9 +29,22 @@ export async function PUT(request: NextRequest, context: AdminUserRouteContext) 
     const input = adminUserSchema.parse(await request.json())
     const existing = await prisma.user.findFirst({
       where: { id },
-      include: { userRoles: { select: { roleId: true } } },
+      omit: adminUserSecretOmit,
+      include: userAccessInclude,
     })
     if (!existing) return NextResponse.json({ error: "User not found" }, { status: 404 })
+
+    const accessError = getUserAccessChangeError({
+      actor: sessionUser,
+      target: toExistingUserAccess(existing),
+      requestedRoleIds: input.roleIds,
+      requestedRoles: await loadGrantableRoles(input.roleIds),
+      nextIsActive: input.isActive,
+      otherActiveSystemAdminCount: await countOtherActiveSystemAdmins(id),
+    })
+    if (accessError) {
+      return NextResponse.json({ error: accessError }, { status: accessChangeErrorStatus(accessError) })
+    }
 
     await assertUniqueUsername(input.username, id)
     await assertEmployeeAvailable(input.employeeId, id)
@@ -38,6 +61,7 @@ export async function PUT(request: NextRequest, context: AdminUserRouteContext) 
           employeeId: input.employeeId,
           isActive: input.isActive,
         },
+        omit: adminUserSecretOmit,
       })
 
       await tx.userRole.deleteMany({ where: { userId: id } })
@@ -47,6 +71,7 @@ export async function PUT(request: NextRequest, context: AdminUserRouteContext) 
 
       return record
     })
+    invalidateUserAccess(id)
 
     await logAudit({
       userId: sessionUser.id,
@@ -64,7 +89,7 @@ export async function PUT(request: NextRequest, context: AdminUserRouteContext) 
       newValue: { ...input, password: input.password ? "[changed]" : undefined },
     })
 
-    return NextResponse.json(updated)
+    return NextResponse.json(toAdminUserResponse(updated))
   } catch (error) {
     return errorResponse(error, 400)
   }

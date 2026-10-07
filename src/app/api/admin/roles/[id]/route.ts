@@ -4,6 +4,8 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { adminRoleSchema } from "@/lib/validations/admin-role"
+import { getRolePermissionChangeError } from "@/lib/admin-access-policy"
+import { invalidateAllAccess } from "@/lib/session-access-cache"
 
 type AdminRoleRouteContext = {
   params: Promise<{ id: string }>
@@ -19,18 +21,26 @@ export async function PUT(request: NextRequest, context: AdminRoleRouteContext) 
     const permissionIds = Array.from(new Set(input.permissionIds))
     const existing = await prisma.role.findFirst({
       where: { id },
-      include: { rolePermissions: { select: { permissionId: true } } },
+      include: {
+        rolePermissions: { select: { permissionId: true, permission: { select: { module: true, action: true } } } },
+      },
     })
     if (!existing) return NextResponse.json({ error: "Role not found" }, { status: 404 })
     const isProtectedSystemAdmin = existing.name === "system_admin"
 
     const existingPermissions = await prisma.permission.findMany({
       where: { id: { in: permissionIds } },
-      select: { id: true },
+      select: { id: true, module: true, action: true },
     })
     if (existingPermissions.length !== permissionIds.length) {
       return NextResponse.json({ error: "Invalid permission selection" }, { status: 400 })
     }
+    const escalationError = getRolePermissionChangeError({
+      actor: user,
+      currentPermissionKeys: existing.rolePermissions.map(({ permission }) => `${permission.module}:${permission.action}`),
+      requestedPermissionKeys: existingPermissions.map((permission) => `${permission.module}:${permission.action}`),
+    })
+    if (escalationError) return NextResponse.json({ error: escalationError }, { status: 403 })
     if (isProtectedSystemAdmin && !sameStringSet(permissionIds, existing.rolePermissions.map((permission) => permission.permissionId))) {
       return NextResponse.json({ error: "System administrator permissions are protected" }, { status: 400 })
     }
@@ -65,6 +75,7 @@ export async function PUT(request: NextRequest, context: AdminRoleRouteContext) 
         },
       })
     })
+    invalidateAllAccess()
 
     await logAudit({
       userId: user.id,

@@ -5,6 +5,9 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { adminUserSchema } from "@/lib/validations/admin-user"
+import { adminUserSecretOmit, toAdminUserResponse } from "@/lib/admin-user-response"
+import { getUserAccessChangeError } from "@/lib/admin-access-policy"
+import { accessChangeErrorStatus, loadGrantableRoles } from "@/lib/admin-access-data"
 
 export async function GET() {
   try {
@@ -12,6 +15,7 @@ export async function GET() {
     requirePermission(user, "user", "view")
 
     const users = await prisma.user.findMany({
+      omit: adminUserSecretOmit,
       include: {
         employee: { select: { code: true, fullNameTh: true } },
         userRoles: {
@@ -22,7 +26,7 @@ export async function GET() {
       orderBy: { username: "asc" },
     })
 
-    return NextResponse.json({ data: users })
+    return NextResponse.json({ data: users.map(toAdminUserResponse) })
   } catch (error) {
     return errorResponse(error)
   }
@@ -36,6 +40,17 @@ export async function POST(request: NextRequest) {
     const input = adminUserSchema.parse(await request.json())
     if (!input.password) {
       return NextResponse.json({ error: "Password is required" }, { status: 400 })
+    }
+    const accessError = getUserAccessChangeError({
+      actor: user,
+      target: null,
+      requestedRoleIds: input.roleIds,
+      requestedRoles: await loadGrantableRoles(input.roleIds),
+      nextIsActive: input.isActive,
+      otherActiveSystemAdminCount: 0,
+    })
+    if (accessError) {
+      return NextResponse.json({ error: accessError }, { status: accessChangeErrorStatus(accessError) })
     }
     await assertUniqueUsername(input.username)
     await assertEmployeeAvailable(input.employeeId)
@@ -51,6 +66,7 @@ export async function POST(request: NextRequest) {
           employeeId: input.employeeId,
           isActive: input.isActive,
         },
+        omit: adminUserSecretOmit,
       })
 
       await tx.userRole.createMany({
@@ -68,7 +84,7 @@ export async function POST(request: NextRequest) {
       newValue: { ...input, password: undefined },
     })
 
-    return NextResponse.json(created, { status: 201 })
+    return NextResponse.json(toAdminUserResponse(created), { status: 201 })
   } catch (error) {
     return errorResponse(error, 400)
   }
