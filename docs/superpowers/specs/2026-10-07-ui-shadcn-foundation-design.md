@@ -1,7 +1,7 @@
 # รากฐาน UI บน shadcn/ui (รอบที่ 3 ส่วน A) — Design
 
 > วันที่: 2026-10-07 · branch: `feat/ui-shadcn-foundation` (จาก `master` `2c612bf`)
-> สถานะ: **design approved** (ผู้ใช้ผ่านทั้ง 3 ส่วนในแชท) · รอผู้ใช้ตรวจ spec ก่อนเขียน plan
+> สถานะ: **implemented** บน branch `feat/ui-shadcn-foundation` (2026-10-07) · ยังไม่ merge/deploy
 > ส่วน B (ตารางทะเบียน/ตัวกรอง · การสแกน · ข้อความไทย/อังกฤษ) จะมี spec ของตัวเองหลังส่วนนี้เสร็จ
 
 ## 1. เป้าหมายและหลักฐาน

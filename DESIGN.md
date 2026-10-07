@@ -203,13 +203,21 @@ Components should feel consistent, restrained, and task-first. The system alread
 
 - **Shape:** Gently curved rectangles (8px radius).
 - **Primary:** Action Blue background with white text, medium weight, 40px desktop height, and 44px minimum touch height on mobile.
-- **Hover / Focus:** Primary hover darkens through opacity; focus uses a visible Electric Blue ring and offset. Disabled states reduce opacity and block pointer actions.
+- **Hover / Focus:** Solid buttons darken on hover with the hover token (`hover:bg-primary-hover`, `hover:bg-danger-hover`) — never fade with opacity. Focus uses a visible Electric Blue ring with offset. Disabled states reduce opacity and block pointer actions. Build buttons with `Button` / `buttonVariants` from `src/components/ui/` (shadcn); `getActionButtonClasses` maps legacy variants onto the same classes.
 - **Secondary / Ghost / Tertiary:** Secondary buttons use Surface White, Border Slate, and Primary Slate Ink. Ghost buttons use no border at rest and a Muted Surface hover. Danger buttons use Danger Red only for destructive actions.
 
-### Chips
+### Status Badges
 
-- **Style:** Rounded-full badges with semantic text and soft background tints. Standard sizes are compact but readable.
-- **State:** Selected and status states must include a clear label. Warning, danger, success, info, and primary tones must be used consistently with workflow meaning.
+- **Style:** One `StatusBadge` (`src/components/ui/status-badge.tsx`): 6px radius, a status dot, the tone's soft background (`bg-{tone}-soft`), its border (`border-{tone}-border`) and AA ink text (`text-{tone}`). The dot keeps status readable without relying on hue alone.
+- **Custom colors:** A status color stored in the database colors the dot only, and only when it is a valid hex value. Badge text is always the tone ink.
+- **State:** Every badge carries a text label. Warning, danger, success, info, and primary tones follow workflow meaning (`getStatusTone`, `getAssetStateTone`).
+
+### Dialogs, Menus and Confirmation
+
+- **Primitives:** Overlays use shadcn/ui on Radix (`src/components/ui/`): `AccessibleDialog` for forms and reviews, `Sheet` for side drawers and mobile navigation, `DropdownMenu` for action menus, `Popover` for help and pickers, `AttachmentPreviewDialog` for image/PDF preview. Every overlay closes with Escape, traps focus, returns focus to its trigger, locks page scroll, and renders in a portal. Dialogs opened without a Radix Trigger restore focus to their opener themselves (`returnFocusRef` / `fallbackFocusRef` on `AccessibleDialog`, `returnFocusRef` on `confirm()`).
+- **Busy dialogs:** Pass `busy` while saving; the dialog then ignores Escape, outside clicks and the close button.
+- **Confirmation:** Never use `window.confirm`. Call `await confirm({ title, confirmLabel, tone })` from `useConfirm()`; destructive actions use `tone: "destructive"` and report the actual result ("ลบแล้ว", not "บันทึกสำเร็จ").
+- **Menus never contain dialogs.** A menu item only opens a dialog or drawer that is rendered outside the menu, and that dialog returns focus to the menu trigger.
 
 ### Cards / Containers
 

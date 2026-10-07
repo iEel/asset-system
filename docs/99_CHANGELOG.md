@@ -6,6 +6,18 @@
 
 ## 2026-10-07
 
+### รากฐาน UI บน shadcn/ui (รอบที่ 3 ส่วน A)
+
+Branch `feat/ui-shadcn-foundation` · design `docs/superpowers/specs/2026-10-07-ui-shadcn-foundation-design.md` · plan `docs/superpowers/plans/2026-10-07-ui-shadcn-foundation.md`
+
+- ย้ายไป shadcn/ui (Radix) ทั้งชุด: Button, Badge, Dialog, AlertDialog, Sheet, DropdownMenu, Popover, Command · คอมโพเนนต์กลางเดิมคง props
+- token สีใหม่ผ่าน WCAG AA: success #15803D · warning #B45309 · danger #B91C1C + พื้นอ่อน/เส้นขอบ/hover ต่อโทน · `primary-soft` / `primary-hover` · codemod พื้นโปร่งและ `/90` ทั้งแอป · มี test ตรวจ contrast
+- ฟอนต์ Noto Sans Thai (ไทย) + Inter (อังกฤษ/ตัวเลข)
+- ป้ายสถานะตัวเดียวแบบมีจุดสี (รวม `StatusPill` เข้า `StatusBadge`) · สีจาก DB ใช้กับจุดเท่านั้น
+- `window.confirm` 13 จุดเป็น AlertDialog ในแอป (`useConfirm`) · ลบแล้วแจ้ง "ลบแล้ว"
+- กล่องลอยที่เขียนเองทุกตัวย้ายไป Radix (dialog 12, ภาพตัวอย่าง 2, drawer 3, เมนู 5, popover 3) · กด Esc ปิดได้ ล็อกการเลื่อนหน้า คืนโฟกัส
+- ยกไปส่วน B: ตารางทะเบียน/ตัวเลือกคอลัมน์ · ตัวกรอง · การสแกน · ข้อความไทย/อังกฤษ
+
 ### บันทึกการซ่อมแบบฟอร์มเดียว
 
 Branch `feat/simple-repair-records` (commits `eea9e67`…`092f67b`) · design `docs/superpowers/specs/2026-10-07-simple-repair-records-design.md` · staff guide `docs/17_REPAIR_RECORD_GUIDE_TH.md`

@@ -235,6 +235,16 @@ npm run build
 - In the dev copy `ldap_sync_enabled=false` and `ldap_sync_mode=preview`; LDAP login still works. The `manual_migration_history` rows were re-keyed to `databaseName = asset_management_dev` because the ledger filters by database name; without that every migration shows as pending.
 - Attachments in the dev copy point at Production absolute paths and return 500 locally (see finding E4).
 
+## shadcn/ui Foundation (2026-10-07)
+
+- UI primitives are shadcn/ui (style `new-york`, Tailwind 4, package `radix-ui`) in `src/components/ui/`. Add more by copying the component source from the shadcn registry (`new-york-v4`) by hand: rewrite the `cn` import to `@/lib/utils` and `@/registry/new-york-v4/ui/*` imports to `@/components/ui/*`, remove any `dark:` classes, and give touch targets `min-h-11` on mobile. Do not use `npx shadcn@latest add`: CLI 4.21 emits `import { cn } from "cn"`, adds an unrelated npm package `cn`, and may rewrite `src/app/globals.css`.
+- Tokens live in `:root` of `src/app/globals.css` with shadcn names plus five values per status tone (`{tone}`, `-foreground`, `-soft`, `-border`, `-hover`). `tests/design-tokens-contrast.test.ts` fails the build if a pair drops below 4.5:1. Use `bg-{tone}-soft` and `hover:bg-{tone}-hover`; opacity tints are blocked by `tests/ui-overlay-guards.test.ts`.
+- Fonts: Inter (Latin, numbers) + Noto Sans Thai (Thai) through `next/font/google` in `src/app/layout.tsx`; `font-sans` resolves to both.
+- `Button`/`Badge` variants are in `button-variants.ts` / `badge-variants.ts` so `node --test` can import them.
+- Confirmation: `useConfirm()` from `src/components/ui/confirm-dialog.tsx` (provider mounted in `DashboardShell`). Leave-page guards use `shouldGuardLinkClick` from `src/lib/navigation-guard.ts`.
+- Focus return: dialogs opened from a menu item or other non-Trigger control would otherwise lose focus (Radix sends it to a missing Trigger). `AccessibleDialog` takes `returnFocusRef` and an optional `fallbackFocusRef` (used when the opener has left the DOM); `confirm({ …, returnFocusRef })` does the same for confirmations.
+- Rules: menus never contain dialogs; busy dialogs pass `busy`; database status colors only color the badge dot. Design spec: `docs/superpowers/specs/2026-10-07-ui-shadcn-foundation-design.md`.
+
 ## Open Go-Live Decisions
 
 - Confirm production database user and least-privilege permissions.

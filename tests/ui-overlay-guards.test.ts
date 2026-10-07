@@ -68,3 +68,22 @@ test("finding review actions use the shared accessible dialog", () => {
   assert.match(source, /<AccessibleDialog/)
   assert.doesNotMatch(source, /function Modal\(|fixed inset-0/)
 })
+
+test("no hand-rolled overlay backdrops outside shared ui components", () => {
+  assert.deepEqual(
+    findMatches(/\bfixed inset-0\b/g, (path) => path.startsWith("src/components/ui/") || path === "src/components/layout/dashboard-shell.tsx"),
+    [],
+  )
+})
+
+test("no global listeners for closing overlays", () => {
+  assert.deepEqual(findMatches(/(?:document|window)\.addEventListener\("(?:keydown|mousedown|pointerdown)"/g), [])
+})
+
+test("no portals or manual positioning for menus", () => {
+  assert.deepEqual(findMatches(/createPortal\(/g), [])
+})
+
+test("no dark-mode classes", () => {
+  assert.deepEqual(findMatches(/\bdark:/g), [])
+})
