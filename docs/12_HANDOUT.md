@@ -72,10 +72,10 @@ Asset Management System เป็น Web Application สำหรับบริ
 
 ### 5. ซ่อมบำรุงและ Preventive Maintenance
 
-- สร้างใบซ่อมจากหน้า Maintenance, Asset Detail หรือ Check-in
-- ติดตามสถานะงานซ่อม, ผู้แจ้ง, ผู้รับผิดชอบ, Vendor, ค่าใช้จ่าย และหลักฐาน
-- ปิดงานซ่อมพร้อมเลือกสถานะทรัพย์สินหลังซ่อม
-- สร้าง Preventive Maintenance Plan และ generate ticket ตามรอบเวลา
+- บันทึกการซ่อมด้วยฟอร์มเดียวจากหน้าทรัพย์สิน (สแกน QR) หน้าซ่อมบำรุง หรือเลือก "ส่งซ่อม" ตอนรับคืน (คู่มือพนักงาน `docs/17_REPAIR_RECORD_GUIDE_TH.md`)
+- เก็บประวัติว่าซ่อมเมื่อไหร่ อาการ/สิ่งที่ซ่อม ผลการซ่อม ร้าน ค่าใช้จ่าย เลขใบเสร็จ รูป และผู้บันทึก
+- งานที่ยังไม่เสร็จกด "ซ่อมเสร็จ" เมื่อได้ของคืน ระบบเปลี่ยนสถานะทรัพย์สินตามผู้ถือครอง หรือเป็นรอตัดจำหน่ายถ้าซ่อมไม่ได้
+- แผน PM เป็นตัวเตือน "PM ถึงกำหนด" ล่วงหน้า 7 วัน กด "บันทึกว่าทำแล้ว" แล้วระบบเลื่อนกำหนดครั้งถัดไปให้ (ไม่สร้างใบงานอัตโนมัติ)
 
 ### 6. ตัดจำหน่ายทรัพย์สิน
 
@@ -120,7 +120,7 @@ Asset Management System เป็น Web Application สำหรับบริ
 - Storage governance สำหรับตรวจไฟล์หายหรือ orphan files
 - Upload validation ด้วย size, MIME, extension, content signature และ optional scanner hook
 - Security headers และ private attachment responses
-- Scheduler สำหรับ PM, LDAP Sync และ Notification Digest
+- Scheduler สำหรับ LDAP Sync และ Notification Digest
 
 ## Workflow ภาพรวม
 

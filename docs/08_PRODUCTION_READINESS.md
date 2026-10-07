@@ -78,7 +78,8 @@ To restore a file, move it from `.archive/YYYY-MM-DD/<relativePath>` back to `UP
 - [ ] Cancellation blockers are tested for downstream work, stale state, non-latest transactions, and legacy snapshot-less documents; confirm master data is unchanged and `transaction_cancellation_blocked` appears in Asset State Review. Confirm an `asset:view` user can read/print VOID documents but cannot cancel.
 - [ ] Asset State Review scan/list/resolve/dismiss is tested with `setting:view` and `setting:edit`, including stale-snapshot rejection, 10-character reasons, movement/audit history, and confirmation that scans/dismissals never change asset state.
 - [ ] Audit round create, scan, findings review, and close-round flow are tested.
-- [ ] Maintenance ticket and PM plan workflows are tested.
+- [ ] Repair record (finished / unfinished then "ซ่อมเสร็จ" / cancel / edit details), check-in "ส่งซ่อม", and PM due reminder ("บันทึกว่าทำแล้ว") workflows are tested.
+- [ ] `prisma/manual-migrations/2026-10-07-add-maintenance-outcome.sql` is applied to the Production database after a verified backup and explicit approval, before the repair-record code is deployed.
 - [ ] Disposal queue/create/detail, approval, execution, rejection, evidence retry, and 2-100 item batch workflows are tested.
 - [ ] Disposal asset search is server-bounded (minimum two characters, maximum 50 results), does not preload the Asset Register, and has been load-tested with production-like asset volume.
 - [ ] Disposal policy uses `disposal:approve` for decisions and `disposal:edit` for execution; requester/creator self-approval and approver execution are blocked when SOD is enabled.
@@ -96,7 +97,7 @@ To restore a file, move it from `.archive/YYYY-MM-DD/<relativePath>` back to `UP
 - [ ] Nginx reverse proxy is configured.
 - [ ] Cloudflare Tunnel points to Nginx, not directly to Next.js unless intentionally documented.
 - [ ] systemd app service is enabled and running.
-- [ ] scheduler service/timer is enabled if automatic PM/LDAP sync is used.
+- [ ] scheduler service/timer is enabled if automatic LDAP sync is used; any old `pm:generate-due` timer has been removed.
 - [ ] Log locations are documented.
 - [ ] Backup path is documented.
 - [ ] Rollback plan is documented and tested.

@@ -1,7 +1,7 @@
 # บันทึกการซ่อมแบบฟอร์มเดียว — Design
 
 > วันที่: 2026-10-07 · branch: `feat/simple-repair-records` (ต่อจาก `fix/security-round-1`)
-> สถานะ: ผู้ใช้อนุมัติการออกแบบทั้ง 5 ส่วนในแชตแล้ว · รอตรวจไฟล์ spec
+> สถานะ: **implemented** บน branch `feat/simple-repair-records` (2026-10-07) · migration `2026-10-07-add-maintenance-outcome.sql` apply บน `asset_management_dev` แล้ว · Production รอ backup + อนุมัติ · คู่มือพนักงาน `docs/17_REPAIR_RECORD_GUIDE_TH.md`
 
 ## 1. เป้าหมายและหลักฐาน
 

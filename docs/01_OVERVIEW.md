@@ -23,7 +23,7 @@ Asset Management System is an enterprise system for registering, tracking, audit
 - QR label printing and print tracking
 - Check-out, check-in, transfer, bulk movement, and guarded cancellation of the latest eligible transaction with snapshot restoration and auditable VOID documents
 - Asset audit rounds, scan, findings, review, and close-round controls
-- Maintenance tickets and Preventive Maintenance plans
+- Repair records (one form) and Preventive Maintenance reminder plans
 - Disposal request, approval, evidence, and actual execution
 - Reports and exports
 - Master Data for company, branch, department, employee, location, category, brand/model, supplier

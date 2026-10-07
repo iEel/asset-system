@@ -88,9 +88,7 @@ PDF exports bundle Noto Sans Thai Regular/Bold under `public/fonts` with `public
 | `npm run verify` | Run lint, all tests, and production build in one command |
 | `npm run ldap:sync` | External/manual LDAP sync runner; previews by default, add `-- --apply` to write changes |
 | `npm run ldap:sync:scheduled` | Run LDAP Sync only when the web-configured schedule is due |
-| `npm run pm:generate-due` | Generate due preventive-maintenance tickets through the scheduler endpoint |
-| `npm run pm:generate-due:scheduled` | Generate PM tickets only when the web-configured schedule is due |
-| `npm run scheduler:heartbeat` | Shared scheduler heartbeat for PM auto-generation and LDAP Sync |
+| `npm run scheduler:heartbeat` | Shared scheduler heartbeat for LDAP Sync (PM plans are reminders only since 2026-10; no PM job runs) |
 | `npm run notifications:digest` | Deliver daily in-app notification digests through the scheduler endpoint |
 | `npm run cleanup:test-data` | Guarded trial asset cleanup CLI; dry-run by default. `--apply` only runs against a database whose name ends with `_dev` or `_test` unless `ALLOW_PRODUCTION_TEST_DATA_CLEANUP=true` and `CLEANUP_CONFIRM_DATABASE=<database>` are both set |
 
@@ -121,7 +119,7 @@ npm run verify
 - Asset create/edit: `/th/assets/new`
 - Scan/search and label tools: `/th/asset-management`
 - Audit rounds and scan: `/th/audit/rounds`
-- Maintenance: `/th/maintenance`
+- Maintenance (one-form repair records, PM due reminders): `/th/maintenance`; PM plans: `/th/maintenance/pm`; staff guide: `docs/17_REPAIR_RECORD_GUIDE_TH.md`
 - Disposal: `/th/disposal`
 - Reports: `/th/reports`
 - Admin settings, logs, RBAC, readiness, storage: `/th/admin`

@@ -6,6 +6,22 @@
 
 ## 2026-10-07
 
+### บันทึกการซ่อมแบบฟอร์มเดียว
+
+Branch `feat/simple-repair-records` (commits `eea9e67`…`092f67b`) · design `docs/superpowers/specs/2026-10-07-simple-repair-records-design.md` · staff guide `docs/17_REPAIR_RECORD_GUIDE_TH.md`
+
+- งานซ่อมเป็น "บันทึกการซ่อม" ฟอร์มเดียว บนตาราง `maintenance_tickets` / `maintenance_plans` เดิม · สถานะของบันทึก 3 แบบ `in_progress` / `closed` / `cancelled` · ค่าเดิม `open`/`reported`/`accepted`/`waiting_parts`/`waiting_vendor`/`completed` ถือเป็นยังไม่เสร็จ (`openRepairRecordWhere`)
+- คอลัมน์ใหม่ `outcome` (`usable` / `beyond_repair`, NULL = ข้อมูลเดิม "ไม่ระบุ") · migration `prisma/manual-migrations/2026-10-07-add-maintenance-outcome.sql` apply บน `asset_management_dev` แล้ว · **Production รอ backup + อนุมัติ**
+- ผลต่อสถานะทรัพย์สิน: ยังไม่เสร็จ → `Under Maintenance` · ซ่อมเสร็จ/ยกเลิก → สถานะตามผู้ถือครอง (`In Use` ถ้ามี checkout ที่ยัง active หรือผู้ถือครองส่วนบุคคล มิฉะนั้น `Ready`) · ซ่อมไม่ได้ → `Pending Disposal` · conditional claim บน `statusId` + `AssetMovement` + System Log ทุกครั้ง · `Pending Repair` เลิกใช้กับงานใหม่
+- บันทึกได้จากหน้าทรัพย์สิน ("บันทึกซ่อม" แทน "แจ้งซ่อม"), `/maintenance/new`, กล่อง "PM ถึงกำหนด" และหน้าคืนของ (ผลการคืน "ส่งซ่อม" สร้างบันทึกยังไม่เสร็จให้) · หน้ารายละเอียดมี "ซ่อมเสร็จ", "ยกเลิกบันทึก", "แก้ไขรายละเอียด" (optimistic concurrency)
+- `/maintenance` เป็นรายการบันทึก + กล่อง "PM ถึงกำหนด (7 วัน)" + กล่อง "ทรัพย์สินค้างสถานะซ่อมแต่ไม่มีบันทึก" · export Excel และหน้าพิมพ์ใช้ชุดช่องใหม่ · แผน PM ย้ายไป `/maintenance/pm`
+- แผน PM เป็นตัวเตือน: "บันทึกว่าทำแล้ว" เลื่อน `nextDueDate` = วันที่บันทึก + รอบ (รายเดือน/ไตรมาส/ปี clamp วันสิ้นเดือน — แก้ B9) · แยกบันทึก PM ด้วย `maintenancePlanId` เท่านั้น ไม่ใช้ prefix `[PM] ` (แก้ B5) · execute จำหน่ายเป็น Disposed/Retired แล้วแผนของชิ้นนั้นเป็น `ended`
+- เอาออก: ปุ่มเปลี่ยนสถานะแบบเดิม, มุมมองกระดาน, มอบหมาย/กำหนดเสร็จ, SLA และแจ้งเตือนซ่อมเกินกำหนด, เช็กลิสต์ปิดงาน, อนุมัติปิดงานซ่อม (`workflow_approval_maintenance_close_required`), การสร้างใบงาน PM อัตโนมัติ (`pm:generate-due`, `/api/maintenance-plans/generate-due`, งาน PM ใน `scheduler:heartbeat`, `MAINTENANCE_PM_GENERATION_TOKEN`, `pm_auto_generation_*`) · แถว setting เดิมไม่ลบ แต่ซ่อนด้วย `retiredSystemSettingKeys`
+- Dashboard / Work Center / แจ้งเตือน: การ์ด "ยังซ่อมไม่เสร็จ" และ "PM ถึงกำหนด" แทนการ์ดซ่อมเกินกำหนด/รอปิดงาน · legacy checkout, Asset State Review, หน้าพนักงาน/ผู้ขาย และการค้นหาใช้กฎบันทึกยังไม่เสร็จเดียวกัน
+- ทดสอบ: `npm test` 1,368 tests (ผ่าน 1,367 · ไม่ผ่าน 0 · ข้าม 1) · `npx tsc --noEmit` และ ESLint ผ่าน
+
+### Review, dev database, security and workflow rounds
+
 | Area | Update |
 |---|---|
 | Full review | Recorded the functional, security and UI/UX review in `docs/audits/2026-10-07-full-review.md` (findings E, S, A, B, M, U with status). |

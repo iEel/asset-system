@@ -57,7 +57,7 @@ Current authenticated pages exist under `src/app/[locale]/(dashboard)`:
 | Asset Register | `/assets`, `/assets/new`, `/assets/{id}`, `/assets/{id}/edit` |
 | Asset Operations | `/asset-management/checkout`, `/checkin`, `/transfer`, `/bulk-move`, `/scan`, `/labels`, `/import-export` |
 | Audit | `/audit/rounds`, `/audit/rounds/new`, `/audit/rounds/{id}`, `/pending`, `/scan`, `/audit/findings` |
-| Maintenance | `/maintenance`, `/maintenance/{id}` |
+| Maintenance | `/maintenance`, `/maintenance/new`, `/maintenance/{id}`, `/maintenance/pm`, `/maintenance/pm/new`, `/maintenance/pm/{id}/edit` |
 | Disposal | `/disposal`, `/disposal/{id}` |
 | Reports | `/reports` |
 | Master Data | companies, branches, departments, employees, locations, categories, brands/models, suppliers |
@@ -146,7 +146,7 @@ Important data semantics:
 | Check-in | Return workflow with return/receive parties, condition after, next status, next location |
 | Legacy check-in backfill | Check-in page exposes searchable legacy/current-custodian candidates and creates an auditable backfilled checkout before the standard return workflow |
 | Check-in evidence | After-return photos, return signature, receive signature |
-| Check-in maintenance link | Can create maintenance ticket only when next status is Pending Repair and permission allows |
+| Check-in maintenance link | Return result "ส่งซ่อม" (`Under Maintenance`) opens an unfinished repair record in the same transaction; needs `maintenance:create` |
 | Transfer | Move asset location/custodian/department through controlled operation |
 | Contextual transaction shortcuts | Asset Register and Asset Detail expose Handover, Return, and Transfer without requiring users to memorize the Asset Tag; unavailable actions remain visible in a faded state with a recovery-oriented reason |
 | Reversible transactions | A user with `asset:edit` can cancel only the latest eligible Check-out, Check-in, or Transfer; the system restores the exact versioned asset/component snapshot and never asks the operator to guess a replacement status |
@@ -163,10 +163,10 @@ Important data semantics:
 Implemented status lifecycle and enforcement from docs/code:
 
 - Check-out sets status to `Checked Out`.
-- Check-in can return only to `Ready`, `Pending Repair`, or `Pending Disposal`.
+- Check-in can return only to `Ready`, `Under Maintenance` ("ส่งซ่อม", with a repair record), or `Pending Disposal`.
 - Check-out accepts only assets in `Ready` and blocks assets with an active checkout.
 - Personal transfer accepts only `Ready` or `In Use` and blocks assets with an active checkout; location-only or department-only movement preserves the current status.
-- Corrective maintenance close returns to `In Use` when valid personal custody remains, otherwise `Ready`, or moves to `Pending Disposal`; PM close preserves asset lifecycle.
+- Repair records: an unfinished record moves the asset to `Under Maintenance`; finishing ("ซ่อมเสร็จ") or cancelling returns `In Use` when an active checkout or valid personal custody remains, otherwise `Ready`; outcome `beyond_repair` moves it to `Pending Disposal`. A record saved as already finished and usable leaves the status unchanged.
 - Disposal execution only allows `Disposed` or `Retired`.
 - Generic asset edit cannot directly assign protected lifecycle statuses, and the asset form blocks these changes before submit with workflow guidance.
 - Status correction can restore protected lifecycle statuses to `Ready` with a required reason and audit trail.
@@ -206,21 +206,21 @@ Implemented status lifecycle and enforcement from docs/code:
 
 ## Maintenance And Preventive Maintenance
 
+One-form repair log since 2026-10-07 (staff guide `docs/17_REPAIR_RECORD_GUIDE_TH.md`).
+
 | Feature | Details |
 |---|---|
-| Corrective repair tickets | Dedicated create route, transactional asset claim, controlled status/close transitions, optimistic conflict handling, export, print, and localized history |
-| Repair queue | Tab-specific exact count/query, KPI drilldowns, active filters, validated dates, table/operational board, and 25/50/100 pagination |
-| Ticket detail | Attachments, previews, close/status actions, print page |
-| Maintenance return navigation | Ticket detail, print, and Kanban/status drilldowns preserve the originating maintenance tab/status/search/asset filter through sanitized return context |
-| Ticket creation validation | Opening a ticket moves the asset to Pending Repair when available and does not require `returnDate`; return date is required only when closing the ticket |
-| Check-in integration | Optional ticket creation from check-in when returned asset needs repair |
-| Maintenance status | Corrective `Pending Repair -> Under Maintenance -> In Use/Ready/Pending Disposal`, with the operational result derived from custody; PM work orders never mutate asset lifecycle |
-| Evidence | Drag/drop preview/download; closed evidence is append-only with audited post-close addenda |
-| Costs/vendor/assignee | Ticket fields and options support internal/vendor repair workflows |
-| PM plans | Dedicated create/edit routes, explicit ticket relation, active/paused/terminal-ended state actions, and visible automation blockers |
-| PM scheduling | Scheduler heartbeat, web-configured schedule, bounded starvation-safe candidates, active-state/owner validation, and duplicate work-order guard |
+| Repair record form | `RepairRecordForm` at `/maintenance/new` and from Asset Detail "บันทึกซ่อม": asset, date (Thai-time default), problem/work done, finished or not, outcome (`usable`/`beyond_repair`); collapsed vendor, cost, invoice no., files, remark; recorder from the signed-in employee |
+| Record statuses | `in_progress` / `closed` / `cancelled`; legacy `open`/`reported`/`accepted`/`waiting_*`/`completed` rows read as `in_progress` (`openRepairRecordWhere`) |
+| Asset status effect | Policy in `src/lib/repair-record-policy.ts`; conditional `statusId` claim in the transaction, `AssetMovement` and System Log for every change; one unfinished record per asset; written-off and on-loan guards with stable Thai/English error codes |
+| Record detail | "ซ่อมเสร็จ" dialog (return date, outcome, optional cost/vendor/invoice/files), "ยกเลิกบันทึก" with confirmation, "แก้ไขรายละเอียด" (details only, optimistic concurrency), legacy fields shown read-only when present, print page |
+| Repair list | Status/date/search/asset filters, "PM ถึงกำหนด (7 วัน)" box, and "ทรัพย์สินค้างสถานะซ่อมแต่ไม่มีบันทึก" box with a record button per asset; detail/print keep the list context through sanitized `returnTo` |
+| Check-in integration | Return result "ส่งซ่อม" opens an `in_progress` record from the damage note |
+| Evidence | Photos/receipts attach on create or later; `maintenance:create` may attach to own records, `maintenance:edit` to any record |
+| PM plans | Reminders only: create/edit, pause/resume/end, due within 7 days listed on Maintenance, Work Center, and notifications; "บันทึกว่าทำแล้ว" saves a repair record with `maintenancePlanId` and moves `nextDueDate` by one interval (month-end clamp); disposal execution ends the asset's plans |
 | Maintenance options | Bounded server search for assets, employees, and vendors; list pages do not load complete master-data options |
-| PM history | Related PM/maintenance history visible through asset detail flows per docs |
+| History | Repair history on Asset Detail, employee detail (records linked to that employee), and supplier detail (repairs by that vendor) |
+| Removed | Status-step buttons, board view, assignee/due-date planning, SLA/overdue alerts, close checklist, maintenance close approval, automatic PM work orders and their scheduler job |
 
 ## Disposal
 
@@ -245,7 +245,7 @@ Implemented status lifecycle and enforcement from docs/code:
 | Asset overview export | `reports/assets-overview/export` API with cross-scope summary metrics and a Cross Scope sheet |
 | Asset register export | Current filter export through asset export API, including cross-scope filters and owner/custodian/home/current location branch columns |
 | Audit exports | Audit round results, findings, variance Excel/PDF exports |
-| Maintenance export | Maintenance ticket export |
+| Maintenance export | Repair record Excel export (date, asset, problem/work done, status, outcome, vendor, cost, invoice, recorder, PM plan) |
 | Disposal export | Disposal request export |
 | Category/brand-model exports | Master-data export APIs |
 | PDF print views | Asset labels, handover, return, maintenance, disposal |
@@ -273,7 +273,7 @@ Implemented status lifecycle and enforcement from docs/code:
 | Role management | Role CRUD, permission matrix, export, system-role guardrails |
 | RBAC navigation | Sidebar menu filtered by user permissions; system admin retains full access |
 | Access denied page | Direct unauthorized page hits show localized access-denied page |
-| System settings | Task-oriented settings UI for asset numbering, labels/QR, LDAP, PM, notifications, approvals, retention, depreciation, data quality |
+| System settings | Task-oriented settings UI for asset numbering, labels/QR, LDAP, notifications, approvals (no maintenance close approval or PM automation since 2026-10-07), retention, depreciation, data quality |
 | LDAP/AD settings | DB-backed LDAP config, bind test, sync preview/apply, scheduled sync controls |
 | LDAP auto-provision | Links user to active Employee by LDAP email or employeeID before creating app user |
 | Approvals | Approval inbox/history for workflow-controlled operations |
@@ -306,9 +306,7 @@ Implemented status lifecycle and enforcement from docs/code:
 
 Scripts in `package.json` and docs support:
 
-- `npm run scheduler:heartbeat`
-- `npm run pm:generate-due`
-- `npm run pm:generate-due:scheduled`
+- `npm run scheduler:heartbeat` (LDAP sync only; no PM job since 2026-10-07)
 - `npm run ldap:sync`
 - `npm run ldap:sync:scheduled`
 - `npm run notifications:digest`
