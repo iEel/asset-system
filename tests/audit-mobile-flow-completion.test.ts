@@ -14,7 +14,7 @@ test("audit component missing uses in-app dialog instead of browser prompt", () 
   assert.match(form, /const body = new FormData\(\)/)
   assert.match(form, /body\.append\("remark", componentMissingRemark\.trim\(\) \|\| t\("componentMissingDefaultRemark"/)
   assert.match(form, /if \(componentMissingEvidenceFile\) body\.append\("evidence", componentMissingEvidenceFile\)/)
-  assert.match(form, /role="dialog"/)
+  assert.match(form, /<AccessibleDialog[\s\S]*?open=\{componentMissingDraft !== null\}/)
   assert.match(form, /FileDropzone/)
 })
 

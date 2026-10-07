@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react"
 import { toast } from "sonner"
+import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 import { extractAssetLookupCandidatesFromScanValue } from "@/lib/asset-qr"
@@ -1922,35 +1923,21 @@ export function AuditScanForm({
         </form>
       </section>
 
-      {componentMissingDraft ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center sm:p-4">
-          <form
-            onSubmit={submitComponentMissing}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="component-missing-dialog-title"
-            className="w-full max-w-lg rounded-md border border-border bg-background p-4 shadow-lg"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 id="component-missing-dialog-title" className="text-base font-semibold text-foreground">
-                  {t("componentMissingDialogTitle")}
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {t("componentMissingDialogDescription", { asset: `${componentMissingDraft.assetTag} - ${componentMissingDraft.name}` })}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={closeComponentMissingDialog}
-                disabled={saving}
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-                aria-label={tCommon("cancel")}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="mt-4 grid gap-3">
+      <AccessibleDialog
+        open={componentMissingDraft !== null}
+        title={t("componentMissingDialogTitle")}
+        description={
+          componentMissingDraft
+            ? t("componentMissingDialogDescription", { asset: `${componentMissingDraft.assetTag} - ${componentMissingDraft.name}` })
+            : undefined
+        }
+        busy={saving}
+        size="sm"
+        onClose={closeComponentMissingDialog}
+      >
+        {componentMissingDraft ? (
+          <form onSubmit={submitComponentMissing} className="p-4">
+            <div className="grid gap-3">
               <label className="grid gap-1 text-sm">
                 <span className="font-medium text-foreground">{t("componentMissingRemarkOptional")}</span>
                 <textarea
@@ -1992,8 +1979,8 @@ export function AuditScanForm({
               </button>
             </div>
           </form>
-        </div>
-      ) : null}
+        ) : null}
+      </AccessibleDialog>
 
       {showMobileQuickActionBar ? (
         <div data-audit-mobile-actions aria-label={t("mobileActionBar")} className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 px-3 py-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg backdrop-blur md:hidden">

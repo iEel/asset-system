@@ -3,8 +3,9 @@
 import { useId, useState, type FormEvent } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, Loader2, X } from "lucide-react"
+import { AlertTriangle, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 
 type AuditMarkNotFoundButtonVariant = "icon" | "button"
@@ -13,8 +14,6 @@ export function AuditMarkNotFoundButton({ itemId, variant = "icon" }: { itemId: 
   const router = useRouter()
   const t = useTranslations("auditPending")
   const tCommon = useTranslations("common")
-  const titleId = useId()
-  const descriptionId = useId()
   const remarkId = useId()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [remark, setRemark] = useState("")
@@ -88,86 +87,63 @@ export function AuditMarkNotFoundButton({ itemId, variant = "icon" }: { itemId: 
   return (
     <>
       {trigger}
-      {dialogOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center sm:p-4">
-          <form
-            onSubmit={handleSubmit}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            aria-describedby={descriptionId}
-            className="max-h-[92dvh] w-full max-w-lg overflow-hidden rounded-t-lg border border-border bg-surface shadow-xl sm:rounded-lg"
-          >
-            <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-4">
-              <div>
-                <h2 id={titleId} className="text-base font-semibold text-foreground">
-                  {t("notFoundDialogTitle")}
-                </h2>
-                <p id={descriptionId} className="mt-1 text-sm text-muted-foreground">
-                  {t("notFoundDialogDescription")}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={closeDialog}
+      <AccessibleDialog
+        open={dialogOpen}
+        title={t("notFoundDialogTitle")}
+        description={t("notFoundDialogDescription")}
+        busy={saving}
+        size="sm"
+        onClose={closeDialog}
+      >
+        <form onSubmit={handleSubmit}>
+          <div className="max-h-[calc(92dvh-9rem)] space-y-4 overflow-y-auto px-4 py-4">
+            <div>
+              <label htmlFor={remarkId} className="text-sm font-medium text-foreground">
+                {t("notFoundRemarkOptional")}
+              </label>
+              <textarea
+                id={remarkId}
+                value={remark}
+                onChange={(event) => setRemark(event.target.value)}
                 disabled={saving}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-                aria-label={tCommon("close")}
-                title={tCommon("close")}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="max-h-[calc(92dvh-9rem)] space-y-4 overflow-y-auto px-4 py-4">
-              <div>
-                <label htmlFor={remarkId} className="text-sm font-medium text-foreground">
-                  {t("notFoundRemarkOptional")}
-                </label>
-                <textarea
-                  id={remarkId}
-                  value={remark}
-                  onChange={(event) => setRemark(event.target.value)}
-                  disabled={saving}
-                  rows={4}
-                  placeholder={t("notFoundRemarkPlaceholder")}
-                  className="mt-2 min-h-28 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
-                />
-              </div>
-
-              <FileDropzone
-                file={evidenceFile}
-                onFileChange={setEvidenceFile}
-                disabled={saving}
-                accept="image/*"
-                capture="environment"
-                title={t("notFoundEvidenceTitle")}
-                hint={t("notFoundEvidenceSelected")}
-                browseLabel={t("notFoundEvidenceBrowse")}
+                rows={4}
+                placeholder={t("notFoundRemarkPlaceholder")}
+                className="mt-2 min-h-28 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
               />
             </div>
 
-            <div className="grid gap-2 border-t border-border bg-muted/20 px-4 py-4 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={closeDialog}
-                disabled={saving}
-                className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
-              >
-                {tCommon("cancel")}
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-semibold text-white transition-colors hover:bg-warning-hover disabled:opacity-50"
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
-                {t("notFoundConfirm")}
-              </button>
-            </div>
-          </form>
-        </div>
-      ) : null}
+            <FileDropzone
+              file={evidenceFile}
+              onFileChange={setEvidenceFile}
+              disabled={saving}
+              accept="image/*"
+              capture="environment"
+              title={t("notFoundEvidenceTitle")}
+              hint={t("notFoundEvidenceSelected")}
+              browseLabel={t("notFoundEvidenceBrowse")}
+            />
+          </div>
+
+          <div className="grid gap-2 border-t border-border bg-muted/20 px-4 py-4 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={closeDialog}
+              disabled={saving}
+              className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+            >
+              {tCommon("cancel")}
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-semibold text-white transition-colors hover:bg-warning-hover disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
+              {t("notFoundConfirm")}
+            </button>
+          </div>
+        </form>
+      </AccessibleDialog>
     </>
   )
 }

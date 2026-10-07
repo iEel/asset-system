@@ -62,3 +62,9 @@ test("navigation guards ask with the in-app confirm and let new-tab clicks throu
     assert.match(source, /confirm\(\{/, path)
   }
 })
+
+test("finding review actions use the shared accessible dialog", () => {
+  const source = sources.find((file) => file.path === "src/components/audit/audit-finding-review-actions.tsx")?.source ?? ""
+  assert.match(source, /<AccessibleDialog/)
+  assert.doesNotMatch(source, /function Modal\(|fixed inset-0/)
+})

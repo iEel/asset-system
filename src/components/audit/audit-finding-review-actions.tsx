@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { AlertTriangle, CalendarClock, Check, FileUp, Loader2, X } from "lucide-react"
 import { toast } from "sonner"
+import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 
@@ -196,65 +197,67 @@ function ReviewDecisionModal({
   }
 
   return (
-    <Modal title={t(`reviewDecisionTitle_${action}`)} onClose={onClose}>
-      <div className="space-y-4">
-        <div className="rounded-lg border border-border bg-background p-4">
-          <div className="text-sm font-semibold text-foreground">{assetLabel}</div>
-          <div className="mt-3 grid gap-3 md:grid-cols-3">
-            <ReviewPreviewField label={t("findingType")} value={findingTypeLabel} />
-            <ReviewPreviewField label={t("systemValue")} value={expectedValue || "-"} />
-            <ReviewPreviewField label={t("foundValue")} value={actualValue || "-"} strong />
-          </div>
-        </div>
-
-        <div className={`rounded-lg border p-4 text-sm ${action === "approve" ? "border-warning/30 bg-warning-soft text-warning" : "border-danger/30 bg-danger-soft text-danger"}`}>
-          <div className="font-semibold">{t(`reviewDecisionImpactTitle_${action}`)}</div>
-          <p className="mt-1 leading-relaxed">{t(`reviewDecisionHelp_${action}`)}</p>
-        </div>
-
-        {conflict ? (
-          <div className="rounded-lg border border-warning/40 bg-warning-soft p-4 text-sm text-warning">
-            <div className="flex items-start gap-2 font-semibold">
-              <AlertTriangle className="mt-0.5 h-4 w-4 flex-none" />
-              <span>{t("reviewConflictTitle")}</span>
-            </div>
-            <p className="mt-2 leading-relaxed text-foreground">{t("reviewConflictHelp")}</p>
-            <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
-              <ReviewPreviewField label={t("reviewConflictFindingAt")} value={formatClientDateTime(conflict.findingReportedAt)} />
-              <ReviewPreviewField label={t("reviewConflictAssetUpdatedAt")} value={formatClientDateTime(conflict.assetUpdatedAt)} />
+    <AccessibleDialog open title={t(`reviewDecisionTitle_${action}`)} busy={reviewing} size="md" onClose={onClose}>
+      <div className="p-5">
+        <div className="space-y-4">
+          <div className="rounded-lg border border-border bg-background p-4">
+            <div className="text-sm font-semibold text-foreground">{assetLabel}</div>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <ReviewPreviewField label={t("findingType")} value={findingTypeLabel} />
+              <ReviewPreviewField label={t("systemValue")} value={expectedValue || "-"} />
+              <ReviewPreviewField label={t("foundValue")} value={actualValue || "-"} strong />
             </div>
           </div>
-        ) : null}
 
-        <label>
-          <span className="mb-1.5 block text-sm font-medium text-foreground">{t(`reviewRemarkLabel_${action}`)}</span>
-          <textarea
-            value={reviewRemark}
-            rows={3}
-            maxLength={4000}
-            onChange={(event) => setReviewRemark(event.target.value)}
-            className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-          />
-        </label>
+          <div className={`rounded-lg border p-4 text-sm ${action === "approve" ? "border-warning/30 bg-warning-soft text-warning" : "border-danger/30 bg-danger-soft text-danger"}`}>
+            <div className="font-semibold">{t(`reviewDecisionImpactTitle_${action}`)}</div>
+            <p className="mt-1 leading-relaxed">{t(`reviewDecisionHelp_${action}`)}</p>
+          </div>
 
-        <div className="flex flex-col justify-end gap-2 sm:flex-row">
-          <button type="button" onClick={onClose} className="min-h-11 rounded-md border border-border px-4 text-sm font-medium sm:h-10 sm:min-h-0">
-            {tCommon("cancel")}
-          </button>
-          <button
-            type="button"
-            onClick={() => submit(Boolean(conflict))}
-            disabled={reviewing}
-            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium text-white disabled:opacity-50 sm:h-10 sm:min-h-0 ${
-              action === "approve" ? "bg-primary" : "bg-danger"
-            }`}
-          >
-            {reviewing ? <Loader2 className="h-4 w-4 animate-spin" /> : action === "approve" ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-            {conflict ? t("reviewConfirmConflict") : t(`reviewSubmit_${action}`)}
-          </button>
+          {conflict ? (
+            <div className="rounded-lg border border-warning/40 bg-warning-soft p-4 text-sm text-warning">
+              <div className="flex items-start gap-2 font-semibold">
+                <AlertTriangle className="mt-0.5 h-4 w-4 flex-none" />
+                <span>{t("reviewConflictTitle")}</span>
+              </div>
+              <p className="mt-2 leading-relaxed text-foreground">{t("reviewConflictHelp")}</p>
+              <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                <ReviewPreviewField label={t("reviewConflictFindingAt")} value={formatClientDateTime(conflict.findingReportedAt)} />
+                <ReviewPreviewField label={t("reviewConflictAssetUpdatedAt")} value={formatClientDateTime(conflict.assetUpdatedAt)} />
+              </div>
+            </div>
+          ) : null}
+
+          <label>
+            <span className="mb-1.5 block text-sm font-medium text-foreground">{t(`reviewRemarkLabel_${action}`)}</span>
+            <textarea
+              value={reviewRemark}
+              rows={3}
+              maxLength={4000}
+              onChange={(event) => setReviewRemark(event.target.value)}
+              className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </label>
+
+          <div className="flex flex-col justify-end gap-2 sm:flex-row">
+            <button type="button" onClick={onClose} className="min-h-11 rounded-md border border-border px-4 text-sm font-medium sm:h-10 sm:min-h-0">
+              {tCommon("cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={() => submit(Boolean(conflict))}
+              disabled={reviewing}
+              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium text-white disabled:opacity-50 sm:h-10 sm:min-h-0 ${
+                action === "approve" ? "bg-primary" : "bg-danger"
+              }`}
+            >
+              {reviewing ? <Loader2 className="h-4 w-4 animate-spin" /> : action === "approve" ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+              {conflict ? t("reviewConfirmConflict") : t(`reviewSubmit_${action}`)}
+            </button>
+          </div>
         </div>
       </div>
-    </Modal>
+    </AccessibleDialog>
   )
 }
 
@@ -336,64 +339,66 @@ function ActionPlanModal({
   }
 
   return (
-    <Modal title={t("actionPlanTitle")} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="grid gap-4">
-        <label>
-          <span className="mb-1.5 block text-sm font-medium text-foreground">{t("actionPlan")}</span>
-          <textarea
-            value={values.actionPlan}
-            required
-            rows={4}
-            maxLength={4000}
-            onChange={(event) => setValues((current) => ({ ...current, actionPlan: event.target.value }))}
-            className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-          />
-        </label>
-        <div className="grid gap-4 md:grid-cols-2">
-          <SearchableSelect
-            label={t("actionOwner")}
-            value={values.actionOwnerId}
-            options={employees}
-            placeholder={t("noActionOwner")}
-            searchPlaceholder={tCommon("searchSelectPlaceholder")}
-            emptyLabel={tCommon("searchSelectNoResults")}
-            onChange={(value) => setValues((current) => ({ ...current, actionOwnerId: value }))}
-          />
+    <AccessibleDialog open title={t("actionPlanTitle")} busy={saving} size="md" onClose={onClose}>
+      <div className="p-5">
+        <form onSubmit={handleSubmit} className="grid gap-4">
           <label>
-            <span className="mb-1.5 block text-sm font-medium text-foreground">{t("actionDueDate")}</span>
-            <input
-              type="date"
-              value={values.actionDueDate}
-              onChange={(event) => setValues((current) => ({ ...current, actionDueDate: event.target.value }))}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            <span className="mb-1.5 block text-sm font-medium text-foreground">{t("actionPlan")}</span>
+            <textarea
+              value={values.actionPlan}
+              required
+              rows={4}
+              maxLength={4000}
+              onChange={(event) => setValues((current) => ({ ...current, actionPlan: event.target.value }))}
+              className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
           </label>
-        </div>
-        <label>
-          <span className="mb-1.5 block text-sm font-medium text-foreground">{t("actionStatus")}</span>
-          <select
-            value={values.actionStatus}
-            onChange={(event) => setValues((current) => ({ ...current, actionStatus: event.target.value }))}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-          >
-            {["planned", "in_progress", "done"].map((status) => (
-              <option key={status} value={status}>
-                {t(`actionStatus_${status}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="flex flex-col justify-end gap-2 sm:flex-row">
-          <button type="button" onClick={onClose} className="min-h-11 rounded-md border border-border px-4 text-sm font-medium sm:h-10 sm:min-h-0">
-            {tCommon("cancel")}
-          </button>
-          <button type="submit" disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white disabled:opacity-50 sm:h-10 sm:min-h-0">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            {tCommon("save")}
-          </button>
-        </div>
-      </form>
-    </Modal>
+          <div className="grid gap-4 md:grid-cols-2">
+            <SearchableSelect
+              label={t("actionOwner")}
+              value={values.actionOwnerId}
+              options={employees}
+              placeholder={t("noActionOwner")}
+              searchPlaceholder={tCommon("searchSelectPlaceholder")}
+              emptyLabel={tCommon("searchSelectNoResults")}
+              onChange={(value) => setValues((current) => ({ ...current, actionOwnerId: value }))}
+            />
+            <label>
+              <span className="mb-1.5 block text-sm font-medium text-foreground">{t("actionDueDate")}</span>
+              <input
+                type="date"
+                value={values.actionDueDate}
+                onChange={(event) => setValues((current) => ({ ...current, actionDueDate: event.target.value }))}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </label>
+          </div>
+          <label>
+            <span className="mb-1.5 block text-sm font-medium text-foreground">{t("actionStatus")}</span>
+            <select
+              value={values.actionStatus}
+              onChange={(event) => setValues((current) => ({ ...current, actionStatus: event.target.value }))}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            >
+              {["planned", "in_progress", "done"].map((status) => (
+                <option key={status} value={status}>
+                  {t(`actionStatus_${status}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex flex-col justify-end gap-2 sm:flex-row">
+            <button type="button" onClick={onClose} className="min-h-11 rounded-md border border-border px-4 text-sm font-medium sm:h-10 sm:min-h-0">
+              {tCommon("cancel")}
+            </button>
+            <button type="submit" disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white disabled:opacity-50 sm:h-10 sm:min-h-0">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              {tCommon("save")}
+            </button>
+          </div>
+        </form>
+      </div>
+    </AccessibleDialog>
   )
 }
 
@@ -449,58 +454,43 @@ function CloseFindingModal({ findingId, evidenceCount, onClose }: { findingId: s
   }
 
   return (
-    <Modal title={t("closeFindingTitle")} onClose={onClose}>
-      <div className="space-y-4">
-        <FileDropzone
-          file={file}
-          onFileChange={uploadEvidence}
-          disabled={uploading}
-          accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif,application/pdf"
-          capture="environment"
-          title={t("dropClosureEvidenceTitle")}
-          hint={uploading ? t("uploadingEvidence") : t("dropClosureEvidenceSelected")}
-          browseLabel={t("dropClosureEvidenceHint")}
-        />
-        <div className="rounded-md border border-border bg-background p-3 text-sm text-muted-foreground">
-          {t("closureEvidenceCount", { count: uploadedCount })}
-        </div>
-        <label>
-          <span className="mb-1.5 block text-sm font-medium text-foreground">{t("closureRemark")}</span>
-          <textarea
-            value={closureRemark}
-            rows={3}
-            maxLength={4000}
-            onChange={(event) => setClosureRemark(event.target.value)}
-            className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+    <AccessibleDialog open title={t("closeFindingTitle")} busy={saving} size="md" onClose={onClose}>
+      <div className="p-5">
+        <div className="space-y-4">
+          <FileDropzone
+            file={file}
+            onFileChange={uploadEvidence}
+            disabled={uploading}
+            accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif,application/pdf"
+            capture="environment"
+            title={t("dropClosureEvidenceTitle")}
+            hint={uploading ? t("uploadingEvidence") : t("dropClosureEvidenceSelected")}
+            browseLabel={t("dropClosureEvidenceHint")}
           />
-        </label>
-        <div className="flex flex-col justify-end gap-2 sm:flex-row">
-          <button type="button" onClick={onClose} className="min-h-11 rounded-md border border-border px-4 text-sm font-medium sm:h-10 sm:min-h-0">
-            {tCommon("cancel")}
-          </button>
-          <button type="button" onClick={closeFinding} disabled={saving || uploadedCount === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white disabled:opacity-50 sm:h-10 sm:min-h-0">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            {t("closeFinding")}
-          </button>
+          <div className="rounded-md border border-border bg-background p-3 text-sm text-muted-foreground">
+            {t("closureEvidenceCount", { count: uploadedCount })}
+          </div>
+          <label>
+            <span className="mb-1.5 block text-sm font-medium text-foreground">{t("closureRemark")}</span>
+            <textarea
+              value={closureRemark}
+              rows={3}
+              maxLength={4000}
+              onChange={(event) => setClosureRemark(event.target.value)}
+              className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </label>
+          <div className="flex flex-col justify-end gap-2 sm:flex-row">
+            <button type="button" onClick={onClose} className="min-h-11 rounded-md border border-border px-4 text-sm font-medium sm:h-10 sm:min-h-0">
+              {tCommon("cancel")}
+            </button>
+            <button type="button" onClick={closeFinding} disabled={saving || uploadedCount === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white disabled:opacity-50 sm:h-10 sm:min-h-0">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              {t("closeFinding")}
+            </button>
+          </div>
         </div>
       </div>
-    </Modal>
-  )
-}
-
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  const tCommon = useTranslations("common")
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center sm:p-4">
-      <section className="max-h-[calc(100vh-1.5rem)] w-full max-w-2xl overflow-hidden rounded-lg border border-border bg-surface shadow-lg sm:max-h-[90vh]">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h2 className="text-base font-semibold text-foreground">{title}</h2>
-          <button type="button" onClick={onClose} className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-8 sm:w-8" aria-label={tCommon("close")}>
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="max-h-[78vh] overflow-y-auto p-5">{children}</div>
-      </section>
-    </div>
+    </AccessibleDialog>
   )
 }
