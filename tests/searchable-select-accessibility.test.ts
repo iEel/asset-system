@@ -2,16 +2,12 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-test("searchable select exposes combobox navigation without nested interactive controls", () => {
-  const source = readFileSync("src/components/ui/searchable-select.tsx", "utf8")
-
-  assert.match(source, /role="combobox"/)
-  assert.match(source, /aria-activedescendant/)
-  assert.match(source, /getNextEnabledOptionIndex/)
-  assert.match(source, /event\.key === "ArrowDown"/)
-  assert.match(source, /event\.key === "ArrowUp"/)
-  assert.match(source, /event\.key === "Home"/)
-  assert.match(source, /event\.key === "End"/)
-  assert.match(source, /triggerRef\.current\?\.focus\(\)/)
-  assert.doesNotMatch(source, /<span\s+role="button"/)
+test("searchable select is a modal Radix popover with a cmdk listbox", () => {
+  const source = readFileSync("src/components/ui/searchable-select.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /<Popover modal open=\{open && !disabled\} onOpenChange=\{setOpenState\}>/)
+  assert.match(source, /<Command shouldFilter=\{false\} loop/)
+  assert.match(source, /filterSearchableOptions\(options, query\)/)
+  assert.match(source, /w-\(--radix-popover-trigger-width\)/)
+  assert.match(source, /<CommandItem[\s\S]*?disabled=\{option\.disabled\}/)
+  assert.doesNotMatch(source, /document\.addEventListener|searchable-select-navigation/)
 })
