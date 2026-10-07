@@ -2309,7 +2309,21 @@
     "saveEditMismatch": "Save changes · {count} mismatched ({fields})",
     "saveOutOfScope": "Save as out of scope",
     "notThisOne": "Not this one",
-    "checkPanelEmpty": "Pick an item on the left to check it"
+    "checkPanelEmpty": "Pick an item on the left to check it",
+    "savedAllMatch": "✓ {assetTag} saved · everything matches",
+    "savedMismatch": "✓ {assetTag} saved · mismatched: {fields}",
+    "savedOutOfScope": "✓ {assetTag} saved as out of scope",
+    "savedQueued": "{assetTag} kept on this device · it will send when online",
+    "editAgain": "Edit",
+    "photoRetryMessage": "The result was saved, but the photos did not upload",
+    "retryPhotos": "Upload photos again",
+    "offlineBarOffline": "Offline · {count} waiting to send",
+    "offlineBarPending": "{count} waiting to send",
+    "sendNow": "Send now",
+    "removeFromQueue": "Remove from queue",
+    "queueFailed": "{assetTag} could not be sent: {error}",
+    "roundClosedError": "This round is closed; results can no longer be saved",
+    "backToRound": "Back to the round"
   },
   "auditFinding": {
     "title": "Audit Findings",

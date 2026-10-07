@@ -2309,7 +2309,21 @@
     "saveEditMismatch": "บันทึกการแก้ไข · ไม่ตรง {count} ข้อ ({fields})",
     "saveOutOfScope": "บันทึกนอกขอบเขต",
     "notThisOne": "ไม่ใช่ชิ้นนี้",
-    "checkPanelEmpty": "เลือกรายการทางซ้ายเพื่อตรวจ"
+    "checkPanelEmpty": "เลือกรายการทางซ้ายเพื่อตรวจ",
+    "savedAllMatch": "✓ {assetTag} บันทึกแล้ว · ตรงทุกข้อ",
+    "savedMismatch": "✓ {assetTag} บันทึกแล้ว · ไม่ตรง: {fields}",
+    "savedOutOfScope": "✓ {assetTag} บันทึกเป็นนอกขอบเขตแล้ว",
+    "savedQueued": "{assetTag} เก็บไว้ในเครื่อง · จะส่งเมื่อมีสัญญาณ",
+    "editAgain": "แก้",
+    "photoRetryMessage": "บันทึกผลแล้ว แต่ส่งรูปไม่สำเร็จ",
+    "retryPhotos": "ส่งรูปอีกครั้ง",
+    "offlineBarOffline": "ออฟไลน์ · รอส่ง {count} รายการ",
+    "offlineBarPending": "รอส่ง {count} รายการ",
+    "sendNow": "ส่งตอนนี้",
+    "removeFromQueue": "ลบออกจากคิว",
+    "queueFailed": "{assetTag} ส่งไม่สำเร็จ: {error}",
+    "roundClosedError": "รอบนี้ถูกปิดแล้ว บันทึกไม่ได้",
+    "backToRound": "กลับหน้ารอบ"
   },
   "auditFinding": {
     "title": "รายการไม่ตรงจากการตรวจนับ",
