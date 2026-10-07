@@ -10,6 +10,7 @@ test("attachment preview is a Radix dialog with image and pdf modes", () => {
   assert.match(source, /kind === "image"/)
   assert.match(source, /<iframe/)
   assert.match(source, /downloadHref/)
+  assert.match(source, /\{src \? \(\s*kind === "image" \? \(/)
 })
 
 test("both lightboxes use the shared preview dialog", () => {

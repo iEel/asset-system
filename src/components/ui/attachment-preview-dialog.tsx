@@ -43,11 +43,13 @@ export function AttachmentPreviewDialog({
           {subtitle ? <DialogDescription className="truncate text-xs text-muted-foreground">{subtitle}</DialogDescription> : null}
         </DialogHeader>
         <div className="relative min-h-0 flex-1 bg-black">
-          {kind === "image" ? (
-            <Image src={src} alt={alt ?? title} fill unoptimized className="object-contain" />
-          ) : (
-            <iframe src={src} title={title} className="h-full w-full bg-white" />
-          )}
+          {src ? (
+            kind === "image" ? (
+              <Image src={src} alt={alt ?? title} fill unoptimized className="object-contain" />
+            ) : (
+              <iframe src={src} title={title} className="h-full w-full bg-white" />
+            )
+          ) : null}
         </div>
         {downloadHref && downloadLabel ? (
           <div className="flex shrink-0 justify-end border-t border-border px-4 py-3">
