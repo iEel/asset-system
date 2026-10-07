@@ -832,6 +832,8 @@
     "sortPurchaseDateDesc": "ซื้อล่าสุด",
     "sortPriceDesc": "ราคาสูง→ต่ำ",
     "exportMenu": "ส่งออก",
+    "selectMode": "เลือก",
+    "selectModeDone": "เสร็จ",
     "qrCode": "QR Code",
     "printLabel": "พิมพ์ Label",
     "printLabelTitle": "พิมพ์ Label ทรัพย์สิน",

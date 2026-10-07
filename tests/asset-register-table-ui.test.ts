@@ -125,3 +125,60 @@ test("the scroll hint and the actions shadow follow real overflow", () => {
   assert.match(source, /hasRemainingHorizontalContent\(/)
   assert.match(source, /hasMoreRight && /)
 })
+
+const mobileList = () => read("src/components/assets/asset-register-mobile-list.tsx")
+
+function functionBody(source: string, name: string) {
+  const start = source.indexOf(`function ${name}`)
+  assert.ok(start > -1, `${name} is missing`)
+  const next = source.indexOf("\nfunction ", start + 1)
+  return source.slice(start, next === -1 ? undefined : next)
+}
+
+test("mobile rows are compact links with tag, name, location and status", () => {
+  const row = functionBody(mobileList(), "MobileAssetRow")
+  const order = ["asset.assetTag", "asset.name", "asset.currentLocation", "asset.status"]
+
+  let previous = -1
+  for (const value of order) {
+    const index = row.indexOf(value)
+    assert.ok(index > previous, `${value} must follow the previous value`)
+    previous = index
+  }
+  assert.match(row, /min-h-20/)
+  assert.match(row, /before:absolute before:inset-0/)
+  assert.match(row, /<AssetThumbnail[\s\S]*?size=\{44\}[\s\S]*?className="relative z-10"/)
+  assert.match(row, /<AssetRegisterRowActions\s+variant="mobile"/)
+  assert.doesNotMatch(row, /companyBranch|purchasePrice/)
+})
+
+test("select mode rows only toggle the checkbox and never navigate", () => {
+  const row = functionBody(mobileList(), "MobileSelectableRow")
+
+  assert.match(row, /<label className="flex min-h-20 cursor-pointer/)
+  assert.match(row, /type="checkbox"/)
+  assert.match(row, /aria-label=\{asset\.assetTag\}/)
+  assert.match(row, /className="size-5 /)
+  assert.match(row, /preview=\{false\}/)
+  assert.doesNotMatch(row, /<Link|href=|AssetRegisterRowActions/)
+})
+
+test("leaving select mode clears the selection and the bulk bar floats above the phone navigation", () => {
+  const source = table()
+
+  assert.match(source, /const \[selectMode, setSelectMode\] = useState\(false\)/)
+  assert.match(source, /function toggleSelectMode\(\) \{\s*if \(selectMode\) clearSelection\(\)\s*setSelectMode\(!selectMode\)/)
+  assert.match(source, /aria-pressed=\{selectMode\}/)
+  assert.match(source, /data-asset-bulk-bar/)
+  assert.match(source, /fixed inset-x-3 bottom-\[calc\(5\.25rem\+env\(safe-area-inset-bottom\)\)\][^"]*md:static/)
+  assert.match(source, /reserveBulkBarSpace=\{selectedAssets\.length > 0\}/)
+  assert.doesNotMatch(source, /AssetRegisterTransactionMenu|AssetRegisterMoreMenu|AssetDeleteButton|<details/)
+  assert.doesNotMatch(source, /next\/image|\?inline=1|line-clamp-2/)
+})
+
+test("select mode copy exists in Thai and English", () => {
+  assert.equal(messages("th").selectMode, "เลือก")
+  assert.equal(messages("th").selectModeDone, "เสร็จ")
+  assert.equal(typeof messages("en").selectMode, "string")
+  assert.equal(typeof messages("en").selectModeDone, "string")
+})

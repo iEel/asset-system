@@ -5,8 +5,9 @@ import test from "node:test"
 
 test("asset register exposes clone action that opens create asset with cloneFrom", () => {
   const source = readFileSync(join(process.cwd(), "src", "components", "assets", "asset-register-table.tsx"), "utf8")
+  const actions = readFileSync(join(process.cwd(), "src", "components", "assets", "asset-register-row-actions.tsx"), "utf8")
 
-  assert.match(source, /cloneAsset/)
+  assert.match(actions, /t\("cloneAsset"\)/)
   assert.match(source, /function buildAssetCloneHref\(assetId: string\)/)
   assert.match(source, /cloneFrom=\$\{encodeURIComponent\(assetId\)\}/)
   assert.match(source, /appendReturnTo\(`\/\$\{locale\}\/assets\/new\?cloneFrom=\$\{encodeURIComponent\(assetId\)\}`, registerReturnHref\)/)

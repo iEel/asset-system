@@ -100,12 +100,13 @@ test("asset register desktop table pins the tag and actions columns only", () =>
 })
 
 test("asset register keeps adaptive desktop and mobile responsibilities explicit", () => {
+  const list = readFileSync("src/components/assets/asset-register-mobile-list.tsx", "utf8")
   const source = registerTableSource()
 
-  assert.match(source, /data-asset-mobile-list/)
-  assert.match(source, /data-asset-mobile-card/)
+  assert.match(list, /data-asset-mobile-list/)
+  assert.match(list, /data-asset-mobile-row/)
+  assert.match(list, /md:hidden/)
   assert.match(source, /data-asset-desktop-table/)
-  assert.match(source, /getMobileCardListClasses\(\)/)
   assert.match(source, /getDesktopTableOnlyClasses\(\)/)
 })
 
@@ -116,71 +117,6 @@ test("asset register selects canonical state values for semantic badges", () => 
   assert.match(source, /condition:\s*\{\s*select:\s*\{\s*name:\s*true,\s*nameTh:\s*true/)
   assert.match(source, /status:\s*\{\s*value:\s*asset\.status\.name,\s*label:\s*asset\.status\.nameTh\s*\}/)
   assert.match(source, /condition:\s*\{\s*value:\s*asset\.condition\.name,\s*label:\s*asset\.condition\.nameTh\s*\}/)
-})
-
-test("mobile asset cards prioritize field lookup context", () => {
-  const source = registerTableSource()
-  const start = source.indexOf("data-asset-mobile-card")
-  const end = source.indexOf("</article>", start)
-
-  assert.ok(start > -1 && end > start)
-  const card = source.slice(start, end)
-  assert.match(card, /asset\.assetTag/)
-  assert.match(card, /asset\.name/)
-  assert.match(card, /asset\.status/)
-  assert.match(card, /asset\.currentLocation/)
-  assert.match(card, /asset\.custodian/)
-})
-
-test("mobile asset selection keeps a 44px labeled target around the visible checkbox", () => {
-  const source = registerTableSource()
-  const start = source.indexOf("data-asset-mobile-card")
-  const end = source.indexOf("</article>", start)
-
-  assert.ok(start > -1 && end > start)
-  const card = source.slice(start, end)
-  assert.match(
-    card,
-    /<label className="flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-md focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">[\s\S]*?<input[\s\S]*?type="checkbox"[\s\S]*?checked=\{selectedIds\.has\(asset\.id\)\}[\s\S]*?onChange=\{\(\) => toggleAsset\(asset\.id\)\}[\s\S]*?aria-label=\{asset\.assetTag\}[\s\S]*?className="h-5 w-5 rounded border-border text-primary"[\s\S]*?<\/label>/,
-  )
-})
-
-test("mobile asset cards preserve field lookup order and secondary action access", () => {
-  const source = registerTableSource()
-  const start = source.indexOf("data-asset-mobile-card")
-  const end = source.indexOf("</article>", start)
-
-  assert.ok(start > -1 && end > start)
-  const card = source.slice(start, end)
-  const orderedValues = [
-    "asset.assetTag",
-    "asset.status",
-    "asset.name",
-    "asset.serialNumber",
-    "asset.category",
-    "asset.currentLocation",
-    "asset.custodian",
-    "<details",
-  ]
-
-  let previousIndex = -1
-  for (const value of orderedValues) {
-    const index = card.indexOf(value)
-    assert.ok(index > previousIndex, `${value} must follow the prior mobile card value`)
-    previousIndex = index
-  }
-
-  assert.doesNotMatch(card, /asset\.companyBranch/)
-  assert.doesNotMatch(card, /asset\.purchasePrice/)
-  assert.match(card, /<details className="mt-2 border-t border-border pt-2">/)
-  assert.match(card, /<summary className="flex min-h-11 w-full cursor-pointer items-center rounded-md px-3 text-sm font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 hover:text-foreground">/)
-})
-
-test("asset register uses mutually exclusive responsive helper boundaries", () => {
-  const source = registerTableSource()
-
-  assert.match(source, /data-asset-mobile-list className=\{`\$\{getMobileCardListClasses\(\)\}/)
-  assert.match(source, /data-asset-desktop-table className=\{`\$\{getDesktopTableOnlyClasses\(\)\}/)
 })
 
 test("asset register keeps table utility controls out of the mobile-first path", () => {

@@ -24,14 +24,13 @@ test("transaction cancel dialog can be opened by its owner without its own trigg
   assert.match(source, /returnFocusRef=\{returnFocusRef\}/)
 })
 
-test("register row menus are Radix dropdowns and delete through the shared action", () => {
-  const source = read("src/components/assets/asset-register-action-menus.tsx")
-  assert.match(source, /<DropdownMenuContent/)
-  assert.match(source, /useDeleteAction\(`\/api\/assets\/\$\{assetId\}`[,)]/)
+test("register row menus are Radix overlays and delete through the shared action", () => {
+  const source = read("src/components/assets/asset-register-row-actions.tsx")
+  assert.match(source, /<DropdownMenuContent data-no-row-click/)
+  assert.match(source, /<SheetContent\s+side="bottom"/)
   assert.match(source, /useDeleteAction\(`\/api\/assets\/\$\{assetId\}`, \{ returnFocusRef: triggerRef \}\)/)
-  assert.match(source, /<button\s+ref=\{triggerRef\}/)
+  assert.equal(source.match(/ref=\{triggerRef\}/g)?.length, 2)
   assert.match(source, /variant="destructive"/)
-  assert.equal(source.match(/<DropdownMenuContent data-no-row-click/g)?.length, 2)
   assert.doesNotMatch(source, /createPortal|getBoundingClientRect|addEventListener|AssetDeleteButton/)
 })
 

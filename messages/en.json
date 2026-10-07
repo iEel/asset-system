@@ -832,6 +832,8 @@
     "sortPurchaseDateDesc": "Latest purchase",
     "sortPriceDesc": "Price high to low",
     "exportMenu": "Export",
+    "selectMode": "Select",
+    "selectModeDone": "Done",
     "qrCode": "QR Code",
     "printLabel": "Print Label",
     "printLabelTitle": "Print Asset Label",

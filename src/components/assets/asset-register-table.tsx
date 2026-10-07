@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
-import { Copy, Download, Edit, Eye, ImageIcon, Loader2, Printer, X } from "lucide-react"
+import { Download, Edit, Loader2, Printer, X } from "lucide-react"
 import { toast } from "sonner"
 import { cn, formatCurrency } from "@/lib/utils"
 import { hasRemainingHorizontalContent } from "@/lib/horizontal-scroll"
@@ -15,13 +14,12 @@ import { rememberAssetRegisterScrollPosition } from "@/lib/asset-register-view-m
 import type { AssetActivityFilter } from "@/lib/asset-activity-filter"
 import type { AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
 import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
-import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
 import { AssetThumbnail } from "@/components/assets/asset-thumbnail"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
-import { AssetRegisterTransactionMenu } from "@/components/assets/asset-register-action-menus"
 import { AssetRegisterRowActions, type AssetRegisterRowPermissions } from "@/components/assets/asset-register-row-actions"
+import { AssetRegisterMobileList } from "@/components/assets/asset-register-mobile-list"
 import { useAssetRegisterNavigation } from "@/components/assets/asset-register-navigation"
 import { AssetRegisterSortMenu } from "@/components/assets/asset-register-sort-menu"
 import { AssetRegisterColumnPicker } from "@/components/assets/asset-register-column-picker"
@@ -30,7 +28,7 @@ import { Pagination } from "@/components/ui/pagination"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import type { AssetRegisterTransaction } from "@/lib/asset-operation-policy"
-import { getAssetStateTone, getDesktopTableOnlyClasses, getMobileCardListClasses, normalizeAssetStateValue } from "@/lib/design-system"
+import { getAssetStateTone, getDesktopTableOnlyClasses } from "@/lib/design-system"
 import {
   assetRegisterColumnOrder,
   assetRegisterColumnPresets,
@@ -94,7 +92,6 @@ type AssetRegisterTableProps = {
   labels: {
     actions: string
     all: string
-    columns: string
     condition: string
     category: string
     company: string
@@ -102,29 +99,12 @@ type AssetRegisterTableProps = {
     custodian: string
     ownershipType: string
     detail: string
-    downloadTemplate: string
-    edit: string
-    cloneAsset: string
-    transaction: string
-    more: string
-    checkout: string
-    checkin: string
-    transfer: string
-    transactionReasonPermission: string
-    transactionReasonStatusNotReady: string
-    transactionReasonNoReturnRecord: string
-    transactionReasonActiveMaintenance: string
-    transactionReasonStatusNotReturnable: string
-    transactionReasonStatusNotTransferable: string
-    exportFiltered: string
     exportSelected: string
     bulkActions: string
     bulkUpdate: string
     bulkUpdateTitle: string
     bulkUpdateDescription: string
     clearSelection: string
-    selectLocation: string
-    selectCustodian: string
     noChange: string
     reason: string
     remark: string
@@ -134,24 +114,16 @@ type AssetRegisterTableProps = {
     cancel: string
     close: string
     printSelectedLabels: string
-    noData: string
     noResultsTitle: string
     noResultsDescription: string
     noAssetsTitle: string
     noAssetsDescription: string
     clearAllFilters: string
-    of: string
-    page: string
     previous: string
     purchasePrice: string
     selectedCount: string
     assetName: string
     assetTag: string
-    columnPresets: string
-    columnPresetAll: string
-    columnPresetOperations: string
-    columnPresetAccounting: string
-    columnPresetAudit: string
     tableScrollHint: string
     next: string
     status: string
@@ -172,7 +144,6 @@ type AssetRegisterTableProps = {
   }
 }
 
-const previewableAssetPhotoTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"])
 const assetRegisterStickyFirstColumnClasses = "sticky left-0"
 const assetRegisterStickyActionsColumnClasses = "sticky right-0"
 const assetRegisterStickyHeaderColumnClasses = "z-30 bg-muted"
@@ -206,6 +177,7 @@ export function AssetRegisterTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [visibleColumns, setVisibleColumns] = useState<Set<AssetRegisterColumnKey>>(new Set(assetRegisterColumnPresets.operations))
   const [columnPreferencesLoaded, setColumnPreferencesLoaded] = useState(false)
+  const [selectMode, setSelectMode] = useState(false)
   const [bulkUpdateOpen, setBulkUpdateOpen] = useState(false)
   const [bulkSaving, setBulkSaving] = useState(false)
   const [bulkForm, setBulkForm] = useState({
@@ -259,23 +231,6 @@ export function AssetRegisterTable({
       labels.conditionHelpMissing,
     ],
   }
-  const transactionLabels = {
-    transaction: labels.transaction,
-    more: labels.more,
-    checkout: labels.checkout,
-    checkin: labels.checkin,
-    transfer: labels.transfer,
-    cloneAsset: labels.cloneAsset,
-    reason: {
-      permission_required: labels.transactionReasonPermission,
-      status_not_ready: labels.transactionReasonStatusNotReady,
-      no_return_record: labels.transactionReasonNoReturnRecord,
-      active_maintenance: labels.transactionReasonActiveMaintenance,
-      status_not_returnable: labels.transactionReasonStatusNotReturnable,
-      status_not_transferable: labels.transactionReasonStatusNotTransferable,
-    },
-  }
-
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       try {
@@ -391,6 +346,11 @@ export function AssetRegisterTable({
     setSelectedIds(new Set())
   }
 
+  function toggleSelectMode() {
+    if (selectMode) clearSelection()
+    setSelectMode(!selectMode)
+  }
+
   async function submitBulkUpdate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (selectedAssets.length === 0 || (!bulkForm.toLocationId && !bulkForm.toCustodianId)) return
@@ -473,6 +433,14 @@ export function AssetRegisterTable({
         <p className="text-sm text-muted-foreground">{rangeLabel}</p>
         <div className="flex items-center gap-2">
           <AssetRegisterSortMenu />
+          <button
+            type="button"
+            onClick={toggleSelectMode}
+            aria-pressed={selectMode}
+            className="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
+          >
+            {selectMode ? t("selectModeDone") : t("selectMode")}
+          </button>
           <div className="hidden items-center gap-2 md:flex">
             <AssetRegisterColumnPicker visibleColumns={visibleColumns} onToggleColumn={toggleColumn} onApplyPreset={applyColumnPreset} />
             <AssetRegisterExportMenu exportHref={`/api/assets/export?${buildAssetQueryString(filters)}`} templateHref="/api/assets/import-template" />
@@ -480,14 +448,17 @@ export function AssetRegisterTable({
         </div>
       </div>
       {selectedAssets.length > 0 ? (
-        <div className="flex flex-col gap-3 border-b border-border bg-primary-soft px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+        <div
+          data-asset-bulk-bar
+          className="fixed inset-x-3 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-30 flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-lg md:static md:z-auto md:rounded-none md:border-0 md:border-b md:bg-primary-soft md:px-4 md:py-3 md:shadow-none lg:flex-row lg:items-center lg:justify-between"
+        >
           <div>
             <div className="text-sm font-semibold text-foreground">{labels.bulkActions}</div>
             <div className="mt-0.5 text-sm text-muted-foreground">
               {selectedAssets.length} {labels.selectedCount}
             </div>
           </div>
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             <button
               type="button"
               onClick={printSelectedLabels}
@@ -524,104 +495,24 @@ export function AssetRegisterTable({
         </div>
       ) : null}
 
-      <div data-asset-mobile-list className={`${getMobileCardListClasses()} min-w-0 max-w-full p-3`}>
-        {assets.length === 0 ? (
+      {assets.length === 0 ? (
+        <div className="p-3 md:hidden">
           <ActionEmptyState {...emptyState} />
-        ) : (
-          assets.map((asset) => (
-            <article data-asset-mobile-card key={asset.id} className="min-w-0 rounded-md border border-border bg-background p-3">
-              <div className="flex items-start gap-3">
-                <label className="flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-md focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(asset.id)}
-                    onChange={() => toggleAsset(asset.id)}
-                    aria-label={asset.assetTag}
-                    className="h-5 w-5 rounded border-border text-primary"
-                  />
-                </label>
-                <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">
-                  {asset.photo && previewableAssetPhotoTypes.has(asset.photo.fileType) ? (
-                    <Image
-                      src={`/api/attachments/${asset.photo.id}?inline=1`}
-                      alt={asset.photo.alt}
-                      fill
-                      unoptimized
-                      className="object-contain p-1"
-                      sizes="56px"
-                    />
-                  ) : (
-                    <ImageIcon className="h-5 w-5" aria-hidden="true" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <Link onClick={rememberDetailReturnScroll} href={buildAssetDetailHref(asset.id)} className="min-w-0 break-words text-sm font-semibold text-foreground hover:text-primary">
-                      {asset.assetTag}
-                    </Link>
-                    <StatusBadge size="xs" label={asset.status.label} tone={getAssetStateTone(asset.status.value)} />
-                  </div>
-                  <p className="mt-1 line-clamp-2 text-sm font-medium leading-snug text-foreground">{asset.name}</p>
-                  <p className="mt-1 break-words text-xs text-muted-foreground">
-                    {asset.serialNumber ? `${asset.serialNumber} · ${asset.category}` : asset.category}
-                  </p>
-                </div>
-              </div>
-              <dl className="mt-3 grid gap-2 text-sm">
-                <MobileAssetField label={labels.currentLocation} value={asset.currentLocation} />
-                <MobileAssetField label={labels.custodian} value={asset.custodian || "-"} />
-              </dl>
-              {needsFieldAttention(asset) ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <StatusBadge size="xs" label={asset.condition.label} tone={getAssetStateTone(asset.condition.value)} />
-                  {asset.ownershipType.value === "shared" ? (
-                    <StatusBadge size="xs" label={asset.ownershipType.label} tone={ownershipTypeTone(asset.ownershipType.value)} />
-                  ) : null}
-                </div>
-              ) : null}
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <Link
-                  href={buildAssetDetailHref(asset.id)}
-                  onClick={rememberDetailReturnScroll}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
-                >
-                  <Eye className="h-4 w-4" />
-                  {labels.detail}
-                </Link>
-                <Link
-                  href={buildAssetEditHref(asset.id)}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary-soft px-3 text-sm font-medium text-primary transition-colors hover:bg-primary-soft"
-                >
-                  <Edit className="h-4 w-4" />
-                  {labels.edit}
-                </Link>
-              </div>
-              <div className="mt-2">
-                <AssetRegisterTransactionMenu
-                  actions={asset.transactions}
-                  labels={transactionLabels}
-                  variant="full"
-                />
-              </div>
-              <details className="mt-2 border-t border-border pt-2">
-                <summary className="flex min-h-11 w-full cursor-pointer items-center rounded-md px-3 text-sm font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 hover:text-foreground">
-                  {labels.more}
-                </summary>
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                  <Link
-                    href={buildAssetCloneHref(asset.id)}
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
-                  >
-                    <Copy className="h-4 w-4" />
-                    {labels.cloneAsset}
-                  </Link>
-                  <AssetDeleteButton id={asset.id} />
-                </div>
-              </details>
-            </article>
-          ))
-        )}
-      </div>
+        </div>
+      ) : (
+        <AssetRegisterMobileList
+          assets={assets}
+          selectMode={selectMode}
+          selectedIds={selectedIds}
+          onToggleAsset={toggleAsset}
+          permissions={permissions}
+          detailHref={buildAssetDetailHref}
+          editHref={buildAssetEditHref}
+          cloneHref={buildAssetCloneHref}
+          onNavigate={rememberDetailReturnScroll}
+          reserveBulkBarSpace={selectedAssets.length > 0}
+        />
+      )}
 
       {isOverflowing ? (
         <div
@@ -913,15 +804,6 @@ function SortableHeader({
   )
 }
 
-function MobileAssetField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 rounded-md bg-muted/30 px-3 py-2">
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className="mt-1 break-words text-sm text-foreground">{value}</dd>
-    </div>
-  )
-}
-
 function HeaderWithHelp({
   label,
   help,
@@ -937,33 +819,12 @@ function HeaderWithHelp({
   )
 }
 
-function needsFieldAttention(asset: AssetRegisterRow) {
-  return ["fair", "poor", "damaged", "non functional", "salvage"].includes(normalizeAssetStateValue(asset.condition.value)) || asset.ownershipType.value === "shared"
-}
-
 function ownershipTypeTone(value: string): StatusTone {
   if (value === "software_license") return "info"
   if (value === "stock") return "warning"
   if (value === "shared") return "success"
   if (value === "component") return "primary"
   return "muted"
-}
-
-function columnLabel(column: AssetRegisterColumnKey, labels: AssetRegisterTableProps["labels"]) {
-  const map: Record<AssetRegisterColumnKey, string> = {
-    assetTag: labels.assetTag,
-    name: labels.assetName,
-    category: labels.category,
-    companyBranch: labels.company,
-    currentLocation: labels.currentLocation,
-    custodian: labels.custodian,
-    ownershipType: labels.ownershipType,
-    status: labels.status,
-    condition: labels.condition,
-    purchasePrice: labels.purchasePrice,
-  }
-
-  return map[column]
 }
 
 function csvCell(value: string) {
