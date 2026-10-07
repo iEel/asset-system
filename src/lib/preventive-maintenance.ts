@@ -1,4 +1,6 @@
-export const maintenancePlanFrequencies = ["monthly", "quarterly", "yearly", "custom"] as const
+import type { Prisma } from "@prisma/client"
+
+export const maintenancePlanFrequencies =["monthly", "quarterly", "yearly", "custom"] as const
 
 export type MaintenancePlanFrequency = (typeof maintenancePlanFrequencies)[number]
 export type MaintenancePlanDueState = "overdue" | "due_soon" | "upcoming"
@@ -41,15 +43,44 @@ export function calculateNextMaintenanceDueDate(
   frequency: MaintenancePlanFrequency,
   intervalDays?: number | null
 ) {
-  const next = new Date(fromDate)
-  if (Number.isNaN(next.getTime())) return new Date(fromDate)
+  const from = new Date(fromDate)
+  if (Number.isNaN(from.getTime())) return new Date(fromDate)
 
-  if (frequency === "monthly") next.setMonth(next.getMonth() + 1)
-  else if (frequency === "quarterly") next.setMonth(next.getMonth() + 3)
-  else if (frequency === "yearly") next.setFullYear(next.getFullYear() + 1)
-  else next.setDate(next.getDate() + getMaintenancePlanIntervalDays(frequency, intervalDays))
+  if (frequency === "monthly") return addMonthsClamped(from, 1)
+  if (frequency === "quarterly") return addMonthsClamped(from, 3)
+  if (frequency === "yearly") return addMonthsClamped(from, 12)
 
+  const next = new Date(from)
+  next.setUTCDate(next.getUTCDate() + getMaintenancePlanIntervalDays(frequency, intervalDays))
   return next
+}
+
+// 31 Jan + 1 month must be 28/29 Feb, not 3 Mar; the plan then keeps its original day when possible.
+function addMonthsClamped(from: Date, months: number) {
+  const target = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + months, 1,
+    from.getUTCHours(), from.getUTCMinutes(), from.getUTCSeconds(), from.getUTCMilliseconds()))
+  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate()
+  target.setUTCDate(Math.min(from.getUTCDate(), lastDay))
+  return target
+}
+
+export const pmReminderWindowDays = 7
+
+const bangkokOffsetMs = 7 * 60 * 60 * 1000
+
+export function getBangkokDateKey(date: Date) {
+  return new Date(date.getTime() + bangkokOffsetMs).toISOString().slice(0, 10)
+}
+
+export function buildDuePmPlanWhere(now: Date): Prisma.MaintenancePlanWhereInput {
+  const windowEnd = new Date(`${getBangkokDateKey(now)}T23:59:59.999+07:00`)
+  windowEnd.setUTCDate(windowEnd.getUTCDate() + pmReminderWindowDays)
+  return {
+    isActive: true,
+    planState: "active",
+    nextDueDate: { lte: windowEnd },
+    asset: { isActive: true, status: { name: { notIn: ["Disposed", "Retired"] } } },
+  }
 }
 
 export function getMaintenancePlanDueState(nextDueDate: Date | string, now = new Date()): MaintenancePlanDueState {
