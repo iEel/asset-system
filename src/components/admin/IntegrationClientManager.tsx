@@ -1,13 +1,14 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { AlertTriangle, CheckCircle2, Copy, KeyRound, Loader2, Pencil, Plus, RotateCw, ShieldOff, X } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Copy, KeyRound, Loader2, Pencil, Plus, RotateCw, ShieldOff } from "lucide-react"
 import {
   buildIntegrationPowerShellExamples,
   type IntegrationClientOperationSummary,
   type IntegrationPowerShellExample,
 } from "@/lib/integration-client-operations"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 
 type IntegrationClient = {
   id: string
@@ -385,34 +386,18 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
         </div>
       ) : null}
 
-      {editingClient ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form
-            onSubmit={updateEditingClient}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="integration-client-edit-title"
-            className="w-full max-w-xl rounded-lg border border-border bg-surface p-4 shadow-xl"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 id="integration-client-edit-title" className="text-lg font-semibold text-foreground">
-                  {labels.editScopes}
-                </h2>
-                <p className="mt-1 truncate font-mono text-xs text-muted-foreground">{editingClient.clientId}</p>
-              </div>
-              <button
-                type="button"
-                onClick={closeEditClient}
-                disabled={updatingClient}
-                className="inline-flex h-10 min-h-11 w-10 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label={labels.cancel}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 grid gap-4">
+      <AccessibleDialog
+        open={editingClient !== null}
+        title={labels.editScopes}
+        description={editingClient?.clientId}
+        busy={updatingClient}
+        size="md"
+        closeLabel={labels.cancel}
+        onClose={closeEditClient}
+      >
+        {editingClient ? (
+          <form onSubmit={updateEditingClient} className="p-5">
+            <div className="grid gap-4">
               <label className="grid gap-1.5 text-sm font-medium text-foreground">
                 {labels.displayName}
                 <input
@@ -463,8 +448,8 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
               </button>
             </div>
           </form>
-        </div>
-      ) : null}
+        ) : null}
+      </AccessibleDialog>
 
       <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
         <div className="mb-4 flex items-center gap-2">

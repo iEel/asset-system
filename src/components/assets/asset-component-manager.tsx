@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, CheckCircle2, Loader2, PackageCheck, PackagePlus, Trash2, X } from "lucide-react"
+import { ArrowLeft, CheckCircle2, Loader2, PackageCheck, PackagePlus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { formatDateTime } from "@/lib/utils"
 
@@ -550,28 +551,19 @@ function ComponentRemovalDialog({
   const [reason, setReason] = useState("")
   const [removeEvidence, setRemoveEvidence] = useState<File | null>(null)
 
-  useEffect(() => {
-    if (!component) return
-    const frame = window.requestAnimationFrame(() => reasonRef.current?.focus())
-    return () => window.cancelAnimationFrame(frame)
-  }, [component])
-
-  if (!component) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center sm:p-4" onMouseDown={(event) => {
-      if (event.target === event.currentTarget && !busy) onClose()
-    }}>
-      <section role="dialog" aria-modal="true" aria-label={labels.removeTitle} className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-lg border border-border bg-surface shadow-xl sm:rounded-lg">
-        <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-4">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold text-foreground">{labels.removeTitle}</h2>
-            <p className="mt-1 break-words text-sm text-muted-foreground">{component.componentAsset.assetTag} - {component.componentAsset.name}</p>
-          </div>
-          <button type="button" disabled={busy} onClick={onClose} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent" aria-label={labels.close} title={labels.close}>
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <AccessibleDialog
+      open={component !== null}
+      title={labels.removeTitle}
+      description={component ? `${component.componentAsset.assetTag} - ${component.componentAsset.name}` : undefined}
+      busy={busy}
+      size="sm"
+      closeLabel={labels.close}
+      initialFocusRef={reasonRef}
+      onClose={onClose}
+    >
+      {component ? (
+        <>
         <div className="space-y-4 px-4 py-4">
           <label className="block">
             <span className="text-sm font-medium text-foreground">{labels.removeReason}</span>
@@ -586,8 +578,9 @@ function ComponentRemovalDialog({
             {busy ? labels.removing : labels.confirmRemove}
           </button>
         </div>
-      </section>
-    </div>
+        </>
+      ) : null}
+    </AccessibleDialog>
   )
 }
 

@@ -19,6 +19,7 @@ import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { AssetRegisterMoreMenu, AssetRegisterTransactionMenu } from "@/components/assets/asset-register-action-menus"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import type { AssetRegisterTransaction } from "@/lib/asset-operation-policy"
 import { getAssetStateTone, getDesktopTableOnlyClasses, getMobileCardListClasses, normalizeAssetStateValue } from "@/lib/design-system"
 import {
@@ -849,25 +850,15 @@ export function AssetRegisterTable({
         </div>
       </div>
 
-      {bulkUpdateOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center sm:p-4">
-          <div className="max-h-[calc(100vh-2rem)] w-full max-w-xl overflow-y-auto rounded-lg border border-border bg-surface shadow-xl">
-            <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">{labels.bulkUpdateTitle}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {labels.bulkUpdateDescription} ({selectedAssets.length} {labels.selectedCount})
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setBulkUpdateOpen(false)}
-                className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-                aria-label={labels.close}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+      <AccessibleDialog
+        open={bulkUpdateOpen}
+        title={labels.bulkUpdateTitle}
+        description={`${labels.bulkUpdateDescription} (${selectedAssets.length} ${labels.selectedCount})`}
+        busy={bulkSaving}
+        size="md"
+        closeLabel={labels.close}
+        onClose={() => setBulkUpdateOpen(false)}
+      >
             <form onSubmit={submitBulkUpdate} className="space-y-4 px-5 py-4">
               <label className="block">
                 <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.currentLocation}</span>
@@ -936,9 +927,7 @@ export function AssetRegisterTable({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      ) : null}
+      </AccessibleDialog>
     </div>
   )
 }

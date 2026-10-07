@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, ArrowRight, Check, ExternalLink, History, Loader2, Pencil, PlugZap, Plus, Save, Search, Trash2, X } from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, ExternalLink, History, Loader2, Pencil, PlugZap, Plus, Save, Search, Trash2 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
 import { DepreciationPolicyBuilder } from "@/components/admin/depreciation-policy-builder"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import {
   assetLabelLayouts,
   assetLabelPresets,
@@ -1340,28 +1341,17 @@ export function SystemSettingsForm({
           {hasInvalidPrefix ? <ValidationMessage message={labels.invalidPrefix} /> : null}
         </div>
 
-        {prefixEditor ? (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center sm:p-4" role="dialog" aria-modal="true">
-            <div className="max-h-[92dvh] w-full max-w-5xl overflow-hidden rounded-lg border border-border bg-surface shadow-xl">
-              <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-4">
-                <div>
-                  <h3 className="text-base font-semibold text-foreground">
-                    {prefixEditor.previousPrefix ? labels.editPrefix : labels.addPrefix}
-                  </h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{labels.categoryPrefixesDescription}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={closePrefixEditor}
-                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  aria-label={labels.cancel}
-                  title={labels.cancel}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="max-h-[calc(92dvh-8rem)] space-y-4 overflow-y-auto px-4 py-4">
+        <AccessibleDialog
+          open={prefixEditor !== null}
+          title={prefixEditor?.previousPrefix ? labels.editPrefix : labels.addPrefix}
+          description={labels.categoryPrefixesDescription}
+          size="xl"
+          closeLabel={labels.cancel}
+          onClose={closePrefixEditor}
+        >
+          {prefixEditor ? (
+            <>
+              <div className="space-y-4 px-4 py-4">
                 <div className="grid gap-4 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
                   <Field label={labels.prefix} htmlFor="category-prefix-editor-prefix">
                     <input
@@ -1468,7 +1458,7 @@ export function SystemSettingsForm({
                 </div>
               </div>
 
-              <div className="flex flex-col-reverse gap-2 border-t border-border px-4 py-3 sm:flex-row sm:justify-end">
+              <div className="sticky bottom-0 z-10 flex flex-col-reverse gap-2 border-t border-border bg-surface px-4 py-3 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={closePrefixEditor}
@@ -1486,9 +1476,9 @@ export function SystemSettingsForm({
                   {labels.savePrefixGroup}
                 </button>
               </div>
-            </div>
-          </div>
-        ) : null}
+            </>
+          ) : null}
+        </AccessibleDialog>
       </div>
       ) : null}
 

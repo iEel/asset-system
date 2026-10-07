@@ -1,15 +1,16 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { CheckCircle2, Download, FileText, ImageIcon, Loader2, Trash2, X } from "lucide-react"
+import { CheckCircle2, Download, FileText, ImageIcon, Loader2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { getAssetPhotoGalleryState } from "@/lib/asset-photo-gallery"
 import { formatFileSize } from "@/lib/uploads"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { AttachmentPreviewDialog } from "@/components/ui/attachment-preview-dialog"
 
 type Attachment = {
   id: string
@@ -62,19 +63,6 @@ export function AssetAttachments({
   const otherAttachments = attachments.filter((attachment) => !checklistAttachmentIds.has(attachment.id))
   const checklistGallery = getAssetPhotoGalleryState(checklistItems, showAllChecklistPhotos)
   const otherAttachmentGallery = getAssetPhotoGalleryState(otherAttachments, showAllOtherAttachments)
-
-  useEffect(() => {
-    if (!previewPhoto) return
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setPreviewPhoto(null)
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [previewPhoto])
 
   async function handleAutoUpload(file: File | null, label: string) {
     if (!file) return
@@ -327,14 +315,20 @@ export function AssetAttachments({
         </>
       )}
 
-      {previewPhoto ? (
-        <PhotoLightbox
-          preview={previewPhoto}
-          closeLabel={tCommon("close")}
-          downloadLabel={t("download")}
-          onClose={() => setPreviewPhoto(null)}
-        />
-      ) : null}
+      <AttachmentPreviewDialog
+        open={previewPhoto !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewPhoto(null)
+        }}
+        title={previewPhoto?.title ?? ""}
+        subtitle={previewPhoto?.attachment.originalName}
+        kind="image"
+        src={previewPhoto ? `/api/attachments/${previewPhoto.attachment.id}?inline=1` : ""}
+        alt={previewPhoto?.attachment.originalName}
+        downloadHref={previewPhoto ? `/api/attachments/${previewPhoto.attachment.id}` : undefined}
+        downloadLabel={t("download")}
+        closeLabel={tCommon("close")}
+      />
     </section>
   )
 }
@@ -458,67 +452,6 @@ function GalleryToggle({
     >
       {expanded ? hideLabel : showMoreLabel(hiddenCount)}
     </button>
-  )
-}
-
-function PhotoLightbox({
-  preview,
-  closeLabel,
-  downloadLabel,
-  onClose,
-}: {
-  preview: PhotoPreviewState
-  closeLabel: string
-  downloadLabel: string
-  onClose: () => void
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label={preview.title}
-      onClick={onClose}
-    >
-      <div
-        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-surface shadow-xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
-          <div className="min-w-0">
-            <div className="text-sm font-semibold text-foreground">{preview.title}</div>
-            <div className="mt-1 truncate text-xs text-muted-foreground">{preview.attachment.originalName}</div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            aria-label={closeLabel}
-            title={closeLabel}
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="relative min-h-[45vh] flex-1 bg-black">
-          <Image
-            src={`/api/attachments/${preview.attachment.id}?inline=1`}
-            alt={preview.attachment.originalName}
-            fill
-            unoptimized
-            className="object-contain"
-          />
-        </div>
-        <div className="flex justify-end border-t border-border px-4 py-3">
-          <a
-            href={`/api/attachments/${preview.attachment.id}`}
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent"
-          >
-            <Download className="h-4 w-4" />
-            {downloadLabel}
-          </a>
-        </div>
-      </div>
-    </div>
   )
 }
 

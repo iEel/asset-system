@@ -17,8 +17,7 @@ test("batch review and component removal use accessible dialogs instead of brows
   const componentSource = readFileSync("src/components/assets/asset-component-manager.tsx", "utf8")
 
   assert.match(batchSource, /ConfirmTextDialog/)
-  assert.match(componentSource, /role="dialog"/)
-  assert.match(componentSource, /aria-modal="true"/)
+  assert.match(componentSource, /<AccessibleDialog/)
   assert.match(componentSource, /FileDropzone file=\{removeEvidence\}/)
   assert.doesNotMatch(batchSource, /window\.prompt/)
   assert.doesNotMatch(componentSource, /window\.prompt/)

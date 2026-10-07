@@ -3,12 +3,13 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Download, Eye, FileText, Image as ImageIcon, Loader2, Trash2, X } from "lucide-react"
+import { Download, Eye, FileText, Image as ImageIcon, Loader2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { formatFileSize } from "@/lib/uploads"
 import { getMaintenanceAttachmentDisplayName, getMaintenanceAttachmentType, maintenanceAttachmentTypes, type MaintenanceAttachmentType } from "@/lib/maintenance-attachments"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import { AttachmentPreviewDialog } from "@/components/ui/attachment-preview-dialog"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 
 type Attachment = {
@@ -218,53 +219,20 @@ export function MaintenanceAttachments({
         </div>
       )}
 
-      {preview ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-3 sm:items-center sm:p-4">
-          <section className="flex max-h-[calc(100vh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-lg sm:max-h-[92vh]">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <div className="min-w-0">
-                <h3 className="truncate text-sm font-semibold text-foreground">{getMaintenanceAttachmentDisplayName(preview.originalName)}</h3>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {preview.fileType} · {formatFileSize(preview.fileSize)}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <a
-                  href={`/api/attachments/${preview.id}`}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  {t("download")}
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setPreview(null)}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-border transition-colors hover:bg-accent sm:h-8 sm:min-h-0 sm:w-8 sm:min-w-0"
-                  aria-label={tCommon("close")}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-            <div className="min-h-0 flex-1 bg-background p-3">
-              {isImage(preview) ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={`/api/attachments/${preview.id}?inline=1`}
-                  alt={preview.originalName}
-                  className="mx-auto max-h-[76vh] max-w-full rounded-md object-contain"
-                />
-              ) : (
-                <iframe
-                  src={`/api/attachments/${preview.id}?inline=1`}
-                  title={preview.originalName}
-                  className="h-[76vh] w-full rounded-md border border-border bg-white"
-                />
-              )}
-            </div>
-          </section>
-        </div>
-      ) : null}
+      <AttachmentPreviewDialog
+        open={preview !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreview(null)
+        }}
+        title={preview ? getMaintenanceAttachmentDisplayName(preview.originalName) : ""}
+        subtitle={preview ? `${preview.fileType} · ${formatFileSize(preview.fileSize)}` : undefined}
+        kind={preview && isImage(preview) ? "image" : "pdf"}
+        src={preview ? `/api/attachments/${preview.id}?inline=1` : ""}
+        alt={preview?.originalName}
+        downloadHref={preview ? `/api/attachments/${preview.id}` : undefined}
+        downloadLabel={t("download")}
+        closeLabel={tCommon("close")}
+      />
 
       <AccessibleDialog open={Boolean(pendingDeleteId)} title={tCommon("deleteConfirm")} busy={Boolean(deletingId)} onClose={() => setPendingDeleteId(null)}>
             <div className="flex justify-end gap-2 p-5">
