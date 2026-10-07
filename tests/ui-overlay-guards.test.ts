@@ -42,3 +42,7 @@ test("status foreground tokens only appear inside shared ui components", () => {
 test("primary text is never faded below AA", () => {
   assert.deepEqual(findMatches(/\btext-primary\/\d+\b/g), [])
 })
+
+test("nothing imports the removed status pill", () => {
+  assert.deepEqual(findMatches(/components\/ui\/status-pill/g), [])
+})

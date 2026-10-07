@@ -36,7 +36,7 @@ import { AssetAttachments } from "@/components/assets/asset-attachments"
 import { AssetEvidenceDrawer } from "@/components/assets/asset-evidence-drawer"
 import { AssetStatusCorrectionButton } from "@/components/assets/asset-status-correction-button"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
-import { StatusPill } from "@/components/ui/status-pill"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { AssetComponentContextBanner } from "@/components/assets/asset-component-context-banner"
 import { AssetComponentsSummary } from "@/components/assets/asset-components-summary"
@@ -893,11 +893,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           <div data-testid="asset-identity-summary" className="mt-3 flex flex-col gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
             <div className="flex flex-wrap items-center gap-2">
               <div className="inline-flex items-center gap-1.5">
-                <StatusPill label={asset.status.nameTh} color={asset.status.colorCode} />
+                <StatusBadge size="xs" label={asset.status.nameTh} color={asset.status.colorCode} />
                 <AssetStateHelpPopover {...assetStatusHelp} />
               </div>
               <div className="inline-flex items-center gap-1.5">
-                <StatusPill label={asset.condition.nameTh} color={asset.condition.colorCode} />
+                <StatusBadge size="xs" label={asset.condition.nameTh} color={asset.condition.colorCode} />
                 <AssetStateHelpPopover {...assetConditionHelp} />
               </div>
             </div>
@@ -1324,7 +1324,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded-full bg-primary-soft px-2 py-1 text-xs font-medium text-primary">{t("latestTransaction")}</span>
                             <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
-                            <StatusPill label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} tone={checkout.isReturned ? "success" : "info"} />
+                            <StatusBadge size="xs" label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} tone={checkout.isReturned ? "success" : "info"} />
                           </div>
                           <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
                             <Info label={t("documentNo")} value={checkout.documentNo ?? checkout.id} compact />
@@ -1356,7 +1356,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
-                            <StatusPill label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} tone={checkout.isReturned ? "success" : "info"} />
+                            <StatusBadge size="xs" label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} tone={checkout.isReturned ? "success" : "info"} />
                           </div>
                           <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2 xl:grid-cols-4">
                             <Info label={t("documentNo")} value={checkout.documentNo ?? checkout.id} compact />

@@ -34,8 +34,8 @@ test("asset detail answers identity and responsibility in one compact first-view
 
   assert.notEqual(identityIndex, -1)
   assert.ok(identityIndex < componentContextIndex)
-  assert.match(source, /<StatusPill label=\{asset\.status\.nameTh\}/)
-  assert.match(source, /<StatusPill label=\{asset\.condition\.nameTh\}/)
+  assert.match(source, /<StatusBadge size="xs" label=\{asset\.status\.nameTh\}/)
+  assert.match(source, /<StatusBadge size="xs" label=\{asset\.condition\.nameTh\}/)
   assert.match(source, /\{currentLocationLabel \|\| "-"\}/)
   assert.match(source, /\{lifecycle\.responsibilityValue \?\? currentCustodianLabel \?\? "-"\}/)
   assert.doesNotMatch(source, /<SummaryCard/)

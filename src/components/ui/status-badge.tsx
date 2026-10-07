@@ -1,71 +1,38 @@
 import { cn } from "@/lib/utils"
+import { getStatusDotColor, getStatusTone, type StatusTone } from "@/lib/status-tone"
+import { statusBadgeVariants, statusDotVariants } from "@/components/ui/badge-variants"
 
-type StatusTone = "neutral" | "muted" | "primary" | "info" | "success" | "warning" | "danger"
+export { getStatusTone, type StatusTone } from "@/lib/status-tone"
 
-const statusToneMap: Record<string, StatusTone> = {
-  active: "success",
-  approved: "primary",
-  closed: "success",
-  cancelled: "danger",
-  completed: "success",
-  disposed: "success",
-  done: "primary",
-  exception: "warning",
-  in_progress: "warning",
-  open: "info",
-  pending: "warning",
-  planned: "info",
-  rejected: "danger",
-  reported: "info",
-  accepted: "primary",
-  waiting_parts: "warning",
-  waiting_vendor: "warning",
-  danger: "danger",
-  warning: "warning",
-  success: "success",
-  info: "info",
-  primary: "primary",
-}
-
-export function getStatusTone(status: string | null | undefined): StatusTone {
-  if (!status) return "muted"
-  return statusToneMap[status] ?? "muted"
-}
+const knownTones = new Set<StatusTone>(["neutral", "muted", "primary", "info", "success", "warning", "danger"])
 
 export function StatusBadge({
   label,
   status,
   tone,
   size = "sm",
+  color,
+  className,
 }: {
   label: string
   status?: string | null
   tone?: StatusTone | string
   size?: "xs" | "sm"
+  color?: string | null
+  className?: string
 }) {
-  const resolvedTone = (tone as StatusTone | undefined) ?? getStatusTone(status)
-  const toneClass =
-    resolvedTone === "danger"
-      ? "bg-danger-soft text-danger"
-      : resolvedTone === "warning"
-        ? "bg-warning-soft text-warning"
-        : resolvedTone === "success"
-          ? "bg-success-soft text-success"
-          : resolvedTone === "info"
-            ? "bg-info-soft text-info"
-            : resolvedTone === "primary"
-              ? "bg-primary-soft text-primary"
-              : "bg-muted text-muted-foreground"
+  const resolvedTone: StatusTone =
+    tone && knownTones.has(tone as StatusTone) ? (tone as StatusTone) : getStatusTone(status)
+  const dotColor = getStatusDotColor(color)
 
   return (
-    <span
-      className={cn(
-        "inline-flex w-fit items-center rounded-full font-medium",
-        size === "xs" ? "px-2 py-1 text-xs" : "px-3 py-1 text-sm",
-        toneClass,
-      )}
-    >
-      {label}
+    <span data-slot="status-badge" className={cn(statusBadgeVariants({ tone: resolvedTone, size }), className)}>
+      <span
+        aria-hidden="true"
+        className={statusDotVariants({ tone: resolvedTone })}
+        style={dotColor ? { backgroundColor: dotColor } : undefined}
+      />
+      <span className="min-w-0 truncate">{label}</span>
     </span>
   )
 }

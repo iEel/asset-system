@@ -5,7 +5,7 @@ import { notFound } from "next/navigation"
 import { ArrowLeft, Building2, CalendarClock, MapPin, PackageCheck, Tags } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { ContentPanel } from "@/components/ui/content-panel"
-import { StatusPill } from "@/components/ui/status-pill"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { getSafeActionLinkClasses } from "@/lib/design-system"
 import { getSessionUser } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
@@ -86,8 +86,8 @@ export default async function MyAssetDetailPage({ params }: MyAssetDetailPagePro
             <h2 className="mt-1 break-words text-xl font-semibold text-foreground">{asset.assetTag}</h2>
             <p className="mt-1 break-words text-sm text-foreground">{asset.name}</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <StatusPill label={asset.status.nameTh} color={asset.status.colorCode} />
-              <StatusPill label={asset.condition.nameTh} color={asset.condition.colorCode} />
+              <StatusBadge size="xs" label={asset.status.nameTh} color={asset.status.colorCode} />
+              <StatusBadge size="xs" label={asset.condition.nameTh} color={asset.condition.colorCode} />
             </div>
           </div>
         </div>

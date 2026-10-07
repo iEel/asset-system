@@ -17,23 +17,15 @@ test("app shell uses the agreed Navy and Electric Blue visual tokens", async () 
   assert.equal(manifest().theme_color, "#0F172A")
 })
 
-test("shared status pill owns semantic tones and replaces duplicated Asset Detail pills", () => {
-  const sharedPill = readSource("src/components/ui/status-pill.tsx")
+test("one shared status badge replaces the old status pill", () => {
   const assetDetail = readSource("src/app/[locale]/(dashboard)/assets/[id]/page.tsx")
   const myAssets = readSource("src/app/[locale]/(dashboard)/my-assets/page.tsx")
   const myAssetDetail = readSource("src/app/[locale]/(dashboard)/my-assets/[id]/page.tsx")
 
-  assert.match(sharedPill, /export type StatusPillTone/)
-  assert.match(sharedPill, /bg-success-soft text-success/)
-  assert.match(sharedPill, /bg-info-soft text-info/)
-  assert.match(sharedPill, /bg-warning-soft text-warning/)
-  assert.match(sharedPill, /bg-danger-soft text-danger/)
-  assert.match(assetDetail, /import \{ StatusPill \} from "@\/components\/ui\/status-pill"/)
-  assert.match(myAssets, /import \{ StatusPill \} from "@\/components\/ui\/status-pill"/)
-  assert.match(myAssetDetail, /import \{ StatusPill \} from "@\/components\/ui\/status-pill"/)
-  assert.doesNotMatch(assetDetail, /function StatusPill/)
-  assert.doesNotMatch(myAssets, /function StatusPill/)
-  assert.doesNotMatch(myAssetDetail, /function StatusPill/)
+  for (const source of [assetDetail, myAssets, myAssetDetail]) {
+    assert.match(source, /import \{ StatusBadge \} from "@\/components\/ui\/status-badge"/)
+    assert.doesNotMatch(source, /status-pill|function StatusPill|function StatusBadge/)
+  }
 })
 
 test("empty-state link actions remain thumb-friendly on mobile", () => {
