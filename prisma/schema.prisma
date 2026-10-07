@@ -810,6 +810,7 @@ model MaintenanceTicket {
   vendorId          String?
   vendor            Supplier?        @relation(fields: [vendorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   repairStatus      String           @default("open") @db.NVarChar(30)
+  outcome           String?          @db.NVarChar(20)
   laborCost         Decimal?         @db.Decimal(18, 2)
   partsCost         Decimal?         @db.Decimal(18, 2)
   repairCost        Decimal?         @db.Decimal(18, 2)
