@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db"
 
-export const checkinReturnStatusNames = ["Ready", "Pending Repair", "Pending Disposal"] as const
+export const checkinReturnStatusNames = ["Ready", "Under Maintenance", "Pending Disposal"] as const
 
 export async function getRequiredAssetStatusId(name: string) {
   const status = await prisma.assetStatus.findFirst({

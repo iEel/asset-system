@@ -13,6 +13,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
+import { toLocalDateInputValue } from "@/lib/local-date"
 
 type Option = { id: string; label: string; disabled?: boolean }
 type StatusOption = Option & { name?: string }
@@ -81,13 +82,12 @@ export function CheckinForm({
   const [photosAfter, setPhotosAfter] = useState<QueuedPhoto[]>([])
   const [returnSignatureDataUrl, setReturnSignatureDataUrl] = useState<string | null>(null)
   const [receiveSignatureDataUrl, setReceiveSignatureDataUrl] = useState<string | null>(null)
-  const [createMaintenance, setCreateMaintenance] = useState(false)
   const [returnByEmployeeId, setReturnByEmployeeId] = useState("")
   const [receiveByEmployeeId, setReceiveByEmployeeId] = useState("")
   const initialCheckout = activeCheckouts.find((checkout) => checkout.id === initialCheckoutId && !checkout.disabled)
   const [values, setValues] = useState({
     checkoutId: initialCheckout?.id ?? "",
-    returnDate: new Date().toISOString().slice(0, 10),
+    returnDate: toLocalDateInputValue(),
     returnBy: "",
     receiveBy: "",
     conditionAfter: "",
@@ -96,7 +96,6 @@ export function CheckinForm({
     missingAccessories: "",
     damageNote: "",
     remark: "",
-    maintenanceReportedById: "",
     maintenanceProblem: "",
   })
 
@@ -109,8 +108,8 @@ export function CheckinForm({
   const selectedReturnBy = employees.find((employee) => employee.id === returnByEmployeeId)
   const selectedReceiver = employees.find((employee) => employee.id === receiveByEmployeeId)
   const selectedLocation = locations.find((location) => location.id === values.nextLocationId)
-  const pendingRepairStatus = statuses.find((status) => status.name === "Pending Repair")
-  const canCreateMaintenance = selectedStatus?.name === "Pending Repair"
+  const repairStatus = statuses.find((status) => status.name === "Under Maintenance")
+  const sendsToRepair = selectedStatus?.name === "Under Maintenance"
   const hasActiveCheckoutRecords = activeCheckouts.length > 0
   const hasActiveCheckouts = activeCheckouts.some((checkout) => !checkout.disabled)
   const activeCheckoutOptions = activeCheckouts.map((checkout) => ({
@@ -157,10 +156,6 @@ export function CheckinForm({
 
   function setField(field: string, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
-    if (field === "nextStatusId") {
-      const status = statuses.find((item) => item.id === value)
-      if (status?.name !== "Pending Repair") setCreateMaintenance(false)
-    }
   }
 
   function setEmployeeField(field: "returnBy" | "receiveBy", employeeId: string) {
@@ -174,15 +169,8 @@ export function CheckinForm({
     setValues((current) => ({
       ...current,
       damageNote: value,
-      nextStatusId: value.trim() && !current.nextStatusId && pendingRepairStatus ? pendingRepairStatus.id : current.nextStatusId,
+      nextStatusId: value.trim() && !current.nextStatusId && repairStatus ? repairStatus.id : current.nextStatusId,
     }))
-  }
-
-  function handleCreateMaintenanceChange(checked: boolean) {
-    setCreateMaintenance(checked)
-    if (checked && returnByEmployeeId && !values.maintenanceReportedById) {
-      setField("maintenanceReportedById", returnByEmployeeId)
-    }
   }
 
   function addPhoto(file: File | null) {
@@ -243,10 +231,6 @@ export function CheckinForm({
       toast.error(t("completeRequiredFields"))
       return
     }
-    if (createMaintenance && canCreateMaintenance && !values.maintenanceReportedById) {
-      toast.error(t("selectMaintenanceReportedBy"))
-      return
-    }
     setReviewOpen(true)
   }
 
@@ -264,7 +248,6 @@ export function CheckinForm({
     }
     body.set("returnByEmployeeId", returnByEmployeeId)
     body.set("receiveByEmployeeId", receiveByEmployeeId)
-    body.set("createMaintenance", String(createMaintenance && canCreateMaintenance))
     body.set("photoAfterLabels", JSON.stringify(photosAfter.map((photo) => photo.label)))
     for (const photo of photosAfter) {
       body.append("photoAfterFiles", photo.file)
@@ -472,7 +455,7 @@ export function CheckinForm({
           <Select label={t("nextStatus")} value={values.nextStatusId} required onChange={(value) => setField("nextStatusId", value)}>
             <option value="">{t("selectStatus")}</option>
             {statuses.map((status) => (
-              <option key={status.id} value={status.id}>{status.label}</option>
+              <option key={status.id} value={status.id}>{status.name === "Under Maintenance" ? t("sendToRepairOption") : status.label}</option>
             ))}
           </Select>
           <Select label={t("nextLocation")} value={values.nextLocationId} required onChange={(value) => setField("nextLocationId", value)}>
@@ -559,45 +542,20 @@ export function CheckinForm({
             />
           </div>
 
-          <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
-            <label className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                checked={createMaintenance}
-                disabled={!canCreateMaintenance}
-                onChange={(event) => handleCreateMaintenanceChange(event.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
-              />
-              <span>
-                <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Wrench className="h-4 w-4" />
-                  {t("createMaintenance")}
-                </span>
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  {canCreateMaintenance ? t("createMaintenanceHelp") : t("createMaintenanceDisabledHelp")}
-                </span>
-              </span>
-            </label>
-            {createMaintenance && canCreateMaintenance && (
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <SearchableSelect
-                  label={t("maintenanceReportedBy")}
-                  value={values.maintenanceReportedById}
-                  required
-                  options={employees}
-                  placeholder={t("selectMaintenanceReportedBy")}
-                  searchPlaceholder={tCommon("searchSelectPlaceholder")}
-                  emptyLabel={tCommon("searchSelectNoResults")}
-                  onChange={(value) => setField("maintenanceReportedById", value)}
-                />
-                <div className="md:col-span-2">
-                  <Field label={t("maintenanceProblem")}>
-                    <textarea value={values.maintenanceProblem} onChange={(event) => setField("maintenanceProblem", event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder={t("maintenanceProblemPlaceholder")} />
-                  </Field>
-                </div>
+          {sendsToRepair ? (
+            <div className="md:col-span-2 rounded-md border border-warning/30 bg-warning/5 p-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Wrench className="h-4 w-4" />
+                {t("sendToRepairTitle")}
+              </p>
+              <p className="mt-1 text-xs text-warning-foreground">{t("sendToRepairHelp")}</p>
+              <div className="mt-3">
+                <Field label={t("maintenanceProblem")}>
+                  <textarea value={values.maintenanceProblem} onChange={(event) => setField("maintenanceProblem", event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder={t("maintenanceProblemPlaceholder")} />
+                </Field>
               </div>
-            )}
-          </div>
+            </div>
+          ) : null}
 
           <div className="md:col-span-2 flex justify-end">
             <button type="submit" disabled={saving} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto">

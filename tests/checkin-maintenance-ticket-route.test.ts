@@ -4,8 +4,8 @@ import * as nodeModule from "node:module"
 import { test } from "node:test"
 import { pathToFileURL } from "node:url"
 
-type CheckinState = { calls: Array<{ call: string; args: Record<string, unknown> }> }
-const state: CheckinState = { calls: [] }
+type CheckinState = { calls: Array<{ call: string; args: Record<string, unknown> }>; openRecords: number }
+const state: CheckinState = { calls: [], openRecords: 0 }
 Object.assign(globalThis, { __checkinTicketState: state })
 
 const mockedModuleSources = new Map<string, string>([
@@ -58,8 +58,12 @@ const mockedModuleSources = new Map<string, string>([
               return { id: "co-1", assetId: "asset-1", handoverMode: "temporary_loan", custodianId: "emp-5", asset: { status: { name: "Checked Out" } } }
             }
             if (name === "assetCondition") return { name: "Damaged", isActive: true }
-            if (name === "assetStatus") return { id: "status:Pending Repair", name: "Pending Repair" }
+            if (name === "assetStatus") {
+              const id = args?.where?.id ?? "status:Ready"
+              return { id, name: String(id).replace("status:", "") }
+            }
             if (method === "updateMany") return { count: 1 }
+            if (name === "maintenanceTicket" && method === "count") return state().openRecords
             if (method === "count") return 0
             if (method === "findMany") return []
             if (method === "findFirst" || method === "findUnique") return null
@@ -103,27 +107,52 @@ const route = await import(pathToFileURL("src/app/api/assets/[id]/checkin/route.
   POST(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response>
 }
 
-test("a repair ticket opened while returning a damaged asset can move through the normal repair workflow", async () => {
-  const response = await route.POST(
-    new Request("http://localhost/api/assets/asset-1/checkin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        checkoutId: "co-1",
-        returnDate: "2026-10-07",
-        returnBy: "สมชาย",
-        receiveBy: "สมหญิง",
-        conditionAfter: "condition-damaged",
-        nextStatusId: "status:Pending Repair",
-        nextLocationId: "loc-1",
-        createMaintenance: true,
-        maintenanceReportedById: "emp-1",
-      }),
+function checkinRequest(nextStatusId: string, extra: Record<string, unknown> = {}) {
+  return new Request("http://localhost/api/assets/asset-1/checkin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      checkoutId: "co-1",
+      returnDate: "2026-10-07",
+      returnBy: "สมชาย",
+      receiveBy: "สมหญิง",
+      conditionAfter: "condition-damaged",
+      damageNote: "จอแตก",
+      nextStatusId,
+      nextLocationId: "loc-1",
+      ...extra,
     }),
-    { params: Promise.resolve({ id: "asset-1" }) },
-  )
+  })
+}
+
+const context = { params: Promise.resolve({ id: "asset-1" }) }
+
+test("returning an asset as 'send for repair' opens an unfinished repair record", async () => {
+  state.calls = []
+  state.openRecords = 0
+  const response = await route.POST(checkinRequest("status:Under Maintenance"), context)
 
   assert.equal(response.status, 201, await response.clone().text())
   const ticket = state.calls.find(({ call }) => call === "maintenanceTicket.create")?.args.data as Record<string, unknown>
-  assert.equal(ticket.repairStatus, "reported", "the schema default 'open' can only jump to closed, so the ticket must start as reported")
+  assert.equal(ticket.repairStatus, "in_progress")
+  assert.equal(ticket.reportedById, "emp-1")
+  assert.match(String(ticket.problem), /จอแตก/)
+})
+
+test("an asset that already has an unfinished record does not get a second one", async () => {
+  state.calls = []
+  state.openRecords = 1
+  const response = await route.POST(checkinRequest("status:Under Maintenance"), context)
+
+  assert.equal(response.status, 201, await response.clone().text())
+  assert.equal(state.calls.some(({ call }) => call === "maintenanceTicket.create"), false)
+  state.openRecords = 0
+})
+
+test("returning to Ready does not create a repair record", async () => {
+  state.calls = []
+  const response = await route.POST(checkinRequest("status:Ready"), context)
+
+  assert.equal(response.status, 201, await response.clone().text())
+  assert.equal(state.calls.some(({ call }) => call === "maintenanceTicket.create"), false)
 })

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server"
-import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
@@ -9,6 +8,8 @@ import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
 import { getAssetOperationConditionError, getCheckinHandoverStatusError } from "@/lib/asset-lifecycle-policy"
 import { isValidCheckinReturnStatus } from "@/lib/asset-status-flow"
 import { generateCheckinDocumentNo } from "@/lib/operation-document-number"
+import { openRepairRecordWhere } from "@/lib/repair-record-policy"
+import { generateRepairNo } from "@/lib/repair-record-service"
 import {
   createAssetTransactionSnapshot,
   serializeAssetComponentTransactionSnapshots,
@@ -62,10 +63,16 @@ export async function POST(request: NextRequest, context: CheckinContext) {
       where: { id: input.nextStatusId },
       select: { id: true, name: true },
     })
-    if (input.createMaintenance) {
+    // "Send for repair" is the Under Maintenance return status; it opens the repair record
+    // in the same transaction so the asset never sits in a repair status without one.
+    const sendsToRepair = returnStatus?.name === "Under Maintenance"
+    const repairReporterId = sendsToRepair
+      ? user.employeeId ?? input.receiveByEmployeeId ?? input.maintenanceReportedById ?? null
+      : null
+    if (sendsToRepair) {
       requirePermission(user, "maintenance", "create")
-      if (returnStatus?.name !== "Pending Repair") {
-        return NextResponse.json({ error: "Maintenance ticket can be created only when the next status is Pending Repair" }, { status: 400 })
+      if (!repairReporterId) {
+        return NextResponse.json({ code: "MAINTENANCE_REPORTER_REQUIRED", error: "Select who is recording this repair" }, { status: 400 })
       }
     }
 
@@ -212,37 +219,39 @@ export async function POST(request: NextRequest, context: CheckinContext) {
         captureSnapshots: true,
       })
 
-      if (input.createMaintenance) {
-        const repairNo = await generateRepairNo(tx)
-        const problem = input.maintenanceProblem ?? buildMaintenanceProblem(input)
-        const ticket = await tx.maintenanceTicket.create({
-          data: {
-            repairNo,
-            assetId: id,
-            problem,
-            reportedById: input.maintenanceReportedById!,
-            reportedDate: input.returnDate,
-            repairType: "internal",
-            repairStatus: "reported",
-            createdBy: user.id,
-            updatedBy: user.id,
-          },
-          select: { id: true },
-        })
+      if (sendsToRepair && repairReporterId) {
+        const openRecords = await tx.maintenanceTicket.count({ where: { ...openRepairRecordWhere, assetId: id } })
+        if (openRecords === 0) {
+          const problem = input.maintenanceProblem ?? buildMaintenanceProblem(input)
+          const ticket = await tx.maintenanceTicket.create({
+            data: {
+              repairNo: await generateRepairNo(tx, new Date()),
+              assetId: id,
+              problem,
+              reportedById: repairReporterId,
+              reportedDate: input.returnDate,
+              repairType: "internal",
+              repairStatus: "in_progress",
+              createdBy: user.id,
+              updatedBy: user.id,
+            },
+            select: { id: true },
+          })
 
-        await tx.assetMovement.create({
-          data: {
-            assetId: id,
-            movementType: "maintenance_create",
-            fromValue: input.nextStatusId,
-            toValue: input.nextStatusId,
-            reason: problem,
-            referenceType: "maintenance",
-            referenceId: ticket.id,
-            performedBy: user.id,
-            remark: "created_from_checkin",
-          },
-        })
+          await tx.assetMovement.create({
+            data: {
+              assetId: id,
+              movementType: "maintenance_create",
+              fromValue: beforeAsset.statusId,
+              toValue: input.nextStatusId,
+              reason: problem,
+              referenceType: "maintenance",
+              referenceId: ticket.id,
+              performedBy: user.id,
+              remark: "created_from_checkin",
+            },
+          })
+        }
       }
 
       const beforeSnapshot = createAssetTransactionSnapshot({
@@ -332,7 +341,6 @@ async function parseCheckinRequest(request: NextRequest) {
       nextStatusId: requiredFormText(formData, "nextStatusId"),
       nextLocationId: requiredFormText(formData, "nextLocationId"),
       remark: optionalFormText(formData, "remark"),
-      createMaintenance: requiredFormText(formData, "createMaintenance"),
       maintenanceReportedById: optionalFormText(formData, "maintenanceReportedById"),
       maintenanceProblem: optionalFormText(formData, "maintenanceProblem"),
     }),
@@ -364,25 +372,8 @@ function buildMaintenanceProblem(input: {
   remark?: string | null
 }) {
   return [
-    input.damageNote ? `Damage: ${input.damageNote}` : null,
-    input.missingAccessories ? `Missing accessories: ${input.missingAccessories}` : null,
-    input.remark ? `Check-in remark: ${input.remark}` : null,
-  ].filter(Boolean).join("\n") || "Created from asset check-in"
-}
-
-async function generateRepairNo(tx: Prisma.TransactionClient) {
-  const now = new Date()
-  const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
-  const count = await tx.maintenanceTicket.count({
-    where: {
-      createdAt: {
-        gte: start,
-        lt: end,
-      },
-    },
-  })
-
-  return `MT-${datePart}-${String(count + 1).padStart(4, "0")}`
+    input.damageNote ? `ความเสียหาย: ${input.damageNote}` : null,
+    input.missingAccessories ? `อุปกรณ์ไม่ครบ: ${input.missingAccessories}` : null,
+    input.remark ? `หมายเหตุตอนรับคืน: ${input.remark}` : null,
+  ].filter(Boolean).join("\n") || "ส่งซ่อมตอนรับคืน"
 }
