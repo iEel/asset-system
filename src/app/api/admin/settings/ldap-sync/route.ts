@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAuth, requirePermission } from "@/lib/auth-utils"
+import { hasRole, requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/db"
 import { applyLdapSync, loadLdapSettings, previewLdapSync } from "@/lib/ldap-sync"
@@ -76,6 +76,10 @@ export async function POST(request: NextRequest) {
         nextRunAt: scheduledDecision.nextRunAt,
         result,
       })
+    }
+
+    if (action === "apply" && user && !hasRole(user, "system_admin")) {
+      return NextResponse.json({ error: "Forbidden: only system_admin can apply LDAP sync" }, { status: 403 })
     }
 
     const result = action === "apply"

@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { SystemSettingsForm } from "@/components/admin/system-settings-form"
+import { maskSecretSystemSettings } from "@/lib/system-setting-secrets"
 import { systemSettingDefaults } from "@/lib/system-setting-defaults"
 import { buildLdapSyncHistoryItems } from "@/lib/system-log-history"
 
@@ -57,11 +58,11 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
       </div>
 
       <SystemSettingsForm
-        settings={settings.map((setting) => ({
+        settings={maskSecretSystemSettings(settings.map((setting) => ({
           key: setting.key,
           value: setting.value,
           description: setting.description,
-        }))}
+        })))}
         categories={categories}
         defaultRoleOptions={defaultRoleOptions}
         ldapSyncHistory={ldapSyncHistory}

@@ -5,6 +5,12 @@ import { errorResponse } from "@/lib/api-response"
 import { logAudit } from "@/lib/audit-log"
 import { knownSystemSettingKeys, systemSettingDefaults } from "@/lib/system-setting-defaults"
 import { systemSettingsUpdateSchema } from "@/lib/validations/system-settings"
+import {
+  getRestrictedSettingChangeError,
+  maskSecretSystemSettings,
+  redactSecretSettingValues,
+  resolveSubmittedSecretSettings,
+} from "@/lib/system-setting-secrets"
 
 export async function GET() {
   try {
@@ -31,7 +37,7 @@ export async function GET() {
           ].sort((a, b) => a.key.localeCompare(b.key))
         : existingSettings
 
-    return NextResponse.json(settings)
+    return NextResponse.json(maskSecretSystemSettings(settings))
   } catch (error) {
     return errorResponse(error)
   }
@@ -49,18 +55,29 @@ export async function PUT(request: NextRequest) {
       select: { id: true, key: true, value: true },
     })
     const existingByKey = new Map(existingSettings.map((setting) => [setting.key, setting]))
+    const submittedSettings = resolveSubmittedSecretSettings(
+      input.settings,
+      new Map(existingSettings.map((setting) => [setting.key, setting.value])),
+    )
     const missingKeys = keys.filter((key) => !existingByKey.has(key) && !knownSystemSettingKeys.has(key))
     if (missingKeys.length > 0) {
       return NextResponse.json({ error: `Unknown settings: ${missingKeys.join(", ")}` }, { status: 400 })
     }
 
-    const changedSettings = input.settings.filter((setting) => {
+    const changedSettings = submittedSettings.filter((setting) => {
       const existing = existingByKey.get(setting.key)
       const defaultSetting = systemSettingDefaults.find((item) => item.key === setting.key)
       return (existing?.value ?? defaultSetting?.value) !== setting.value
     })
     if (changedSettings.length === 0) {
       return NextResponse.json({ updated: 0 })
+    }
+    const restrictedChangeError = getRestrictedSettingChangeError(
+      changedSettings.map((setting) => setting.key),
+      user.roles,
+    )
+    if (restrictedChangeError) {
+      return NextResponse.json({ error: restrictedChangeError }, { status: 403 })
     }
 
     await prisma.$transaction(
@@ -87,13 +104,13 @@ export async function PUT(request: NextRequest) {
       action: "update",
       module: "setting",
       recordId: "system_settings",
-      oldValue: Object.fromEntries(
+      oldValue: redactSecretSettingValues(Object.fromEntries(
         changedSettings.map((setting) => {
           const defaultSetting = systemSettingDefaults.find((item) => item.key === setting.key)
           return [setting.key, existingByKey.get(setting.key)?.value ?? defaultSetting?.value]
         })
-      ),
-      newValue: Object.fromEntries(changedSettings.map((setting) => [setting.key, setting.value])),
+      )),
+      newValue: redactSecretSettingValues(Object.fromEntries(changedSettings.map((setting) => [setting.key, setting.value]))),
     })
 
     return NextResponse.json({ updated: changedSettings.length })
