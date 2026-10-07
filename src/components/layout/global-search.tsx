@@ -17,6 +17,9 @@ import {
   X,
 } from "lucide-react"
 
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
+import { StatusBadge } from "@/components/ui/status-badge"
+
 type GlobalSearchResult = {
   id: string
   type: "asset" | "employee" | "supplier" | "company" | "branch" | "location" | "maintenance" | "audit" | "disposal"
@@ -37,18 +40,9 @@ export function GlobalSearch() {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const containerRef = useRef<HTMLDivElement | null>(null)
+  const anchorRef = useRef<HTMLDivElement | null>(null)
   const trimmedQuery = query.trim()
   const canSearch = trimmedQuery.length >= 2
-
-  useEffect(() => {
-    function handlePointerDown(event: MouseEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false)
-    }
-
-    document.addEventListener("mousedown", handlePointerDown)
-    return () => document.removeEventListener("mousedown", handlePointerDown)
-  }, [])
 
   useEffect(() => {
     if (!canSearch) return
@@ -125,114 +119,121 @@ export function GlobalSearch() {
   }
 
   return (
-    <div ref={containerRef} className="relative hidden min-w-0 max-w-full lg:block">
-      <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-      <input
-        type="search"
-        value={query}
-        onChange={(event) => handleQueryChange(event.target.value)}
-        onFocus={() => setOpen(true)}
-        onKeyDown={handleKeyDown}
-        placeholder={t("placeholder")}
-        className="h-9 w-[min(28rem,36vw)] min-w-0 rounded-md border border-border bg-background pl-10 pr-10 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-        role="combobox"
-        aria-label={t("label")}
-        aria-expanded={showPanel}
-        aria-autocomplete="list"
-        aria-controls="global-search-results"
-      />
-      <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center">
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        ) : query ? (
-          <button
-            type="button"
-            onClick={() => {
-              setQuery("")
-              setResults([])
-              setOpen(false)
-            }}
-            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-            aria-label={t("clear")}
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        ) : null}
-      </div>
-
-      {showPanel ? (
-        <div
-          id="global-search-results"
-          className="absolute left-0 top-full z-50 mt-2 w-[min(36rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
-        >
-          {!canSearch ? (
-            <div className="px-4 py-3 text-sm text-muted-foreground">{t("minChars")}</div>
-          ) : loading && results.length === 0 ? (
-            <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {t("loading")}
-            </div>
-          ) : results.length === 0 ? (
-            <div className="px-4 py-3 text-sm text-muted-foreground">{t("noResults")}</div>
-          ) : (
-            <div className="max-h-[26rem] overflow-y-auto py-1">
-              {results.map((result, index) => {
-                const selected = index === selectedIndex
-
-                return (
-                  <button
-                    key={`${result.type}-${result.id}`}
-                    type="button"
-                    onMouseEnter={() => setSelectedIndex(index)}
-                    onClick={() => openResult(result)}
-                    className={[
-                      "flex w-full min-w-0 gap-3 px-4 py-3 text-left transition-colors",
-                      selected ? "bg-accent" : "hover:bg-accent/60",
-                    ].join(" ")}
-                  >
-                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">
-                      {getResultIcon(result.type)}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex min-w-0 flex-wrap items-center gap-2">
-                        <span className="min-w-0 truncate font-medium text-foreground">{result.title}</span>
-                        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                          {result.typeLabel}
-                        </span>
-                        <span
-                          className={[
-                            "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
-                            result.badge.label === result.typeLabel ? "hidden" : "",
-                          ].join(" ")}
-                          style={
-                            result.badge.colorCode
-                              ? { backgroundColor: `${result.badge.colorCode}1A`, color: result.badge.colorCode }
-                              : undefined
-                          }
-                        >
-                          {result.badge.label}
-                        </span>
-                      </span>
-                      <span className="mt-0.5 block truncate text-sm text-foreground">{result.subtitle}</span>
-                      <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        {result.metadata.slice(0, 3).map((item) => (
-                          <span key={`${result.id}-${item.label}`} className="min-w-0 truncate">
-                            {item.label}: {item.value}
-                          </span>
-                        ))}
-                      </span>
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-          {results.length > 0 ? (
-            <div className="border-t border-border px-4 py-2 text-xs text-muted-foreground">{t("keyboardHint")}</div>
-          ) : null}
+    <Popover
+      open={showPanel}
+      onOpenChange={(next) => {
+        if (!next) setOpen(false)
+      }}
+    >
+      <PopoverAnchor asChild>
+        <div ref={anchorRef} className="relative hidden min-w-0 max-w-full lg:block">
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => handleQueryChange(event.target.value)}
+            onFocus={() => setOpen(true)}
+            onKeyDown={handleKeyDown}
+            placeholder={t("placeholder")}
+            className="h-9 w-[min(28rem,36vw)] min-w-0 rounded-md border border-border bg-background pl-10 pr-10 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            role="combobox"
+            aria-label={t("label")}
+            aria-expanded={showPanel}
+            aria-autocomplete="list"
+            aria-controls="global-search-results"
+            aria-activedescendant={showPanel && selectedResult ? `global-search-option-${selectedIndex}` : undefined}
+          />
+          <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center">
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            ) : query ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("")
+                  setResults([])
+                  setOpen(false)
+                }}
+                className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                aria-label={t("clear")}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+          </div>
         </div>
-      ) : null}
-    </div>
+      </PopoverAnchor>
+      <PopoverContent
+        id="global-search-results"
+        align="start"
+        sideOffset={8}
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => event.preventDefault()}
+        onInteractOutside={(event) => {
+          if (anchorRef.current?.contains(event.target as Node)) event.preventDefault()
+        }}
+        className="w-[min(36rem,calc(100vw-2rem))] overflow-hidden p-0"
+      >
+        {!canSearch ? (
+          <div className="px-4 py-3 text-sm text-muted-foreground">{t("minChars")}</div>
+        ) : loading && results.length === 0 ? (
+          <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {t("loading")}
+          </div>
+        ) : results.length === 0 ? (
+          <div className="px-4 py-3 text-sm text-muted-foreground">{t("noResults")}</div>
+        ) : (
+          <ul role="listbox" aria-label={t("label")} className="max-h-[26rem] overflow-y-auto py-1">
+            {results.map((result, index) => {
+              const selected = index === selectedIndex
+
+              return (
+                <li
+                  key={`${result.type}-${result.id}`}
+                  id={`global-search-option-${index}`}
+                  role="option"
+                  aria-selected={selected}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  onClick={() => openResult(result)}
+                  className={[
+                    "flex w-full min-w-0 cursor-pointer gap-3 px-4 py-3 text-left transition-colors",
+                    selected ? "bg-accent" : "hover:bg-accent/60",
+                  ].join(" ")}
+                >
+                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">
+                    {getResultIcon(result.type)}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="min-w-0 truncate font-medium text-foreground">{result.title}</span>
+                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        {result.typeLabel}
+                      </span>
+                      {result.badge.label !== result.typeLabel ? (
+                        <StatusBadge size="xs" tone="neutral" label={result.badge.label} color={result.badge.colorCode} />
+                      ) : null}
+                    </span>
+                    <span className="mt-0.5 block truncate text-sm text-foreground">{result.subtitle}</span>
+                    <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      {result.metadata.slice(0, 3).map((item) => (
+                        <span key={`${result.id}-${item.label}`} className="min-w-0 truncate">
+                          {item.label}: {item.value}
+                        </span>
+                      ))}
+                    </span>
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        {results.length > 0 ? (
+          <div className="border-t border-border px-4 py-2 text-xs text-muted-foreground">{t("keyboardHint")}</div>
+        ) : null}
+      </PopoverContent>
+    </Popover>
   )
 }
 
