@@ -39,14 +39,15 @@ test("asset register column presets cover focused work modes and sanitize stored
 
 test("asset register table exposes persisted column presets", () => {
   const source = registerTableSource()
+  const picker = readFileSync("src/components/assets/asset-register-column-picker.tsx", "utf8")
 
   assert.match(source, /assetRegisterColumnStorageKey/)
   assert.match(source, /window\.localStorage\.getItem\(assetRegisterColumnStorageKey\)/)
   assert.match(source, /window\.localStorage\.setItem\([\s\S]*assetRegisterColumnStorageKey/)
-  assert.match(source, /applyColumnPreset/)
-  assert.match(source, /columnPresetOperations/)
-  assert.match(source, /columnPresetAccounting/)
-  assert.match(source, /columnPresetAudit/)
+  assert.match(source, /onApplyPreset=\{applyColumnPreset\}/)
+  assert.match(picker, /columnPresetOperations/)
+  assert.match(picker, /columnPresetAccounting/)
+  assert.match(picker, /columnPresetAudit/)
 })
 
 test("asset register keeps bulk controls conditional and relies on the shared view-memory helpers", () => {
@@ -184,9 +185,7 @@ test("asset register uses mutually exclusive responsive helper boundaries", () =
 })
 
 test("asset register keeps table utility controls out of the mobile-first path", () => {
-  const source = registerTableSource()
-
-  assert.match(source, /hidden min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end md:flex/)
+  assert.match(registerTableSource(), /<div className="hidden items-center gap-2 md:flex">\s*<AssetRegisterColumnPicker/)
 })
 
 test("asset register import wizard starts collapsed and expands on demand", () => {

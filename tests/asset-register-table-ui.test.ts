@@ -43,3 +43,53 @@ test("row action copy exists in Thai and English", () => {
     assert.equal(typeof messages(locale).rowActionsMenu, "string", locale)
   }
 })
+
+const sortMenu = () => read("src/components/assets/asset-register-sort-menu.tsx")
+const columnPicker = () => read("src/components/assets/asset-register-column-picker.tsx")
+const exportMenu = () => read("src/components/assets/asset-register-export-menu.tsx")
+
+test("sorting is a radio menu that applies through the shared navigation", () => {
+  const source = sortMenu()
+
+  assert.match(source, /<DropdownMenuRadioGroup value=\{activeKey \?\? ""\}/)
+  assert.match(source, /navigate\(\{ sort: option\.sort, direction: option\.direction \}\)/)
+  assert.match(source, /min-h-11/)
+})
+
+test("the column picker keeps presets and at least one column, and stays open while toggling", () => {
+  const source = columnPicker()
+
+  assert.match(source, /<DropdownMenuRadioGroup value=\{activePreset\}/)
+  assert.match(source, /<DropdownMenuCheckboxItem/)
+  assert.match(source, /disabled=\{checked && visibleColumns\.size === 1\}/)
+  assert.match(source, /onSelect=\{\(event\) => event\.preventDefault\(\)\}/)
+  for (const key of ["columnPresetAll", "columnPresetOperations", "columnPresetAccounting", "columnPresetAudit"]) {
+    assert.match(source, new RegExp(key))
+  }
+})
+
+test("export choices are plain download links in a menu", () => {
+  const source = exportMenu()
+
+  assert.match(source, /<a href=\{exportHref\}/)
+  assert.match(source, /<a href=\{templateHref\}/)
+})
+
+test("the table summary uses the new menus, the shared pagination and announces loading", () => {
+  const source = table()
+
+  assert.match(source, /data-asset-register-summary/)
+  assert.match(source, /<AssetRegisterSortMenu \/>/)
+  assert.match(source, /<div className="hidden items-center gap-2 md:flex">[\s\S]*?<AssetRegisterColumnPicker[\s\S]*?<AssetRegisterExportMenu/)
+  assert.match(source, /<Pagination\b/)
+  assert.match(source, /aria-busy=\{isPending\}/)
+  assert.doesNotMatch(source, /function PaginationLink|downloadFile/)
+})
+
+test("summary and sort copy exists in Thai and English", () => {
+  const keys = ["registerRange", "sortMenu", "sortNewest", "sortOldest", "sortTagAsc", "sortTagDesc", "sortNameAsc", "sortPurchaseDateDesc", "sortPriceDesc", "exportMenu"]
+  for (const locale of ["th", "en"] as const) {
+    assert.deepEqual(keys.filter((key) => typeof messages(locale)[key] !== "string"), [], locale)
+  }
+  assert.equal(messages("th").registerRange, "{from}–{to} จาก {total} รายการ")
+})

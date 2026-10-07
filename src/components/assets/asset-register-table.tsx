@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Columns3, Copy, Download, Edit, Eye, FileDown, FileSpreadsheet, ImageIcon, Loader2, Printer, X } from "lucide-react"
+import { useLocale, useTranslations } from "next-intl"
+import { Copy, Download, Edit, Eye, ImageIcon, Loader2, Printer, X } from "lucide-react"
 import { toast } from "sonner"
 import { formatCurrency } from "@/lib/utils"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
@@ -19,6 +20,11 @@ import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { AssetRegisterTransactionMenu } from "@/components/assets/asset-register-action-menus"
 import { AssetRegisterRowActions, type AssetRegisterRowPermissions } from "@/components/assets/asset-register-row-actions"
+import { useAssetRegisterNavigation } from "@/components/assets/asset-register-navigation"
+import { AssetRegisterSortMenu } from "@/components/assets/asset-register-sort-menu"
+import { AssetRegisterColumnPicker } from "@/components/assets/asset-register-column-picker"
+import { AssetRegisterExportMenu } from "@/components/assets/asset-register-export-menu"
+import { Pagination } from "@/components/ui/pagination"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import type { AssetRegisterTransaction } from "@/lib/asset-operation-policy"
@@ -27,7 +33,6 @@ import {
   assetRegisterColumnOrder,
   assetRegisterColumnPresets,
   assetRegisterColumnStorageKey,
-  assetRegisterColumnsMatchPreset,
   normalizeAssetRegisterColumns,
   type AssetRegisterColumnKey,
   type AssetRegisterColumnPresetKey,
@@ -185,6 +190,15 @@ export function AssetRegisterTable({
   permissions,
   labels,
 }: AssetRegisterTableProps) {
+  const t = useTranslations("asset")
+  const tCommon = useTranslations("common")
+  const numberLocale = useLocale() === "th" ? "th-TH" : "en-US"
+  const { isPending } = useAssetRegisterNavigation()
+  const rangeLabel = t("registerRange", {
+    from: fromRow.toLocaleString(numberLocale),
+    to: toRow.toLocaleString(numberLocale),
+    total: total.toLocaleString(numberLocale),
+  })
   const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [visibleColumns, setVisibleColumns] = useState<Set<AssetRegisterColumnKey>>(new Set(assetRegisterColumnPresets.operations))
@@ -434,74 +448,16 @@ export function AssetRegisterTable({
     rememberAssetRegisterScrollPosition(registerReturnHref)
   }
 
-  function downloadFile(href: string) {
-    window.location.href = href
-  }
-
   return (
-    <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-      <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
-        <div className="text-sm text-muted-foreground">
-          {fromRow}-{toRow} {labels.of} {total}
-        </div>
-        <div className="hidden min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end md:flex">
-          <details className="relative min-w-0">
-            <summary className="inline-flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium hover:bg-accent sm:h-9 sm:min-h-0 sm:w-auto">
-              <Columns3 className="h-4 w-4" />
-              {labels.columns}
-            </summary>
-            <div className="absolute left-0 z-10 mt-2 w-[calc(100vw-3rem)] max-w-64 rounded-md border border-border bg-surface p-2 shadow-lg sm:left-auto sm:right-0 sm:w-56">
-              <div className="border-b border-border pb-2">
-                <div className="px-2 pb-1 text-xs font-medium text-muted-foreground">{labels.columnPresets}</div>
-                <div className="grid grid-cols-2 gap-1">
-                  {(["all", "operations", "accounting", "audit"] as const).map((preset) => {
-                    const active = assetRegisterColumnsMatchPreset(visibleColumns, assetRegisterColumnPresets[preset])
-                    return (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => applyColumnPreset(preset)}
-                        className={`rounded px-2 py-1.5 text-left text-xs font-medium transition-colors ${
-                          active ? "bg-primary-soft text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                        }`}
-                      >
-                        {columnPresetLabel(preset, labels)}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-              <div className="pt-2">
-              {assetRegisterColumnOrder.map((column) => (
-                <label key={column} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent">
-                  <input
-                    type="checkbox"
-                    checked={visibleColumns.has(column)}
-                    onChange={() => toggleColumn(column)}
-                    className="h-4 w-4 rounded border-border text-primary"
-                  />
-                  <span>{columnLabel(column, labels)}</span>
-                </label>
-              ))}
-              </div>
-            </div>
-          </details>
-          <button
-            type="button"
-            onClick={() => downloadFile(`/api/assets/export?${buildAssetQueryString(filters)}`)}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-auto"
-          >
-            <FileDown className="h-4 w-4" />
-            {labels.exportFiltered}
-          </button>
-          <button
-            type="button"
-            onClick={() => downloadFile("/api/assets/import-template")}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-auto"
-          >
-            <FileSpreadsheet className="h-4 w-4" />
-            {labels.downloadTemplate}
-          </button>
+    <div aria-busy={isPending} className="min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div data-asset-register-summary className="flex items-center justify-between gap-2 border-b border-border px-3 py-1.5 md:px-4 md:py-2">
+        <p className="text-sm text-muted-foreground">{rangeLabel}</p>
+        <div className="flex items-center gap-2">
+          <AssetRegisterSortMenu />
+          <div className="hidden items-center gap-2 md:flex">
+            <AssetRegisterColumnPicker visibleColumns={visibleColumns} onToggleColumn={toggleColumn} onApplyPreset={applyColumnPreset} />
+            <AssetRegisterExportMenu exportHref={`/api/assets/export?${buildAssetQueryString(filters)}`} templateHref="/api/assets/import-template" />
+          </div>
         </div>
       </div>
       {selectedAssets.length > 0 ? (
@@ -824,21 +780,20 @@ export function AssetRegisterTable({
         </table>
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-border px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-        <div>
-          {fromRow}-{toRow} {labels.of} {total}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <PaginationLink href={buildHref({ page: Math.max(1, filters.page - 1) })} disabled={filters.page <= 1}>
-            {labels.previous}
-          </PaginationLink>
-          <span className="px-2">
-            {labels.page} {filters.page} / {totalPages}
-          </span>
-          <PaginationLink href={buildHref({ page: Math.min(totalPages, filters.page + 1) })} disabled={filters.page >= totalPages}>
-            {labels.next}
-          </PaginationLink>
-        </div>
+      <div className="flex flex-col gap-3 border-t border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
+        <p className="text-sm text-muted-foreground">{rangeLabel}</p>
+        <Pagination
+          page={filters.page}
+          totalPages={totalPages}
+          previousHref={buildHref({ page: Math.max(1, filters.page - 1) })}
+          nextHref={buildHref({ page: Math.min(totalPages, filters.page + 1) })}
+          labels={{
+            navigation: tCommon("pagination"),
+            previous: labels.previous,
+            next: labels.next,
+            pageOf: tCommon("pageOf", { page: filters.page, total: totalPages }),
+          }}
+        />
       </div>
 
       <AccessibleDialog
@@ -953,30 +908,6 @@ function SortableHeader({
   )
 }
 
-function PaginationLink({
-  href,
-  disabled,
-  children,
-}: {
-  href: string
-  disabled: boolean
-  children: React.ReactNode
-}) {
-  if (disabled) {
-    return (
-      <span className="inline-flex h-9 items-center rounded-md border border-border px-3 text-muted-foreground opacity-50">
-        {children}
-      </span>
-    )
-  }
-
-  return (
-    <Link href={href} className="inline-flex h-9 items-center rounded-md border border-border px-3 hover:bg-accent">
-      {children}
-    </Link>
-  )
-}
-
 function MobileAssetField({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-md bg-muted/30 px-3 py-2">
@@ -1052,17 +983,6 @@ function columnLabel(column: AssetRegisterColumnKey, labels: AssetRegisterTableP
   }
 
   return map[column]
-}
-
-function columnPresetLabel(preset: AssetRegisterColumnPresetKey, labels: AssetRegisterTableProps["labels"]) {
-  const map: Record<AssetRegisterColumnPresetKey, string> = {
-    all: labels.columnPresetAll,
-    operations: labels.columnPresetOperations,
-    accounting: labels.columnPresetAccounting,
-    audit: labels.columnPresetAudit,
-  }
-
-  return map[preset]
 }
 
 function csvCell(value: string) {
