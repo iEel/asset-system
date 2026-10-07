@@ -115,7 +115,6 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
         repairNo: true,
         repairStatus: true,
         reportedDate: true,
-        dueDate: true,
         repairCost: true,
         problem: true,
         asset: { select: { id: true, assetTag: true, name: true } },
@@ -292,7 +291,6 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                     </div>
                     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       <span>{t("reportedDate")}: {formatDate(ticket.reportedDate)}</span>
-                      <span>{t("dueDate")}: {formatDate(ticket.dueDate)}</span>
                     </div>
                   </Link>
                 ))}

@@ -30,11 +30,8 @@ export function detectAssetStateIssues(snapshot: AssetStateObservedSnapshot): As
   }
 
   if (snapshot.activeCorrectiveTickets > 0 && !repairStatuses.has(status)) {
-    const workStarted = snapshot.activeCorrectiveStatusNames.some((name) =>
-      ["in_progress", "waiting_parts", "waiting_vendor"].includes(normalizeAssetStateName(name))
-    )
     issues.push(candidate("active_repair_ticket_status_mismatch", "critical", {
-      suggestedStatusName: workStarted ? "Under Maintenance" : "Pending Repair",
+      suggestedStatusName: "Under Maintenance",
       metadata: {
         statusName: snapshot.statusName,
         activeCorrectiveTickets: snapshot.activeCorrectiveTickets,

@@ -7,6 +7,7 @@ import {
   filterPersonalTransferEligibleAssets,
   getAssetOperationConditionOptions,
 } from "@/lib/asset-lifecycle-policy"
+import { openRepairRecordWhere } from "@/lib/repair-record-policy"
 
 export async function getAssetOperationOptions() {
   const [assets, activeCheckouts, activeMaintenanceTickets, employees, departments, locations, statuses, conditions] = await Promise.all([
@@ -52,15 +53,7 @@ export async function getAssetOperationOptions() {
       },
       orderBy: { checkoutDate: "desc" },
     }),
-    prisma.maintenanceTicket.findMany({
-      where: {
-        isActive: true,
-        repairStatus: { notIn: ["closed", "cancelled"] },
-        maintenancePlanId: null,
-        NOT: { problem: { startsWith: "[PM] " } },
-      },
-      select: { assetId: true },
-    }),
+    prisma.maintenanceTicket.findMany({ where: openRepairRecordWhere, select: { assetId: true } }),
     prisma.employee.findMany({
       where: { isActive: true },
       select: { id: true, code: true, fullNameTh: true },

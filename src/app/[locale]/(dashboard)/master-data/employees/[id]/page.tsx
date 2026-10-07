@@ -145,7 +145,6 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
         repairNo: true,
         repairStatus: true,
         reportedDate: true,
-        dueDate: true,
         problem: true,
         reportedById: true,
         assignedToId: true,
@@ -403,7 +402,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                       <ColumnHeader>{tMaintenance("asset")}</ColumnHeader>
                       <ColumnHeader>{t("employeeRole")}</ColumnHeader>
                       <ColumnHeader>{tMaintenance("reportedDate")}</ColumnHeader>
-                      <ColumnHeader>{tMaintenance("dueDate")}</ColumnHeader>
+                      <ColumnHeader>{tMaintenance("problem")}</ColumnHeader>
                       <ColumnHeader>{tCommon("status")}</ColumnHeader>
                     </tr>
                   </thead>
@@ -422,7 +421,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                         </td>
                         <td className="min-w-44 px-4 py-3 text-muted-foreground">{formatRoleLabels(maintenanceRoleMap.get(ticket.id) ?? [], t)}</td>
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(ticket.reportedDate)}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(ticket.dueDate)}</td>
+                        <td className="min-w-56 px-4 py-3 text-muted-foreground"><span className="line-clamp-2">{ticket.problem}</span></td>
                         <td className="whitespace-nowrap px-4 py-3">
                           <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, maintenanceStatusLabels)} tone={getMaintenanceStatusTone(ticket.repairStatus)} size="xs" />
                         </td>

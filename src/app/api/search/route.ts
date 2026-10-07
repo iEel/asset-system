@@ -8,6 +8,7 @@ import {
   type GlobalSearchMetadata,
   type GlobalSearchResultType,
 } from "@/lib/global-search"
+import { toRepairRecordStatus } from "@/lib/repair-record-policy"
 
 type SearchResult = {
   id: string
@@ -314,7 +315,6 @@ async function searchMaintenanceTickets(query: string, locale: string): Promise<
       OR: [
         { repairNo: { contains: query } },
         { problem: { contains: query } },
-        { quotationNo: { contains: query } },
         { invoiceNo: { contains: query } },
         { asset: { assetTag: { contains: query } } },
         { asset: { name: { contains: query } } },
@@ -340,7 +340,7 @@ async function searchMaintenanceTickets(query: string, locale: string): Promise<
     title: `${ticket.repairNo} - ${ticket.asset.assetTag}`,
     subtitle: ticket.asset.name,
     href: `/${locale}/maintenance/${ticket.id}`,
-    badge: { label: ticket.repairStatus, colorCode: null },
+    badge: { label: repairStatusLabel(toRepairRecordStatus(ticket.repairStatus), locale), colorCode: null },
     metadata: compactMetadata([
       [locale === "th" ? "ปัญหา" : "Problem", ticket.problem],
       [locale === "th" ? "ผู้ขาย" : "Vendor", ticket.vendor?.name],
@@ -444,4 +444,12 @@ function label(type: GlobalSearchResultType, locale: string) {
     disposal: "Disposal",
   }
   return locale === "en" ? en[type] : th[type]
+}
+
+function repairStatusLabel(status: "in_progress" | "closed" | "cancelled", locale: string) {
+  const labels = {
+    th: { in_progress: "ยังซ่อมไม่เสร็จ", closed: "ซ่อมเสร็จแล้ว", cancelled: "ยกเลิก" },
+    en: { in_progress: "In progress", closed: "Finished", cancelled: "Cancelled" },
+  }
+  return (locale === "en" ? labels.en : labels.th)[status]
 }

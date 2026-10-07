@@ -26,6 +26,7 @@ import {
   buildAssetRegisterTransactionHref,
   getAssetRegisterTransactionActions,
 } from "@/lib/asset-operation-policy"
+import { openRepairRecordWhere } from "@/lib/repair-record-policy"
 
 type AssetsPageProps = {
   params: Promise<{ locale: string }>
@@ -230,13 +231,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
       : Promise.resolve([]),
     assetIds.length
       ? prisma.maintenanceTicket.findMany({
-          where: {
-            assetId: { in: assetIds },
-            isActive: true,
-            repairStatus: { notIn: ["closed", "cancelled"] },
-            maintenancePlanId: null,
-            NOT: { problem: { startsWith: "[PM] " } },
-          },
+          where: { ...openRepairRecordWhere, assetId: { in: assetIds } },
           select: { assetId: true },
         })
       : Promise.resolve([]),

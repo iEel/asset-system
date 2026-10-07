@@ -123,7 +123,7 @@ test("asset edit form guides protected lifecycle changes to the right workflow",
   assert.match(formSource, /protectedAssetWorkflowStatuses/)
   assert.match(formSource, /isProtectedStatusChange/)
   assert.match(formSource, /protectedStatusEditBlocked/)
-  assert.match(formSource, /\/\$\{locale\}\/maintenance\?assetId=\$\{encodeURIComponent\(asset\.id\)\}/)
+  assert.match(formSource, /\/\$\{locale\}\/maintenance\/new\?assetId=\$\{encodeURIComponent\(asset\.id\)\}/)
   assert.match(formSource, /openRepairWorkflow/)
 })
 

@@ -249,11 +249,11 @@ export function AssetForm({
   const selectedStatusIsProtected = isProtectedAssetWorkflowStatus(selectedStatus)
   const isStatusChanged = isEdit && Boolean(values.statusId) && values.statusId !== currentStatusId
   const isProtectedStatusChange = isStatusChanged && (currentStatusIsProtected || selectedStatusIsProtected)
-  const isSelectedPendingRepair = selectedStatusName === "pending repair"
-  const repairWorkflowHref = asset?.id ? `/${locale}/maintenance?assetId=${encodeURIComponent(asset.id)}` : ""
+  const isSelectedRepairStatus = selectedStatusName === "pending repair" || selectedStatusName === "under maintenance"
+  const repairWorkflowHref = asset?.id ? `/${locale}/maintenance/new?assetId=${encodeURIComponent(asset.id)}` : ""
   const protectedStatusHelp = currentStatusIsProtected
     ? t("protectedStatusCorrectionHelp")
-    : isSelectedPendingRepair
+    : isSelectedRepairStatus
       ? t("protectedStatusEditHelp")
       : t("protectedStatusEditBlocked")
   const assetStatusHelp = {
@@ -1063,7 +1063,7 @@ export function AssetForm({
                   <div className="min-w-0">
                     <p className="font-medium">{t("protectedStatusEditBlocked")}</p>
                     <p className="mt-1 leading-relaxed">{protectedStatusHelp}</p>
-                    {isSelectedPendingRepair && repairWorkflowHref && (
+                    {isSelectedRepairStatus && repairWorkflowHref && (
                       <Link href={repairWorkflowHref} className="mt-2 inline-flex font-medium underline underline-offset-2">
                         {t("openRepairWorkflow")}
                       </Link>

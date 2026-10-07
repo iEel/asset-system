@@ -62,6 +62,7 @@ import { getAuditRoundItemResultLabelKey, getAuditRoundItemStatusLabelKey } from
 import { getAssetDetailLoadPolicy } from "@/lib/asset-detail-data"
 import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-document"
 import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
+import { toRepairRecordStatus } from "@/lib/repair-record-policy"
 import { TransactionCancelDialog } from "@/components/asset-operations/transaction-cancel-dialog"
 import {
   compactMovementDetails,
@@ -657,7 +658,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     ...movementTimelineItems,
     ...buildPurchaseTimelineItems(purchaseDocuments, legacyPurchaseDocuments, t),
     ...buildComponentTimelineItems(currentComponentsForPanel, componentHistoryForPanel, installedInLinksForPanel, locale, t),
-    ...buildMaintenanceTimelineItems(asset.maintenanceTickets, locale, t),
+    ...buildMaintenanceTimelineItems(asset.maintenanceTickets, locale, t, (status) => tMaintenance(`statuses.${toRepairRecordStatus(status)}`)),
     ...buildAuditTimelineItems(asset.auditItems, locale, t, formatAuditState),
   ].sort((a, b) => b.performedAt.getTime() - a.performedAt.getTime())
   const latestMovement = unifiedTimelineItems[0]
@@ -745,7 +746,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     ? `/${locale}/asset-management/checkin?checkoutId=${encodeURIComponent(activeCheckout.id)}`
     : "#handover"
   const transferHref = `/${locale}/asset-management/transfer?assetId=${encodedAssetId}`
-  const maintenanceHref = `/${locale}/maintenance?assetId=${encodedAssetId}`
+  const maintenanceHref = `/${locale}/maintenance/new?assetId=${encodedAssetId}`
   const assignedAssetHref = licenseAssignedAsset ? `/${locale}/assets/${licenseAssignedAsset.id}` : "#overview"
   const latestDocumentHref = latestCheckout ? `/${locale}/asset-management/checkouts/${latestCheckout.id}` : "#handover"
   const lifecycle = getOwnershipLifecycle({
@@ -1487,7 +1488,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                         </td>
                         <td className="min-w-72 px-4 py-3 text-muted-foreground">
                           <div className="flex flex-wrap items-center gap-2">
-                            {isPreventiveMaintenanceTicket(ticket.problem) ? (
+                            {Boolean(ticket.maintenancePlanId) ? (
                               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                                 {t("maintenancePmBadge")}
                               </span>
@@ -1499,7 +1500,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                           {ticket.reportedBy.code} - {ticket.reportedBy.fullNameTh}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {["open", "closed", "cancelled"].includes(ticket.repairStatus) ? tMaintenance(`statuses.${ticket.repairStatus}`) : ticket.repairStatus}
+                          {tMaintenance(`statuses.${toRepairRecordStatus(ticket.repairStatus)}`)}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(ticket.reportedDate)}</td>
                       </ClickableTableRow>
@@ -2690,15 +2691,17 @@ function buildMaintenanceTimelineItems(
     repairNo: string
     problem: string
     repairStatus: string
+    maintenancePlanId: string | null
     reportedDate: Date
     reportedBy: { code: string; fullNameTh: string }
   }[],
   locale: string,
-  t: (key: string, values?: Record<string, string | number | Date>) => string
+  t: (key: string, values?: Record<string, string | number | Date>) => string,
+  statusLabel: (status: string) => string
 ): MovementTimelineItem[] {
   return tickets.map((ticket) => ({
     id: `maintenance-${ticket.id}`,
-    title: isPreventiveMaintenanceTicket(ticket.problem) ? t("timelinePmTicket") : t("timelineMaintenanceTicket"),
+    title: ticket.maintenancePlanId ? t("timelinePmTicket") : t("timelineMaintenanceTicket"),
     summary: `${ticket.repairNo}: ${ticket.problem}`,
     category: "maintenance",
     tone: (ticket.repairStatus === "closed" ? "success" : ticket.repairStatus === "cancelled" ? "info" : "warning") as MovementTone,
@@ -2709,13 +2712,9 @@ function buildMaintenanceTimelineItems(
     details: compactMovementDetails([
       { label: t("repairNo"), value: ticket.repairNo, href: `/${locale}/maintenance/${ticket.id}` },
       { label: t("reportedBy"), value: `${ticket.reportedBy.code} - ${ticket.reportedBy.fullNameTh}` },
-      { label: t("repairStatus"), value: ticket.repairStatus },
+      { label: t("repairStatus"), value: statusLabel(ticket.repairStatus) },
     ]),
   }))
-}
-
-function isPreventiveMaintenanceTicket(problem: string) {
-  return problem.trim().startsWith("[PM]")
 }
 
 function buildAuditTimelineItems(

@@ -16,6 +16,12 @@ test("detects an active corrective ticket whose asset status is not in repair li
   ])
 })
 
+test("an unfinished repair record suggests Under Maintenance for its asset", () => {
+  const [issue] = detectAssetStateIssues(snapshot({ statusName: "Ready", activeCorrectiveTickets: 1, activeCorrectiveStatusNames: ["reported"] }))
+  assert.equal(issue?.issueType, "active_repair_ticket_status_mismatch")
+  assert.equal(issue?.suggestedStatusName, "Under Maintenance")
+})
+
 test("detects checkout status and transaction mismatches in both directions", () => {
   assert.deepEqual(issueTypes(snapshot({ statusName: "Checked Out", openCheckouts: 0 })), [
     "checked_out_without_open_checkout",

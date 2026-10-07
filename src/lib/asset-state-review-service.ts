@@ -10,6 +10,7 @@ import type {
 } from "./asset-state-review-types.ts"
 import { isAssetStateReviewIssueType } from "./asset-state-review-types.ts"
 import { writeAuditLog } from "./audit-log-writer.ts"
+import { openRepairRecordWhere } from "./repair-record-policy.ts"
 
 const scanPageSize = 250
 
@@ -443,13 +444,7 @@ export async function loadAssetStateReviewSnapshots(db: PrismaClient): Promise<A
         select: { assetId: true, handoverMode: true },
       }),
       db.maintenanceTicket.findMany({
-        where: {
-          assetId: { in: assetIds },
-          isActive: true,
-          repairStatus: { notIn: ["closed", "cancelled"] },
-          maintenancePlanId: null,
-          NOT: { problem: { startsWith: "[PM] " } },
-        },
+        where: { ...openRepairRecordWhere, assetId: { in: assetIds } },
         select: { assetId: true, repairStatus: true },
       }),
       db.disposalRequest.groupBy({

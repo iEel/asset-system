@@ -7,6 +7,7 @@ import { AssetOperationConflictError, claimAssetForCustodyChange } from "@/lib/a
 import { getAssetLifecycleTransitionError } from "@/lib/asset-lifecycle-policy"
 import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
 import { generateCheckoutDocumentNo } from "@/lib/operation-document-number"
+import { openRepairRecordWhere } from "@/lib/repair-record-policy"
 
 type LegacyCheckoutContext = {
   params: Promise<{ id: string }>
@@ -50,19 +51,13 @@ export async function POST(_request: Request, context: LegacyCheckoutContext) {
     }
 
     const activeCorrectiveMaintenance = await prisma.maintenanceTicket.findFirst({
-      where: {
-        assetId: id,
-        isActive: true,
-        repairStatus: { notIn: ["closed", "cancelled"] },
-        maintenancePlanId: null,
-        NOT: { problem: { startsWith: "[PM] " } },
-      },
+      where: { ...openRepairRecordWhere, assetId: id },
       select: { id: true },
     })
     if (activeCorrectiveMaintenance) {
       return NextResponse.json({
         code: "ASSET_LEGACY_RETURN_MAINTENANCE_ACTIVE",
-        error: "Cancel or close the active corrective maintenance ticket before creating a legacy return",
+        error: "Finish or cancel the unfinished repair record before creating a legacy return",
       }, { status: 409 })
     }
 
