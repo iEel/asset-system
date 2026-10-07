@@ -2,17 +2,18 @@ import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
-import { formatCurrency, formatDateTime } from "@/lib/utils"
+import { formatCurrency, formatDate } from "@/lib/utils"
+import { toRepairRecordStatus } from "@/lib/repair-record-policy"
 import { OperationDocumentPrint } from "@/components/asset-operations/operation-document-print"
 
-type MaintenancePrintPageProps = {
+type RepairRecordPrintPageProps = {
   params: Promise<{ locale: string; id: string }>
 }
 
-export default async function MaintenancePrintPage({ params }: MaintenancePrintPageProps) {
+export default async function RepairRecordPrintPage({ params }: RepairRecordPrintPageProps) {
   const { locale, id } = await params
   await requirePagePermission(locale, "maintenance", "view")
-  const t = await getTranslations("maintenancePage")
+  const tRecord = await getTranslations("repairRecord")
   const tAsset = await getTranslations("asset")
   const tCommon = await getTranslations("common")
 
@@ -21,13 +22,11 @@ export default async function MaintenancePrintPage({ params }: MaintenancePrintP
     include: {
       asset: {
         select: {
-          id: true,
           assetTag: true,
           name: true,
           serialNumber: true,
           fixedAssetCode: true,
           status: { select: { nameTh: true } },
-          condition: { select: { nameTh: true } },
           currentLocation: { select: { code: true, name: true } },
           custodian: { select: { code: true, fullNameTh: true } },
           company: { select: { code: true, nameTh: true } },
@@ -36,73 +35,57 @@ export default async function MaintenancePrintPage({ params }: MaintenancePrintP
         },
       },
       reportedBy: { select: { code: true, fullNameTh: true } },
-      assignedTo: { select: { code: true, fullNameTh: true } },
-      inspectedBy: { select: { code: true, fullNameTh: true } },
       vendor: { select: { code: true, name: true } },
+      maintenancePlan: { select: { planNo: true, title: true } },
     },
   })
   if (!ticket) notFound()
 
+  const outcome = ticket.outcome === "usable" || ticket.outcome === "beyond_repair" ? tRecord(`outcome.${ticket.outcome}`) : null
+
   return (
     <OperationDocumentPrint
-      title={t("repairDocumentTitle")}
+      title={tRecord("printTitle")}
       subtitle={`${ticket.repairNo} · ${ticket.asset.assetTag} - ${ticket.asset.name}`}
       backHref={`/${locale}/maintenance/${ticket.id}`}
       backLabel={tCommon("back")}
-      printLabel={t("printRepair")}
+      printLabel={tRecord("print")}
       sections={[
         {
-          title: t("ticketDetail"),
+          title: tRecord("detailTitle"),
           fields: [
-            { label: t("repairNo"), value: ticket.repairNo },
-            { label: tCommon("status"), value: ["open", "closed", "cancelled"].includes(ticket.repairStatus) ? t(`statuses.${ticket.repairStatus}`) : ticket.repairStatus },
-            { label: t("reportedBy"), value: `${ticket.reportedBy.code} - ${ticket.reportedBy.fullNameTh}` },
-            { label: t("reportedDate"), value: formatDateTime(ticket.reportedDate) },
-            { label: t("dueDate"), value: formatDateTime(ticket.dueDate) },
-            { label: t("assignedTo"), value: ticket.assignedTo ? `${ticket.assignedTo.code} - ${ticket.assignedTo.fullNameTh}` : null },
-            { label: t("repairType"), value: ticket.repairType === "vendor" ? t("vendorRepair") : t("internalRepair") },
-            { label: t("vendor"), value: ticket.vendor ? `${ticket.vendor.code} - ${ticket.vendor.name}` : null },
-            { label: t("laborCost"), value: ticket.laborCost == null ? null : formatCurrency(Number(ticket.laborCost)) },
-            { label: t("partsCost"), value: ticket.partsCost == null ? null : formatCurrency(Number(ticket.partsCost)) },
-            { label: t("repairCost"), value: ticket.repairCost == null ? null : formatCurrency(Number(ticket.repairCost)) },
-            { label: t("quotationNo"), value: ticket.quotationNo },
-            { label: t("invoiceNo"), value: ticket.invoiceNo },
-            { label: t("warrantyClaim"), value: ticket.warrantyClaim ? tCommon("yes") : tCommon("no") },
-            { label: t("returnDate"), value: formatDateTime(ticket.returnDate) },
-            { label: t("inspectedBy"), value: ticket.inspectedBy ? `${ticket.inspectedBy.code} - ${ticket.inspectedBy.fullNameTh}` : null },
+            { label: tRecord("repairNo"), value: ticket.repairNo },
+            { label: tRecord("statusLabel"), value: tRecord(`status.${toRepairRecordStatus(ticket.repairStatus)}`) },
+            { label: tRecord("outcomeQuestion"), value: outcome },
+            { label: tRecord("date"), value: formatDate(ticket.reportedDate) },
+            { label: tRecord("returnDate"), value: ticket.returnDate ? formatDate(ticket.returnDate) : null },
+            { label: tRecord("vendor"), value: ticket.vendor ? `${ticket.vendor.code} - ${ticket.vendor.name}` : tRecord("internal") },
+            { label: tRecord("cost"), value: ticket.repairCost == null ? null : formatCurrency(Number(ticket.repairCost)) },
+            { label: tRecord("invoiceNo"), value: ticket.invoiceNo },
+            { label: tRecord("reporter"), value: `${ticket.reportedBy.code} - ${ticket.reportedBy.fullNameTh}` },
+            { label: tRecord("planLabel"), value: ticket.maintenancePlan ? `${ticket.maintenancePlan.planNo} - ${ticket.maintenancePlan.title}` : null },
           ],
         },
         {
-          title: t("asset"),
+          title: tRecord("assetSection"),
           fields: [
-            { label: t("asset"), value: `${ticket.asset.assetTag} - ${ticket.asset.name}` },
+            { label: tRecord("asset"), value: `${ticket.asset.assetTag} - ${ticket.asset.name}` },
             { label: tAsset("serialNumber"), value: ticket.asset.serialNumber },
             { label: tAsset("fixedAssetCode"), value: ticket.asset.fixedAssetCode },
             { label: tAsset("category"), value: `${ticket.asset.category.code} - ${ticket.asset.category.name}` },
             { label: tAsset("company"), value: `${ticket.asset.company.code} - ${ticket.asset.company.nameTh}` },
             { label: tAsset("branch"), value: `${ticket.asset.branch.code} - ${ticket.asset.branch.name}` },
-            { label: t("currentLocation"), value: `${ticket.asset.currentLocation.code} - ${ticket.asset.currentLocation.name}` },
-            { label: t("custodian"), value: ticket.asset.custodian ? `${ticket.asset.custodian.code} - ${ticket.asset.custodian.fullNameTh}` : null },
-            { label: t("currentStatus"), value: ticket.asset.status.nameTh },
-            { label: t("currentCondition"), value: ticket.asset.condition.nameTh },
+            { label: tRecord("location"), value: `${ticket.asset.currentLocation.code} - ${ticket.asset.currentLocation.name}` },
+            { label: tRecord("custodian"), value: ticket.asset.custodian ? `${ticket.asset.custodian.code} - ${ticket.asset.custodian.fullNameTh}` : null },
+            { label: tRecord("currentStatus"), value: ticket.asset.status.nameTh },
           ],
         },
-        {
-          title: t("problem"),
-          fields: [{ label: t("problem"), value: ticket.problem }],
-        },
-        {
-          title: t("closeDetail"),
-          fields: [
-            { label: t("rootCause"), value: ticket.rootCause },
-            { label: t("resolution"), value: ticket.resolution },
-          ],
-        },
+        { title: tRecord("problem"), fields: [{ label: tRecord("problem"), value: ticket.problem }] },
+        { title: tRecord("remarkTitle"), fields: [{ label: tRecord("remark"), value: ticket.resolution }] },
       ]}
       signatures={[
-        { title: t("reportedBy"), helper: t("signatureDate") },
-        { title: t("assignedTo"), helper: t("signatureDate") },
-        { title: t("approver"), helper: t("signatureDate") },
+        { title: tRecord("signatureRecorder"), helper: tRecord("signatureDate") },
+        { title: tRecord("signatureReceiver"), helper: tRecord("signatureDate") },
       ]}
     />
   )

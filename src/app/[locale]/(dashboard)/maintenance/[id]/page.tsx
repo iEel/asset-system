@@ -1,39 +1,35 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, CheckCircle2, FileText, History, Printer, Trash2, Wrench } from "lucide-react"
+import { AlertTriangle, FileText, History, Printer, Trash2, Wrench } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
-import { formatCurrency, formatDateTime } from "@/lib/utils"
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
+import { toLocalDateInputValue } from "@/lib/local-date"
 import { MaintenanceAttachments } from "@/components/maintenance/maintenance-attachments"
-import { MaintenanceTicketCloseButton } from "@/components/maintenance/maintenance-ticket-close-button"
-import { MaintenanceTicketCancelButton } from "@/components/maintenance/maintenance-ticket-cancel-button"
-import { MaintenanceTicketPlanningButton } from "@/components/maintenance/maintenance-ticket-planning-button"
-import { MaintenanceTicketStatusButton } from "@/components/maintenance/maintenance-ticket-status-button"
+import { RepairRecordActions } from "@/components/maintenance/repair-record-actions"
 import { getMaintenanceMovementLabel, getMovementDisplayLabels } from "@/lib/movement-labels"
-import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceClosed, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
+import { canAttachToRepairRecord, getRepairRecordStatusTone, isOpenRepairStatus, toRepairRecordStatus } from "@/lib/repair-record-policy"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { MobileActionBar } from "@/components/ui/mobile-action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
-import { getMaintenanceStatusUpdateTargets, isPreventiveMaintenanceTicket } from "@/lib/maintenance-policy"
-import { getMaintenanceOperationalTarget } from "@/lib/asset-lifecycle-policy"
 
-type MaintenanceDetailPageProps = {
+type RepairRecordPageProps = {
   params: Promise<{ locale: string; id: string }>
   searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function MaintenanceDetailPage({ params, searchParams }: MaintenanceDetailPageProps) {
+export default async function RepairRecordPage({ params, searchParams }: RepairRecordPageProps) {
   const { locale, id } = await params
   const rawSearchParams = await searchParams
   const user = await requirePagePermission(locale, "maintenance", "view")
   const canEdit = hasPermission(user, "maintenance", "edit")
+  const canCreate = hasPermission(user, "maintenance", "create")
   const canCreateDisposal = hasPermission(user, "disposal", "create")
-  const t = await getTranslations("maintenancePage")
-  const tAsset = await getTranslations("asset")
+  const t = await getTranslations("repairRecord")
   const tCommon = await getTranslations("common")
 
   const ticket = await prisma.maintenanceTicket.findFirst({
@@ -44,24 +40,22 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
           id: true,
           assetTag: true,
           name: true,
-          status: { select: { nameTh: true, colorCode: true } },
-          condition: { select: { nameTh: true, colorCode: true } },
+          purchasePrice: true,
+          status: { select: { nameTh: true } },
           currentLocation: { select: { code: true, name: true } },
           custodian: { select: { code: true, fullNameTh: true } },
-          purchasePrice: true,
-          ownershipType: true,
-          custodianId: true,
         },
       },
       reportedBy: { select: { code: true, fullNameTh: true } },
       assignedTo: { select: { code: true, fullNameTh: true } },
       inspectedBy: { select: { code: true, fullNameTh: true } },
-      vendor: { select: { code: true, name: true } },
+      vendor: { select: { id: true, code: true, name: true } },
+      maintenancePlan: { select: { planNo: true, title: true } },
     },
   })
   if (!ticket) notFound()
 
-  const [attachments, movements, assetRepairSummary, closeStatusRows] = await Promise.all([
+  const [attachments, movements, assetRepairSummary] = await Promise.all([
     prisma.attachment.findMany({
       where: { module: "maintenance", referenceId: ticket.id, isActive: true },
       orderBy: { uploadedAt: "desc" },
@@ -71,22 +65,29 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
       orderBy: { performedAt: "desc" },
     }),
     prisma.maintenanceTicket.aggregate({
-      where: { assetId: ticket.asset.id, isActive: true },
+      where: { assetId: ticket.asset.id, isActive: true, repairStatus: { not: "cancelled" } },
       _count: { _all: true },
       _sum: { repairCost: true },
     }),
-    canEdit ? prisma.assetStatus.findMany({
-      where: { isActive: true, name: { in: ["Ready", "In Use", "Pending Disposal"] } },
-      select: { id: true, name: true, nameTh: true },
-      orderBy: { sortOrder: "asc" },
-    }) : Promise.resolve([]),
   ])
   const movementLabels = await getMovementDisplayLabels(movements)
-  const statuses = closeStatusRows.map((status) => ({ id: status.id, name: status.name, label: status.nameTh }))
-  const recommendedStatusId = closeStatusRows.find(
-    (status) => status.name === getMaintenanceOperationalTarget(ticket.asset)
-  )?.id ?? null
-  const isPreventive = isPreventiveMaintenanceTicket(ticket)
+  const recordStatus = toRepairRecordStatus(ticket.repairStatus)
+  const isOpen = isOpenRepairStatus(ticket.repairStatus)
+  const canAttach = canAttachToRepairRecord({ userId: user.id, canEdit, canCreate }, ticket)
+  const outcomeLabel = ticket.outcome === "usable" || ticket.outcome === "beyond_repair"
+    ? t(`outcome.${ticket.outcome}`)
+    : recordStatus === "closed" ? t("outcome.unknown") : null
+  const legacyFields = [
+    { label: t("legacyFields.assignedTo"), value: ticket.assignedTo ? `${ticket.assignedTo.code} - ${ticket.assignedTo.fullNameTh}` : null },
+    { label: t("legacyFields.dueDate"), value: ticket.dueDate ? formatDate(ticket.dueDate) : null },
+    { label: t("legacyFields.laborCost"), value: ticket.laborCost == null ? null : formatCurrency(Number(ticket.laborCost)) },
+    { label: t("legacyFields.partsCost"), value: ticket.partsCost == null ? null : formatCurrency(Number(ticket.partsCost)) },
+    { label: t("legacyFields.quotationNo"), value: ticket.quotationNo },
+    { label: t("legacyFields.warrantyClaim"), value: ticket.warrantyClaim ? tCommon("yes") : null },
+    { label: t("legacyFields.rootCause"), value: ticket.rootCause },
+    { label: t("legacyFields.inspectedBy"), value: ticket.inspectedBy ? `${ticket.inspectedBy.code} - ${ticket.inspectedBy.fullNameTh}` : null },
+  ].filter((field) => Boolean(field.value))
+  const hasLegacyDetails = legacyFields.length > 0
   const totalRepairCount = assetRepairSummary._count._all
   const totalRepairCost = Number(assetRepairSummary._sum.repairCost ?? 0)
   const purchasePrice = Number(ticket.asset.purchasePrice ?? 0)
@@ -94,10 +95,7 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
   const shouldReviewDisposal = totalRepairCount >= 3 || repairCostRatio >= 0.5
   const returnToHref = normalizeOperationalReturnTo(locale, "maintenance", rawSearchParams.returnTo)
   const printHref = appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}/print`, returnToHref)
-  const disposalReason = `${t("disposalReasonPrefix")} ${ticket.asset.assetTag} / ${ticket.repairNo}: ${t("disposalReasonDetail", {
-    count: totalRepairCount,
-    cost: formatCurrency(totalRepairCost),
-  })}`
+  const disposalReason = `${ticket.asset.assetTag} / ${ticket.repairNo}: ${t("disposalReviewCount", { count: totalRepairCount })}, ${t("disposalReviewCost", { cost: formatCurrency(totalRepairCost) })}`
   const disposalRequestHref = appendOperationalReturnTo(
     `/${locale}/disposal/new?assetId=${ticket.asset.id}&reason=${encodeURIComponent(disposalReason)}&sourceType=maintenance&sourceId=${ticket.id}`,
     returnToHref,
@@ -108,80 +106,44 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="mb-2">
-            <Breadcrumbs
-              items={[
-                { label: t("title"), href: returnToHref },
-                { label: ticket.repairNo },
-              ]}
-            />
+            <Breadcrumbs items={[{ label: t("title"), href: returnToHref }, { label: ticket.repairNo }]} />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">{ticket.repairNo}</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground">{ticket.repairNo}</h1>
+            <StatusBadge label={t(`status.${recordStatus}`)} tone={getRepairRecordStatusTone(ticket.repairStatus)} />
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">{ticket.asset.assetTag} - {ticket.asset.name}</p>
         </div>
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-          <Link
-            href={returnToHref}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
-          >
-            <Wrench className="h-4 w-4" />
-            {tCommon("back")}
-          </Link>
-          <Link
-            href={printHref}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
-          >
-            <Printer className="h-4 w-4" />
-            {t("printRepair")}
-          </Link>
-          {canEdit && !isMaintenanceClosed(ticket.repairStatus) ? (
-            <>
-              <MaintenanceTicketPlanningButton
-                ticketId={ticket.id}
-                repairNo={ticket.repairNo}
-                currentStatus={ticket.repairStatus}
-                initialAssignedToId={ticket.assignedToId}
-                initialDueDate={ticket.dueDate}
-                expectedUpdatedAt={ticket.updatedAt}
-              />
-              {["reported", "accepted"].includes(ticket.repairStatus) && !isPreventive ? (
-                <MaintenanceTicketCancelButton
-                  ticketId={ticket.id}
-                  repairNo={ticket.repairNo}
-                  expectedUpdatedAt={ticket.updatedAt}
-                />
-              ) : null}
-              {getMaintenanceStatusUpdateTargets(ticket.repairStatus).length > 0 ? <MaintenanceTicketStatusButton
-                ticketId={ticket.id}
-                repairNo={ticket.repairNo}
-                currentStatus={ticket.repairStatus}
-                expectedUpdatedAt={ticket.updatedAt}
-                isPreventive={isPreventive}
-              /> : null}
-              {["open", "completed"].includes(ticket.repairStatus) ? <MaintenanceTicketCloseButton
-                ticketId={ticket.id}
-                repairNo={ticket.repairNo}
-                statuses={statuses}
-                defaultLaborCost={ticket.laborCost?.toString()}
-                defaultPartsCost={ticket.partsCost?.toString()}
-                defaultRepairCost={ticket.repairCost?.toString()}
-                defaultQuotationNo={ticket.quotationNo}
-                defaultInvoiceNo={ticket.invoiceNo}
-                defaultWarrantyClaim={ticket.warrantyClaim}
-                expectedUpdatedAt={ticket.updatedAt}
-                isPreventive={isPreventive}
-                recommendedStatusId={recommendedStatusId}
-                hasEvidence={attachments.length > 0}
-              /> : null}
-            </>
+          {canEdit ? (
+            <RepairRecordActions
+              recordId={ticket.id}
+              repairNo={ticket.repairNo}
+              expectedUpdatedAt={ticket.updatedAt.toISOString()}
+              isOpen={isOpen}
+              details={{
+                reportedDate: toLocalDateInputValue(ticket.reportedDate),
+                problem: ticket.problem,
+                vendor: ticket.vendor ? { id: ticket.vendor.id, label: `${ticket.vendor.code} - ${ticket.vendor.name}` } : null,
+                repairCost: ticket.repairCost?.toString() ?? "",
+                invoiceNo: ticket.invoiceNo ?? "",
+                remark: ticket.resolution ?? "",
+              }}
+            />
           ) : null}
-          <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, getStatusLabels(t))} tone={getMaintenanceStatusTone(ticket.repairStatus)} />
+          <Link href={printHref} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-accent">
+            <Printer className="h-4 w-4" />{t("print")}
+          </Link>
+          <Link href={returnToHref} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-accent">
+            <Wrench className="h-4 w-4" />{tCommon("back")}
+          </Link>
         </div>
       </div>
       <MobileActionBar
         actions={[
           { href: `/${locale}/assets/${ticket.asset.id}`, label: t("openAsset"), icon: <FileText className="h-4 w-4" />, primary: true },
-          { href: printHref, label: t("printRepair"), icon: <Printer className="h-4 w-4" /> },
-          { href: "#history", label: t("maintenanceHistory"), icon: <History className="h-4 w-4" /> },
+          { href: printHref, label: t("print"), icon: <Printer className="h-4 w-4" /> },
+          { href: "#history", label: t("history"), icon: <History className="h-4 w-4" /> },
           { href: returnToHref, label: tCommon("back"), icon: <Wrench className="h-4 w-4" /> },
         ]}
       />
@@ -189,69 +151,38 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
         <div className="space-y-6">
           <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
-              <FileText className="h-5 w-5 text-primary" />
-              {t("ticketDetail")}
-            </h2>
+            <h2 className="mb-5 text-lg font-semibold text-foreground">{t("detailTitle")}</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <Info label={t("reportedBy")} value={`${ticket.reportedBy.code} - ${ticket.reportedBy.fullNameTh}`} />
-              <Info label={t("reportedDate")} value={formatDateTime(ticket.reportedDate)} />
-              <Info label={t("dueDate")} value={formatDateTime(ticket.dueDate)} />
-              <Info label={t("assignedTo")} value={ticket.assignedTo ? `${ticket.assignedTo.code} - ${ticket.assignedTo.fullNameTh}` : null} />
-              <Info label={t("repairType")} value={ticket.repairType === "vendor" ? t("vendorRepair") : t("internalRepair")} />
-              <Info label={t("vendor")} value={ticket.vendor ? `${ticket.vendor.code} - ${ticket.vendor.name}` : null} />
-              <Info label={t("laborCost")} value={ticket.laborCost == null ? null : formatCurrency(Number(ticket.laborCost))} />
-              <Info label={t("partsCost")} value={ticket.partsCost == null ? null : formatCurrency(Number(ticket.partsCost))} />
-              <Info label={t("repairCost")} value={ticket.repairCost == null ? null : formatCurrency(Number(ticket.repairCost))} />
-              <Info label={t("quotationNo")} value={ticket.quotationNo} />
+              <Info label={t("date")} value={formatDate(ticket.reportedDate)} />
+              <Info label={t("outcomeQuestion")} value={outcomeLabel} tone={ticket.outcome === "usable" ? "success" : ticket.outcome === "beyond_repair" ? "warning" : undefined} />
+              <Info label={t("returnDate")} value={ticket.returnDate ? formatDate(ticket.returnDate) : null} />
+              <Info label={t("vendor")} value={ticket.vendor ? `${ticket.vendor.code} - ${ticket.vendor.name}` : t("internal")} />
+              <Info label={t("cost")} value={ticket.repairCost == null ? null : formatCurrency(Number(ticket.repairCost))} />
               <Info label={t("invoiceNo")} value={ticket.invoiceNo} />
-              <Info label={t("warrantyClaim")} value={ticket.warrantyClaim ? tCommon("yes") : tCommon("no")} />
-              <Info label={t("returnDate")} value={formatDateTime(ticket.returnDate)} />
-              <Info label={t("inspectedBy")} value={ticket.inspectedBy ? `${ticket.inspectedBy.code} - ${ticket.inspectedBy.fullNameTh}` : null} />
+              <Info label={t("reporter")} value={`${ticket.reportedBy.code} - ${ticket.reportedBy.fullNameTh}`} />
+              {ticket.maintenancePlan ? <Info label={t("planLabel")} value={`${ticket.maintenancePlan.planNo} - ${ticket.maintenancePlan.title}`} /> : null}
             </div>
-            {isMaintenanceOverdue(ticket.repairStatus, ticket.dueDate) ? (
-              <div className="mt-5 rounded-md border border-danger/30 bg-danger/5 p-3 text-sm font-medium text-danger">
-                {t("overdueWarning")}
+            <div className="mt-5 grid gap-5 md:grid-cols-2">
+              <TextBlock label={t("problem")} value={ticket.problem} />
+              <TextBlock label={t("remarkTitle")} value={ticket.resolution} />
+            </div>
+          </section>
+
+          {hasLegacyDetails ? (
+            <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+              <h2 className="mb-4 text-base font-semibold text-foreground">{t("legacyTitle")}</h2>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {legacyFields.map((field) => <Info key={field.label} label={field.label} value={field.value} />)}
               </div>
-            ) : null}
-          </section>
+            </section>
+          ) : null}
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">{t("problem")}</h2>
-            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{ticket.problem}</p>
-          </section>
-
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section id="history" className="scroll-mt-6 rounded-lg border border-border bg-surface p-6 shadow-sm">
             <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
-              <CheckCircle2 className="h-5 w-5 text-primary" />
-              {t("closeDetail")}
-            </h2>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <TextBlock label={t("rootCause")} value={ticket.rootCause} />
-              <TextBlock label={t("resolution")} value={ticket.resolution} />
-            </div>
-            <div className="mt-5 rounded-md border border-border bg-background p-4">
-              <h3 className="text-sm font-semibold text-foreground">{t("closeChecklistTitle")}</h3>
-              <div className="mt-3 grid gap-2 text-sm md:grid-cols-2">
-                <ChecklistItem done={Boolean(ticket.rootCause)} label={t("closeChecklistRootCause")} />
-                <ChecklistItem done={Boolean(ticket.resolution)} label={t("closeChecklistResolution")} />
-                <ChecklistItem done={attachments.length > 0} label={t("closeChecklistEvidence")} />
-                <ChecklistItem done={Boolean(ticket.inspectedById)} label={t("closeChecklistInspector")} />
-              </div>
-            </div>
-          </section>
-
-          <section id="history" className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
-              <History className="h-5 w-5 text-primary" />
-              {t("maintenanceHistory")}
+              <History className="h-5 w-5 text-primary" />{t("history")}
             </h2>
             {movements.length === 0 ? (
-              <ActionEmptyState
-                icon={<History className="h-6 w-6" />}
-                title={t("emptyHistoryTitle")}
-                description={t("emptyHistoryHelp")}
-              />
+              <ActionEmptyState icon={<History className="h-6 w-6" />} title={t("historyEmpty")} />
             ) : (
               <ol className="space-y-4">
                 {movements.map((movement) => (
@@ -260,18 +191,18 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
                     <div className="rounded-md bg-background p-4">
                       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
                         <div className="font-medium text-foreground">{getMaintenanceMovementLabel(movement.movementType, {
-                          create: t("movementLabels.create"),
-                          statusUpdate: t("movementLabels.statusUpdate"),
-                          close: t("movementLabels.close"),
-                          cancel: t("movementLabels.cancel"),
-                          pmCreate: t("movementLabels.pmCreate"),
-                          fallback: t("movementLabels.fallback"),
+                          create: t("movement.create"),
+                          statusUpdate: t("movement.statusUpdate"),
+                          close: t("movement.close"),
+                          cancel: t("movement.cancel"),
+                          pmCreate: t("movement.pmCreate"),
+                          fallback: t("movement.fallback"),
                         })}</div>
                         <div className="text-xs text-muted-foreground">{formatDateTime(movement.performedAt)}</div>
                       </div>
-                      <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-muted-foreground md:grid-cols-2">
-                        <Info label={tAsset("fromValue")} value={movementLabels.get(movement.id)?.from} />
-                        <Info label={tAsset("toValue")} value={movementLabels.get(movement.id)?.to} />
+                      <div className="mt-2 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
+                        <Info label={t("fromValue")} value={movementLabels.get(movement.id)?.from} />
+                        <Info label={t("toValue")} value={movementLabels.get(movement.id)?.to} />
                       </div>
                       {movement.reason ? <p className="mt-2 text-sm text-muted-foreground">{movement.reason}</p> : null}
                     </div>
@@ -284,17 +215,13 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
 
         <aside className="space-y-6">
           <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <h2 className="mb-5 text-lg font-semibold text-foreground">{t("asset")}</h2>
+            <h2 className="mb-5 text-lg font-semibold text-foreground">{t("assetSection")}</h2>
             <div className="space-y-4">
               <Info label={t("asset")} value={`${ticket.asset.assetTag} - ${ticket.asset.name}`} />
               <Info label={t("currentStatus")} value={ticket.asset.status.nameTh} />
-              <Info label={t("currentCondition")} value={ticket.asset.condition.nameTh} />
-              <Info label={t("currentLocation")} value={`${ticket.asset.currentLocation.code} - ${ticket.asset.currentLocation.name}`} />
+              <Info label={t("location")} value={`${ticket.asset.currentLocation.code} - ${ticket.asset.currentLocation.name}`} />
               <Info label={t("custodian")} value={ticket.asset.custodian ? `${ticket.asset.custodian.code} - ${ticket.asset.custodian.fullNameTh}` : null} />
-              <Link
-                href={`/${locale}/assets/${ticket.asset.id}`}
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0"
-              >
+              <Link href={`/${locale}/assets/${ticket.asset.id}`} className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium hover:bg-accent">
                 {t("openAsset")}
               </Link>
             </div>
@@ -303,31 +230,21 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
           {shouldReviewDisposal && canCreateDisposal ? (
             <section className="rounded-lg border border-warning/40 bg-warning/5 p-6 shadow-sm">
               <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
-                <AlertTriangle className="h-5 w-5 text-warning-foreground" />
-                {t("disposalReviewTitle")}
+                <AlertTriangle className="h-5 w-5 text-warning-foreground" />{t("disposalReviewTitle")}
               </h2>
               <div className="space-y-2 text-sm text-muted-foreground">
                 <div>{t("disposalReviewCount", { count: totalRepairCount })}</div>
                 <div>{t("disposalReviewCost", { cost: formatCurrency(totalRepairCost) })}</div>
                 {purchasePrice > 0 ? <div>{t("disposalReviewRatio", { percent: Math.round(repairCostRatio * 100) })}</div> : null}
               </div>
-              <Link
-                href={disposalRequestHref}
-                className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 text-sm font-medium text-warning-foreground transition-colors hover:bg-warning/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              >
-                <Trash2 className="h-4 w-4" />
-                {t("openDisposalRequest")}
+              <Link href={disposalRequestHref} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 text-sm font-medium text-warning-foreground hover:bg-warning/10">
+                <Trash2 className="h-4 w-4" />{t("openDisposalRequest")}
               </Link>
             </section>
           ) : null}
 
           <div id="attachments" className="scroll-mt-6">
-            <MaintenanceAttachments
-              ticketId={ticket.id}
-              attachments={attachments}
-              canEdit={canEdit}
-              canDelete={canEdit && ticket.repairStatus !== "closed"}
-            />
+            <MaintenanceAttachments ticketId={ticket.id} attachments={attachments} canEdit={canAttach} canDelete={canEdit} />
           </div>
         </aside>
       </div>
@@ -335,11 +252,12 @@ export default async function MaintenanceDetailPage({ params, searchParams }: Ma
   )
 }
 
-function Info({ label, value }: { label: string; value?: string | number | null }) {
+function Info({ label, value, tone }: { label: string; value?: string | number | null; tone?: "success" | "warning" }) {
+  const toneClass = tone === "success" ? "text-success-foreground" : tone === "warning" ? "text-warning-foreground" : "text-foreground"
   return (
     <div>
-      <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{label}</div>
-      <div className="mt-1 text-sm font-medium text-foreground">{value || "-"}</div>
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div className={`mt-1 text-sm font-medium ${toneClass}`}>{value || "-"}</div>
     </div>
   )
 }
@@ -348,21 +266,9 @@ function TextBlock({ label, value }: { label: string; value?: string | null }) {
   return (
     <div>
       <div className="mb-2 text-sm font-medium text-foreground">{label}</div>
-      <div className="min-h-24 rounded-md border border-border bg-background p-3 text-sm text-muted-foreground">
+      <div className="min-h-20 rounded-md border border-border bg-background p-3 text-sm text-muted-foreground">
         {value ? <p className="whitespace-pre-wrap">{value}</p> : "-"}
       </div>
-    </div>
-  )
-}
-
-function getStatusLabels(t: (key: string) => string) {
-  return Object.fromEntries(maintenanceStatuses.map((status) => [status, t(`statuses.${status}`)]))
-}
-
-function ChecklistItem({ done, label }: { done: boolean; label: string }) {
-  return (
-    <div className={done ? "text-success-foreground" : "text-muted-foreground"}>
-      {done ? "[x]" : "[ ]"} {label}
     </div>
   )
 }

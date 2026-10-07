@@ -11,8 +11,8 @@ test("read-only attachment UI omits mutation controls", () => {
   assert.doesNotMatch(source, /window\.confirm/)
 })
 
-test("maintenance detail passes permission and closed-state evidence policy", () => {
+test("maintenance detail lets recorders attach and editors delete", () => {
   const source = readFileSync("src/app/[locale]/(dashboard)/maintenance/[id]/page.tsx", "utf8")
-  assert.match(source, /canEdit=\{canEdit\}/)
-  assert.match(source, /canDelete=\{canEdit && ticket\.repairStatus !== "closed"\}/)
+  assert.match(source, /canEdit=\{canAttach\}/)
+  assert.match(source, /canDelete=\{canEdit\}/)
 })
