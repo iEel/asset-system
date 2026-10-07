@@ -99,9 +99,11 @@ export type AuditLookupAsset = Omit<OutOfScopeAsset, "components" | "installedIn
   components: AuditLookupComponent[]
   installedIn: AuditLookupInstalledInParent[]
 }
+export type AuditLookupMatch = { assetId: string; assetTag: string; title: string; inRound: boolean }
 export type AuditScanLookupResponse =
   | { status: "in_round"; asset: AuditLookupAsset; item?: { assetId: string } }
   | { status: "out_of_scope"; asset: AuditLookupAsset }
+  | { status: "candidates"; candidates?: string[]; matches: AuditLookupMatch[] }
   | { status: "unknown_asset"; candidates?: string[] }
 
 export type StoredAuditContextSnapshot = { raw: string | null; value: AuditScanContext }
