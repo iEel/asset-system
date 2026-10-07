@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next"
-import { Inter } from "next/font/google"
+import { Inter, Noto_Sans_Thai } from "next/font/google"
 import { PwaServiceWorkerRegister } from "@/components/pwa/pwa-service-worker-register"
 import "./globals.css"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" })
+const notoSansThai = Noto_Sans_Thai({ subsets: ["thai"], variable: "--font-thai", display: "swap" })
 
 export const metadata: Metadata = {
   title: "Asset Management System",
@@ -37,8 +38,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="th" suppressHydrationWarning>
-      <body className={`${inter.className} bg-background text-foreground antialiased`}>
+    <html lang="th" suppressHydrationWarning className={`${inter.variable} ${notoSansThai.variable}`}>
+      <body className="bg-background font-sans text-foreground antialiased">
         <PwaServiceWorkerRegister />
         {children}
       </body>

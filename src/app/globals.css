@@ -1,30 +1,52 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-/* Enterprise Color Theme (from UI Requirements A.3) */
+/* Enterprise color tokens — shadcn/ui naming. Every text pair is checked by tests/design-tokens-contrast.test.ts. */
 :root {
   --brand-navy: #0F172A;
   --brand-accent: #3B82F6;
   --background: #F8FAFC;
   --foreground: #0F172A;
-  --surface: #FFFFFF;
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+  --surface: var(--card);
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
   --primary: #2563EB;
   --primary-foreground: #FFFFFF;
-  --secondary: #64748B;
-  --secondary-foreground: #FFFFFF;
+  --primary-soft: #EFF6FF;
+  --primary-hover: #1D4ED8;
+  --secondary: #F1F5F9;
+  --secondary-foreground: #0F172A;
   --muted: #F1F5F9;
   --muted-foreground: #475569;
   --accent: #F1F5F9;
   --accent-foreground: #0F172A;
   --border: #E2E8F0;
+  --input: #E2E8F0;
   --ring: #3B82F6;
-  --success: #16A34A;
-  --success-foreground: #166534;
-  --warning: #F59E0B;
-  --warning-foreground: #92400E;
-  --danger: #DC2626;
-  --danger-foreground: #991B1B;
+  --success: #15803D;
+  --success-foreground: #FFFFFF;
+  --success-soft: #F0FDF4;
+  --success-border: #BBF7D0;
+  --success-hover: #166534;
+  --warning: #B45309;
+  --warning-foreground: #FFFFFF;
+  --warning-soft: #FFFBEB;
+  --warning-border: #FDE68A;
+  --warning-hover: #92400E;
+  --danger: #B91C1C;
+  --danger-foreground: #FFFFFF;
+  --danger-soft: #FEF2F2;
+  --danger-border: #FECACA;
+  --danger-hover: #991B1B;
+  --destructive: var(--danger);
+  --destructive-foreground: var(--danger-foreground);
   --info: #2563EB;
-  --info-foreground: #1E40AF;
+  --info-foreground: #FFFFFF;
+  --info-soft: #EFF6FF;
+  --info-border: #BFDBFE;
+  --info-hover: #1D4ED8;
   --sidebar: #0F172A;
   --sidebar-foreground: #CBD5E1;
   --sidebar-muted: #94A3B8;
@@ -34,13 +56,20 @@
 }
 
 @theme inline {
+  --font-sans: var(--font-inter), var(--font-thai), ui-sans-serif, system-ui, sans-serif;
   --color-brand-navy: var(--brand-navy);
   --color-brand-accent: var(--brand-accent);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
   --color-surface: var(--surface);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-hover: var(--primary-hover);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -48,15 +77,30 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-border: var(--border);
+  --color-input: var(--input);
   --color-ring: var(--ring);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-success-border: var(--success-border);
+  --color-success-hover: var(--success-hover);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-border: var(--warning-border);
+  --color-warning-hover: var(--warning-hover);
   --color-danger: var(--danger);
   --color-danger-foreground: var(--danger-foreground);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-border: var(--danger-border);
+  --color-danger-hover: var(--danger-hover);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  --color-info-soft: var(--info-soft);
+  --color-info-border: var(--info-border);
+  --color-info-hover: var(--info-hover);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-muted: var(--sidebar-muted);
@@ -90,7 +134,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--secondary);
+  background: var(--muted-foreground);
 }
 
 .scrollbar-none {

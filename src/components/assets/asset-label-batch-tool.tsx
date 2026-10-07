@@ -374,7 +374,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                   type="button"
                   disabled={recentAssets.length === 0}
                   onClick={addRecentAssets}
-                  className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-1 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-secondary sm:w-auto"
+                  className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-1 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground sm:w-auto"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   {recentAssets.length === 0 ? labels.addFilteredQueueUnavailable : labels.addFilteredQueue}

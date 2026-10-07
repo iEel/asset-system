@@ -8,41 +8,46 @@ colors:
   primary-slate-ink: "#0F172A"
   soft-system-background: "#F8FAFC"
   surface: "#FFFFFF"
-  slate-secondary: "#64748B"
   muted-surface: "#F1F5F9"
   muted-slate: "#475569"
   border: "#E2E8F0"
-  success: "#16A34A"
-  warning: "#F59E0B"
-  danger: "#DC2626"
+  success: "#15803D"
+  warning: "#B45309"
+  danger: "#B91C1C"
   info: "#2563EB"
+  primary-soft: "#EFF6FF"
+  primary-hover: "#1D4ED8"
+  success-soft: "#F0FDF4"
+  warning-soft: "#FFFBEB"
+  danger-soft: "#FEF2F2"
+  info-soft: "#EFF6FF"
 typography:
   display:
-    fontFamily: "Inter, system-ui, sans-serif"
+    fontFamily: "Inter, Noto Sans Thai, system-ui, sans-serif"
     fontSize: "1.5rem"
     fontWeight: 700
     lineHeight: 1.2
     letterSpacing: "0"
   headline:
-    fontFamily: "Inter, system-ui, sans-serif"
+    fontFamily: "Inter, Noto Sans Thai, system-ui, sans-serif"
     fontSize: "1.25rem"
     fontWeight: 700
     lineHeight: 1.25
     letterSpacing: "0"
   title:
-    fontFamily: "Inter, system-ui, sans-serif"
+    fontFamily: "Inter, Noto Sans Thai, system-ui, sans-serif"
     fontSize: "1rem"
     fontWeight: 600
     lineHeight: 1.5
     letterSpacing: "0"
   body:
-    fontFamily: "Inter, system-ui, sans-serif"
+    fontFamily: "Inter, Noto Sans Thai, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: "0"
   label:
-    fontFamily: "Inter, system-ui, sans-serif"
+    fontFamily: "Inter, Noto Sans Thai, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 500
     lineHeight: 1.4
@@ -122,7 +127,7 @@ The palette is a restrained corporate system: Brand Navy anchors the desktop sid
 
 ### Secondary
 
-- **Slate Secondary**: Supporting text, secondary icons, inactive navigation, and explanatory metadata.
+- **Secondary Surface** (#F1F5F9 + Primary Slate Ink): Secondary button and quiet chip background (shadcn `secondary`).
 - **Muted Slate**: Muted but readable body support text, helper copy, empty-state descriptions, and table metadata.
 
 ### Tertiary
@@ -151,13 +156,15 @@ The topbar and working canvas remain light to preserve operational readability.
 
 **The No Decorative Gradient Rule.** Decorative gradients are prohibited. The product should feel like an enterprise operations system, not a landing page.
 
+**The Token Contrast Rule.** Status text uses the status ink (`text-success`, `text-warning`, `text-danger`, `text-info`) on white, the page background, muted, or its own soft surface (`bg-{tone}-soft`). Never tint with opacity (`bg-warning/10`, `bg-primary/10`) and never lighten solid fills on hover (`/90`): use `bg-{tone}-soft` and `hover:bg-{tone}-hover`. `{tone}-foreground` means text on the solid fill. `tests/design-tokens-contrast.test.ts` enforces every pair at 4.5:1.
+
 ## 3. Typography
 
-**Display Font:** Inter (with system-ui, sans-serif fallback)
-**Body Font:** Inter (with system-ui, sans-serif fallback)
+**Display Font:** Inter for Latin letters and numbers, Noto Sans Thai for Thai (both variable, loaded with `next/font/google` in `src/app/layout.tsx`, system-ui fallback)
+**Body Font:** Inter + Noto Sans Thai (same stack as display)
 **Label/Mono Font:** Inter for labels; use system monospace only for codes, IDs, logs, or technical values when needed.
 
-**Character:** One well-tuned sans-serif family keeps Thai and English interface text consistent across dashboards, forms, tables, admin settings, and mobile field workflows. The hierarchy is compact and fixed, not fluid or editorial.
+**Character:** One sans-serif stack (Inter + Noto Sans Thai) keeps Thai and English interface text consistent across dashboards, forms, tables, admin settings, and mobile field workflows. The hierarchy is compact and fixed, not fluid or editorial.
 
 ### Hierarchy
 
