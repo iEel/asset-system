@@ -1,10 +1,11 @@
 import { readFile } from "fs/promises"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
-import { hasPermission, requireAuth } from "@/lib/auth-utils"
+import { requireAuth } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { assertSafeUploadPath } from "@/lib/uploads"
+import { assertCanViewAttachment, requireAttachmentPermission } from "@/lib/attachment-access"
 
 export const runtime = "nodejs"
 
@@ -24,12 +25,7 @@ export async function GET(request: NextRequest, context: AttachmentRouteContext)
     if (!attachment) {
       return NextResponse.json({ error: "Attachment not found" }, { status: 404 })
     }
-    if (
-      !hasAttachmentPermission(user, attachment.module, "view") &&
-      !(await canViewOwnAssetAttachment(user, attachment))
-    ) {
-      requireAttachmentPermission(user, attachment.module, "view")
-    }
+    await assertCanViewAttachment(user, attachment)
 
     const safePath = assertSafeUploadPath(attachment.filePath)
     const file = await readFile(safePath)
@@ -82,53 +78,4 @@ export async function DELETE(_request: NextRequest, context: AttachmentRouteCont
   } catch (error) {
     return errorResponse(error)
   }
-}
-
-function requireAttachmentPermission(
-  user: Awaited<ReturnType<typeof requireAuth>>,
-  module: string,
-  action: "view" | "edit"
-) {
-  if (!hasAttachmentPermission(user, module, action)) {
-    throw new Error("Forbidden: insufficient permissions")
-  }
-}
-
-function hasAttachmentPermission(
-  user: Awaited<ReturnType<typeof requireAuth>>,
-  module: string,
-  action: "view" | "edit"
-) {
-  return hasPermission(user, getAttachmentPermissionModule(module), action)
-}
-
-function getAttachmentPermissionModule(module: string) {
-  return (
-    module === "maintenance"
-      ? "maintenance"
-      : module === "audit_finding"
-        ? "audit"
-        : module === "disposal" || module === "disposal_batch"
-          ? "disposal"
-        : module === "asset_model"
-          ? "brand"
-          : "asset"
-  )
-}
-
-async function canViewOwnAssetAttachment(
-  user: Awaited<ReturnType<typeof requireAuth>>,
-  attachment: { module: string; assetId: string | null; referenceId: string }
-) {
-  if (attachment.module !== "asset" || !user.employeeId) return false
-
-  const assetId = attachment.assetId ?? attachment.referenceId
-  if (!assetId) return false
-
-  const asset = await prisma.asset.findFirst({
-    where: { id: assetId, isActive: true, custodianId: user.employeeId },
-    select: { id: true },
-  })
-
-  return Boolean(asset)
 }

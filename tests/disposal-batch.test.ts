@@ -200,12 +200,12 @@ test("batch detail owns shared evidence and exposes every child request", () => 
 
   const page = readFileSync(pagePath, "utf8")
   const attachmentRoute = readFileSync(attachmentRoutePath, "utf8")
-  const attachmentDownload = readFileSync("src/app/api/attachments/[id]/route.ts", "utf8")
+  const attachmentAccess = readFileSync("src/lib/attachment-access.ts", "utf8")
 
   assert.match(page, /module: "disposal_batch"/)
   assert.match(page, /disposalRequests/)
   assert.match(page, /DisposalAttachments/)
   assert.match(attachmentRoute, /module: "disposal_batch"/)
   assert.match(attachmentRoute, /referenceId: batch\.id/)
-  assert.match(attachmentDownload, /module === "disposal_batch"/)
+  assert.match(attachmentAccess, /module === "disposal_batch"/)
 })

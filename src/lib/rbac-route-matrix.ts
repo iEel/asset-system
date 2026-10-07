@@ -87,9 +87,15 @@ export const rbacRoutePermissionMatrix: RbacRouteMatrixEntry[] = [
     label: "Attachment download/delete",
     customAuthSnippet: "requireAttachmentPermission",
     checks: [
-      { module: "asset", action: "view", snippets: ["requireAttachmentPermission(user, attachment.module, \"view\")"] },
+      { module: "asset", action: "view", snippets: ["assertCanViewAttachment(user, attachment)"] },
       { module: "asset", action: "edit", snippets: ["requireAttachmentPermission(user, existing.module, \"edit\")"] },
     ],
+  },
+  {
+    filePath: "src/app/api/attachments/[id]/thumbnail/route.ts",
+    label: "Attachment thumbnail",
+    customAuthSnippet: "assertCanViewAttachment",
+    checks: [{ module: "asset", action: "view", snippets: ["assertCanViewAttachment(user, attachment)"] }],
   },
   {
     filePath: "src/app/api/audit-rounds/route.ts",
