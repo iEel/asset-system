@@ -4,6 +4,8 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { assetBulkMoveSchema } from "@/lib/validations/asset-operations"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
+import { getBulkCustodyChangeError } from "@/lib/asset-custody-policy"
+import { AssetOperationConflictError } from "@/lib/asset-operation-claim"
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,9 +18,11 @@ export async function POST(request: NextRequest) {
       where: { id: { in: uniqueAssetIds }, isActive: true },
       select: {
         id: true,
+        statusId: true,
         currentLocationId: true,
         assetTag: true,
         name: true,
+        status: { select: { name: true } },
       },
     })
 
@@ -34,15 +38,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Some assets already have active checkouts" }, { status: 400 })
     }
 
+    const blocked = assets.flatMap((asset) => {
+      const code = getBulkCustodyChangeError({ statusName: asset.status.name, hasActiveCheckout: false, changesCustodian: false })
+      return code ? [{ assetId: asset.id, assetTag: asset.assetTag, code }] : []
+    })
+    if (blocked.length > 0) {
+      return NextResponse.json({
+        code: blocked[0].code,
+        error: "Disposed or retired assets cannot be moved.",
+        blocked,
+      }, { status: 409 })
+    }
+
     const result = await prisma.$transaction(async (tx) => {
       for (const asset of assets) {
-        await tx.asset.update({
-          where: { id: asset.id },
+        const claim = await tx.asset.updateMany({
+          where: { id: asset.id, isActive: true, statusId: asset.statusId },
           data: {
             currentLocationId: input.toLocationId,
             updatedBy: user.id,
           },
         })
+        if (claim.count !== 1) {
+          throw new AssetOperationConflictError(
+            "ASSET_CHANGED_DURING_OPERATION",
+            "Asset status changed while this request was being saved. Reload the asset and try again.",
+          )
+        }
       }
 
       await tx.assetMovement.createMany({
@@ -97,6 +119,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result)
   } catch (error) {
+    if (error instanceof AssetOperationConflictError) {
+      return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
+    }
     return errorResponse(error, 400)
   }
 }

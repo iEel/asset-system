@@ -51,6 +51,9 @@ export const selectableConditionNames = [
   "Salvage",
 ] as const
 
+// Disposed and Retired assets have left the books; their custody and location are history.
+const writtenOffStatusNames: ReadonlySet<string> = new Set(["disposed", "retired"])
+
 const allowedSources: Partial<Record<AssetLifecycleOperation, ReadonlySet<string>>> = {
   checkout: new Set(["ready"]),
   legacy_return_backfill: new Set(["ready", "in use"]),
@@ -97,7 +100,9 @@ export function getAssetLifecycleTransitionError(
     return "ASSET_STATUS_EDIT_NOT_ALLOWED"
   }
 
-  if (operation === "move_scope") return null
+  if (operation === "move_scope") {
+    return writtenOffStatusNames.has(current) ? "ASSET_STATUS_TRANSFER_NOT_ALLOWED" : null
+  }
 
   const allowed = allowedSources[operation]
   if (allowed?.has(current)) return null

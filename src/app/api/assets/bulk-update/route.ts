@@ -4,6 +4,10 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { assetBulkUpdateSchema } from "@/lib/validations/asset-operations"
 import { syncInstalledComponentsWithParent } from "@/lib/asset-component-sync"
+import { getBulkCustodyChangeError } from "@/lib/asset-custody-policy"
+import { getTransferTargetStatusName } from "@/lib/asset-lifecycle-policy"
+import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
+import { AssetOperationConflictError } from "@/lib/asset-operation-claim"
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,14 +20,42 @@ export async function POST(request: NextRequest) {
       where: { id: { in: uniqueAssetIds }, isActive: true },
       select: {
         id: true,
+        assetTag: true,
+        statusId: true,
         currentLocationId: true,
         custodianId: true,
+        status: { select: { name: true } },
       },
     })
 
     if (assets.length !== uniqueAssetIds.length) {
       return NextResponse.json({ error: "Some assets were not found" }, { status: 404 })
     }
+
+    const activeCheckoutAssetIds = new Set(
+      (await prisma.assetCheckout.findMany({
+        where: { assetId: { in: uniqueAssetIds }, isReturned: false, transactionStatus: "active" },
+        select: { assetId: true },
+      })).map((checkout) => checkout.assetId),
+    )
+    const blocked = assets.flatMap((asset) => {
+      const code = getBulkCustodyChangeError({
+        statusName: asset.status.name,
+        hasActiveCheckout: activeCheckoutAssetIds.has(asset.id),
+        changesCustodian: Boolean(input.toCustodianId),
+      })
+      return code ? [{ assetId: asset.id, assetTag: asset.assetTag, code }] : []
+    })
+    if (blocked.length > 0) {
+      return NextResponse.json({
+        code: blocked[0].code,
+        error: "Some assets cannot be updated in bulk. Use the transfer, return, or disposal workflow for them.",
+        blocked,
+      }, { status: 409 })
+    }
+
+    const targetStatusName = getTransferTargetStatusName(input.toCustodianId)
+    const targetStatusId = targetStatusName ? await getRequiredAssetStatusId(targetStatusName) : null
 
     if (input.toLocationId) {
       const location = await prisma.location.findFirst({
@@ -53,10 +85,16 @@ export async function POST(request: NextRequest) {
       }
 
       for (const asset of assets) {
-        await tx.asset.update({
-          where: { id: asset.id },
-          data: updateData,
+        const claim = await tx.asset.updateMany({
+          where: { id: asset.id, isActive: true, statusId: asset.statusId },
+          data: { ...updateData, ...(targetStatusId ? { statusId: targetStatusId } : {}) },
         })
+        if (claim.count !== 1) {
+          throw new AssetOperationConflictError(
+            "ASSET_CHANGED_DURING_OPERATION",
+            "Asset status changed while this request was being saved. Reload the asset and try again.",
+          )
+        }
       }
 
       const movementRows = assets.flatMap((asset) => {
@@ -136,6 +174,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result)
   } catch (error) {
+    if (error instanceof AssetOperationConflictError) {
+      return NextResponse.json({ code: error.code, error: error.message }, { status: 409 })
+    }
     return errorResponse(error, 400)
   }
 }

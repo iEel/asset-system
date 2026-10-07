@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { syncInstalledComponentsWithParent, type ComponentSyncChanges } from "@/lib/asset-component-sync"
 import { getAssetStateSelectionError } from "@/lib/asset-lifecycle-policy"
+import { getRegisterCustodyChangeError } from "@/lib/asset-custody-policy"
 import { assetSchema } from "@/lib/validations/asset"
 
 type AssetRouteContext = {
@@ -86,6 +87,20 @@ export async function PUT(request: NextRequest, context: AssetRouteContext) {
     })
     if (stateError) {
       return NextResponse.json({ code: stateError, error: stateError }, { status: 400 })
+    }
+
+    const activeCheckout = await prisma.assetCheckout.findFirst({
+      where: { assetId: id, isReturned: false, transactionStatus: "active" },
+      select: { id: true },
+    })
+    const custodyError = getRegisterCustodyChangeError({
+      statusName: existing.status.name,
+      hasActiveCheckout: activeCheckout !== null,
+      before: existing,
+      after: input,
+    })
+    if (custodyError) {
+      return NextResponse.json({ code: custodyError, error: custodyError }, { status: 409 })
     }
 
     await assertUniqueSerial(input.serialNumber, id)
