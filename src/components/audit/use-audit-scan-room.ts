@@ -13,10 +13,12 @@ const memoryStore = new Map<string, string>()
 const snapshotCache = new Map<string, { raw: string | null; value: AuditScanContext }>()
 
 function readRaw(storageKey: string) {
+  // A memory copy exists only when the last write to localStorage failed (read-only or full storage).
+  if (memoryStore.has(storageKey)) return memoryStore.get(storageKey) ?? null
   try {
     return window.localStorage.getItem(storageKey)
   } catch {
-    return memoryStore.get(storageKey) ?? null
+    return null
   }
 }
 
@@ -55,6 +57,7 @@ export function useAuditScanRoom(roundId: string) {
     const raw = JSON.stringify(normalizeAuditScanContext(next))
     try {
       window.localStorage.setItem(storageKey, raw)
+      memoryStore.delete(storageKey)
     } catch {
       memoryStore.set(storageKey, raw)
     }

@@ -66,7 +66,7 @@ export function AuditScanRoomList({
 
   return (
     <section data-audit-scan-room-list aria-label={t("roomListLabel")}>
-      <div role="group" aria-label={t("roomListLabel")} className="flex gap-1 rounded-md bg-muted p-1">
+      <div role="group" aria-label={t("roomListTabs")} className="flex gap-1 rounded-md bg-muted p-1">
         {(["pending", "checked", "all"] as const).map((key) => (
           <button
             key={key}

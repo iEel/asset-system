@@ -43,9 +43,29 @@ test("the room list has three counted tabs, 44px rows, show-more and a link to t
 })
 
 test("room and list copy exists in Thai and English", () => {
-  const keys = ["progressChecked", "progressMismatch", "roomPick", "roomChange", "roomSheetTitle", "roomSheetHelp", "roomSheetSearch", "roomPendingOfTotal", "roomDepartment", "roomAllDepartments", "roomClear", "roomListLabel", "tabPending", "tabChecked", "tabAll", "showMore", "checkedBy", "badgeFound", "badgeMismatch", "badgeNotFound", "badgeOutOfScope", "badgeQueued", "emptyPending", "emptyChecked", "emptyAll", "pendingLink"]
+  const keys = ["progressChecked", "progressMismatch", "roomPick", "roomChange", "roomSheetTitle", "roomSheetHelp", "roomSheetSearch", "roomPendingOfTotal", "roomDepartment", "roomAllDepartments", "roomClear", "roomListLabel", "roomListTabs", "tabPending", "tabChecked", "tabAll", "showMore", "checkedBy", "badgeFound", "badgeMismatch", "badgeNotFound", "badgeOutOfScope", "badgeQueued", "emptyPending", "emptyChecked", "emptyAll", "pendingLink"]
   for (const locale of ["th", "en"] as const) {
     assert.deepEqual(keys.filter((key) => typeof messages(locale)[key] !== "string"), [], locale)
   }
   assert.equal(messages("th").roomPick, "เลือกห้องที่กำลังตรวจ")
+})
+
+test("the room hook prefers the memory copy when storage is read-only and drops it after a real write", () => {
+  const source = read("src/components/audit/use-audit-scan-room.ts")
+  const readRaw = source.slice(source.indexOf("function readRaw"), source.indexOf("function readRoom"))
+  const memoryAt = readRaw.search(/memoryStore\.has\(storageKey\)/)
+  const storageAt = readRaw.search(/localStorage\.getItem/)
+  assert.ok(memoryAt >= 0, "readRaw checks memoryStore")
+  assert.ok(storageAt > memoryAt, "readRaw checks memoryStore before localStorage")
+  const setRoom = source.slice(source.indexOf("const setRoom"))
+  assert.match(setRoom, /localStorage\.setItem\(storageKey, raw\)\s*\n\s*memoryStore\.delete\(storageKey\)/)
+})
+
+test("the room list tab group has its own label", () => {
+  const source = read("src/components/audit/audit-scan-room-list.tsx")
+  assert.match(source, /role="group" aria-label=\{t\("roomListTabs"\)\}/)
+  for (const locale of ["th", "en"] as const) {
+    assert.equal(typeof messages(locale).roomListTabs, "string", locale)
+  }
+  assert.equal(messages("th").roomListTabs, "สถานะรายการ")
 })
