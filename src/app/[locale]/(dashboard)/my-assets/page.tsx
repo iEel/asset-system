@@ -6,7 +6,7 @@ import { PackageCheck, ShieldAlert } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { getDesktopTableOnlyClasses, getEmptyStateClasses, getMobileCardListClasses, getResponsiveTableScrollClasses, getSafeActionLinkClasses } from "@/lib/design-system"
+import { getAssetStateTone, getDesktopTableOnlyClasses, getEmptyStateClasses, getMobileCardListClasses, getResponsiveTableScrollClasses, getSafeActionLinkClasses } from "@/lib/design-system"
 import { getSessionUser } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
 import { buildMyAssetsWhere, summarizeMyAssets } from "@/lib/my-assets"
@@ -28,7 +28,7 @@ const myAssetSelect = {
   branch: { select: { code: true } },
   currentLocation: { select: { code: true, name: true } },
   status: { select: { name: true, nameTh: true, colorCode: true } },
-  condition: { select: { nameTh: true, colorCode: true } },
+  condition: { select: { name: true, nameTh: true, colorCode: true } },
   attachments: {
     where: { module: "asset", fileType: { startsWith: "image/" }, isActive: true },
     select: { id: true, originalName: true },
@@ -135,10 +135,10 @@ export default async function MyAssetsPage({ params }: MyAssetsPageProps) {
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.serialNumber || "-"}</td>
                         <td className="px-4 py-3">
-                          <StatusBadge size="xs" label={asset.status.nameTh} color={asset.status.colorCode} />
+                          <StatusBadge size="xs" label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} color={asset.status.colorCode} />
                         </td>
                         <td className="px-4 py-3">
-                          <StatusBadge size="xs" label={asset.condition.nameTh} color={asset.condition.colorCode} />
+                          <StatusBadge size="xs" label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} color={asset.condition.colorCode} />
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                           {asset.currentLocation.code} - {asset.currentLocation.name}
@@ -236,11 +236,11 @@ function MobileAssetCard({ labels, asset, href }: { labels: Record<string, strin
         <MobileField label={labels.companyBranch} value={`${asset.company.code} / ${asset.branch.code}`} />
         <div className="flex items-center justify-between gap-3">
           <span className="text-muted-foreground">{labels.status}</span>
-          <StatusBadge size="xs" label={asset.status.nameTh} color={asset.status.colorCode} />
+          <StatusBadge size="xs" label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} color={asset.status.colorCode} />
         </div>
         <div className="flex items-center justify-between gap-3">
           <span className="text-muted-foreground">{labels.condition}</span>
-          <StatusBadge size="xs" label={asset.condition.nameTh} color={asset.condition.colorCode} />
+          <StatusBadge size="xs" label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} color={asset.condition.colorCode} />
         </div>
         <MobileField label={labels.updatedAt} value={formatDateTime(asset.updatedAt)} />
       </div>

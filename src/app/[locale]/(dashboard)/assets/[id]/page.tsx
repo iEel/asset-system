@@ -37,6 +37,7 @@ import { AssetEvidenceDrawer } from "@/components/assets/asset-evidence-drawer"
 import { AssetStatusCorrectionButton } from "@/components/assets/asset-status-correction-button"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { getAssetStateTone } from "@/lib/design-system"
 import { getCategoryPhotoChecklist } from "@/lib/category-photo-checklist"
 import { AssetComponentContextBanner } from "@/components/assets/asset-component-context-banner"
 import { AssetComponentsSummary } from "@/components/assets/asset-components-summary"
@@ -893,11 +894,11 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           <div data-testid="asset-identity-summary" className="mt-3 flex flex-col gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
             <div className="flex flex-wrap items-center gap-2">
               <div className="inline-flex items-center gap-1.5">
-                <StatusBadge size="xs" label={asset.status.nameTh} color={asset.status.colorCode} />
+                <StatusBadge size="xs" label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} color={asset.status.colorCode} />
                 <AssetStateHelpPopover {...assetStatusHelp} />
               </div>
               <div className="inline-flex items-center gap-1.5">
-                <StatusBadge size="xs" label={asset.condition.nameTh} color={asset.condition.colorCode} />
+                <StatusBadge size="xs" label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} color={asset.condition.colorCode} />
                 <AssetStateHelpPopover {...assetConditionHelp} />
               </div>
             </div>

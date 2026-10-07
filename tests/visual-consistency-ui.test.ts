@@ -25,6 +25,8 @@ test("one shared status badge replaces the old status pill", () => {
   for (const source of [assetDetail, myAssets, myAssetDetail]) {
     assert.match(source, /import \{ StatusBadge \} from "@\/components\/ui\/status-badge"/)
     assert.doesNotMatch(source, /status-pill|function StatusPill|function StatusBadge/)
+    assert.match(source, /tone=\{getAssetStateTone\(asset\.status\.name\)\}/)
+    assert.match(source, /tone=\{getAssetStateTone\(asset\.condition\.name\)\}/)
   }
 })
 

@@ -6,7 +6,7 @@ import { ArrowLeft, Building2, CalendarClock, MapPin, PackageCheck, Tags } from 
 import { getTranslations } from "next-intl/server"
 import { ContentPanel } from "@/components/ui/content-panel"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { getSafeActionLinkClasses } from "@/lib/design-system"
+import { getAssetStateTone, getSafeActionLinkClasses } from "@/lib/design-system"
 import { getSessionUser } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
 import { buildMyAssetDetailWhere } from "@/lib/my-assets"
@@ -26,8 +26,8 @@ const myAssetDetailSelect = {
   company: { select: { code: true } },
   branch: { select: { code: true } },
   currentLocation: { select: { code: true, name: true } },
-  status: { select: { nameTh: true, colorCode: true } },
-  condition: { select: { nameTh: true, colorCode: true } },
+  status: { select: { name: true, nameTh: true, colorCode: true } },
+  condition: { select: { name: true, nameTh: true, colorCode: true } },
   attachments: {
     where: { module: "asset", fileType: { startsWith: "image/" }, isActive: true },
     select: { id: true, originalName: true },
@@ -86,8 +86,8 @@ export default async function MyAssetDetailPage({ params }: MyAssetDetailPagePro
             <h2 className="mt-1 break-words text-xl font-semibold text-foreground">{asset.assetTag}</h2>
             <p className="mt-1 break-words text-sm text-foreground">{asset.name}</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <StatusBadge size="xs" label={asset.status.nameTh} color={asset.status.colorCode} />
-              <StatusBadge size="xs" label={asset.condition.nameTh} color={asset.condition.colorCode} />
+              <StatusBadge size="xs" label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} color={asset.status.colorCode} />
+              <StatusBadge size="xs" label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} color={asset.condition.colorCode} />
             </div>
           </div>
         </div>
