@@ -1,83 +1,92 @@
 import Link from "next/link"
-import type React from "react"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, CalendarClock, CheckCircle2, Clock, ClipboardList, Download, Hourglass, Wrench } from "lucide-react"
+import { AlertTriangle, CalendarClock, Download, Plus, Wrench } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
-import { buildMaintenanceQueryString, buildMaintenanceWhere, getMaintenanceDateRangeError, parseMaintenanceListParams, type ParsedMaintenanceListParams } from "@/lib/maintenance-query"
-import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
+import {
+  buildMaintenanceQueryString,
+  buildMaintenanceWhere,
+  getMaintenanceDateRangeError,
+  maintenanceStatusFilters,
+  parseMaintenanceListParams,
+} from "@/lib/maintenance-query"
+import { buildDuePmPlanWhere, getBangkokDateKey } from "@/lib/preventive-maintenance"
+import { getRepairRecordStatusTone, openRepairRecordWhere, toRepairRecordStatus } from "@/lib/repair-record-policy"
+import { formatCurrency, formatDate } from "@/lib/utils"
 import { ColumnHeader } from "@/components/master-data/master-data-layout"
-import { MaintenancePlanGenerateButton } from "@/components/maintenance/maintenance-plan-generate-button"
-import { MaintenancePlanStateActions } from "@/components/maintenance/maintenance-plan-state-actions"
-import { MaintenanceTicketActions } from "@/components/maintenance/maintenance-ticket-actions"
-import { getMaintenanceStatusUpdateTargets, isPreventiveMaintenanceTicket } from "@/lib/maintenance-policy"
 import { MaintenancePagination } from "@/components/maintenance/maintenance-pagination"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
-import { getMaintenanceStatusLabel, getMaintenanceStatusTone, isMaintenanceOverdue, maintenanceStatuses } from "@/lib/maintenance-status"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { getMaintenancePlanDueState } from "@/lib/preventive-maintenance"
-import { hasPrismaModelDelegate } from "@/lib/prisma-client-cache"
-import {
-  buildMaintenanceTicketLayoutHref,
-  buildMaintenanceViewHref,
-  normalizeMaintenancePageView,
-  normalizeMaintenanceTicketLayout,
-  type MaintenancePageView,
-  type MaintenanceTicketLayout,
-} from "@/lib/maintenance-view"
-import { getMaintenanceBoardCompatibility } from "@/lib/maintenance-list"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
-import { getMaintenanceOperationalTarget } from "@/lib/asset-lifecycle-policy"
 
 type MaintenancePageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string; status?: string; repairType?: string; evidence?: string; overdue?: string; queue?: string; dateFrom?: string; dateTo?: string; assetId?: string; view?: string; layout?: string; page?: string; pageSize?: string }>
+  searchParams: Promise<{ search?: string; status?: string; assetId?: string; dateFrom?: string; dateTo?: string; page?: string; pageSize?: string }>
+}
+
+const stuckAssetWhere = {
+  isActive: true,
+  status: { name: { in: ["Pending Repair", "Under Maintenance"] } },
+  maintenanceTickets: { none: openRepairRecordWhere },
 }
 
 export default async function MaintenancePage({ params, searchParams }: MaintenancePageProps) {
   const { locale } = await params
-  const filters = await searchParams
   const user = await requirePagePermission(locale, "maintenance", "view")
   const canCreate = hasPermission(user, "maintenance", "create")
-  const canEdit = hasPermission(user, "maintenance", "edit")
   const canExport = hasPermission(user, "maintenance", "export")
-  const t = await getTranslations("maintenancePage")
+  const t = await getTranslations("repairRecord")
   const tCommon = await getTranslations("common")
-  const listFilters = parseMaintenanceListParams(filters)
-  const activeView = normalizeMaintenancePageView(filters.view)
-  const activeTicketLayout = normalizeMaintenanceTicketLayout(filters.layout)
-  const exportQuery = buildMaintenanceQueryString(listFilters)
-  const maintenanceReturnParams = new URLSearchParams(exportQuery)
-  maintenanceReturnParams.set("view", activeView)
-  if (activeView === "tickets" && activeTicketLayout === "board") maintenanceReturnParams.set("layout", activeTicketLayout)
-  if (filters.assetId) maintenanceReturnParams.set("assetId", filters.assetId)
-  const maintenanceReturnQuery = maintenanceReturnParams.toString()
-  const maintenanceReturnHref = `/${locale}/maintenance${maintenanceReturnQuery ? `?${maintenanceReturnQuery}` : ""}`
-  const evidenceTicketIdsPromise = listFilters.evidence ? getMaintenanceAttachmentTicketIds() : Promise.resolve([])
-  const evidenceTicketIds = await evidenceTicketIdsPromise
-  const hasMaintenancePlanSupport = hasPrismaModelDelegate(prisma, "maintenancePlan")
+  const filters = parseMaintenanceListParams(await searchParams)
+  const where = buildMaintenanceWhere(filters)
+  const listQuery = buildMaintenanceQueryString(filters)
+  const returnHref = `/${locale}/maintenance?${listQuery}`
+  const now = new Date()
+  const todayKey = getBangkokDateKey(now)
 
-  const today = startOfToday(new Date())
-  const [ticketWorkspace, planWorkspace, closeStatusRows] = await Promise.all([
-    activeView === "tickets" ? getTicketWorkspaceData(listFilters, evidenceTicketIds, today) : Promise.resolve(emptyTicketWorkspace()),
-    activeView === "pm" ? getPlanWorkspaceData(hasMaintenancePlanSupport, listFilters, today) : Promise.resolve(emptyPlanWorkspace()),
-    activeView === "tickets" && canEdit ? prisma.assetStatus.findMany({
-      where: { isActive: true, name: { in: ["Ready", "In Use", "Pending Disposal"] } },
-      select: { id: true, name: true, nameTh: true },
-      orderBy: { sortOrder: "asc" },
-    }) : Promise.resolve([]),
+  const [records, total, duePlans, stuckAssets, stuckTotal] = await Promise.all([
+    prisma.maintenanceTicket.findMany({
+      where,
+      include: {
+        asset: { select: { assetTag: true, name: true } },
+        reportedBy: { select: { code: true, fullNameTh: true } },
+        vendor: { select: { name: true } },
+      },
+      orderBy: [{ reportedDate: "desc" }, { createdAt: "desc" }],
+      skip: (filters.page - 1) * filters.pageSize,
+      take: filters.pageSize,
+    }),
+    prisma.maintenanceTicket.count({ where }),
+    prisma.maintenancePlan.findMany({
+      where: buildDuePmPlanWhere(now),
+      select: {
+        id: true,
+        planNo: true,
+        title: true,
+        nextDueDate: true,
+        asset: { select: { assetTag: true, name: true } },
+        vendor: { select: { name: true } },
+      },
+      orderBy: { nextDueDate: "asc" },
+      take: 20,
+    }),
+    prisma.asset.findMany({
+      where: stuckAssetWhere,
+      select: { id: true, assetTag: true, name: true, status: { select: { nameTh: true } } },
+      orderBy: { assetTag: "asc" },
+      take: 20,
+    }),
+    prisma.asset.count({ where: stuckAssetWhere }),
   ])
-  const { tickets, total: ticketTotal, summary } = ticketWorkspace
-  const { plans: maintenancePlans, total: planTotal, summary: planSummary } = planWorkspace
-  const closeEvidenceTicketIds = activeView === "tickets" && canEdit
-    ? await getMaintenanceAttachmentTicketIds(tickets.map((ticket) => ticket.id))
-    : []
-  const statusLabels = getStatusLabels(t)
-  const closeStatuses = closeStatusRows.map((status) => ({ id: status.id, name: status.name, label: status.nameTh }))
-  const boardCompatibility = getMaintenanceBoardCompatibility(listFilters.status)
+  const recordHref = (id: string) => appendOperationalReturnTo(`/${locale}/maintenance/${id}`, returnHref)
+  const outcomeLabel = (outcome: string | null, status: string) =>
+    outcome === "usable" || outcome === "beyond_repair"
+      ? t(`outcome.${outcome}`)
+      : toRepairRecordStatus(status) === "closed" ? t("outcome.unknown") : "-"
+  const clearHref = filters.assetId ? `/${locale}/maintenance?assetId=${encodeURIComponent(filters.assetId)}` : `/${locale}/maintenance`
 
   return (
     <div className="space-y-6">
@@ -88,875 +97,196 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
         </div>
         {canCreate ? (
           <Link
-            href={activeView === "pm" ? `/${locale}/maintenance/pm/new` : `/${locale}/maintenance/new`}
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-10"
+            href={appendOperationalReturnTo(`/${locale}/maintenance/new${filters.assetId ? `?assetId=${encodeURIComponent(filters.assetId)}` : ""}`, returnHref)}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            {activeView === "pm" ? t("pmCreateTitle") : t("createTitle")}
+            <Plus className="h-4 w-4" />{t("createTitle")}
           </Link>
         ) : null}
       </div>
 
-      <MaintenanceViewTabs
-        locale={locale}
-        activeView={activeView}
-        assetId={filters.assetId}
-        ticketLayout={activeTicketLayout}
-        ticketCount={summary.openWork}
-        pmCount={planSummary.total}
-        labels={{
-          tickets: t("viewTickets"),
-          ticketsHelp: t("viewTicketsHelp"),
-          pm: t("viewPm"),
-          pmHelp: t("viewPmHelp"),
-        }}
-      />
-
-      {activeView === "tickets" && canEdit ? (
-        <MaintenanceTicketActions
-          tickets={tickets.map((ticket) => ({
-            id: ticket.id,
-            repairNo: ticket.repairNo,
-            repairStatus: ticket.repairStatus,
-            updatedAt: ticket.updatedAt.toISOString(),
-            isPreventive: isPreventiveMaintenanceTicket(ticket),
-            assignedToId: ticket.assignedToId,
-            dueDate: ticket.dueDate?.toISOString() ?? null,
-            laborCost: ticket.laborCost?.toString(),
-            partsCost: ticket.partsCost?.toString(),
-            repairCost: ticket.repairCost?.toString(),
-            quotationNo: ticket.quotationNo,
-            invoiceNo: ticket.invoiceNo,
-            warrantyClaim: ticket.warrantyClaim,
-            hasEvidence: closeEvidenceTicketIds.includes(ticket.id),
-            recommendedStatusId: closeStatusRows.find(
-              (status) => status.name === getMaintenanceOperationalTarget(ticket.asset)
-            )?.id ?? null,
-          }))}
-          closeStatuses={closeStatuses}
-        />
+      {stuckTotal > 0 ? (
+        <section id="stuck" className="rounded-lg border border-warning/40 bg-warning/5 p-4 shadow-sm">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+            <AlertTriangle className="h-5 w-5 text-warning-foreground" />{t("stuckTitle")} ({stuckTotal})
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("stuckHelp")}</p>
+          <ul className="mt-3 grid gap-2 md:grid-cols-2">
+            {stuckAssets.map((asset) => (
+              <li key={asset.id} className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2">
+                <Link href={`/${locale}/assets/${asset.id}`} className="min-w-0 truncate text-sm font-medium text-foreground hover:text-primary">
+                  {asset.assetTag} - {asset.name} <span className="text-xs text-muted-foreground">({asset.status.nameTh})</span>
+                </Link>
+                {canCreate ? (
+                  <Link href={appendOperationalReturnTo(`/${locale}/maintenance/new?assetId=${asset.id}`, returnHref)} className="inline-flex min-h-11 shrink-0 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent">
+                    {t("createTitle")}
+                  </Link>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          {stuckTotal > stuckAssets.length ? <p className="mt-2 text-xs text-muted-foreground">{t("stuckMore", { count: stuckTotal - stuckAssets.length })}</p> : null}
+        </section>
       ) : null}
 
-      {activeView === "tickets" ? (
-        <>
-          <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <MaintenanceMetric
-              label={t("summaryOpen")}
-              value={summary.openWork}
-              detail={t("summaryOpenDetail")}
-              tone="primary"
-              icon={<Wrench className="h-5 w-5" />}
-              href={buildMaintenanceKpiHref(locale, listFilters, filters.assetId, { queue: "open", overdue: "", status: "" })}
-            />
-            <MaintenanceMetric
-              label={t("summaryOverdue")}
-              value={summary.overdue}
-              detail={t("summaryOverdueDetail")}
-              tone="danger"
-              icon={<AlertTriangle className="h-5 w-5" />}
-              href={buildMaintenanceKpiHref(locale, listFilters, filters.assetId, { overdue: "yes", queue: "", status: "" })}
-            />
-            <MaintenanceMetric
-              label={t("summaryWaiting")}
-              value={summary.waiting}
-              detail={t("summaryWaitingDetail")}
-              tone="warning"
-              icon={<Hourglass className="h-5 w-5" />}
-              href={buildMaintenanceKpiHref(locale, listFilters, filters.assetId, { queue: "waiting", overdue: "", status: "" })}
-            />
-            <MaintenanceMetric
-              label={t("summaryCompleted")}
-              value={summary.completedPendingClose}
-              detail={t("summaryCompletedDetail")}
-              tone="success"
-              icon={<CheckCircle2 className="h-5 w-5" />}
-              href={buildMaintenanceKpiHref(locale, listFilters, filters.assetId, { queue: "completed", overdue: "", status: "" })}
-            />
-          </section>
-
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-            <form className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-[minmax(240px,1fr)_repeat(3,minmax(140px,160px))]" action={`/${locale}/maintenance`}>
-              <input type="hidden" name="view" value="tickets" />
-              <input type="hidden" name="layout" value={activeTicketLayout} />
-              {filters.assetId ? <input type="hidden" name="assetId" value={filters.assetId} /> : null}
-              <label className="min-w-0">
-                <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("search")}</span>
-                <input
-                  type="search"
-                  name="search"
-                  defaultValue={listFilters.search}
-                  placeholder={t("searchPlaceholder")}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                />
-              </label>
-              <label className="min-w-0">
-                <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("status")}</span>
-                <select
-                  name="status"
-                  defaultValue={listFilters.status}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                >
-                  <option value="">{tCommon("all")}</option>
-                  {maintenanceStatuses.map((status) => (
-                    <option key={status} value={status}>
-                      {t(`statuses.${status}`)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="min-w-0">
-                <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("repairType")}</span>
-                <select
-                  name="repairType"
-                  defaultValue={listFilters.repairType}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                >
-                  <option value="">{tCommon("all")}</option>
-                  <option value="internal">{t("internalRepair")}</option>
-                  <option value="vendor">{t("vendorRepair")}</option>
-                </select>
-              </label>
-              <label className="min-w-0">
-                <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("sla")}</span>
-                <select
-                  name="overdue"
-                  defaultValue={listFilters.overdue}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                >
-                  <option value="">{tCommon("all")}</option>
-                  <option value="yes">{t("overdueOnly")}</option>
-                </select>
-              </label>
-              <label className="min-w-0">
-                <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("evidence")}</span>
-                <select
-                  name="evidence"
-                  defaultValue={listFilters.evidence}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                >
-                  <option value="">{tCommon("all")}</option>
-                  <option value="with">{t("withEvidence")}</option>
-                  <option value="without">{t("withoutEvidence")}</option>
-                </select>
-              </label>
-              <label className="min-w-0">
-                <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("dateFrom")}</span>
-                <input
-                  type="date"
-                  name="dateFrom"
-                  defaultValue={listFilters.dateFrom}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                />
-              </label>
-              <label className="min-w-0">
-                <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("dateTo")}</span>
-                <input
-                  type="date"
-                  name="dateTo"
-                  defaultValue={listFilters.dateTo}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                />
-              </label>
-              <div className="flex min-w-0 flex-col gap-2 self-end sm:flex-row sm:flex-wrap md:col-span-2 xl:col-span-4">
-                <button
-                  type="submit"
-                  className="min-h-11 w-full rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0 sm:w-auto sm:min-w-24"
-                >
-                  {t("filter")}
-                </button>
-                <Link
-                  href={buildMaintenanceViewHref(locale, "tickets", filters.assetId, activeTicketLayout)}
-                  className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto sm:min-w-24"
-                >
-                  {t("clearFilters")}
-                </Link>
-              </div>
-            </form>
-            {getMaintenanceDateRangeError(listFilters) ? (
-              <p role="alert" className="mt-3 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-sm text-warning-foreground">
-                {t("invalidDateRange")}
-              </p>
-            ) : null}
-            {hasActiveTicketFilters(listFilters) ? (
-              <div className="mt-3 flex flex-wrap items-center gap-2" aria-label={t("activeFilters")}>
-                <span className="text-xs font-medium text-muted-foreground">{t("activeFilters")}</span>
-                {getActiveTicketFilterLabels(listFilters, t).map((label) => (
-                  <span key={label} className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs text-foreground">{label}</span>
-                ))}
-                <Link href={buildMaintenanceViewHref(locale, "tickets", filters.assetId, activeTicketLayout)} className="text-xs font-medium text-primary hover:underline">
-                  {t("clearFilters")}
-                </Link>
-              </div>
-            ) : null}
-          </section>
-
-          <MaintenanceTicketLayoutTabs
-            locale={locale}
-            currentQuery={maintenanceReturnQuery}
-            activeLayout={activeTicketLayout}
-            labels={{
-              navigation: t("ticketLayoutNavigation"),
-              table: t("ticketLayoutTable"),
-              board: t("ticketLayoutBoard"),
-            }}
-          />
-
-          {activeTicketLayout === "board" && boardCompatibility === "table_required" ? (
-          <section className="rounded-lg border border-warning/30 bg-warning/5 p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-foreground">{t("boardTableRequired")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("boardTableRequiredHelp")}</p>
-            <Link href={buildMaintenanceTicketLayoutHref(locale, maintenanceReturnQuery, "table")} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-              {t("ticketLayoutTable")}
-            </Link>
-          </section>
-          ) : activeTicketLayout === "board" ? (
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-            <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-foreground">{t("kanbanTitle")}</h2>
-                <p className="text-xs text-muted-foreground">{t("kanbanSubtitle")}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 2xl:grid-cols-6">
-              {["reported", "accepted", "in_progress", "waiting_parts", "waiting_vendor", "completed"].map((status) => (
-                <MaintenanceKanbanColumn
-                  key={status}
-                  locale={locale}
-                  maintenanceReturnHref={maintenanceReturnHref}
-                  status={status}
-                  label={statusLabels[status] ?? status}
-                  tickets={tickets.filter((ticket) => ticket.repairStatus === status)}
-                />
-              ))}
-            </div>
-          </section>
-          ) : (
-          <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-            <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-foreground">{t("ticketList")}</h2>
-                <p className="mt-1 text-xs text-muted-foreground">{t("resultCount", { count: ticketTotal })}</p>
-              </div>
-              {canExport ? (
-                <a
-                  href={`/api/maintenance-tickets/export${exportQuery ? `?${exportQuery}` : ""}`}
-                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-fit"
-                >
-                  <Download className="h-4 w-4" />
-                  {t("exportTickets")}
-                </a>
-              ) : null}
-            </div>
-            <div className={`${getMobileCardListClasses()} p-3`}>
-              {tickets.length === 0 ? (
-                <ActionEmptyState
-                  icon={<Wrench className="h-6 w-6" />}
-                  title={t("emptyTitle")}
-                  description={t("emptyHelp")}
-                  actionHref={buildMaintenanceViewHref(locale, "tickets", filters.assetId)}
-                  actionLabel={t("clearFilters")}
-                />
-              ) : (
-                tickets.map((ticket) => (
-                  <article key={ticket.id} className="min-w-0 rounded-md border border-border bg-background p-3">
-                    <div className="flex min-w-0 flex-col gap-2">
-                      <Link href={appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}`, maintenanceReturnHref)} className="break-words text-sm font-semibold text-foreground hover:text-primary">
-                        {ticket.repairNo}
+      <section id="pm-due" className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+              <CalendarClock className="h-5 w-5 text-primary" />{t("pmDueTitle")} ({duePlans.length})
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("pmDueHelp")}</p>
+          </div>
+          <Link href={`/${locale}/maintenance/pm`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium hover:bg-accent">
+            {t("pmManage")}
+          </Link>
+        </div>
+        {duePlans.length > 0 ? (
+          <ul className="mt-3 divide-y divide-border rounded-md border border-border">
+            {duePlans.map((plan) => {
+              const overdue = getBangkokDateKey(plan.nextDueDate) < todayKey
+              return (
+                <li key={plan.id} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-foreground">{plan.title}</div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {plan.planNo} · {plan.asset.assetTag} - {plan.asset.name}{plan.vendor ? ` · ${plan.vendor.name}` : ""}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge label={overdue ? t("pmOverdue") : t("pmDueOn", { date: formatDate(plan.nextDueDate) })} tone={overdue ? "danger" : "warning"} size="xs" />
+                    {canCreate ? (
+                      <Link href={appendOperationalReturnTo(`/${locale}/maintenance/new?planId=${plan.id}`, returnHref)} className="inline-flex min-h-11 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+                        {t("pmRecordDone")}
                       </Link>
-                      <div>
-                        <div className="break-words text-sm font-medium text-foreground">{ticket.asset.assetTag}</div>
-                        <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{ticket.asset.name}</div>
-                      </div>
-                      <p className="break-words text-sm text-muted-foreground">{ticket.problem}</p>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, statusLabels)} tone={getMaintenanceStatusTone(ticket.repairStatus)} size="xs" />
-                      {isMaintenanceOverdue(ticket.repairStatus, ticket.dueDate) ? (
-                        <StatusBadge label={t("overdue")} tone="danger" size="xs" />
-                      ) : null}
-                    </div>
-                    <div className="mt-3 grid gap-2 text-sm">
-                      <MobileMaintenanceField label={t("reportedBy")} value={`${ticket.reportedBy.code} - ${ticket.reportedBy.fullNameTh}`} />
-                      <MobileMaintenanceField label={t("assignedTo")} value={ticket.assignedTo ? `${ticket.assignedTo.code} - ${ticket.assignedTo.fullNameTh}` : "-"} />
-                      <MobileMaintenanceField
-                        label={t("repairType")}
-                        value={ticket.repairType === "vendor" ? `${t("vendorRepair")}${ticket.vendor ? `: ${ticket.vendor.name}` : ""}` : t("internalRepair")}
-                      />
-                      <MobileMaintenanceField label={t("dueDate")} value={ticket.dueDate ? formatDateTime(ticket.dueDate) : "-"} />
-                    </div>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      <Link
-                        href={appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}`, maintenanceReturnHref)}
-                        className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
-                      >
-                        {tCommon("view")}
-                      </Link>
-                      <Link
-                        href={appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}/print`, maintenanceReturnHref)}
-                        className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
-                      >
-                        {t("printRepair")}
-                      </Link>
-                    </div>
-                    {canEdit && ticket.repairStatus !== "closed" ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <button type="button" data-maintenance-action="planning" data-ticket-id={ticket.id} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                          {t("editPlanning")}
-                        </button>
-                        {getMaintenanceStatusUpdateTargets(ticket.repairStatus).length > 0 ? (
-                          <button type="button" data-maintenance-action="status" data-ticket-id={ticket.id} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent">
-                            {t("updateStatus")}
-                          </button>
-                        ) : null}
-                        {["open", "completed"].includes(ticket.repairStatus) ? (
-                          <button type="button" data-maintenance-action="close" data-ticket-id={ticket.id} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent">
-                            {t("closeTicket")}
-                          </button>
-                        ) : null}
-                      </div>
                     ) : null}
-                  </article>
-                ))
-              )}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        ) : null}
+      </section>
+
+      <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <form className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_repeat(3,minmax(150px,180px))_auto]" action={`/${locale}/maintenance`}>
+          {filters.assetId ? <input type="hidden" name="assetId" value={filters.assetId} /> : null}
+          <label className="min-w-0">
+            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("search")}</span>
+            <input type="search" name="search" defaultValue={filters.search} placeholder={t("searchPlaceholder")} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+          </label>
+          <label className="min-w-0">
+            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("filterStatus")}</span>
+            <select name="status" defaultValue={filters.status} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+              <option value="">{tCommon("all")}</option>
+              {maintenanceStatusFilters.map((status) => <option key={status} value={status}>{t(`status.${status}`)}</option>)}
+            </select>
+          </label>
+          <label className="min-w-0">
+            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("dateFrom")}</span>
+            <input type="date" name="dateFrom" defaultValue={filters.dateFrom} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+          </label>
+          <label className="min-w-0">
+            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("dateTo")}</span>
+            <input type="date" name="dateTo" defaultValue={filters.dateTo} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+          </label>
+          <div className="flex flex-col gap-2 self-end sm:flex-row">
+            <button type="submit" className="min-h-11 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">{t("filter")}</button>
+            <Link href={clearHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-accent">{t("clearFilters")}</Link>
+          </div>
+        </form>
+        {filters.assetId ? <p className="mt-3 text-xs text-muted-foreground">{t("assetFilter")} · <Link href={`/${locale}/maintenance`} className="text-primary hover:underline">{t("clearFilters")}</Link></p> : null}
+        {getMaintenanceDateRangeError(filters) ? (
+          <p role="alert" className="mt-3 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-sm text-warning-foreground">{t("invalidDateRange")}</p>
+        ) : null}
+      </section>
+
+      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">{t("listTitle")}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{t("resultCount", { count: total })}</p>
+          </div>
+          {canExport ? (
+            <a href={`/api/maintenance-tickets/export?${listQuery}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium hover:bg-accent">
+              <Download className="h-4 w-4" />{t("export")}
+            </a>
+          ) : null}
+        </div>
+        {records.length === 0 ? (
+          <div className="p-4">
+            <ActionEmptyState icon={<Wrench className="h-6 w-6" />} title={t("emptyTitle")} description={t("emptyHelp")} actionHref={clearHref} actionLabel={t("clearFilters")} />
+          </div>
+        ) : (
+          <>
+            <div className={`${getMobileCardListClasses()} p-3`}>
+              {records.map((record) => (
+                <Link key={record.id} href={recordHref(record.id)} className="block min-w-0 rounded-md border border-border bg-background p-3 hover:bg-accent">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-foreground">{record.asset.assetTag}</div>
+                      <div className="truncate text-xs text-muted-foreground">{record.asset.name}</div>
+                    </div>
+                    <StatusBadge label={t(`status.${toRepairRecordStatus(record.repairStatus)}`)} tone={getRepairRecordStatusTone(record.repairStatus)} size="xs" />
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-sm text-foreground">{record.problem}</p>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    {formatDate(record.reportedDate)} · {record.vendor?.name ?? t("internal")}
+                    {record.repairCost == null ? "" : ` · ${formatCurrency(Number(record.repairCost))}`}
+                  </div>
+                </Link>
+              ))}
             </div>
             <div className={`${getDesktopTableOnlyClasses()} overflow-x-auto`}>
               <table className="min-w-full divide-y divide-border text-sm">
                 <thead className="bg-muted/40">
                   <tr>
-                    <ColumnHeader>{t("repairNo")}</ColumnHeader>
+                    <ColumnHeader>{t("date")}</ColumnHeader>
                     <ColumnHeader>{t("asset")}</ColumnHeader>
                     <ColumnHeader>{t("problem")}</ColumnHeader>
-                    <ColumnHeader>{t("reportedBy")}</ColumnHeader>
-                    <ColumnHeader>{t("assignedTo")}</ColumnHeader>
-                    <ColumnHeader>{t("repairType")}</ColumnHeader>
-                    <ColumnHeader>{t("repairCost")}</ColumnHeader>
-                    <ColumnHeader>{tCommon("status")}</ColumnHeader>
-                    <ColumnHeader>{t("dueDate")}</ColumnHeader>
-                    <ColumnHeader>{t("reportedDate")}</ColumnHeader>
-                    <ColumnHeader>{tCommon("actions")}</ColumnHeader>
+                    <ColumnHeader>{t("statusLabel")}</ColumnHeader>
+                    <ColumnHeader>{t("outcomeQuestion")}</ColumnHeader>
+                    <ColumnHeader>{t("vendor")}</ColumnHeader>
+                    <ColumnHeader>{t("cost")}</ColumnHeader>
+                    <ColumnHeader>{t("reporter")}</ColumnHeader>
+                    <ColumnHeader>{t("repairNo")}</ColumnHeader>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {tickets.length === 0 ? (
-                    <tr>
-                      <td colSpan={11} className="px-4 py-6">
-                        <ActionEmptyState
-                          icon={<Wrench className="h-6 w-6" />}
-                          title={t("emptyTitle")}
-                          description={t("emptyHelp")}
-                          actionHref={buildMaintenanceViewHref(locale, "tickets", filters.assetId)}
-                          actionLabel={t("clearFilters")}
-                        />
+                  {records.map((record) => (
+                    <ClickableTableRow key={record.id} href={recordHref(record.id)} label={`${tCommon("view")}: ${record.repairNo}`}>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(record.reportedDate)}</td>
+                      <td className="min-w-48 px-4 py-3">
+                        <div className="font-medium text-foreground">{record.asset.assetTag}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">{record.asset.name}</div>
                       </td>
-                    </tr>
-                  ) : (
-                    tickets.map((ticket) => (
-                      <ClickableTableRow
-                        key={ticket.id}
-                        href={appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}`, maintenanceReturnHref)}
-                        label={`${tCommon("view")}: ${ticket.repairNo}`}
-                      >
-                        <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{ticket.repairNo}</td>
-                        <td className="min-w-56 px-4 py-3">
-                          <div className="font-medium text-foreground">{ticket.asset.assetTag}</div>
-                          <div className="mt-1 text-xs text-muted-foreground">{ticket.asset.name}</div>
-                        </td>
-                        <td className="min-w-72 px-4 py-3 text-muted-foreground">{ticket.problem}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {ticket.reportedBy.code} - {ticket.reportedBy.fullNameTh}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {ticket.assignedTo ? `${ticket.assignedTo.code} - ${ticket.assignedTo.fullNameTh}` : "-"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {ticket.repairType === "vendor"
-                            ? `${t("vendorRepair")}${ticket.vendor ? `: ${ticket.vendor.name}` : ""}`
-                            : t("internalRepair")}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {ticket.repairCost == null ? "-" : formatCurrency(Number(ticket.repairCost))}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3">
-                          <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, statusLabels)} tone={getMaintenanceStatusTone(ticket.repairStatus)} size="xs" />
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3">
-                          {ticket.dueDate ? (
-                            <div>
-                              <div className="text-muted-foreground">{formatDateTime(ticket.dueDate)}</div>
-                              {isMaintenanceOverdue(ticket.repairStatus, ticket.dueDate) ? (
-                                <div className="mt-1 text-xs font-medium text-danger">{t("overdue")}</div>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(ticket.reportedDate)}</td>
-                        <td className="whitespace-nowrap px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <Link
-                              href={appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}`, maintenanceReturnHref)}
-                              className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent"
-                            >
-                              {tCommon("view")}
-                            </Link>
-                            <Link
-                              href={appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}/print`, maintenanceReturnHref)}
-                              className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent"
-                            >
-                              {t("printRepair")}
-                            </Link>
-                            {canEdit && ticket.repairStatus !== "closed" ? (
-                              <button type="button" data-maintenance-action="planning" data-ticket-id={ticket.id} className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                                {t("editPlanning")}
-                              </button>
-                            ) : null}
-                            {canEdit && getMaintenanceStatusUpdateTargets(ticket.repairStatus).length > 0 ? (
-                              <button type="button" data-maintenance-action="status" data-ticket-id={ticket.id} className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent">
-                                {t("updateStatus")}
-                              </button>
-                            ) : null}
-                            {canEdit && ["open", "completed"].includes(ticket.repairStatus) ? (
-                              <button type="button" data-maintenance-action="close" data-ticket-id={ticket.id} className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent">
-                                {t("closeTicket")}
-                              </button>
-                            ) : null}
-                          </div>
-                        </td>
-                      </ClickableTableRow>
-                    ))
-                  )}
+                      <td className="min-w-72 px-4 py-3 text-foreground">{record.problem}</td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <StatusBadge label={t(`status.${toRepairRecordStatus(record.repairStatus)}`)} tone={getRepairRecordStatusTone(record.repairStatus)} size="xs" />
+                      </td>
+                      <td className={`whitespace-nowrap px-4 py-3 ${record.outcome === "beyond_repair" ? "text-warning-foreground" : record.outcome === "usable" ? "text-success-foreground" : "text-muted-foreground"}`}>
+                        {outcomeLabel(record.outcome, record.repairStatus)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{record.vendor?.name ?? t("internal")}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{record.repairCost == null ? "-" : formatCurrency(Number(record.repairCost))}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{record.reportedBy.fullNameTh}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">{record.repairNo}</td>
+                    </ClickableTableRow>
+                  ))}
                 </tbody>
               </table>
             </div>
-            <MaintenancePagination
-              locale={locale}
-              currentQuery={maintenanceReturnQuery}
-              page={listFilters.page}
-              pageSize={listFilters.pageSize}
-              total={ticketTotal}
-              labels={{ rowsPerPage: tCommon("rowsPerPage"), page: tCommon("page"), of: tCommon("of"), previous: tCommon("previous"), next: tCommon("next") }}
-            />
-          </section>
-          )}
-        </>
-      ) : (
-        <section className="space-y-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
-          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-foreground">{t("pmTitle")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{t("pmSubtitle")}</p>
-            </div>
-            <StatusBadge label={`${planSummary.total} ${t("pmSummaryTotal")}`} tone="info" />
-          </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <MaintenanceMetric label={t("pmSummaryOverdue")} value={planSummary.overdue} detail={t("pmSummaryOverdueDetail")} tone="danger" icon={<AlertTriangle className="h-5 w-5" />} />
-            <MaintenanceMetric label={t("pmSummaryDueSoon")} value={planSummary.dueSoon} detail={t("pmSummaryDueSoonDetail")} tone="warning" icon={<CalendarClock className="h-5 w-5" />} />
-            <MaintenanceMetric label={t("pmSummaryUpcoming")} value={planSummary.upcoming} detail={t("pmSummaryUpcomingDetail")} tone="primary" icon={<Clock className="h-5 w-5" />} />
-          </div>
-          <div className="overflow-hidden rounded-md border border-border">
-            {maintenancePlans.length === 0 ? (
-              <div className="p-4">
-                <ActionEmptyState title={t("pmEmptyTitle")} description={t("pmEmptyHelp")} />
-              </div>
-            ) : (
-              <div className="divide-y divide-border">
-                {maintenancePlans.map((plan) => {
-                  const dueState = getMaintenancePlanDueState(plan.nextDueDate, today)
-                  const dueTone = dueState === "overdue" ? "danger" : dueState === "due_soon" ? "warning" : "primary"
-                  return (
-                    <div key={plan.id} className="grid min-w-0 gap-3 bg-background px-4 py-3 md:grid-cols-[minmax(220px,1fr)_minmax(220px,260px)_minmax(180px,220px)] md:items-center">
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-foreground">{plan.title}</div>
-                        <div className="mt-1 truncate text-xs text-muted-foreground">
-                          {plan.planNo} · {plan.asset.assetTag} - {plan.asset.name}
-                        </div>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        <div>{t("pmNextDueDate")}: {formatDate(plan.nextDueDate)}</div>
-                        <div className="mt-1">
-                          {t("pmInternalResponsible")}: {plan.assignedTo ? `${plan.assignedTo.code} - ${plan.assignedTo.fullNameTh}` : t("unassigned")}
-                        </div>
-                        <div className="mt-1">
-                          {t("pmExternalProvider")}: {plan.vendor ? `${plan.vendor.code} - ${plan.vendor.name}` : t("pmNoExternalProvider")}
-                        </div>
-                      </div>
-                      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center md:justify-end">
-                        <StatusBadge label={t(`pmDueState.${dueState}`)} tone={dueTone} size="xs" />
-                        <StatusBadge label={t(`pmFrequencies.${plan.frequency}`)} tone="muted" size="xs" />
-                        <StatusBadge label={t(`pmPlanStates.${plan.planState}`)} tone={plan.planState === "active" ? "success" : plan.planState === "paused" ? "warning" : "muted"} size="xs" />
-                        {plan.planState === "active" && !plan.assignedToId ? <StatusBadge label={t("pmAutomationBlocked")} tone="warning" size="xs" /> : null}
-                        {canEdit && plan.planState !== "ended" ? (
-                          <Link href={appendOperationalReturnTo(`/${locale}/maintenance/pm/${plan.id}/edit`, maintenanceReturnHref)} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-8">
-                            {tCommon("edit")}
-                          </Link>
-                        ) : null}
-                        {canEdit ? <MaintenancePlanStateActions planId={plan.id} state={plan.planState as "active" | "paused" | "ended"} /> : null}
-                        {canCreate && plan.planState === "active" ? <MaintenancePlanGenerateButton planId={plan.id} /> : null}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-          <MaintenancePagination
-            locale={locale}
-            currentQuery={maintenanceReturnQuery}
-            page={listFilters.page}
-            pageSize={listFilters.pageSize}
-            total={planTotal}
-            labels={{ rowsPerPage: tCommon("rowsPerPage"), page: tCommon("page"), of: tCommon("of"), previous: tCommon("previous"), next: tCommon("next") }}
-          />
-        </section>
-      )}
+          </>
+        )}
+        <MaintenancePagination
+          locale={locale}
+          currentQuery={listQuery}
+          page={filters.page}
+          pageSize={filters.pageSize}
+          total={total}
+          labels={{ rowsPerPage: tCommon("rowsPerPage"), page: tCommon("page"), of: tCommon("of"), previous: tCommon("previous"), next: tCommon("next") }}
+        />
+      </section>
     </div>
   )
-}
-
-function getStatusLabels(t: (key: string) => string) {
-  return Object.fromEntries(maintenanceStatuses.map((status) => [status, t(`statuses.${status}`)]))
-}
-
-async function getMaintenanceSummary(today: Date) {
-  const [openWork, overdue, waiting, completedPendingClose] = await Promise.all([
-    prisma.maintenanceTicket.count({ where: { isActive: true, repairStatus: { notIn: ["closed", "cancelled"] } } }),
-    prisma.maintenanceTicket.count({
-      where: { isActive: true, repairStatus: { notIn: ["completed", "closed", "cancelled"] }, dueDate: { lt: today } },
-    }),
-    prisma.maintenanceTicket.count({
-      where: { isActive: true, repairStatus: { in: ["waiting_parts", "waiting_vendor"] } },
-    }),
-    prisma.maintenanceTicket.count({ where: { isActive: true, repairStatus: "completed" } }),
-  ])
-  return { openWork, overdue, waiting, completedPendingClose }
-}
-
-async function getTicketWorkspaceData(listFilters: ParsedMaintenanceListParams, evidenceTicketIds: string[], today: Date) {
-  const where = buildMaintenanceWhere(listFilters, evidenceTicketIds)
-  const [tickets, total, summary] = await Promise.all([
-    prisma.maintenanceTicket.findMany({
-      where,
-      include: {
-        asset: { select: { assetTag: true, name: true, ownershipType: true, custodianId: true } },
-        reportedBy: { select: { code: true, fullNameTh: true } },
-        assignedTo: { select: { code: true, fullNameTh: true } },
-        inspectedBy: { select: { code: true, fullNameTh: true } },
-        vendor: { select: { code: true, name: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      skip: (listFilters.page - 1) * listFilters.pageSize,
-      take: listFilters.pageSize,
-    }),
-    prisma.maintenanceTicket.count({ where }),
-    getMaintenanceSummary(today),
-  ])
-  return { tickets, total, summary }
-}
-
-async function getPlanWorkspaceData(hasMaintenancePlanSupport: boolean, filters: ParsedMaintenanceListParams, today: Date) {
-  if (!hasMaintenancePlanSupport) return emptyPlanWorkspace()
-  const [plans, summary, total] = await Promise.all([
-    prisma.maintenancePlan.findMany({
-      where: {},
-      include: {
-        asset: { select: { assetTag: true, name: true } },
-        assignedTo: { select: { code: true, fullNameTh: true } },
-        vendor: { select: { code: true, name: true } },
-      },
-      orderBy: { nextDueDate: "asc" },
-      skip: (filters.page - 1) * filters.pageSize,
-      take: filters.pageSize,
-    }),
-    getMaintenancePlanSummary(today),
-    prisma.maintenancePlan.count(),
-  ])
-  return { plans, total, summary }
-}
-
-async function getMaintenancePlanSummary(today: Date) {
-  const dueSoonCutoff = new Date(today)
-  dueSoonCutoff.setDate(dueSoonCutoff.getDate() + 14)
-  const [total, overdue, dueSoon, upcoming] = await Promise.all([
-    prisma.maintenancePlan.count({ where: { isActive: true, planState: "active" } }),
-    prisma.maintenancePlan.count({ where: { isActive: true, planState: "active", nextDueDate: { lt: today } } }),
-    prisma.maintenancePlan.count({ where: { isActive: true, planState: "active", nextDueDate: { gte: today, lte: dueSoonCutoff } } }),
-    prisma.maintenancePlan.count({ where: { isActive: true, planState: "active", nextDueDate: { gt: dueSoonCutoff } } }),
-  ])
-  return { total, overdue, dueSoon, upcoming }
-}
-
-function emptyTicketWorkspace() {
-  return { tickets: [], total: 0, summary: { openWork: 0, overdue: 0, waiting: 0, completedPendingClose: 0 } }
-}
-
-function emptyPlanWorkspace() {
-  return { plans: [], total: 0, summary: { total: 0, overdue: 0, dueSoon: 0, upcoming: 0 } }
-}
-
-function startOfToday(now: Date) {
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
-}
-
-function MaintenanceViewTabs({
-  locale,
-  activeView,
-  assetId,
-  ticketLayout,
-  ticketCount,
-  pmCount,
-  labels,
-}: {
-  locale: string
-  activeView: MaintenancePageView
-  assetId?: string
-  ticketLayout: MaintenanceTicketLayout
-  ticketCount: number
-  pmCount: number
-  labels: {
-    tickets: string
-    ticketsHelp: string
-    pm: string
-    pmHelp: string
-  }
-}) {
-  const tabs: Array<{
-    view: MaintenancePageView
-    label: string
-    help: string
-    count: number
-    icon: React.ReactNode
-  }> = [
-    {
-      view: "tickets",
-      label: labels.tickets,
-      help: labels.ticketsHelp,
-      count: ticketCount,
-      icon: <ClipboardList className="h-5 w-5" />,
-    },
-    {
-      view: "pm",
-      label: labels.pm,
-      help: labels.pmHelp,
-      count: pmCount,
-      icon: <CalendarClock className="h-5 w-5" />,
-    },
-  ]
-
-  return (
-    <nav className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-label="Maintenance views">
-      {tabs.map((tab) => {
-        const isActive = activeView === tab.view
-        return (
-          <Link
-            key={tab.view}
-            href={buildMaintenanceViewHref(locale, tab.view, assetId, tab.view === "tickets" ? ticketLayout : undefined)}
-            aria-current={isActive ? "page" : undefined}
-            className={`rounded-lg border p-4 shadow-sm transition-colors ${
-              isActive
-                ? "border-primary bg-primary/5 text-primary"
-                : "border-border bg-surface text-muted-foreground hover:border-primary/50 hover:bg-accent"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-start gap-3">
-                <span className={`rounded-md border p-2 ${isActive ? "border-primary/30 bg-primary/10" : "border-border bg-background"}`}>
-                  {tab.icon}
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-foreground">{tab.label}</span>
-                  <span className="mt-1 block text-xs text-muted-foreground">{tab.help}</span>
-                </span>
-              </div>
-              <span className={`rounded-full px-2 py-1 text-xs font-semibold ${isActive ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>
-                {tab.count}
-              </span>
-            </div>
-          </Link>
-        )
-      })}
-    </nav>
-  )
-}
-
-function MaintenanceTicketLayoutTabs({
-  locale,
-  currentQuery,
-  activeLayout,
-  labels,
-}: {
-  locale: string
-  currentQuery: string
-  activeLayout: MaintenanceTicketLayout
-  labels: { navigation: string; table: string; board: string }
-}) {
-  const layouts: Array<{ layout: MaintenanceTicketLayout; label: string }> = [
-    { layout: "table", label: labels.table },
-    { layout: "board", label: labels.board },
-  ]
-
-  return (
-    <nav aria-label={labels.navigation} className="inline-flex rounded-md border border-border bg-surface p-1">
-      {layouts.map((item) => (
-        <Link
-          key={item.layout}
-          href={buildMaintenanceTicketLayoutHref(locale, currentQuery, item.layout)}
-          aria-current={activeLayout === item.layout ? "page" : undefined}
-          className={`inline-flex min-h-11 items-center justify-center rounded px-3 text-sm font-medium transition-colors sm:h-8 sm:min-h-0 ${
-            activeLayout === item.layout ? "bg-primary text-white" : "text-muted-foreground hover:bg-accent hover:text-foreground"
-          }`}
-        >
-          {item.label}
-        </Link>
-      ))}
-    </nav>
-  )
-}
-
-function MaintenanceMetric({
-  label,
-  value,
-  detail,
-  tone,
-  icon,
-  href,
-}: {
-  label: string
-  value: number
-  detail: string
-  tone: "primary" | "danger" | "warning" | "success"
-  icon: React.ReactNode
-  href?: string
-}) {
-  const toneClass =
-    tone === "danger"
-      ? "border-danger/30 bg-danger/5 text-danger"
-      : tone === "warning"
-        ? "border-warning/30 bg-warning/5 text-warning-foreground"
-        : tone === "success"
-          ? "border-success/30 bg-success/5 text-success-foreground"
-          : "border-primary/30 bg-primary/5 text-primary"
-
-  const content = (
-    <>
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-sm font-medium text-foreground">{label}</div>
-        {icon}
-      </div>
-      <div className="mt-3 text-3xl font-bold text-foreground">{value}</div>
-      <div className="mt-1 text-xs text-muted-foreground">{detail}</div>
-    </>
-  )
-
-  return href ? (
-    <Link href={href} className={`rounded-lg border p-4 shadow-sm transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${toneClass}`}>
-      {content}
-    </Link>
-  ) : <div className={`rounded-lg border p-4 shadow-sm ${toneClass}`}>{content}</div>
-}
-
-function MobileMaintenanceField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 rounded-md bg-muted/30 px-3 py-2">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="mt-1 break-words text-sm text-foreground">{value}</div>
-    </div>
-  )
-}
-
-function MaintenanceKanbanColumn({
-  locale,
-  maintenanceReturnHref,
-  status,
-  label,
-  tickets,
-}: {
-  locale: string
-  maintenanceReturnHref: string
-  status: string
-  label: string
-  tickets: Array<{
-    id: string
-    repairNo: string
-    problem: string
-    dueDate: Date | null
-    repairStatus: string
-    asset: { assetTag: string; name: string }
-    assignedTo: { code: string; fullNameTh: string } | null
-  }>
-}) {
-  return (
-    <div className="min-h-48 rounded-md border border-border bg-background p-3">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="text-sm font-semibold text-foreground">{label}</div>
-        <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">{tickets.length}</span>
-      </div>
-      <div className="space-y-2">
-        {tickets.slice(0, 4).map((ticket) => (
-          <Link
-            key={ticket.id}
-            href={appendOperationalReturnTo(`/${locale}/maintenance/${ticket.id}`, maintenanceReturnHref)}
-            className="block rounded-md border border-border bg-surface p-3 text-sm transition-colors hover:bg-accent"
-          >
-            <div className="font-medium text-foreground">{ticket.repairNo}</div>
-            <div className="mt-1 truncate text-xs text-muted-foreground">{ticket.asset.assetTag} - {ticket.asset.name}</div>
-            <div className="mt-2 line-clamp-2 text-xs text-muted-foreground">{ticket.problem}</div>
-            <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="h-3.5 w-3.5" />
-              {ticket.dueDate ? formatDateTime(ticket.dueDate) : "-"}
-            </div>
-          </Link>
-        ))}
-        {tickets.length > 4 ? (
-          <Link
-            href={appendOperationalReturnTo(`/${locale}/maintenance?view=tickets&status=${status}`, maintenanceReturnHref)}
-            className="block rounded-md border border-dashed border-border px-3 py-2 text-center text-xs font-medium text-muted-foreground transition-colors hover:bg-accent"
-          >
-            +{tickets.length - 4}
-          </Link>
-        ) : null}
-      </div>
-    </div>
-  )
-}
-
-async function getMaintenanceAttachmentTicketIds(ticketIds?: string[]) {
-  const rows = await prisma.attachment.findMany({
-    where: {
-      module: "maintenance",
-      isActive: true,
-      ...(ticketIds ? { referenceId: { in: ticketIds } } : {}),
-    },
-    select: { referenceId: true },
-    distinct: ["referenceId"],
-  })
-  return rows.map((row) => row.referenceId)
-}
-
-function hasActiveTicketFilters(filters: ParsedMaintenanceListParams) {
-  return Boolean(filters.search || filters.status || filters.repairType || filters.evidence || filters.overdue || filters.queue || filters.dateFrom || filters.dateTo)
-}
-
-function getActiveTicketFilterLabels(filters: ParsedMaintenanceListParams, t: (key: string) => string) {
-  return [
-    filters.search ? `${t("filterSearch")}: ${filters.search}` : null,
-    filters.status ? `${t("filterStatus")}: ${t(`statuses.${filters.status}`)}` : null,
-    filters.repairType ? `${t("repairType")}: ${t(filters.repairType === "vendor" ? "vendorRepair" : "internalRepair")}` : null,
-    filters.evidence ? `${t("evidence")}: ${t(filters.evidence === "with" ? "withEvidence" : "withoutEvidence")}` : null,
-    filters.overdue ? t("overdueOnly") : null,
-    filters.queue ? t(`queue.${filters.queue}`) : null,
-    filters.dateFrom ? `${t("dateFrom")}: ${filters.dateFrom}` : null,
-    filters.dateTo ? `${t("dateTo")}: ${filters.dateTo}` : null,
-  ].filter((label): label is string => Boolean(label))
-}
-
-function buildMaintenanceKpiHref(
-  locale: string,
-  filters: ParsedMaintenanceListParams,
-  assetId: string | undefined,
-  overrides: Partial<ParsedMaintenanceListParams>,
-) {
-  const params = new URLSearchParams(buildMaintenanceQueryString(filters, { ...overrides, page: 1 }))
-  params.set("view", "tickets")
-  if (assetId) params.set("assetId", assetId)
-  return `/${locale}/maintenance?${params.toString()}`
 }

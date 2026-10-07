@@ -19,10 +19,9 @@ test("maintenance list and detail preserve filtered list context", () => {
   const listSource = readFileSync("src/app/[locale]/(dashboard)/maintenance/page.tsx", "utf8")
   const detailSource = readFileSync("src/app/[locale]/(dashboard)/maintenance/[id]/page.tsx", "utf8")
 
-  assert.match(listSource, /const maintenanceReturnHref = /)
-  assert.match(listSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/maintenance\/\$\{ticket\.id\}`, maintenanceReturnHref\)/)
-  assert.match(listSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/maintenance\/\$\{ticket\.id\}\/print`, maintenanceReturnHref\)/)
-  assert.match(listSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/maintenance\?view=tickets&status=\$\{status\}`, maintenanceReturnHref\)/)
+  assert.match(listSource, /const returnHref = `\/\$\{locale\}\/maintenance\?\$\{listQuery\}`/)
+  assert.match(listSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/maintenance\/\$\{id\}`, returnHref\)/)
+  assert.match(listSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/maintenance\/new\?planId=\$\{plan\.id\}`, returnHref\)/)
 
   assert.match(detailSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
   assert.match(detailSource, /normalizeOperationalReturnTo\(locale, "maintenance", rawSearchParams\.returnTo\)/)

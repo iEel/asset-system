@@ -1,10 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import {
-  buildMaintenancePagination,
-  getMaintenanceBoardCompatibility,
-} from "../src/lib/maintenance-list.ts"
+import { buildMaintenancePagination } from "../src/lib/maintenance-list.ts"
 
 test("clamps maintenance pagination and reports an exact visible range", () => {
   assert.deepEqual(buildMaintenancePagination(8, 25, 52), {
@@ -23,12 +20,4 @@ test("clamps maintenance pagination and reports an exact visible range", () => {
     start: 0,
     end: 0,
   })
-})
-
-test("terminal and legacy open status filters require table layout", () => {
-  assert.equal(getMaintenanceBoardCompatibility("closed"), "table_required")
-  assert.equal(getMaintenanceBoardCompatibility("cancelled"), "table_required")
-  assert.equal(getMaintenanceBoardCompatibility("open"), "table_required")
-  assert.equal(getMaintenanceBoardCompatibility("waiting_parts"), "compatible")
-  assert.equal(getMaintenanceBoardCompatibility(""), "compatible")
 })

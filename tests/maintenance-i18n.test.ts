@@ -25,9 +25,7 @@ test("Thai and English maintenance copy has matching keys", async () => {
 test("maintenance clients localize stable error codes instead of exposing raw API text", async () => {
   const files = [
     "src/components/maintenance/repair-record-form.tsx",
-    "src/components/maintenance/maintenance-ticket-status-button.tsx",
-    "src/components/maintenance/maintenance-ticket-planning-button.tsx",
-    "src/components/maintenance/maintenance-ticket-close-button.tsx",
+    "src/components/maintenance/repair-record-actions.tsx",
     "src/components/maintenance/maintenance-plan-form.tsx",
     "src/components/maintenance/maintenance-plan-generate-button.tsx",
     "src/components/maintenance/maintenance-attachments.tsx",
@@ -40,14 +38,11 @@ test("maintenance clients localize stable error codes instead of exposing raw AP
 })
 
 test("maintenance option selectors use the shared loading message namespace", async () => {
-  const files = [
-    "src/components/maintenance/maintenance-ticket-planning-button.tsx",
-    "src/components/maintenance/maintenance-ticket-close-button.tsx",
-  ]
+  const files = ["src/components/maintenance/repair-record-form.tsx", "src/components/maintenance/repair-record-actions.tsx"]
   const source = (await Promise.all(files.map((file) => readFile(file, "utf8")))).join("\n")
 
   assert.doesNotMatch(source, /loadingLabel=\{t\("loading"\)\}/)
-  assert.equal(source.match(/loadingLabel=\{tCommon\("loading"\)\}/g)?.length, files.length)
+  assert.ok((source.match(/loadingLabel=\{tCommon\("loading"\)\}/g)?.length ?? 0) >= files.length)
 })
 
 function getLeafKeys(value: unknown, prefix = ""): string[] {

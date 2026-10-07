@@ -1,6 +1,3 @@
-export type MaintenanceBoardCompatibility = "compatible" | "table_required"
-
-const tableOnlyStatuses = new Set(["open", "closed", "cancelled"])
 const allowedPageSizes = new Set([25, 50, 100])
 
 export function buildMaintenancePagination(page: number, pageSize: number, total: number) {
@@ -18,8 +15,4 @@ export function buildMaintenancePagination(page: number, pageSize: number, total
     start: safeTotal ? (safePage - 1) * safePageSize + 1 : 0,
     end: Math.min(safePage * safePageSize, safeTotal),
   }
-}
-
-export function getMaintenanceBoardCompatibility(status: string): MaintenanceBoardCompatibility {
-  return tableOnlyStatuses.has(status) ? "table_required" : "compatible"
 }

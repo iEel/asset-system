@@ -1,42 +1,22 @@
-export const maintenanceStatuses = [
-  "open",
-  "reported",
-  "accepted",
-  "in_progress",
-  "waiting_parts",
-  "waiting_vendor",
-  "completed",
-  "closed",
-  "cancelled",
-] as const
+import {
+  getRepairRecordStatusTone,
+  isOpenRepairStatus,
+  repairRecordStatuses,
+  toRepairRecordStatus,
+} from "./repair-record-policy.ts"
 
-export type MaintenanceStatus = (typeof maintenanceStatuses)[number]
-
-export const closeableMaintenanceStatuses = new Set<string>(["open", "completed"])
+// Screens outside the maintenance module (employee, supplier, asset history) show old workflow
+// tickets with the same three repair record statuses as new ones.
+export const maintenanceStatuses = repairRecordStatuses
 
 export function isMaintenanceClosed(status: string) {
-  return status === "closed" || status === "cancelled"
-}
-
-export function isMaintenanceOverdue(status: string, dueDate?: Date | string | null, now = new Date()) {
-  if (!dueDate || isMaintenanceClosed(status)) return false
-  const due = dueDate instanceof Date ? dueDate : new Date(dueDate)
-  if (Number.isNaN(due.getTime())) return false
-  return due < startOfToday(now)
+  return !isOpenRepairStatus(status)
 }
 
 export function getMaintenanceStatusTone(status: string) {
-  if (status === "closed" || status === "cancelled") return "info"
-  if (status === "completed") return "success"
-  if (status === "waiting_parts" || status === "waiting_vendor") return "warning"
-  if (status === "in_progress") return "primary"
-  return "muted"
+  return getRepairRecordStatusTone(status)
 }
 
 export function getMaintenanceStatusLabel(status: string, labels: Record<string, string>) {
-  return labels[status] ?? status
-}
-
-function startOfToday(now: Date) {
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  return labels[toRepairRecordStatus(status)] ?? status
 }

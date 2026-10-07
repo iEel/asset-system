@@ -2771,12 +2771,12 @@
       "open": "เปิดงาน",
       "reported": "แจ้งซ่อม",
       "accepted": "รับเรื่อง",
-      "in_progress": "กำลังซ่อม",
+      "in_progress": "ยังซ่อมไม่เสร็จ",
       "waiting_parts": "รออะไหล่",
       "waiting_vendor": "รอผู้ขาย",
       "completed": "ซ่อมเสร็จ",
-      "closed": "ปิดงาน",
-      "cancelled": "ยกเลิกแล้ว"
+      "closed": "ซ่อมเสร็จแล้ว",
+      "cancelled": "ยกเลิก"
     }
   },
   "repairRecord": {
@@ -2882,7 +2882,29 @@
     "disposalReviewCost": "ค่าซ่อมรวม {cost}",
     "disposalReviewRatio": "คิดเป็น {percent}% ของราคาซื้อ",
     "openDisposalRequest": "ขอจำหน่าย",
-    "pmRecordDone": "บันทึกว่าทำแล้ว"
+    "pmRecordDone": "บันทึกว่าทำแล้ว",
+    "subtitle": "ประวัติการซ่อมของทรัพย์สินทุกชิ้น",
+    "listTitle": "บันทึกการซ่อม",
+    "resultCount": "{count} รายการ",
+    "searchPlaceholder": "ค้นหาเลขที่ รหัสทรัพย์สิน อาการ เลขใบเสร็จ หรือร้าน",
+    "filterStatus": "สถานะ",
+    "dateFrom": "ตั้งแต่วันที่",
+    "dateTo": "ถึงวันที่",
+    "filter": "กรอง",
+    "clearFilters": "ล้างตัวกรอง",
+    "invalidDateRange": "วันที่เริ่มต้องไม่หลังวันที่สิ้นสุด",
+    "assetFilter": "เฉพาะทรัพย์สินนี้",
+    "export": "ส่งออก Excel",
+    "emptyTitle": "ยังไม่มีบันทึกการซ่อม",
+    "emptyHelp": "กด \"บันทึกซ่อม\" เพื่อเริ่มบันทึก หรือล้างตัวกรอง",
+    "pmDueTitle": "PM ถึงกำหนด (7 วัน)",
+    "pmDueHelp": "แผน PM ที่ถึงกำหนดภายใน 7 วัน เรียงจากที่เลยกำหนดก่อน",
+    "pmOverdue": "เลยกำหนด",
+    "pmDueOn": "ครบกำหนด {date}",
+    "pmManage": "จัดการแผน PM",
+    "stuckTitle": "ทรัพย์สินค้างสถานะซ่อมแต่ไม่มีบันทึก",
+    "stuckHelp": "บันทึกการซ่อมให้ชิ้นเหล่านี้ เพื่อให้สถานะกับประวัติตรงกัน",
+    "stuckMore": "และอีก {count} ชิ้น"
   },
   "disposalPage": {
     "title": "ตัดจำหน่าย",

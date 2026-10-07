@@ -55,7 +55,7 @@ test("the printout uses the repair record fields", () => {
   assert.doesNotMatch(source, /assignedTo|dueDate|laborCost|inspectedBy/)
 })
 
-test("old workflow buttons are gone", { skip: "removed with the list page in Task 9" }, () => {
+test("old workflow buttons are gone", () => {
   for (const file of ["maintenance-ticket-close-button", "maintenance-ticket-status-button", "maintenance-ticket-planning-button", "maintenance-ticket-cancel-button"]) {
     assert.equal(existsSync(`src/components/maintenance/${file}.tsx`), false, file)
   }

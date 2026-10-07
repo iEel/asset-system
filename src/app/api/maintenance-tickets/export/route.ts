@@ -4,30 +4,27 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { errorResponse } from "@/lib/api-response"
 import { createWorkbook, styleWorksheetHeader, toExcelDate, workbookResponse } from "@/lib/asset-excel"
 import { buildMaintenanceWhere, parseMaintenanceListParams } from "@/lib/maintenance-query"
+import { toRepairRecordStatus } from "@/lib/repair-record-policy"
+
+const statusText: Record<string, string> = { in_progress: "ยังซ่อมไม่เสร็จ", closed: "ซ่อมเสร็จแล้ว", cancelled: "ยกเลิก" }
+const outcomeText: Record<string, string> = { usable: "ใช้งานได้", beyond_repair: "ซ่อมไม่ได้ เสนอจำหน่าย" }
 
 const maintenanceExportColumns = [
-  { header: "Repair No.", key: "repairNo", width: 20 },
+  { header: "Record No.", key: "repairNo", width: 20 },
+  { header: "Date", key: "reportedDate", width: 14 },
   { header: "Asset Tag", key: "assetTag", width: 22 },
   { header: "Asset Name", key: "assetName", width: 32 },
-  { header: "Problem", key: "problem", width: 40 },
-  { header: "Reported By", key: "reportedBy", width: 28 },
-  { header: "Assigned To", key: "assignedTo", width: 28 },
-  { header: "Due Date", key: "dueDate", width: 18 },
-  { header: "Repair Type", key: "repairType", width: 18 },
+  { header: "Problem / Work Done", key: "problem", width: 48 },
+  { header: "Status", key: "status", width: 18 },
+  { header: "Result", key: "outcome", width: 22 },
   { header: "Vendor", key: "vendor", width: 28 },
-  { header: "Status", key: "status", width: 16 },
-  { header: "Reported Date", key: "reportedDate", width: 18 },
-  { header: "Return Date", key: "returnDate", width: 18 },
-  { header: "Labor Cost", key: "laborCost", width: 16 },
-  { header: "Parts Cost", key: "partsCost", width: 16 },
-  { header: "Repair Cost", key: "repairCost", width: 16 },
-  { header: "Quotation No.", key: "quotationNo", width: 20 },
+  { header: "Cost", key: "repairCost", width: 14 },
   { header: "Invoice No.", key: "invoiceNo", width: 20 },
-  { header: "Warranty Claim", key: "warrantyClaim", width: 16 },
-  { header: "Inspected By", key: "inspectedBy", width: 28 },
+  { header: "Finished On", key: "returnDate", width: 14 },
+  { header: "Recorded By", key: "reportedBy", width: 28 },
+  { header: "PM Plan", key: "plan", width: 24 },
+  { header: "Remark", key: "remark", width: 36 },
   { header: "Attachment Count", key: "attachmentCount", width: 18 },
-  { header: "Root Cause", key: "rootCause", width: 36 },
-  { header: "Resolution", key: "resolution", width: 36 },
 ]
 
 export async function GET(request: NextRequest) {
@@ -36,69 +33,49 @@ export async function GET(request: NextRequest) {
     requirePermission(user, "maintenance", "export")
 
     const filters = parseMaintenanceListParams(request.nextUrl.searchParams)
-    const evidenceTicketIds = await getMaintenanceAttachmentTicketIds()
     const tickets = await prisma.maintenanceTicket.findMany({
-      where: buildMaintenanceWhere(filters, evidenceTicketIds),
+      where: buildMaintenanceWhere(filters),
       include: {
         asset: { select: { assetTag: true, name: true } },
         reportedBy: { select: { code: true, fullNameTh: true } },
-        assignedTo: { select: { code: true, fullNameTh: true } },
-        inspectedBy: { select: { code: true, fullNameTh: true } },
         vendor: { select: { code: true, name: true } },
+        maintenancePlan: { select: { planNo: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ reportedDate: "desc" }, { createdAt: "desc" }],
       take: 5000,
     })
     const attachmentCounts = await getMaintenanceAttachmentCounts(tickets.map((ticket) => ticket.id))
 
     const workbook = createWorkbook()
-    const worksheet = workbook.addWorksheet("Maintenance Tickets")
+    const worksheet = workbook.addWorksheet("Repair Records")
     worksheet.columns = maintenanceExportColumns
     worksheet.addRows(
       tickets.map((ticket) => ({
         repairNo: ticket.repairNo,
+        reportedDate: toExcelDate(ticket.reportedDate),
         assetTag: ticket.asset.assetTag,
         assetName: ticket.asset.name,
         problem: ticket.problem,
-        reportedBy: `${ticket.reportedBy.code} - ${ticket.reportedBy.fullNameTh}`,
-        assignedTo: ticket.assignedTo ? `${ticket.assignedTo.code} - ${ticket.assignedTo.fullNameTh}` : "",
-        dueDate: toExcelDate(ticket.dueDate),
-        repairType: ticket.repairType,
-        vendor: ticket.vendor ? `${ticket.vendor.code} - ${ticket.vendor.name}` : "",
-        status: ticket.repairStatus,
-        reportedDate: toExcelDate(ticket.reportedDate),
-        returnDate: toExcelDate(ticket.returnDate),
-        laborCost: ticket.laborCost == null ? "" : Number(ticket.laborCost),
-        partsCost: ticket.partsCost == null ? "" : Number(ticket.partsCost),
+        status: statusText[toRepairRecordStatus(ticket.repairStatus)],
+        outcome: ticket.outcome ? outcomeText[ticket.outcome] ?? ticket.outcome : "",
+        vendor: ticket.vendor ? `${ticket.vendor.code} - ${ticket.vendor.name}` : "ช่างภายใน",
         repairCost: ticket.repairCost == null ? "" : Number(ticket.repairCost),
-        quotationNo: ticket.quotationNo ?? "",
         invoiceNo: ticket.invoiceNo ?? "",
-        warrantyClaim: ticket.warrantyClaim ? "Yes" : "No",
-        inspectedBy: ticket.inspectedBy ? `${ticket.inspectedBy.code} - ${ticket.inspectedBy.fullNameTh}` : "",
+        returnDate: toExcelDate(ticket.returnDate),
+        reportedBy: `${ticket.reportedBy.code} - ${ticket.reportedBy.fullNameTh}`,
+        plan: ticket.maintenancePlan?.planNo ?? "",
+        remark: ticket.resolution ?? "",
         attachmentCount: attachmentCounts.get(ticket.id) ?? 0,
-        rootCause: ticket.rootCause ?? "",
-        resolution: ticket.resolution ?? "",
       }))
     )
     styleWorksheetHeader(worksheet)
-    worksheet.getColumn("laborCost").numFmt = "#,##0.00"
-    worksheet.getColumn("partsCost").numFmt = "#,##0.00"
     worksheet.getColumn("repairCost").numFmt = "#,##0.00"
 
     const buffer = await workbook.xlsx.writeBuffer()
-    return workbookResponse(buffer, `maintenance-tickets-${new Date().toISOString().slice(0, 10)}.xlsx`)
+    return workbookResponse(buffer, `repair-records-${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (error) {
     return errorResponse(error)
   }
-}
-
-async function getMaintenanceAttachmentTicketIds() {
-  const rows = await prisma.attachment.findMany({
-    where: { module: "maintenance", isActive: true },
-    select: { referenceId: true },
-    distinct: ["referenceId"],
-  })
-  return rows.map((row) => row.referenceId)
 }
 
 async function getMaintenanceAttachmentCounts(ticketIds: string[]) {

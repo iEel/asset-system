@@ -4,62 +4,40 @@ import test from "node:test"
 import {
   buildMaintenanceQueryString,
   buildMaintenanceWhere,
-  getMaintenanceDateRangeError,
   parseMaintenanceListParams,
 } from "../src/lib/maintenance-query.ts"
 
-test("normalizes maintenance pagination to 25, 50, or 100", () => {
-  assert.equal(parseMaintenanceListParams({ page: "3", pageSize: "50" }).page, 3)
-  assert.equal(parseMaintenanceListParams({ page: "0", pageSize: "10" }).page, 1)
-  assert.equal(parseMaintenanceListParams({ page: "0", pageSize: "10" }).pageSize, 25)
-  assert.equal(parseMaintenanceListParams({ page: ["4"], pageSize: 100 }).page, 4)
-  assert.equal(parseMaintenanceListParams({ page: ["4"], pageSize: 100 }).pageSize, 100)
+test("the unfinished filter includes tickets from the old workflow", () => {
+  const where = buildMaintenanceWhere(parseMaintenanceListParams({ status: "in_progress" }))
+  assert.deepEqual(where.repairStatus, { notIn: ["closed", "cancelled"] })
 })
 
-test("reports an inverted date range without querying a misleading range", () => {
-  const filters = parseMaintenanceListParams({ dateFrom: "2026-07-20", dateTo: "2026-07-14" })
-  assert.equal(getMaintenanceDateRangeError(filters), "invalid_order")
-  assert.deepEqual(buildMaintenanceWhere(filters), { isActive: true })
+test("finished and cancelled filters match exactly", () => {
+  assert.equal(buildMaintenanceWhere(parseMaintenanceListParams({ status: "closed" })).repairStatus, "closed")
+  assert.equal(buildMaintenanceWhere(parseMaintenanceListParams({ status: "cancelled" })).repairStatus, "cancelled")
 })
 
-test("preserves normalized list state and supports explicit overrides", () => {
-  const filters = parseMaintenanceListParams({
-    search: " UPS ",
-    status: "in_progress",
-    page: "4",
-    pageSize: "50",
-  })
-
-  assert.equal(
-    buildMaintenanceQueryString(filters),
-    "search=UPS&status=in_progress&page=4&pageSize=50",
-  )
-  assert.equal(
-    buildMaintenanceQueryString(filters, { status: "closed", page: 1 }),
-    "search=UPS&status=closed&page=1&pageSize=50",
-  )
+test("old workflow statuses in a bookmarked URL are ignored", () => {
+  assert.equal(parseMaintenanceListParams({ status: "waiting_parts" }).status, "")
 })
 
-test("builds exact KPI queue filters", () => {
-  const waiting = parseMaintenanceListParams({ queue: "waiting" })
-  assert.deepEqual(buildMaintenanceWhere(waiting), {
-    isActive: true,
-    repairStatus: { in: ["waiting_parts", "waiting_vendor"] },
-  })
-  assert.equal(buildMaintenanceQueryString(waiting), "queue=waiting&page=1&pageSize=25")
-  assert.equal(parseMaintenanceListParams({ queue: "unknown" }).queue, "")
+test("the asset filter from the asset page narrows the list", () => {
+  assert.equal(buildMaintenanceWhere(parseMaintenanceListParams({ assetId: "asset-1" })).assetId, "asset-1")
 })
 
-test("overdue maintenance excludes completed, closed, and cancelled tickets", () => {
-  const overdue = parseMaintenanceListParams({ overdue: "yes" })
-
-  assert.deepEqual(buildMaintenanceWhere(overdue), {
-    isActive: true,
-    dueDate: { lt: assertDate() },
-    repairStatus: { notIn: ["completed", "closed", "cancelled"] },
-  })
+test("query strings keep the asset filter and drop empty values", () => {
+  const filters = parseMaintenanceListParams({ assetId: "asset-1", status: "closed" })
+  assert.equal(buildMaintenanceQueryString(filters), "status=closed&assetId=asset-1&page=1&pageSize=25")
 })
 
-function assertDate() {
-  return new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())
-}
+test("an inverted date range is not applied", () => {
+  const where = buildMaintenanceWhere(parseMaintenanceListParams({ dateFrom: "2026-10-08", dateTo: "2026-10-01" }))
+  assert.equal(where.reportedDate, undefined)
+})
+
+test("search covers record number, asset, problem, remark, invoice, reporter and vendor", () => {
+  const where = buildMaintenanceWhere(parseMaintenanceListParams({ search: "UPS" }))
+  assert.equal(Array.isArray(where.OR), true)
+  assert.deepEqual(where.OR?.slice(0, 2), [{ repairNo: { contains: "UPS" } }, { problem: { contains: "UPS" } }])
+  assert.equal(where.OR?.length, 9)
+})

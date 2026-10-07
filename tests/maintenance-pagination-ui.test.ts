@@ -13,11 +13,9 @@ test("maintenance pagination exposes exact range, page size, and navigation", as
   assert.match(source, /pagination\.total/)
 })
 
-test("maintenance list renders pagination and explains board incompatibility", async () => {
+test("maintenance list renders pagination", async () => {
   const source = await readFile("src/app/[locale]/(dashboard)/maintenance/page.tsx", "utf8")
   assert.match(source, /<MaintenancePagination/)
-  assert.match(source, /getMaintenanceBoardCompatibility/)
-  assert.match(source, /boardTableRequired/)
 })
 
 test("maintenance APIs return exact paginated envelopes", async () => {
