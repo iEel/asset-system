@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-10-07
+
+| Area | Update |
+|---|---|
+| Full review | Recorded the functional, security and UI/UX review in `docs/audits/2026-10-07-full-review.md` (findings E, S, A, B, M, U with status). |
+| Development database | Created `asset_management_dev` from a COPY_ONLY backup of Production on the same instance with a dedicated `asset_dev` login (db_owner on that database only); LDAP sync disabled in the copy; migration ledger rows re-keyed to the dev database name. Developer `.env` no longer contains `sa`. |
+| Security round 1 | Commits `160505b` (LDAP settings and secrets), `0bef806` (session refresh and login rate limit), `276fa57` (admin privilege escalation and password hash exposure), `5f83e24` (cleanup/LDAP sync script guards and README). `npm test` 1,320 passed, 1 skipped; `npx tsc --noEmit` clean; scoped ESLint clean. Verified against the running app on the dev database: the 6th failed login for a fake username returned `code=rate_limited`; the users API returned no `passwordHash`; the settings API and page returned the placeholder for `ldap_bind_password`. No schema or migration changed. |
+
+---
+
 ## 2026-09-28
 
 | Area | Update |

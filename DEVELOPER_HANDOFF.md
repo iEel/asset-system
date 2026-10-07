@@ -1,6 +1,6 @@
 # Developer Handoff
 
-> Last updated: 2026-09-28
+> Last updated: 2026-10-07
 > Scope: Developer onboarding, production readiness, and operational handoff for the Asset Management System.
 
 ## Start Here
@@ -30,6 +30,7 @@ Long-form development history is preserved in `docs/99_CHANGELOG.md`.
 
 ## Current Production Readiness Status
 
+- Security round 1 (2026-10-07, branch `fix/security-round-1`, commits `160505b`, `0bef806`, `276fa57`, `5f83e24`) closes the Critical/High findings in `docs/audits/2026-10-07-full-review.md`: admin user APIs never load or return `passwordHash`; `ldap_bind_password` is masked as `__STORED_SECRET__` in the settings API/page (saving the placeholder keeps the stored value) and redacted in System Log snapshots; only `system_admin` may change `ldap_*` settings, run the LDAP connection test, or apply an LDAP sync from the web, and the test never sends the stored password to a different URL/bind DN; non-admins cannot grant `system_admin` or permissions they do not hold, cannot edit/reset users with more access, and the last active system administrator cannot be demoted or deactivated; JWT sessions re-read active state, active roles and permissions at most every 60 seconds (immediately after an admin edits that user or any role) and inactive roles grant nothing; failed logins lock a username after 5 failures and an IP after 20 failures within 15 minutes (`code=rate_limited`). `npm test` passed 1320/1320 with `npx tsc --noEmit` clean. Existing `system_logs` rows written before this change may still contain the old bind password.
 - Maintenance close UX now allows operators with `maintenance:edit` to open the close dialog from either the ticket list or detail while repair evidence is missing. The dialog identifies the missing evidence and links directly to the ticket's attachment upload section; Submit stays disabled until an active maintenance attachment exists. The API's evidence and close-field validation remain authoritative. A ticket at `completed` is still awaiting inspection/closure, so the Asset Register retains its existing lifecycle status until the close transaction succeeds. For corrective work without a current custodian, the normal close target is `Ready`. This is a UI/documentation change only: no existing ticket or asset was updated, and no migration is required. Deployment UAT should open a `completed` ticket with no evidence from both list and detail, upload evidence, close with required fields, then verify the Asset Register status and audit trail.
 - Corrective maintenance tickets can be cancelled only while `reported` or `accepted`, with a mandatory reason and optimistic concurrency. Cancellation keeps the ticket as an auditable `cancelled` terminal record, writes maintenance movement/System Log history, restores the asset to custody-derived `In Use` or `Ready`, and is excluded from active/overdue ticket queries and blockers. Legacy Check-in candidates now include `Ready` and `In Use` assets with a current custodian, no open checkout, and no active corrective maintenance; this repairs imported/current-custodian return flows without direct lifecycle edits. No schema or migration is required.
 - Manual SQL migration tracking is implemented through `manual_migration_history` and the `migration:init`, `migration:status`, `migration:apply`, and `migration:baseline` CLI commands. The ledger stores exact SHA-256 checksums, target database, operator, reason, duration, and success/failed/baselined history; status is read-only, changed accepted files are blocked, one migration runs under a SQL Server application lock, and sensitive connection values are sanitized. The `asset_management` ledger was initialized after a verified backup on 2026-08-27, and the ten migrations present at that checkpoint were verified and recorded as applied/baselined. The later `2026-08-27-add-reversible-asset-transactions.sql` was applied separately on 2026-08-28 and is now tracked as applied.
@@ -129,6 +130,7 @@ npm run build
 
 ## Production Safety Rules
 
+- Local development uses `asset_management_dev` with the `asset_dev` login (db_owner on that database only). Never put `sa` or the Production `asset_management` database in a developer `.env`; run `npm run migration:status` before starting to confirm `Database: asset_management_dev`.
 - Do not commit real credentials, production connection strings, internal hostnames, or server IP addresses.
 - Do not document real production admin credentials. Initial admin accounts are for local seed/testing only and must be changed before shared or production use.
 - Do not hard-delete production data except through explicitly guarded cleanup tooling that requires scope, apply flag, confirmation flag, and environment confirmation.
@@ -224,6 +226,13 @@ npm run build
 - The migration backfilled only `GRL-COM-06-0001 / HO-202606-0002` and `SNI-EQU-19-0336 / HO-202608-0003`. Both are active `permanent_assignment` Checkouts in `In Use`, each with one migration movement and one System Log entry; no active null-mode Checkout remained after verification.
 - The first apply attempt (`37874f3a6a43`) failed before any change because SQL Server compiled references to the newly added column in the same batch. The transaction rolled back. The accepted migration defers those statements with `sp_executesql`, and the migration runner now preserves nested SQL Server error details instead of recording an empty AggregateError message.
 
+## Development Database (2026-10-07)
+
+- `asset_management_dev` was restored on the same SQL Server instance from a COPY_ONLY backup of Production taken 2026-10-07 (`MSSQL17.ALPHA\MSSQL\Backup\asset_management_copyonly_20261007.bak` on the server), switched to SIMPLE recovery, and its log shrunk to about 264 MB.
+- Login `asset_dev` is `db_owner` on `asset_management_dev` only; it is denied on `asset_management` and on other company databases on the instance.
+- In the dev copy `ldap_sync_enabled=false` and `ldap_sync_mode=preview`; LDAP login still works. The `manual_migration_history` rows were re-keyed to `databaseName = asset_management_dev` because the ledger filters by database name; without that every migration shows as pending.
+- Attachments in the dev copy point at Production absolute paths and return 500 locally (see finding E4).
+
 ## Open Go-Live Decisions
 
 - Confirm production database user and least-privilege permissions.
@@ -232,3 +241,8 @@ npm run build
 - Confirm LDAP/AD auto-provision default role and Employee matching rules with a real AD login account.
 - Confirm LDAP/AD scheduled sync safety threshold before enabling automatic deactivation.
 - Confirm notification delivery channels beyond in-app notifications.
+- `asset_management` had no backup between 2026-08-31 and the 2026-10-07 COPY_ONLY copy, and no log backups in FULL recovery. Schedule full + log backups and copy them off the server.
+- Every application on the shared SQL Server instance uses `sa`. Create a least-privilege login for the Production app before rotating the `sa` password.
+- Rotate the AD bind account password (it was exposed through the settings API and System Log before security round 1) and decide whether to purge old `system_logs` rows that contain it.
+- Confirm the Production `AUTH_SECRET` is not the placeholder value previously used in developer `.env` files.
+- Cancel the leftover Draft audit round `AUD-2026-0002 "Test"`; it inflates Work Center and audit coverage figures.

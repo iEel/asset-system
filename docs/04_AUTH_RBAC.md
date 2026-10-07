@@ -16,11 +16,29 @@ The system supports local credentials login and optional LDAP/AD login through t
 
 This employee link is required because SQL Server unique indexes do not allow multiple `NULL` values for `users.employeeId` in this schema. Creating unlinked LDAP users would collide with existing local users that have no employee link.
 
+## Login Throttling And Session Refresh
+
+- Failed logins are limited in memory (one production Node process): 5 failures per username (case-insensitive) or 20 failures per client IP within 15 minutes lock that key for 15 minutes. Locked attempts never reach the password check or the LDAP bind, so they cannot lock employees' AD accounts. The login form shows `auth.loginRateLimited` when Auth.js returns `code=rate_limited`. A successful login clears the username's counter. The client IP comes from `cf-connecting-ip`, then `x-real-ip`, then the first `x-forwarded-for` entry (`src/lib/login-rate-limit.ts`).
+- JWT sessions last 8 hours, but the `jwt` callback re-reads the user's `isActive`, active roles and permissions at most every 60 seconds per user (`src/lib/session-access.ts`, `src/lib/session-access-cache.ts`). A deactivated or deleted user loses the session on the next refresh; role changes apply without logging out. Editing a user invalidates that user's cached access, editing a role invalidates everyone's. A transient database error keeps the current claims instead of logging everyone out.
+- Roles with `isActive = false` grant no permissions, at login or on refresh.
+
 ## Secret Rules
 
-- `AUTH_SECRET` and `NEXTAUTH_SECRET` must be strong production values.
+- `AUTH_SECRET` and `NEXTAUTH_SECRET` must be strong production values, different per environment.
 - Do not commit real secrets or session keys.
 - Do not document real production admin credentials.
+- Admin user APIs never load or return `passwordHash` (`src/lib/admin-user-response.ts`).
+- `ldap_bind_password` is never sent to the browser: the settings API and page return `__STORED_SECRET__` when a value is stored. Saving that placeholder keeps the stored value; an empty value clears it. System Log snapshots of settings changes show `[REDACTED]` for secret keys (`src/lib/system-setting-secrets.ts`).
+
+## Administrator Escalation Rules
+
+Enforced server-side in `src/lib/admin-access-policy.ts` for `POST/PUT /api/admin/users` and `POST/PUT /api/admin/roles`:
+
+- Only `system_admin` may grant the `system_admin` role.
+- A non-`system_admin` actor cannot grant a role containing a permission they do not hold, cannot add such a permission to a role, and cannot edit or reset the password of a user whose access exceeds their own.
+- The last active system administrator cannot be demoted or deactivated (`409`).
+- Unknown or inactive roles are rejected (`400`).
+- Only `system_admin` may change any `ldap_*` setting (scheduler status keys `ldap_sync_last_*` excepted), run `POST /api/admin/settings/ldap-test`, or apply an LDAP sync from the web. The LDAP test reuses the stored bind password only when the submitted URL and bind DN match the stored ones.
 
 ## Roles
 
@@ -112,7 +130,7 @@ npm run verify
 
 ## LDAP / AD Sync Safety
 
-- Start LDAP sync in preview mode.
+- Start LDAP sync in preview mode. `npm run ldap:sync` previews by default; pass `-- --apply` to write changes.
 - Review missing-from-AD users before applying deactivation.
 - Set a scheduled deactivation threshold before enabling automatic sync.
 - Assets assigned to users missing from AD should be returned, transferred, or reviewed before the linked employee/app user is deactivated.
