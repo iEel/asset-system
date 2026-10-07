@@ -108,6 +108,13 @@ export function buildAssetWhere(filters: ReturnType<typeof parseAssetListParams>
   return where
 }
 
+export type AssetListFilters = ReturnType<typeof parseAssetListParams>
+
+/** The register's status tabs count with every filter except the status itself. */
+export function buildAssetStatusCountWhere(filters: AssetListFilters): Prisma.AssetWhereInput {
+  return buildAssetWhere({ ...filters, statusId: "" })
+}
+
 export function buildAssetOrderBy(filters: ReturnType<typeof parseAssetListParams>): Prisma.AssetOrderByWithRelationInput {
   return { [filters.sort]: filters.direction }
 }
