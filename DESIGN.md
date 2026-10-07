@@ -208,7 +208,7 @@ Components should feel consistent, restrained, and task-first. The system alread
 
 ### Status Badges
 
-- **Style:** One `StatusBadge` (`src/components/ui/status-badge.tsx`): 6px radius, a status dot, the tone's soft background (`bg-{tone}-soft`), its border (`border-{tone}-border`) and AA ink text (`text-{tone}`). The dot keeps status readable without relying on hue alone.
+- **Style:** One `StatusBadge` (`src/components/ui/status-badge.tsx`): 8px radius (`rounded-md`), a status dot, the tone's soft background (`bg-{tone}-soft`), its border (`border-{tone}-border`) and AA ink text (`text-{tone}`). The dot keeps status readable without relying on hue alone.
 - **Custom colors:** A status color stored in the database colors the dot only, and only when it is a valid hex value. Badge text is always the tone ink.
 - **State:** Every badge carries a text label. Warning, danger, success, info, and primary tones follow workflow meaning (`getStatusTone`, `getAssetStateTone`).
 
