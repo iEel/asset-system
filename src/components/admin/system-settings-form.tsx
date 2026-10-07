@@ -116,7 +116,6 @@ type SystemSettingsFormProps = {
     overviewOrganization: string
     overviewNotifications: string
     overviewApproval: string
-    overviewAutomation: string
     overviewGovernance: string
     overviewLdapLogin: string
     overviewLdapSync: string

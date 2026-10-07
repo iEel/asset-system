@@ -89,7 +89,6 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           overviewOrganization: t("overviewOrganization"),
           overviewNotifications: t("overviewNotifications"),
           overviewApproval: t("overviewApproval"),
-          overviewAutomation: t("overviewAutomation"),
           overviewGovernance: t("overviewGovernance"),
           overviewLdapLogin: t("overviewLdapLogin"),
           overviewLdapSync: t("overviewLdapSync"),

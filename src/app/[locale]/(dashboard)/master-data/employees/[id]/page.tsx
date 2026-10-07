@@ -20,6 +20,7 @@ import { requirePagePermission } from "@/lib/page-auth"
 import { buildEmployeeDetailHrefs, buildEmployeeDetailSummary, buildEmployeeFollowUpItems, dedupeEmployeeMaintenanceLinks } from "@/lib/employee-detail"
 import { formatDate, formatDateTime } from "@/lib/utils"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, maintenanceStatuses } from "@/lib/maintenance-status"
+import { openRepairRecordWhere } from "@/lib/repair-record-policy"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -65,7 +66,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
   }
   const openMaintenanceWhere = {
     ...relatedEmployeeWhere,
-    repairStatus: { notIn: ["closed", "cancelled"] },
+    ...openRepairRecordWhere,
   }
   const pendingAuditFindingWhere = {
     actionOwnerId: id,
