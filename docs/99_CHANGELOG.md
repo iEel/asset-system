@@ -4,6 +4,21 @@
 
 ---
 
+## 2026-10-08
+
+### อัปเกรดแพ็กเกจเพื่อปิดช่องโหว่ (หลัง deploy `ea65bb2`)
+
+Branch `fix/dependency-security` · npm audit บน Production แจ้ง 34 รายการ (ใช้ตอนรันจริง 26 · critical 3)
+
+- `next` 16.2.4 → **16.4.0** (และ `eslint-config-next` 16.4.0): ปิด critical RCE ใน Image Optimization (AVIF), `next/og` และเซิร์ฟเวอร์ Windows รวมถึง high หลายข้อ (ข้าม middleware/proxy, SSRF, DoS)
+- `next-auth` beta.31 → **5.0.0-beta.32** (`@auth/core` 0.41.3): ปิด critical "auth check fail open เมื่อ config ผิด" และ homoglyph ในอีเมล · session JWT เดิมใช้ต่อได้ไม่ต้อง login ใหม่
+- `sharp` 0.34.5 → **0.35.5**: ปิดช่องโหว่ libvips/libheif/librsvg · `next` 16.4 ใช้ sharp ตัวเดียวกัน (มีชุดเดียว)
+- `npm audit fix` (ไม่ใช้ `--force`) ขยับแพ็กเกจย่อยภายในช่วงเดิม รวม `prisma`/`@prisma/client`/`@prisma/adapter-mssql` 7.8.0 → 7.10.0 (package.json ยัง `^7.8.0`)
+- lockfile สร้างด้วย npm 10.9.4 · `npm ci --ignore-scripts` ของ npm 10 ผ่าน
+- ผล audit เฉพาะตอนรันจริง: 26 → 10 (critical 0 · high 4 · moderate 6) · ที่เหลือ: high 4 ตัวมากับ Prisma CLI (`prisma`, `@prisma/config`, `deepmerge-ts`, `mysql2` — npm เสนอให้ถอยไป prisma 6 ซึ่งไม่ทำ) · moderate จาก `mssql`/`tedious` (ยังไม่มีทางแก้) และ `uuid` ใน `exceljs` (ต้องเปลี่ยนรุ่นใหญ่)
+- `next dev` 16.4 ดูแลช่วง `BEGIN/END:nextjs-agent-rules` ใน `AGENTS.md` เอง (commit ไว้แล้ว ส่วนอื่นของไฟล์ไม่ถูกแตะ)
+- ไม่มีการแก้โค้ดของแอป · ไม่มี migration · `npm run verify` ผ่าน (test 1,532 · ผ่าน 1,531 · ข้าม 1 · build 60/60 หน้า) · ตรวจบนแอป dev: session เดิมใช้ได้ · รูปย่อ WebP จาก sharp 0.35 · บันทึกผลตรวจนับพร้อม finding และรูปบน DB dev (Prisma 7.10) · หน้าหลัก 14 หน้าโหลดได้ไม่มี error
+
 ## 2026-10-07
 
 ### หน้าสแกนตรวจนับใหม่ (รอบที่ 3 ส่วน B2)

@@ -265,6 +265,13 @@ npm run build
 - Offline: `upsertQueuedAuditScanAsync` keeps one queued save per asset (newer result wins, earlier photos are kept); the queue sends itself on `online` and after each poll; failed entries stay with their error until sent manually or removed.
 - Staff guide: `docs/18_AUDIT_SCAN_GUIDE_TH.md`. Design spec: `docs/superpowers/specs/2026-10-07-audit-scan-redesign-design.md`. Plan: `docs/superpowers/plans/2026-10-07-audit-scan-redesign.md`. No migration and no new dependency.
 
+## Dependency Security Update (2026-10-08)
+
+- `next` 16.4.0 (exact, with `eslint-config-next` 16.4.0), `next-auth` ^5.0.0-beta.32 (`@auth/core` 0.41.3), `sharp` ^0.35.5; `npm audit fix` without `--force` also moved Prisma 7.8.0 → 7.10.0 inside `^7.8.0`. No app code changed.
+- Always regenerate the lockfile with npm 10 (`npx -y npm@10.9.4 install …`): Production runs npm 10, and an npm-11 lockfile broke `npm ci` there before.
+- Ignore npm audit's suggested "fix" `prisma@6.x` — it is a downgrade. The remaining high findings (`prisma`, `@prisma/config`, `deepmerge-ts`, `mysql2`) come from the Prisma CLI and wait for a Prisma 7.x release.
+- `next dev` 16.4 writes and maintains the `BEGIN/END:nextjs-agent-rules` block at the top of `AGENTS.md`; commit its changes rather than reverting them (or set `agentRules: false` in `next.config.ts` to stop it).
+
 ## Open Go-Live Decisions
 
 - Confirm production database user and least-privilege permissions.
