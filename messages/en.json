@@ -2779,6 +2779,47 @@
       "cancelled": "Cancelled"
     }
   },
+  "repairRecord": {
+    "title": "Maintenance",
+    "createTitle": "Record a repair",
+    "createSubtitle": "Record what was repaired, when, and the result",
+    "pmCreateSubtitle": "Record that the planned PM was done; the next due date moves forward automatically",
+    "planLabel": "PM plan",
+    "asset": "Asset",
+    "selectAsset": "Search asset tag or name",
+    "date": "Date",
+    "problem": "Problem / work done",
+    "problemPlaceholder": "e.g. Screen blank, replaced display cable",
+    "doneQuestion": "Is the repair finished?",
+    "doneYes": "Finished",
+    "doneNo": "Not finished (sent out / waiting for parts)",
+    "outcomeQuestion": "Result",
+    "outcome": {
+      "usable": "Usable",
+      "beyond_repair": "Beyond repair, propose disposal",
+      "unknown": "Not recorded"
+    },
+    "assetStatusEffect": {
+      "toMaintenance": "The asset will be \"Under Maintenance\" until the repair is marked finished",
+      "toDisposal": "The asset will change to \"Pending Disposal\""
+    },
+    "openExistingRecord": "Open the unfinished record",
+    "reporter": "Recorded by",
+    "selectReporter": "Select the employee recording this",
+    "reporterHelp": "This account is not linked to an employee, so choose who is recording",
+    "moreDetails": "More details (optional)",
+    "vendor": "Repair shop / vendor",
+    "vendorPlaceholder": "In-house (no vendor)",
+    "internal": "In-house",
+    "cost": "Total cost (THB)",
+    "invoiceNo": "Receipt / tax invoice no.",
+    "files": "Photos or receipts",
+    "filesHelp": "You can pick several files; they upload after saving",
+    "remark": "Remark",
+    "save": "Save",
+    "saved": "Repair recorded",
+    "uploadFailed": "Saved, but {count} file(s) failed to upload. Attach them again on the detail page"
+  },
   "disposalPage": {
     "title": "Disposal",
     "subtitle": "Track disposal requests awaiting approval, execution, and completion.",

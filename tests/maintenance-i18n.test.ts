@@ -24,7 +24,7 @@ test("Thai and English maintenance copy has matching keys", async () => {
 
 test("maintenance clients localize stable error codes instead of exposing raw API text", async () => {
   const files = [
-    "src/components/maintenance/maintenance-ticket-form.tsx",
+    "src/components/maintenance/repair-record-form.tsx",
     "src/components/maintenance/maintenance-ticket-status-button.tsx",
     "src/components/maintenance/maintenance-ticket-planning-button.tsx",
     "src/components/maintenance/maintenance-ticket-close-button.tsx",

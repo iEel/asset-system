@@ -17,6 +17,7 @@ export function MaintenanceOptionSelect({
   emptyLabel,
   loadingLabel,
   initialOption,
+  formatReason,
   onChange,
 }: {
   type: MaintenanceOptionType
@@ -29,6 +30,7 @@ export function MaintenanceOptionSelect({
   emptyLabel: string
   loadingLabel?: string
   initialOption?: MaintenanceOption
+  formatReason?: (reason: string) => string
   onChange: (value: string) => void
 }) {
   const [query, setQuery] = useState("")
@@ -68,9 +70,9 @@ export function MaintenanceOptionSelect({
       : options
     return visibleOptions.map((option) => ({
       ...option,
-      label: option.reason ? `${option.label} — ${option.reason}` : option.label,
+      label: option.reason ? `${option.label} — ${formatReason ? formatReason(option.reason) : option.reason}` : option.label,
     }))
-  }, [initialOption, options, query, value])
+  }, [formatReason, initialOption, options, query, value])
 
   return (
     <div>

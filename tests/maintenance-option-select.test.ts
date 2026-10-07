@@ -14,7 +14,7 @@ test("maintenance option select debounces, aborts stale requests, and announces 
 
 test("maintenance forms use bounded option selects instead of embedded option arrays", () => {
   const source = [
-    readFileSync("src/components/maintenance/maintenance-ticket-form.tsx", "utf8"),
+    readFileSync("src/components/maintenance/repair-record-form.tsx", "utf8"),
     readFileSync("src/components/maintenance/maintenance-plan-form.tsx", "utf8"),
   ].join("\n")
   assert.match(source, /MaintenanceOptionSelect/)
