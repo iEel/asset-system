@@ -1,4 +1,5 @@
 import { filterAuditItemsByContext, type AuditScanContext } from "./audit-scan-context.ts"
+import { normalizeAssetOwnershipType, requiresCustodian } from "./asset-ownership.ts"
 
 export const auditScanListPageSize = 50
 export const auditScanSearchLimit = 10
@@ -204,4 +205,143 @@ export function splitSearchHighlight(value: string, term: string): [string, stri
   const index = value.toLocaleLowerCase().indexOf(needle)
   if (index < 0) return null
   return [value.slice(0, index), value.slice(index, index + needle.length), value.slice(index + needle.length)]
+}
+
+export type AuditCheckMode = "scan" | "edit" | "out_of_scope"
+export type AuditCheckField = "location" | "custodian" | "department" | "condition"
+export type AuditCheckValues = Record<AuditCheckField, string>
+export type AuditMasterValues = {
+  locationId: string
+  custodianId: string | null
+  departmentId: string | null
+  conditionId: string | null
+}
+
+export function getCheckMode(item: Pick<AuditScanItemRow, "auditStatus" | "auditResult">): "scan" | "edit" {
+  if (item.auditStatus === "pending" || item.auditResult === "not_found") return "scan"
+  return "edit"
+}
+
+export function expectedCheckValues(item: AuditScanItemRow): AuditCheckValues {
+  return {
+    location: item.expectedLocationId,
+    custodian: item.expectedCustodianId ?? "",
+    department: item.expectedDepartmentId ?? "",
+    condition: item.expectedConditionId ?? "",
+  }
+}
+
+export function masterCheckValues(master: AuditMasterValues): AuditCheckValues {
+  return {
+    location: master.locationId,
+    custodian: master.custodianId ?? "",
+    department: master.departmentId ?? "",
+    condition: master.conditionId ?? "",
+  }
+}
+
+export function buildCheckDefaults(
+  input:
+    | { mode: "scan" | "edit"; item: AuditScanItemRow; room: AuditScanRoom }
+    | { mode: "out_of_scope"; master: AuditMasterValues; room: AuditScanRoom },
+): AuditCheckValues {
+  if (input.mode === "out_of_scope") {
+    const values = masterCheckValues(input.master)
+    return { ...values, location: input.room.locationId || values.location }
+  }
+  if (input.mode === "edit") {
+    return {
+      location: input.item.actualLocationId ?? input.item.expectedLocationId,
+      custodian: input.item.actualCustodianId ?? "",
+      department: input.item.actualDepartmentId ?? "",
+      condition: input.item.actualConditionId ?? "",
+    }
+  }
+  const expected = expectedCheckValues(input.item)
+  return { ...expected, location: input.room.locationId || expected.location }
+}
+
+/** Same comparison as the scan route: location skipped for licences, custodian only for personal assets. */
+export function diffCheckValues(values: AuditCheckValues, expected: AuditCheckValues, ownershipType: string | null): AuditCheckField[] {
+  const type = normalizeAssetOwnershipType(ownershipType)
+  const fields: AuditCheckField[] = []
+  if (type !== "software_license" && values.location !== expected.location) fields.push("location")
+  if (requiresCustodian(type) && values.custodian !== expected.custodian) fields.push("custodian")
+  if (values.department !== expected.department) fields.push("department")
+  if (values.condition !== expected.condition) fields.push("condition")
+  return fields
+}
+
+export function requiresCheckPhoto(mode: AuditCheckMode, diff: readonly AuditCheckField[]) {
+  return mode === "out_of_scope" ? diff.length > 0 : diff.includes("condition")
+}
+
+export function suggestDepartmentForCustodian(employees: readonly AuditScanEmployeeOption[], custodianId: string) {
+  if (!custodianId) return null
+  return employees.find((employee) => employee.id === custodianId)?.departmentId ?? null
+}
+
+export function getLatestValueNotes(item: AuditScanItemRow) {
+  const notes: Partial<Record<"location" | "custodian" | "department", string>> = {}
+  if (item.currentLocationId !== item.expectedLocationId) notes.location = item.currentLocationId
+  if ((item.currentCustodianId ?? "") !== (item.expectedCustodianId ?? "")) notes.custodian = item.currentCustodianId ?? ""
+  if ((item.currentDepartmentId ?? "") !== (item.expectedDepartmentId ?? "")) notes.department = item.currentDepartmentId ?? ""
+  return notes
+}
+
+export function toScanPayloadValues(values: AuditCheckValues) {
+  return {
+    actualLocationId: values.location || null,
+    actualCustodianId: values.custodian || null,
+    actualDepartmentId: values.department || null,
+    actualConditionId: values.condition || null,
+  }
+}
+
+export type AuditScanResultItem = {
+  id: string
+  auditStatus: string
+  auditResult: string | null
+  actualLocationId: string | null
+  actualCustodianId: string | null
+  actualDepartmentId: string | null
+  actualConditionId: string | null
+  lastScanAt: string | Date | null
+}
+
+function toIsoString(value: string | Date | null) {
+  if (!value) return null
+  return typeof value === "string" ? new Date(value).toISOString() : value.toISOString()
+}
+
+export function applyScanResult(
+  items: readonly AuditScanItemRow[],
+  result: { item: AuditScanResultItem; scannedByName?: string | null },
+): AuditScanItemRow[] {
+  return items.map((row) =>
+    row.itemId !== result.item.id
+      ? row
+      : {
+          ...row,
+          auditStatus: result.item.auditStatus,
+          auditResult: result.item.auditResult,
+          actualLocationId: result.item.actualLocationId,
+          actualCustodianId: result.item.actualCustodianId,
+          actualDepartmentId: result.item.actualDepartmentId,
+          actualConditionId: result.item.actualConditionId,
+          lastScanAt: toIsoString(result.item.lastScanAt),
+          scannedByName: result.scannedByName ?? row.scannedByName,
+        },
+  )
+}
+
+export function mergeStatusUpdates(items: readonly AuditScanItemRow[], updates: readonly AuditScanItemRow[]): AuditScanItemRow[] {
+  const byItemId = new Map(updates.map((update) => [update.itemId, update]))
+  const merged = items.map((row) => {
+    const update = byItemId.get(row.itemId)
+    if (!update) return row
+    byItemId.delete(row.itemId)
+    return update
+  })
+  return [...merged, ...byItemId.values()]
 }

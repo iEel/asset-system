@@ -107,6 +107,30 @@ export async function addQueuedAuditScanAsync(
   return queued
 }
 
+/** One pending save per asset: a newer save replaces the older one instead of queueing twice. */
+export async function upsertQueuedAuditScanAsync(
+  storage: AuditOfflineQueueStorage,
+  roundId: string,
+  payload: AuditOfflineScanPayload,
+  options: {
+    photos?: AuditOfflinePhoto[]
+    now?: Date
+  } = {}
+) {
+  const now = options.now ?? new Date()
+  const queued: QueuedAuditScan = {
+    ...payload,
+    id: `${now.getTime()}-${payload.assetId}`,
+    queuedAt: now.toISOString(),
+    syncStatus: "pending",
+    lastSyncError: null,
+    photos: options.photos ?? [],
+  }
+  const existing = (await loadQueuedAuditScansAsync(storage, roundId)).filter((entry) => entry.assetId !== payload.assetId)
+  await storage.setQueue(createAuditOfflineQueueKey(roundId), [...existing, queued])
+  return queued
+}
+
 export function removeQueuedAuditScan(storage: AuditOfflineStorage, roundId: string, queuedId: string) {
   const nextQueue = loadQueuedAuditScans(storage, roundId).filter((item) => item.id !== queuedId)
   if (nextQueue.length === 0) storage.removeItem(createAuditOfflineQueueKey(roundId))
