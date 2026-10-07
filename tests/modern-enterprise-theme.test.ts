@@ -50,13 +50,13 @@ test("muted badge foreground meets WCAG AA against the muted background", () => 
   assert.ok(contrast(token(source, "muted-foreground"), token(source, "muted")) >= 4.5)
 })
 
-test("semantic badge foreground tokens are exposed to Tailwind and used by StatusPill", () => {
+test("semantic soft tokens are exposed to Tailwind and used by the register", () => {
   const source = css()
   const register = assetRegister()
 
   for (const tone of ["success", "warning", "danger", "info"] as const) {
     assert.match(source, new RegExp(`--color-${tone}-soft:\\s*var\\(--${tone}-soft\\);`))
-    assert.match(register, new RegExp(`bg-${tone}\\/10 text-${tone}-foreground`))
+    assert.match(register, new RegExp(`bg-${tone}-soft text-${tone}`))
   }
   assert.match(register, /bg-muted text-muted-foreground/)
 })

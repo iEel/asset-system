@@ -28,7 +28,7 @@ export function DisposalMobileActionBar({
               href={action.href}
               className={`inline-flex h-11 min-w-0 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                 !primaryAction && index === 0
-                  ? "bg-primary text-white hover:bg-primary/90"
+                  ? "bg-primary text-white hover:bg-primary-hover"
                   : "border border-border bg-background text-foreground hover:bg-accent"
               }`}
             >

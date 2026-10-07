@@ -195,7 +195,7 @@ function FilterChip({
       href={href}
       className={`inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors ${
         active
-          ? "border-primary bg-primary/10 text-primary"
+          ? "border-primary bg-primary-soft text-primary"
           : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
       }`}
     >
@@ -344,23 +344,23 @@ function decisionIcon(decision: ApprovalDecision): React.ReactNode {
 }
 
 function decisionClass(decision: ApprovalDecision) {
-  if (decision === "approve") return "border-success/30 bg-success/5 text-success"
-  if (decision === "reject") return "border-danger/30 bg-danger/5 text-danger"
-  if (decision === "execute") return "border-primary/30 bg-primary/5 text-primary"
-  return "border-warning/30 bg-warning/5 text-warning"
+  if (decision === "approve") return "border-success/30 bg-success-soft text-success"
+  if (decision === "reject") return "border-danger/30 bg-danger-soft text-danger"
+  if (decision === "execute") return "border-primary/30 bg-primary-soft text-primary"
+  return "border-warning/30 bg-warning-soft text-warning"
 }
 
 function decisionPillClass(decision: ApprovalDecision) {
-  if (decision === "approve") return "bg-success/10 text-success"
-  if (decision === "reject") return "bg-danger/10 text-danger"
-  if (decision === "execute") return "bg-primary/10 text-primary"
-  return "bg-warning/10 text-warning"
+  if (decision === "approve") return "bg-success-soft text-success"
+  if (decision === "reject") return "bg-danger-soft text-danger"
+  if (decision === "execute") return "bg-primary-soft text-primary"
+  return "bg-warning-soft text-warning"
 }
 
 function summaryClass(tone: "primary" | "success" | "danger" | "warning" | "muted") {
-  if (tone === "primary") return "border-primary/30 bg-primary/5 text-primary"
-  if (tone === "success") return "border-success/30 bg-success/5 text-success"
-  if (tone === "danger") return "border-danger/30 bg-danger/5 text-danger"
-  if (tone === "warning") return "border-warning/30 bg-warning/5 text-warning"
+  if (tone === "primary") return "border-primary/30 bg-primary-soft text-primary"
+  if (tone === "success") return "border-success/30 bg-success-soft text-success"
+  if (tone === "danger") return "border-danger/30 bg-danger-soft text-danger"
+  if (tone === "warning") return "border-warning/30 bg-warning-soft text-warning"
   return "border-border bg-surface text-muted-foreground"
 }

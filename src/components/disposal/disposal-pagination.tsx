@@ -33,7 +33,7 @@ export function DisposalPagination({
             href={`${basePath}?${buildDisposalQueryString(filters, { pageSize, page: 1 })}`}
             aria-current={filters.pageSize === pageSize ? "page" : undefined}
             className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border px-2 transition-colors sm:h-8 sm:min-h-0 sm:min-w-8 ${
-              filters.pageSize === pageSize ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface hover:bg-accent"
+              filters.pageSize === pageSize ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface hover:bg-accent"
             }`}
           >
             {pageSize}

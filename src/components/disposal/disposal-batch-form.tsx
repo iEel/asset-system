@@ -64,7 +64,7 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
             <h2 className="text-lg font-semibold text-foreground">{t("batchReviewTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("batchReviewHelp", { count: selectedIds.length })}</p>
           </div>
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 text-sm font-semibold text-primary">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-primary-soft px-2.5 py-1 text-sm font-semibold text-primary">
             <PackageCheck className="h-4 w-4" /> {selectedIds.length}
           </span>
         </div>
@@ -83,7 +83,7 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
           <button type="button" onClick={() => setReviewing(false)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border px-4 text-sm font-medium hover:bg-accent">
             <ArrowLeft className="h-4 w-4" /> {t("batchBackToEdit")}
           </button>
-          <button type="button" onClick={submit} disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50">
+          <button type="button" onClick={submit} disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("batchConfirm")}
           </button>
         </div>
@@ -117,7 +117,7 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
           <FormStep number={3} title={t("formSteps.evidence")} />
           <FileDropzone file={null} onFileChange={(file) => file && setFiles((current) => [...current, file])} disabled={saving} accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment" title={t("dropEvidenceTitle")} hint={t("batchEvidenceHelp")} browseLabel={t("dropEvidenceHint")} />
           {files.map((file, index) => <div key={`${file.name}-${index}`} className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm"><span className="truncate">{file.name}</span><button type="button" aria-label={tCommon("delete")} onClick={() => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="inline-flex h-10 w-10 items-center justify-center text-danger"><X className="h-4 w-4" /></button></div>)}
-          <button type="button" disabled={!valid} onClick={() => setReviewing(true)} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"><PackageCheck className="h-4 w-4" />{t("batchReview")}</button>
+          <button type="button" disabled={!valid} onClick={() => setReviewing(true)} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"><PackageCheck className="h-4 w-4" />{t("batchReview")}</button>
         </div>
       </div>
     </section>

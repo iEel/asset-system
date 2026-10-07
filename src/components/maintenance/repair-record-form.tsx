@@ -115,7 +115,7 @@ export function RepairRecordForm({
           onChange={(value) => setField("assetId", value)}
         />
         {openRecordAssetId ? (
-          <p role="alert" className="rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-sm text-warning-foreground">
+          <p role="alert" className="rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-sm text-warning">
             {tMaintenance("errors.MAINTENANCE_OPEN_RECORD_EXISTS")}{" "}
             <Link
               href={`/${locale}/maintenance?assetId=${encodeURIComponent(openRecordAssetId)}&status=in_progress`}
@@ -162,7 +162,7 @@ export function RepairRecordForm({
           </fieldset>
         ) : null}
         {effectKey ? (
-          <p className="rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-sm text-warning-foreground">
+          <p className="rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-sm text-warning">
             {t(`assetStatusEffect.${effectKey}`)}
           </p>
         ) : null}
@@ -233,7 +233,7 @@ export function RepairRecordForm({
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50 sm:w-auto"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {t("save")}
@@ -260,7 +260,7 @@ function Choice({ name, checked, label, onSelect }: { name: string; checked: boo
   return (
     <label
       className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 py-2 text-sm transition-colors ${
-        checked ? "border-primary bg-primary/5 font-medium text-foreground" : "border-border text-muted-foreground hover:bg-accent"
+        checked ? "border-primary bg-primary-soft font-medium text-foreground" : "border-border text-muted-foreground hover:bg-accent"
       }`}
     >
       <input type="radio" name={name} checked={checked} onChange={onSelect} className="h-4 w-4 accent-primary" />

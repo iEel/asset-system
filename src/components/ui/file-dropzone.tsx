@@ -97,7 +97,7 @@ export function FileDropzone({
       onDrop={handleDrop}
       className={[
         "block cursor-pointer rounded-md border border-dashed p-4 text-center transition-colors",
-        dragging ? "border-primary bg-primary/5" : "border-border bg-surface hover:bg-accent",
+        dragging ? "border-primary bg-primary-soft" : "border-border bg-surface hover:bg-accent",
         isDisabled ? "pointer-events-none opacity-60" : "",
       ].join(" ")}
     >
@@ -114,7 +114,7 @@ export function FileDropzone({
           event.currentTarget.value = ""
         }}
       />
-      <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+      <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-md bg-primary-soft text-primary">
         <Upload className="h-5 w-5" />
       </span>
       <span className="mt-3 block text-sm font-medium text-foreground">{file ? file.name : title}</span>

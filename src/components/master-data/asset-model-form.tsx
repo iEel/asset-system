@@ -317,7 +317,7 @@ export function AssetModelForm({
                     <button
                       type="button"
                       onClick={() => removeSpecItem(item.id)}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft"
                       title={t("removeSpec")}
                       aria-label={t("removeSpec")}
                     >
@@ -358,7 +358,7 @@ export function AssetModelForm({
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {tCommon("save")}
@@ -430,7 +430,7 @@ export function AssetModelForm({
                           type="button"
                           onClick={() => handlePhotoDelete(photo.id)}
                           disabled={deletingId === photo.id}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 disabled:opacity-50"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft disabled:opacity-50"
                           title={tCommon("delete")}
                         >
                           {deletingId === photo.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}

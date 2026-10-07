@@ -64,7 +64,7 @@ export function AssetComponentsSummary({
         {canManage ? (
           <Link
             href={manageHref}
-            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:h-10 sm:min-h-0"
           >
             <PackagePlus className="h-4 w-4" />
             {labels.manage}
@@ -73,7 +73,7 @@ export function AssetComponentsSummary({
       </div>
 
       {installedInLinks.length > 0 ? (
-        <div className="mt-4 rounded-md border border-primary/20 bg-primary/5 p-3">
+        <div className="mt-4 rounded-md border border-primary/20 bg-primary-soft p-3">
           <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{labels.installedIn}</div>
           <div className="mt-2 grid gap-2">
             {installedInLinks.map((link) => (
@@ -100,7 +100,7 @@ export function AssetComponentsSummary({
             {labels.current}
           </div>
           {missingSerialCount > 0 ? (
-            <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+            <span className="rounded-full bg-warning-soft px-2 py-0.5 text-xs font-medium text-warning">
               {labels.missingSerial}: {missingSerialCount}
             </span>
           ) : null}

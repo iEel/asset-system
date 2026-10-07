@@ -17,8 +17,8 @@ type ActionEmptyStateProps = {
 
 const toneStyles: Record<ActionEmptyStateTone, { icon: React.ReactNode; iconClassName: string }> = {
   empty: { icon: <Inbox className="h-6 w-6" aria-hidden="true" />, iconClassName: "bg-muted text-muted-foreground" },
-  error: { icon: <AlertTriangle className="h-6 w-6" aria-hidden="true" />, iconClassName: "bg-danger/10 text-danger" },
-  permission: { icon: <ShieldAlert className="h-6 w-6" aria-hidden="true" />, iconClassName: "bg-warning/10 text-warning" },
+  error: { icon: <AlertTriangle className="h-6 w-6" aria-hidden="true" />, iconClassName: "bg-danger-soft text-danger" },
+  permission: { icon: <ShieldAlert className="h-6 w-6" aria-hidden="true" />, iconClassName: "bg-warning-soft text-warning" },
 }
 
 export function ActionEmptyState({ icon, title, description, actionHref, actionLabel, action, details, tone = "empty" }: ActionEmptyStateProps) {
@@ -26,7 +26,7 @@ export function ActionEmptyState({ icon, title, description, actionHref, actionL
   const actionNode = action ?? (actionHref && actionLabel ? (
     <Link
       href={actionHref}
-      className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-9 sm:min-h-0"
+      className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:h-9 sm:min-h-0"
     >
       {actionLabel}
     </Link>

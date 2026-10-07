@@ -48,11 +48,11 @@ export function DisposalWorkflowStepper({
                 <span
                   className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs ${
                     isRejected
-                      ? "border-danger bg-danger/10 text-danger"
+                      ? "border-danger bg-danger-soft text-danger"
                       : isComplete
                         ? "border-success bg-success text-white"
                         : isCurrent
-                          ? "border-primary bg-primary/10 text-primary"
+                          ? "border-primary bg-primary-soft text-primary"
                           : "border-border bg-background text-muted-foreground"
                   }`}
                 >

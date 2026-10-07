@@ -821,7 +821,7 @@ export function AssetBatchForm({
           </div>
 
           {hasClientDuplicates ? (
-            <div className="md:col-span-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+            <div className="md:col-span-2 rounded-md border border-warning/40 bg-warning-soft p-3 text-sm text-warning">
               {t("duplicateWarning")}
               {duplicateValues.serialNumbers.length > 0 ? ` Serial: ${duplicateValues.serialNumbers.join(", ")}` : ""}
               {duplicateValues.assetTags.length > 0 ? ` Asset Tag: ${duplicateValues.assetTags.join(", ")}` : ""}
@@ -832,10 +832,10 @@ export function AssetBatchForm({
             <div
               className={`md:col-span-2 rounded-md border p-3 text-sm ${
                 duplicateCheckStatus === "clean"
-                  ? "border-success/40 bg-success/10 text-success"
+                  ? "border-success/40 bg-success-soft text-success"
                   : duplicateCheckStatus === "duplicate"
-                    ? "border-warning/40 bg-warning/10 text-warning"
-                    : "border-danger/40 bg-danger/10 text-danger"
+                    ? "border-warning/40 bg-warning-soft text-warning"
+                    : "border-danger/40 bg-danger-soft text-danger"
               }`}
             >
               {duplicateCheckMessage}
@@ -963,7 +963,7 @@ export function AssetBatchForm({
         </Section>
 
         {reviewing ? (
-          <section className="rounded-lg border border-primary/30 bg-primary/5 p-4 shadow-sm sm:p-5">
+          <section className="rounded-lg border border-primary/30 bg-primary-soft p-4 shadow-sm sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <h2 className="text-lg font-semibold text-foreground">{t("batchReviewTitle")}</h2>
@@ -1015,14 +1015,14 @@ export function AssetBatchForm({
         ) : null}
 
         {createdBatch ? (
-          <div className="rounded-md border border-success/30 bg-success/10 p-4">
+          <div className="rounded-md border border-success/30 bg-success-soft p-4">
             <h2 className="text-lg font-semibold text-foreground">{t("batchCreatedTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("batchCreatedDescription", { count: createdBatch.created })}</p>
             <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Link href={`/${locale}/assets`} className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border px-3 text-sm font-medium hover:bg-accent sm:w-auto">
                 {t("batchGoToRegister")}
               </Link>
-              <Link href={`/${locale}/asset-management/labels?assetIds=${createdBatch.assetIds.join(",")}`} className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-white hover:bg-primary/90 sm:w-auto">
+              <Link href={`/${locale}/asset-management/labels?assetIds=${createdBatch.assetIds.join(",")}`} className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-white hover:bg-primary-hover sm:w-auto">
                 {t("batchPrintLabels")}
               </Link>
               <button type="button" onClick={() => void handleCopyAssetTags()} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium hover:bg-accent sm:w-auto">
@@ -1059,7 +1059,7 @@ export function AssetBatchForm({
         ) : null}
 
         <div className="flex justify-end">
-          <button type="submit" disabled={saving || hasClientDuplicates} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+          <button type="submit" disabled={saving || hasClientDuplicates} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {reviewing ? t("batchReviewConfirm") : t("batchSubmit")}
           </button>
@@ -1117,7 +1117,7 @@ function BatchOptionalColumnToggle({
       onClick={onClick}
       className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
         active
-          ? "border-primary bg-primary/10 text-primary hover:bg-primary/15"
+          ? "border-primary bg-primary-soft text-primary hover:bg-primary-soft"
           : "border-border bg-background text-foreground hover:bg-accent"
       }`}
       aria-pressed={active}

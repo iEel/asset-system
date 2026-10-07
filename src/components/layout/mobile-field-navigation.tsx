@@ -70,7 +70,7 @@ export function MobileFieldNavigation({
                 className={cn(
                   "inline-flex h-8 w-8 items-center justify-center rounded-md",
                   destination.emphasized && "h-12 w-12 rounded-full bg-primary text-white shadow-md",
-                  isActive && !destination.emphasized && "bg-primary/10",
+                  isActive && !destination.emphasized && "bg-primary-soft",
                 )}
               >
                 <Icon className={destination.emphasized ? "h-6 w-6" : "h-5 w-5"} aria-hidden="true" />
@@ -93,7 +93,7 @@ export function MobileFieldNavigation({
             activeItem === "more" && "text-primary",
           )}
         >
-          <span className={cn("inline-flex h-8 w-8 items-center justify-center rounded-md", activeItem === "more" && "bg-primary/10")}>
+          <span className={cn("inline-flex h-8 w-8 items-center justify-center rounded-md", activeItem === "more" && "bg-primary-soft")}>
             <Ellipsis className="h-5 w-5" aria-hidden="true" />
           </span>
           <span className="max-w-full truncate">{t("mobileMore")}</span>

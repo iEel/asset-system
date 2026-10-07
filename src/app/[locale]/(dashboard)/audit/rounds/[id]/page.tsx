@@ -457,7 +457,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                 </Link>
                 <Link
                   href={scanHref}
-                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0 sm:w-auto"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:h-10 sm:min-h-0 sm:w-auto"
                 >
                   <ScanLine className="h-4 w-4" />
                   {t("scan")}
@@ -479,7 +479,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       ) : null}
 
       {round.status === "cancelled" ? (
-        <section className="mb-6 rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-danger shadow-sm">
+        <section className="mb-6 rounded-lg border border-danger/30 bg-danger-soft p-4 text-sm text-danger shadow-sm">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
             <div className="min-w-0">
@@ -653,14 +653,14 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                   {item.componentRelationshipLines.length > 0 ? (
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {item.componentRelationshipLines.map((line) => (
-                        <span key={line} className="rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
+                        <span key={line} className="rounded-full bg-info-soft px-2 py-0.5 text-xs font-medium text-info">
                           {line}
                         </span>
                       ))}
                     </div>
                   ) : null}
                   {item.latestCorrection ? (
-                    <div className="mt-2 rounded-md border border-info/30 bg-info/10 px-2 py-1 text-xs text-info">
+                    <div className="mt-2 rounded-md border border-info/30 bg-info-soft px-2 py-1 text-xs text-info">
                       <div>{t("correctionHistoryLatest", { date: formatDateTime(item.latestCorrection.createdAt), user: item.latestCorrection.userLabel })}</div>
                       {item.latestCorrection.changedFields.length > 0 ? (
                         <div>{t("correctionHistoryFields", { fields: formatAuditCorrectionFields(item.latestCorrection, t) })}</div>
@@ -728,14 +728,14 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                         {item.componentRelationshipLines.length > 0 ? (
                           <div className="mt-1 flex flex-wrap gap-1.5">
                             {item.componentRelationshipLines.map((line) => (
-                              <span key={line} className="rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
+                              <span key={line} className="rounded-full bg-info-soft px-2 py-0.5 text-xs font-medium text-info">
                                 {line}
                               </span>
                             ))}
                           </div>
                         ) : null}
                         {item.latestCorrection ? (
-                          <div className="mt-2 rounded-md border border-info/30 bg-info/10 px-2 py-1 text-xs text-info">
+                          <div className="mt-2 rounded-md border border-info/30 bg-info-soft px-2 py-1 text-xs text-info">
                             <div>{t("correctionHistoryLatest", { date: formatDateTime(item.latestCorrection.createdAt), user: item.latestCorrection.userLabel })}</div>
                             {item.latestCorrection.changedFields.length > 0 ? (
                               <div>{t("correctionHistoryFields", { fields: formatAuditCorrectionFields(item.latestCorrection, t) })}</div>
@@ -827,13 +827,13 @@ function DashboardCard({
     disabled
       ? "border-border bg-muted/40 text-muted-foreground"
       : tone === "success"
-      ? "border-success/30 bg-success/10 text-success"
+      ? "border-success/30 bg-success-soft text-success"
       : tone === "warning"
-        ? "border-warning/30 bg-warning/10 text-warning"
+        ? "border-warning/30 bg-warning-soft text-warning"
         : tone === "danger"
-          ? "border-danger/30 bg-danger/10 text-danger"
+          ? "border-danger/30 bg-danger-soft text-danger"
           : tone === "info"
-            ? "border-info/30 bg-info/10 text-info"
+            ? "border-info/30 bg-info-soft text-info"
             : "border-border bg-background text-muted-foreground"
   const activeClassName = active ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
   const content = (
@@ -886,7 +886,7 @@ function AuditRoundResultPagination({
             key={pageSize}
             href={buildAuditRoundResultListHref({ locale, roundId, result: state.result, returnTo, search: state.search, page: 1, pageSize })}
             className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md border px-2 transition-colors ${
-              state.pageSize === pageSize ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface hover:bg-accent"
+              state.pageSize === pageSize ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface hover:bg-accent"
             }`}
           >
             {pageSize}

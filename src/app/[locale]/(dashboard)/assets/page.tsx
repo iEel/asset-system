@@ -796,7 +796,7 @@ function AssetFilters({
         </div>
       </div>
       {activeFilterChips.length > 0 ? (
-        <div data-asset-active-filters className="order-3 mb-4 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 md:order-2">
+        <div data-asset-active-filters className="order-3 mb-4 rounded-md border border-primary/20 bg-primary-soft px-3 py-2 md:order-2">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <div className="text-xs font-semibold uppercase tracking-normal text-primary">{labels.activeFilters}</div>
@@ -806,17 +806,17 @@ function AssetFilters({
                     key={filter.key}
                     href={filter.href}
                     aria-label={`${labels.clearDrilldownFilter}: ${filter.label}`}
-                    className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border border-primary/20 bg-surface px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10 md:min-h-8"
+                    className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border border-primary/20 bg-surface px-3 text-sm font-medium text-primary transition-colors hover:bg-primary-soft md:min-h-8"
                   >
                     <span className="truncate">{filter.label}</span>
-                    <span aria-hidden="true" className="text-xs text-primary/70">x</span>
+                    <span aria-hidden="true" className="text-xs text-primary">x</span>
                   </Link>
                 ))}
               </div>
             </div>
             <Link
               href={clearAllFiltersHref}
-              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-surface px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10 md:min-h-9"
+              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-surface px-3 text-sm font-medium text-primary transition-colors hover:bg-primary-soft md:min-h-9"
             >
               {labels.clearAllFilters}
             </Link>
@@ -934,7 +934,7 @@ function QuickFilterLink({
       href={quickFilter.href}
       className={`inline-flex min-h-9 items-center rounded-full border px-3 text-sm font-medium transition-colors ${
         quickFilter.active
-          ? "border-primary bg-primary/10 text-primary"
+          ? "border-primary bg-primary-soft text-primary"
           : "border-border bg-surface text-muted-foreground hover:bg-accent hover:text-foreground"
       }`}
     >

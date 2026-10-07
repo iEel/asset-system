@@ -32,7 +32,7 @@ export default async function DisposalBatchHistoryPage({ params }: { params: Pro
           <h1 className="mt-2 text-2xl font-bold text-foreground">{t("batchHistory")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("batchHistoryHelp")}</p>
         </div>
-        {canCreate && batches.length > 0 ? <Link href={`/${locale}/disposal/batch/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90"><Plus className="h-4 w-4" />{t("batchCreateTitle")}</Link> : null}
+        {canCreate && batches.length > 0 ? <Link href={`/${locale}/disposal/batch/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover"><Plus className="h-4 w-4" />{t("batchCreateTitle")}</Link> : null}
       </header>
 
       {batches.length === 0 ? (

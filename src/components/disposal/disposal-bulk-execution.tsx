@@ -620,7 +620,7 @@ export function DisposalBulkExecutionToolbar() {
           type="button"
           onClick={openReview}
           disabled={busy}
-          className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
         >
           <ListChecks className="h-4 w-4" aria-hidden="true" />
           {copy.review}
@@ -890,7 +890,7 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
           ) : null}
 
           {dialogState === "review" && historicalAvailable ? (
-            <section className="space-y-3 rounded-md border border-warning/50 bg-warning/10 p-3">
+            <section className="space-y-3 rounded-md border border-warning/50 bg-warning-soft p-3">
               <p id={historicalWarningId} className="text-sm font-medium text-foreground">
                 {copy.historicalWarning}
               </p>
@@ -981,7 +981,7 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
             <button
               type="submit"
               disabled={!hasSharedValues}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
             >
               {format(copy.confirm, { count: reviewedItems.length })}
             </button>
@@ -990,7 +990,7 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
             <button
               type="submit"
               disabled={eligible.length === 0 || !permanentConfirmed}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
             >
               {eligible.length === 0
                 ? copy.zeroEligible
@@ -1007,7 +1007,7 @@ function Dialog({ employees, executionStatuses }: { employees: Option[]; executi
             <button
               type="button"
               onClick={retry}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover"
             >
               {copy.retry}
             </button>

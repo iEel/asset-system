@@ -138,7 +138,7 @@ function RecentScanCompactRow({
         <button
           type="button"
           onClick={() => onEditScan(scan)}
-          className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-background px-2.5 font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-background px-2.5 font-semibold text-primary transition-colors hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <Keyboard className="h-3.5 w-3.5" />
           {t("recentScansEdit")}
@@ -223,7 +223,7 @@ export function AuditComponentPanel({
                     type="button"
                     onClick={() => onConfirmWithParent(component)}
                     disabled={isActionDisabled || isConfirmedWithParent}
-                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
                   >
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                     {t("componentConfirmWithParent")}
@@ -232,7 +232,7 @@ export function AuditComponentPanel({
                     type="button"
                     onClick={() => onMarkMissing(component)}
                     disabled={isActionDisabled}
-                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 text-sm font-medium text-warning transition-colors hover:bg-warning/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 text-sm font-medium text-warning transition-colors hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
                   >
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
                     {t("componentMissing")}
@@ -258,27 +258,27 @@ function getAuditComponentStatusMeta(component: AuditScanComponent, t: AuditScan
   if (component.auditResult === "confirmed_with_parent") {
     return {
       label: t("componentStatusConfirmedWithParent"),
-      className: "border-info/30 bg-info/10 text-info",
+      className: "border-info/30 bg-info-soft text-info",
     }
   }
 
   if (component.auditResult && component.auditResult !== "found") {
     return {
       label: t("componentStatusMismatch"),
-      className: "border-warning/30 bg-warning/10 text-warning",
+      className: "border-warning/30 bg-warning-soft text-warning",
     }
   }
 
   if (component.auditStatus === "pending") {
     return {
       label: t("componentStatusPending"),
-      className: "border-warning/30 bg-warning/10 text-warning",
+      className: "border-warning/30 bg-warning-soft text-warning",
     }
   }
 
   return {
     label: t("componentStatusScanned"),
-    className: "border-success/30 bg-success/10 text-success",
+    className: "border-success/30 bg-success-soft text-success",
   }
 }
 
@@ -322,7 +322,7 @@ export function ManualScanSuggestionList({
                 <div className="truncate text-sm font-semibold text-foreground">{item.assetTag}</div>
                 <div className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.label}</div>
               </div>
-              <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+              <span className="shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary">
                 {t("manualSuggestionSelect")}
               </span>
             </div>
@@ -367,7 +367,7 @@ export function PendingQueuePanel({
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <ListChecks className="h-4 w-4 text-primary" />
             {t("pendingQueuePanelTitle")}
-            <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning">
+            <span className="rounded-full bg-warning-soft px-2 py-0.5 text-xs font-semibold text-warning">
               {total.toLocaleString("th-TH")}
             </span>
           </div>
@@ -523,7 +523,7 @@ export function AssetFallbackPicker({
                 onClick={() => onSelect(item)}
                 className={`w-full rounded-md border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                   selectedAssetId === item.assetId
-                    ? "border-primary bg-primary/10"
+                    ? "border-primary bg-primary-soft"
                     : "border-border bg-surface hover:bg-accent"
                 }`}
               >
@@ -574,9 +574,9 @@ function getScanFeedbackMeta(status: ScanFeedback["status"], t: AuditScanTransla
             ? t("feedbackStatusFoundLater")
             : t("feedbackStatusSaved"),
       icon: CheckCircle2,
-      cardClass: "border-success/35 bg-success/10",
-      chipClass: "bg-success/15 text-success",
-      iconClass: "bg-success/15 text-success",
+      cardClass: "border-success/35 bg-success-soft",
+      chipClass: "bg-success-soft text-success",
+      iconClass: "bg-success-soft text-success",
       dotClass: "bg-success",
     }
   }
@@ -585,9 +585,9 @@ function getScanFeedbackMeta(status: ScanFeedback["status"], t: AuditScanTransla
     return {
       label: t("feedbackStatusUnknownAsset"),
       icon: AlertTriangle,
-      cardClass: "border-danger/35 bg-danger/10",
-      chipClass: "bg-danger/15 text-danger",
-      iconClass: "bg-danger/15 text-danger",
+      cardClass: "border-danger/35 bg-danger-soft",
+      chipClass: "bg-danger-soft text-danger",
+      iconClass: "bg-danger-soft text-danger",
       dotClass: "bg-danger",
     }
   }
@@ -596,9 +596,9 @@ function getScanFeedbackMeta(status: ScanFeedback["status"], t: AuditScanTransla
     return {
       label: t("feedbackStatusOutOfScope"),
       icon: AlertTriangle,
-      cardClass: "border-warning/35 bg-warning/10",
-      chipClass: "bg-warning/15 text-warning",
-      iconClass: "bg-warning/15 text-warning",
+      cardClass: "border-warning/35 bg-warning-soft",
+      chipClass: "bg-warning-soft text-warning",
+      iconClass: "bg-warning-soft text-warning",
       dotClass: "bg-warning",
     }
   }
@@ -607,9 +607,9 @@ function getScanFeedbackMeta(status: ScanFeedback["status"], t: AuditScanTransla
     return {
       label: t("feedbackStatusOfflineQueued"),
       icon: WifiOff,
-      cardClass: "border-info/35 bg-info/10",
-      chipClass: "bg-info/15 text-info",
-      iconClass: "bg-info/15 text-info",
+      cardClass: "border-info/35 bg-info-soft",
+      chipClass: "bg-info-soft text-info",
+      iconClass: "bg-info-soft text-info",
       dotClass: "bg-info",
     }
   }
@@ -617,9 +617,9 @@ function getScanFeedbackMeta(status: ScanFeedback["status"], t: AuditScanTransla
   return {
     label: t("feedbackStatusMismatch"),
     icon: AlertTriangle,
-    cardClass: "border-warning/35 bg-warning/10",
-    chipClass: "bg-warning/15 text-warning",
-    iconClass: "bg-warning/15 text-warning",
+    cardClass: "border-warning/35 bg-warning-soft",
+    chipClass: "bg-warning-soft text-warning",
+    iconClass: "bg-warning-soft text-warning",
     dotClass: "bg-warning",
   }
 }

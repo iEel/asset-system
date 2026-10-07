@@ -255,7 +255,7 @@ export function AssetLabelPrint({
               type="button"
               onClick={handlePrint}
               disabled={recordingPrint}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-10 sm:w-auto"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-10 sm:w-auto"
             >
               {recordingPrint ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
               {recordingPrint ? translations.recordingPrint : translations.print}
@@ -263,14 +263,14 @@ export function AssetLabelPrint({
           </div>
         </div>
         <div className="mx-auto flex max-w-5xl flex-col gap-2 px-3 pb-4 sm:px-6">
-          <p className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
+          <p className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary-soft px-3 py-2 text-sm text-muted-foreground">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <span>{printerTapeGuidance}</span>
           </p>
           <div
             className={
               hasLocalQrTarget
-                ? "flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm"
+                ? "flex items-start gap-2 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-sm"
                 : "flex items-start gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm"
             }
           >
@@ -289,9 +289,9 @@ export function AssetLabelPrint({
         {recordError || recordedBatchId ? (
           <div className="mx-auto max-w-5xl px-3 pb-4 text-sm sm:px-6">
             {recordError ? (
-              <p className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-danger">{recordError}</p>
+              <p className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-danger">{recordError}</p>
             ) : (
-              <p className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-success">{translations.printRecorded}</p>
+              <p className="rounded-md border border-success/30 bg-success-soft px-3 py-2 text-success">{translations.printRecorded}</p>
             )}
           </div>
         ) : null}

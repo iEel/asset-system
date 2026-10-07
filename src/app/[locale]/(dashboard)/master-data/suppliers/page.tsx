@@ -177,7 +177,7 @@ function SupplierFilterForm({ basePath, current, labels, className }: { basePath
         <option value="withoutPurchaseDocuments">{labels.withoutPurchaseDocuments}</option>
       </FilterSelect>
       <div className="grid grid-cols-2 items-end gap-2 md:flex">
-        <button type="submit" className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">{labels.filter}</button>
+        <button type="submit" className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">{labels.filter}</button>
         <Link href={basePath} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">{labels.clear}</Link>
       </div>
     </form>
@@ -190,7 +190,7 @@ function FilterSelect({ label, name, defaultValue, className, children }: { labe
 
 function SummaryTile({ label, value, detail, href, tone = "neutral" }: { label: string; value: number; detail: string; href: string; tone?: "neutral" | "warning" }) {
   return (
-    <Link href={href} className={`min-h-32 rounded-lg border bg-surface p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${tone === "warning" ? "border-warning/40" : "border-border"}`}>
+    <Link href={href} className={`min-h-32 rounded-lg border bg-surface p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${tone === "warning" ? "border-warning/40" : "border-border"}`}>
       <div className="text-sm font-medium text-muted-foreground">{label}</div>
       <div className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString()}</div>
       <div className="mt-1 text-sm text-muted-foreground">{detail}</div>

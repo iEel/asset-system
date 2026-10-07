@@ -99,7 +99,7 @@ export function MaintenanceAttachments({
 
       {canEdit ? (
       <div className="mb-4 rounded-md border border-border bg-background p-3">
-        {!canDelete ? <p className="mb-3 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-sm text-warning-foreground">{t("closedEvidenceAppendOnlyHelp")}</p> : null}
+        {!canDelete ? <p className="mb-3 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-sm text-warning">{t("closedEvidenceAppendOnlyHelp")}</p> : null}
         <label className="mb-3 block">
           <span className="mb-1.5 block text-sm font-medium text-foreground">{t("attachmentType")}</span>
           <select
@@ -200,7 +200,7 @@ export function MaintenanceAttachments({
                   type="button"
                   onClick={() => setPendingDeleteId(attachment.id)}
                   disabled={deletingId === attachment.id}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 disabled:opacity-50 sm:h-8 sm:min-h-0 sm:w-8 sm:min-w-0"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft disabled:opacity-50 sm:h-8 sm:min-h-0 sm:w-8 sm:min-w-0"
                   title={tCommon("delete")}
                 >
                   {deletingId === attachment.id ? (
@@ -278,7 +278,7 @@ export function MaintenanceAttachments({
               <button
                 type="button"
                 onClick={() => { if (pendingDeleteId) handleDelete(pendingDeleteId) }}
-                className="inline-flex min-h-11 items-center rounded-md bg-danger px-4 text-sm font-medium text-danger-foreground"
+                className="inline-flex min-h-11 items-center rounded-md bg-danger px-4 text-sm font-medium text-white"
               >
                 {tCommon("delete")}
               </button>

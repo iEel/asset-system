@@ -239,7 +239,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
               href={`${basePath}?${buildBrandModelQueryString(listState, { modelBrandId: "", modelPage: 1 })}`}
               aria-current={!selectedBrand ? "page" : undefined}
               className={`flex items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-sm transition-colors ${
-                !selectedBrand ? "border-primary bg-primary/10 text-primary" : "border-transparent text-foreground hover:bg-accent"
+                !selectedBrand ? "border-primary bg-primary-soft text-primary" : "border-transparent text-foreground hover:bg-accent"
               }`}
             >
               <span className="min-w-0 truncate font-medium">{t("allBrandNavigator")}</span>
@@ -254,7 +254,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                   <div
                     key={brand.id}
                     className={`rounded-md border px-2.5 py-2 transition-colors ${
-                      isSelected ? "border-primary bg-primary/10" : "border-transparent hover:bg-accent"
+                      isSelected ? "border-primary bg-primary-soft" : "border-transparent hover:bg-accent"
                     }`}
                   >
                     <Link
@@ -270,7 +270,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                         <Link
                           prefetch={false}
                           href={brandModelsHref}
-                          className="inline-flex h-7 items-center rounded-md px-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                          className="inline-flex h-7 items-center rounded-md px-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary-soft"
                         >
                           {t("modelCountInline", { count: brand._count.models })}
                         </Link>
@@ -282,7 +282,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                         <Link
                           prefetch={false}
                           href={brandDrilldown.assets}
-                          className="inline-flex h-7 items-center rounded-md px-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                          className="inline-flex h-7 items-center rounded-md px-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary-soft"
                         >
                           {t("assetCountInline", { count: brand._count.assets })}
                         </Link>
@@ -384,7 +384,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
               <div className="flex items-end gap-2">
                 <button
                   type="submit"
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
                 >
                   <Filter className="h-4 w-4" />
                   {tCommon("filter")}
@@ -400,7 +400,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
           </div>
 
           {totalDuplicateGroups > 0 ? (
-            <details className="rounded-lg border border-warning/30 bg-warning/5 p-4">
+            <details className="rounded-lg border border-warning/30 bg-warning-soft p-4">
               <summary className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-foreground">
                 <AlertTriangle className="h-5 w-5 shrink-0 text-warning" />
                 {t("duplicateReviewCompact", { count: totalDuplicateGroups })}
@@ -493,7 +493,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                               <Link
                                 prefetch={false}
                                 href={modelDrilldown.assets}
-                                className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                                className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft"
                               >
                                 {model._count.assets.toLocaleString()}
                               </Link>
@@ -509,7 +509,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                               <Link
                                 href={editModelHref}
                                 title={tCommon("edit")}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary-soft"
                               >
                                 <Edit className="h-4 w-4" />
                               </Link>
@@ -667,7 +667,7 @@ function BrandModelPagination({
               [pageSizeKey]: nextPageSize,
             } as Partial<BrandModelListState>)}`}
             className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md border px-2 transition-colors ${
-              pageSize === nextPageSize ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface hover:bg-accent"
+              pageSize === nextPageSize ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface hover:bg-accent"
             }`}
           >
             {nextPageSize}

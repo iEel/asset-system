@@ -260,7 +260,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
             <Link href={`/${locale}/disposal/batch/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0">
               <PackagePlus className="h-4 w-4" />{t("batchCreateTitle")}
             </Link>
-            <Link href={`/${locale}/disposal/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0">
+            <Link href={`/${locale}/disposal/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:h-10 sm:min-h-0">
               <Plus className="h-4 w-4" />{tCommon("create")}
             </Link>
           </> : null}
@@ -270,7 +270,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
       <details className="group rounded-lg border border-border bg-surface shadow-sm md:hidden" open={hasActiveFilters}>
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-foreground">
           <span className="inline-flex items-center gap-2"><SlidersHorizontal className="h-4 w-4 text-primary" />{t("filter")}</span>
-          {hasActiveFilters ? <span className="rounded-md bg-primary/10 px-2 py-1 text-xs text-primary">{t("clearFilters")}</span> : null}
+          {hasActiveFilters ? <span className="rounded-md bg-primary-soft px-2 py-1 text-xs text-primary">{t("clearFilters")}</span> : null}
         </summary>
         <div className="border-t border-border p-4">
           <DisposalFilterForm locale={locale} filters={filters} t={t} tCommon={tCommon} />
@@ -310,7 +310,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
             <input type="date" name="dateTo" defaultValue={filters.dateTo} min={filters.dateFrom || undefined} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </label>
           <div className="flex flex-col gap-2 self-end sm:flex-row">
-            <button type="submit" className="min-h-11 w-full rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0 sm:w-auto">{t("filter")}</button>
+            <button type="submit" className="min-h-11 w-full rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:h-10 sm:min-h-0 sm:w-auto">{t("filter")}</button>
             <Link href={`/${locale}/disposal`} className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto">{t("clearFilters")}</Link>
           </div>
         </form>
@@ -332,7 +332,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         <div className="border-b border-border">
           <div className="flex gap-2 overflow-x-auto px-4 pt-3 pb-2" aria-label={t("stageFilterLabel")}>
             {stageTabs.map((stage) => (
-              <Link key={stage.status || "all"} href={`/${locale}/disposal?${buildDisposalQueryString(filters, { status: stage.status, page: 1 })}`} aria-current={filters.status === stage.status ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md border px-3 text-xs font-medium transition-colors sm:h-8 sm:min-h-0 ${filters.status === stage.status ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-muted-foreground hover:bg-accent"}`}>
+              <Link key={stage.status || "all"} href={`/${locale}/disposal?${buildDisposalQueryString(filters, { status: stage.status, page: 1 })}`} aria-current={filters.status === stage.status ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md border px-3 text-xs font-medium transition-colors sm:h-8 sm:min-h-0 ${filters.status === stage.status ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface text-muted-foreground hover:bg-accent"}`}>
                 <span>{stage.label}</span><span className="rounded-sm bg-muted px-1.5 py-0.5 text-foreground">{stage.count}</span>
               </Link>
             ))}

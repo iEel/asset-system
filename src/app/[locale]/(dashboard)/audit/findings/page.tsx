@@ -266,7 +266,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
               scroll={false}
               aria-current={status === item.value ? "page" : undefined}
               className={`inline-flex min-h-11 items-center rounded-md border px-3 text-sm transition-colors sm:h-9 sm:min-h-0 ${
-                status === item.value ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-muted-foreground hover:bg-accent"
+                status === item.value ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface text-muted-foreground hover:bg-accent"
               }`}
             >
               {item.label}
@@ -356,7 +356,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     {canCreateDisposal && finding.asset ? (
                       <Link
                         href={appendOperationalReturnTo(`/${locale}/disposal/new?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref)}
-                        className="inline-flex min-h-11 items-center justify-center rounded-md border border-warning/40 bg-warning/5 px-3 text-sm font-medium text-warning"
+                        className="inline-flex min-h-11 items-center justify-center rounded-md border border-warning/40 bg-warning-soft px-3 text-sm font-medium text-warning"
                       >
                         {t("openDisposalRequest")}
                       </Link>
@@ -479,7 +479,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                         {canCreateDisposal && finding.asset ? (
                           <Link
                             href={appendOperationalReturnTo(`/${locale}/disposal/new?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref)}
-                            className="ml-2 inline-flex h-8 items-center rounded-md border border-warning/40 bg-warning/5 px-2 text-xs font-medium text-warning"
+                            className="ml-2 inline-flex h-8 items-center rounded-md border border-warning/40 bg-warning-soft px-2 text-xs font-medium text-warning"
                           >
                             {t("openDisposalRequest")}
                           </Link>
@@ -524,12 +524,12 @@ function ResolutionMetric({
 }) {
   const toneClass =
     tone === "danger"
-      ? "border-danger/30 bg-danger/5 text-danger"
+      ? "border-danger/30 bg-danger-soft text-danger"
       : tone === "warning"
-        ? "border-warning/30 bg-warning/5 text-warning"
+        ? "border-warning/30 bg-warning-soft text-warning"
         : tone === "success"
-          ? "border-success/30 bg-success/5 text-success"
-          : "border-info/30 bg-info/5 text-info"
+          ? "border-success/30 bg-success-soft text-success"
+          : "border-info/30 bg-info-soft text-info"
 
   return (
     <Link
@@ -587,7 +587,7 @@ function AuditFindingEvidenceList({
   if (attachments.length === 0) return null
 
   return (
-    <div className="mt-2 rounded-md border border-info/20 bg-info/5 p-3">
+    <div className="mt-2 rounded-md border border-info/20 bg-info-soft p-3">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-xs font-semibold text-foreground">{labels.title}</div>
         <div className="text-xs text-muted-foreground">{labels.count}</div>

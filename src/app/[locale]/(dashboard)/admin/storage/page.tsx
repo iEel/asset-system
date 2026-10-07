@@ -84,11 +84,11 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
               <div className="font-semibold text-foreground">{dryRun.matchedFiles.length.toLocaleString()}</div>
               <div className="text-xs text-muted-foreground">{t("matchedFiles")}</div>
             </div>
-            <div className="rounded-md border border-warning/30 bg-warning/5 px-3 py-2">
+            <div className="rounded-md border border-warning/30 bg-warning-soft px-3 py-2">
               <div className="font-semibold text-foreground">{dryRun.orphanFiles.length.toLocaleString()}</div>
               <div className="text-xs text-muted-foreground">{t("orphanFiles")}</div>
             </div>
-            <div className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2">
+            <div className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2">
               <div className="font-semibold text-foreground">{dryRun.missingFiles.length.toLocaleString()}</div>
               <div className="text-xs text-muted-foreground">{t("missingFiles")}</div>
             </div>
@@ -143,7 +143,7 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className={`${getPanelClasses()} p-5`}>
           <div className="flex items-start gap-3">
-            <div className="rounded-md border border-primary/20 bg-primary/5 p-2 text-primary">
+            <div className="rounded-md border border-primary/20 bg-primary-soft p-2 text-primary">
               <FolderOpen className="h-5 w-5" />
             </div>
             <div>
@@ -293,12 +293,12 @@ function SummaryCard({
 }) {
   const toneClass =
     tone === "danger"
-      ? "border-danger/30 bg-danger/5 text-danger"
+      ? "border-danger/30 bg-danger-soft text-danger"
       : tone === "warning"
-        ? "border-warning/30 bg-warning/5 text-warning"
+        ? "border-warning/30 bg-warning-soft text-warning"
         : tone === "success"
-          ? "border-success/30 bg-success/5 text-success"
-          : "border-primary/30 bg-primary/5 text-primary"
+          ? "border-success/30 bg-success-soft text-success"
+          : "border-primary/30 bg-primary-soft text-primary"
 
   return (
     <div className={`rounded-lg border p-4 shadow-sm ${toneClass}`}>

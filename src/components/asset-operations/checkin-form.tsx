@@ -308,7 +308,7 @@ export function CheckinForm({
             <div className="md:col-span-2 rounded-md border border-dashed border-border bg-background p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary-soft text-primary">
                     <PackageCheck className="h-5 w-5" />
                   </span>
                   <div>
@@ -324,14 +324,14 @@ export function CheckinForm({
           )}
 
           {hasActiveCheckoutRecords && !hasActiveCheckouts ? (
-            <div className="md:col-span-2 rounded-md border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+            <div className="md:col-span-2 rounded-md border border-warning/40 bg-warning-soft p-4 text-sm text-warning">
               <div className="font-medium">{t("handoverReviewRequired")}</div>
               <div className="mt-1">{t("handoverModeMissing")}</div>
             </div>
           ) : null}
 
           {hasLegacyReturnCandidates && (
-            <div className="md:col-span-2 rounded-md border border-warning/30 bg-warning/5 p-4">
+            <div className="md:col-span-2 rounded-md border border-warning/30 bg-warning-soft p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -367,7 +367,7 @@ export function CheckinForm({
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <div className="font-semibold text-foreground">{asset.assetTag}</div>
-                          <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+                          <span className="rounded-full bg-warning-soft px-2 py-0.5 text-xs font-medium text-warning">
                             {t("legacyReturnBadge")}
                           </span>
                         </div>
@@ -381,7 +381,7 @@ export function CheckinForm({
                         type="button"
                         disabled={saving || legacyBackfillSavingId === asset.id}
                         onClick={() => handleCreateLegacyCheckout(asset.id)}
-                        className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 text-sm font-medium text-warning transition-colors hover:bg-warning/20 disabled:opacity-50 lg:w-auto"
+                        className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-md border border-warning/40 bg-warning-soft px-3 text-sm font-medium text-warning transition-colors hover:bg-warning-soft disabled:opacity-50 lg:w-auto"
                       >
                         {legacyBackfillSavingId === asset.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
                         {legacyBackfillSavingId === asset.id ? t("legacyReturnCreating") : t("legacyReturnAction")}
@@ -480,7 +480,7 @@ export function CheckinForm({
 
           <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
             <div className="mb-3 flex items-start gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary-soft text-primary">
                 <FileImage className="h-5 w-5" />
               </span>
               <div>
@@ -543,12 +543,12 @@ export function CheckinForm({
           </div>
 
           {sendsToRepair ? (
-            <div className="md:col-span-2 rounded-md border border-warning/30 bg-warning/5 p-4">
+            <div className="md:col-span-2 rounded-md border border-warning/30 bg-warning-soft p-4">
               <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <Wrench className="h-4 w-4" />
                 {t("sendToRepairTitle")}
               </p>
-              <p className="mt-1 text-xs text-warning-foreground">{t("sendToRepairHelp")}</p>
+              <p className="mt-1 text-xs text-warning">{t("sendToRepairHelp")}</p>
               <div className="mt-3">
                 <Field label={t("maintenanceProblem")}>
                   <textarea value={values.maintenanceProblem} onChange={(event) => setField("maintenanceProblem", event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder={t("maintenanceProblemPlaceholder")} />
@@ -558,7 +558,7 @@ export function CheckinForm({
           ) : null}
 
           <div className="md:col-span-2 flex justify-end">
-            <button type="submit" disabled={saving} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto">
+            <button type="submit" disabled={saving} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:w-auto">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {tCommon("save")}
             </button>

@@ -240,7 +240,7 @@ export function CheckoutForm({
                     <label
                       key={mode}
                       className={`flex min-h-16 cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
-                        selected ? "border-primary bg-primary/5" : "border-border bg-background hover:border-primary/60"
+                        selected ? "border-primary bg-primary-soft" : "border-border bg-background hover:border-primary/60"
                       }`}
                     >
                       <input
@@ -324,7 +324,7 @@ export function CheckoutForm({
           />
         </div>
         <div className="md:col-span-2 flex justify-end">
-          <button type="submit" disabled={saving} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto">
+          <button type="submit" disabled={saving} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:w-auto">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {tCommon("save")}
           </button>

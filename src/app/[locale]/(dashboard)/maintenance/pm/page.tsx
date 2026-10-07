@@ -45,7 +45,7 @@ export default async function MaintenancePlansPage({ params }: Props) {
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("pmSubtitle")}</p>
         </div>
         {canCreate ? (
-          <Link href={`/${locale}/maintenance/pm/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+          <Link href={`/${locale}/maintenance/pm/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover">
             <Plus className="h-4 w-4" />{t("pmCreateTitle")}
           </Link>
         ) : null}
@@ -77,7 +77,7 @@ export default async function MaintenancePlansPage({ params }: Props) {
                     <StatusBadge label={t(`pmFrequencies.${plan.frequency}`)} tone="muted" size="xs" />
                     <StatusBadge label={t(`pmPlanStates.${plan.planState}`)} tone={isActivePlan ? "success" : plan.planState === "paused" ? "warning" : "muted"} size="xs" />
                     {canCreate && isActivePlan ? (
-                      <Link href={`/${locale}/maintenance/new?planId=${plan.id}`} className="inline-flex min-h-11 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+                      <Link href={`/${locale}/maintenance/new?planId=${plan.id}`} className="inline-flex min-h-11 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary-hover">
                         {tRecord("pmRecordDone")}
                       </Link>
                     ) : null}

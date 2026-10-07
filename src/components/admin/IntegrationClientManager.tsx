@@ -315,7 +315,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
       </section>
 
       {oneTimeToken ? (
-        <section className="rounded-lg border border-warning/40 bg-warning/5 p-4 shadow-sm">
+        <section className="rounded-lg border border-warning/40 bg-warning-soft p-4 shadow-sm">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-warning">
@@ -341,7 +341,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
                 <div
                   role="status"
                   className={`rounded-md px-3 py-2 text-sm ${
-                    copyFeedback.tone === "success" ? "bg-success/10 text-success" : "bg-danger/5 text-danger"
+                    copyFeedback.tone === "success" ? "bg-success-soft text-success" : "bg-danger-soft text-danger"
                   }`}
                 >
                   {copyFeedback.message}
@@ -363,7 +363,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
               type="button"
               onClick={dismissToken}
               disabled={!tokenAcknowledgement}
-              className="inline-flex h-10 min-h-11 w-fit items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-10 min-h-11 w-fit items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               {labels.dismissToken}
             </button>
@@ -372,7 +372,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
       ) : null}
 
       {error ? (
-        <div className="rounded-md border border-danger/30 bg-danger/5 p-3 text-sm text-danger" role="alert">
+        <div className="rounded-md border border-danger/30 bg-danger-soft p-3 text-sm text-danger" role="alert">
           {labels.error}: {error}
         </div>
       ) : null}
@@ -448,7 +448,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
               <button
                 type="submit"
                 disabled={updatingClient || editScopes.length === 0}
-                className="inline-flex h-10 min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-10 min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {updatingClient ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
                 {labels.saveScopes}
@@ -508,7 +508,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex h-10 min-h-11 w-fit items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-10 min-h-11 w-fit items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               {labels.createClient}
@@ -745,7 +745,7 @@ function OperationsPanel({
       )}
 
       {operations.latestError ? (
-        <div className="rounded-md border border-danger/20 bg-danger/5 px-2 py-1 text-xs text-danger">
+        <div className="rounded-md border border-danger/20 bg-danger-soft px-2 py-1 text-xs text-danger">
           <span className="font-medium">{labels.latestError}: </span>
           <span className="font-mono">
             {operations.latestError.status} {operations.latestError.route}
@@ -805,7 +805,7 @@ function StatusBadge({ enabled, labels }: { enabled: boolean; labels: Labels }) 
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-        enabled ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
+        enabled ? "bg-success-soft text-success" : "bg-muted text-muted-foreground"
       }`}
     >
       {enabled ? labels.active : labels.disabled}
@@ -875,7 +875,7 @@ function ActionButtons({
           type="button"
           onClick={onDisable}
           disabled={busy}
-          className="inline-flex h-10 min-h-11 items-center justify-center rounded-md border border-danger/30 bg-danger/5 px-3 text-sm font-medium text-danger transition-colors hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-10 min-h-11 items-center justify-center rounded-md border border-danger/30 bg-danger-soft px-3 text-sm font-medium text-danger transition-colors hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-50"
         >
           {labels.disable}
         </button>

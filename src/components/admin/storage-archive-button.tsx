@@ -43,7 +43,7 @@ export function StorageArchiveButton({ relativePath }: { relativePath: string })
       type="button"
       onClick={handleClick}
       disabled={archiving}
-      className="inline-flex min-h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-warning/30 bg-warning/5 px-3 text-xs font-medium text-warning transition-colors hover:bg-warning/10 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:min-h-0"
+      className="inline-flex min-h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-warning/30 bg-warning-soft px-3 text-xs font-medium text-warning transition-colors hover:bg-warning-soft disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:min-h-0"
     >
       {archiving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
       {t("archiveOrphanFile")}

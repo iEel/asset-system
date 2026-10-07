@@ -88,7 +88,7 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
         <div className="flex items-start gap-3">
-          <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-primary">
+          <div className="rounded-md border border-primary/30 bg-primary-soft p-2 text-primary">
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
@@ -246,20 +246,20 @@ function statusIcon(status: ProductionReadinessCheck["status"]) {
 }
 
 function checkCardClass(status: ProductionReadinessCheck["status"]) {
-  if (status === "pass") return "border-success/30 bg-success/5"
-  if (status === "warning") return "border-warning/30 bg-warning/5"
-  return "border-danger/30 bg-danger/5"
+  if (status === "pass") return "border-success/30 bg-success-soft"
+  if (status === "warning") return "border-warning/30 bg-warning-soft"
+  return "border-danger/30 bg-danger-soft"
 }
 
 function statusPillClass(status: ProductionReadinessCheck["status"]) {
-  if (status === "pass") return "bg-success/10 text-success"
-  if (status === "warning") return "bg-warning/10 text-warning"
-  return "bg-danger/10 text-danger"
+  if (status === "pass") return "bg-success-soft text-success"
+  if (status === "warning") return "bg-warning-soft text-warning"
+  return "bg-danger-soft text-danger"
 }
 
 function summaryClass(tone: "primary" | "success" | "warning" | "danger") {
-  if (tone === "success") return "border-success/30 bg-success/5 text-success"
-  if (tone === "warning") return "border-warning/30 bg-warning/5 text-warning"
-  if (tone === "danger") return "border-danger/30 bg-danger/5 text-danger"
-  return "border-primary/30 bg-primary/5 text-primary"
+  if (tone === "success") return "border-success/30 bg-success-soft text-success"
+  if (tone === "warning") return "border-warning/30 bg-warning-soft text-warning"
+  if (tone === "danger") return "border-danger/30 bg-danger-soft text-danger"
+  return "border-primary/30 bg-primary-soft text-primary"
 }

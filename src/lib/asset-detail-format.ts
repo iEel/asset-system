@@ -53,36 +53,36 @@ export function getWarrantyIconClass(tone: "success" | "warning" | "danger" | "n
 }
 
 export function getWarrantyPanelClass(tone: "success" | "warning" | "danger" | "neutral") {
-  if (tone === "success") return "border-success/20 bg-success/5"
-  if (tone === "warning") return "border-warning/30 bg-warning/10"
-  if (tone === "danger") return "border-danger/30 bg-danger/10"
+  if (tone === "success") return "border-success/20 bg-success-soft"
+  if (tone === "warning") return "border-warning/30 bg-warning-soft"
+  if (tone === "danger") return "border-danger/30 bg-danger-soft"
   return "border-border bg-background"
 }
 
 export function getHealthPanelClass(tone: "success" | "warning" | "danger") {
-  if (tone === "success") return "border-success/20 bg-success/5"
-  if (tone === "warning") return "border-warning/30 bg-warning/10"
-  return "border-danger/30 bg-danger/10"
+  if (tone === "success") return "border-success/20 bg-success-soft"
+  if (tone === "warning") return "border-warning/30 bg-warning-soft"
+  return "border-danger/30 bg-danger-soft"
 }
 
 export function getHealthBadgeClass(tone: "success" | "warning" | "danger") {
-  if (tone === "success") return "bg-success/10 text-success"
-  if (tone === "warning") return "bg-warning/10 text-warning"
-  return "bg-danger/10 text-danger"
+  if (tone === "success") return "bg-success-soft text-success"
+  if (tone === "warning") return "bg-warning-soft text-warning"
+  return "bg-danger-soft text-danger"
 }
 
 export function getActivityToneClass(tone: AssetDetailTone) {
-  if (tone === "success") return "border-success/20 bg-success/5"
-  if (tone === "info") return "border-info/20 bg-info/5"
-  if (tone === "warning") return "border-warning/30 bg-warning/10"
-  if (tone === "danger") return "border-danger/30 bg-danger/10"
+  if (tone === "success") return "border-success/20 bg-success-soft"
+  if (tone === "info") return "border-info/20 bg-info-soft"
+  if (tone === "warning") return "border-warning/30 bg-warning-soft"
+  if (tone === "danger") return "border-danger/30 bg-danger-soft"
   return "border-border bg-background"
 }
 
 export function getSummaryToneClass(tone: "success" | "warning" | "danger" | "neutral") {
-  if (tone === "success") return "border-success/20 bg-success/5"
-  if (tone === "warning") return "border-warning/30 bg-warning/10"
-  if (tone === "danger") return "border-danger/30 bg-danger/10"
+  if (tone === "success") return "border-success/20 bg-success-soft"
+  if (tone === "warning") return "border-warning/30 bg-warning-soft"
+  if (tone === "danger") return "border-danger/30 bg-danger-soft"
   return "border-border bg-background"
 }
 

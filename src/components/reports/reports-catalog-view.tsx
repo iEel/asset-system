@@ -127,7 +127,7 @@ export function ReportsCatalogView({
                   <div className="text-sm font-semibold text-foreground">{report.name}</div>
                   <div className="mt-1 text-xs text-muted-foreground">{report.owner}</div>
                 </div>
-                <span className="rounded-full bg-info/10 px-2 py-1 text-xs font-medium text-info">{report.cadence}</span>
+                <span className="rounded-full bg-info-soft px-2 py-1 text-xs font-medium text-info">{report.cadence}</span>
               </div>
               {report.allowed ? (
                 <Link href={report.href} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0 sm:w-auto">
@@ -156,7 +156,7 @@ export function ReportsCatalogView({
             {categories.map((category) => (
               <div key={category.key} className="rounded-md border border-border bg-background p-4">
                 <div className="mb-4 flex items-start gap-3">
-                  <div className="rounded-md bg-primary/10 p-2 text-primary">{category.icon}</div>
+                  <div className="rounded-md bg-primary-soft p-2 text-primary">{category.icon}</div>
                   <div>
                     <h3 className="text-sm font-semibold text-foreground">{category.title}</h3>
                     <p className="mt-1 text-sm text-muted-foreground">{category.description}</p>
@@ -172,7 +172,7 @@ export function ReportsCatalogView({
                           {labels.openReport}
                         </Link>
                         {report.exportHref && report.exportAllowed ? (
-                          <Link href={report.exportHref} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary/90 sm:h-8 sm:min-h-0">
+                          <Link href={report.exportHref} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary-hover sm:h-8 sm:min-h-0">
                             <Download aria-hidden="true" className="h-3.5 w-3.5" />
                             {report.exportLabel}
                           </Link>
@@ -222,7 +222,7 @@ function PermissionPill({
   deniedLabel: string
 }) {
   return (
-    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${allowed ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
+    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${allowed ? "bg-success-soft text-success" : "bg-muted text-muted-foreground"}`}>
       {label}: {allowed ? allowedLabel : deniedLabel}
     </span>
   )

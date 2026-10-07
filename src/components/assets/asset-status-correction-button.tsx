@@ -55,7 +55,7 @@ export function AssetStatusCorrectionButton({ assetId, readyStatusId, labels }: 
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm font-medium text-warning transition-colors hover:bg-warning/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-sm font-medium text-warning transition-colors hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <RotateCcw className="h-4 w-4 shrink-0" aria-hidden="true" />
         {labels.button}
@@ -90,7 +90,7 @@ export function AssetStatusCorrectionButton({ assetId, readyStatusId, labels }: 
               type="button"
               disabled={isSubmitting || reason.trim().length < 5}
               onClick={submitCorrection}
-              className="min-h-11 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="min-h-11 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? labels.submitting : labels.submit}
             </button>

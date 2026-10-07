@@ -228,7 +228,7 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
           <div className="flex items-end gap-2">
             <button
               type="submit"
-              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
             >
               {tCommon("filter")}
             </button>
@@ -284,7 +284,7 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
                           <Link
                             prefetch={false}
                             href={drilldown.models}
-                            className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                            className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft"
                           >
                             {category._count.models.toLocaleString()}
                           </Link>
@@ -297,7 +297,7 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
                           <Link
                             prefetch={false}
                             href={drilldown.assets}
-                            className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                            className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft"
                           >
                             {category._count.assets.toLocaleString()}
                           </Link>
@@ -316,21 +316,21 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
                           <Link
                             href={drilldown.assets}
                             title={t("viewAssets")}
-                            className="inline-flex h-8 items-center justify-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                            className="inline-flex h-8 items-center justify-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft"
                           >
                             {t("viewAssets")}
                           </Link>
                           <Link
                             href={drilldown.models}
                             title={t("viewModels")}
-                            className="inline-flex h-8 items-center justify-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                            className="inline-flex h-8 items-center justify-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft"
                           >
                             {t("viewModels")}
                           </Link>
                           <Link
                             href={editHref}
                             title={tCommon("edit")}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary-soft"
                           >
                             <Edit className="h-4 w-4" />
                           </Link>
@@ -377,7 +377,7 @@ function SummaryTile({
   return (
     <Link
       href={href}
-      className={`rounded-lg border bg-surface p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 ${
+      className={`rounded-lg border bg-surface p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary-soft ${
         tone === "warning" ? "border-warning/40" : "border-border"
       }`}
     >
@@ -451,7 +451,7 @@ function CategoryPagination({
             key={pageSize}
             href={`${basePath}?${buildCategoryQueryString(current, { pageSize, page: 1 })}`}
             className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md border px-2 transition-colors ${
-              current.pageSize === pageSize ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface hover:bg-accent"
+              current.pageSize === pageSize ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface hover:bg-accent"
             }`}
           >
             {pageSize}

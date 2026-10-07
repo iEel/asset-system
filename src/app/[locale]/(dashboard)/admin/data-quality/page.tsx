@@ -240,12 +240,12 @@ function SummaryCard({ label, value, tone }: { label: string; value: number; ton
 }
 
 function severityClass(severity: AssetDataQualityRule["severity"]) {
-  return severity === "danger" ? "border-danger/30 bg-danger/5 text-danger" : "border-warning/30 bg-warning/5 text-warning"
+  return severity === "danger" ? "border-danger/30 bg-danger-soft text-danger" : "border-warning/30 bg-warning-soft text-warning"
 }
 
 function summaryClass(tone: "primary" | "danger" | "success" | "muted") {
-  if (tone === "primary") return "border-primary/30 bg-primary/5 text-primary"
-  if (tone === "danger") return "border-danger/30 bg-danger/5 text-danger"
-  if (tone === "success") return "border-success/30 bg-success/5 text-success"
+  if (tone === "primary") return "border-primary/30 bg-primary-soft text-primary"
+  if (tone === "danger") return "border-danger/30 bg-danger-soft text-danger"
+  if (tone === "success") return "border-success/30 bg-success-soft text-success"
   return "border-border bg-surface text-muted-foreground"
 }

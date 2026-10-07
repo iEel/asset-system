@@ -173,7 +173,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
           </Link>
           <Link
             href={editHref}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             <Edit aria-hidden="true" className="h-4 w-4" />
             {tCommon("edit")}
@@ -204,13 +204,13 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
           <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
             <SectionTitle title={t("followUpTitle")} />
             {followUpItems.length === 0 ? (
-              <div className="mt-4 rounded-md border border-success/30 bg-success/10 p-3 text-sm text-success">
+              <div className="mt-4 rounded-md border border-success/30 bg-success-soft p-3 text-sm text-success">
                 {t("noFollowUp")}
               </div>
             ) : (
               <div className="mt-4 space-y-2">
                 {followUpItems.map((item) => (
-                  <div key={item} className="flex gap-2 rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
+                  <div key={item} className="flex gap-2 rounded-md border border-warning/30 bg-warning-soft p-3 text-sm text-warning">
                     <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>{followUpText(item, t)}</span>
                   </div>
@@ -321,7 +321,7 @@ function MetricCard({
   const content = (
     <div className={[
       "rounded-lg border bg-surface p-4 shadow-sm transition-colors",
-      tone === "warning" ? "border-warning/40 bg-warning/5" : "border-border",
+      tone === "warning" ? "border-warning/40 bg-warning-soft" : "border-border",
       href ? "hover:border-primary/40 hover:bg-accent/60" : "",
     ].join(" ")}>
       <div className="flex items-start justify-between gap-3">
@@ -330,7 +330,7 @@ function MetricCard({
           <div className="mt-2 text-2xl font-bold text-foreground">{typeof value === "number" ? value.toLocaleString() : value}</div>
           <div className="mt-1 text-xs text-muted-foreground">{detail}</div>
         </div>
-        <div className="rounded-md bg-primary/10 p-2">{icon}</div>
+        <div className="rounded-md bg-primary-soft p-2">{icon}</div>
       </div>
     </div>
   )

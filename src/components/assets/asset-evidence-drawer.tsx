@@ -118,7 +118,7 @@ export function AssetEvidenceDrawer({
                       )}
                       <div className="border-t border-border p-3">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-primary-soft px-2 py-1 text-xs font-medium text-primary">
                             {item.fileType.startsWith("image/") ? <ImageIcon className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
                             {item.group}
                           </span>

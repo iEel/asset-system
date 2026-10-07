@@ -34,7 +34,7 @@ export function MaintenancePagination({
             key={size}
             href={buildMaintenancePageHref(locale, currentQuery, { pageSize: size, page: 1 })}
             aria-current={pagination.pageSize === size ? "page" : undefined}
-            className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-8 sm:min-h-0 sm:min-w-8 ${pagination.pageSize === size ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface hover:bg-accent"}`}
+            className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-8 sm:min-h-0 sm:min-w-8 ${pagination.pageSize === size ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface hover:bg-accent"}`}
           >
             {size}
           </Link>

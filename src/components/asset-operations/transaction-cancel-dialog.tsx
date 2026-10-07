@@ -105,7 +105,7 @@ export function TransactionCancelDialog({
 
   return (
     <>
-      <button type="button" onClick={() => void openPreview()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-danger/40 bg-surface px-3 text-sm font-medium text-danger transition-colors hover:bg-danger/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/40">
+      <button type="button" onClick={() => void openPreview()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-danger/40 bg-surface px-3 text-sm font-medium text-danger transition-colors hover:bg-danger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/40">
         <Undo2 className="h-4 w-4" aria-hidden="true" />
         {labels.action}
       </button>
@@ -121,7 +121,7 @@ export function TransactionCancelDialog({
                 ))}
               </dl>
               {blockers.length > 0 ? (
-                <div className="mt-4 rounded-md border border-warning/40 bg-warning/5 p-4" role="status">
+                <div className="mt-4 rounded-md border border-warning/40 bg-warning-soft p-4" role="status">
                   <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />{labels.blockedTitle}</div>
                   <p className="mt-1 text-sm text-muted-foreground">{labels.blockedDescription}</p>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-foreground">{blockers.map((blocker) => <li key={blocker}>{labels.blockers[blocker] ?? blocker}</li>)}</ul>
@@ -137,7 +137,7 @@ export function TransactionCancelDialog({
         </div>
         <div className="grid gap-2 border-t border-border bg-muted/20 px-5 py-4 sm:grid-cols-2">
           <button type="button" onClick={() => setOpen(false)} disabled={saving} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50">{labels.cancel}</button>
-          <button type="button" onClick={() => void submitCancellation()} disabled={loading || saving || blockers.length > 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-danger px-4 text-sm font-semibold text-white transition-colors hover:bg-danger/90 disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}{labels.confirm}</button>
+          <button type="button" onClick={() => void submitCancellation()} disabled={loading || saving || blockers.length > 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-danger px-4 text-sm font-semibold text-white transition-colors hover:bg-danger-hover disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}{labels.confirm}</button>
         </div>
       </AccessibleDialog>
     </>

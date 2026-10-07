@@ -113,7 +113,7 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
                         <Link
                           href={editHref}
                           title={tCommon("edit")}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary-soft"
                         >
                           <Edit className="h-4 w-4" />
                         </Link>

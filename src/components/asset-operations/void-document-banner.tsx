@@ -12,7 +12,7 @@ export type VoidDocumentInfo = {
 
 export function VoidDocumentBanner({ info }: { info: VoidDocumentInfo }) {
   return (
-    <aside className="mb-6 break-inside-avoid rounded-md border border-danger/40 bg-danger/5 p-4 text-danger" role="status">
+    <aside className="mb-6 break-inside-avoid rounded-md border border-danger/40 bg-danger-soft p-4 text-danger" role="status">
       <div className="flex items-center gap-2 text-sm font-bold">
         <Ban className="h-5 w-5" aria-hidden="true" />
         {info.label}

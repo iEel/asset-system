@@ -503,7 +503,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                           <Link
                             href={roundDetailHref}
                             title={tCommon("view")}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary-soft"
                           >
                             <Eye className="h-4 w-4" />
                           </Link>
@@ -534,10 +534,10 @@ function ActionPanel({ title, help, actions }: { title: string; help: string; ac
         {actions.map((action) => {
           const toneClass =
             action.tone === "success"
-              ? "border-success/30 bg-success/10 text-success hover:bg-success/15"
+              ? "border-success/30 bg-success-soft text-success hover:bg-success-soft"
               : action.tone === "warning"
-                ? "border-warning/30 bg-warning/10 text-warning hover:bg-warning/15"
-                : "border-primary/30 bg-primary/10 text-primary hover:bg-primary/15"
+                ? "border-warning/30 bg-warning-soft text-warning hover:bg-warning-soft"
+                : "border-primary/30 bg-primary-soft text-primary hover:bg-primary-soft"
 
           return (
             <Link
@@ -612,10 +612,10 @@ function RoundWorkflowLinks({ links, compact = false }: { links: RoundWorkflowLi
       {links.map((link) => {
         const toneClass =
           link.tone === "danger"
-            ? "border-danger/30 bg-danger/10 text-danger hover:bg-danger/15"
+            ? "border-danger/30 bg-danger-soft text-danger hover:bg-danger-soft"
             : link.tone === "info"
-              ? "border-info/30 bg-info/10 text-info hover:bg-info/15"
-              : "border-warning/30 bg-warning/10 text-warning hover:bg-warning/15"
+              ? "border-info/30 bg-info-soft text-info hover:bg-info-soft"
+              : "border-warning/30 bg-warning-soft text-warning hover:bg-warning-soft"
 
         return (
           <Link
@@ -643,17 +643,17 @@ function ReadyToCloseBadge({
   if (!isAuditRoundOperationalStatus(status)) return null
   if (insight.readyToClose) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-1 text-xs font-medium text-success">
+      <span className="inline-flex items-center gap-1 rounded-full bg-success-soft px-2 py-1 text-xs font-medium text-success">
         <CheckCircle2 className="h-3.5 w-3.5" />
         {labels.ready}
       </span>
     )
   }
   if (insight.pending > 0) {
-    return <span className="inline-flex rounded-full bg-warning/10 px-2 py-1 text-xs font-medium text-warning">{labels.pending}</span>
+    return <span className="inline-flex rounded-full bg-warning-soft px-2 py-1 text-xs font-medium text-warning">{labels.pending}</span>
   }
   if (insight.followUps > 0) {
-    return <span className="inline-flex rounded-full bg-danger/10 px-2 py-1 text-xs font-medium text-danger">{labels.review}</span>
+    return <span className="inline-flex rounded-full bg-danger-soft px-2 py-1 text-xs font-medium text-danger">{labels.review}</span>
   }
 
   return null
@@ -662,9 +662,9 @@ function ReadyToCloseBadge({
 function CoverageMetric({ label, value, tone = "neutral" }: { label: string; value: number; tone?: "neutral" | "warning" | "danger" }) {
   const toneClass =
     tone === "danger"
-      ? "border-danger/30 bg-danger/10 text-danger"
+      ? "border-danger/30 bg-danger-soft text-danger"
       : tone === "warning"
-        ? "border-warning/30 bg-warning/10 text-warning"
+        ? "border-warning/30 bg-warning-soft text-warning"
         : "border-border bg-background text-foreground"
 
   return (
@@ -766,12 +766,12 @@ function CoverageGapList({
 function AuditStatusBadge({ status, label = status }: { status: string; label?: string }) {
   const className =
     status === "open"
-      ? "bg-info/10 text-info"
+      ? "bg-info-soft text-info"
       : status === "closed"
         ? "bg-muted text-muted-foreground"
         : status === "cancelled"
-          ? "bg-danger/10 text-danger"
-          : "bg-warning/10 text-warning"
+          ? "bg-danger-soft text-danger"
+          : "bg-warning-soft text-warning"
 
   return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${className}`}>{label}</span>
 }

@@ -333,7 +333,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                         onClick={() => addAsset(asset)}
                         className="flex min-h-11 w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">
                           <Plus className="h-4 w-4" />
                         </span>
                         <AssetLabelSearchResult asset={asset} serialLabel={labels.serial} printLabels={labels} />
@@ -356,7 +356,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
               </div>
             </div>
 
-            <div className="mt-4 rounded-md border border-primary/20 bg-primary/5 p-3">
+            <div className="mt-4 rounded-md border border-primary/20 bg-primary-soft p-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <div className="text-xs font-semibold text-primary">{labels.queueScopeTitle}</div>
@@ -374,7 +374,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                   type="button"
                   disabled={recentAssets.length === 0}
                   onClick={addRecentAssets}
-                  className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-1 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground sm:w-auto"
+                  className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-1 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground sm:w-auto"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   {recentAssets.length === 0 ? labels.addFilteredQueueUnavailable : labels.addFilteredQueue}
@@ -533,7 +533,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                 type="button"
                 disabled={selectedForPrint.length === 0}
                 onClick={printLabels}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Printer className="h-4 w-4" />
                 {labels.print}
@@ -790,7 +790,7 @@ function AssetLabelSearchResult({
         <span
           className={
             printCount > 0
-              ? "rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success"
+              ? "rounded-full bg-success-soft px-2 py-0.5 text-xs font-medium text-success"
               : "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
           }
         >

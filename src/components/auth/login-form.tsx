@@ -58,7 +58,7 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
         <div
           role="status"
           aria-live="polite"
-          className="flex items-start gap-2 rounded-md bg-info/10 px-3 py-2.5 text-sm text-info-foreground"
+          className="flex items-start gap-2 rounded-md bg-info-soft px-3 py-2.5 text-sm text-info"
         >
           <ShieldCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{t("sessionExpired")}</span>
@@ -127,7 +127,7 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
       </div>
 
       {error ? (
-        <div role="alert" aria-live="polite" className="rounded-md bg-danger/10 px-3 py-2.5 text-sm text-danger-foreground">
+        <div role="alert" aria-live="polite" className="rounded-md bg-danger-soft px-3 py-2.5 text-sm text-danger">
           {error}
         </div>
       ) : null}
@@ -136,7 +136,7 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
         type="submit"
         disabled={loading}
         aria-busy={loading}
-        className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-70 sm:h-10"
+        className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-70 sm:h-10"
       >
         {loading ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
         <span>{loading ? t("loggingIn") : t("login")}</span>

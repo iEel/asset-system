@@ -379,7 +379,7 @@ export function ScannerTextInput({
                 title={getScannerTorchLabel(labels, torchEnabled)}
                 className={`absolute right-3 top-3 z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-md border px-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60 ${
                   torchEnabled
-                    ? "border-warning/50 bg-warning text-white hover:bg-warning/90"
+                    ? "border-warning/50 bg-warning text-white hover:bg-warning-hover"
                     : "border-white/50 bg-slate-950/70 text-white hover:bg-slate-950/85"
                 }`}
               >

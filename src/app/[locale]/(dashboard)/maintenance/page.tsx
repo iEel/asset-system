@@ -98,7 +98,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
         {canCreate ? (
           <Link
             href={appendOperationalReturnTo(`/${locale}/maintenance/new${filters.assetId ? `?assetId=${encodeURIComponent(filters.assetId)}` : ""}`, returnHref)}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover"
           >
             <Plus className="h-4 w-4" />{t("createTitle")}
           </Link>
@@ -106,9 +106,9 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
       </div>
 
       {stuckTotal > 0 ? (
-        <section id="stuck" className="rounded-lg border border-warning/40 bg-warning/5 p-4 shadow-sm">
+        <section id="stuck" className="rounded-lg border border-warning/40 bg-warning-soft p-4 shadow-sm">
           <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-            <AlertTriangle className="h-5 w-5 text-warning-foreground" />{t("stuckTitle")} ({stuckTotal})
+            <AlertTriangle className="h-5 w-5 text-warning" />{t("stuckTitle")} ({stuckTotal})
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("stuckHelp")}</p>
           <ul className="mt-3 grid gap-2 md:grid-cols-2">
@@ -158,7 +158,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge label={overdue ? t("pmOverdue") : t("pmDueOn", { date: formatDate(plan.nextDueDate) })} tone={overdue ? "danger" : "warning"} size="xs" />
                     {canCreate ? (
-                      <Link href={appendOperationalReturnTo(`/${locale}/maintenance/new?planId=${plan.id}`, returnHref)} className="inline-flex min-h-11 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+                      <Link href={appendOperationalReturnTo(`/${locale}/maintenance/new?planId=${plan.id}`, returnHref)} className="inline-flex min-h-11 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary-hover">
                         {t("pmRecordDone")}
                       </Link>
                     ) : null}
@@ -193,13 +193,13 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
             <input type="date" name="dateTo" defaultValue={filters.dateTo} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </label>
           <div className="flex flex-col gap-2 self-end sm:flex-row">
-            <button type="submit" className="min-h-11 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">{t("filter")}</button>
+            <button type="submit" className="min-h-11 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover">{t("filter")}</button>
             <Link href={clearHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-accent">{t("clearFilters")}</Link>
           </div>
         </form>
         {filters.assetId ? <p className="mt-3 text-xs text-muted-foreground">{t("assetFilter")} · <Link href={`/${locale}/maintenance`} className="text-primary hover:underline">{t("clearFilters")}</Link></p> : null}
         {getMaintenanceDateRangeError(filters) ? (
-          <p role="alert" className="mt-3 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-sm text-warning-foreground">{t("invalidDateRange")}</p>
+          <p role="alert" className="mt-3 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-sm text-warning">{t("invalidDateRange")}</p>
         ) : null}
       </section>
 
@@ -266,7 +266,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                       <td className="whitespace-nowrap px-4 py-3">
                         <StatusBadge label={t(`status.${toRepairRecordStatus(record.repairStatus)}`)} tone={getRepairRecordStatusTone(record.repairStatus)} size="xs" />
                       </td>
-                      <td className={`whitespace-nowrap px-4 py-3 ${record.outcome === "beyond_repair" ? "text-warning-foreground" : record.outcome === "usable" ? "text-success-foreground" : "text-muted-foreground"}`}>
+                      <td className={`whitespace-nowrap px-4 py-3 ${record.outcome === "beyond_repair" ? "text-warning" : record.outcome === "usable" ? "text-success" : "text-muted-foreground"}`}>
                         {outcomeLabel(record.outcome, record.repairStatus)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{record.vendor?.name ?? t("internal")}</td>

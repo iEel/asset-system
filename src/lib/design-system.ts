@@ -8,10 +8,10 @@ export type UiButtonSize = (typeof uiButtonSizes)[number]
 
 const metricToneClasses: Record<UiTone, { container: string; value: string }> = {
   neutral: { container: "border-border bg-surface", value: "text-foreground" },
-  info: { container: "border-info/30 bg-info/5", value: "text-info" },
-  success: { container: "border-success/30 bg-success/5", value: "text-success" },
-  warning: { container: "border-warning/30 bg-warning/5", value: "text-warning" },
-  danger: { container: "border-danger/30 bg-danger/5", value: "text-danger" },
+  info: { container: "border-info/30 bg-info-soft", value: "text-info" },
+  success: { container: "border-success/30 bg-success-soft", value: "text-success" },
+  warning: { container: "border-warning/30 bg-warning-soft", value: "text-warning" },
+  danger: { container: "border-danger/30 bg-danger-soft", value: "text-danger" },
   muted: { container: "border-border bg-muted/40", value: "text-foreground" },
 }
 
@@ -75,9 +75,9 @@ export function getFieldControlClasses() {
 export function getActionButtonClasses(variant: UiButtonVariant = "secondary", size: UiButtonSize = "md") {
   const sizeClass = size === "sm" ? "min-h-11 px-3 text-xs sm:h-8 sm:min-h-0" : "min-h-11 px-4 text-sm sm:h-10 sm:min-h-0"
   const variantClass = {
-    primary: "bg-primary text-white hover:bg-primary/90",
+    primary: "bg-primary text-white hover:bg-primary-hover",
     secondary: "border border-border bg-surface text-foreground hover:bg-accent",
-    danger: "bg-danger text-white hover:bg-danger/90",
+    danger: "bg-danger text-white hover:bg-danger-hover",
     ghost: "text-foreground hover:bg-accent",
   }[variant]
   return `inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${sizeClass} ${variantClass}`
@@ -85,7 +85,7 @@ export function getActionButtonClasses(variant: UiButtonVariant = "secondary", s
 
 export function getSafeActionLinkClasses(variant: Extract<UiButtonVariant, "primary" | "secondary" | "ghost"> = "secondary") {
   const variantClass = {
-    primary: "bg-primary text-white hover:bg-primary/90",
+    primary: "bg-primary text-white hover:bg-primary-hover",
     secondary: "border border-border bg-surface text-foreground hover:bg-accent",
     ghost: "text-foreground hover:bg-accent",
   }[variant]

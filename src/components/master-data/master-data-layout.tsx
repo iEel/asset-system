@@ -26,7 +26,7 @@ export function MasterDataHeader({
           {actions}
           <Link
             href={createHref}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             <Plus aria-hidden="true" className="h-4 w-4" />
             {createLabel}
@@ -158,7 +158,7 @@ export function MasterDataPagination<TSort extends string>({
             key={pageSize}
             href={`${basePath}?${buildMasterDataQueryString(current, { pageSize, page: 1 })}`}
             className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md border px-2 transition-colors ${
-              current.pageSize === pageSize ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface hover:bg-accent"
+              current.pageSize === pageSize ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface hover:bg-accent"
             }`}
           >
             {pageSize}
@@ -192,7 +192,7 @@ export function MasterDataPagination<TSort extends string>({
 
 export function ActiveBadge({ label }: { label: string }) {
   return (
-    <span className="inline-flex rounded-full bg-success/10 px-2 py-1 text-xs font-medium text-success">
+    <span className="inline-flex rounded-full bg-success-soft px-2 py-1 text-xs font-medium text-success">
       {label}
     </span>
   )

@@ -37,11 +37,11 @@ test("category and brand count cells use branch-style drilldown links", () => {
   assert.match(categorySource, /href=\{drilldown\.models\}/)
   assert.match(categorySource, /category\._count\.assets > 0/)
   assert.match(categorySource, /href=\{drilldown\.assets\}/)
-  assert.match(categorySource, /text-xs font-medium text-primary transition-colors hover:bg-primary\/10/)
+  assert.match(categorySource, /text-xs font-medium text-primary transition-colors hover:bg-primary-soft/)
 
   assert.match(brandSource, /brand\._count\.assets > 0/)
   assert.match(brandSource, /model\._count\.assets > 0/)
-  assert.match(brandSource, /text-xs font-medium text-primary transition-colors hover:bg-primary\/10/)
+  assert.match(brandSource, /text-xs font-medium text-primary transition-colors hover:bg-primary-soft/)
 })
 
 test("brand model edit flow preserves the selected brand workspace after save", () => {

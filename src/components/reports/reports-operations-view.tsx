@@ -208,7 +208,7 @@ export function ReportsOperationsView({
                     <div className="mt-1 text-xs text-muted-foreground">{asset.context}</div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {asset.issues.map((issue) => (
-                        <Link key={issue.key} href={issue.href} className="inline-flex min-h-11 items-center rounded-full bg-warning/10 px-3 py-1 text-xs font-medium text-warning transition-colors hover:bg-warning/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0">
+                        <Link key={issue.key} href={issue.href} className="inline-flex min-h-11 items-center rounded-full bg-warning-soft px-3 py-1 text-xs font-medium text-warning transition-colors hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-0">
                           {issue.label}
                         </Link>
                       ))}
@@ -218,7 +218,7 @@ export function ReportsOperationsView({
                     <Link href={`/${locale}/assets/${asset.id}`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0">
                       {labels.openAsset}
                     </Link>
-                    <Link href={asset.primaryFixHref} className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary/90 sm:h-8 sm:min-h-0">
+                    <Link href={asset.primaryFixHref} className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary-hover sm:h-8 sm:min-h-0">
                       {labels.fixData}
                     </Link>
                   </div>
@@ -240,7 +240,7 @@ export function ReportsOperationsView({
           <ReportTable title={labels.frequentRepairAssets} rows={insights.repairs} emptyLabel={insightsEmpty} />
           <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
             <h2 className="mb-4 text-base font-semibold text-foreground">{labels.idleAssets}</h2>
-            <Link href={idleAssetsHref} className="block min-h-11 rounded-md border border-warning/30 bg-warning/5 p-4 transition-colors hover:bg-warning/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+            <Link href={idleAssetsHref} className="block min-h-11 rounded-md border border-warning/30 bg-warning-soft p-4 transition-colors hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
               <div className="text-sm text-muted-foreground">{labels.idleAssetsHelp}</div>
               <div className="mt-2 text-2xl font-bold text-foreground">{insights.idleAssetsCount.toLocaleString("th-TH")}</div>
             </Link>
@@ -317,7 +317,7 @@ function CrossScopePreviewTable({
             render: (asset) => (
               <div className="flex flex-wrap gap-1.5">
                 {getCrossScopeFlagLabels(asset, labels).map((label) => (
-                  <span key={label} className="rounded-full bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
+                  <span key={label} className="rounded-full bg-warning-soft px-2 py-1 text-xs font-medium text-warning">
                     {label}
                   </span>
                 ))}

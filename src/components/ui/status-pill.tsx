@@ -12,10 +12,10 @@ type StatusPillProps = {
 
 const toneClasses: Record<StatusPillTone, string> = {
   neutral: "border-border bg-muted text-foreground",
-  info: "border-transparent bg-info/10 text-info-foreground",
-  success: "border-transparent bg-success/10 text-success-foreground",
-  warning: "border-transparent bg-warning/10 text-warning-foreground",
-  danger: "border-transparent bg-danger/10 text-danger-foreground",
+  info: "border-transparent bg-info-soft text-info",
+  success: "border-transparent bg-success-soft text-success",
+  warning: "border-transparent bg-warning-soft text-warning",
+  danger: "border-transparent bg-danger-soft text-danger",
 }
 
 function getCustomColorStyle(color?: string | null): CSSProperties | undefined {

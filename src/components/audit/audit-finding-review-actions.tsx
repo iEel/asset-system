@@ -84,7 +84,7 @@ export function AuditFindingReviewActions({
     <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
       {reviewStatus === "pending" ? (
         reviewBlocked ? (
-          <div className="max-w-56 rounded-md border border-warning/30 bg-warning/10 px-2 py-1 text-left text-xs font-medium text-warning">
+          <div className="max-w-56 rounded-md border border-warning/30 bg-warning-soft px-2 py-1 text-left text-xs font-medium text-warning">
             {reviewBlockedReason ?? t("segregationReviewBlocked")}
           </div>
         ) : (
@@ -94,7 +94,7 @@ export function AuditFindingReviewActions({
             onClick={() => setReviewModalAction("approve")}
             disabled={reviewing !== null}
             title={t("approve")}
-            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-success transition-colors hover:bg-success/10 disabled:opacity-50 sm:h-8 sm:min-h-0"
+            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-success transition-colors hover:bg-success-soft disabled:opacity-50 sm:h-8 sm:min-h-0"
           >
             {reviewing === "approve" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
             {t("approve")}
@@ -104,7 +104,7 @@ export function AuditFindingReviewActions({
             onClick={() => setReviewModalAction("reject")}
             disabled={reviewing !== null}
             title={t("reject")}
-            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-danger transition-colors hover:bg-danger/10 disabled:opacity-50 sm:h-8 sm:min-h-0"
+            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-danger transition-colors hover:bg-danger-soft disabled:opacity-50 sm:h-8 sm:min-h-0"
           >
             {reviewing === "reject" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
             {t("reject")}
@@ -207,13 +207,13 @@ function ReviewDecisionModal({
           </div>
         </div>
 
-        <div className={`rounded-lg border p-4 text-sm ${action === "approve" ? "border-warning/30 bg-warning/10 text-warning" : "border-danger/30 bg-danger/10 text-danger"}`}>
+        <div className={`rounded-lg border p-4 text-sm ${action === "approve" ? "border-warning/30 bg-warning-soft text-warning" : "border-danger/30 bg-danger-soft text-danger"}`}>
           <div className="font-semibold">{t(`reviewDecisionImpactTitle_${action}`)}</div>
           <p className="mt-1 leading-relaxed">{t(`reviewDecisionHelp_${action}`)}</p>
         </div>
 
         {conflict ? (
-          <div className="rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+          <div className="rounded-lg border border-warning/40 bg-warning-soft p-4 text-sm text-warning">
             <div className="flex items-start gap-2 font-semibold">
               <AlertTriangle className="mt-0.5 h-4 w-4 flex-none" />
               <span>{t("reviewConflictTitle")}</span>

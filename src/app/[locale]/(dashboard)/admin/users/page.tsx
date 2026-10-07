@@ -126,7 +126,7 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
                           <span className="text-muted-foreground">-</span>
                         ) : (
                           user.userRoles.map((userRole) => (
-                            <span key={userRole.role.name} className="inline-flex rounded-full bg-info/10 px-2 py-1 text-xs font-medium text-info">
+                            <span key={userRole.role.name} className="inline-flex rounded-full bg-info-soft px-2 py-1 text-xs font-medium text-info">
                               {userRole.role.displayNameTh || userRole.role.displayName}
                             </span>
                           ))
@@ -174,7 +174,7 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
 
       <Link
         href={`${basePath}/new`}
-        className="fixed bottom-6 right-6 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-white shadow-lg transition-colors hover:bg-primary/90"
+        className="fixed bottom-6 right-6 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-white shadow-lg transition-colors hover:bg-primary-hover"
       >
         <Plus className="h-4 w-4" />
         {t("createTitle")}

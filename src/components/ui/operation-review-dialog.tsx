@@ -132,7 +132,7 @@ function OperationReviewDialogContent({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
           >
             {confirmLabel}
           </button>

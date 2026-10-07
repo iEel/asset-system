@@ -28,7 +28,7 @@ export function AssetComponentContextBanner({
   if (installedInLinks.length === 0) return null
 
   return (
-    <section aria-label={labels.title} className="border-y border-primary/20 bg-primary/5 px-4 py-3 sm:rounded-lg sm:border">
+    <section aria-label={labels.title} className="border-y border-primary/20 bg-primary-soft px-4 py-3 sm:rounded-lg sm:border">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary text-white">

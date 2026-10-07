@@ -220,7 +220,7 @@ export function AssetAttachments({
                           type="button"
                           onClick={() => handleDelete(attachment.id)}
                           disabled={deletingId === attachment.id}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 disabled:opacity-50"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft disabled:opacity-50"
                           title={tCommon("delete")}
                         >
                           {deletingId === attachment.id ? (
@@ -420,7 +420,7 @@ function AttachmentCard({
             type="button"
             onClick={onDelete}
             disabled={deleting}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 disabled:opacity-50"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft disabled:opacity-50"
             title={deleteLabel}
           >
             {deleting ? (

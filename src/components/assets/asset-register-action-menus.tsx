@@ -152,7 +152,7 @@ function FixedActionMenu({
         aria-label={label}
         aria-expanded={open}
         className={variant === "full"
-          ? "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+          ? "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary-soft px-3 text-sm font-medium text-primary transition-colors hover:bg-primary-soft"
           : "inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         }
       >

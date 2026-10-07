@@ -132,7 +132,7 @@ function AttachmentCard({
           type="button"
           onClick={() => onDelete(attachment.id)}
           disabled={deletingId === attachment.id}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 disabled:opacity-50"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft disabled:opacity-50"
           aria-label={tCommon("delete")}
           title={tCommon("delete")}
         >

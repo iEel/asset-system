@@ -90,10 +90,10 @@ export function RepairRecordActions({
     <>
       {isOpen ? (
         <>
-          <button type="button" onClick={() => setDialog("complete")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+          <button type="button" onClick={() => setDialog("complete")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover">
             <CheckCircle2 className="h-4 w-4" />{t("complete")}
           </button>
-          <button type="button" onClick={() => setDialog("cancel")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-danger/40 bg-surface px-4 text-sm font-medium text-danger hover:bg-danger/10">
+          <button type="button" onClick={() => setDialog("cancel")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-danger/40 bg-surface px-4 text-sm font-medium text-danger hover:bg-danger-soft">
             <XCircle className="h-4 w-4" />{t("cancel")}
           </button>
         </>
@@ -126,7 +126,7 @@ export function RepairRecordActions({
             <legend className="mb-2 text-sm font-medium text-foreground">{t("outcomeQuestion")}<span className="ml-1 text-danger">*</span></legend>
             <div className="grid gap-2">
               {(["usable", "beyond_repair"] as const).map((outcome) => (
-                <label key={outcome} className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 text-sm ${complete.outcome === outcome ? "border-primary bg-primary/5 font-medium" : "border-border text-muted-foreground"}`}>
+                <label key={outcome} className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 text-sm ${complete.outcome === outcome ? "border-primary bg-primary-soft font-medium" : "border-border text-muted-foreground"}`}>
                   <input type="radio" name="outcome" checked={complete.outcome === outcome} onChange={() => setComplete((v) => ({ ...v, outcome }))} className="h-4 w-4 accent-primary" />
                   {t(`outcome.${outcome}`)}
                 </label>
@@ -166,7 +166,7 @@ export function RepairRecordActions({
           </Field>
           <div className="flex flex-col justify-end gap-2 sm:flex-row">
             <button type="button" onClick={close} disabled={saving} className={secondaryButton}>{t("keep")}</button>
-            <button type="submit" disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-danger px-4 text-sm font-medium text-white hover:bg-danger/90 disabled:opacity-50">
+            <button type="submit" disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-danger px-4 text-sm font-medium text-white hover:bg-danger-hover disabled:opacity-50">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}{t("confirmCancel")}
             </button>
           </div>
@@ -231,7 +231,7 @@ function DialogButtons({ saving, onBack, backLabel, submitLabel }: { saving: boo
   return (
     <div className="flex flex-col justify-end gap-2 sm:flex-row">
       <button type="button" onClick={onBack} disabled={saving} className={secondaryButton}>{backLabel}</button>
-      <button type="submit" disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+      <button type="submit" disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-50">
         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}{submitLabel}
       </button>
     </div>

@@ -70,7 +70,7 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
                 href={buildSystemLogFilterHref(locale, filter.key)}
                 className={`inline-flex min-h-9 items-center rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
                   activeQuickFilter === filter.key
-                    ? "border-primary bg-primary/10 text-primary"
+                    ? "border-primary bg-primary-soft text-primary"
                     : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
               >
@@ -88,7 +88,7 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("action")}</span>
             <input name="action" defaultValue={filters.action ?? ""} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </label>
-          <button type="submit" className="h-10 self-end rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90">
+          <button type="submit" className="h-10 self-end rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover">
             {t("filter")}
           </button>
         </form>

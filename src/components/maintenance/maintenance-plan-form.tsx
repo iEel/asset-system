@@ -76,7 +76,7 @@ export function MaintenancePlanForm({
   }
 
   return (
-    <section className="rounded-lg border border-primary/30 bg-primary/5 p-4 shadow-sm">
+    <section className="rounded-lg border border-primary/30 bg-primary-soft p-4 shadow-sm">
       <div className="flex items-center gap-2 text-base font-semibold text-foreground">
         <CalendarClock className="h-5 w-5 text-primary" />
         {t("pmCreateTitle")}
@@ -143,7 +143,7 @@ export function MaintenancePlanForm({
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {tCommon("save")}

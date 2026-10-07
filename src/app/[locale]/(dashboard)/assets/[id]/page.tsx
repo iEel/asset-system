@@ -925,7 +925,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           {canEditAsset ? (
             <Link
               href={editHref}
-              className="hidden h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 md:inline-flex"
+              className="hidden h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover md:inline-flex"
             >
               <Edit className="h-4 w-4" />
               {tCommon("edit")}
@@ -997,7 +997,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             {canEditAsset ? (
               <Link
                 href={editHref}
-                className="inline-flex min-h-11 w-full items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 md:hidden"
+                className="inline-flex min-h-11 w-full items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover md:hidden"
               >
                 <Edit className="h-4 w-4" />
                 {tCommon("edit")}
@@ -1077,7 +1077,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               <p className="mt-1 text-sm text-muted-foreground">{lifecycle.help}</p>
             </div>
           </div>
-          <div className="mb-3 rounded-md border border-info/30 bg-info/10 px-3 py-2">
+          <div className="mb-3 rounded-md border border-info/30 bg-info-soft px-3 py-2">
             <div className="text-sm font-semibold text-foreground">{lifecycle.title}</div>
             <p className="mt-1 text-xs text-muted-foreground">{lifecycle.description}</p>
           </div>
@@ -1322,7 +1322,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">{t("latestTransaction")}</span>
+                            <span className="rounded-full bg-primary-soft px-2 py-1 text-xs font-medium text-primary">{t("latestTransaction")}</span>
                             <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
                             <StatusPill label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} tone={checkout.isReturned ? "success" : "info"} />
                           </div>
@@ -1450,7 +1450,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               ]}
             />
             {maintenanceReplacementWarning ? (
-              <div className="mb-4 rounded-md border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning">
+              <div className="mb-4 rounded-md border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-warning">
                 {t("maintenanceReplacementWarning")}
               </div>
             ) : null}
@@ -1489,7 +1489,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                         <td className="min-w-72 px-4 py-3 text-muted-foreground">
                           <div className="flex flex-wrap items-center gap-2">
                             {Boolean(ticket.maintenancePlanId) ? (
-                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                              <span className="rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary">
                                 {t("maintenancePmBadge")}
                               </span>
                             ) : null}
@@ -1793,7 +1793,7 @@ function ActivitySummaryLink({
   return (
     <Link
       href={item.href}
-      className={`block rounded-md border px-3 py-2 transition-colors hover:border-primary/40 hover:bg-primary/5 ${getActivityToneClass(item.tone)}`}
+      className={`block rounded-md border px-3 py-2 transition-colors hover:border-primary/40 hover:bg-primary-soft ${getActivityToneClass(item.tone)}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -1831,7 +1831,7 @@ function QuickAction({
   }
 
   return (
-    <Link href={href} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-center text-sm font-medium leading-tight text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary md:h-10 md:min-h-0">
+    <Link href={href} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-center text-sm font-medium leading-tight text-foreground transition-colors hover:border-primary/40 hover:bg-primary-soft hover:text-primary md:h-10 md:min-h-0">
       {icon}
       {label}
     </Link>
@@ -2009,7 +2009,7 @@ function AssetRelationshipMap({
         </div>
       ) : null}
 
-      <div className="mt-4 flex items-start gap-2 rounded-md border border-primary/15 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+      <div className="mt-4 flex items-start gap-2 rounded-md border border-primary/15 bg-primary-soft px-3 py-2 text-xs text-muted-foreground">
         <InfoIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <span>{noteLabel}</span>
       </div>
@@ -2047,14 +2047,14 @@ function RelationshipConnector({ direction }: { direction: "left" | "right" }) {
 
   return (
     <div className="flex items-center justify-center md:block">
-      <div className="flex flex-col items-center text-primary/60 md:hidden">
+      <div className="flex flex-col items-center text-primary md:hidden">
         <span className="h-3 border-l border-dashed border-border" />
         <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/25 bg-surface">
           <ArrowDown className="h-4 w-4" />
         </span>
         <span className="h-3 border-l border-dashed border-border" />
       </div>
-      <div className="hidden items-center gap-1 text-primary/60 md:flex">
+      <div className="hidden items-center gap-1 text-primary md:flex">
         <span className="h-px w-5 border-t border-dashed border-border" />
         <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/25 bg-surface">
           <Icon className="h-4 w-4" />
@@ -2183,7 +2183,7 @@ function RelationshipLinkList({
       ) : (
         <div className="space-y-2">
           {links.map((link) => (
-            <Link key={link.id} href={link.href} className="block rounded-md border border-border bg-surface px-3 py-2 transition-colors hover:border-primary/40 hover:bg-primary/5">
+            <Link key={link.id} href={link.href} className="block rounded-md border border-border bg-surface px-3 py-2 transition-colors hover:border-primary/40 hover:bg-primary-soft">
               <div className="text-sm font-medium text-primary">{link.label}</div>
               <div className="mt-1 text-xs text-muted-foreground">{link.role}</div>
             </Link>
@@ -2243,16 +2243,16 @@ function getRelationshipSummaryClass(state: RelationshipState) {
 
 function getRelationshipCardClass(variant: RelationshipCardVariant, current: boolean) {
   if (current && (variant === "component" || variant === "parentAndComponent")) return "border-amber-300 bg-amber-50/70 shadow-sm"
-  if (current && variant === "parent") return "border-primary/40 bg-primary/5 shadow-sm"
+  if (current && variant === "parent") return "border-primary/40 bg-primary-soft shadow-sm"
   if (current) return "border-border bg-surface"
-  if (variant === "child") return "border-border bg-surface hover:border-primary/40 hover:bg-primary/5"
-  if (variant === "parent") return "border-border bg-surface hover:border-primary/40 hover:bg-primary/5"
-  return "border-border bg-surface hover:border-primary/40 hover:bg-primary/5"
+  if (variant === "child") return "border-border bg-surface hover:border-primary/40 hover:bg-primary-soft"
+  if (variant === "parent") return "border-border bg-surface hover:border-primary/40 hover:bg-primary-soft"
+  return "border-border bg-surface hover:border-primary/40 hover:bg-primary-soft"
 }
 
 function getRelationshipBadgeClass(variant: RelationshipCardVariant) {
   if (variant === "component" || variant === "parentAndComponent") return "bg-amber-100 text-amber-800"
-  if (variant === "parent") return "bg-primary/10 text-primary"
+  if (variant === "parent") return "bg-primary-soft text-primary"
   if (variant === "child") return "bg-emerald-50 text-emerald-700"
   return "bg-muted text-muted-foreground"
 }
@@ -2260,7 +2260,7 @@ function getRelationshipBadgeClass(variant: RelationshipCardVariant) {
 function getRelationshipIconClass(variant: RelationshipCardVariant) {
   if (variant === "component" || variant === "parentAndComponent") return "bg-amber-100 text-amber-700"
   if (variant === "child") return "bg-emerald-50 text-emerald-700"
-  if (variant === "parent") return "bg-primary/10 text-primary"
+  if (variant === "parent") return "bg-primary-soft text-primary"
   return "bg-muted text-muted-foreground"
 }
 

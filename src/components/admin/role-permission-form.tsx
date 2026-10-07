@@ -140,7 +140,7 @@ function togglePermission(permissionId: string) {
               <p className="mt-1 text-sm text-muted-foreground">{t("metadataSubtitle")}</p>
             </div>
             {isSystemRole ? (
-              <div className="inline-flex max-w-md items-start gap-2 rounded-md border border-info/30 bg-info/10 px-3 py-2 text-sm text-info">
+              <div className="inline-flex max-w-md items-start gap-2 rounded-md border border-info/30 bg-info-soft px-3 py-2 text-sm text-info">
                 <Info className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{permissionsLocked ? t("systemAdminGuard") : t("systemRoleGuard")}</span>
               </div>
@@ -271,7 +271,7 @@ function togglePermission(permissionId: string) {
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {t("savePermissions")}

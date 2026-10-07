@@ -128,11 +128,11 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
       </section>
 
       {directAssetHref ? (
-        <section className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+        <section className="rounded-lg border border-primary/20 bg-primary-soft p-4">
           <button
             type="button"
             onClick={() => openAsset(directAssetHref)}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:w-auto"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:w-auto"
           >
             <PackageSearch className="h-4 w-4" />
             {labels.openAsset}
@@ -161,7 +161,7 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
                 onClick={() => openAsset(result.href)}
                 className="flex w-full min-w-0 gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
               >
-                <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">
                   <Search className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1">

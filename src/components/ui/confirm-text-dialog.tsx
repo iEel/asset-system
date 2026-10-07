@@ -22,9 +22,9 @@ type ConfirmTextDialogProps = {
 }
 
 const confirmClassByTone: Record<ConfirmTextDialogTone, string> = {
-  default: "bg-primary hover:bg-primary/90",
-  danger: "bg-danger hover:bg-danger/90",
-  warning: "bg-warning hover:bg-warning/90",
+  default: "bg-primary hover:bg-primary-hover",
+  danger: "bg-danger hover:bg-danger-hover",
+  warning: "bg-warning hover:bg-warning-hover",
 }
 
 export function ConfirmTextDialog({ open, ...props }: ConfirmTextDialogProps) {

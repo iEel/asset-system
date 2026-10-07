@@ -201,7 +201,7 @@ test("audit scan mismatch flow embeds required evidence instead of using a scrol
   assert.match(form, /const shouldShowAuditPhotoEvidence = Boolean\(outOfScopeAsset \|\| isDetailedScanVisible \|\| queuedAuditPhotos\.length > 0\)/)
   assert.match(form, /const evidenceRequirementSatisfied = !requiresMismatchPhoto \|\| queuedAuditPhotos\.length > 0/)
   assert.match(form, /t\("auditPhotoRequiredCounter", \{ count: queuedAuditPhotos\.length \}\)/)
-  assert.match(form, /!evidenceRequirementSatisfied[\s\S]*border-warning\/40 bg-warning\/10/)
+  assert.match(form, /!evidenceRequirementSatisfied[\s\S]*border-warning\/40 bg-warning-soft/)
   assert.match(form, /disabled=\{saving \|\| !selectedItem \|\| \(fastMode && !showDetailedFields\) \|\| !evidenceRequirementSatisfied\}/)
 
   for (const messages of [th, en]) {
@@ -378,7 +378,7 @@ test("audit scan phase 2 emphasizes scan entry and exposes pending queue access"
   assert.match(form, /scanEntryTitle/)
   assert.match(form, /scanEntryHelp/)
   assert.match(form, /!selectedItem && !scanFeedback/)
-  assert.match(form, /border-primary\/30 bg-primary\/5/)
+  assert.match(form, /border-primary\/30 bg-primary-soft/)
   assert.match(form, /selectPendingQueueItem/)
   assert.match(form, /scanReturnHref/)
   assert.match(form, /appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{roundId\}\/scan`, backHref\)/)

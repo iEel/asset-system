@@ -614,7 +614,7 @@ function MetricCard({ metric }: { metric: WorkCenterMetric }) {
 
 function SummaryPill({ label, value, tone }: { label: string; value: number; tone: "danger" | "primary" }) {
   return (
-    <div className={`rounded-lg border px-4 py-3 ${tone === "danger" ? "border-danger/30 bg-danger/5" : "border-primary/30 bg-primary/5"}`}>
+    <div className={`rounded-lg border px-4 py-3 ${tone === "danger" ? "border-danger/30 bg-danger-soft" : "border-primary/30 bg-primary-soft"}`}>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-bold text-foreground">{value.toLocaleString("th-TH")}</p>
     </div>
@@ -684,7 +684,7 @@ function FollowUpPanel({
         <div className="flex min-w-0 flex-col gap-2 sm:shrink-0 sm:flex-row sm:items-center">
           <Link
             href={buildWorkCenterHref(locale, currentParams, { panel: isExpanded ? "overview" : panel })}
-            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-primary/20 px-3 text-xs font-medium text-primary hover:bg-primary/5 sm:min-h-0 sm:border-0 sm:px-0 sm:hover:bg-transparent sm:hover:underline"
+            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-primary/20 px-3 text-xs font-medium text-primary hover:bg-primary-soft sm:min-h-0 sm:border-0 sm:px-0 sm:hover:bg-transparent sm:hover:underline"
           >
             {isExpanded ? collapseLabel : showMoreLabel}
           </Link>
@@ -729,12 +729,12 @@ function DataQualityFixGroups({
                 <p className="text-sm font-medium text-foreground">{labels.issueLabels[group.key]}</p>
                 <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{labels.issueDetails[group.key]}</p>
               </div>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+              <span className="rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary">
                 {group.count.toLocaleString("th-TH")}
               </span>
             </div>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Link href={group.assetsHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-primary/20 px-3 text-center text-xs font-medium text-primary hover:bg-primary/5 sm:min-h-0 sm:border-0 sm:px-0 sm:hover:bg-transparent sm:hover:underline">
+              <Link href={group.assetsHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-primary/20 px-3 text-center text-xs font-medium text-primary hover:bg-primary-soft sm:min-h-0 sm:border-0 sm:px-0 sm:hover:bg-transparent sm:hover:underline">
                 {labels.openFilteredAssets}
               </Link>
               <Link href={group.workCenterHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-3 text-center text-xs font-medium text-muted-foreground hover:text-primary sm:min-h-0 sm:border-0 sm:px-0 sm:hover:underline">
@@ -888,9 +888,9 @@ function applyWorkCenterScope<T>(where: T, active: boolean, scopeWhere: T): T {
 }
 
 function toneClass(tone: WorkCenterMetric["tone"]) {
-  if (tone === "danger") return "border-danger/30 bg-danger/5 text-danger"
-  if (tone === "warning") return "border-warning/30 bg-warning/5 text-warning"
-  if (tone === "primary") return "border-primary/30 bg-primary/5 text-primary"
-  if (tone === "success") return "border-success/30 bg-success/5 text-success"
+  if (tone === "danger") return "border-danger/30 bg-danger-soft text-danger"
+  if (tone === "warning") return "border-warning/30 bg-warning-soft text-warning"
+  if (tone === "primary") return "border-primary/30 bg-primary-soft text-primary"
+  if (tone === "success") return "border-success/30 bg-success-soft text-success"
   return "border-border bg-surface text-muted-foreground"
 }

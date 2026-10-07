@@ -158,22 +158,22 @@ function StatusBadge({ children }: { children: ReactNode }) {
 }
 
 function toneClass(tone: "danger" | "warning" | "primary") {
-  if (tone === "danger") return "rounded-full bg-danger/10 px-2 py-0.5 text-xs font-semibold text-danger"
-  if (tone === "warning") return "rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning"
-  return "rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary"
+  if (tone === "danger") return "rounded-full bg-danger-soft px-2 py-0.5 text-xs font-semibold text-danger"
+  if (tone === "warning") return "rounded-full bg-warning-soft px-2 py-0.5 text-xs font-semibold text-warning"
+  return "rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary"
 }
 
 function notificationToneClass(tone: string) {
-  if (tone === "danger") return "rounded-full bg-danger/10 px-2 py-0.5 text-xs font-semibold text-danger"
-  if (tone === "warning") return "rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning"
-  if (tone === "success") return "rounded-full bg-success/10 px-2 py-0.5 text-xs font-semibold text-success"
-  return "rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary"
+  if (tone === "danger") return "rounded-full bg-danger-soft px-2 py-0.5 text-xs font-semibold text-danger"
+  if (tone === "warning") return "rounded-full bg-warning-soft px-2 py-0.5 text-xs font-semibold text-warning"
+  if (tone === "success") return "rounded-full bg-success-soft px-2 py-0.5 text-xs font-semibold text-success"
+  return "rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary"
 }
 
 function summaryClass(tone: "primary" | "success" | "warning" | "muted") {
-  if (tone === "primary") return "border-primary/30 bg-primary/5 text-primary"
-  if (tone === "success") return "border-success/30 bg-success/5 text-success"
-  if (tone === "warning") return "border-warning/30 bg-warning/5 text-warning"
+  if (tone === "primary") return "border-primary/30 bg-primary-soft text-primary"
+  if (tone === "success") return "border-success/30 bg-success-soft text-success"
+  if (tone === "warning") return "border-warning/30 bg-warning-soft text-warning"
   return "border-border bg-surface text-muted-foreground"
 }
 

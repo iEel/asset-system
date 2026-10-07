@@ -28,7 +28,7 @@ export function ReportHeader({ title, subtitle, actions }: ReportHeaderProps) {
               href={action.href}
               className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition-colors sm:h-10 sm:min-h-0 sm:w-auto ${
                 action.variant === "primary"
-                  ? "bg-primary text-white hover:bg-primary/90"
+                  ? "bg-primary text-white hover:bg-primary-hover"
                   : "border border-border bg-surface text-foreground hover:bg-accent"
               }`}
             >

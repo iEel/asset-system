@@ -13,7 +13,7 @@ export function ReportActiveFilters({ filters, clearAllHref, clearLabel, removeL
   if (filters.length === 0) return null
 
   return (
-    <section data-report-active-filters className="flex flex-wrap items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2">
+    <section data-report-active-filters className="flex flex-wrap items-center gap-2 rounded-md border border-primary/20 bg-primary-soft px-3 py-2">
       {filters.map((filter) => (
         <Link
           key={filter.key}

@@ -67,7 +67,7 @@ export function AuditMarkNotFoundButton({ itemId, variant = "icon" }: { itemId: 
         type="button"
         onClick={openDialog}
         disabled={saving}
-        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm font-semibold text-warning transition-colors hover:bg-warning/15 disabled:opacity-50"
+        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-sm font-semibold text-warning transition-colors hover:bg-warning-soft disabled:opacity-50"
       >
         {icon}
         {t("markNotFound")}
@@ -79,7 +79,7 @@ export function AuditMarkNotFoundButton({ itemId, variant = "icon" }: { itemId: 
         disabled={saving}
         title={t("markNotFound")}
         aria-label={t("markNotFound")}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-warning transition-colors hover:bg-warning/10 disabled:opacity-50"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-warning transition-colors hover:bg-warning-soft disabled:opacity-50"
       >
         {icon}
       </button>
@@ -159,7 +159,7 @@ export function AuditMarkNotFoundButton({ itemId, variant = "icon" }: { itemId: 
               <button
                 type="submit"
                 disabled={saving}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-semibold text-white transition-colors hover:bg-warning/90 disabled:opacity-50"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-semibold text-white transition-colors hover:bg-warning-hover disabled:opacity-50"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
                 {t("notFoundConfirm")}

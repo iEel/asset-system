@@ -57,7 +57,7 @@ export function DataQualityRuleForm({ rules, labels }: DataQualityRuleFormProps)
           type="button"
           onClick={save}
           disabled={saving}
-          className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
+          className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
         >
           <Save className="h-4 w-4" />
           {labels.save}

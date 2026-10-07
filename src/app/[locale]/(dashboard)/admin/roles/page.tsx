@@ -150,11 +150,11 @@ export default async function RolesPage({ params }: RolesPageProps) {
                   <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-foreground">{role._count.userRoles}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-foreground">{role._count.rolePermissions}</td>
                   <td className="whitespace-nowrap px-4 py-3">
-                    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${role.isSystem ? "bg-info/10 text-info" : "bg-muted text-muted-foreground"}`}>
+                    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${role.isSystem ? "bg-info-soft text-info" : "bg-muted text-muted-foreground"}`}>
                       {role.isSystem ? t("systemRole") : t("customRole")}
                     </span>
                     {role.name === "system_admin" ? (
-                      <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
+                      <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-warning-soft px-2 py-1 text-xs font-medium text-warning">
                         <ShieldCheck className="h-3 w-3" />
                         {t("protectedRole")}
                       </span>
@@ -220,7 +220,7 @@ export default async function RolesPage({ params }: RolesPageProps) {
                             {assignedRoles.map((role) => (
                               <span
                                 key={role.id}
-                                className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-1 text-xs font-medium text-success"
+                                className="inline-flex items-center gap-1 rounded-full bg-success-soft px-2 py-1 text-xs font-medium text-success"
                                 title={role.displayName}
                               >
                                 <Check className="h-3 w-3" />
@@ -242,7 +242,7 @@ export default async function RolesPage({ params }: RolesPageProps) {
       {canCreate ? (
         <Link
           href={`/${locale}/admin/roles/new`}
-          className="fixed bottom-6 right-6 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-white shadow-lg transition-colors hover:bg-primary/90"
+          className="fixed bottom-6 right-6 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-white shadow-lg transition-colors hover:bg-primary-hover"
         >
           <Plus className="h-4 w-4" />
           {t("createTitle")}
@@ -278,8 +278,8 @@ function RoleAuditCard({
 }
 
 function roleAuditToneClass(tone: "primary" | "warning" | "danger" | "muted") {
-  if (tone === "primary") return "border-primary/30 bg-primary/5 text-primary"
-  if (tone === "warning") return "border-warning/30 bg-warning/5 text-warning"
-  if (tone === "danger") return "border-danger/30 bg-danger/5 text-danger"
+  if (tone === "primary") return "border-primary/30 bg-primary-soft text-primary"
+  if (tone === "warning") return "border-warning/30 bg-warning-soft text-warning"
+  if (tone === "danger") return "border-danger/30 bg-danger-soft text-danger"
   return "border-border bg-surface text-muted-foreground"
 }

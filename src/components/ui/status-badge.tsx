@@ -46,15 +46,15 @@ export function StatusBadge({
   const resolvedTone = (tone as StatusTone | undefined) ?? getStatusTone(status)
   const toneClass =
     resolvedTone === "danger"
-      ? "bg-danger/10 text-danger"
+      ? "bg-danger-soft text-danger"
       : resolvedTone === "warning"
-        ? "bg-warning/10 text-warning"
+        ? "bg-warning-soft text-warning"
         : resolvedTone === "success"
-          ? "bg-success/10 text-success"
+          ? "bg-success-soft text-success"
           : resolvedTone === "info"
-            ? "bg-info/10 text-info"
+            ? "bg-info-soft text-info"
             : resolvedTone === "primary"
-              ? "bg-primary/10 text-primary"
+              ? "bg-primary-soft text-primary"
               : "bg-muted text-muted-foreground"
 
   return (

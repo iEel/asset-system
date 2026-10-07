@@ -66,7 +66,7 @@ export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; i
         type="button"
         onClick={() => setDialogOpen(true)}
         disabled={saving}
-        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-danger/40 bg-danger/10 px-4 text-sm font-semibold text-danger transition-colors hover:bg-danger/15 disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
+        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-danger/40 bg-danger-soft px-4 text-sm font-semibold text-danger transition-colors hover:bg-danger-soft disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
       >
         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
         {t("cancelRound")}
@@ -112,7 +112,7 @@ export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; i
                 <ImpactItem label={t("cancelImpactOpenActions")} value={impact.openActions} />
                 <ImpactItem label={t("cancelImpactScanHistory")} value={impact.scanHistoryRows} />
               </div>
-              <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+              <div className="rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-sm text-warning">
                 {t("cancelNoRollbackWarning")}
               </div>
               <div>
@@ -144,7 +144,7 @@ export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; i
               <button
                 type="submit"
                 disabled={saving}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-danger px-4 text-sm font-semibold text-white transition-colors hover:bg-danger/90 disabled:opacity-50"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-danger px-4 text-sm font-semibold text-white transition-colors hover:bg-danger-hover disabled:opacity-50"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
                 {t("cancelConfirm")}

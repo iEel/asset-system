@@ -120,7 +120,7 @@ export function SupplierListView({
                   <td className="min-w-56 px-4 py-3 text-muted-foreground">{supplier.email || "-"}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                     {supplier._count.assets > 0 ? (
-                      <Link href={hrefs.assets} aria-label={`${labels.assets}: ${supplier._count.assets}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                      <Link href={hrefs.assets} aria-label={`${labels.assets}: ${supplier._count.assets}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
                         {supplier._count.assets.toLocaleString()}
                       </Link>
                     ) : "0"}
@@ -129,7 +129,7 @@ export function SupplierListView({
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{supplier._count.maintenanceTickets.toLocaleString()}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-1">
-                      <Link href={hrefs.edit} aria-label={`${labels.edit}: ${supplier.name}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                      <Link href={hrefs.edit} aria-label={`${labels.edit}: ${supplier.name}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
                         <Edit className="h-4 w-4" aria-hidden="true" />
                       </Link>
                       <SupplierDeleteButton id={supplier.id} />
@@ -174,7 +174,7 @@ export function SupplierListView({
                 <Link href={hrefs.detail} aria-label={`${labels.view}: ${supplier.name}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
                   <Eye className="h-4 w-4" aria-hidden="true" />
                 </Link>
-                <Link href={hrefs.edit} aria-label={`${labels.edit}: ${supplier.name}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                <Link href={hrefs.edit} aria-label={`${labels.edit}: ${supplier.name}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
                   <Edit className="h-4 w-4" aria-hidden="true" />
                 </Link>
                 <SupplierDeleteButton id={supplier.id} />
@@ -227,7 +227,7 @@ function SupplierPagination({ current, total, basePath, labels }: { current: Sup
       <div>{start}-{end} {labels.of} {total}</div>
       <div className="flex flex-wrap items-center gap-2">
         <span>{labels.rowsPerPage}</span>
-        {[25, 50, 100].map((pageSize) => <Link key={pageSize} href={`${basePath}?${buildSupplierQueryString(current, { pageSize, page: 1 })}`} aria-current={current.pageSize === pageSize ? "page" : undefined} className={`${targetClassName} ${current.pageSize === pageSize ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface hover:bg-accent"}`}>{pageSize}</Link>)}
+        {[25, 50, 100].map((pageSize) => <Link key={pageSize} href={`${basePath}?${buildSupplierQueryString(current, { pageSize, page: 1 })}`} aria-current={current.pageSize === pageSize ? "page" : undefined} className={`${targetClassName} ${current.pageSize === pageSize ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface hover:bg-accent"}`}>{pageSize}</Link>)}
         <span className="w-full sm:w-auto sm:px-2">{labels.page} {current.page} {labels.of} {totalPages}</span>
         {current.page <= 1 ? <span aria-disabled="true" className={`${targetClassName} cursor-not-allowed border-border opacity-50`}>{labels.previous}</span> : <Link href={`${basePath}?${buildSupplierQueryString(current, { page: previousPage })}`} className={`${targetClassName} border-border hover:bg-accent`}>{labels.previous}</Link>}
         {current.page >= totalPages ? <span aria-disabled="true" className={`${targetClassName} cursor-not-allowed border-border opacity-50`}>{labels.next}</span> : <Link href={`${basePath}?${buildSupplierQueryString(current, { page: nextPage })}`} className={`${targetClassName} border-border hover:bg-accent`}>{labels.next}</Link>}

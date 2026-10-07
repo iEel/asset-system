@@ -812,9 +812,9 @@ export function AssetForm({
       </div>
 
       {cloneSource ? (
-        <div className="mb-5 rounded-md border border-warning/30 bg-warning/10 px-4 py-3">
+        <div className="mb-5 rounded-md border border-warning/30 bg-warning-soft px-4 py-3">
           <div className="flex gap-3">
-            <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-warning/15 text-warning">
+            <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-warning-soft text-warning">
               <Copy className="h-4 w-4" aria-hidden="true" />
             </span>
             <div className="min-w-0">
@@ -1011,7 +1011,7 @@ export function AssetForm({
                 <option key={parentAsset.id} value={parentAsset.id}>{parentAsset.label}</option>
               ))}
             </SelectField>
-            <div className="rounded-md border border-info/30 bg-info/10 px-3 py-2 text-sm text-muted-foreground">
+            <div className="rounded-md border border-info/30 bg-info-soft px-3 py-2 text-sm text-muted-foreground">
               <div className="font-medium text-foreground">{t("licenseRemainingSeats")}: {getRemainingLicenseSeats(values.licenseTotalSeats, values.licenseUsedSeats)}</div>
               <p className="mt-1 text-xs">{t("licenseManagementHelp")}</p>
             </div>
@@ -1057,7 +1057,7 @@ export function AssetForm({
             </select>
             {selectedStatus?.description ? <p className="mt-1 text-xs text-muted-foreground">{selectedStatus.description}</p> : null}
             {isProtectedStatusChange && (
-              <div className="mt-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">
+              <div className="mt-2 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-xs text-warning">
                 <div className="flex gap-2">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   <div className="min-w-0">
@@ -1170,7 +1170,7 @@ export function AssetForm({
           <div className="md:col-span-2">
             <div className="rounded-md border border-border bg-background p-4">
               <div className="mb-3 flex items-start gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">
                   <FileText className="h-4 w-4" />
                 </span>
                 <div>
@@ -1278,7 +1278,7 @@ export function AssetForm({
                       <button
                         type="button"
                         onClick={() => removePurchaseDocument(document.id)}
-                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 sm:h-8 sm:w-8"
+                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 sm:h-8 sm:w-8"
                         aria-label={t("removePurchaseDocument")}
                         title={t("removePurchaseDocument")}
                       >
@@ -1295,7 +1295,7 @@ export function AssetForm({
         <Section title={t("initialAssetPhotos")}>
           <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
             <div className="mb-3 flex items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">
                 <Camera className="h-5 w-5" />
               </span>
               <div>
@@ -1326,7 +1326,7 @@ export function AssetForm({
                         className={[
                           "inline-flex min-h-9 items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors",
                           isSelected
-                            ? "border-primary bg-primary/10 text-primary"
+                            ? "border-primary bg-primary-soft text-primary"
                             : "border-border bg-background text-foreground hover:bg-accent",
                         ].join(" ")}
                         >
@@ -1412,7 +1412,7 @@ export function AssetForm({
                     <button
                       type="button"
                       onClick={() => removeAssetPhoto(photo.id)}
-                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 sm:h-8 sm:w-8"
+                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 sm:h-8 sm:w-8"
                       aria-label={t("removeAssetPhoto")}
                       title={t("removeAssetPhoto")}
                     >
@@ -1504,7 +1504,7 @@ export function AssetForm({
               <button
                 type="submit"
                 disabled={saving || isProtectedStatusChange || duplicateState.checking || duplicateState.assetTagExists || duplicateState.serialNumberExists}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:w-auto"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 {tCommon("save")}
@@ -1651,7 +1651,7 @@ function CustomFieldRowsEditor({
                 onClick={() => removeRow(row.id)}
                 aria-label={labels.remove}
                 title={labels.remove}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 sm:h-10 sm:w-10"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-danger-soft hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 sm:h-10 sm:w-10"
               >
                 <Trash2 className="h-4 w-4" />
               </button>

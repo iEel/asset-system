@@ -1256,7 +1256,7 @@ export function SystemSettingsForm({
             <button
               type="button"
               onClick={() => openPrefixEditor()}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover sm:h-10 sm:min-h-0"
             >
               <Plus className="h-4 w-4" />
               {labels.addPrefix}
@@ -1480,7 +1480,7 @@ export function SystemSettingsForm({
                   type="button"
                   onClick={applyPrefixEditor}
                   disabled={!canApplyPrefixEditor}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:min-h-0"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:min-h-0"
                 >
                   <Save className="h-4 w-4" />
                   {labels.savePrefixGroup}
@@ -1845,7 +1845,7 @@ export function SystemSettingsForm({
                 />
                 <p className="text-xs leading-relaxed text-muted-foreground">{labels.ldapDefaultRoleHelp}</p>
                 {getValue("ldap_default_role") && !defaultRoleOptions.some((option) => option.id === getValue("ldap_default_role")) ? (
-                  <p className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs font-medium text-warning">
+                  <p className="rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-xs font-medium text-warning">
                     {labels.ldapDefaultRoleMissing.replace("{role}", getValue("ldap_default_role"))}
                   </p>
                 ) : null}
@@ -2005,14 +2005,14 @@ export function SystemSettingsForm({
               type="button"
               onClick={() => handleLdapSync("apply")}
               disabled={syncingLdap !== null || !syncPreview}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
             >
               {syncingLdap === "apply" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {labels.ldapSyncApply}
             </button>
           </div>
           {syncError ? (
-            <div className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+            <div className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
               {syncError}
             </div>
           ) : null}
@@ -2025,7 +2025,7 @@ export function SystemSettingsForm({
 
       {activeTab === "advanced" && generalSettings.length > 0 ? (
         <details className="overflow-hidden rounded-lg border border-warning/30 bg-surface shadow-sm">
-          <summary className="cursor-pointer list-none border-b border-warning/20 bg-warning/10 px-4 py-4">
+          <summary className="cursor-pointer list-none border-b border-warning/20 bg-warning-soft px-4 py-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-base font-semibold text-foreground">{labels.advancedWarningTitle}</h2>
@@ -2114,7 +2114,7 @@ export function SystemSettingsForm({
           <button
             type="submit"
             disabled={saving || changedCount === 0}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {labels.save}
@@ -2320,7 +2320,7 @@ function CategoryTransferRow({
         <span className="block truncate text-xs text-muted-foreground">{category.code}</span>
       </span>
       {badge ? (
-        <span className="shrink-0 rounded-full border border-warning/30 bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
+        <span className="shrink-0 rounded-full border border-warning/30 bg-warning-soft px-2 py-1 text-xs font-medium text-warning">
           {badge}
         </span>
       ) : null}
@@ -2345,7 +2345,7 @@ function Field({ label, htmlFor, children }: { label: string; htmlFor: string; c
 
 function ValidationMessage({ message }: { message: string }) {
   return (
-    <p className="my-2 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">
+    <p className="my-2 rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm font-medium text-danger">
       {message}
     </p>
   )
@@ -2418,7 +2418,7 @@ function SyncPreviewPanel({
         <Metric label={labels.ldapSyncDeactivates} value={preview.deactivates.length} />
       </div>
       {preview.applied ? (
-        <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-3">
+        <div className="mt-3 rounded-md border border-primary/30 bg-primary-soft px-3 py-3">
           <div className="text-sm font-medium text-foreground">{labels.ldapSyncAppliedTitle}</div>
           <div className="mt-2 grid gap-2 md:grid-cols-4">
           <Metric label={labels.ldapSyncAppliedCreated} value={preview.applied.created} />
@@ -2429,7 +2429,7 @@ function SyncPreviewPanel({
       </div>
       ) : null}
       {preview.blockers.length > 0 ? (
-        <div className="mt-3 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+        <div className="mt-3 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-sm text-warning">
           <div className="font-medium">{labels.ldapSyncBlockers}</div>
           <ul className="mt-1 list-disc space-y-1 pl-5">
             {preview.blockers.map((blocker) => (

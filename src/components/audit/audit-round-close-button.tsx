@@ -60,7 +60,7 @@ export function AuditRoundCloseButton({
           type="button"
           onClick={closeRound}
           disabled={disabled || saving}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
           {t("closeRound")}
@@ -69,7 +69,7 @@ export function AuditRoundCloseButton({
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         {checklist.map((item) => {
           const cardClassName = `rounded-md border px-3 py-3 ${
-            item.ok ? "border-success/30 bg-success/10 text-success" : "border-warning/30 bg-warning/10 text-warning"
+            item.ok ? "border-success/30 bg-success-soft text-success" : "border-warning/30 bg-warning-soft text-warning"
           }`
           const content = (
             <div className="flex items-start gap-2">
@@ -83,7 +83,7 @@ export function AuditRoundCloseButton({
           )
 
           return item.href && item.value > 0 ? (
-            <Link key={item.label} href={item.href} className={`${cardClassName} transition-colors hover:bg-warning/20`}>
+            <Link key={item.label} href={item.href} className={`${cardClassName} transition-colors hover:bg-warning-soft`}>
               {content}
             </Link>
           ) : (

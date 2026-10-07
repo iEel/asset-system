@@ -114,7 +114,7 @@ export function DisposalAttachments({
                   {t("download")}
                 </a>
                 {canManage ? (
-                  <button type="button" onClick={() => handleDelete(attachment.id)} disabled={deletingId === attachment.id} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 disabled:opacity-50 sm:h-8 sm:min-h-0 sm:w-8 sm:min-w-0" aria-label={tCommon("delete")} title={tCommon("delete")}>
+                  <button type="button" onClick={() => handleDelete(attachment.id)} disabled={deletingId === attachment.id} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft disabled:opacity-50 sm:h-8 sm:min-h-0 sm:w-8 sm:min-w-0" aria-label={tCommon("delete")} title={tCommon("delete")}>
                     {deletingId === attachment.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                   </button>
                 ) : null}

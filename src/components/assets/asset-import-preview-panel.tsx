@@ -241,7 +241,7 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
       ) : null}
 
       {preview?.mapping ? (
-        <div className="mt-4 rounded-md border border-primary/20 bg-primary/5 px-3 py-3 text-sm">
+        <div className="mt-4 rounded-md border border-primary/20 bg-primary-soft px-3 py-3 text-sm">
           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="font-semibold text-foreground">{labels.mappingTitle}</div>
@@ -268,7 +268,7 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
       ) : null}
 
       {preview?.batch ? (
-        <div className="mt-4 rounded-md border border-info/30 bg-info/5 px-3 py-3 text-sm">
+        <div className="mt-4 rounded-md border border-info/30 bg-info-soft px-3 py-3 text-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="font-semibold text-foreground">{labels.importBatchTitle}</div>
@@ -293,14 +293,14 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
       ) : null}
 
       {error && (
-        <div className="mt-4 flex items-start gap-2 rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
+        <div className="mt-4 flex items-start gap-2 rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
           <AlertCircle className="mt-0.5 h-4 w-4 flex-none" />
           <span>{error}</span>
         </div>
       )}
 
       {success && (
-        <div className="mt-4 flex items-start gap-2 rounded-md border border-success/30 bg-success/5 px-3 py-2 text-sm text-success">
+        <div className="mt-4 flex items-start gap-2 rounded-md border border-success/30 bg-success-soft px-3 py-2 text-sm text-success">
           <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none" />
           <span>{success}</span>
         </div>
@@ -314,7 +314,7 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
             <SummaryItem label={labels.previewErrors} value={preview.summary.errorRows} tone="error" />
           </div>
           {issueSummary.length > 0 ? (
-            <div className="border-t border-border bg-warning/5 px-4 py-3">
+            <div className="border-t border-border bg-warning-soft px-4 py-3">
               <div className="flex items-start gap-2">
                 <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
                 <div>
@@ -324,7 +324,7 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {issueSummary.map((issue) => (
-                  <span key={issue.message} className="rounded-full bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
+                  <span key={issue.message} className="rounded-full bg-warning-soft px-2.5 py-1 text-xs font-medium text-warning">
                     {issue.message} · {issue.count} {labels.affectedRows}
                   </span>
                 ))}
@@ -360,8 +360,8 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
                       <span
                         className={
                           row.status === "ready"
-                            ? "inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-1 text-xs font-medium text-success"
-                            : "inline-flex items-center gap-1 rounded-full bg-danger/10 px-2 py-1 text-xs font-medium text-danger"
+                            ? "inline-flex items-center gap-1 rounded-full bg-success-soft px-2 py-1 text-xs font-medium text-success"
+                            : "inline-flex items-center gap-1 rounded-full bg-danger-soft px-2 py-1 text-xs font-medium text-danger"
                         }
                       >
                         {row.status === "ready" ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
@@ -386,7 +386,7 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
               type="button"
               onClick={() => void confirmImport()}
               disabled={isImporting || preview.summary.readyRows === 0}
-              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isImporting ? labels.importing : labels.confirmImport}
             </button>
@@ -419,7 +419,7 @@ function WizardStep({
     <div
       className={[
         "rounded-md border px-3 py-2 text-sm",
-        isCurrent ? "border-primary bg-primary/5 text-primary" : isDone ? "border-success/30 bg-success/5 text-success" : "border-border bg-background text-muted-foreground",
+        isCurrent ? "border-primary bg-primary-soft text-primary" : isDone ? "border-success/30 bg-success-soft text-success" : "border-border bg-background text-muted-foreground",
       ].join(" ")}
     >
       <div className="flex items-center gap-2">
@@ -468,9 +468,9 @@ function SummaryPill({ label, value }: { label: string; value: string }) {
 }
 
 function getBatchStatusClass(status: AssetImportBatchStatus) {
-  if (status === "ready") return "bg-success/10 text-success"
-  if (status === "partial") return "bg-warning/10 text-warning"
-  if (status === "blocked") return "bg-danger/10 text-danger"
+  if (status === "ready") return "bg-success-soft text-success"
+  if (status === "partial") return "bg-warning-soft text-warning"
+  if (status === "blocked") return "bg-danger-soft text-danger"
   return "bg-muted text-muted-foreground"
 }
 

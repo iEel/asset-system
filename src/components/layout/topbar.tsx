@@ -192,9 +192,9 @@ export function Topbar({
                       </div>
                       <span className={cn(
                         "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
-                        item.tone === "danger" && "bg-danger/10 text-danger",
-                        item.tone === "warning" && "bg-warning/10 text-warning",
-                        item.tone === "primary" && "bg-primary/10 text-primary"
+                        item.tone === "danger" && "bg-danger-soft text-danger",
+                        item.tone === "warning" && "bg-warning-soft text-warning",
+                        item.tone === "primary" && "bg-primary-soft text-primary"
                       )}>
                         {item.count}
                       </span>

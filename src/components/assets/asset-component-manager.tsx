@@ -272,7 +272,7 @@ export function AssetComponentManager({
           {installStep === "identify" ? (
             <div className="space-y-3">
               {lastInstalledAssetTag ? (
-                <div className="flex flex-col gap-3 rounded-md border border-success/20 bg-success/10 p-3 text-sm text-success-foreground sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 rounded-md border border-success/20 bg-success-soft p-3 text-sm text-success sm:flex-row sm:items-center sm:justify-between">
                   <span className="flex min-w-0 items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
                     <span className="break-words">{labels.installSuccess}: {lastInstalledAssetTag}</span>
@@ -280,7 +280,7 @@ export function AssetComponentManager({
                   <button
                     type="button"
                     onClick={() => setLastInstalledAssetTag(null)}
-                    className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-success/30 bg-surface px-3 text-sm font-medium text-foreground hover:bg-success/10 sm:h-9 sm:min-h-0"
+                    className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-success/30 bg-surface px-3 text-sm font-medium text-foreground hover:bg-success-soft sm:h-9 sm:min-h-0"
                   >
                     {labels.addAnother}
                   </button>
@@ -371,7 +371,7 @@ export function AssetComponentManager({
                 <button type="button" onClick={resetInstallFlow} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground hover:bg-accent">
                   {labels.cancel}
                 </button>
-                <button type="button" onClick={openReview} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90">
+                <button type="button" onClick={openReview} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover">
                   <CheckCircle2 className="h-4 w-4" />
                   {labels.continueReview}
                 </button>
@@ -381,7 +381,7 @@ export function AssetComponentManager({
 
           {installStep === "review" && selectedComponent ? (
             <div className="space-y-4">
-              <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
+              <div className="rounded-md border border-primary/20 bg-primary-soft p-4">
                 <h3 className="text-sm font-semibold text-foreground">{labels.reviewTitle}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{labels.reviewHelp}</p>
                 <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
@@ -397,7 +397,7 @@ export function AssetComponentManager({
                 <button type="button" disabled={saving} onClick={() => setInstallStep("details")} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50">
                   {labels.cancel}
                 </button>
-                <button type="button" disabled={saving} onClick={() => void installComponent()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50">
+                <button type="button" disabled={saving} onClick={() => void installComponent()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50">
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
                   {saving ? labels.installing : labels.confirmInstall}
                 </button>
@@ -482,7 +482,7 @@ function CandidateList({
           key={candidate.id}
           type="button"
           onClick={() => onSelect(candidate)}
-          className={`flex min-h-11 w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors hover:bg-accent ${selectedId === candidate.id ? "bg-primary/5" : ""}`}
+          className={`flex min-h-11 w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors hover:bg-accent ${selectedId === candidate.id ? "bg-primary-soft" : ""}`}
         >
           <span className="min-w-0">
             <span className="block break-words font-mono text-sm font-semibold text-foreground">{candidate.assetTag}</span>
@@ -497,7 +497,7 @@ function CandidateList({
 
 function SelectedComponent({ component, label, serialLabel }: { component: AssetOption; label: string; serialLabel: string }) {
   return (
-    <div className="rounded-md border border-success/30 bg-success/10 p-3">
+    <div className="rounded-md border border-success/30 bg-success-soft p-3">
       <div className="text-xs font-semibold uppercase tracking-normal text-success">{label}</div>
       <div className="mt-1 font-mono text-sm font-semibold text-foreground">{component.assetTag}</div>
       <div className="mt-1 text-sm text-muted-foreground">{component.name}</div>
@@ -520,7 +520,7 @@ function ComponentRow({ locale, component, labels, onRemove }: { locale: string;
         </div>
       </div>
       {onRemove ? (
-        <button type="button" onClick={onRemove} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-danger/30 px-3 text-sm font-medium text-danger hover:bg-danger/10 sm:min-h-0 sm:h-9">
+        <button type="button" onClick={onRemove} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-danger/30 px-3 text-sm font-medium text-danger hover:bg-danger-soft sm:min-h-0 sm:h-9">
           <Trash2 className="h-4 w-4" />
           {labels.remove}
         </button>
@@ -581,7 +581,7 @@ function ComponentRemovalDialog({
         </div>
         <div className="grid gap-2 border-t border-border bg-muted/20 px-4 py-4 sm:grid-cols-2">
           <button type="button" disabled={busy} onClick={onClose} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50">{labels.cancel}</button>
-          <button type="button" disabled={busy} onClick={() => onConfirm(reason.trim(), removeEvidence)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-danger px-4 text-sm font-semibold text-white hover:bg-danger/90 disabled:opacity-50">
+          <button type="button" disabled={busy} onClick={() => onConfirm(reason.trim(), removeEvidence)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-danger px-4 text-sm font-semibold text-white hover:bg-danger-hover disabled:opacity-50">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             {busy ? labels.removing : labels.confirmRemove}
           </button>

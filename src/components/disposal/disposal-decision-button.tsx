@@ -247,7 +247,7 @@ function DecisionDialog({
           </div>
           <div className="flex flex-col justify-end gap-2 sm:flex-row md:col-span-2">
             <button type="button" onClick={closeDialog} disabled={saving} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50 sm:h-10 sm:min-h-0">{tCommon("cancel")}</button>
-            <button type="submit" disabled={saving || (rejectionReasonRequired && !values.approvalRemark.trim())} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:h-10 sm:min-h-0">
+            <button type="submit" disabled={saving || (rejectionReasonRequired && !values.approvalRemark.trim())} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:h-10 sm:min-h-0">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               {t("saveDecision")}
             </button>

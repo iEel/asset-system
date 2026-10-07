@@ -253,7 +253,7 @@ function AuditPendingMobileCard({
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         <Link
           href={scanHref}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 sm:col-span-1"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover sm:col-span-1"
         >
           <ScanLine className="h-4 w-4" />
           {labels.scanPendingAsset}

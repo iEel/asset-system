@@ -82,7 +82,7 @@ export function ReportPresetControls({ locale, currentQuery, labels }: ReportPre
         <button
           type="button"
           onClick={savePreset}
-          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-10 sm:min-h-0"
+          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:h-10 sm:min-h-0"
         >
           <BookmarkPlus className="h-4 w-4" />
           {labels.saveCurrentPreset}
@@ -101,7 +101,7 @@ export function ReportPresetControls({ locale, currentQuery, labels }: ReportPre
               <button
                 type="button"
                 onClick={() => deletePreset(preset.id)}
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-8 sm:w-8"
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-danger-soft hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-8 sm:w-8"
                 aria-label={`${labels.deletePreset}: ${preset.name}`}
               >
                 <Trash2 className="h-4 w-4" />

@@ -81,7 +81,7 @@ export function AuditFindingsBatchActions({ findings }: { findings: BatchFinding
             type="button"
             onClick={() => openReviewDialog("approve")}
             disabled={selectedCount === 0 || reviewing !== null || reviewDialogAction !== null}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-success px-3 text-sm font-medium text-white transition-colors hover:bg-success/90 disabled:opacity-50 sm:h-9 sm:min-h-0 sm:w-auto"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-success px-3 text-sm font-medium text-white transition-colors hover:bg-success-hover disabled:opacity-50 sm:h-9 sm:min-h-0 sm:w-auto"
           >
             {reviewing === "approve" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
             {t("approveSelected")}
@@ -90,7 +90,7 @@ export function AuditFindingsBatchActions({ findings }: { findings: BatchFinding
             type="button"
             onClick={() => openReviewDialog("reject")}
             disabled={selectedCount === 0 || reviewing !== null || reviewDialogAction !== null}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-danger px-3 text-sm font-medium text-white transition-colors hover:bg-danger/90 disabled:opacity-50 sm:h-9 sm:min-h-0 sm:w-auto"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-danger px-3 text-sm font-medium text-white transition-colors hover:bg-danger-hover disabled:opacity-50 sm:h-9 sm:min-h-0 sm:w-auto"
           >
             {reviewing === "reject" ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
             {t("rejectSelected")}

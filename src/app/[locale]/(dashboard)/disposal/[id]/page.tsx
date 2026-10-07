@@ -214,9 +214,9 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
         }}
       />
       {disposalRequest.batch ? (
-        <div className="flex flex-col gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 rounded-lg border border-primary/20 bg-primary-soft px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
           <div><span className="font-medium text-foreground">{t("sourceBatch")}</span><span className="ml-2 text-muted-foreground">{disposalRequest.batch.batchNo}</span></div>
-          <Link href={`/${locale}/disposal/batches/${disposalRequest.batch.id}`} className="inline-flex min-h-10 items-center justify-center rounded-md border border-primary/30 bg-surface px-3 font-medium text-primary hover:bg-primary/10">{t("openBatch")}</Link>
+          <Link href={`/${locale}/disposal/batches/${disposalRequest.batch.id}`} className="inline-flex min-h-10 items-center justify-center rounded-md border border-primary/30 bg-surface px-3 font-medium text-primary hover:bg-primary-soft">{t("openBatch")}</Link>
         </div>
       ) : null}
       <DisposalMobileActionBar
@@ -283,7 +283,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
                 <TextBlock label={t("executionRemark")} value={disposalRequest.executionRemark} />
               </div>
               {disposalRequest.evidenceExceptionReason ? (
-                <section aria-label={t("historicalEvidenceSummary")} className="mt-5 rounded-lg border border-warning/40 bg-warning/10 p-4">
+                <section aria-label={t("historicalEvidenceSummary")} className="mt-5 rounded-lg border border-warning/40 bg-warning-soft p-4">
                   <div className="flex items-start gap-3">
                     <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
                     <div>

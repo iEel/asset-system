@@ -198,7 +198,7 @@ function FilterChip({
       href={href}
       className={`inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors ${
         active
-          ? "border-primary bg-primary/10 text-primary"
+          ? "border-primary bg-primary-soft text-primary"
           : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
       }`}
     >
@@ -233,7 +233,7 @@ function ApprovalInboxRow({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${pillClass(item.tone)}`}>{moduleLabel(item.module, locale)}</span>
-              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${ageStatus.isOverdue ? "bg-danger/10 text-danger" : "bg-muted text-muted-foreground"}`}>
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${ageStatus.isOverdue ? "bg-danger-soft text-danger" : "bg-muted text-muted-foreground"}`}>
                 {ageStatus.isOverdue ? labels.overdueDays(ageStatus.daysOverdue) : labels.waitingDays(ageStatus.ageDays)}
               </span>
               <h3 className="font-semibold text-foreground">{item.title}</h3>
@@ -287,7 +287,7 @@ function PolicyBadge({
   disabledLabel: string
 }) {
   return (
-    <div className={`rounded-md border px-3 py-2 ${enabled ? "border-success/30 bg-success/5" : "border-border bg-background"}`}>
+    <div className={`rounded-md border px-3 py-2 ${enabled ? "border-success/30 bg-success-soft" : "border-border bg-background"}`}>
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className={`font-semibold ${enabled ? "text-success" : "text-muted-foreground"}`}>
         {enabled ? enabledLabel : disabledLabel}
@@ -376,34 +376,34 @@ function moduleLabel(module: ApprovalInboxItem["module"], locale: string) {
 }
 
 function toneClass(tone: ApprovalInboxItem["tone"]) {
-  if (tone === "danger") return "border-danger/30 bg-danger/5 text-danger"
-  if (tone === "warning") return "border-warning/30 bg-warning/5 text-warning"
-  return "border-primary/30 bg-primary/5 text-primary"
+  if (tone === "danger") return "border-danger/30 bg-danger-soft text-danger"
+  if (tone === "warning") return "border-warning/30 bg-warning-soft text-warning"
+  return "border-primary/30 bg-primary-soft text-primary"
 }
 
 function pillClass(tone: ApprovalInboxItem["tone"]) {
-  if (tone === "danger") return "bg-danger/10 text-danger"
-  if (tone === "warning") return "bg-warning/10 text-warning"
-  return "bg-primary/10 text-primary"
+  if (tone === "danger") return "bg-danger-soft text-danger"
+  if (tone === "warning") return "bg-warning-soft text-warning"
+  return "bg-primary-soft text-primary"
 }
 
 function summaryClass(tone: "danger" | "warning" | "success" | "muted") {
-  if (tone === "danger") return "border-danger/30 bg-danger/5 text-danger"
-  if (tone === "warning") return "border-warning/30 bg-warning/5 text-warning"
-  if (tone === "success") return "border-success/30 bg-success/5 text-success"
+  if (tone === "danger") return "border-danger/30 bg-danger-soft text-danger"
+  if (tone === "warning") return "border-warning/30 bg-warning-soft text-warning"
+  if (tone === "success") return "border-success/30 bg-success-soft text-success"
   return "border-border bg-surface text-muted-foreground"
 }
 
 function matrixCardClass(status: ApprovalPermissionMatrixItem["status"]) {
-  if (status === "missing") return "border-danger/30 bg-danger/5"
-  if (status === "thin") return "border-warning/30 bg-warning/5"
-  return "border-success/30 bg-success/5"
+  if (status === "missing") return "border-danger/30 bg-danger-soft"
+  if (status === "thin") return "border-warning/30 bg-warning-soft"
+  return "border-success/30 bg-success-soft"
 }
 
 function matrixStatusClass(status: ApprovalPermissionMatrixItem["status"]) {
-  if (status === "missing") return "bg-danger/10 text-danger"
-  if (status === "thin") return "bg-warning/10 text-warning"
-  return "bg-success/10 text-success"
+  if (status === "missing") return "bg-danger-soft text-danger"
+  if (status === "thin") return "bg-warning-soft text-warning"
+  return "bg-success-soft text-success"
 }
 
 function matrixStatusIcon(status: ApprovalPermissionMatrixItem["status"]) {

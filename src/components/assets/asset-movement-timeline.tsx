@@ -175,10 +175,10 @@ function getMovementDotClass(tone: MovementTone) {
 function getMovementBadgeClass(tone: MovementTone) {
   const map: Record<MovementTone, string> = {
     neutral: "bg-muted text-muted-foreground",
-    success: "bg-success/10 text-success",
-    info: "bg-info/10 text-info",
-    warning: "bg-warning/10 text-warning",
-    danger: "bg-danger/10 text-danger",
+    success: "bg-success-soft text-success",
+    info: "bg-info-soft text-info",
+    warning: "bg-warning-soft text-warning",
+    danger: "bg-danger-soft text-danger",
   }
 
   return map[tone]

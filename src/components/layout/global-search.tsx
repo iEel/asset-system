@@ -190,7 +190,7 @@ export function GlobalSearch() {
                       selected ? "bg-accent" : "hover:bg-accent/60",
                     ].join(" ")}
                   >
-                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">
                       {getResultIcon(result.type)}
                     </span>
                     <span className="min-w-0 flex-1">

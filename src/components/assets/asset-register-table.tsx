@@ -458,7 +458,7 @@ export function AssetRegisterTable({
                         type="button"
                         onClick={() => applyColumnPreset(preset)}
                         className={`rounded px-2 py-1.5 text-left text-xs font-medium transition-colors ${
-                          active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                          active ? "bg-primary-soft text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
                         }`}
                       >
                         {columnPresetLabel(preset, labels)}
@@ -501,7 +501,7 @@ export function AssetRegisterTable({
         </div>
       </div>
       {selectedAssets.length > 0 ? (
-        <div className="flex flex-col gap-3 border-b border-border bg-primary/5 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 border-b border-border bg-primary-soft px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="text-sm font-semibold text-foreground">{labels.bulkActions}</div>
             <div className="mt-0.5 text-sm text-muted-foreground">
@@ -512,7 +512,7 @@ export function AssetRegisterTable({
             <button
               type="button"
               onClick={printSelectedLabels}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:h-9 sm:min-h-0 sm:w-auto"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:h-9 sm:min-h-0 sm:w-auto"
             >
               <Printer className="h-4 w-4" />
               {labels.printSelectedLabels}
@@ -611,7 +611,7 @@ export function AssetRegisterTable({
                 </Link>
                 <Link
                   href={buildAssetEditHref(asset.id)}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary-soft px-3 text-sm font-medium text-primary transition-colors hover:bg-primary-soft"
                 >
                   <Edit className="h-4 w-4" />
                   {labels.edit}
@@ -813,7 +813,7 @@ export function AssetRegisterTable({
                       <Link
                         href={buildAssetEditHref(asset.id)}
                         title={labels.edit}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary-soft"
                       >
                         <Edit className="h-4 w-4" />
                       </Link>
@@ -929,7 +929,7 @@ export function AssetRegisterTable({
                 <button
                   type="submit"
                   disabled={bulkSaving || (!bulkForm.toLocationId && !bulkForm.toCustodianId)}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {bulkSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   {labels.applyBulkUpdate}
@@ -1024,12 +1024,12 @@ function HeaderWithHelp({
 function StatusPill({ label, value }: { label: string; value?: string | null }) {
   const tone = getAssetStateTone(value)
   const toneClasses = {
-    success: "bg-success/10 text-success-foreground",
-    warning: "bg-warning/10 text-warning-foreground",
-    danger: "bg-danger/10 text-danger-foreground",
+    success: "bg-success-soft text-success",
+    warning: "bg-warning-soft text-warning",
+    danger: "bg-danger-soft text-danger",
     neutral: "bg-muted text-muted-foreground",
     muted: "bg-muted text-muted-foreground",
-    info: "bg-info/10 text-info-foreground",
+    info: "bg-info-soft text-info",
   }[tone]
 
   return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${toneClasses}`}>{label}</span>
@@ -1050,10 +1050,10 @@ function OwnershipTypePill({ value, label }: { value: string; label: string }) {
 }
 
 function ownershipTypeTone(value: string) {
-  if (value === "software_license") return "bg-info/10 text-info"
-  if (value === "stock") return "bg-warning/10 text-warning"
-  if (value === "shared") return "bg-success/10 text-success"
-  if (value === "component") return "bg-primary/10 text-primary"
+  if (value === "software_license") return "bg-info-soft text-info"
+  if (value === "stock") return "bg-warning-soft text-warning"
+  if (value === "shared") return "bg-success-soft text-success"
+  if (value === "component") return "bg-primary-soft text-primary"
   return "bg-muted text-muted-foreground"
 }
 

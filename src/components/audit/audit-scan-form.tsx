@@ -261,7 +261,7 @@ export function AuditScanForm({
   const isDetailedScanVisible = Boolean(selectedItem && (!fastMode || showDetailedFields))
   const showMobileQuickActionBar = Boolean(selectedItem && fastMode && !showDetailedFields)
   const submitBarVisibility = selectedItem ? (showMobileQuickActionBar ? "hidden md:flex" : "flex") : "hidden md:flex"
-  const mobileMatchedActionClassName = "col-span-3 inline-flex min-h-14 items-center justify-center gap-2 rounded-md bg-success px-3 py-2 text-base font-semibold text-white transition-colors hover:bg-success/90 disabled:opacity-50"
+  const mobileMatchedActionClassName = "col-span-3 inline-flex min-h-14 items-center justify-center gap-2 rounded-md bg-success px-3 py-2 text-base font-semibold text-white transition-colors hover:bg-success-hover disabled:opacity-50"
   const mobileSecondaryActionClassName = "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-2 py-2 text-xs font-medium leading-tight text-foreground transition-colors hover:bg-accent"
   const systemDataRows = selectedItem
     ? buildSystemDataRows(
@@ -309,7 +309,7 @@ export function AuditScanForm({
   const shouldShowCameraUtilities = Boolean(lastDecodedText) || hasCameraIssue
   const shouldShowCameraPanel = scannerRunning || scannerLoading || shouldShowCameraUtilities
   const scanEntryPanelClass = !selectedItem && !scanFeedback
-    ? "border-primary/30 bg-primary/5 shadow-sm ring-1 ring-primary/10"
+    ? "border-primary/30 bg-primary-soft shadow-sm ring-1 ring-primary/10"
     : "border-border bg-background"
   const showFallbackPicker = assetPickerExpanded
   const shouldShowRemarkField = Boolean(selectedItem || outOfScopeAsset)
@@ -1219,7 +1219,7 @@ export function AuditScanForm({
               {t("pendingQueue")}: <span className="font-semibold text-foreground">{queuePendingCount.toLocaleString("th-TH")}</span>
             </span>
             {hasAuditContext ? (
-              <span className="rounded-full border border-primary/30 bg-primary/5 px-2 py-1 font-medium text-primary">
+              <span className="rounded-full border border-primary/30 bg-primary-soft px-2 py-1 font-medium text-primary">
                 {t("walkingContextActive")}
               </span>
             ) : null}
@@ -1309,7 +1309,7 @@ export function AuditScanForm({
           )}
 
           {editingScanResult ? (
-            <div className="md:col-span-2 rounded-md border border-info/30 bg-info/10 p-3 text-sm">
+            <div className="md:col-span-2 rounded-md border border-info/30 bg-info-soft p-3 text-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 font-semibold text-foreground">
@@ -1358,7 +1358,7 @@ export function AuditScanForm({
                   className={`inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md border px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 ${
                     scannerRunning
                       ? "border-border bg-surface text-foreground hover:bg-accent"
-                      : "border-primary bg-primary text-white hover:bg-primary/90"
+                      : "border-primary bg-primary text-white hover:bg-primary-hover"
                   }`}
                 >
                   {scannerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : scannerRunning ? <X className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
@@ -1420,7 +1420,7 @@ export function AuditScanForm({
                       title={t(torchEnabled ? "torchOff" : "torchOn")}
                       className={`absolute right-3 top-3 z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-md border px-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60 ${
                         torchEnabled
-                          ? "border-warning/50 bg-warning text-white hover:bg-warning/90"
+                          ? "border-warning/50 bg-warning text-white hover:bg-warning-hover"
                           : "border-white/50 bg-slate-950/70 text-white hover:bg-slate-950/85"
                       }`}
                     >
@@ -1444,7 +1444,7 @@ export function AuditScanForm({
                       </div>
                     ) : null}
                     {hasCameraIssue ? (
-                      <div className="mt-3 rounded-md border border-warning/30 bg-warning/10 p-2 text-xs text-warning">
+                      <div className="mt-3 rounded-md border border-warning/30 bg-warning-soft p-2 text-xs text-warning">
                         <div>{cameraErrorText || t("cameraUnsupported")}</div>
                         <div className="mt-1 text-muted-foreground">{t("cameraHelp")}</div>
                       </div>
@@ -1456,13 +1456,13 @@ export function AuditScanForm({
           </div>
 
           {selectedItem && (
-            <div className="md:col-span-2 rounded-md border border-primary/25 bg-primary/5 p-4">
+            <div className="md:col-span-2 rounded-md border border-primary/25 bg-primary-soft p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="text-xs font-semibold text-primary">{t("currentTarget")}</div>
                     {scanTargetLocked ? (
-                      <span className="inline-flex min-h-7 items-center rounded-md border border-success/30 bg-success/10 px-2 py-1 text-xs font-semibold text-success">
+                      <span className="inline-flex min-h-7 items-center rounded-md border border-success/30 bg-success-soft px-2 py-1 text-xs font-semibold text-success">
                         {t("targetLockedBadge")}
                       </span>
                     ) : null}
@@ -1491,7 +1491,7 @@ export function AuditScanForm({
               {selectedItem.installedIn.length > 0 ? (
                 <div className="mt-3 grid gap-2">
                   {selectedItem.installedIn.map((parent) => (
-                    <div key={parent.parentAssetId} className="flex flex-col gap-2 rounded-md border border-info/30 bg-info/10 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div key={parent.parentAssetId} className="flex flex-col gap-2 rounded-md border border-info/30 bg-info-soft p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex min-w-0 items-start gap-2">
                         <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-info" />
                         <div className="min-w-0">
@@ -1511,7 +1511,7 @@ export function AuditScanForm({
           )}
 
           {selectedItem && fastMode && !showDetailedFields && (
-            <div className="hidden rounded-md border border-success/30 bg-success/10 p-4 md:col-span-2 md:block">
+            <div className="hidden rounded-md border border-success/30 bg-success-soft p-4 md:col-span-2 md:block">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <div className="text-base font-semibold text-foreground">{t("auditDecisionTitle")}</div>
@@ -1522,7 +1522,7 @@ export function AuditScanForm({
                     type="button"
                     onClick={handleQuickMatchedScan}
                     disabled={saving}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-success px-4 text-sm font-semibold text-white transition-colors hover:bg-success/90 disabled:opacity-50"
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-success px-4 text-sm font-semibold text-white transition-colors hover:bg-success-hover disabled:opacity-50"
                   >
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                     {t("dataMatches")}
@@ -1530,7 +1530,7 @@ export function AuditScanForm({
                   <button
                     type="button"
                     onClick={openMismatchDetails}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-4 text-sm font-medium text-warning transition-colors hover:bg-warning/10"
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-4 text-sm font-medium text-warning transition-colors hover:bg-warning-soft"
                   >
                     <AlertTriangle className="h-4 w-4" />
                     {t("dataMismatch")}
@@ -1549,12 +1549,12 @@ export function AuditScanForm({
           )}
 
           {outOfScopeAsset && (
-            <div className="md:col-span-2 rounded-md border border-warning/40 bg-warning/10 p-4">
+            <div className="md:col-span-2 rounded-md border border-warning/40 bg-warning-soft p-4">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="text-sm font-semibold text-warning">{t("outOfScopeTitle")}</div>
                   {scanTargetLocked ? (
-                    <span className="inline-flex min-h-7 items-center rounded-md border border-success/30 bg-success/10 px-2 py-1 text-xs font-semibold text-success">
+                    <span className="inline-flex min-h-7 items-center rounded-md border border-success/30 bg-success-soft px-2 py-1 text-xs font-semibold text-success">
                       {t("targetLockedBadge")}
                     </span>
                   ) : null}
@@ -1566,7 +1566,7 @@ export function AuditScanForm({
               {outOfScopeAsset.installedIn.length > 0 ? (
                 <div className="mt-3 grid gap-2">
                   {outOfScopeAsset.installedIn.map((parent) => (
-                    <div key={parent.parentAssetId} className="flex flex-col gap-2 rounded-md border border-info/30 bg-info/10 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div key={parent.parentAssetId} className="flex flex-col gap-2 rounded-md border border-info/30 bg-info-soft p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex min-w-0 items-start gap-2">
                         <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-info" />
                         <div className="min-w-0">
@@ -1609,7 +1609,7 @@ export function AuditScanForm({
                   type="button"
                   onClick={recordOutOfScopeAsset}
                   disabled={saving}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-medium text-white transition-colors hover:bg-warning/90 disabled:opacity-50"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-medium text-white transition-colors hover:bg-warning-hover disabled:opacity-50"
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
                   {t("recordOutOfScope")}
@@ -1620,7 +1620,7 @@ export function AuditScanForm({
 
           {isDetailedScanVisible && (
             <>
-              <div className="md:col-span-2 rounded-md border border-warning/30 bg-warning/10 p-3">
+              <div className="md:col-span-2 rounded-md border border-warning/30 bg-warning-soft p-3">
                 <div className="text-sm font-semibold text-foreground">{t("actualDataTitle")}</div>
                 <div className="mt-1 text-sm text-muted-foreground">{t("actualDataHelp")}</div>
               </div>
@@ -1651,7 +1651,7 @@ export function AuditScanForm({
                     </div>
                   )}
                   {canApplyCorrections && correctionMismatchCount > 0 && (
-                    <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-md border border-info/30 bg-info/10 p-3 text-sm">
+                    <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-md border border-info/30 bg-info-soft p-3 text-sm">
                       <input
                         type="checkbox"
                         checked={applyCorrections}
@@ -1772,8 +1772,8 @@ export function AuditScanForm({
                     className={[
                       "inline-flex min-h-8 shrink-0 items-center rounded-md border px-2.5 py-1 text-xs font-semibold",
                       !evidenceRequirementSatisfied
-                        ? "border-warning/40 bg-warning/10 text-warning"
-                        : "border-success/30 bg-success/10 text-success",
+                        ? "border-warning/40 bg-warning-soft text-warning"
+                        : "border-success/30 bg-success-soft text-success",
                     ].join(" ")}
                   >
                     {evidenceRequirementSatisfied ? t("auditPhotoRequirementMet") : t("auditPhotoRequiredCounter", { count: queuedAuditPhotos.length })}
@@ -1797,7 +1797,7 @@ export function AuditScanForm({
                         className={[
                           "inline-flex min-h-9 items-center rounded-md border px-3 py-2 text-sm font-medium transition-colors",
                           isSelected
-                            ? "border-primary bg-primary/10 text-primary"
+                            ? "border-primary bg-primary-soft text-primary"
                             : "border-border bg-background text-foreground hover:bg-accent",
                         ].join(" ")}
                       >
@@ -1827,7 +1827,7 @@ export function AuditScanForm({
                       {t("queuedPhotos", { count: queuedAuditPhotos.length })}
                     </div>
                     {requiresMismatchPhoto ? (
-                      <span className="inline-flex min-h-7 items-center rounded-md border border-info/30 bg-info/10 px-2 py-1 text-xs font-semibold text-info">
+                      <span className="inline-flex min-h-7 items-center rounded-md border border-info/30 bg-info-soft px-2 py-1 text-xs font-semibold text-info">
                         {t("queuedPhotoReadyForFinding")}
                       </span>
                     ) : null}
@@ -1874,14 +1874,14 @@ export function AuditScanForm({
             </div>
           )}
           {offlineQueue.length > 0 ? (
-            <div role="status" aria-live="polite" className={`md:col-span-2 rounded-lg border p-3 shadow-sm ${online ? "border-warning/30 bg-warning/10" : "border-danger/30 bg-danger/10"}`}>
+            <div role="status" aria-live="polite" className={`md:col-span-2 rounded-lg border p-3 shadow-sm ${online ? "border-warning/30 bg-warning-soft" : "border-danger/30 bg-danger-soft"}`}>
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-start gap-3">
                   <WifiOff className={`mt-0.5 h-5 w-5 shrink-0 ${online ? "text-warning" : "text-danger"}`} />
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="text-sm font-semibold text-foreground">{t("offlineQueueTitle", { count: offlineQueue.length })}</div>
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${online ? "bg-success/10 text-success" : "bg-danger/10 text-danger"}`}>
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${online ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}`}>
                         {online ? t("networkOnline") : t("networkOffline")}
                       </span>
                     </div>
@@ -1893,7 +1893,7 @@ export function AuditScanForm({
                       })}
                     </div>
                     {lastOfflineQueueError ? (
-                      <div className="mt-2 break-words rounded-md border border-danger/30 bg-danger/10 px-2 py-1 text-xs text-danger">
+                      <div className="mt-2 break-words rounded-md border border-danger/30 bg-danger-soft px-2 py-1 text-xs text-danger">
                         {t("offlineQueueLastError", { error: lastOfflineQueueError })}
                       </div>
                     ) : null}
@@ -1904,7 +1904,7 @@ export function AuditScanForm({
                   onClick={retryOfflineQueue}
                   disabled={saving || !online}
                   title={online ? t("offlineRetry") : t("networkOffline")}
-                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-medium text-white transition-colors hover:bg-warning/90 disabled:opacity-50 md:w-auto"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-medium text-white transition-colors hover:bg-warning-hover disabled:opacity-50 md:w-auto"
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
                   {t("offlineRetry")}
@@ -1914,7 +1914,7 @@ export function AuditScanForm({
           ) : null}
           </div>
           <div className={`sticky bottom-0 z-10 -mx-4 justify-end border-t border-border bg-surface/95 p-3 backdrop-blur md:col-span-2 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none ${submitBarVisibility}`}>
-            <button type="submit" disabled={saving || !selectedItem || (fastMode && !showDetailedFields) || !evidenceRequirementSatisfied} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-base font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 sm:w-auto">
+            <button type="submit" disabled={saving || !selectedItem || (fastMode && !showDetailedFields) || !evidenceRequirementSatisfied} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-base font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:w-auto">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {t("submitScan")}
             </button>
@@ -1985,7 +1985,7 @@ export function AuditScanForm({
               <button
                 type="submit"
                 disabled={saving}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-semibold text-white transition-colors hover:bg-warning/90 disabled:opacity-50"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-semibold text-white transition-colors hover:bg-warning-hover disabled:opacity-50"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
                 {t("componentMissingConfirm")}
@@ -2010,7 +2010,7 @@ export function AuditScanForm({
             <button
               type="button"
               onClick={openMismatchDetails}
-              className="col-span-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 py-2 text-sm font-semibold text-warning transition-colors hover:bg-warning/10"
+              className="col-span-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 py-2 text-sm font-semibold text-warning transition-colors hover:bg-warning-soft"
             >
               <AlertTriangle className="h-4 w-4" />
               <span>{t("dataMismatch")}</span>

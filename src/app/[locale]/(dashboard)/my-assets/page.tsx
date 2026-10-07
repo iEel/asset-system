@@ -172,8 +172,8 @@ function PageHeader({ title, subtitle }: { title: string; subtitle: string }) {
 function Metric({ label, value, tone }: { label: string; value: number; tone: "neutral" | "success" | "warning" | "muted" }) {
   const toneClass = {
     neutral: "border-border bg-surface",
-    success: "border-success/30 bg-success/5",
-    warning: "border-warning/30 bg-warning/5",
+    success: "border-success/30 bg-success-soft",
+    warning: "border-warning/30 bg-warning-soft",
     muted: "border-border bg-muted/40",
   }[tone]
 
