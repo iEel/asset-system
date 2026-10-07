@@ -4,6 +4,7 @@ import { buildNotificationSummaryItems } from "@/lib/notification-summary-items"
 import { buildActiveNotificationSummary, mergeNotificationItemsWithStates } from "@/lib/notification-center"
 import { getApprovalInboxCounts } from "@/lib/approval-inbox-query"
 import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
+import { buildDuePmPlanWhere } from "@/lib/preventive-maintenance"
 import {
   notificationAuditActionDueSoonDaysKey,
   notificationLicenseExpiryDaysKey,
@@ -44,8 +45,7 @@ export async function getNotificationCenter(user: SessionUser, locale: string) {
   const canAsset = hasPermission(user, "asset", "view")
 
   const [
-    overdueMaintenance,
-    completedMaintenanceAwaitingClose,
+    duePm,
     pendingAuditFindings,
     openAuditActions,
     auditActionsDueSoon,
@@ -56,18 +56,7 @@ export async function getNotificationCenter(user: SessionUser, locale: string) {
     licenseExpiringSoon,
   ] = await Promise.all([
     canMaintenance
-      ? prisma.maintenanceTicket.count({
-          where: {
-            isActive: true,
-            dueDate: { lt: today },
-            repairStatus: { notIn: ["completed", "closed", "cancelled"] },
-          },
-        })
-      : Promise.resolve(0),
-    canMaintenance
-      ? prisma.maintenanceTicket.count({
-          where: { isActive: true, repairStatus: "completed" },
-        })
+      ? prisma.maintenancePlan.count({ where: buildDuePmPlanWhere(new Date()) })
       : Promise.resolve(0),
     canAudit && approvalInboxCounts.audit === 0
       ? prisma.auditFinding.count({ where: { reviewStatus: "pending", auditRound: { isActive: true, status: auditRoundOperationalWhere } } })
@@ -129,8 +118,7 @@ export async function getNotificationCenter(user: SessionUser, locale: string) {
 
   const items = buildNotificationSummaryItems(locale, {
     approvalInbox: approvalInboxCounts.total,
-    overdueMaintenance,
-    completedMaintenanceAwaitingClose,
+    duePm,
     pendingAuditFindings,
     openAuditActions,
     auditActionsDueSoon,

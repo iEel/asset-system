@@ -2,10 +2,8 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-test("maintenance notifications query overdue and completed tickets separately", () => {
+test("maintenance notifications remind about due PM instead of SLA or closure", () => {
   const source = readFileSync("src/lib/notification-summary.ts", "utf8")
-
-  assert.match(source, /repairStatus:\s*\{\s*notIn:\s*\["completed",\s*"closed",\s*"cancelled"\]\s*\}/)
-  assert.match(source, /repairStatus:\s*"completed"/)
-  assert.match(source, /completedMaintenanceAwaitingClose/)
+  assert.match(source, /buildDuePmPlanWhere\(/)
+  assert.doesNotMatch(source, /dueDate|completedMaintenanceAwaitingClose|overdueMaintenance/)
 })

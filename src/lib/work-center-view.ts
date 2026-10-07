@@ -68,9 +68,8 @@ export function getWorkCenterFocusPanels(
 const metricKeysByFocusPanel: Record<WorkCenterPanel, readonly WorkCenterMetricKey[]> = {
   overview: [
     "approvalInbox",
-    "overdueMaintenance",
-    "waitingMaintenance",
-    "completedMaintenance",
+    "openRepairs",
+    "duePm",
     "pendingAuditFindings",
     "openAuditActions",
     "pendingAuditItems",
@@ -79,7 +78,7 @@ const metricKeysByFocusPanel: Record<WorkCenterPanel, readonly WorkCenterMetricK
   ],
   approvals: ["approvalInbox"],
   assets: ["missingCustodian", "missingSerial", "missingPhoto"],
-  maintenance: ["overdueMaintenance", "waitingMaintenance", "completedMaintenance"],
+  maintenance: ["openRepairs", "duePm"],
   audit: ["pendingAuditFindings", "openAuditActions", "pendingAuditItems"],
   disposal: ["pendingDisposals", "approvedDisposals"],
 }

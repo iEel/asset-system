@@ -3,9 +3,8 @@ export type WorkCenterMetricKey =
   | "missingCustodian"
   | "missingSerial"
   | "missingPhoto"
-  | "overdueMaintenance"
-  | "waitingMaintenance"
-  | "completedMaintenance"
+  | "openRepairs"
+  | "duePm"
   | "pendingAuditFindings"
   | "openAuditActions"
   | "pendingAuditItems"
@@ -24,7 +23,6 @@ export type WorkCenterMetricSelection = {
 }
 
 export type WorkCenterUrgentCountInput = WorkCenterMetricSelection & {
-  overdueMaintenance: number
   pendingAuditFindings: number
   pendingDisposals: number
   approvedDisposals: number
@@ -44,9 +42,8 @@ export function buildWorkCenterMetricKeys(
     "missingCustodian",
     "missingSerial",
     "missingPhoto",
-    "overdueMaintenance",
-    "waitingMaintenance",
-    "completedMaintenance",
+    "openRepairs",
+    "duePm",
   )
 
   if (!approvalInbox.visible || approvalInbox.audit === 0) {
@@ -69,5 +66,5 @@ export function calculateWorkCenterUrgentCount(input: WorkCenterUrgentCountInput
   const auditCount = input.approvalInbox.visible && input.approvalInbox.audit > 0 ? 0 : input.pendingAuditFindings
   const disposalCount = input.approvalInbox.visible && input.approvalInbox.disposal > 0 ? 0 : input.pendingDisposals
 
-  return approvalCount + input.overdueMaintenance + auditCount + disposalCount + input.approvedDisposals
+  return approvalCount + auditCount + disposalCount + input.approvedDisposals
 }

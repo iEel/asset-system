@@ -25,6 +25,7 @@ import {
 } from "@/lib/dashboard-action-cards"
 import { shouldUseEmployeeHome } from "@/lib/default-home"
 import { prisma } from "@/lib/db"
+import { openRepairRecordWhere } from "@/lib/repair-record-policy"
 import { auditRoundCoverageWhere, auditRoundOperationalWhere } from "@/lib/audit-round-status"
 import { buildDashboardAssetCrossScopeSummary, type AssetCrossScopeSummaryRow } from "@/lib/asset-cross-scope"
 import { getAssetCrossScopeFlagLabels, type AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
@@ -75,8 +76,6 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   const translateSystemLog = (key: string) => systemLogMessages[key.replaceAll(".", "_")] ?? key
   const warrantyThreshold = new Date()
   warrantyThreshold.setDate(warrantyThreshold.getDate() + 30)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
   const monthRange = getMonthRange(new Date())
   const approvalInboxAccess = user ? getApprovalInboxAccess(user) : null
   const emptyApprovalInboxCounts: ApprovalInboxCounts = { total: 0, disposal: 0, audit: 0 }
@@ -85,7 +84,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   const [
     [totalAssets, inUse, ready, repairStatusRows, warrantyExpiring],
     recentLogs,
-    [overdueMaintenance, pendingAuditFindings, pendingDisposals, approvedDisposals],
+    [openRepairs, pendingAuditFindings, pendingDisposals, approvedDisposals],
     approvalInboxCounts,
     crossScopeSummary,
     [
@@ -146,13 +145,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       withPerformanceTiming(
         "dashboard.urgent-work",
         () => Promise.all([
-          prisma.maintenanceTicket.count({
-            where: {
-              isActive: true,
-              dueDate: { lt: today },
-              repairStatus: { in: ["open", "reported", "accepted", "in_progress", "waiting_parts", "waiting_vendor", "completed"] },
-            },
-          }),
+          prisma.maintenanceTicket.count({ where: openRepairRecordWhere }),
           prisma.auditFinding.count({ where: { reviewStatus: "pending", auditRound: { isActive: true, status: auditRoundOperationalWhere } } }),
           prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "pending" } }),
           prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "approved" } }),
@@ -214,13 +207,13 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       icon: <FileCheck2 className="h-5 w-5" />,
       tone: approvalInboxCounts.total > 0 ? "danger" : "primary",
     },
-    overdueMaintenance: {
-      label: t("overdueMaintenance"),
-      value: overdueMaintenance,
-      detail: t("overdueMaintenanceDetail"),
-      href: `/${locale}/maintenance?overdue=yes`,
+    openRepairs: {
+      label: t("openRepairs"),
+      value: openRepairs,
+      detail: t("openRepairsDetail"),
+      href: `/${locale}/maintenance?status=in_progress`,
       icon: <Wrench className="h-5 w-5" />,
-      tone: "danger",
+      tone: openRepairs > 0 ? "warning" : "primary",
     },
     pendingAuditFindings: {
       label: t("pendingAuditFindings"),
@@ -261,7 +254,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       visible: Boolean(approvalInboxAccess?.canAnyApproval),
       ...approvalInboxCounts,
     },
-    overdueMaintenance,
+    openRepairs,
     pendingAuditFindings,
     pendingDisposals,
     approvedDisposals,

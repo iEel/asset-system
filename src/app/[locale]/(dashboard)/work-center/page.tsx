@@ -32,8 +32,10 @@ import {
   type WorkCenterParams,
   type WorkCenterUserScope,
 } from "@/lib/work-center-view"
-import { formatDateTime } from "@/lib/utils"
+import { formatDate, formatDateTime } from "@/lib/utils"
 import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
+import { openRepairRecordWhere } from "@/lib/repair-record-policy"
+import { buildDuePmPlanWhere } from "@/lib/preventive-maintenance"
 
 type WorkCenterPageProps = {
   params: Promise<{ locale: string }>
@@ -50,13 +52,6 @@ type WorkCenterMetric = {
   icon: React.ReactNode
 }
 
-const openMaintenanceStatuses = ["open", "reported", "accepted", "in_progress", "waiting_parts", "waiting_vendor", "completed"]
-const waitingMaintenanceStatuses = ["waiting_parts", "waiting_vendor"]
-const startOfToday = () => {
-  const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
-}
-
 export default async function WorkCenterPage({ params, searchParams }: WorkCenterPageProps) {
   const { locale } = await params
   const workCenterParams = parseWorkCenterParams(await searchParams)
@@ -64,7 +59,6 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
 
   const t = await getTranslations("workCenter")
   const tCommon = await getTranslations("common")
-  const today = startOfToday()
   const approvalInboxAccess = getApprovalInboxAccess(user)
   const employeeProfile = user.employeeId
     ? await prisma.employee.findUnique({ where: { id: user.employeeId }, select: { departmentId: true } })
@@ -118,30 +112,8 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
     isMineView,
     userScope,
   )
-  const overdueMaintenanceWhere = applyMaintenanceWorkCenterScope(
-    { isActive: true, repairStatus: { in: openMaintenanceStatuses }, dueDate: { lt: today } },
-    isMineView,
-    userScope,
-  )
-  const waitingMaintenanceWhere = applyMaintenanceWorkCenterScope(
-    { isActive: true, repairStatus: { in: waitingMaintenanceStatuses } },
-    isMineView,
-    userScope,
-  )
-  const completedMaintenanceWhere = applyMaintenanceWorkCenterScope(
-    { isActive: true, repairStatus: "completed" },
-    isMineView,
-    userScope,
-  )
-  const maintenanceItemWhere = applyMaintenanceWorkCenterScope(
-    {
-      isActive: true,
-      repairStatus: { in: openMaintenanceStatuses },
-      OR: [{ dueDate: { lt: today } }, { repairStatus: { in: waitingMaintenanceStatuses } }, { repairStatus: "completed" }],
-    },
-    isMineView,
-    userScope,
-  )
+  const openRepairWhere = applyMaintenanceWorkCenterScope({ ...openRepairRecordWhere }, isMineView, userScope)
+  const duePmWhere = applyPlanWorkCenterScope(buildDuePmPlanWhere(new Date()), isMineView, userScope)
   const pendingAuditFindingWhere = applyAuditFindingWorkCenterScope(
     { reviewStatus: "pending", auditRound: { isActive: true, status: auditRoundOperationalWhere } },
     isMineView,
@@ -182,9 +154,8 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
     missingCustodian,
     missingSerial,
     missingPhoto,
-    overdueMaintenance,
-    waitingMaintenance,
-    completedMaintenance,
+    openRepairs,
+    duePm,
     pendingAuditFindings,
     openAuditActions,
     pendingAuditItems,
@@ -199,9 +170,8 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
     prisma.asset.count({ where: missingResponsibilityWhere }),
     prisma.asset.count({ where: missingSerialWhere }),
     prisma.asset.count({ where: missingPhotoWhere }),
-    prisma.maintenanceTicket.count({ where: overdueMaintenanceWhere }),
-    prisma.maintenanceTicket.count({ where: waitingMaintenanceWhere }),
-    prisma.maintenanceTicket.count({ where: completedMaintenanceWhere }),
+    prisma.maintenanceTicket.count({ where: openRepairWhere }),
+    prisma.maintenancePlan.count({ where: duePmWhere }),
     prisma.auditFinding.count({ where: pendingAuditFindingWhere }),
     prisma.auditFinding.count({ where: openAuditActionWhere }),
     prisma.auditItem.count({ where: pendingAuditItemsWhere }),
@@ -229,9 +199,9 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       take: assetItemLimit,
     }) : Promise.resolve([]),
     isPanelFocused("maintenance") ? prisma.maintenanceTicket.findMany({
-      where: maintenanceItemWhere,
+      where: openRepairWhere,
       include: { asset: { select: { assetTag: true, name: true } } },
-      orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
+      orderBy: [{ reportedDate: "asc" }, { createdAt: "asc" }],
       take: maintenanceItemLimit,
     }) : Promise.resolve([]),
     isPanelFocused("audit") ? prisma.auditFinding.findMany({
@@ -298,32 +268,23 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       tone: "muted",
       icon: <ShieldAlert className="h-5 w-5" />,
     },
-    overdueMaintenance: {
-      key: "overdueMaintenance",
-      label: t("overdueMaintenance"),
-      value: overdueMaintenance,
-      detail: t("overdueMaintenanceDetail"),
-      href: `/${locale}/maintenance?overdue=yes`,
-      tone: "danger",
+    openRepairs: {
+      key: "openRepairs",
+      label: t("openRepairs"),
+      value: openRepairs,
+      detail: t("openRepairsDetail"),
+      href: `/${locale}/maintenance?status=in_progress`,
+      tone: openRepairs > 0 ? "warning" : "muted",
       icon: <Wrench className="h-5 w-5" />,
     },
-    waitingMaintenance: {
-      key: "waitingMaintenance",
-      label: t("waitingMaintenance"),
-      value: waitingMaintenance,
-      detail: t("waitingMaintenanceDetail"),
-      href: `/${locale}/maintenance?status=waiting_parts`,
-      tone: "warning",
+    duePm: {
+      key: "duePm",
+      label: t("duePm"),
+      value: duePm,
+      detail: t("duePmDetail"),
+      href: `/${locale}/maintenance#pm-due`,
+      tone: duePm > 0 ? "warning" : "muted",
       icon: <Clock className="h-5 w-5" />,
-    },
-    completedMaintenance: {
-      key: "completedMaintenance",
-      label: t("completedMaintenance"),
-      value: completedMaintenance,
-      detail: t("completedMaintenanceDetail"),
-      href: `/${locale}/maintenance?status=completed`,
-      tone: "success",
-      icon: <Wrench className="h-5 w-5" />,
     },
     pendingAuditFindings: {
       key: "pendingAuditFindings",
@@ -383,7 +344,6 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
       visible: approvalInboxVisible,
       ...approvalInboxCounts,
     },
-    overdueMaintenance,
     pendingAuditFindings,
     pendingDisposals,
     approvedDisposals,
@@ -555,7 +515,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
         {isPanelFocused("maintenance") ? <FollowUpPanel
           title={t("maintenanceTitle")}
           subtitle={t("maintenanceSubtitle")}
-          href={`/${locale}/maintenance?overdue=yes`}
+          href={`/${locale}/maintenance?status=in_progress`}
           locale={locale}
           panel="maintenance"
           currentParams={workCenterParams}
@@ -571,8 +531,8 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
                 key={ticket.id}
                 href={`/${locale}/maintenance/${ticket.id}`}
                 title={`${ticket.repairNo} - ${ticket.asset.assetTag}`}
-                meta={`${ticket.asset.name} · ${t(`maintenanceStatus_${ticket.repairStatus}`)} · ${formatDateTime(ticket.dueDate)}`}
-                tone={ticket.dueDate && ticket.dueDate < today ? "danger" : "warning"}
+                meta={`${ticket.asset.name} · ${t("repairSince", { date: formatDate(ticket.reportedDate) })}`}
+                tone="warning"
               />
             ))
           )}
@@ -843,6 +803,20 @@ function applyMaintenanceWorkCenterScope(
   const scopeWhere = getScopedWhere<Prisma.MaintenanceTicketWhereInput>(scope, ({ employeeId, departmentId }) => ({
     OR: [
       ...(employeeId ? [{ reportedById: employeeId }, { assignedToId: employeeId }, { inspectedById: employeeId }, { asset: { custodianId: employeeId } }] : []),
+      ...(departmentId ? [{ asset: { departmentId } }] : []),
+    ],
+  }))
+  return applyWorkCenterScope(where, active, scopeWhere)
+}
+
+function applyPlanWorkCenterScope(
+  where: Prisma.MaintenancePlanWhereInput,
+  active: boolean,
+  scope: WorkCenterUserScope,
+): Prisma.MaintenancePlanWhereInput {
+  const scopeWhere = getScopedWhere<Prisma.MaintenancePlanWhereInput>(scope, ({ employeeId, departmentId }) => ({
+    OR: [
+      ...(employeeId ? [{ asset: { custodianId: employeeId } }] : []),
       ...(departmentId ? [{ asset: { departmentId } }] : []),
     ],
   }))

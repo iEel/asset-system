@@ -11,13 +11,13 @@ test("dashboard approval inbox card suppresses approval duplicates", () => {
       disposal: 2,
       audit: 1,
     },
-    overdueMaintenance: 3,
+    openRepairs: 3,
     pendingAuditFindings: 1,
     pendingDisposals: 2,
     approvedDisposals: 5,
   })
 
-  assert.deepEqual(keys, ["approvalInbox", "overdueMaintenance", "approvedDisposals"])
+  assert.deepEqual(keys, ["approvalInbox", "openRepairs", "approvedDisposals"])
 })
 
 test("dashboard keeps direct work cards when approval inbox is not visible", () => {
@@ -28,14 +28,14 @@ test("dashboard keeps direct work cards when approval inbox is not visible", () 
       disposal: 0,
       audit: 0,
     },
-    overdueMaintenance: 3,
+    openRepairs: 3,
     pendingAuditFindings: 1,
     pendingDisposals: 2,
     approvedDisposals: 5,
   })
 
   assert.deepEqual(keys, [
-    "overdueMaintenance",
+    "openRepairs",
     "pendingAuditFindings",
     "pendingDisposals",
     "approvedDisposals",

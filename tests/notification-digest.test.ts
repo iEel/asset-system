@@ -14,14 +14,12 @@ test("builds stable daily digest reference id", () => {
 
 test("builds localized digest message from notification items", () => {
   const message = buildDailyDigestMessage("th", [
-    { key: "overdueMaintenance", count: 2, href: "/th/maintenance?due=overdue", tone: "danger" },
-    { key: "completedMaintenanceAwaitingClose", count: 1, href: "/th/maintenance?queue=completed", tone: "warning" },
+    { key: "duePm", count: 2, href: "/th/maintenance#pm-due", tone: "warning" },
     { key: "returnsDueSoon", count: 3, href: "/th/asset-management/checkin", tone: "warning" },
   ])
 
-  assert.match(message, /วันนี้มีงานที่ควรติดตาม 6 รายการ/)
-  assert.match(message, /งานซ่อมเกินกำหนด: 2/)
-  assert.match(message, /งานซ่อมเสร็จแล้วรอปิดงาน: 1/)
+  assert.match(message, /วันนี้มีงานที่ควรติดตาม 5 รายการ/)
+  assert.match(message, /PM ถึงกำหนด: 2/)
   assert.match(message, /รายการส่งมอบใกล้ครบกำหนดคืน: 3/)
 })
 
@@ -30,7 +28,7 @@ test("uses highest severity tone in digest", () => {
   assert.equal(
     resolveDigestTone([
       { key: "returnsDueSoon", count: 1, href: "/th", tone: "warning" },
-      { key: "overdueMaintenance", count: 1, href: "/th", tone: "danger" },
+      { key: "approvalInbox", count: 1, href: "/th", tone: "danger" },
     ]),
     "danger"
   )

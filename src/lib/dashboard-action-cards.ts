@@ -1,6 +1,6 @@
 export type DashboardActionCardKey =
   | "approvalInbox"
-  | "overdueMaintenance"
+  | "openRepairs"
   | "pendingAuditFindings"
   | "pendingDisposals"
   | "approvedDisposals"
@@ -14,7 +14,7 @@ export type DashboardApprovalInboxCounts = {
 
 export type DashboardActionCardCounts = {
   approvalInbox: DashboardApprovalInboxCounts
-  overdueMaintenance: number
+  openRepairs: number
   pendingAuditFindings: number
   pendingDisposals: number
   approvedDisposals: number
@@ -41,7 +41,7 @@ export function buildDashboardActionCardKeys(
     keys.push("approvalInbox")
   }
 
-  keys.push("overdueMaintenance")
+  keys.push("openRepairs")
 
   if (!approvalInboxVisible || counts.approvalInbox.audit === 0) {
     keys.push("pendingAuditFindings")

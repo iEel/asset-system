@@ -49,8 +49,8 @@ test("shows only metrics that support the selected work center focus", () => {
     "missingCustodian",
     "missingSerial",
     "missingPhoto",
-    "overdueMaintenance",
-    "waitingMaintenance",
+    "openRepairs",
+    "duePm",
     "openAuditActions",
     "pendingAuditItems",
     "approvedDisposals",
@@ -58,8 +58,8 @@ test("shows only metrics that support the selected work center focus", () => {
 
   assert.deepEqual(filterWorkCenterMetricKeys(metricKeys, "overview"), [
     "approvalInbox",
-    "overdueMaintenance",
-    "waitingMaintenance",
+    "openRepairs",
+    "duePm",
     "openAuditActions",
     "pendingAuditItems",
     "approvedDisposals",
