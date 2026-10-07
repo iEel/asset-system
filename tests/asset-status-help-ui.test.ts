@@ -8,15 +8,17 @@ const assetDetailSource = () => readFileSync("src/app/[locale]/(dashboard)/asset
 const assetRegisterTableSource = () => readFileSync("src/components/assets/asset-register-table.tsx", "utf8")
 const assetRegisterPageSource = () => readFileSync("src/app/[locale]/(dashboard)/assets/page.tsx", "utf8")
 
-test("asset status and condition help uses a Radix popover that opens on hover, focus and tap", () => {
+test("asset status and condition help uses a Radix popover that opens on mouse hover and stays open on click or tap", () => {
   const source = helpComponentSource()
 
   assert.match(source, /"use client"/)
   assert.match(source, /CircleHelp/)
-  assert.match(source, /<Popover open=\{open\} onOpenChange=\{setOpen\}>/)
+  assert.match(source, /<Popover open=\{open\} onOpenChange=/)
   assert.match(source, /<PopoverTrigger asChild>/)
-  assert.match(source, /onMouseEnter/)
-  assert.match(source, /onFocus/)
+  assert.match(source, /pointerType === "mouse"/)
+  assert.match(source, /onClick=\{\(event\) => \{\s*event\.preventDefault\(\)/)
+  assert.match(source, /pinnedRef/)
+  assert.doesNotMatch(source, /onFocus=/)
   assert.match(source, /onOpenAutoFocus=\{\(event\) => event\.preventDefault\(\)\}/)
   assert.match(source, /size = "default"/)
   assert.match(source, /isCompact/)

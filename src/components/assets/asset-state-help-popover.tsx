@@ -1,7 +1,7 @@
 "use client"
 
 import { CircleHelp } from "lucide-react"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 type AssetStateHelpPopoverProps = {
@@ -14,6 +14,7 @@ type AssetStateHelpPopoverProps = {
 
 export function AssetStateHelpPopover({ title, description, items, srLabel, size = "default" }: AssetStateHelpPopoverProps) {
   const [open, setOpen] = useState(false)
+  const pinnedRef = useRef(false)
   const isCompact = size === "compact"
   const buttonClassName = isCompact
     ? "inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
@@ -21,14 +22,25 @@ export function AssetStateHelpPopover({ title, description, items, srLabel, size
   const iconClassName = isCompact ? "h-3.5 w-3.5" : "h-4 w-4"
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(next) => {
+      if (!next) pinnedRef.current = false
+      setOpen(next)
+    }}>
       <PopoverTrigger asChild>
         <button
           type="button"
           aria-label={srLabel ?? title}
-          onMouseEnter={() => setOpen(true)}
-          onMouseLeave={() => setOpen(false)}
-          onFocus={() => setOpen(true)}
+          onPointerEnter={(event) => {
+            if (event.pointerType === "mouse") setOpen(true)
+          }}
+          onPointerLeave={(event) => {
+            if (event.pointerType === "mouse" && !pinnedRef.current) setOpen(false)
+          }}
+          onClick={(event) => {
+            event.preventDefault()
+            pinnedRef.current = true
+            setOpen(true)
+          }}
           className={buttonClassName}
         >
           <CircleHelp className={iconClassName} aria-hidden="true" />
