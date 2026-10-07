@@ -1,6 +1,6 @@
 import type { ApprovalInboxItem } from "@/lib/approval-inbox"
 
-export const approvalInboxFilters = ["all", "disposal", "maintenance", "audit"] as const
+export const approvalInboxFilters = ["all", "disposal", "audit"] as const
 
 export type ApprovalInboxFilter = (typeof approvalInboxFilters)[number]
 

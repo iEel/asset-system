@@ -252,11 +252,8 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
     }) : Promise.resolve([]),
   ])
 
-  const approvalInboxCounts = approvalInboxSnapshot?.summary ?? { total: 0, disposal: 0, maintenance: 0, audit: 0 }
+  const approvalInboxCounts = approvalInboxSnapshot?.summary ?? { total: 0, disposal: 0, audit: 0 }
   const approvalInboxVisible = approvalInboxAccess.canAnyApproval
-  const visibleMaintenanceItems = approvalInboxVisible && approvalInboxCounts.maintenance > 0
-    ? maintenanceItems.filter((ticket) => ticket.repairStatus !== "completed")
-    : maintenanceItems
   const visibleAuditItems = approvalInboxVisible && approvalInboxCounts.audit > 0
     ? auditItems.filter((finding) => finding.reviewStatus !== "pending")
     : auditItems
@@ -566,10 +563,10 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
           showMoreLabel={t("showInWorkCenter")}
           collapseLabel={t("collapseList")}
         >
-          {visibleMaintenanceItems.length === 0 ? (
+          {maintenanceItems.length === 0 ? (
             <EmptyState label={t("noMaintenanceIssues")} />
           ) : (
-            visibleMaintenanceItems.map((ticket) => (
+            maintenanceItems.map((ticket) => (
               <FollowUpItem
                 key={ticket.id}
                 href={`/${locale}/maintenance/${ticket.id}`}

@@ -2,14 +2,13 @@ import type { WorkflowApprovalPolicy } from "@/lib/workflow-approval"
 
 export type ApprovalInboxKind =
   | "disposal_review"
-  | "maintenance_close"
   | "audit_finding_review"
   | "audit_round_close"
 
 export type ApprovalInboxItem = {
   id: string
   kind: ApprovalInboxKind
-  module: "disposal" | "maintenance" | "audit"
+  module: "disposal" | "audit"
   recordId: string
   title: string
   description: string
@@ -30,14 +29,6 @@ export type ApprovalInboxSource = {
     assetName: string
     requestedBy: string
     requestDate: Date
-  }>
-  maintenanceTickets: Array<{
-    id: string
-    repairNo: string
-    assetTag: string
-    assetName: string
-    reportedBy: string
-    updatedAt: Date
   }>
   auditFindings: Array<{
     id: string
@@ -94,24 +85,6 @@ export function buildApprovalInboxItems(source: ApprovalInboxSource): ApprovalIn
     })
   }
 
-  if (source.policy.maintenanceCloseRequired) {
-    for (const ticket of source.maintenanceTickets) {
-      items.push({
-        id: `maintenance-close:${ticket.id}`,
-        kind: "maintenance_close",
-        module: "maintenance",
-        recordId: ticket.id,
-        title: `${ticket.repairNo} - ${ticket.assetTag}`,
-        description: copy.maintenanceReady(ticket.assetName),
-        requestedBy: ticket.reportedBy,
-        requestedAt: ticket.updatedAt,
-        actionLabel: copy.maintenanceAction,
-        href: `/${source.locale}/maintenance/${ticket.id}`,
-        tone: "warning",
-      })
-    }
-  }
-
   if (source.policy.disposalRequired) {
     for (const request of source.disposalRequests) {
       items.push({
@@ -141,7 +114,6 @@ export function summarizeApprovalInbox(items: ApprovalInboxItem[]) {
   return {
     total: items.length,
     disposal: items.filter((item) => item.module === "disposal").length,
-    maintenance: items.filter((item) => item.module === "maintenance").length,
     audit: items.filter((item) => item.module === "audit").length,
   }
 }
@@ -163,8 +135,6 @@ function approvalInboxCopy(locale: string) {
       auditRoundAction: "อนุมัติปิดรอบตรวจนับ",
       findingReview: "Finding รอตรวจสอบ",
       findingAction: "ตรวจสอบ Finding",
-      maintenanceReady: (assetName: string) => `งานซ่อม ${assetName} อยู่สถานะซ่อมเสร็จและรออนุมัติปิดงาน`,
-      maintenanceAction: "ตรวจอนุมัติปิดงานซ่อม",
       disposalReady: (assetName: string) => `คำขอตัดจำหน่าย ${assetName} รออนุมัติ`,
       disposalAction: "ตรวจอนุมัติตัดจำหน่าย",
     }
@@ -175,8 +145,6 @@ function approvalInboxCopy(locale: string) {
     auditRoundAction: "Approve Round Closure",
     findingReview: "Finding awaiting review",
     findingAction: "Review Finding",
-    maintenanceReady: (assetName: string) => `Repair work for ${assetName} is completed and awaiting closure approval.`,
-    maintenanceAction: "Review Repair Closure",
     disposalReady: (assetName: string) => `Disposal request for ${assetName} is awaiting approval.`,
     disposalAction: "Review Disposal",
   }

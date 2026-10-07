@@ -6,7 +6,6 @@ import { auditRoundOperationalWhere } from "@/lib/audit-round-status"
 
 export type ApprovalInboxAccess = {
   canApproveDisposal: boolean
-  canCloseMaintenance: boolean
   canApproveAudit: boolean
   canAnyApproval: boolean
 }
@@ -14,7 +13,6 @@ export type ApprovalInboxAccess = {
 export type ApprovalInboxCounts = {
   total: number
   disposal: number
-  maintenance: number
   audit: number
 }
 
@@ -22,7 +20,7 @@ export async function getApprovalInboxSnapshot(user: SessionUser, locale: string
   const access = getApprovalInboxAccess(user)
   const policy = await getWorkflowApprovalPolicy()
 
-  const [disposalRequests, maintenanceTickets, auditFindings, auditRoundsReadyToClose] = await Promise.all([
+  const [disposalRequests, auditFindings, auditRoundsReadyToClose] = await Promise.all([
     access.canApproveDisposal && policy.disposalRequired
       ? prisma.disposalRequest.findMany({
           where: { isActive: true, requestStatus: "pending" },
@@ -32,17 +30,6 @@ export async function getApprovalInboxSnapshot(user: SessionUser, locale: string
             requestedBy: { select: { code: true, fullNameTh: true } },
           },
           orderBy: { requestDate: "asc" },
-          take: 50,
-        })
-      : Promise.resolve([]),
-    access.canCloseMaintenance && policy.maintenanceCloseRequired
-      ? prisma.maintenanceTicket.findMany({
-          where: { isActive: true, repairStatus: "completed" },
-          include: {
-            asset: { select: { assetTag: true, name: true } },
-            reportedBy: { select: { code: true, fullNameTh: true } },
-          },
-          orderBy: { updatedAt: "asc" },
           take: 50,
         })
       : Promise.resolve([]),
@@ -73,14 +60,6 @@ export async function getApprovalInboxSnapshot(user: SessionUser, locale: string
       requestedBy: `${request.requestedBy.code} - ${request.requestedBy.fullNameTh}`,
       requestDate: request.requestDate,
     })),
-    maintenanceTickets: maintenanceTickets.map((ticket) => ({
-      id: ticket.id,
-      repairNo: ticket.repairNo,
-      assetTag: ticket.asset.assetTag,
-      assetName: ticket.asset.name,
-      reportedBy: `${ticket.reportedBy.code} - ${ticket.reportedBy.fullNameTh}`,
-      updatedAt: ticket.updatedAt,
-    })),
     auditFindings: auditFindings.map((finding) => ({
       id: finding.id,
       auditNo: finding.auditRound.auditNo,
@@ -102,15 +81,12 @@ export async function getApprovalInboxSnapshot(user: SessionUser, locale: string
 
 export async function getApprovalInboxCounts(user: SessionUser): Promise<ApprovalInboxCounts> {
   const access = getApprovalInboxAccess(user)
-  if (!access.canAnyApproval) return { total: 0, disposal: 0, maintenance: 0, audit: 0 }
+  if (!access.canAnyApproval) return { total: 0, disposal: 0, audit: 0 }
 
   const policy = await getWorkflowApprovalPolicy()
-  const [disposal, maintenance, auditFindings, auditRoundsReady] = await Promise.all([
+  const [disposal, auditFindings, auditRoundsReady] = await Promise.all([
     access.canApproveDisposal && policy.disposalRequired
       ? prisma.disposalRequest.count({ where: { isActive: true, requestStatus: "pending" } })
-      : Promise.resolve(0),
-    access.canCloseMaintenance && policy.maintenanceCloseRequired
-      ? prisma.maintenanceTicket.count({ where: { isActive: true, repairStatus: "completed" } })
       : Promise.resolve(0),
     access.canApproveAudit
       ? prisma.auditFinding.count({ where: { reviewStatus: "pending", reportedBy: { not: user.id }, auditRound: { isActive: true, status: auditRoundOperationalWhere } } })
@@ -122,23 +98,20 @@ export async function getApprovalInboxCounts(user: SessionUser): Promise<Approva
   const audit = auditFindings + auditRoundsReady
 
   return {
-    total: disposal + maintenance + audit,
+    total: disposal + audit,
     disposal,
-    maintenance,
     audit,
   }
 }
 
 export function getApprovalInboxAccess(user: SessionUser): ApprovalInboxAccess {
   const canApproveDisposal = hasPermission(user, "disposal", "approve")
-  const canCloseMaintenance = hasPermission(user, "maintenance", "edit")
   const canApproveAudit = hasPermission(user, "audit", "approve")
 
   return {
     canApproveDisposal,
-    canCloseMaintenance,
     canApproveAudit,
-    canAnyApproval: canApproveDisposal || canCloseMaintenance || canApproveAudit,
+    canAnyApproval: canApproveDisposal || canApproveAudit,
   }
 }
 

@@ -16,7 +16,6 @@ export type WorkCenterApprovalInboxCounts = {
   visible: boolean
   total: number
   disposal: number
-  maintenance: number
   audit: number
 }
 
@@ -47,11 +46,8 @@ export function buildWorkCenterMetricKeys(
     "missingPhoto",
     "overdueMaintenance",
     "waitingMaintenance",
+    "completedMaintenance",
   )
-
-  if (!approvalInbox.visible || approvalInbox.maintenance === 0) {
-    keys.push("completedMaintenance")
-  }
 
   if (!approvalInbox.visible || approvalInbox.audit === 0) {
     keys.push("pendingAuditFindings")

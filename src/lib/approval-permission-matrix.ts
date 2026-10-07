@@ -1,4 +1,4 @@
-export type ApprovalWorkflowKey = "disposal" | "maintenance" | "audit"
+export type ApprovalWorkflowKey = "disposal" | "audit"
 export type ApprovalPermissionMatrixStatus = "ready" | "thin" | "missing"
 
 export type ApprovalPermissionMatrixUser = {
@@ -20,7 +20,6 @@ export type ApprovalPermissionMatrixItem = {
 
 const workflows: Array<{ key: ApprovalWorkflowKey; module: string; action: string }> = [
   { key: "disposal", module: "disposal", action: "approve" },
-  { key: "maintenance", module: "maintenance", action: "edit" },
   { key: "audit", module: "audit", action: "approve" },
 ]
 

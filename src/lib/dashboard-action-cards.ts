@@ -9,7 +9,6 @@ export type DashboardApprovalInboxCounts = {
   visible: boolean
   total: number
   disposal: number
-  maintenance: number
   audit: number
 }
 

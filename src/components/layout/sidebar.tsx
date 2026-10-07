@@ -179,7 +179,6 @@ export function Sidebar({
           href: `/${locale}/admin/approvals`,
           anyPermissions: [
             { module: "disposal", action: "approve" },
-            { module: "maintenance", action: "edit" },
             { module: "audit", action: "approve" },
           ],
           icon: <FileCheck2 size={18} />,

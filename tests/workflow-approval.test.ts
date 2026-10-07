@@ -6,7 +6,6 @@ import {
   workflowApprovalAuditCloseRequiredKey,
   workflowApprovalDefaults,
   workflowApprovalDisposalRequiredKey,
-  workflowApprovalMaintenanceCloseRequiredKey,
   workflowApprovalMinApproversKey,
   workflowApprovalSegregationRequiredKey,
   workflowApprovalSlaDaysKey,
@@ -21,7 +20,6 @@ test("parses workflow approval booleans and minimum approver count", () => {
     new Map([
       [workflowApprovalDisposalRequiredKey, "false"],
       [workflowApprovalAuditCloseRequiredKey, "true"],
-      [workflowApprovalMaintenanceCloseRequiredKey, "true"],
       [workflowApprovalMinApproversKey, "3"],
       [workflowApprovalSegregationRequiredKey, "false"],
       [workflowApprovalSlaDaysKey, "5"],
@@ -31,7 +29,6 @@ test("parses workflow approval booleans and minimum approver count", () => {
   assert.deepEqual(policy, {
     disposalRequired: false,
     auditCloseRequired: true,
-    maintenanceCloseRequired: true,
     minApprovers: 3,
     segregationRequired: false,
     slaDays: 5,
@@ -42,4 +39,9 @@ test("falls back to default workflow approval SLA when days are invalid", () => 
   const policy = parseWorkflowApprovalPolicy(new Map([[workflowApprovalSlaDaysKey, "0"]]))
 
   assert.equal(policy.slaDays, workflowApprovalDefaults.slaDays)
+})
+
+test("the maintenance close approval setting no longer exists", () => {
+  const policy = parseWorkflowApprovalPolicy([{ key: "workflow_approval_maintenance_close_required", value: "true" }])
+  assert.equal("maintenanceCloseRequired" in policy, false)
 })

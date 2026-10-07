@@ -19,7 +19,7 @@ const baseItem = {
 
 test("parses approval inbox filter safely", () => {
   assert.equal(parseApprovalInboxFilter("disposal"), "disposal")
-  assert.equal(parseApprovalInboxFilter("maintenance"), "maintenance")
+  assert.equal(parseApprovalInboxFilter("maintenance"), "all")
   assert.equal(parseApprovalInboxFilter("audit"), "audit")
   assert.equal(parseApprovalInboxFilter("unknown"), "all")
   assert.equal(parseApprovalInboxFilter(undefined), "all")
@@ -29,10 +29,9 @@ test("parses approval inbox filter safely", () => {
 test("filters approval inbox items by module", () => {
   const items: ApprovalInboxItem[] = [
     { ...baseItem, id: "disposal", module: "disposal" },
-    { ...baseItem, id: "maintenance", module: "maintenance" },
     { ...baseItem, id: "audit", module: "audit" },
   ]
 
-  assert.deepEqual(filterApprovalInboxItems(items, "all").map((item) => item.id), ["disposal", "maintenance", "audit"])
+  assert.deepEqual(filterApprovalInboxItems(items, "all").map((item) => item.id), ["disposal", "audit"])
   assert.deepEqual(filterApprovalInboxItems(items, "audit").map((item) => item.id), ["audit"])
 })

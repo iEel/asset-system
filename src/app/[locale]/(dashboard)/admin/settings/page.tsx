@@ -251,7 +251,6 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           workflowApprovalPolicyDescription: t("workflowApprovalPolicyDescription"),
           workflowApprovalDisposalRequired: t("workflowApprovalDisposalRequired"),
           workflowApprovalAuditCloseRequired: t("workflowApprovalAuditCloseRequired"),
-          workflowApprovalMaintenanceCloseRequired: t("workflowApprovalMaintenanceCloseRequired"),
           workflowApprovalSegregationRequired: t("workflowApprovalSegregationRequired"),
           workflowApprovalMinApprovers: t("workflowApprovalMinApprovers"),
           workflowApprovalMinApproversHelp: t("workflowApprovalMinApproversHelp"),

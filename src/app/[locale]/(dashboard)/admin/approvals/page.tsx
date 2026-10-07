@@ -2,7 +2,7 @@ import Link from "next/link"
 import type React from "react"
 import { notFound, redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, CheckCircle2, ClipboardCheck, FileCheck2, History, ShieldCheck, Trash2, Users, Wrench } from "lucide-react"
+import { AlertTriangle, CheckCircle2, ClipboardCheck, FileCheck2, History, ShieldCheck, Trash2, Users } from "lucide-react"
 import { getSessionUser } from "@/lib/auth-utils"
 import type { ApprovalInboxItem } from "@/lib/approval-inbox"
 import { getApprovalAgeStatus, sortApprovalInboxItemsByAge } from "@/lib/approval-aging"
@@ -66,10 +66,9 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
         </div>
       </div>
 
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <SummaryCard label={t("total")} value={summary.total} tone={summary.total > 0 ? "danger" : "success"} />
         <SummaryCard label={t("disposal")} value={summary.disposal} tone={summary.disposal > 0 ? "danger" : "muted"} />
-        <SummaryCard label={t("maintenance")} value={summary.maintenance} tone={summary.maintenance > 0 ? "warning" : "muted"} />
         <SummaryCard label={t("audit")} value={summary.audit} tone={summary.audit > 0 ? "warning" : "muted"} />
       </section>
 
@@ -79,9 +78,8 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
             <h2 className="font-semibold text-foreground">{t("policyTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("policyDescription")}</p>
           </div>
-          <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <PolicyBadge label={t("policyDisposal")} enabled={policy.disposalRequired && access.canApproveDisposal} enabledLabel={t("enabled")} disabledLabel={t("disabled")} />
-            <PolicyBadge label={t("policyMaintenance")} enabled={policy.maintenanceCloseRequired && access.canCloseMaintenance} enabledLabel={t("enabled")} disabledLabel={t("disabled")} />
             <PolicyBadge label={t("policyAuditClose")} enabled={policy.auditCloseRequired && access.canApproveAudit} enabledLabel={t("enabled")} disabledLabel={t("disabled")} />
             <div className="rounded-md border border-border bg-background px-3 py-2">
               <div className="text-xs text-muted-foreground">{t("minApprovers")}</div>
@@ -365,15 +363,14 @@ function ApproverMatrixCard({
 
 function kindIcon(kind: ApprovalInboxItem["kind"]): React.ReactNode {
   if (kind === "disposal_review") return <Trash2 className="h-4 w-4" />
-  if (kind === "maintenance_close") return <Wrench className="h-4 w-4" />
   if (kind === "audit_round_close") return <ShieldCheck className="h-4 w-4" />
   return <ClipboardCheck className="h-4 w-4" />
 }
 
 function moduleLabel(module: ApprovalInboxItem["module"], locale: string) {
   const labels = {
-    th: { disposal: "ตัดจำหน่าย", maintenance: "ซ่อมบำรุง", audit: "ตรวจนับ" },
-    en: { disposal: "Disposal", maintenance: "Maintenance", audit: "Audit" },
+    th: { disposal: "ตัดจำหน่าย", audit: "ตรวจนับ" },
+    en: { disposal: "Disposal", audit: "Audit" },
   }
   return (locale === "th" ? labels.th : labels.en)[module]
 }

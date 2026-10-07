@@ -4,7 +4,7 @@ import type { Prisma } from "@prisma/client"
 import { notFound, redirect } from "next/navigation"
 import { getMessages, getTranslations } from "next-intl/server"
 import { CheckCircle2, ClipboardList, FileCheck2, History, RotateCcw, XCircle } from "lucide-react"
-import { getSessionUser } from "@/lib/auth-utils"
+import { getSessionUser, hasPermission } from "@/lib/auth-utils"
 import {
   approvalDecisionFilters,
   approvalDecisionModuleFilters,
@@ -46,7 +46,7 @@ export default async function ApprovalHistoryPage({ params, searchParams }: Appr
   const translateLog = (key: string) => systemLogMessages[key.replaceAll(".", "_")] ?? key
 
   const logs = await prisma.systemLog.findMany({
-    where: { OR: getAllowedDecisionWhere(access) },
+    where: { OR: getAllowedDecisionWhere(access, hasPermission(user, "maintenance", "edit")) },
     include: { user: { select: { username: true, displayName: true } } },
     orderBy: { createdAt: "desc" },
     take: 150,
@@ -324,10 +324,14 @@ function buildFilterHref(
   return `/${locale}/admin/approvals/history${queryString ? `?${queryString}` : ""}`
 }
 
-function getAllowedDecisionWhere(access: ReturnType<typeof getApprovalInboxAccess>): Prisma.SystemLogWhereInput[] {
+function getAllowedDecisionWhere(
+  access: ReturnType<typeof getApprovalInboxAccess>,
+  canSeeRepairCloseHistory: boolean
+): Prisma.SystemLogWhereInput[] {
   const conditions: Prisma.SystemLogWhereInput[] = []
   if (access.canApproveDisposal) conditions.push({ module: "disposal", action: { in: ["approve", "reject", "execute", "execute_historical_without_evidence"] } })
-  if (access.canCloseMaintenance) conditions.push({ module: "maintenance", action: "close" })
+  // Repair close approvals were retired in 2026-10; their old decisions stay searchable here.
+  if (canSeeRepairCloseHistory) conditions.push({ module: "maintenance", action: "close" })
   if (access.canApproveAudit) conditions.push({ module: "audit", action: { in: ["approve_finding", "reject_finding", "close"] } })
   return conditions
 }

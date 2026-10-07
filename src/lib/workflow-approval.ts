@@ -1,6 +1,5 @@
 export const workflowApprovalDisposalRequiredKey = "workflow_approval_disposal_required"
 export const workflowApprovalAuditCloseRequiredKey = "workflow_approval_audit_close_required"
-export const workflowApprovalMaintenanceCloseRequiredKey = "workflow_approval_maintenance_close_required"
 export const workflowApprovalMinApproversKey = "workflow_approval_min_approvers"
 export const workflowApprovalSegregationRequiredKey = "workflow_approval_segregation_required"
 export const workflowApprovalSlaDaysKey = "workflow_approval_sla_days"
@@ -8,7 +7,6 @@ export const workflowApprovalSlaDaysKey = "workflow_approval_sla_days"
 export const workflowApprovalSettingKeys = [
   workflowApprovalDisposalRequiredKey,
   workflowApprovalAuditCloseRequiredKey,
-  workflowApprovalMaintenanceCloseRequiredKey,
   workflowApprovalMinApproversKey,
   workflowApprovalSegregationRequiredKey,
   workflowApprovalSlaDaysKey,
@@ -17,7 +15,6 @@ export const workflowApprovalSettingKeys = [
 export type WorkflowApprovalPolicy = {
   disposalRequired: boolean
   auditCloseRequired: boolean
-  maintenanceCloseRequired: boolean
   minApprovers: number
   segregationRequired: boolean
   slaDays: number
@@ -26,7 +23,6 @@ export type WorkflowApprovalPolicy = {
 export const workflowApprovalDefaults: WorkflowApprovalPolicy = {
   disposalRequired: true,
   auditCloseRequired: true,
-  maintenanceCloseRequired: false,
   minApprovers: 1,
   segregationRequired: true,
   slaDays: 3,
@@ -77,11 +73,6 @@ export function parseWorkflowApprovalPolicy(settings: Iterable<WorkflowApprovalS
       values,
       workflowApprovalAuditCloseRequiredKey,
       workflowApprovalDefaults.auditCloseRequired
-    ),
-    maintenanceCloseRequired: readBoolean(
-      values,
-      workflowApprovalMaintenanceCloseRequiredKey,
-      workflowApprovalDefaults.maintenanceCloseRequired
     ),
     minApprovers: readMinApprovers(values),
     segregationRequired: readBoolean(

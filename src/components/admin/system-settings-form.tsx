@@ -67,7 +67,6 @@ import {
   parseWorkflowApprovalPolicy,
   workflowApprovalAuditCloseRequiredKey,
   workflowApprovalDisposalRequiredKey,
-  workflowApprovalMaintenanceCloseRequiredKey,
   workflowApprovalMinApproversKey,
   workflowApprovalSegregationRequiredKey,
   workflowApprovalSlaDaysKey,
@@ -279,7 +278,6 @@ type SystemSettingsFormProps = {
     workflowApprovalPolicyDescription: string
     workflowApprovalDisposalRequired: string
     workflowApprovalAuditCloseRequired: string
-    workflowApprovalMaintenanceCloseRequired: string
     workflowApprovalSegregationRequired: string
     workflowApprovalMinApprovers: string
     workflowApprovalMinApproversHelp: string
@@ -1602,11 +1600,6 @@ export function SystemSettingsForm({
               label={labels.workflowApprovalAuditCloseRequired}
               checked={getValue(workflowApprovalAuditCloseRequiredKey) === "true"}
               onChange={(checked) => setBooleanValue(workflowApprovalAuditCloseRequiredKey, checked)}
-            />
-            <ToggleField
-              label={labels.workflowApprovalMaintenanceCloseRequired}
-              checked={getValue(workflowApprovalMaintenanceCloseRequiredKey) === "true"}
-              onChange={(checked) => setBooleanValue(workflowApprovalMaintenanceCloseRequiredKey, checked)}
             />
             <ToggleField
               label={labels.workflowApprovalSegregationRequired}

@@ -79,7 +79,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   today.setHours(0, 0, 0, 0)
   const monthRange = getMonthRange(new Date())
   const approvalInboxAccess = user ? getApprovalInboxAccess(user) : null
-  const emptyApprovalInboxCounts: ApprovalInboxCounts = { total: 0, disposal: 0, maintenance: 0, audit: 0 }
+  const emptyApprovalInboxCounts: ApprovalInboxCounts = { total: 0, disposal: 0, audit: 0 }
   const dashboardTimingMeta = { route: "/dashboard", locale, approvalInbox: Boolean(approvalInboxAccess?.canAnyApproval) }
 
   const [

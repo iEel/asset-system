@@ -12,7 +12,6 @@ import {
 import {
   workflowApprovalAuditCloseRequiredKey,
   workflowApprovalDisposalRequiredKey,
-  workflowApprovalMaintenanceCloseRequiredKey,
   workflowApprovalMinApproversKey,
   workflowApprovalSegregationRequiredKey,
   workflowApprovalSlaDaysKey,
@@ -135,7 +134,6 @@ export const systemSettingDefaults = [
   { key: retentionOrphanFileDaysKey, value: "90", description: "จำนวนวันที่เก็บไฟล์ orphan จาก storage governance ก่อนพิจารณา archive/delete" },
   { key: workflowApprovalDisposalRequiredKey, value: "true", description: "บังคับใช้ขั้นตอนอนุมัติก่อนตัดจำหน่ายทรัพย์สิน" },
   { key: workflowApprovalAuditCloseRequiredKey, value: "true", description: "บังคับใช้ผู้อนุมัติแยกจากผู้สร้างรอบ ก่อนปิดรอบตรวจนับ" },
-  { key: workflowApprovalMaintenanceCloseRequiredKey, value: "false", description: "บังคับใช้การอนุมัติก่อนปิดงานซ่อมบำรุง" },
   { key: workflowApprovalMinApproversKey, value: "1", description: "จำนวนผู้อนุมัติขั้นต่ำสำหรับ workflow approval" },
   { key: workflowApprovalSegregationRequiredKey, value: "true", description: "บังคับใช้ Segregation of Duties ไม่ให้ผู้ทำรายการอนุมัติรายการของตนเอง" },
   { key: workflowApprovalSlaDaysKey, value: "3", description: "จำนวนวันที่งานอนุมัติสามารถค้างได้ก่อนขึ้นเตือนเกิน SLA" },

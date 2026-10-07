@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { buildApprovalInboxItems } from "../src/lib/approval-inbox.ts"
+import { buildApprovalInboxItems, summarizeApprovalInbox } from "../src/lib/approval-inbox.ts"
 
 test("builds approval inbox items from pending workflow records", () => {
   const items = buildApprovalInboxItems({
@@ -9,7 +9,6 @@ test("builds approval inbox items from pending workflow records", () => {
     policy: {
       disposalRequired: true,
       auditCloseRequired: true,
-      maintenanceCloseRequired: true,
       minApprovers: 1,
       segregationRequired: true,
       slaDays: 3,
@@ -22,16 +21,6 @@ test("builds approval inbox items from pending workflow records", () => {
         assetName: "Notebook",
         requestedBy: "Somchai",
         requestDate: new Date("2026-05-18T03:00:00.000Z"),
-      },
-    ],
-    maintenanceTickets: [
-      {
-        id: "repair-1",
-        repairNo: "MA-202605-0002",
-        assetTag: "AMS-UPS-0002",
-        assetName: "UPS",
-        reportedBy: "Suda",
-        updatedAt: new Date("2026-05-18T04:00:00.000Z"),
       },
     ],
     auditFindings: [
@@ -60,14 +49,13 @@ test("builds approval inbox items from pending workflow records", () => {
     [
       ["disposal_review", "disposal-1", "/th/disposal/disposal-1"],
       ["audit_finding_review", "finding-1", "/th/audit/findings?status=pending"],
-      ["maintenance_close", "repair-1", "/th/maintenance/repair-1"],
       ["audit_round_close", "round-1", "/th/audit/rounds/round-1"],
     ]
   )
   assert.equal(items[0].tone, "danger")
   assert.equal(items[1].module, "audit")
-  assert.equal(items[2].actionLabel, "ตรวจอนุมัติปิดงานซ่อม")
-  assert.equal(items[3].tone, "primary")
+  assert.equal(items[2].tone, "primary")
+  assert.deepEqual(summarizeApprovalInbox(items), { total: 3, disposal: 1, audit: 2 })
 })
 
 test("respects approval policy toggles", () => {
@@ -76,7 +64,6 @@ test("respects approval policy toggles", () => {
     policy: {
       disposalRequired: false,
       auditCloseRequired: false,
-      maintenanceCloseRequired: false,
       minApprovers: 1,
       segregationRequired: true,
       slaDays: 3,
@@ -89,16 +76,6 @@ test("respects approval policy toggles", () => {
         assetName: "Notebook",
         requestedBy: "Somchai",
         requestDate: new Date("2026-05-18T03:00:00.000Z"),
-      },
-    ],
-    maintenanceTickets: [
-      {
-        id: "repair-1",
-        repairNo: "MA-202605-0002",
-        assetTag: "AMS-UPS-0002",
-        assetName: "UPS",
-        reportedBy: "Suda",
-        updatedAt: new Date("2026-05-18T04:00:00.000Z"),
       },
     ],
     auditFindings: [
