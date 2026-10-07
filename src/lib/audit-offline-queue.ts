@@ -107,7 +107,7 @@ export async function addQueuedAuditScanAsync(
   return queued
 }
 
-/** One pending save per asset: a newer save replaces the older one instead of queueing twice. */
+/** One pending save per asset: a newer save replaces the older result (instead of queueing twice) and keeps its photos. */
 export async function upsertQueuedAuditScanAsync(
   storage: AuditOfflineQueueStorage,
   roundId: string,
@@ -118,16 +118,18 @@ export async function upsertQueuedAuditScanAsync(
   } = {}
 ) {
   const now = options.now ?? new Date()
+  const queue = await loadQueuedAuditScansAsync(storage, roundId)
+  const previous = queue.find((entry) => entry.assetId === payload.assetId)
   const queued: QueuedAuditScan = {
     ...payload,
     id: `${now.getTime()}-${payload.assetId}`,
     queuedAt: now.toISOString(),
     syncStatus: "pending",
     lastSyncError: null,
-    photos: options.photos ?? [],
+    photos: [...(previous?.photos ?? []), ...(options.photos ?? [])],
   }
-  const existing = (await loadQueuedAuditScansAsync(storage, roundId)).filter((entry) => entry.assetId !== payload.assetId)
-  await storage.setQueue(createAuditOfflineQueueKey(roundId), [...existing, queued])
+  const others = queue.filter((entry) => entry.assetId !== payload.assetId)
+  await storage.setQueue(createAuditOfflineQueueKey(roundId), [...others, queued])
   return queued
 }
 

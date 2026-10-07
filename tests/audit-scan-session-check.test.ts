@@ -102,14 +102,19 @@ test("a save result updates only its row, and status updates replace or add rows
   assert.deepEqual(merged.map((item) => [item.itemId, item.auditStatus]), [["item-1", "scanned"], ["item-2", "scanned"], ["item-9", "pending"]])
 })
 
-test("the offline queue keeps one entry per asset, the newest", async () => {
+function memoryQueueStorage(): AuditOfflineQueueStorage {
   const store = new Map<string, QueuedAuditScan[]>()
-  const storage: AuditOfflineQueueStorage = {
+  return {
     getQueue: async (key) => store.get(key) ?? [],
     setQueue: async (key, value) => { store.set(key, value) },
     removeQueue: async (key) => { store.delete(key) },
   }
-  const payload = { assetId: "asset-1", actualLocationId: "loc-1", actualCustodianId: null, actualDepartmentId: null, actualConditionId: null, scanSource: "manual" as const, applyCorrections: false, resultCorrection: false, remark: null }
+}
+const queuePayload = { assetId: "asset-1", actualLocationId: "loc-1", actualCustodianId: null, actualDepartmentId: null, actualConditionId: null, scanSource: "manual" as const, applyCorrections: false, resultCorrection: false, remark: null }
+
+test("the offline queue keeps one entry per asset, the newest", async () => {
+  const storage = memoryQueueStorage()
+  const payload = queuePayload
 
   await upsertQueuedAuditScanAsync(storage, "round-1", payload, { now: new Date("2026-10-07T01:00:00Z") })
   await upsertQueuedAuditScanAsync(storage, "round-1", { ...payload, actualLocationId: "loc-2" }, { now: new Date("2026-10-07T01:05:00Z") })
@@ -117,4 +122,20 @@ test("the offline queue keeps one entry per asset, the newest", async () => {
 
   const queue = await loadQueuedAuditScansAsync(storage, "round-1")
   assert.deepEqual(queue.map((entry) => [entry.assetId, entry.actualLocationId]), [["asset-1", "loc-2"], ["asset-2", "loc-1"]])
+})
+
+test("a newer offline save for the same asset keeps the photos already queued", async () => {
+  const storage = memoryQueueStorage()
+  const photo = (id: string) => ({ id, label: id, fileName: `${id}.jpg`, fileType: "image/jpeg", fileSize: 3, blob: new Blob(["abc"]) })
+
+  await upsertQueuedAuditScanAsync(storage, "round-1", queuePayload, { photos: [photo("p1")], now: new Date("2026-10-07T01:00:00Z") })
+  await upsertQueuedAuditScanAsync(storage, "round-1", { ...queuePayload, actualLocationId: "loc-2", actualConditionId: "cond-poor" }, { photos: [photo("p2")], now: new Date("2026-10-07T01:05:00Z") })
+
+  const queue = await loadQueuedAuditScansAsync(storage, "round-1")
+  assert.equal(queue.length, 1)
+  assert.equal(queue[0].assetId, "asset-1")
+  assert.deepEqual(queue[0].photos?.map((entry) => entry.id), ["p1", "p2"])
+  assert.equal(queue[0].actualLocationId, "loc-2")
+  assert.equal(queue[0].actualConditionId, "cond-poor")
+  assert.equal(queue[0].queuedAt, "2026-10-07T01:05:00.000Z")
 })
