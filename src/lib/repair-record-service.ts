@@ -86,7 +86,7 @@ export async function createRepairRecord(db: RepairServiceDb, input: RepairRecor
         movementType: "maintenance_create",
         fromValue: asset.statusId,
         toValue: nextStatusId ?? asset.statusId,
-        reason: input.problem,
+        reason: toMovementReason(input.problem),
         referenceType: "maintenance",
         referenceId: ticket.id,
         performedBy: user.id,
@@ -263,7 +263,7 @@ async function recordMovement(
       movementType,
       fromValue: ticket.asset.statusId,
       toValue: nextStatusId ?? ticket.asset.statusId,
-      reason,
+      reason: toMovementReason(reason),
       referenceType: "maintenance",
       referenceId: ticket.id,
       performedBy: user.id,
@@ -308,6 +308,11 @@ function throwIfRepairError(effect: RepairAssetEffect): asserts effect is { erro
   if (effect.error) {
     throw new MaintenanceApiError(effect.error, effect.error, effect.error === "MAINTENANCE_OPEN_RECORD_EXISTS" ? 409 : 400)
   }
+}
+
+// asset_movements.reason is NVarChar(500); the record itself keeps the full text.
+function toMovementReason(text: string | null | undefined) {
+  return text ? text.slice(0, 500) : null
 }
 
 function conflictError() {

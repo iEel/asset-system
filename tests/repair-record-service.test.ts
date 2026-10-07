@@ -97,6 +97,18 @@ test("a finished repair is saved as closed without touching an operational asset
   assert.deepEqual(statusWrites(calls), [])
 })
 
+test("a long problem is capped at the movement reason column but kept in full on the record", async () => {
+  const { db, calls } = fakeDb()
+  const problem = "ก".repeat(600)
+
+  await createRepairRecord(db as never, { ...baseInput, problem }, user)
+
+  const ticketData = find(calls, "maintenanceTicket.create")!.args.data as Record<string, unknown>
+  const movementData = find(calls, "assetMovement.create")!.args.data as Record<string, unknown>
+  assert.equal((ticketData.problem as string).length, 600)
+  assert.equal((movementData.reason as string).length, 500)
+})
+
 test("an unfinished repair claims the asset and moves it to Under Maintenance", async () => {
   const { db, calls } = fakeDb()
 
