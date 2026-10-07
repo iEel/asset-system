@@ -1,5 +1,6 @@
 "use client"
 
+import { useRef } from "react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { ArrowRightLeft, Check, ChevronDown, Copy, MoreHorizontal, PackageCheck, Trash2, Undo2 } from "lucide-react"
@@ -82,13 +83,15 @@ export function AssetRegisterTransactionMenu({
 }
 
 export function AssetRegisterMoreMenu({ assetId, cloneHref, labels }: { assetId: string; cloneHref: string; labels: Labels }) {
-  const { deleting, runDelete } = useDeleteAction(`/api/assets/${assetId}`)
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const { deleting, runDelete } = useDeleteAction(`/api/assets/${assetId}`, { returnFocusRef: triggerRef })
   const tCommon = useTranslations("common")
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
+          ref={triggerRef}
           type="button"
           title={labels.more}
           aria-label={labels.more}

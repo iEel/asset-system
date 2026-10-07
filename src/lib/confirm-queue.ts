@@ -6,6 +6,7 @@ export type ConfirmOptions = {
   confirmLabel?: string
   cancelLabel?: string
   tone?: ConfirmTone
+  returnFocusRef?: { current: HTMLElement | null }
 }
 
 export type ConfirmRequest = ConfirmOptions & {

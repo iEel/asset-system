@@ -6,14 +6,19 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 
-export function useDeleteAction(endpoint: string) {
+export function useDeleteAction(endpoint: string, options?: { returnFocusRef?: { current: HTMLElement | null } }) {
   const router = useRouter()
   const confirm = useConfirm()
   const tCommon = useTranslations("common")
   const [deleting, setDeleting] = useState(false)
 
   async function runDelete() {
-    const confirmed = await confirm({ title: tCommon("deleteConfirm"), confirmLabel: tCommon("delete"), tone: "destructive" })
+    const confirmed = await confirm({
+      title: tCommon("deleteConfirm"),
+      confirmLabel: tCommon("delete"),
+      tone: "destructive",
+      returnFocusRef: options?.returnFocusRef,
+    })
     if (!confirmed) return
 
     setDeleting(true)

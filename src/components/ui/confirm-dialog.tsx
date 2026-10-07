@@ -30,6 +30,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   const queueRef = useRef<ConfirmQueue>(emptyConfirmQueue)
   const nextIdRef = useRef(0)
   const restoreFocusRef = useRef<HTMLElement | null>(null)
+  const closingRequestRef = useRef<ConfirmOptions | null>(null)
 
   const commit = useCallback((next: ConfirmQueue) => {
     queueRef.current = next
@@ -72,10 +73,11 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
             {...(current.description ? {} : { "aria-describedby": undefined })}
             onOpenAutoFocus={() => {
               restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+              closingRequestRef.current = current
             }}
             onCloseAutoFocus={(event) => {
-              const target = restoreFocusRef.current
-              if (!target?.isConnected) return
+              const target = [restoreFocusRef.current, closingRequestRef.current?.returnFocusRef?.current].find((candidate) => candidate?.isConnected)
+              if (!target) return
               event.preventDefault()
               target.focus()
             }}

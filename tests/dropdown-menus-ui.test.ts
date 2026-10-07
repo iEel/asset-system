@@ -27,7 +27,9 @@ test("transaction cancel dialog can be opened by its owner without its own trigg
 test("register row menus are Radix dropdowns and delete through the shared action", () => {
   const source = read("src/components/assets/asset-register-action-menus.tsx")
   assert.match(source, /<DropdownMenuContent/)
-  assert.match(source, /useDeleteAction\(`\/api\/assets\/\$\{assetId\}`\)/)
+  assert.match(source, /useDeleteAction\(`\/api\/assets\/\$\{assetId\}`[,)]/)
+  assert.match(source, /useDeleteAction\(`\/api\/assets\/\$\{assetId\}`, \{ returnFocusRef: triggerRef \}\)/)
+  assert.match(source, /<button\s+ref=\{triggerRef\}/)
   assert.match(source, /variant="destructive"/)
   assert.equal(source.match(/<DropdownMenuContent data-no-row-click/g)?.length, 2)
   assert.doesNotMatch(source, /createPortal|getBoundingClientRect|addEventListener|AssetDeleteButton/)
@@ -37,4 +39,17 @@ test("topbar language and user menus are Radix dropdowns", () => {
   const source = read("src/components/layout/topbar.tsx")
   assert.ok((source.match(/<DropdownMenu\b/g)?.length ?? 0) >= 2)
   assert.doesNotMatch(source, /langMenuOpen|userMenuOpen/)
+})
+
+test("delete confirm returns focus to the menu trigger once the menu item is gone", () => {
+  const dialog = read("src/components/ui/confirm-dialog.tsx")
+  assert.match(dialog, /onCloseAutoFocus=\{\(event\) => \{[\s\S]*?\[restoreFocusRef\.current, [\s\S]*?returnFocusRef\?\.current\][\s\S]*?isConnected[\s\S]*?event\.preventDefault\(\)/)
+
+  const queue = read("src/lib/confirm-queue.ts")
+  assert.match(queue, /returnFocusRef\?: \{ current: HTMLElement \| null \}/)
+  assert.doesNotMatch(queue, /from "react"/)
+
+  const action = read("src/components/master-data/use-delete-action.ts")
+  assert.match(action, /options\?: \{ returnFocusRef\?: \{ current: HTMLElement \| null \} \}/)
+  assert.match(action, /returnFocusRef: options\?\.returnFocusRef/)
 })
