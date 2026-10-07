@@ -24,7 +24,7 @@ test("supplier form presents associated inline errors", () => {
 test("supplier form warns before abandoning unsaved changes", () => {
   assert.match(source, /addEventListener\("beforeunload"/)
   assert.match(source, /removeEventListener\("beforeunload"/)
-  assert.match(source, /unsavedChangesConfirm/)
+  assert.match(source, /confirm\(\{ title: t\("unsavedChangesConfirm"\)/)
   assert.match(source, /confirmNavigation/)
 })
 

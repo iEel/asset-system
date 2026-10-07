@@ -47,12 +47,18 @@ test("nothing imports the removed status pill", () => {
   assert.deepEqual(findMatches(/components\/ui\/status-pill/g), [])
 })
 
-const pendingNavigationGuards = new Set([
-  "src/components/disposal/disposal-bulk-approval.tsx",
-  "src/components/disposal/disposal-bulk-execution.tsx",
-  "src/components/master-data/supplier-form.tsx",
-])
-
 test("no browser confirm dialogs", () => {
-  assert.deepEqual(findMatches(/window\.confirm\(/g, (path) => pendingNavigationGuards.has(path)), [])
+  assert.deepEqual(findMatches(/window\.confirm\(/g), [])
+})
+
+test("navigation guards ask with the in-app confirm and let new-tab clicks through", () => {
+  for (const path of [
+    "src/components/disposal/disposal-bulk-approval.tsx",
+    "src/components/disposal/disposal-bulk-execution.tsx",
+    "src/components/master-data/supplier-form.tsx",
+  ]) {
+    const source = sources.find((file) => file.path === path)?.source ?? ""
+    assert.match(source, /shouldGuardLinkClick\(/, path)
+    assert.match(source, /confirm\(\{/, path)
+  }
 })

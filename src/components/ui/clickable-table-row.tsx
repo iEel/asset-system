@@ -28,9 +28,10 @@ export function ClickableTableRow({
   }
 
   function openDetail() {
-    const beforeNavigateEvent = new CustomEvent(CLICKABLE_ROW_BEFORE_NAVIGATE_EVENT, {
+    const beforeNavigateEvent = new CustomEvent<{ href: string }>(CLICKABLE_ROW_BEFORE_NAVIGATE_EVENT, {
       bubbles: true,
       cancelable: true,
+      detail: { href },
     })
     if (rowRef.current && !rowRef.current.dispatchEvent(beforeNavigateEvent)) return
     if (shouldCancelClickableRowNavigation(onNavigate?.())) return

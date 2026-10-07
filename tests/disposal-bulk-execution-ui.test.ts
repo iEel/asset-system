@@ -48,7 +48,7 @@ test("bulk execution selection, request, and retry rules are represented", async
   assert.match(state, /state\.selectedIds\.length >= MAX_DISPOSAL_BULK_EXECUTION_ITEMS/)
   assert.match(component, /selectionKey/)
   assert.match(component, /AbortController/)
-  assert.match(component, /window\.confirm/)
+  assert.match(component, /confirm\(\{ title: copy\.discardSelection/)
   assert.match(component, /useHistoricalEvidenceException/)
   assert.match(component, /evidenceExceptionReason/)
   assert.match(component, /evidenceExceptionAcknowledged/)

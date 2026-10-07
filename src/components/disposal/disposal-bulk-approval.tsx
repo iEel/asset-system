@@ -20,6 +20,8 @@ import type {
   DisposalBulkApprovalItem,
   DisposalBulkApprovalSummary,
 } from "@/lib/disposal-bulk-approval"
+import { useConfirm } from "@/components/ui/confirm-dialog"
+import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 
 export const MAX_DISPOSAL_BULK_APPROVAL_ITEMS = 50
 
@@ -153,6 +155,8 @@ export function DisposalBulkApprovalProvider({
   const requestGenerationRef = useRef(0)
   const previewControllerRef = useRef<AbortController | null>(null)
   const commitControllerRef = useRef<AbortController | null>(null)
+  const confirm = useConfirm()
+  const bypassGuardRef = useRef(false)
   const busy = dialogState === "previewing" || dialogState === "committing"
 
   /* eslint-disable react-hooks/set-state-in-effect -- A changed selection key represents a new server-rendered queue page. */
@@ -308,23 +312,41 @@ export function DisposalBulkApprovalProvider({
     if (!busy) setDialogState("closed")
   }
 
-  function confirmDiscard() {
-    if (selected.size === 0) return true
-    const confirmed = window.confirm(copy.discardSelection)
-    if (confirmed) clear()
-    return confirmed
+  async function discardSelectionThen(proceed: () => void) {
+    const confirmed = await confirm({ title: copy.discardSelection, tone: "destructive" })
+    if (!confirmed) return
+    clear()
+    bypassGuardRef.current = true
+    try {
+      proceed()
+    } finally {
+      bypassGuardRef.current = false
+    }
   }
 
   function handleClickCapture(event: MouseEvent<HTMLDivElement>) {
-    const target = event.target as HTMLElement | null
-    const link = target?.closest("a")
-    if (!link) return
-    if (!confirmDiscard()) event.preventDefault()
+    if (bypassGuardRef.current || selected.size === 0) return
+    const link = (event.target as HTMLElement | null)?.closest("a")
+    if (!link || !shouldGuardLinkClick(event, link)) return
+    event.preventDefault()
+    event.stopPropagation()
+    const href = link.getAttribute("href") ?? ""
+    void discardSelectionThen(() => router.push(href))
   }
 
   function handleSubmitCapture(event: FormEvent<HTMLDivElement>) {
     const form = event.target as HTMLFormElement | null
-    if (form?.dataset.disposalBulkDialog || !confirmDiscard()) event.preventDefault()
+    if (!form) return
+    if (form.dataset.disposalBulkDialog) {
+      event.preventDefault()
+      return
+    }
+    if (bypassGuardRef.current || selected.size === 0) return
+    event.preventDefault()
+    event.stopPropagation()
+    const submitter = (event.nativeEvent as SubmitEvent).submitter
+    const submitButton = submitter instanceof HTMLButtonElement || submitter instanceof HTMLInputElement ? submitter : undefined
+    void discardSelectionThen(() => form.requestSubmit(submitButton))
   }
 
   function getErrorLabel(code: DisposalBulkApprovalCode | null) {

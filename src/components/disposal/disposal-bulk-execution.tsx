@@ -38,6 +38,8 @@ import {
   type BulkExecutionSelectionMessage,
   type BulkExecutionSelectionState,
 } from "@/lib/disposal-bulk-execution-ui"
+import { useConfirm } from "@/components/ui/confirm-dialog"
+import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 
 const BULK_EXECUTION_MODES = {
   preview: { mode: "preview" as const },
@@ -231,6 +233,8 @@ export function DisposalBulkExecutionProvider({
   const requestGenerationRef = useRef(0)
   const previewControllerRef = useRef<AbortController | null>(null)
   const commitControllerRef = useRef<AbortController | null>(null)
+  const confirm = useConfirm()
+  const bypassGuardRef = useRef(false)
   const busy = dialogState === "previewing" || dialogState === "committing"
   const selectedType = selectedTypeFor(items, selection.selectedIds)
   const capabilityRoles = canUseHistoricalEvidenceException ? ["system_admin"] : []
@@ -472,26 +476,47 @@ export function DisposalBulkExecutionProvider({
     setSharedRecipientName("")
   }
 
-  function confirmDiscard() {
-    if (selection.selectedIds.length === 0) return true
-    const confirmed = window.confirm(copy.discardSelection)
-    if (confirmed) clear()
-    return confirmed
+  async function discardSelectionThen(proceed: () => void) {
+    const confirmed = await confirm({ title: copy.discardSelection, tone: "destructive" })
+    if (!confirmed) return
+    clear()
+    bypassGuardRef.current = true
+    try {
+      proceed()
+    } finally {
+      bypassGuardRef.current = false
+    }
+  }
+
+  function hasGuardedSelection() {
+    return !bypassGuardRef.current && selection.selectedIds.length > 0
   }
 
   function onClickCapture(event: MouseEvent<HTMLDivElement>) {
-    if ((event.target as HTMLElement | null)?.closest("a") && !confirmDiscard()) {
-      event.preventDefault()
-    }
+    if (!hasGuardedSelection()) return
+    const link = (event.target as HTMLElement | null)?.closest("a")
+    if (!link || !shouldGuardLinkClick(event, link)) return
+    event.preventDefault()
+    event.stopPropagation()
+    const href = link.getAttribute("href") ?? ""
+    void discardSelectionThen(() => router.push(href))
   }
 
   function onSubmitCapture(event: FormEvent<HTMLDivElement>) {
     const form = event.target as HTMLFormElement | null
-    if (!form?.dataset.disposalBulkDialog && !confirmDiscard()) event.preventDefault()
+    if (!form || form.dataset.disposalBulkDialog || !hasGuardedSelection()) return
+    event.preventDefault()
+    event.stopPropagation()
+    const submitter = (event.nativeEvent as SubmitEvent).submitter
+    const submitButton = submitter instanceof HTMLButtonElement || submitter instanceof HTMLInputElement ? submitter : undefined
+    void discardSelectionThen(() => form.requestSubmit(submitButton))
   }
 
   function onBeforeNavigate(event: Event) {
-    if (!confirmDiscard()) event.preventDefault()
+    if (!hasGuardedSelection()) return
+    event.preventDefault()
+    const href = (event as CustomEvent<{ href?: string }>).detail?.href
+    if (href) void discardSelectionThen(() => router.push(href))
   }
 
   const wrapperRef = useRef<HTMLDivElement | null>(null)

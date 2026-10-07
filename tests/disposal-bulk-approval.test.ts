@@ -71,7 +71,7 @@ test("bulk approval UI keeps selection page-scoped and uses server preflight", (
   assert.match(source, /role="dialog"/)
   assert.match(source, /aria-modal="true"/)
   assert.match(source, /MAX_DISPOSAL_BULK_APPROVAL_ITEMS/)
-  assert.match(source, /if \(!link\) return/)
+  assert.match(source, /if \(!link \|\| !shouldGuardLinkClick\(event, link\)\) return/)
   assert.doesNotMatch(source, /fixed\s+bottom-0/)
 })
 
@@ -140,7 +140,8 @@ test("bulk approval invalidates requests on selection-key changes and clears sta
   assert.match(source, /useEffect\(\(\) => \{[\s\S]*?selectionGenerationRef\.current \+= 1[\s\S]*?previewControllerRef\.current\?\.abort\(\)[\s\S]*?commitControllerRef\.current\?\.abort\(\)/)
   assert.match(source, /async function preview\(\) \{[\s\S]*?setResponse\(null\)[\s\S]*?setDialogState\("previewing"\)/)
   assert.doesNotMatch(source, /skipDiscardConfirmationRef/)
-  assert.match(source, /function confirmDiscard\(\) \{\s*if \(selected\.size === 0\) return true/)
+  assert.match(source, /async function discardSelectionThen\(proceed: \(\) => void\) \{\s*const confirmed = await confirm\(\{ title: copy\.discardSelection/)
+  assert.match(source, /if \(bypassGuardRef\.current \|\| selected\.size === 0\) return/)
 })
 
 test("bulk approval has localized copy ready for the queue integration", () => {

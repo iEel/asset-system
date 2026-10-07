@@ -12,6 +12,8 @@ import {
   type SupplierFormErrors,
   type SupplierFormField,
 } from "@/lib/supplier-form-errors"
+import { useConfirm } from "@/components/ui/confirm-dialog"
+import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 
 type SupplierFormValues = {
   id?: string
@@ -45,6 +47,7 @@ export function SupplierForm({
 }) {
   const locale = useLocale()
   const router = useRouter()
+  const confirm = useConfirm()
   const t = useTranslations("supplier")
   const tCommon = useTranslations("common")
   const [initialValues] = useState<SupplierFormValues>(() => supplier ?? emptySupplier)
@@ -81,8 +84,13 @@ export function SupplierForm({
   }
 
   function confirmNavigation(event: React.MouseEvent<HTMLAnchorElement>) {
-    if (!isDirty || window.confirm(t("unsavedChangesConfirm"))) return
+    if (!isDirty || !shouldGuardLinkClick(event, event.currentTarget)) return
     event.preventDefault()
+    const href = event.currentTarget.getAttribute("href")
+    if (!href) return
+    void confirm({ title: t("unsavedChangesConfirm"), tone: "destructive" }).then((confirmed) => {
+      if (confirmed) router.push(href)
+    })
   }
 
   function getErrorMessage(code: SupplierFormErrorCode) {
