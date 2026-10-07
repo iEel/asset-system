@@ -37,7 +37,11 @@ test("maintenance clients localize stable error codes instead of exposing raw AP
 })
 
 test("maintenance option selectors use the shared loading message namespace", async () => {
-  const files = ["src/components/maintenance/repair-record-form.tsx", "src/components/maintenance/repair-record-actions.tsx"]
+  const files = [
+    "src/components/maintenance/repair-record-form.tsx",
+    "src/components/maintenance/repair-record-actions.tsx",
+    "src/components/maintenance/maintenance-plan-form.tsx",
+  ]
   const source = (await Promise.all(files.map((file) => readFile(file, "utf8")))).join("\n")
 
   assert.doesNotMatch(source, /loadingLabel=\{t\("loading"\)\}/)

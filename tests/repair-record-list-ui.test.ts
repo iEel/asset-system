@@ -22,6 +22,11 @@ test("the maintenance page lists records with PM due and stuck assets", () => {
   assert.match(source, /planId=/)
 })
 
+test("the stuck-asset link has a 44px touch target", () => {
+  const source = readFileSync(pagePath, "utf8")
+  assert.match(source, /href=\{`\/\$\{locale\}\/assets\/\$\{asset\.id\}`\}\s+className="[^"]*min-h-11/)
+})
+
 test("the board view, SLA and evidence filters are gone", () => {
   const source = readFileSync(pagePath, "utf8")
   assert.doesNotMatch(source, /Kanban|layout=board|overdue=yes|evidence|assignedTo/)

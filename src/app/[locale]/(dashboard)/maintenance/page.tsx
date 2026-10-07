@@ -114,8 +114,10 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
           <ul className="mt-3 grid gap-2 md:grid-cols-2">
             {stuckAssets.map((asset) => (
               <li key={asset.id} className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2">
-                <Link href={`/${locale}/assets/${asset.id}`} className="min-w-0 truncate text-sm font-medium text-foreground hover:text-primary">
-                  {asset.assetTag} - {asset.name} <span className="text-xs text-muted-foreground">({asset.status.nameTh})</span>
+                <Link href={`/${locale}/assets/${asset.id}`} className="inline-flex min-h-11 min-w-0 items-center truncate text-sm font-medium text-foreground hover:text-primary">
+                  <span className="truncate">
+                    {asset.assetTag} - {asset.name} <span className="text-xs text-muted-foreground">({asset.status.nameTh})</span>
+                  </span>
                 </Link>
                 {canCreate ? (
                   <Link href={appendOperationalReturnTo(`/${locale}/maintenance/new?assetId=${asset.id}`, returnHref)} className="inline-flex min-h-11 shrink-0 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-accent">
