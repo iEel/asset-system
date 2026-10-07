@@ -7,6 +7,7 @@ import {
   getDisposalApprovalAssetStatusError,
   getDisposalDecisionStatusOptions,
   filterDisposalExecutorOptions,
+  getDisposalRequestRestoreStatusName,
   getDisposalSegregationError,
   getDisposalStatusTargetError,
 } from "../src/lib/disposal-policy.ts"
@@ -16,7 +17,6 @@ test("accepts operational asset statuses and rejects protected disposal sources"
   assert.equal(getDisposalAssetEligibilityError({ name: "Checked Out" }), null)
 
   for (const statusName of [
-    "Pending Disposal",
     "Disposed",
     "Retired",
     "Lost",
@@ -30,7 +30,6 @@ test("accepts operational asset statuses and rejects protected disposal sources"
 
 test("recognizes protected and target statuses from Thai master data labels", () => {
   assert.notEqual(getDisposalAssetEligibilityError({ nameTh: "ตัดจำหน่ายแล้ว" }), null)
-  assert.notEqual(getDisposalAssetEligibilityError({ nameTh: "รอตัดจำหน่าย" }), null)
   assert.equal(getDisposalStatusTargetError("approve", { nameTh: "รอตัดจำหน่าย" }), null)
   assert.equal(getDisposalStatusTargetError("reject", { nameTh: "พร้อมใช้งาน" }), null)
   assert.equal(getDisposalStatusTargetError("execute", { nameTh: "เลิกใช้งาน" }), null)
@@ -133,4 +132,45 @@ test("removes the approver from executor options when segregation is required", 
   const employees = [{ id: "approver" }, { id: "operator" }]
   assert.deepEqual(filterDisposalExecutorOptions(employees, "approver", true), [{ id: "operator" }])
   assert.deepEqual(filterDisposalExecutorOptions(employees, "approver", false), employees)
+})
+
+test("an asset a repair closed to Pending Disposal can still get its disposal request", () => {
+  assert.equal(getDisposalAssetEligibilityError({ name: "Pending Disposal" }), null)
+  assert.equal(getDisposalAssetEligibilityError({ nameTh: "รอตัดจำหน่าย" }), null)
+})
+
+test("a request raised from Pending Disposal records the custody-derived status to restore on rejection", () => {
+  assert.equal(getDisposalRequestRestoreStatusName({ name: "Pending Disposal" }, "emp-1"), "In Use")
+  assert.equal(getDisposalRequestRestoreStatusName({ nameTh: "รอตัดจำหน่าย" }, null), "Ready")
+  assert.equal(getDisposalRequestRestoreStatusName({ name: "In Use" }, "emp-1"), null)
+})
+
+test("an account without an employee link cannot approve while segregation of duties is required", () => {
+  assert.match(
+    getDisposalSegregationError({
+      action: "approve",
+      segregationRequired: true,
+      actorEmployeeId: null,
+      actorUserId: "user-admin",
+      requestedById: "employee-requester",
+      createdByUserId: "user-creator",
+    }) ?? "",
+    /employee/i,
+  )
+})
+
+test("execution is refused when no approver was recorded, because segregation cannot be verified", () => {
+  assert.match(
+    getDisposalSegregationError({
+      action: "execute",
+      segregationRequired: true,
+      actorEmployeeId: null,
+      actorUserId: "user-admin",
+      requestedById: "employee-requester",
+      createdByUserId: "user-creator",
+      approverId: null,
+      executedById: "employee-executor",
+    }) ?? "",
+    /approver/i,
+  )
 })

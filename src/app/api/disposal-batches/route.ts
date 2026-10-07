@@ -4,7 +4,8 @@ import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { prepareDisposalBatchPacket } from "@/lib/disposal-batch"
-import { getDisposalAssetEligibilityError } from "@/lib/disposal-policy"
+import { getDisposalAssetEligibilityError, getDisposalRequestRestoreStatusName } from "@/lib/disposal-policy"
+import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
 import { withPrismaUniqueRetry } from "@/lib/prisma-unique-retry"
 import { isDisposalBatchSchemaReady } from "@/lib/disposal-schema-readiness"
 import {
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
           id: true,
           assetTag: true,
           statusId: true,
+          custodianId: true,
           status: { select: { name: true, nameTh: true } },
           ...disposalReadinessAssetSelect,
         },
@@ -89,6 +91,12 @@ export async function POST(request: NextRequest) {
         "DISPOSAL_BATCH_OPEN_REQUEST",
         `Open disposal requests already exist for: ${openRequests.map((item) => `${item.asset.assetTag} (${item.disposalNo})`).join(", ")}`
       )
+    }
+
+    const previousStatusIdByAsset = new Map<string, string>()
+    for (const asset of assets) {
+      const restoreStatusName = getDisposalRequestRestoreStatusName(asset.status, asset.custodianId)
+      previousStatusIdByAsset.set(asset.id, restoreStatusName ? await getRequiredAssetStatusId(restoreStatusName) : asset.statusId)
     }
 
     const now = new Date()
@@ -131,7 +139,7 @@ export async function POST(request: NextRequest) {
             data: {
               disposalNo: `DP-${datePart}-${String(requestCount + index + 1).padStart(4, "0")}`,
               assetId,
-              previousAssetStatusId: asset.statusId,
+              previousAssetStatusId: previousStatusIdByAsset.get(assetId) ?? asset.statusId,
               batchId: batch.id,
               disposalType: packet.disposalType,
               reason: packet.reason,

@@ -3,7 +3,8 @@ import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
-import { getDisposalAssetEligibilityError } from "@/lib/disposal-policy"
+import { getDisposalAssetEligibilityError, getDisposalRequestRestoreStatusName } from "@/lib/disposal-policy"
+import { getRequiredAssetStatusId } from "@/lib/asset-status-flow"
 import { disposalRequestSchema } from "@/lib/validations/disposal"
 import { disposalApiError } from "@/lib/disposal-api-errors"
 import { withPrismaUniqueRetry } from "@/lib/prisma-unique-retry"
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
         select: {
           id: true,
           statusId: true,
+          custodianId: true,
           status: { select: { name: true, nameTh: true } },
           ...disposalReadinessAssetSelect,
         },
@@ -89,6 +91,8 @@ export async function POST(request: NextRequest) {
     if (!pendingDisposalStatus) {
       return disposalApiError("DISPOSAL_PENDING_STATUS_MISSING", "Pending Disposal asset status is not configured")
     }
+    const restoreStatusName = getDisposalRequestRestoreStatusName(asset.status, asset.custodianId)
+    const previousAssetStatusId = restoreStatusName ? await getRequiredAssetStatusId(restoreStatusName) : asset.statusId
     const { disposalNo, disposalRequest } = await withPrismaUniqueRetry(async () => {
       const disposalNo = await generateDisposalNo()
       const disposalRequest = await prisma.$transaction(async (tx) => {
@@ -104,7 +108,7 @@ export async function POST(request: NextRequest) {
           data: {
             disposalNo,
             assetId: input.assetId,
-            previousAssetStatusId: asset.statusId,
+            previousAssetStatusId,
             disposalType: input.disposalType,
             reason: input.reason,
             requestedById: input.requestedById,

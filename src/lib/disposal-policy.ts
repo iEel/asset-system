@@ -24,8 +24,9 @@ type DisposalSegregationInput = {
   executedById?: string | null
 }
 
+// Pending Disposal is a valid source when no request is open (the route checks that): a
+// corrective repair can close an asset to Pending Disposal before anyone raises the request.
 const blockedRequestSourceStatuses = new Set([
-  "pending disposal",
   "disposed",
   "retired",
   "lost",
@@ -61,6 +62,16 @@ const thaiStatusAliases = new Map<string, string>([
 export function getDisposalAssetEligibilityError(status: DisposalLifecycleStatus | null | undefined) {
   if (!blockedRequestSourceStatuses.has(normalizeStatus(status))) return null
   return "Asset status does not allow a new disposal request"
+}
+
+// A request raised from Pending Disposal has no meaningful "previous" status to restore on
+// rejection, so it records the custody-derived operational status instead.
+export function getDisposalRequestRestoreStatusName(
+  status: DisposalLifecycleStatus | null | undefined,
+  custodianId: string | null | undefined,
+): "In Use" | "Ready" | null {
+  if (normalizeStatus(status) !== "pending disposal") return null
+  return custodianId ? "In Use" : "Ready"
 }
 
 export function getDisposalApprovalAssetStatusError(status: DisposalLifecycleStatus | null | undefined) {
@@ -123,7 +134,12 @@ export function getDisposalSegregationError({
   if (!segregationRequired) return null
 
   if (action === "approve") {
-    if (actorEmployeeId && actorEmployeeId === requestedById) {
+    // The approval is recorded against the approver's employee; without one, execution could not
+    // tell whether the executor is the same person who approved.
+    if (!actorEmployeeId) {
+      return "Disposal approvers must be linked to an employee record while segregation of duties is required"
+    }
+    if (actorEmployeeId === requestedById) {
       return "The requester cannot approve their own disposal request"
     }
     if (actorUserId && actorUserId === createdByUserId) {
@@ -132,7 +148,10 @@ export function getDisposalSegregationError({
     return null
   }
 
-  if (action === "execute" && approverId) {
+  if (action === "execute") {
+    if (!approverId) {
+      return "This approval has no recorded approver, so segregation of duties cannot be verified before execution"
+    }
     if (actorEmployeeId === approverId || executedById === approverId) {
       return "The approver cannot execute the disposal request"
     }
