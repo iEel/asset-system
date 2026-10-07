@@ -805,6 +805,8 @@
     "selectedCount": "รายการที่เลือก",
     "tableScrollHint": "เลื่อนตารางซ้าย/ขวาเพื่อดูคอลัมน์เพิ่มเติม คอลัมน์รหัส ชื่อ และการดำเนินการจะค้างตำแหน่งไว้",
     "viewPhoto": "ดูรูป {assetTag}",
+    "searchPlaceholder": "ค้นหา รหัส · ชื่อ · Serial · ผู้ถือครอง · ที่ตั้ง",
+    "searchClear": "ล้างคำค้นหา",
     "qrCode": "QR Code",
     "printLabel": "พิมพ์ Label",
     "printLabelTitle": "พิมพ์ Label ทรัพย์สิน",
