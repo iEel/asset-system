@@ -37,14 +37,12 @@ test("marks core production readiness checks as pass when settings and coverage 
       dbServer: "192.168.1.10",
       dbUser: "asset_app",
       dbPassword: "secret",
-      maintenancePmGenerationToken: "pm-token",
       ldapSyncToken: "ldap-token",
       notificationDigestToken: "digest-token",
       uploadScanCommand: "/usr/bin/clamscan",
       uploadScanArgs: "--no-summary {file}",
       uploadScanTimeoutMs: "30000",
       schedulerRunStatuses: [
-        { name: "pm_generate_due", status: "success" },
         { name: "ldap_sync", status: "success" },
         { name: "notification_digest", status: "success" },
       ],
@@ -70,6 +68,7 @@ test("marks core production readiness checks as pass when settings and coverage 
   assert.deepEqual(checks.map((check) => check.status), ["pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass"])
   assert.equal(checks.find((check) => check.key === "backupRestoreDrill")?.value, "2026-05-21T01:00:00.000Z")
   assert.equal(checks.find((check) => check.key === "retentionPolicy")?.value, "3/3 configured")
+  assert.equal(checks.find((check) => check.key === "schedulerTokens")?.value, "2/2 configured")
   assert.equal(checks.find((check) => check.key === "pwaAssets")?.value, "8/8 assets")
   assert.equal(checks.find((check) => check.key === "uploadScanner")?.value, "enabled: /usr/bin/clamscan (30000 ms)")
 })
@@ -91,14 +90,12 @@ test("warns when notification digest scheduler status has not run yet", () => {
       dbServer: "192.168.1.10",
       dbUser: "asset_app",
       dbPassword: "secret",
-      maintenancePmGenerationToken: "pm-token",
       ldapSyncToken: "ldap-token",
       notificationDigestToken: "digest-token",
       uploadScanCommand: "/usr/bin/clamscan",
       uploadScanArgs: "--no-summary {file}",
       uploadScanTimeoutMs: "30000",
       schedulerRunStatuses: [
-        { name: "pm_generate_due", status: "success" },
         { name: "ldap_sync", status: "success" },
         { name: "notification_digest", status: "" },
       ],
@@ -150,14 +147,12 @@ test("surfaces risky production readiness states", () => {
       dbServer: "",
       dbUser: "asset_app",
       dbPassword: "",
-      maintenancePmGenerationToken: "",
       ldapSyncToken: "",
       notificationDigestToken: "",
       uploadScanCommand: "",
       uploadScanArgs: "",
       uploadScanTimeoutMs: "0",
       schedulerRunStatuses: [
-        { name: "pm_generate_due", status: "success" },
         { name: "ldap_sync", status: "failed" },
         { name: "notification_digest", status: "success" },
       ],
@@ -216,14 +211,12 @@ test("fails upload scanner readiness when an enabled scanner has an invalid time
       dbServer: "192.168.1.10",
       dbUser: "asset_app",
       dbPassword: "secret",
-      maintenancePmGenerationToken: "pm-token",
       ldapSyncToken: "ldap-token",
       notificationDigestToken: "digest-token",
       uploadScanCommand: "/usr/bin/clamscan",
       uploadScanArgs: "--no-summary {file}",
       uploadScanTimeoutMs: "not-a-number",
       schedulerRunStatuses: [
-        { name: "pm_generate_due", status: "success" },
         { name: "ldap_sync", status: "success" },
         { name: "notification_digest", status: "success" },
       ],

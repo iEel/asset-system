@@ -1,34 +1,13 @@
 import type { Prisma } from "@prisma/client"
 
-export const maintenancePlanFrequencies =["monthly", "quarterly", "yearly", "custom"] as const
+export const maintenancePlanFrequencies = ["monthly", "quarterly", "yearly", "custom"] as const
 
 export type MaintenancePlanFrequency = (typeof maintenancePlanFrequencies)[number]
 export type MaintenancePlanDueState = "overdue" | "due_soon" | "upcoming"
-export type PreventiveMaintenanceTicketPlan = {
-  planNo: string
-  title: string
-  frequency: MaintenancePlanFrequency | string
-  intervalDays?: number | null
-  nextDueDate: Date | string
-  assignedToId?: string | null
-  vendorId?: string | null
-  notes?: string | null
-}
 
 export type MaintenancePlanSummaryInput = {
   isActive: boolean
   nextDueDate: Date | string
-}
-
-export type PreventiveMaintenanceGenerationPlanInput = {
-  isActive: boolean
-  nextDueDate: Date | string
-}
-
-export type PreventiveMaintenanceDuplicatePlanInput = {
-  id: string
-  planNo: string
-  assetId: string
 }
 
 export function getMaintenancePlanIntervalDays(frequency: MaintenancePlanFrequency, intervalDays?: number | null) {
@@ -111,62 +90,6 @@ export function summarizeMaintenancePlans(plans: MaintenancePlanSummaryInput[], 
   }
 
   return summary
-}
-
-export function isPreventiveMaintenancePlanDue(plan: PreventiveMaintenanceGenerationPlanInput, now = new Date()) {
-  if (!plan.isActive) return false
-  return startOfDay(plan.nextDueDate).getTime() <= startOfDay(now).getTime()
-}
-
-export function buildPreventiveMaintenanceTicketPrefix(planNo: string) {
-  return `[PM] ${planNo} -`
-}
-
-export function buildPreventiveMaintenanceDuplicateTicketWhere(plan: PreventiveMaintenanceDuplicatePlanInput) {
-  return {
-    isActive: true,
-    repairStatus: { notIn: ["closed", "cancelled"] },
-    OR: [
-      { maintenancePlanId: plan.id },
-      {
-        assetId: plan.assetId,
-        maintenancePlanId: null,
-        problem: { startsWith: buildPreventiveMaintenanceTicketPrefix(plan.planNo) },
-      },
-    ],
-  }
-}
-
-export function buildPreventiveMaintenanceTicketProblem(plan: Pick<PreventiveMaintenanceTicketPlan, "planNo" | "title" | "notes">) {
-  const title = `${buildPreventiveMaintenanceTicketPrefix(plan.planNo)} ${plan.title}`
-  const notes = plan.notes?.trim()
-  return notes ? `${title}\n\n${notes}` : title
-}
-
-export function buildPreventiveMaintenanceTicketDraft(
-  plan: PreventiveMaintenanceTicketPlan,
-  fallbackReportedById?: string | null
-) {
-  const frequency = normalizeMaintenancePlanFrequency(plan.frequency)
-  const assignedToId = plan.assignedToId ?? null
-  const vendorId = plan.vendorId ?? null
-  const reportedById = assignedToId ?? fallbackReportedById ?? null
-
-  return {
-    problem: buildPreventiveMaintenanceTicketProblem(plan),
-    reportedById,
-    assignedToId,
-    dueDate: new Date(plan.nextDueDate),
-    repairType: vendorId ? "vendor" as const : "internal" as const,
-    vendorId,
-    nextDueDate: calculateNextMaintenanceDueDate(plan.nextDueDate, frequency, plan.intervalDays),
-  }
-}
-
-function normalizeMaintenancePlanFrequency(frequency: string): MaintenancePlanFrequency {
-  return maintenancePlanFrequencies.includes(frequency as MaintenancePlanFrequency)
-    ? frequency as MaintenancePlanFrequency
-    : "custom"
 }
 
 function startOfDay(value: Date | string) {

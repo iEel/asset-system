@@ -27,7 +27,6 @@ test("maintenance clients localize stable error codes instead of exposing raw AP
     "src/components/maintenance/repair-record-form.tsx",
     "src/components/maintenance/repair-record-actions.tsx",
     "src/components/maintenance/maintenance-plan-form.tsx",
-    "src/components/maintenance/maintenance-plan-generate-button.tsx",
     "src/components/maintenance/maintenance-attachments.tsx",
   ]
   const source = (await Promise.all(files.map((file) => readFile(file, "utf8")))).join("\n")

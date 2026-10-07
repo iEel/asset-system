@@ -144,7 +144,6 @@ UPLOAD_SCAN_TIMEOUT_MS=30000
 PDF_THAI_FONT_REGULAR=
 PDF_THAI_FONT_BOLD=
 
-MAINTENANCE_PM_GENERATION_TOKEN=<CHANGE_ME>
 NOTIFICATION_DIGEST_TOKEN=<CHANGE_ME>
 NOTIFICATION_DIGEST_WEBHOOK_URL=
 
@@ -213,7 +212,7 @@ sudo chmod 640 /var/www/asset-system/env/asset-system.env
 - PDF ภาษาไทยจะหา font ตามลำดับ: `PDF_THAI_FONT_REGULAR`, bundled `public/fonts/NotoSansThai-*.ttf`, bundled `public/fonts/Sarabun-*.ttf`, Ubuntu Noto fonts ถ้ามีติดตั้งไว้, Windows Tahoma, แล้วค่อย fallback เป็น Helvetica
 - Repo นี้ bundle `NotoSansThai-Regular.ttf` และ `NotoSansThai-Bold.ttf` ไว้ใน `public/fonts` แล้ว ภายใต้ SIL Open Font License ใน `public/fonts/OFL.txt`; หลัง build ต้อง copy `public` เข้า `.next/standalone/` ตามหัวข้อ 7 เพื่อให้ runtime เห็น font
 - ถ้าองค์กรมี font ไทยมาตรฐาน ให้ตั้ง `PDF_THAI_FONT_REGULAR` และ `PDF_THAI_FONT_BOLD` เป็น absolute path ของ `.ttf` บน server
-- `MAINTENANCE_PM_GENERATION_TOKEN` และ `LDAP_SYNC_TOKEN` ใช้สำหรับ systemd scheduler heartbeat ควรเป็น random token ยาว ๆ และไม่ซ้ำกับ secret อื่น
+- `LDAP_SYNC_TOKEN` ใช้สำหรับ systemd scheduler heartbeat ควรเป็น random token ยาว ๆ และไม่ซ้ำกับ secret อื่น
 - `NOTIFICATION_DIGEST_TOKEN` ใช้สำหรับรัน daily notification digest ผ่าน script/API แยกจาก scheduler heartbeat
 - `NOTIFICATION_DIGEST_WEBHOOK_URL` เป็น optional generic webhook สำหรับส่ง digest ออกช่องทางภายนอก เช่น gateway ของ Teams/LINE; ถ้าเว้นว่าง ระบบยังสร้าง in-app notification ได้ตามปกติ
 - `BACKUP_STATUS`, `BACKUP_LAST_RUN_AT`, และ `BACKUP_LAST_RESTORE_TEST_AT` เป็น optional readiness signal สำหรับหน้า `/th/admin/readiness` เท่านั้น ไม่ได้ทำ backup/restore ให้เอง ถ้ายังไม่มีระบบรายงานสถานะ backup ให้ปล่อย `unknown`/ว่างไว้ และวางแผนทดสอบ restore ก่อนเปิดใช้งานจริง
@@ -364,18 +363,19 @@ curl -I http://127.0.0.1:3000/th/login
 
 ## 11. Configure Web-Controlled Scheduler Heartbeat With systemd Timer
 
-ระบบใช้ script `npm run scheduler:heartbeat` เป็นตัวปลุกงานอัตโนมัติกลาง โดยตัว timer ไม่ได้เป็นคนตัดสินเวลา PM/LDAP เองแล้ว แต่จะเรียกแอปทุก 5 นาที จากนั้นแอปอ่านค่าที่ตั้งในหน้าเว็บ `/th/admin/settings` เพื่อเช็คว่า PM auto-generation หรือ LDAP Sync ถึงรอบตาม `cron` ในฐานข้อมูลหรือยัง
+ระบบใช้ script `npm run scheduler:heartbeat` เป็นตัวปลุกงานอัตโนมัติกลาง โดยตัว timer ไม่ได้เป็นคนตัดสินเวลา LDAP Sync เองแล้ว แต่จะเรียกแอปทุก 5 นาที จากนั้นแอปอ่านค่าที่ตั้งในหน้าเว็บ `/th/admin/settings` เพื่อเช็คว่า LDAP Sync ถึงรอบตาม `cron` ในฐานข้อมูลหรือยัง
 
-ค่า `cron` ในหน้าเว็บถูกตีความเป็นเวลาไทย `Asia/Bangkok`; systemd timer มีหน้าที่ปลุก heartbeat เท่านั้น ไม่ใช่ source of truth ของรอบงาน PM/LDAP
+> ตั้งแต่ 2026-10 ระบบไม่สร้างใบงาน PM อัตโนมัติแล้ว แผน PM เป็นตัวเตือน ("PM ถึงกำหนด" ในหน้าซ่อมบำรุง) ไม่ต้องตั้ง `MAINTENANCE_PM_GENERATION_TOKEN` และให้ลบ systemd timer ของ `pm:generate-due` ถ้าเคยตั้งไว้
+
+ค่า `cron` ในหน้าเว็บถูกตีความเป็นเวลาไทย `Asia/Bangkok`; systemd timer มีหน้าที่ปลุก heartbeat เท่านั้น ไม่ใช่ source of truth ของรอบงาน LDAP Sync
 
 ก่อนตั้ง timer ให้แน่ใจว่า env มี token ที่ต้องใช้:
 
 ```env
-MAINTENANCE_PM_GENERATION_TOKEN=<CHANGE_ME>
 LDAP_SYNC_TOKEN=<CHANGE_ME>
 ```
 
-หมายเหตุ: heartbeat นี้ดูแล PM auto-generation และ LDAP Sync ตาม schedule ที่ตั้งจากหน้าเว็บ ส่วน Notification Digest ใช้ script/timer แยกตามหัวข้อ 22 เพื่อไม่ให้การส่งแจ้งเตือนภายนอกผูกกับรอบ PM/LDAP โดยตรง
+หมายเหตุ: heartbeat นี้ดูแล LDAP Sync ตาม schedule ที่ตั้งจากหน้าเว็บ ส่วน Notification Digest ใช้ script/timer แยกตามหัวข้อ 22 เพื่อไม่ให้การส่งแจ้งเตือนภายนอกผูกกับรอบ LDAP Sync โดยตรง
 
 สร้าง oneshot service:
 
@@ -457,11 +457,8 @@ sudo systemctl status asset-system-scheduler.timer
 ตั้งเวลาจริงที่หน้าเว็บ:
 
 1. ไปที่ `/th/admin/settings`
-2. แท็บ `Automation`: เปิด `Preventive Maintenance อัตโนมัติ`, ตั้งโหมดเป็น `Scheduled`, เลือกรอบเวลา PM
-3. แท็บ `LDAP Sync`: เปิด Sync, ตั้งโหมดเป็น `Scheduled`, เลือกรอบเวลา Sync
-4. กดบันทึก แล้วรอ heartbeat รอบถัดไปหรือสั่ง `sudo systemctl start asset-system-scheduler.service`
-
-ถ้า service รายงาน `skippedMissingReporter` ให้กลับไปตั้งค่าแผน PM ในหน้า `/th/maintenance?view=pm` โดยเลือก `ผู้รับผิดชอบภายใน` ให้ครบ เพราะระบบต้องใช้เป็นผู้แจ้งงานของใบงาน PM ที่สร้างอัตโนมัติ
+2. แท็บ `LDAP Sync`: เปิด Sync, ตั้งโหมดเป็น `Scheduled`, เลือกรอบเวลา Sync
+3. กดบันทึก แล้วรอ heartbeat รอบถัดไปหรือสั่ง `sudo systemctl start asset-system-scheduler.service`
 
 ---
 
@@ -899,7 +896,7 @@ BACKUP_LAST_RESTORE_TEST_AT=2026-05-21T01:00:00.000Z
 
 ## 21. LDAP Sync Scheduling From The Web UI
 
-LDAP Sync ใช้ scheduler heartbeat เดียวกับ PM แล้ว ไม่ต้องตั้ง crontab แยก
+LDAP Sync ใช้ scheduler heartbeat ตามหัวข้อ 11 ไม่ต้องตั้ง crontab แยก
 
 สิ่งที่ต้องมี:
 
@@ -1008,9 +1005,8 @@ systemctl list-timers asset-system-notification-digest.timer
 - [ ] `UPLOAD_DIR` เป็น absolute path และมี backup
 - [ ] ถ้าองค์กรต้องการ malware scanning ให้ตั้ง `UPLOAD_SCAN_COMMAND`, `UPLOAD_SCAN_ARGS`, `UPLOAD_SCAN_TIMEOUT_MS`, เปิด `/th/admin/readiness` ให้ scanner status ผ่าน, และทดสอบ upload ไฟล์จริงหนึ่งรอบ
 - [ ] ตรวจว่า `.next/standalone/public/fonts/NotoSansThai-Regular.ttf` และ `NotoSansThai-Bold.ttf` ถูก copy ไปพร้อม standalone แล้ว หรือกำหนด `PDF_THAI_FONT_REGULAR`/`PDF_THAI_FONT_BOLD` เป็น font ไทยอื่น
-- [ ] `MAINTENANCE_PM_GENERATION_TOKEN` เป็น random token จริง
 - [ ] `LDAP_SYNC_TOKEN` เป็น random token จริงถ้าเปิด LDAP scheduled sync
-- [ ] `NOTIFICATION_DIGEST_TOKEN` เป็น random token จริง เพื่อให้ Notification Digest พร้อมใช้งานและหน้า `/th/admin/readiness` ผ่านครบ 3 scheduler tokens
+- [ ] `NOTIFICATION_DIGEST_TOKEN` เป็น random token จริง เพื่อให้ Notification Digest พร้อมใช้งานและหน้า `/th/admin/readiness` ผ่านครบ 2 scheduler tokens
 - [ ] `asset-system-notification-digest.timer` เคยรันสำเร็จอย่างน้อยหนึ่งครั้ง เพื่อให้หน้า `/th/admin/readiness` มี Notification Digest last-run status
 - [ ] `NOTIFICATION_DIGEST_WEBHOOK_URL` ตั้งค่าแล้วถ้าต้องการส่ง digest ออกช่องทางภายนอก
 - [ ] `BACKUP_STATUS`, `BACKUP_LAST_RUN_AT`, และ `BACKUP_LAST_RESTORE_TEST_AT` ตั้งตามระบบ backup/restore drill หรือปล่อยเป็น `unknown`/ว่างอย่างตั้งใจ
@@ -1024,7 +1020,7 @@ systemctl list-timers asset-system-notification-digest.timer
 - [ ] Cloudflare DNS route ไป Tunnel ถูกต้อง และ Tunnel service ชี้ไป `http://127.0.0.1:8080`
 - [ ] Public QR Base URL ตั้งเป็น `https://asset.company.com`
 - [ ] ทดสอบ `npm run scheduler:heartbeat` ผ่าน local app URL แล้ว
-- [ ] ตั้ง PM/LDAP schedule ที่หน้า `/th/admin/settings` แล้ว
+- [ ] ตั้ง LDAP schedule ที่หน้า `/th/admin/settings` แล้ว
 - [ ] ตั้ง `Max scheduled deactivations per run` สำหรับ LDAP scheduled sync แล้ว
 - [ ] เปิด `/th/admin/readiness` แล้วไม่มี blocker สำคัญก่อน Go Live
 - [ ] เปิด `/th/admin/storage` แล้ว filesystem dry-run ของ `UPLOAD_DIR` ไม่มี orphan/missing file ที่ต้องจัดการก่อน Go Live

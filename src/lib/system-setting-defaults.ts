@@ -42,22 +42,6 @@ export const notificationRuleSettingKeys = [
   notificationWarrantyExpiryDaysKey,
   notificationLicenseExpiryDaysKey,
 ] as const
-export const pmAutoGenerationEnabledKey = "pm_auto_generation_enabled"
-export const pmAutoGenerationModeKey = "pm_auto_generation_mode"
-export const pmAutoGenerationScheduleKey = "pm_auto_generation_schedule"
-export const pmAutoGenerationLastRunAtKey = "pm_auto_generation_last_run_at"
-export const pmAutoGenerationLastStatusKey = "pm_auto_generation_last_status"
-export const pmAutoGenerationLastErrorKey = "pm_auto_generation_last_error"
-export const pmAutoGenerationSettingKeys = [
-  pmAutoGenerationEnabledKey,
-  pmAutoGenerationModeKey,
-  pmAutoGenerationScheduleKey,
-] as const
-export const pmAutoGenerationStatusSettingKeys = [
-  pmAutoGenerationLastRunAtKey,
-  pmAutoGenerationLastStatusKey,
-  pmAutoGenerationLastErrorKey,
-] as const
 export const ldapSyncLastRunAtKey = "ldap_sync_last_run_at"
 export const ldapSyncLastStatusKey = "ldap_sync_last_status"
 export const ldapSyncLastErrorKey = "ldap_sync_last_error"
@@ -149,9 +133,6 @@ export const systemSettingDefaults = [
   { key: retentionAttachmentDaysKey, value: "1095", description: "จำนวนวันที่เก็บไฟล์แนบ/รูปหลักฐานก่อนพิจารณา archive" },
   { key: retentionAuditLogDaysKey, value: "2555", description: "จำนวนวันที่เก็บ Audit Trail ก่อนพิจารณา archive ตามนโยบายองค์กร" },
   { key: retentionOrphanFileDaysKey, value: "90", description: "จำนวนวันที่เก็บไฟล์ orphan จาก storage governance ก่อนพิจารณา archive/delete" },
-  { key: pmAutoGenerationEnabledKey, value: "false", description: "เปิดใช้งานการสร้างใบงาน PM อัตโนมัติจากแผนที่ถึงกำหนด" },
-  { key: pmAutoGenerationModeKey, value: "manual", description: "โหมด PM auto-generation: manual หรือ scheduled" },
-  { key: pmAutoGenerationScheduleKey, value: "5 6 * * *", description: "Cron schedule เวลาไทย (Asia/Bangkok) สำหรับ PM auto-generation โดย systemd heartbeat จะอ้างอิงค่านี้" },
   { key: workflowApprovalDisposalRequiredKey, value: "true", description: "บังคับใช้ขั้นตอนอนุมัติก่อนตัดจำหน่ายทรัพย์สิน" },
   { key: workflowApprovalAuditCloseRequiredKey, value: "true", description: "บังคับใช้ผู้อนุมัติแยกจากผู้สร้างรอบ ก่อนปิดรอบตรวจนับ" },
   { key: workflowApprovalMaintenanceCloseRequiredKey, value: "false", description: "บังคับใช้การอนุมัติก่อนปิดงานซ่อมบำรุง" },

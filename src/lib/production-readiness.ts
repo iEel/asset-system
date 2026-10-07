@@ -61,7 +61,6 @@ export type ProductionReadinessDeploymentInput = {
   dbServer?: string
   dbUser?: string
   dbPassword?: string
-  maintenancePmGenerationToken?: string
   ldapSyncToken?: string
   notificationDigestToken?: string
   uploadScanCommand?: string
@@ -298,7 +297,6 @@ function getDatabaseConfigValue(deployment?: ProductionReadinessDeploymentInput)
 
 function getSchedulerTokensStatus(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessStatus {
   const tokens = [
-    deployment?.maintenancePmGenerationToken,
     deployment?.ldapSyncToken,
     deployment?.notificationDigestToken,
   ]
@@ -309,12 +307,9 @@ function getSchedulerTokensStatus(deployment?: ProductionReadinessDeploymentInpu
 }
 
 function getSchedulerTokensValue(deployment?: ProductionReadinessDeploymentInput) {
-  const configured = [
-    deployment?.maintenancePmGenerationToken,
-    deployment?.ldapSyncToken,
-    deployment?.notificationDigestToken,
-  ].filter((token) => isConfiguredSecret(token)).length
-  return `${configured}/3 configured`
+  const tokens = [deployment?.ldapSyncToken, deployment?.notificationDigestToken]
+  const configured = tokens.filter((token) => isConfiguredSecret(token)).length
+  return `${configured}/${tokens.length} configured`
 }
 
 function getSchedulerRunsStatus(deployment?: ProductionReadinessDeploymentInput): ProductionReadinessStatus {

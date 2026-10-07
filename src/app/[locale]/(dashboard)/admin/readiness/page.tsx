@@ -13,7 +13,6 @@ import { getResponsiveActionRowClasses, getSafeActionLinkClasses } from "@/lib/d
 import {
   ldapSyncLastStatusKey,
   notificationDigestLastStatusKey,
-  pmAutoGenerationLastStatusKey,
   systemSettingDefaults,
 } from "@/lib/system-setting-defaults"
 import { parseWorkflowApprovalPolicy } from "@/lib/workflow-approval"
@@ -55,14 +54,12 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
       dbServer: process.env.DB_SERVER,
       dbUser: process.env.DB_USER,
       dbPassword: process.env.DB_PASSWORD,
-      maintenancePmGenerationToken: process.env.MAINTENANCE_PM_GENERATION_TOKEN,
       ldapSyncToken: process.env.LDAP_SYNC_TOKEN,
       notificationDigestToken: process.env.NOTIFICATION_DIGEST_TOKEN,
       uploadScanCommand: process.env.UPLOAD_SCAN_COMMAND,
       uploadScanArgs: process.env.UPLOAD_SCAN_ARGS,
       uploadScanTimeoutMs: process.env.UPLOAD_SCAN_TIMEOUT_MS,
       schedulerRunStatuses: [
-        { name: "pm_generate_due", status: settings.get(pmAutoGenerationLastStatusKey) },
         { name: "ldap_sync", status: settings.get(ldapSyncLastStatusKey) },
         { name: "notification_digest", status: settings.get(notificationDigestLastStatusKey) },
       ],

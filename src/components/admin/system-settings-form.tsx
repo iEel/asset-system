@@ -39,20 +39,10 @@ import {
   notificationWarrantyExpiryDaysKey,
   operationDocumentRunningDigitsKey,
   operationDocumentSettingKeys,
-  pmAutoGenerationEnabledKey,
-  pmAutoGenerationModeKey,
-  pmAutoGenerationScheduleKey,
-  pmAutoGenerationSettingKeys,
-  pmAutoGenerationStatusSettingKeys,
   retentionPolicySettingKeys,
 } from "@/lib/system-setting-defaults"
 import { operationDocumentTemplateTokens, renderOperationDocumentTemplate, validateOperationDocumentTemplate } from "@/lib/operation-document-number"
-import {
-  getPmAutomationSettingsForUiMode,
-  getPmAutomationUiMode,
-  shouldShowPmAutomationSchedule,
-  type PmAutomationUiMode,
-} from "@/lib/pm-automation-settings"
+import { retiredSystemSettingKeys } from "@/lib/retired-system-settings"
 import {
   isValidRetentionDays,
   retentionAttachmentDaysKey,
@@ -303,23 +293,6 @@ type SystemSettingsFormProps = {
     schedulerSettingsDescription: string
     schedulerHeartbeatNote: string
     invalidSchedulerSchedule: string
-    pmAutoGeneration: string
-    pmAutoGenerationDescription: string
-    pmAutoGenerationEnabled: string
-    pmAutoGenerationMode: string
-    pmAutoGenerationSchedule: string
-    pmAutoGenerationSchedulePreset: string
-    pmAutoGenerationCustomSchedule: string
-    pmAutoGenerationOff: string
-    pmAutoGenerationOffDescription: string
-    pmAutoGenerationManual: string
-    pmAutoGenerationManualDescription: string
-    pmAutoGenerationScheduled: string
-    pmAutoGenerationScheduledDescription: string
-    pmAutoGenerationDaily605: string
-    pmAutoGenerationEvery6Hours: string
-    pmAutoGenerationWeekday605: string
-    pmAutoGenerationMonday605: string
     governanceSettings: string
     governanceSettingsDescription: string
     retentionPolicy: string
@@ -500,19 +473,9 @@ const friendlySettingKeys = new Set([
   ...notificationRuleSettingKeys,
   ...retentionPolicySettingKeys,
   ...workflowApprovalSettingKeys,
-  ...pmAutoGenerationSettingKeys,
-  ...pmAutoGenerationStatusSettingKeys,
   ...ldapSettingKeys,
   ...ldapSyncStatusSettingKeys,
 ])
-
-const pmSchedulePresets = [
-  { value: "5 6 * * *", labelKey: "pmAutoGenerationDaily605" },
-  { value: "0 */6 * * *", labelKey: "pmAutoGenerationEvery6Hours" },
-  { value: "5 6 * * 1-5", labelKey: "pmAutoGenerationWeekday605" },
-  { value: "5 6 * * 1", labelKey: "pmAutoGenerationMonday605" },
-  { value: "custom", labelKey: "pmAutoGenerationCustomSchedule" },
-] as const
 
 const ldapSchedulePresets = [
   { value: "0 2 * * *", labelKey: "ldapSyncDaily2am" },
@@ -563,10 +526,6 @@ export function SystemSettingsForm({
     const savedSchedule = settings.find((setting) => setting.key === "ldap_sync_schedule")?.value ?? ""
     return !ldapSchedulePresets.some((preset) => preset.value === savedSchedule)
   })
-  const [customPmScheduleSelected, setCustomPmScheduleSelected] = useState(() => {
-    const savedSchedule = settings.find((setting) => setting.key === pmAutoGenerationScheduleKey)?.value ?? ""
-    return !pmSchedulePresets.some((preset) => preset.value === savedSchedule)
-  })
   const [prefixRows, setPrefixRows] = useState<CategoryPrefixRow[]>(() =>
     parsePrefixRows(settings.find((setting) => setting.key === assetTagCategoryPrefixesKey)?.value)
   )
@@ -580,9 +539,7 @@ export function SystemSettingsForm({
   const [checkedAvailableCategoryIds, setCheckedAvailableCategoryIds] = useState<string[]>([])
   const [checkedSelectedCategoryIds, setCheckedSelectedCategoryIds] = useState<string[]>([])
   const activeCategoryIds = categories.map((category) => category.id)
-  const generalSettings = settings.filter(
-    (setting) => !friendlySettingKeys.has(setting.key)
-  )
+  const generalSettings = settings.filter((setting) => !friendlySettingKeys.has(setting.key) && !retiredSystemSettingKeys.has(setting.key))
   const formatTemplate = values[assetTagFormatTemplateKey] ?? defaultAssetTagFormatTemplate
   const checkoutDocumentTemplate = values[checkoutDocumentTemplateKey] ?? defaultCheckoutDocumentTemplate
   const checkinDocumentTemplate = values[checkinDocumentTemplateKey] ?? defaultCheckinDocumentTemplate
@@ -592,14 +549,6 @@ export function SystemSettingsForm({
   const getValue = (key: string) => values[key] ?? ""
   const setValue = (key: string, value: string) => setValues((current) => ({ ...current, [key]: value }))
   const setBooleanValue = (key: string, checked: boolean) => setValue(key, checked ? "true" : "false")
-  const setPmAutomationUiMode = (mode: PmAutomationUiMode) => {
-    const next = getPmAutomationSettingsForUiMode(mode)
-    setValues((current) => ({
-      ...current,
-      [pmAutoGenerationEnabledKey]: next.enabled,
-      [pmAutoGenerationModeKey]: next.mode,
-    }))
-  }
   const resetPrefixEditorFilters = () => {
     setAvailableCategorySearch("")
     setSelectedCategorySearch("")
@@ -767,46 +716,10 @@ export function SystemSettingsForm({
     workflowApprovalSlaDays < 1 ||
     workflowApprovalSlaDays > 90
   const syncSchedule = getValue("ldap_sync_schedule")
-  const pmSchedule = getValue(pmAutoGenerationScheduleKey)
-  const pmAutomationUiMode = getPmAutomationUiMode({
-    enabled: getValue(pmAutoGenerationEnabledKey),
-    mode: getValue(pmAutoGenerationModeKey),
-  })
-  const showPmAutomationSchedule = shouldShowPmAutomationSchedule(pmAutomationUiMode)
   const selectedSyncSchedulePreset = !customScheduleSelected && ldapSchedulePresets.some((preset) => preset.value === syncSchedule)
     ? syncSchedule
     : "custom"
-  const selectedPmSchedulePreset = !customPmScheduleSelected && pmSchedulePresets.some((preset) => preset.value === pmSchedule)
-    ? pmSchedule
-    : "custom"
-  const selectedPmSchedulePresetItem = pmSchedulePresets.find((preset) => preset.value === selectedPmSchedulePreset)
-  const selectedPmScheduleLabel = selectedPmSchedulePreset === "custom"
-    ? pmSchedule || labels.pmAutoGenerationCustomSchedule
-    : selectedPmSchedulePresetItem
-      ? labels[selectedPmSchedulePresetItem.labelKey]
-      : labels.pmAutoGenerationCustomSchedule
-  const pmAutomationOptions: Array<{
-    value: PmAutomationUiMode
-    label: string
-    description: string
-  }> = [
-    {
-      value: "off",
-      label: labels.pmAutoGenerationOff,
-      description: labels.pmAutoGenerationOffDescription,
-    },
-    {
-      value: "manual",
-      label: labels.pmAutoGenerationManual,
-      description: labels.pmAutoGenerationManualDescription,
-    },
-    {
-      value: "scheduled",
-      label: labels.pmAutoGenerationScheduled,
-      description: labels.pmAutoGenerationScheduledDescription,
-    },
-  ]
-  const hasInvalidSchedulerSchedule = !isSupportedCronExpression(syncSchedule) || (showPmAutomationSchedule && !isSupportedCronExpression(pmSchedule))
+  const hasInvalidSchedulerSchedule = !isSupportedCronExpression(syncSchedule)
   const tabLabels: Record<SettingsTabId, string> = {
     "asset-numbering": labels.tabAssetNumbering,
     "label-template": labels.tabLabelTemplate,
@@ -821,7 +734,11 @@ export function SystemSettingsForm({
     advanced: labels.tabAdvanced,
   }
   const tabs = getSettingsTabOrder().map((id) => ({ id, label: tabLabels[id] }))
-  const settingsSearchResults = findSystemSettingsSearchResults(settings, settingsSearch, tabLabels).slice(0, 6)
+  const settingsSearchResults = findSystemSettingsSearchResults(
+    settings.filter((setting) => !retiredSystemSettingKeys.has(setting.key)),
+    settingsSearch,
+    tabLabels,
+  ).slice(0, 6)
   const selectTab = (tab: SettingsTabId) => {
     if (tab === activeTab) return
     const href = buildSystemSettingsTabHref(pathname, searchParams.toString(), tab)
@@ -867,15 +784,6 @@ export function SystemSettingsForm({
       label: labels.overviewApproval,
       value: `${workflowApprovalPolicy.minApprovers} / SLA ${workflowApprovalPolicy.slaDays}d / ${workflowApprovalPolicy.segregationRequired ? labels.workflowApprovalSodOn : labels.workflowApprovalSodOff}`,
       tone: "amber",
-    },
-    {
-      label: labels.overviewAutomation,
-      value: pmAutomationUiMode === "scheduled"
-        ? `${labels.pmAutoGenerationScheduled} (${selectedPmScheduleLabel})`
-        : pmAutomationUiMode === "manual"
-          ? labels.pmAutoGenerationManual
-          : labels.disabled,
-      tone: pmAutomationUiMode === "scheduled" ? "green" : pmAutomationUiMode === "manual" ? "blue" : "slate",
     },
     {
       label: labels.overviewGovernance,
@@ -1742,74 +1650,6 @@ export function SystemSettingsForm({
           <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
             {labels.schedulerHeartbeatNote}
           </p>
-          <div className="rounded-md border border-border bg-background p-4">
-            <div className="flex flex-col gap-1">
-              <h3 className="text-base font-semibold text-foreground">{labels.pmAutoGeneration}</h3>
-              <p className="text-sm text-muted-foreground">{labels.pmAutoGenerationDescription}</p>
-            </div>
-            <div className="mt-4 grid gap-3 lg:grid-cols-3">
-              {pmAutomationOptions.map((option) => {
-                const isActive = pmAutomationUiMode === option.value
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    aria-pressed={isActive}
-                    onClick={() => setPmAutomationUiMode(option.value)}
-                    className={`min-h-24 rounded-md border px-4 py-3 text-left transition-colors ${
-                      isActive
-                        ? "border-primary bg-primary/10 text-primary shadow-sm"
-                        : "border-border bg-muted/20 text-foreground hover:border-primary/40 hover:bg-accent"
-                    }`}
-                  >
-                    <span className="block text-sm font-semibold">{option.label}</span>
-                    <span className={`mt-2 block text-xs leading-5 ${isActive ? "text-primary" : "text-muted-foreground"}`}>
-                      {option.description}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-            {showPmAutomationSchedule ? (
-              <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                <Field label={labels.pmAutoGenerationSchedulePreset} htmlFor="pm-auto-generation-schedule-preset">
-                  <select
-                    id="pm-auto-generation-schedule-preset"
-                    value={selectedPmSchedulePreset}
-                    onChange={(event) => {
-                      const value = event.target.value
-                      setCustomPmScheduleSelected(value === "custom")
-                      if (value !== "custom") {
-                        setValue(pmAutoGenerationScheduleKey, value)
-                      }
-                    }}
-                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                  >
-                    {pmSchedulePresets.map((preset) => (
-                      <option key={preset.value} value={preset.value}>
-                        {labels[preset.labelKey]}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                {selectedPmSchedulePreset === "custom" ? (
-                  <Field label={labels.pmAutoGenerationCustomSchedule} htmlFor="pm-auto-generation-custom-schedule">
-                    <input
-                      id="pm-auto-generation-custom-schedule"
-                      value={pmSchedule}
-                      onChange={(event) => setValue(pmAutoGenerationScheduleKey, event.target.value)}
-                      placeholder="5 6 * * *"
-                      className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                    />
-                  </Field>
-                ) : null}
-              </div>
-            ) : (
-              <p className="mt-4 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-                {pmAutomationUiMode === "off" ? labels.pmAutoGenerationOffDescription : labels.pmAutoGenerationManualDescription}
-              </p>
-            )}
-          </div>
           {hasInvalidSchedulerSchedule ? <ValidationMessage message={labels.invalidSchedulerSchedule} /> : null}
         </div>
       </div>

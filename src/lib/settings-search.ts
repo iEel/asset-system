@@ -19,7 +19,7 @@ export function getSystemSettingsTabForKey(key: string): SettingsTabId {
   if (key === "company_name" || key === "default_currency" || key.startsWith("depreciation_")) return "organization"
   if (key.startsWith("notification_") && !key.startsWith("notification_digest_")) return "notifications"
   if (key.startsWith("workflow_approval_")) return "workflow-approval"
-  if (key.startsWith("pm_") || key.startsWith("notification_digest_")) return "automation"
+  if (key.startsWith("notification_digest_")) return "automation"
   if (key.startsWith("retention_")) return "governance"
   if (key.startsWith("ldap_sync_")) return "ldap-sync"
   if (key.startsWith("ldap_")) return "ldap-login"

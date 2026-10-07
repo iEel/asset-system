@@ -9,9 +9,6 @@ import {
   operationDocumentRunningDigitsKey,
   assetTagFormatTemplateKey,
   notificationRuleSettingKeys,
-  pmAutoGenerationEnabledKey,
-  pmAutoGenerationModeKey,
-  pmAutoGenerationScheduleKey,
 } from "@/lib/system-setting-defaults"
 import { validateOperationDocumentTemplate } from "@/lib/operation-document-number"
 import { isSupportedCronExpression } from "@/lib/scheduled-job"
@@ -47,8 +44,8 @@ const assetLabelBooleanKeys = new Set<string>(["asset_label_compact_asset_name_e
 const operationDocumentTemplateKeys = new Set<string>([checkoutDocumentTemplateKey, checkinDocumentTemplateKey])
 const notificationRuleKeys = new Set<string>(notificationRuleSettingKeys)
 const retentionPolicyKeys = new Set<string>(retentionPolicySettingKeys)
-const schedulerModeKeys = new Set<string>(["ldap_sync_mode", pmAutoGenerationModeKey])
-const schedulerScheduleKeys = new Set<string>(["ldap_sync_schedule", pmAutoGenerationScheduleKey])
+const schedulerModeKeys = new Set<string>(["ldap_sync_mode"])
+const schedulerScheduleKeys = new Set<string>(["ldap_sync_schedule"])
 const workflowApprovalBooleanKeys = new Set<string>(
   workflowApprovalSettingKeys.filter((key) => key !== workflowApprovalMinApproversKey && key !== workflowApprovalSlaDaysKey)
 )
@@ -200,14 +197,6 @@ export const systemSettingsUpdateSchema = z.object({
       context.addIssue({
         code: "custom",
         message: "Retention policy days must be an integer between 1 and 3650",
-        path: ["settings", index, "value"],
-      })
-    }
-
-    if (setting.key === pmAutoGenerationEnabledKey && setting.value !== "true" && setting.value !== "false") {
-      context.addIssue({
-        code: "custom",
-        message: "PM auto-generation enabled must be true or false",
         path: ["settings", index, "value"],
       })
     }
