@@ -31,11 +31,11 @@ Enterprise asset management system for asset registration, custody, QR/label wor
 ```powershell
 npm install
 npx prisma generate
-npx prisma db push
+npm run migration:status
 npm run dev
 ```
 
-> Production warning: `npx prisma db push` is suitable for local development and controlled test environments. For Production, use a reviewed migration process with a database backup, rollback plan, and versioned schema-change record. Do not change the Production schema without a verified backup and approval.
+> Point `.env` at a development database (for example `asset_management_dev` with its own least-privilege login), never at the Production database. Do not run `npx prisma db push` against a shared or Production database: it rewrites the schema from the current branch and bypasses the manual migration ledger. Apply schema changes with `npm run migration:apply` after a verified backup and approval.
 
 The app uses `WEB_PORT` from `.env` through `scripts/next-with-env-port.mjs`. Default local URL:
 
@@ -86,13 +86,13 @@ PDF exports bundle Noto Sans Thai Regular/Bold under `public/fonts` with `public
 | `npm run lint` | ESLint |
 | `npm test` | Run all Node test files under `tests/` |
 | `npm run verify` | Run lint, all tests, and production build in one command |
-| `npm run ldap:sync` | External/manual LDAP sync runner |
+| `npm run ldap:sync` | External/manual LDAP sync runner; previews by default, add `-- --apply` to write changes |
 | `npm run ldap:sync:scheduled` | Run LDAP Sync only when the web-configured schedule is due |
 | `npm run pm:generate-due` | Generate due preventive-maintenance tickets through the scheduler endpoint |
 | `npm run pm:generate-due:scheduled` | Generate PM tickets only when the web-configured schedule is due |
 | `npm run scheduler:heartbeat` | Shared scheduler heartbeat for PM auto-generation and LDAP Sync |
 | `npm run notifications:digest` | Deliver daily in-app notification digests through the scheduler endpoint |
-| `npm run cleanup:test-data` | Guarded trial asset cleanup CLI; dry-run by default |
+| `npm run cleanup:test-data` | Guarded trial asset cleanup CLI; dry-run by default. `--apply` only runs against a database whose name ends with `_dev` or `_test` unless `ALLOW_PRODUCTION_TEST_DATA_CLEANUP=true` and `CLEANUP_CONFIRM_DATABASE=<database>` are both set |
 
 ## Verification
 

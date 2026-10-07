@@ -24,31 +24,79 @@ test("cleanup blocks apply mode unless the explicit safety switches are present"
   assert.deepEqual(getCleanupSafetyErrors(options, {}), [
     "Set ALLOW_TEST_DATA_CLEANUP=true before running --apply.",
     "Pass --confirm-delete with --apply to acknowledge hard deletion.",
+    "Cannot determine the target database from DATABASE_URL; refusing to apply cleanup.",
   ])
 })
 
-test("cleanup allows apply mode outside production when fully confirmed", () => {
+const devDatabaseUrl = "sqlserver://db.local;instanceName=alpha;database=asset_management_dev;user=asset_dev;password=x"
+const productionDatabaseUrl = "sqlserver://db.local;instanceName=alpha;database=asset_management;user=asset_app;password=x"
+const productionGuardError =
+  'Database "asset_management" is not a dev/test database (its name must end with _dev or _test). Set ALLOW_PRODUCTION_TEST_DATA_CLEANUP=true and CLEANUP_CONFIRM_DATABASE=asset_management to override.'
+
+test("cleanup allows apply mode against a dev database when fully confirmed", () => {
   const options = parseCleanupArgs(["--apply", "--confirm-delete", "--asset-tag-prefix", "TEST-"])
 
   assert.deepEqual(
     getCleanupSafetyErrors(options, {
       ALLOW_TEST_DATA_CLEANUP: "true",
-      NODE_ENV: "development",
+      DATABASE_URL: devDatabaseUrl,
     }),
     []
   )
 })
 
-test("cleanup refuses apply mode in production without the production override", () => {
+test("cleanup refuses to hard-delete from a production-named database even when NODE_ENV is unset", () => {
+  const options = parseCleanupArgs(["--apply", "--confirm-delete", "--asset-tag-prefix", "TEST-"])
+
+  assert.deepEqual(
+    getCleanupSafetyErrors(options, {
+      ALLOW_TEST_DATA_CLEANUP: "true",
+      DATABASE_URL: productionDatabaseUrl,
+    }),
+    [productionGuardError]
+  )
+})
+
+test("the production override must name the exact database being cleaned", () => {
+  const options = parseCleanupArgs(["--apply", "--confirm-delete", "--asset-tag-prefix", "TEST-"])
+  const env = {
+    ALLOW_TEST_DATA_CLEANUP: "true",
+    ALLOW_PRODUCTION_TEST_DATA_CLEANUP: "true",
+    DATABASE_URL: productionDatabaseUrl,
+  }
+
+  assert.deepEqual(getCleanupSafetyErrors(options, env), [productionGuardError])
+  assert.deepEqual(getCleanupSafetyErrors(options, { ...env, CLEANUP_CONFIRM_DATABASE: "asset_management_dev" }), [productionGuardError])
+  assert.deepEqual(getCleanupSafetyErrors(options, { ...env, CLEANUP_CONFIRM_DATABASE: "asset_management" }), [])
+})
+
+test("NODE_ENV=production protects even a database named like a dev copy", () => {
   const options = parseCleanupArgs(["--apply", "--confirm-delete", "--asset-tag-prefix", "TEST-"])
 
   assert.deepEqual(
     getCleanupSafetyErrors(options, {
       ALLOW_TEST_DATA_CLEANUP: "true",
       NODE_ENV: "production",
+      DATABASE_URL: devDatabaseUrl,
     }),
-    ["Production cleanup is blocked unless ALLOW_PRODUCTION_TEST_DATA_CLEANUP=true is set."]
+    [
+      'Database "asset_management_dev" is protected because NODE_ENV=production. Set ALLOW_PRODUCTION_TEST_DATA_CLEANUP=true and CLEANUP_CONFIRM_DATABASE=asset_management_dev to override.',
+    ]
   )
+})
+
+test("cleanup apply mode refuses to guess the database when DATABASE_URL is missing", () => {
+  const options = parseCleanupArgs(["--apply", "--confirm-delete", "--asset-tag-prefix", "TEST-"])
+
+  assert.deepEqual(getCleanupSafetyErrors(options, { ALLOW_TEST_DATA_CLEANUP: "true" }), [
+    "Cannot determine the target database from DATABASE_URL; refusing to apply cleanup.",
+  ])
+})
+
+test("dry-run previews do not need a database allowance", () => {
+  const options = parseCleanupArgs(["--asset-tag-prefix", "TEST-"])
+
+  assert.deepEqual(getCleanupSafetyErrors(options, { DATABASE_URL: productionDatabaseUrl }), [])
 })
 
 test("cleanup builds an AND scoped asset query from selected filters", () => {

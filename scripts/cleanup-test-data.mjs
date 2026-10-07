@@ -106,12 +106,37 @@ export function getCleanupSafetyErrors(options, env = process.env) {
     if (!options.confirmDelete) {
       errors.push("Pass --confirm-delete with --apply to acknowledge hard deletion.")
     }
-    if (env.NODE_ENV === "production" && env.ALLOW_PRODUCTION_TEST_DATA_CLEANUP !== "true") {
-      errors.push("Production cleanup is blocked unless ALLOW_PRODUCTION_TEST_DATA_CLEANUP=true is set.")
-    }
+    const databaseError = getCleanupDatabaseError(env)
+    if (databaseError) errors.push(databaseError)
   }
 
   return errors
+}
+
+// Decide by the database actually targeted, not by NODE_ENV: a developer machine has no
+// NODE_ENV yet may point at the production server.
+function getCleanupDatabaseError(env) {
+  const database = databaseNameFromUrl(env.DATABASE_URL)
+  if (!database) return "Cannot determine the target database from DATABASE_URL; refusing to apply cleanup."
+
+  const isDevOrTestDatabase = /_(dev|test)$/i.test(database)
+  const protectedReason = env.NODE_ENV === "production"
+    ? `Database "${database}" is protected because NODE_ENV=production.`
+    : isDevOrTestDatabase
+      ? null
+      : `Database "${database}" is not a dev/test database (its name must end with _dev or _test).`
+  if (!protectedReason) return null
+
+  const overridden =
+    env.ALLOW_PRODUCTION_TEST_DATA_CLEANUP === "true" && env.CLEANUP_CONFIRM_DATABASE === database
+  return overridden
+    ? null
+    : `${protectedReason} Set ALLOW_PRODUCTION_TEST_DATA_CLEANUP=true and CLEANUP_CONFIRM_DATABASE=${database} to override.`
+}
+
+function databaseNameFromUrl(url) {
+  const database = url?.trim().replace(/^"|"$/g, "").match(/(?:^|;)database=([^;]+)/i)?.[1]
+  return database ? decodeURIComponent(database) : undefined
 }
 
 export function buildAssetWhereFilter(options) {
