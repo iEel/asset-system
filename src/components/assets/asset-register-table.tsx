@@ -17,7 +17,8 @@ import { AssetDeleteButton } from "@/components/master-data/asset-delete-button"
 import { ColumnHeader } from "@/components/master-data/master-data-layout"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
-import { AssetRegisterMoreMenu, AssetRegisterTransactionMenu } from "@/components/assets/asset-register-action-menus"
+import { AssetRegisterTransactionMenu } from "@/components/assets/asset-register-action-menus"
+import { AssetRegisterRowActions, type AssetRegisterRowPermissions } from "@/components/assets/asset-register-row-actions"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import type { AssetRegisterTransaction } from "@/lib/asset-operation-policy"
@@ -80,6 +81,7 @@ type AssetRegisterTableProps = {
     locations: { id: string; label: string }[]
     employees: { id: string; label: string }[]
   }
+  permissions: AssetRegisterRowPermissions
   labels: {
     actions: string
     all: string
@@ -180,6 +182,7 @@ export function AssetRegisterTable({
   fromRow,
   toRow,
   bulkOptions,
+  permissions,
   labels,
 }: AssetRegisterTableProps) {
   const router = useRouter()
@@ -802,29 +805,17 @@ export function AssetRegisterTable({
                   <td
                     className={`${assetRegisterStickyBodyColumnClasses} ${assetRegisterStickyActionsColumnClasses} ${assetRegisterActionsColumnClasses} border-l border-border px-4 py-3 text-right`}
                   >
-                    <div className="inline-flex items-center gap-1">
-                      <Link
-                        href={buildAssetDetailHref(asset.id)}
-                        onClick={rememberDetailReturnScroll}
-                        title={labels.detail}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Link>
-                      <Link
-                        href={buildAssetEditHref(asset.id)}
-                        title={labels.edit}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary-soft"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Link>
-                      <AssetRegisterTransactionMenu actions={asset.transactions} labels={transactionLabels} />
-                      <AssetRegisterMoreMenu
-                        assetId={asset.id}
-                        cloneHref={buildAssetCloneHref(asset.id)}
-                        labels={transactionLabels}
-                      />
-                    </div>
+                    <AssetRegisterRowActions
+                      variant="desktop"
+                      assetId={asset.id}
+                      assetTag={asset.assetTag}
+                      assetName={asset.name}
+                      transactions={asset.transactions}
+                      editHref={buildAssetEditHref(asset.id)}
+                      cloneHref={buildAssetCloneHref(asset.id)}
+                      permissions={permissions}
+                      onNavigate={rememberDetailReturnScroll}
+                    />
                   </td>
                 </ClickableTableRow>
               ))

@@ -366,6 +366,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
             locations: locations.map((location) => ({ id: location.id, label: `${location.code} - ${location.name}` })),
             employees: employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` })),
           }}
+          permissions={{ canEdit: canEditAssets, canCreate: canCreateAssets, canDelete: canDeleteAssets }}
           labels={{
             actions: tCommon("actions"),
             all: tCommon("all"),
