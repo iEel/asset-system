@@ -5,123 +5,83 @@ import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { getMaintenanceErrorPayload } from "@/lib/maintenance-api-errors"
 import {
-  cancelMaintenanceTicket,
-  closeMaintenanceTicket,
-  transitionMaintenanceTicket,
-  updateMaintenanceTicketPlanning,
-} from "@/lib/maintenance-ticket-service"
-import {
-  maintenanceTicketCancelSchema,
-  maintenanceTicketCloseSchema,
-  maintenanceTicketPlanningSchema,
-  maintenanceTicketStatusSchema,
-} from "@/lib/validations/maintenance"
+  cancelRepairRecord,
+  completeRepairRecord,
+  updateRepairRecordDetails,
+} from "@/lib/repair-record-service"
+import { repairRecordActionSchema } from "@/lib/validations/maintenance"
 
-type MaintenanceTicketContext = {
+type RepairRecordContext = {
   params: Promise<{ id: string }>
 }
 
-export async function PATCH(request: NextRequest, context: MaintenanceTicketContext) {
+export async function PATCH(request: NextRequest, context: RepairRecordContext) {
   try {
     const user = await requireAuth()
     requirePermission(user, "maintenance", "edit")
 
     const { id } = await context.params
-    const body = await request.json()
-    const action = typeof body?.action === "string" ? body.action : "close"
+    const input = repairRecordActionSchema.parse(await request.json())
+    const serviceUser = { id: user.id, employeeId: user.employeeId }
 
-    if (action === "status") {
-      const input = maintenanceTicketStatusSchema.parse(body)
-      const result = await transitionMaintenanceTicket(prisma, id, input, user)
-
+    if (input.action === "complete") {
+      const result = await completeRepairRecord(prisma, id, input, serviceUser)
       await logAudit({
         userId: user.id,
-        action: "update_status",
+        action: "complete",
         module: "maintenance",
         recordId: id,
-        oldValue: {
-          repairStatus: result.previous.repairStatus,
-        },
-        newValue: input,
-      })
-
-      return NextResponse.json(result.ticket)
-    }
-
-    if (action === "planning") {
-      const input = maintenanceTicketPlanningSchema.parse(body)
-      const result = await updateMaintenanceTicketPlanning(prisma, id, input, user)
-
-      await logAudit({
-        userId: user.id,
-        action: "update_planning",
-        module: "maintenance",
-        recordId: id,
-        oldValue: {
-          assignedToId: result.previous.assignedToId,
-          dueDate: result.previous.dueDate,
-        },
+        oldValue: { repairStatus: result.previous.repairStatus, assetStatusId: result.previous.asset.statusId },
         newValue: {
-          assignedToId: input.assignedToId ?? null,
-          dueDate: input.dueDate ?? null,
+          repairStatus: "closed",
+          outcome: input.outcome,
+          returnDate: input.returnDate,
+          vendorId: input.vendorId,
+          repairCost: input.repairCost,
+          invoiceNo: input.invoiceNo,
+          remark: input.remark,
         },
       })
-
       return NextResponse.json(result.ticket)
     }
 
-    if (action === "cancel") {
-      const input = maintenanceTicketCancelSchema.parse(body)
-      const result = await cancelMaintenanceTicket(prisma, id, input, user)
-
+    if (input.action === "cancel") {
+      const result = await cancelRepairRecord(prisma, id, input, serviceUser)
       await logAudit({
         userId: user.id,
         action: "cancel",
         module: "maintenance",
         recordId: id,
-        oldValue: {
-          repairStatus: result.previous.repairStatus,
-          assetStatusId: result.previous.asset.statusId,
-        },
-        newValue: {
-          repairStatus: "cancelled",
-          assetStatusId: result.lifecycleStatus.id,
-          reason: input.reason,
-        },
-        remark: input.reason,
+        oldValue: { repairStatus: result.previous.repairStatus, assetStatusId: result.previous.asset.statusId },
+        newValue: { repairStatus: "cancelled", reason: input.reason },
+        remark: input.reason ?? undefined,
       })
-
       return NextResponse.json(result.ticket)
     }
 
-    const input = maintenanceTicketCloseSchema.parse(body)
-    const result = await closeMaintenanceTicket(prisma, id, input, user)
-
+    const result = await updateRepairRecordDetails(prisma, id, input, serviceUser)
     await logAudit({
       userId: user.id,
-      action: "close",
+      action: "update",
       module: "maintenance",
       recordId: id,
       oldValue: {
-        repairStatus: result.previous.repairStatus,
-        assetStatusId: result.previous.asset.statusId,
+        reportedDate: result.previous.reportedDate,
+        problem: result.previous.problem,
+        vendorId: result.previous.vendorId,
+        repairCost: result.previous.repairCost,
+        invoiceNo: result.previous.invoiceNo,
+        remark: result.previous.resolution,
       },
       newValue: {
-        repairStatus: "closed",
-        assetStatusId: input.nextStatusId,
+        reportedDate: input.reportedDate,
+        problem: input.problem,
+        vendorId: input.vendorId,
         repairCost: input.repairCost,
-        laborCost: input.laborCost,
-        partsCost: input.partsCost,
-        quotationNo: input.quotationNo,
         invoiceNo: input.invoiceNo,
-        warrantyClaim: input.warrantyClaim,
-        rootCause: input.rootCause,
-        resolution: input.resolution,
-        returnDate: input.returnDate,
-        inspectedById: input.inspectedById,
+        remark: input.remark,
       },
     })
-
     return NextResponse.json(result.ticket)
   } catch (error) {
     const payload = getMaintenanceErrorPayload(error)

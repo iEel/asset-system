@@ -15,14 +15,18 @@ test("maintenance option search caps active results at fifty", async () => {
   assert.equal(db.lastTake, 50)
 })
 
-test("asset options explain lifecycle conflicts instead of hiding records", async () => {
-  const db = fakeDb({ assetStatus: "Checked Out" })
-  const options = await searchMaintenanceOptions(db, { type: "asset", q: "UP" })
-  assert.equal(options[0]?.disabled, true)
-  assert.equal(options[0]?.reason, "MAINTENANCE_ASSET_INELIGIBLE")
+test("asset options block only written-off assets and assets with an unfinished record", async () => {
+  const disposed = await searchMaintenanceOptions(fakeDb({ assetStatus: "Disposed" }), { type: "asset", q: "UP" })
+  assert.equal(disposed[0]?.reason, "MAINTENANCE_ASSET_WRITTEN_OFF")
+
+  const loaned = await searchMaintenanceOptions(fakeDb({ assetStatus: "Checked Out" }), { type: "asset", q: "UP" })
+  assert.equal(loaned[0]?.disabled, undefined)
+
+  const open = await searchMaintenanceOptions(fakeDb({ openRecordAssetIds: ["asset-1"] }), { type: "asset", q: "UP" })
+  assert.equal(open[0]?.reason, "MAINTENANCE_OPEN_RECORD_EXISTS")
 })
 
-function fakeDb(config: { assetStatus?: string } = {}) {
+function fakeDb(config: { assetStatus?: string; openRecordAssetIds?: string[] } = {}) {
   const state = { calls: 0, lastTake: 0 }
   return {
     get calls() { return state.calls },
@@ -48,6 +52,6 @@ function fakeDb(config: { assetStatus?: string } = {}) {
         return [{ id: "supplier-1", code: "S001", name: "Supplier" }]
       },
     },
-    maintenanceTicket: { findMany: async () => [] },
+    maintenanceTicket: { findMany: async () => (config.openRecordAssetIds ?? []).map((assetId) => ({ assetId })) },
   }
 }

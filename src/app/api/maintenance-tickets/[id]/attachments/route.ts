@@ -3,11 +3,11 @@ import { mkdir, writeFile } from "fs/promises"
 import path from "path"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
-import { requireAuth, requirePermission } from "@/lib/auth-utils"
+import { hasPermission, requireAuth } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { buildMaintenanceAttachmentName, normalizeMaintenanceAttachmentType } from "@/lib/maintenance-attachments"
-import { isMaintenanceTerminalStatus } from "@/lib/maintenance-policy"
+import { canAttachToRepairRecord, isOpenRepairStatus } from "@/lib/repair-record-policy"
 import { scanWrittenUploadFile } from "@/lib/upload-server"
 import { getUploadRoot, sanitizeFileName, validateUploadFile, validateUploadFileContent } from "@/lib/uploads"
 
@@ -20,14 +20,19 @@ type MaintenanceAttachmentContext = {
 export async function POST(request: NextRequest, context: MaintenanceAttachmentContext) {
   try {
     const user = await requireAuth()
-    requirePermission(user, "maintenance", "edit")
+    const canEdit = hasPermission(user, "maintenance", "edit")
+    const canCreate = hasPermission(user, "maintenance", "create")
+    if (!canEdit && !canCreate) throw new Error("Forbidden: insufficient permissions")
 
     const { id } = await context.params
     const ticket = await prisma.maintenanceTicket.findFirst({
       where: { id, isActive: true },
-      select: { id: true, repairNo: true, assetId: true, repairStatus: true },
+      select: { id: true, repairNo: true, assetId: true, repairStatus: true, createdBy: true },
     })
     if (!ticket) return NextResponse.json({ error: "Maintenance ticket not found" }, { status: 404 })
+    if (!canAttachToRepairRecord({ userId: user.id, canEdit, canCreate }, ticket)) {
+      throw new Error("Forbidden: insufficient permissions")
+    }
 
     const formData = await request.formData()
     const file = formData.get("file")
@@ -77,7 +82,7 @@ export async function POST(request: NextRequest, context: MaintenanceAttachmentC
         originalName: attachment.originalName,
         attachmentType,
         fileSize: attachment.fileSize,
-        postCloseAddendum: isMaintenanceTerminalStatus(ticket.repairStatus),
+        recordFinished: !isOpenRepairStatus(ticket.repairStatus),
       },
     })
 

@@ -1,4 +1,4 @@
-import { getCorrectiveAssetEligibilityError } from "./maintenance-policy.ts"
+import { openRepairRecordWhere } from "./repair-record-policy.ts"
 
 export const maintenanceOptionTypes = ["asset", "employee", "supplier"] as const
 export type MaintenanceOptionType = (typeof maintenanceOptionTypes)[number]
@@ -8,6 +8,8 @@ export type MaintenanceOption = {
   disabled?: boolean
   reason?: string
 }
+
+const writtenOffStatusNames = new Set(["disposed", "retired"])
 
 type FindMany = (args: { where: object; select: object; orderBy: object; take: number }) => Promise<unknown[]>
 export type MaintenanceOptionDb = {
@@ -60,22 +62,22 @@ export async function searchMaintenanceOptions(
     orderBy: { assetTag: "asc" },
     take: 50,
   }) as Array<{ id: string; assetTag: string; name: string; status: { name: string; nameTh: string } }>
-  const activeTickets = assets.length
+  const openRecords = assets.length
     ? await db.maintenanceTicket.findMany({
-        where: {
-          assetId: { in: assets.map((asset) => asset.id) },
-          isActive: true,
-          repairStatus: { notIn: ["closed", "cancelled"] },
-          maintenancePlanId: null,
-          NOT: { problem: { startsWith: "[PM] " } },
-        },
+        where: { ...openRepairRecordWhere, assetId: { in: assets.map((asset) => asset.id) } },
         select: { assetId: true },
       }) as Array<{ assetId: string }>
     : []
-  const activeAssetIds = new Set(activeTickets.map((ticket) => ticket.assetId))
+  const openRecordAssetIds = new Set(openRecords.map((record) => record.assetId))
 
+  // Only block what can never succeed: written-off assets and assets that already have an
+  // unfinished record. Loan and status rules depend on "done / not done" and are explained by the API.
   return assets.map((asset) => {
-    const reason = getCorrectiveAssetEligibilityError(asset.status.name, activeAssetIds.has(asset.id) ? 1 : 0)
+    const reason = writtenOffStatusNames.has(asset.status.name.trim().toLowerCase())
+      ? "MAINTENANCE_ASSET_WRITTEN_OFF"
+      : openRecordAssetIds.has(asset.id)
+        ? "MAINTENANCE_OPEN_RECORD_EXISTS"
+        : null
     return {
       id: asset.id,
       label: `${asset.assetTag} - ${asset.name} (${asset.status.nameTh})`,
