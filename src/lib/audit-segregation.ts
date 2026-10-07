@@ -6,3 +6,9 @@ export const auditSegregationErrors = {
 export function isSameAuditActor(currentUserId: string, actorUserId?: string | null) {
   return Boolean(actorUserId && actorUserId === currentUserId)
 }
+
+// Correcting master data from a scan approves the scanner's own finding. That is allowed only
+// for approvers, and only when the organization has switched segregation of duties off.
+export function canApplyAuditScanCorrections(input: { canApprove: boolean; segregationRequired: boolean }) {
+  return input.canApprove && !input.segregationRequired
+}

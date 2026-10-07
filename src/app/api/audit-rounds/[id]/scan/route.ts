@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
-import { requireAuth, requirePermission } from "@/lib/auth-utils"
+import { hasPermission, requireAuth, requirePermission } from "@/lib/auth-utils"
+import { canApplyAuditScanCorrections } from "@/lib/audit-segregation"
+import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
 import { logAudit } from "@/lib/audit-log"
 import { errorResponse } from "@/lib/api-response"
 import { getAuditRoundReadOnlyError } from "@/lib/audit-round-status"
@@ -425,7 +427,14 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
     const mismatches = getMismatches(item, actual, item.asset.ownershipType)
     const auditResult = mismatches.length === 0 ? "found" : mismatches.length === 1 ? resultByFindingType[mismatches[0].type] : "need_review"
     const scannedAt = new Date()
-    const correctionMismatches = input.applyCorrections
+    const correctionsAllowed = input.applyCorrections && canApplyAuditScanCorrections({
+      canApprove: hasPermission(user, "audit", "approve"),
+      segregationRequired: parseWorkflowApprovalPolicy(await prisma.systemSetting.findMany({
+        where: { key: { in: [...workflowApprovalSettingKeys] } },
+        select: { key: true, value: true },
+      })).segregationRequired,
+    })
+    const correctionMismatches = correctionsAllowed
       ? mismatches.filter((mismatch) => immediateCorrectionTypes.has(mismatch.type))
       : []
     const correctionTypes = new Set(correctionMismatches.map((mismatch) => mismatch.type))
@@ -647,6 +656,7 @@ export async function POST(request: NextRequest, context: AuditScanContext) {
       auditResult,
       mismatches,
       appliedCorrections: correctionMismatches,
+      correctionsDeferred: input.applyCorrections && !correctionsAllowed,
       resolvedNotFoundFinding,
     })
   } catch (error) {

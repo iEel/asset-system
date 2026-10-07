@@ -113,6 +113,7 @@ export function AuditScanForm({
   initialRecentScans = [],
   initialAssetId,
   initialMode = "scan",
+  canApplyCorrections = false,
 }: {
   locale: string
   roundId: string
@@ -123,6 +124,7 @@ export function AuditScanForm({
   initialRecentScans?: AuditRecentScan[]
   initialAssetId?: string
   initialMode?: "scan" | "edit"
+  canApplyCorrections?: boolean
 }) {
   const router = useRouter()
   const t = useTranslations("auditScan")
@@ -916,7 +918,7 @@ export function AuditScanForm({
       assetId: values.assetId,
       ...emptyToNull(actualValues),
       scanSource,
-      applyCorrections: !quickMatched && applyCorrections && correctionMismatchCount > 0,
+      applyCorrections: canApplyCorrections && !quickMatched && applyCorrections && correctionMismatchCount > 0,
       resultCorrection: Boolean(editingScanResult),
       remark: values.remark || null,
     }
@@ -1648,7 +1650,7 @@ export function AuditScanForm({
                       {t("mismatchPreview", { fields: mismatchPreview.map((mismatch) => mismatch.label).join(", ") })}
                     </div>
                   )}
-                  {correctionMismatchCount > 0 && (
+                  {canApplyCorrections && correctionMismatchCount > 0 && (
                     <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-md border border-info/30 bg-info/10 p-3 text-sm">
                       <input
                         type="checkbox"

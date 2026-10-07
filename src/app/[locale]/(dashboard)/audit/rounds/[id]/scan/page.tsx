@@ -7,6 +7,9 @@ import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-p
 import { normalizeAuditRoundDetailReturnTo } from "@/lib/operational-return-navigation"
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import { isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
+import { hasPermission } from "@/lib/auth-utils"
+import { canApplyAuditScanCorrections } from "@/lib/audit-segregation"
+import { parseWorkflowApprovalPolicy, workflowApprovalSettingKeys } from "@/lib/workflow-approval"
 
 type AuditScanPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -31,7 +34,14 @@ const AUDIT_SCAN_HISTORY_LIMIT = 8
 export default async function AuditScanPage({ params, searchParams }: AuditScanPageProps) {
   const { locale, id } = await params
   const rawSearchParams = await searchParams
-  await requirePagePermission(locale, "audit", "edit")
+  const user = await requirePagePermission(locale, "audit", "edit")
+  const canApplyCorrections = canApplyAuditScanCorrections({
+    canApprove: hasPermission(user, "audit", "approve"),
+    segregationRequired: parseWorkflowApprovalPolicy(await prisma.systemSetting.findMany({
+      where: { key: { in: [...workflowApprovalSettingKeys] } },
+      select: { key: true, value: true },
+    })).segregationRequired,
+  })
 
   const [round, options, scanHistory] = await withPerformanceTiming(
     "audit-scan.initial-data",
@@ -152,6 +162,7 @@ export default async function AuditScanPage({ params, searchParams }: AuditScanP
       initialRecentScans={initialRecentScans}
       initialAssetId={resolveFirstSearchParam(rawSearchParams.assetId)}
       initialMode={resolveAuditScanInitialMode(rawSearchParams.mode)}
+      canApplyCorrections={canApplyCorrections}
     />
   )
 }
