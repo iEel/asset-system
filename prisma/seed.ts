@@ -15,10 +15,10 @@ async function main() {
   // ============================================================
   const statuses = [
     { name: "Draft", nameTh: "ร่าง", description: "บันทึกข้อมูลเบื้องต้นและยังไม่พร้อมนำไปใช้งาน", colorCode: "#94A3B8", sortOrder: 1 },
-    { name: "Ready", nameTh: "พร้อมใช้งาน", description: "พร้อมสำหรับมอบหมาย เบิกใช้ หรือเริ่มกระบวนการอื่น", colorCode: "#22C55E", sortOrder: 2 },
-    { name: "In Use", nameTh: "ใช้งานอยู่", description: "ทรัพย์สินระยะยาวที่มีผู้ครอบครองและกำลังใช้งาน", colorCode: "#3B82F6", sortOrder: 3 },
+    { name: "Ready", nameTh: "พร้อมใช้งาน", description: "พร้อมสำหรับส่งมอบ ยืมใช้ หรือเริ่มขั้นตอนอื่น", colorCode: "#22C55E", sortOrder: 2 },
+    { name: "In Use", nameTh: "ใช้งานอยู่", description: "ทรัพย์สินระยะยาวที่มีผู้ถือครองและกำลังใช้งาน", colorCode: "#3B82F6", sortOrder: 3 },
     { name: "Reserved", nameTh: "จอง", description: "กันทรัพย์สินไว้สำหรับรายการหรือผู้ใช้งานที่กำหนด", colorCode: "#8B5CF6", sortOrder: 4 },
-    { name: "Checked Out", nameTh: "ถูกเบิก", description: "ถูกเบิกใช้งานชั่วคราวและมีรายการเบิกที่ยังเปิดอยู่", colorCode: "#F59E0B", sortOrder: 5 },
+    { name: "Checked Out", nameTh: "ถูกยืม", description: "ถูกยืมใช้ชั่วคราวและมีรายการยืมที่ยังเปิดอยู่", colorCode: "#F59E0B", sortOrder: 5 },
     { name: "In Transit", nameTh: "อยู่ระหว่างโอนย้าย", description: "อยู่ระหว่างการขนส่งหรือโอนย้ายที่ยังไม่เสร็จสิ้น", colorCode: "#06B6D4", sortOrder: 6 },
     { name: "Under Maintenance", nameTh: "อยู่ระหว่างซ่อม", description: "มีงานซ่อมที่เริ่มดำเนินการแล้ว", colorCode: "#F97316", sortOrder: 7 },
     { name: "Pending Repair", nameTh: "รอซ่อม", description: "มีรายการซ่อมที่เปิดและกำลังรอเริ่มดำเนินการ", colorCode: "#EF4444", sortOrder: 8 },
