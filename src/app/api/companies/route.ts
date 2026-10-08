@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { errorResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/db"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
 import { logAudit } from "@/lib/audit-log"
@@ -30,9 +31,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(companies)
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected error"
-    const status = message === "Unauthorized" ? 401 : message.startsWith("Forbidden") ? 403 : 500
-    return NextResponse.json({ error: message }, { status })
+    return errorResponse(error)
   }
 }
 
@@ -60,8 +59,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(company, { status: 201 })
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected error"
-    const status = message === "Unauthorized" ? 401 : message.startsWith("Forbidden") ? 403 : 400
-    return NextResponse.json({ error: message }, { status })
+    return errorResponse(error, 400)
   }
 }

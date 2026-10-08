@@ -157,6 +157,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Invalid transaction snapshot date": "invalidTransactionSnapshot",
   "LDAP is disabled": "ldapDisabled",
   "LDAP sync base DN is required": "ldapSyncBaseDnRequired",
+  "LDAP sync failed": "ldapSyncFailed",
   "LDAP sync is disabled": "ldapSyncDisabled",
   "LDAP sync is not enabled": "ldapSyncDisabled",
   "LDAP URL, Bind DN, and Bind Password are required": "ldapSettingsRequired",
@@ -182,6 +183,7 @@ export const apiErrorKeyByMessage: Readonly<Record<string, string>> = {
   "Next asset status not found": "disposalNextStatusNotFound",
   "No assets found in audit scope": "auditScopeEmpty",
   "No assets selected": "noAssetsSelected",
+  "Notification digest failed": "notificationDigestFailed",
   "Notification rule days must be an integer between 0 and 365": "notificationDaysRange",
   "One or more assets were not found": "someAssetsNotFound",
   "Only pending audit items can be marked as not found": "auditItemNotPending",
@@ -257,7 +259,7 @@ export type ApiErrorDescription = { message: string; detail: string | null }
 const thaiText = /[\u0E00-\u0E7F]/
 
 export function getApiErrorKey(raw: string): string | null {
-  return apiErrorKeyByMessage[raw.trim()] ?? null
+  return apiErrorKeyByMessage[raw.trim().replace(/ · ref [0-9a-f]{8}$/, "")] ?? null
 }
 
 export function describeApiError(

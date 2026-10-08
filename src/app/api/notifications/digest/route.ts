@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, requirePermission } from "@/lib/auth-utils"
+import { isExposableError } from "@/lib/api-error-exposure"
 import { errorResponse } from "@/lib/api-response"
 import { logAudit } from "@/lib/audit-log"
 import { deliverDailyNotificationDigest, type NotificationDigestLocale } from "@/lib/notification-digest"
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
       await updateScheduledJobRunState({
         keys: notificationDigestSchedulerStatusKeys,
         status: "failed",
-        error: error instanceof Error ? error.message : "Notification digest failed",
+        error: isExposableError(error) ? error.message : "Notification digest failed",
       }).catch(() => undefined)
     }
     return errorResponse(error, 400)

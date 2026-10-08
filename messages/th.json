@@ -4156,7 +4156,7 @@
     "usernameExists": "ชื่อผู้ใช้นี้มีอยู่แล้ว",
     "vendorNotFound": "ไม่พบผู้ให้บริการ หรือถูกปิดใช้งาน",
     "parentAssetRequired": "กรุณาเลือกทรัพย์สินหลัก",
-    "unexpected": "เกิดข้อผิดพลาดที่ไม่คาดคิด",
+    "unexpected": "เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่ หรือแจ้งผู้ดูแลระบบพร้อมรหัสอ้างอิง",
     "auditRoundClosed": "รอบตรวจนับนี้ถูกปิดแล้ว",
     "findingReviewerIsReporter": "ผู้พิจารณารายการไม่ตรงต้องไม่ใช่ผู้แจ้ง",
     "auditRoundCloserIsCreator": "ผู้ปิดรอบตรวจนับต้องไม่ใช่ผู้สร้างรอบ",
@@ -4216,6 +4216,8 @@
     "approvalSlaDaysRange": "SLA การอนุมัติต้องเป็นจำนวนเต็ม 1–90 วัน",
     "approvalMinApproversRange": "จำนวนผู้อนุมัติขั้นต่ำต้องเป็นจำนวนเต็ม 1–5",
     "approvalToggleInvalid": "ค่าเปิด/ปิดของการอนุมัติไม่ถูกต้อง",
-    "unknown": "เกิดข้อผิดพลาด"
+    "unknown": "เกิดข้อผิดพลาด",
+    "ldapSyncFailed": "ซิงก์ LDAP ไม่สำเร็จ",
+    "notificationDigestFailed": "ส่งสรุปแจ้งเตือนไม่สำเร็จ"
   }
 }

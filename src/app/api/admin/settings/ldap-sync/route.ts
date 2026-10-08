@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { hasRole, requireAuth, requirePermission } from "@/lib/auth-utils"
+import { isExposableError } from "@/lib/api-error-exposure"
 import { errorResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/db"
 import { applyLdapSync, loadLdapSettings, previewLdapSync } from "@/lib/ldap-sync"
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
       await updateScheduledJobRunState({
         keys: ldapSchedulerStatusKeys,
         status: "failed",
-        error: error instanceof Error ? error.message : "LDAP sync failed",
+        error: isExposableError(error) ? error.message : "LDAP sync failed",
       }).catch(() => undefined)
     }
     return errorResponse(error, 400)

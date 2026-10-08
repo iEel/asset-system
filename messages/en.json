@@ -4216,6 +4216,8 @@
     "transactionSnapshotUnsupported": "This transaction has no snapshot to cancel from",
     "transactionStale": "Asset data has changed; reload and try again",
     "disposalEvidenceExceptionReasonRequired": "Enter a reason for the missing evidence",
-    "unknown": "Something went wrong"
+    "unknown": "Something went wrong",
+    "ldapSyncFailed": "LDAP sync failed",
+    "notificationDigestFailed": "Notification digest failed"
   }
 }
