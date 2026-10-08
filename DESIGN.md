@@ -180,6 +180,8 @@ The topbar and working canvas remain light to preserve operational readability.
 
 **The Thai Readability Rule.** Thai and English labels must remain readable at operational density. Do not shrink helper text or placeholders below accessible contrast or touch usability.
 
+**The Thai Copy Rule.** Thai is the primary language. Thai pages use the shared glossary in `docs/19_THAI_GLOSSARY.md` (ที่ตั้ง · รายการไม่ตรง · พิจารณา · ยืมใช้ชั่วคราว / ถูกยืม · รหัสทรัพย์สิน …) and Buddhist-era years (`src/lib/display-year.ts`). English stays only for kept terms (Serial, License, QR, LDAP, API …) and admin-only technical names. Status codes from the database always go through a label; an unknown code shows as-is rather than disappearing. Server errors show Thai first with the original text as a small muted second line (`useApiError` / `ApiErrorText`); unexpected errors show only "Unexpected error · ref xxxxxxxx", which matches the server log.
+
 ## 4. Elevation
 
 This system is lightly lifted. Borders and tonal layers do most of the work; `shadow-sm` is reserved for important panels, metric cards, grouped sections, topbar structure, and stable operational containers. Popovers and dropdowns may use stronger shadows so they clearly escape the page layer. Heavy shadows, blurred glass, floating marketing cards, and decorative depth are forbidden.
@@ -274,6 +276,7 @@ Field-work page pattern (audit scan, 2026-10-07): **room → list or typed searc
 - **Do** use borders and tonal layers as the default grouping mechanism, with `shadow-sm` only for important panels, cards, modals, and grouped sections.
 - **Do** keep tables and forms dense enough for enterprise scanning, but not cramped.
 - **Do** pair status colors with readable labels, icons, shapes, or explicit workflow context so status does not rely on color alone.
+- **Do** write new Thai copy with the glossary words and edit messages through `node scripts/messages-edit.mjs`; `tests/thai-glossary.test.ts` blocks retired words.
 - **Do** support Thai and English text, keyboard navigation, visible focus states, reduced motion, touch-safe mobile/tablet controls, and clear empty, loading, error, permission-denied, and validation states.
 - **Do** preserve business workflows, RBAC, locale routing, audit trail expectations, Prisma/SQL Server behavior, and production readiness assumptions.
 
