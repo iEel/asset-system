@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { ColumnHeader, MasterDataHeader, MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { formatDate } from "@/lib/utils"
+import { toDisplayYear } from "@/lib/display-year"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
@@ -260,7 +261,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
       <section className="mb-6 rounded-lg border border-border bg-surface p-4 shadow-sm">
         <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h2 className="text-base font-semibold text-foreground">{t("coverageTitle", { year: currentYear })}</h2>
+            <h2 className="text-base font-semibold text-foreground">{t("coverageTitle", { year: toDisplayYear(currentYear, locale) })}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("coverageHelp")}</p>
           </div>
           <div className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">

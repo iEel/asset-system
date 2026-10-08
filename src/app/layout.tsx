@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next"
 import { Inter, Noto_Sans_Thai } from "next/font/google"
+import { getLocale } from "next-intl/server"
 import { PwaServiceWorkerRegister } from "@/components/pwa/pwa-service-worker-register"
 import "./globals.css"
 
@@ -32,13 +33,14 @@ export const viewport: Viewport = {
   themeColor: "#0F172A",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const locale = await getLocale()
   return (
-    <html lang="th" suppressHydrationWarning className={`${inter.variable} ${notoSansThai.variable}`}>
+    <html lang={locale} suppressHydrationWarning className={`${inter.variable} ${notoSansThai.variable}`}>
       <body className="bg-background font-sans text-foreground antialiased">
         <PwaServiceWorkerRegister />
         {children}

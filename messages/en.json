@@ -1778,7 +1778,7 @@
     "createSuccess": "Audit round created with {count} expected assets",
     "auditNo": "Audit No.",
     "name": "Audit Name",
-    "auditYear": "Audit Year",
+    "auditYear": "Audit year",
     "scope": "Scope",
     "all": "All assets",
     "scopeCompany": "Company",

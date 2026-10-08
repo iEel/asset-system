@@ -7,6 +7,7 @@ import { ClipboardList, Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 import { filterAuditStatusOptions } from "@/lib/audit-round-scope"
 import { useApiError } from "@/components/ui/use-api-error"
+import { displayYearRange, fromDisplayYear, toDisplayYear } from "@/lib/display-year"
 
 type Option = { id: string; label: string; isClosed?: boolean }
 
@@ -40,6 +41,7 @@ const riskPresetValues = ["all", "data_quality", "high_value", "stale_movement",
 
 export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   const locale = useLocale()
+  const yearRange = displayYearRange(locale)
   const apiError = useApiError()
   const router = useRouter()
   const t = useTranslations("auditRound")
@@ -49,7 +51,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   const [preview, setPreview] = useState<AuditRoundPreview | null>(null)
   const [values, setValues] = useState({
     name: "",
-    auditYear: String(new Date().getFullYear()),
+    auditYear: String(toDisplayYear(new Date().getFullYear(), locale)),
     scopeCompanyId: "",
     scopeBranchId: "",
     scopeDepartmentId: "",
@@ -67,6 +69,11 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   })
   const statusOptions = filterAuditStatusOptions(options.statuses, values.includeClosedAssets)
   const componentItems = preview?.componentItems ?? 0
+
+  // The field shows the reader's calendar year; the API stores Gregorian.
+  function requestBody() {
+    return { ...emptyToNull(values), auditYear: fromDisplayYear(Number(values.auditYear), locale) }
+  }
 
   function setField(field: string, value: string | boolean) {
     setPreview(null)
@@ -88,7 +95,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
       const response = await fetch("/api/audit-rounds/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(emptyToNull(values)),
+        body: JSON.stringify(requestBody()),
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
@@ -107,7 +114,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
       const response = await fetch("/api/audit-rounds", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(emptyToNull(values)),
+        body: JSON.stringify(requestBody()),
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
@@ -132,7 +139,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
             <input value={values.name} onChange={(event) => setField("name", event.target.value)} required maxLength={200} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </Field>
           <Field label={t("auditYear")} required>
-            <input type="number" value={values.auditYear} onChange={(event) => setField("auditYear", event.target.value)} required min={2000} max={2100} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="number" value={values.auditYear} onChange={(event) => setField("auditYear", event.target.value)} required min={yearRange.min} max={yearRange.max} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </Field>
           <Field label={t("startDate")} required>
             <input type="date" value={values.startDate} onChange={(event) => setField("startDate", event.target.value)} required className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
