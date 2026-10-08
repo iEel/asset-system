@@ -19,6 +19,7 @@ Wiki ความรู้เชิงธุรกิจอยู่นอก re
 - **wiki ไม่ใช่แหล่งความจริงของ API และ schema** — ยึดโค้ดกับ `docs/` ของ repo
 - หน้าใหม่ต้องมีชื่อใน `ams-index.md` เสมอ · ทุกครั้งที่แก้ให้เพิ่มบรรทัดใน `AssetSystem/ams-log.md` · รัน `node tools/wiki-lint.mjs AssetSystem --repo D:/Antigravity/asset-system --prefix ams-` (ที่ `D:\Obsidian\Eltross`) ก่อนถือว่าเสร็จ
 - ชื่อไฟล์ห้ามชนกับหน้าอื่นทั้ง vault — ชนให้เติม `ams-` นำหน้า
+- ข้อความไทย: ใช้คำตาม `docs/19_THAI_GLOSSARY.md` · แก้ `messages/*.json` ผ่าน `node scripts/messages-edit.mjs` · `tests/thai-glossary.test.ts` กันคำเลิกใช้
 
 ## ข้อมูลกลาง (Shared)
 

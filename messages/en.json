@@ -3268,7 +3268,9 @@
       "DISPOSAL_PREVIOUS_STATUS_INACTIVE": "The recorded prior status is inactive. Send it to the asset state review queue.",
       "DISPOSAL_ASSET_STATUS_CHANGED": "The asset is no longer Pending Disposal. Reload and review the request."
     },
-    "batchStatuses": { "partial": "Partially completed" },
+    "batchStatuses": {
+      "partial": "Partially completed"
+    },
     "errors": {
       "DISPOSAL_ASSET_NOT_FOUND": "The selected asset was not found or is inactive.",
       "DISPOSAL_EMPLOYEE_NOT_FOUND": "The selected employee was not found or is inactive.",
