@@ -13,3 +13,7 @@ WHERE [name] = N'Ready' AND [description] = N'พร้อมสำหรับ�
 UPDATE [dbo].[asset_statuses]
 SET [description] = N'ทรัพย์สินระยะยาวที่มีผู้ถือครองและกำลังใช้งาน'
 WHERE [name] = N'In Use' AND [description] = N'ทรัพย์สินระยะยาวที่มีผู้ครอบครองและกำลังใช้งาน';
+
+UPDATE [dbo].[asset_statuses]
+SET [description] = N'กำลังตรวจสอบที่ตั้ง ผู้ถือครอง สภาพ หรือข้อมูล ก่อนสรุปขั้นตอนงานถัดไป'
+WHERE [name] = N'Under Inspection' AND [description] = N'กำลังตรวจสอบตำแหน่ง ผู้ถือครอง สภาพ หรือข้อมูล ก่อนสรุปขั้นตอนงานถัดไป';
