@@ -13,6 +13,8 @@ import { resolveModelIdForScope } from "@/lib/asset-model-selection"
 import { defaultAssetOwnershipType, normalizeAssetOwnershipType, assetOwnershipTypes } from "@/lib/asset-ownership"
 import { buildAssetBatchPreviewRows, buildAssetBatchReceiptCsv, createAssetBatchRows, findDuplicateBatchValues, parseBatchSerialPaste, type AssetBatchEditableRow } from "@/lib/asset-batch-create"
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
+import { useApiError } from "@/components/ui/use-api-error"
+import { ApiErrorText } from "@/components/ui/api-error-text"
 
 type AssetBatchFormProps = React.ComponentProps<typeof AssetForm>
 type ScopedEmployeeOption = AssetBatchFormProps["employees"][number]
@@ -119,6 +121,7 @@ export function AssetBatchForm({
   purchaseDocuments,
 }: AssetBatchFormProps) {
   const locale = useLocale()
+  const apiError = useApiError()
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
   const [common, setCommon] = useState<BatchCommonValues>(emptyCommon)
@@ -504,7 +507,7 @@ export function AssetBatchForm({
       const message = error instanceof Error ? error.message : tCommon("error")
       setDuplicateCheckMessage(message)
       setDuplicateCheckStatus("error")
-      toast.error(message)
+      apiError.toast(message)
     } finally {
       setCheckingDuplicates(false)
     }
@@ -586,7 +589,7 @@ export function AssetBatchForm({
       setReviewing(false)
       toast.success(t("batchSubmitSuccess", { count: result.created }))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }
@@ -838,7 +841,7 @@ export function AssetBatchForm({
                     : "border-danger/40 bg-danger-soft text-danger"
               }`}
             >
-              {duplicateCheckMessage}
+              {duplicateCheckStatus === "error" ? <ApiErrorText error={duplicateCheckMessage} /> : duplicateCheckMessage}
             </div>
           ) : null}
 

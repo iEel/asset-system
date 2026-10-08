@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type BrandFormValues = {
   id?: string
@@ -26,6 +27,7 @@ export function BrandForm({
   backHref?: string
 }) {
   const locale = useLocale()
+  const apiError = useApiError()
   const router = useRouter()
   const t = useTranslations("brandModel")
   const tCommon = useTranslations("common")
@@ -59,7 +61,7 @@ export function BrandForm({
       router.push(backHref)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

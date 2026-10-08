@@ -9,6 +9,7 @@ import Link from "next/link"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
+import { useApiError } from "@/components/ui/use-api-error"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { resolveModelIdForScope } from "@/lib/asset-model-selection"
@@ -208,6 +209,7 @@ export function AssetForm({
   const router = useRouter()
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
+  const apiError = useApiError()
   const [values, setValues] = useState<AssetFormValues>(asset ?? emptyAsset)
   const [customFieldRows, setCustomFieldRows] = useState<CustomFieldRow[]>(() => parseCustomFieldRows(asset?.customFieldsJson))
   const [installAfterCreate, setInstallAfterCreate] = useState({
@@ -629,8 +631,9 @@ export function AssetForm({
       router.push(backHref)
       router.refresh()
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : tCommon("error")
-      toast.error(errorMessage.includes("Protected lifecycle statuses") ? t("protectedStatusEditBlocked") : errorMessage)
+      const errorMessage = error instanceof Error ? error.message : ""
+      if (errorMessage.includes("Protected lifecycle statuses")) toast.error(t("protectedStatusEditBlocked"))
+      else apiError.toast(error)
     } finally {
       setSaving(false)
     }

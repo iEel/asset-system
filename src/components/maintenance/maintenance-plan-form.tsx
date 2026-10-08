@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import { toLocalDateInputValue } from "@/lib/local-date"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string }
 
@@ -30,6 +31,7 @@ export function MaintenancePlanForm({
   }>
 }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("maintenancePage")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
@@ -69,7 +71,7 @@ export function MaintenancePlanForm({
       toast.success(t("pmCreateSuccess"))
       router.push(`/${locale}/maintenance/pm`)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

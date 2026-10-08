@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { ClipboardList, Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 import { filterAuditStatusOptions } from "@/lib/audit-round-scope"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string; isClosed?: boolean }
 
@@ -39,6 +40,7 @@ const riskPresetValues = ["all", "data_quality", "high_value", "stale_movement",
 
 export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
   const locale = useLocale()
+  const apiError = useApiError()
   const router = useRouter()
   const t = useTranslations("auditRound")
   const tCommon = useTranslations("common")
@@ -92,7 +94,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
       if (!response.ok) throw new Error(payload?.error ?? tCommon("error"))
       setPreview(payload as AuditRoundPreview)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setPreviewing(false)
     }
@@ -113,7 +115,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
       router.push(`/${locale}/audit/rounds/${payload.id}`)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

@@ -6,6 +6,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { AssetStateReviewDialog, type ReviewTarget } from "@/components/admin/asset-state-review-dialog"
 import { ActionButton } from "@/components/ui/action-button"
+import { useApiError } from "@/components/ui/use-api-error"
 import { StatusBadge } from "@/components/ui/status-badge"
 
 type ReviewRow = {
@@ -52,6 +53,7 @@ export function AssetStateReviewWorkspace({
   labels: Labels
   issueTypes: Record<string, string>
 }) {
+  const apiError = useApiError()
   const [result, setResult] = useState(initialData)
   const [reviewStatus, setReviewStatus] = useState("pending")
   const [severity, setSeverity] = useState("")
@@ -104,7 +106,7 @@ export function AssetStateReviewWorkspace({
       const body = await response.json().catch(() => ({})) as { error?: string; code?: string }
       if (!response.ok) {
         if (body.code === "ASSET_STATE_REVIEW_STALE") toast.error(labels.staleError)
-        else toast.error(body.error ?? labels.saveError)
+        else apiError.toast(body.error ?? labels.saveError)
         return
       }
       toast.success(dialog.mode === "resolve" ? labels.resolveSuccess : labels.dismissSuccess)

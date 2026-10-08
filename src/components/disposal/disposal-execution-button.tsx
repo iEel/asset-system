@@ -15,6 +15,7 @@ import {
   showsActualSalvageValue,
   type DisposalType,
 } from "@/lib/disposal-type-policy"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type StatusOption = { id: string; label: string; name: string }
 type EmployeeOption = { id: string; label: string }
@@ -63,6 +64,7 @@ export function DisposalExecutionButton({
   canUseHistoricalEvidenceException?: boolean
 }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("disposalPage")
   const tCommon = useTranslations("common")
   const triggerRef = useRef<HTMLButtonElement | null>(null)
@@ -142,7 +144,7 @@ export function DisposalExecutionButton({
       closeExecutionDialog()
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

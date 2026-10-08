@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { locationTypes } from "@/lib/validations/location"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type LocationFormValues = {
   id?: string
@@ -57,6 +58,7 @@ export function LocationForm({
   backHref?: string
 }) {
   const locale = useLocale()
+  const apiError = useApiError()
   const router = useRouter()
   const t = useTranslations("location")
   const tCommon = useTranslations("common")
@@ -94,7 +96,7 @@ export function LocationForm({
       router.push(backHref)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

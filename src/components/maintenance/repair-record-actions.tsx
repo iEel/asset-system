@@ -10,6 +10,7 @@ import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-op
 import { uploadRepairFiles } from "@/components/maintenance/repair-record-upload"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import { toLocalDateInputValue } from "@/lib/local-date"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string }
 type Outcome = "usable" | "beyond_repair"
@@ -33,6 +34,7 @@ export function RepairRecordActions({
   details: { reportedDate: string; problem: string; vendor: Option | null; repairCost: string; invoiceNo: string; remark: string }
 }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("repairRecord")
   const tMaintenance = useTranslations("maintenancePage")
   const tCommon = useTranslations("common")
@@ -80,7 +82,7 @@ export function RepairRecordActions({
       setFiles([])
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

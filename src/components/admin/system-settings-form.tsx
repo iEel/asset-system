@@ -73,6 +73,8 @@ import {
   workflowApprovalSlaDaysKey,
   workflowApprovalSettingKeys,
 } from "@/lib/workflow-approval"
+import { useApiError } from "@/components/ui/use-api-error"
+import { ApiErrorText } from "@/components/ui/api-error-text"
 
 type SystemSettingItem = {
   key: string
@@ -505,6 +507,7 @@ export function SystemSettingsForm({
   labels,
 }: SystemSettingsFormProps) {
   const router = useRouter()
+  const apiError = useApiError()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const params = useParams<{ locale?: string }>()
@@ -877,7 +880,7 @@ export function SystemSettingsForm({
       toast.success(labels.success)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : labels.error)
+      apiError.toast(error instanceof Error ? error : labels.error)
     } finally {
       setSaving(false)
     }
@@ -900,7 +903,7 @@ export function SystemSettingsForm({
       if (!response.ok) throw new Error(payload?.message ?? payload?.error ?? labels.ldapTestFailed)
       toast.success(payload?.message ?? labels.ldapTestSuccess)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : labels.ldapTestFailed)
+      apiError.toast(error instanceof Error ? error : labels.ldapTestFailed)
     } finally {
       setTestingLdap(false)
     }
@@ -923,7 +926,7 @@ export function SystemSettingsForm({
     } catch (error) {
       const message = error instanceof Error ? error.message : labels.ldapSyncFailed
       setSyncError(message)
-      toast.error(message)
+      apiError.toast(message)
     } finally {
       setSyncingLdap(null)
     }
@@ -2003,7 +2006,7 @@ export function SystemSettingsForm({
           </div>
           {syncError ? (
             <div className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
-              {syncError}
+              <ApiErrorText error={syncError} />
             </div>
           ) : null}
           <SyncPreviewPanel labels={labels} preview={syncPreview} locale={locale} />

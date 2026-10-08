@@ -17,6 +17,7 @@ import {
   serializeModelSpecs,
   type StructuredModelSpecs,
 } from "@/lib/model-specs"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type AssetModelFormValues = {
   id?: string
@@ -71,6 +72,7 @@ export function AssetModelForm({
   backHref?: string
 }) {
   const locale = useLocale()
+  const apiError = useApiError()
   const router = useRouter()
   const t = useTranslations("brandModel")
   const tCommon = useTranslations("common")
@@ -149,7 +151,7 @@ export function AssetModelForm({
       router.push(backHref)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }
@@ -181,7 +183,7 @@ export function AssetModelForm({
       router.refresh()
     } catch (error) {
       setSelectedPhoto(null)
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setUploading(false)
     }
@@ -202,7 +204,7 @@ export function AssetModelForm({
       toast.success(tCommon("deletedSuccess"))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setDeletingId(null)
     }

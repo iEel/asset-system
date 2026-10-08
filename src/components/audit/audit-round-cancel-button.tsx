@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { AlertTriangle, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type AuditRoundCancellationImpact = {
   pendingItems: number
@@ -18,6 +19,7 @@ type AuditRoundCancellationImpact = {
 
 export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; impact: AuditRoundCancellationImpact }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("auditRound")
   const tCommon = useTranslations("common")
   const reasonId = useId()
@@ -53,7 +55,7 @@ export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; i
       setReason("")
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

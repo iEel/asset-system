@@ -11,6 +11,7 @@ import { FileDropzone } from "@/components/ui/file-dropzone"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { AttachmentPreviewDialog } from "@/components/ui/attachment-preview-dialog"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type Attachment = {
   id: string
@@ -31,6 +32,7 @@ export function MaintenanceAttachments({
   canDelete: boolean
 }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("maintenancePage")
   const tCommon = useTranslations("common")
   const [uploading, setUploading] = useState(false)
@@ -68,7 +70,7 @@ export function MaintenanceAttachments({
       router.refresh()
     } catch (error) {
       setSelectedFile(null)
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setUploading(false)
     }
@@ -85,7 +87,7 @@ export function MaintenanceAttachments({
       toast.success(tCommon("savedSuccess"))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setDeletingId(null)
     }

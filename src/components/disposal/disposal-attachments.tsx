@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { formatFileSize } from "@/lib/uploads"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type Attachment = {
   id: string
@@ -30,6 +31,7 @@ export function DisposalAttachments({
   title?: string
 }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("disposalPage")
   const tCommon = useTranslations("common")
   const confirm = useConfirm()
@@ -51,7 +53,7 @@ export function DisposalAttachments({
       setFile(null)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setUploading(false)
     }
@@ -67,7 +69,7 @@ export function DisposalAttachments({
       toast.success(tCommon("deletedSuccess"))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setDeletingId(null)
     }

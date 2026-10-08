@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { getDisposalApiErrorMessage } from "@/lib/disposal-error-message"
 import { showsEstimatedSaleValue, showsEstimatedSalvageValue, type DisposalType } from "@/lib/disposal-type-policy"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type StatusOption = { id: string; label: string; name: string }
 type DisposalDecision = "approve" | "reject"
@@ -35,6 +36,7 @@ export function DisposalDecisionButton({
   defaultSalvageValue?: string
 }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("disposalPage")
   const tCommon = useTranslations("common")
   const triggerRef = useRef<HTMLButtonElement | null>(null)
@@ -83,7 +85,7 @@ export function DisposalDecisionButton({
       setOpen(false)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

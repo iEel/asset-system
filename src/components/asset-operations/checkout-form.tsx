@@ -13,6 +13,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
 import type { AssetHandoverMode } from "@/lib/asset-handover-mode"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string; disabled?: boolean }
 type CheckoutType = "user" | "department" | "location" | "asset"
@@ -49,6 +50,7 @@ export function CheckoutForm({
   returnTo?: string
 }) {
   const locale = useLocale()
+  const apiError = useApiError()
   const router = useRouter()
   const t = useTranslations("checkout")
   const tCommon = useTranslations("common")
@@ -167,7 +169,7 @@ export function CheckoutForm({
       router.push(returnTo ? appendReturnTo(documentHref, returnTo) : documentHref)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

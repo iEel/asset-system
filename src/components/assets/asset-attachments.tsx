@@ -11,6 +11,7 @@ import { getAssetPhotoGalleryState } from "@/lib/asset-photo-gallery"
 import { formatFileSize } from "@/lib/uploads"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { AttachmentPreviewDialog } from "@/components/ui/attachment-preview-dialog"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type Attachment = {
   id: string
@@ -37,6 +38,7 @@ export function AssetAttachments({
   photoChecklist?: string[]
 }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
   const confirm = useConfirm()
@@ -76,7 +78,7 @@ export function AssetAttachments({
       router.refresh()
     } catch (error) {
       setSelectedFile(null)
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setUploading(false)
     }
@@ -90,7 +92,7 @@ export function AssetAttachments({
       toast.success(t("uploadSuccess"))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setUploadingPhotoLabel(null)
     }
@@ -129,7 +131,7 @@ export function AssetAttachments({
       toast.success(tCommon("deletedSuccess"))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setDeletingId(null)
     }

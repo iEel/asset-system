@@ -60,7 +60,7 @@ test("storage archive button confirms, posts archive request, and refreshes", ()
   assert.match(source, /body: JSON\.stringify\(\{ relativePath \}\)/)
   assert.match(source, /payload\?\.error/)
   assert.match(source, /toast\.success\(t\("archiveSuccess"\)\)/)
-  assert.match(source, /toast\.error\([^)]*t\("archiveFailed"\)/)
+  assert.match(source, /apiError\.toast\([^)]*t\("archiveFailed"\)/)
   assert.match(source, /router\.refresh\(\)/)
 })
 

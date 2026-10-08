@@ -11,6 +11,7 @@ import { DisposalAssetPicker, type DisposalAssetOption } from "@/components/disp
 import { showsEstimatedSaleValue, showsEstimatedSalvageValue, type DisposalType } from "@/lib/disposal-type-policy"
 import { summarizeDisposalEvidenceUploads } from "@/lib/disposal-upload-outcome"
 import { getDisposalApiErrorMessage } from "@/lib/disposal-error-message"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string }
 
@@ -28,6 +29,7 @@ export function DisposalRequestForm({
   initialSourceId?: string
 }) {
   const router = useRouter()
+  const apiError = useApiError()
   const locale = useLocale()
   const t = useTranslations("disposalPage")
   const tCommon = useTranslations("common")
@@ -91,7 +93,7 @@ export function DisposalRequestForm({
       const uploadQuery = outcome.failedFileNames.length > 0 ? `?uploadErrors=${outcome.failedFileNames.length}` : ""
       router.push(`/${locale}/disposal/${payload.id}${uploadQuery}`)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

@@ -12,6 +12,7 @@ import { uploadRepairFiles } from "@/components/maintenance/repair-record-upload
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import { toLocalDateInputValue } from "@/lib/local-date"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string }
 type Outcome = "usable" | "beyond_repair"
@@ -33,6 +34,7 @@ export function RepairRecordForm({
   needsReporter: boolean
 }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("repairRecord")
   const tMaintenance = useTranslations("maintenancePage")
   const tCommon = useTranslations("common")
@@ -90,7 +92,7 @@ export function RepairRecordForm({
       else toast.success(t("saved"))
       router.push(appendOperationalReturnTo(`/${locale}/maintenance/${payload.id}`, returnTo))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

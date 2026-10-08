@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type RoleOption = {
   id: string
@@ -51,6 +52,7 @@ export function AdminUserForm({
   roles: RoleOption[]
 }) {
   const locale = useLocale()
+  const apiError = useApiError()
   const router = useRouter()
   const t = useTranslations("adminUsersPage")
   const tCommon = useTranslations("common")
@@ -97,7 +99,7 @@ export function AdminUserForm({
       router.push(backHref)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

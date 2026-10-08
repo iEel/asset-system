@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Check, Loader2, X } from "lucide-react"
 import { toast } from "sonner"
 import { ConfirmTextDialog } from "@/components/ui/confirm-text-dialog"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type BatchFinding = {
   id: string
@@ -15,6 +16,7 @@ type BatchFinding = {
 
 export function AuditFindingsBatchActions({ findings }: { findings: BatchFinding[] }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("auditFinding")
   const tCommon = useTranslations("common")
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -53,7 +55,7 @@ export function AuditFindingsBatchActions({ findings }: { findings: BatchFinding
       setReviewDialogAction(null)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setReviewing(null)
     }

@@ -10,11 +10,13 @@ import { FileDropzone } from "@/components/ui/file-dropzone"
 import { DisposalAssetPicker, type DisposalAssetOption } from "@/components/disposal/disposal-asset-picker"
 import { showsEstimatedSaleValue, showsEstimatedSalvageValue, type DisposalType } from "@/lib/disposal-type-policy"
 import { getDisposalApiErrorMessage } from "@/lib/disposal-error-message"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string }
 
 export function DisposalBatchForm({ employees }: { employees: Option[] }) {
   const locale = useLocale()
+  const apiError = useApiError()
   const router = useRouter()
   const t = useTranslations("disposalPage")
   const tCommon = useTranslations("common")
@@ -50,7 +52,7 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
       else toast.success(t("batchCreateSuccess", { count: selectedIds.length }))
       router.push(`/${locale}/disposal/batches/${payload.batch.id}`)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

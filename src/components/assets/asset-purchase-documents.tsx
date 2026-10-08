@@ -7,6 +7,7 @@ import { Download, FileText, Loader2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { formatFileSize } from "@/lib/uploads"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type PurchaseDocument = {
   id: string
@@ -36,6 +37,7 @@ export function AssetPurchaseDocuments({
   legacyAttachments?: PurchaseDocumentAttachment[]
 }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
   const confirm = useConfirm()
@@ -56,7 +58,7 @@ export function AssetPurchaseDocuments({
       toast.success(tCommon("deletedSuccess"))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setDeletingId(null)
     }

@@ -9,6 +9,7 @@ import { FormContextBanner } from "@/components/ui/form-context-banner"
 import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string; disabled?: boolean; personalTransferEligible?: boolean }
 
@@ -28,6 +29,7 @@ export function TransferForm({
   returnTo?: string
 }) {
   const locale = useLocale()
+  const apiError = useApiError()
   const router = useRouter()
   const t = useTranslations("transfer")
   const tCommon = useTranslations("common")
@@ -107,7 +109,7 @@ export function TransferForm({
       router.push(returnTo ?? `/${locale}/assets/${values.assetId}`)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

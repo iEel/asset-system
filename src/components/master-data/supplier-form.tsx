@@ -14,6 +14,7 @@ import {
 } from "@/lib/supplier-form-errors"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { shouldGuardLinkClick } from "@/lib/navigation-guard"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type SupplierFormValues = {
   id?: string
@@ -46,6 +47,7 @@ export function SupplierForm({
   backHref?: string
 }) {
   const locale = useLocale()
+  const apiError = useApiError()
   const router = useRouter()
   const confirm = useConfirm()
   const t = useTranslations("supplier")
@@ -134,7 +136,7 @@ export function SupplierForm({
       router.push(backHref)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

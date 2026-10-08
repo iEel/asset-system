@@ -6,9 +6,11 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { useApiError } from "@/components/ui/use-api-error"
 
 export function StorageArchiveButton({ relativePath }: { relativePath: string }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("storagePage")
   const confirm = useConfirm()
   const [archiving, setArchiving] = useState(false)
@@ -34,7 +36,7 @@ export function StorageArchiveButton({ relativePath }: { relativePath: string })
       toast.success(t("archiveSuccess"))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("archiveFailed"))
+      apiError.toast(error instanceof Error ? error : t("archiveFailed"))
     } finally {
       setArchiving(false)
     }

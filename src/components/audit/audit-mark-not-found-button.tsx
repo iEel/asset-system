@@ -7,11 +7,13 @@ import { AlertTriangle, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type AuditMarkNotFoundButtonVariant = "icon" | "button"
 
 export function AuditMarkNotFoundButton({ itemId, variant = "icon" }: { itemId: string; variant?: AuditMarkNotFoundButtonVariant }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("auditPending")
   const tCommon = useTranslations("common")
   const remarkId = useId()
@@ -53,7 +55,7 @@ export function AuditMarkNotFoundButton({ itemId, variant = "icon" }: { itemId: 
       resetDialog()
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

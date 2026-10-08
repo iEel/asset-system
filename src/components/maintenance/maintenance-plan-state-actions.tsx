@@ -8,11 +8,13 @@ import { toast } from "sonner"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import type { MaintenancePlanState } from "@/lib/maintenance-plan-service"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type PlanAction = "pause" | "resume" | "end"
 
 export function MaintenancePlanStateActions({ planId, state }: { planId: string; state: MaintenancePlanState }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("maintenancePage")
   const tCommon = useTranslations("common")
   const [pendingAction, setPendingAction] = useState<PlanAction | null>(null)
@@ -34,7 +36,7 @@ export function MaintenancePlanStateActions({ planId, state }: { planId: string;
       setPendingAction(null)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

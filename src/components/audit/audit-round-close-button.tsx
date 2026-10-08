@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { CheckCircle2, Loader2, Lock } from "lucide-react"
 import { toast } from "sonner"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type ChecklistItem = {
   label: string
@@ -26,6 +27,7 @@ export function AuditRoundCloseButton({
   checklist: ChecklistItem[]
 }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("auditRound")
   const tCommon = useTranslations("common")
   const confirm = useConfirm()
@@ -45,7 +47,7 @@ export function AuditRoundCloseButton({
       toast.success(t("closeSuccess"))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

@@ -48,6 +48,7 @@ import {
   type AuditScanOptions,
   type AuditScanRoom,
 } from "@/lib/audit-scan-session"
+import { useApiError } from "@/components/ui/use-api-error"
 
 const emptyComponents: AuditCheckComponentsState = { status: "ready", components: [], installedIn: [] }
 /** A flickering tab can fire visibilitychange many times a second; returning to it pulls at most this often. */
@@ -81,6 +82,7 @@ export function AuditScanWorkspace({
   initialAssetId?: string
 }) {
   const t = useTranslations("auditScan")
+  const apiError = useApiError()
   const tCommon = useTranslations("common")
   const isWide = useMediaQuery("(min-width: 64rem)")
   const [room, setRoom] = useAuditScanRoom(roundId)
@@ -467,7 +469,7 @@ export function AuditScanWorkspace({
       setPhotoRetry(null)
     } catch (error) {
       setPhotoRetry({ assetId, photos })
-      toast.error(error instanceof Error ? error.message : t("auditPhotoUploadFailed"))
+      apiError.toast(error instanceof Error ? error : t("auditPhotoUploadFailed"))
     }
   }
 
@@ -511,7 +513,7 @@ export function AuditScanWorkspace({
     const result = await response.json().catch(() => null)
     if (!response.ok) {
       if (isRoundClosedError(result?.error)) setRoundClosed(true)
-      toast.error(result?.error ?? tCommon("error"))
+      apiError.toast(result?.error)
       setSaving(false)
       return
     }
@@ -549,7 +551,8 @@ export function AuditScanWorkspace({
       finishSave({ assetId: asset.id, assetTag: asset.assetTag, diff: submission.diff, mode: "out_of_scope", queued: false }, true)
       void syncNow()
     } catch (error) {
-      toast.error(!navigator.onLine ? t("lookupOffline") : error instanceof Error ? error.message : tCommon("error"))
+      if (!navigator.onLine) toast.error(t("lookupOffline"))
+      else apiError.toast(error)
     } finally {
       setSaving(false)
     }
@@ -582,7 +585,7 @@ export function AuditScanWorkspace({
       toast.success(t("componentConfirmedWithParentSuccess"))
       void loadComponents(parent.assetId)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }
@@ -604,7 +607,7 @@ export function AuditScanWorkspace({
       void syncNow()
       void loadComponents(parent.assetId)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

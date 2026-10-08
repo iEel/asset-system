@@ -14,6 +14,7 @@ import { SignaturePad } from "@/components/asset-operations/signature-pad"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
 import { toLocalDateInputValue } from "@/lib/local-date"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string; disabled?: boolean }
 type StatusOption = Option & { name?: string }
@@ -70,6 +71,7 @@ export function CheckinForm({
   returnTo?: string
 }) {
   const locale = useLocale()
+  const apiError = useApiError()
   const router = useRouter()
   const t = useTranslations("checkin")
   const tCommon = useTranslations("common")
@@ -211,7 +213,7 @@ export function CheckinForm({
       router.replace(returnTo ? appendReturnTo(checkinHref, returnTo) : checkinHref)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("legacyReturnFailed"))
+      apiError.toast(error instanceof Error ? error : t("legacyReturnFailed"))
     } finally {
       setLegacyBackfillSavingId(null)
     }
@@ -274,7 +276,7 @@ export function CheckinForm({
       router.push(returnTo ? appendReturnTo(documentHref, returnTo) : documentHref)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Info, Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type RoleFormValue = {
   id?: string
@@ -36,6 +37,7 @@ export function RolePermissionForm({
   const router = useRouter()
   const t = useTranslations("adminRolesPage")
   const tCommon = useTranslations("common")
+  const apiError = useApiError()
   const [saving, setSaving] = useState(false)
   const [meta, setMeta] = useState({
     name: role.name,
@@ -110,7 +112,7 @@ function togglePermission(permissionId: string) {
       router.push(backHref)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

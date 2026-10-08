@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation"
 import { Check, Loader2, Save, Search } from "lucide-react"
 import { toast } from "sonner"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string; disabled?: boolean }
 
 export function BulkMoveForm({ assets, locations }: { assets: Option[]; locations: Option[] }) {
   const locale = useLocale()
+  const apiError = useApiError()
   const router = useRouter()
   const t = useTranslations("bulkMove")
   const tCommon = useTranslations("common")
@@ -62,7 +64,7 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
       router.push(`/${locale}/assets`)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

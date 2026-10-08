@@ -39,6 +39,7 @@ import {
   type AssetRegisterColumnKey,
   type AssetRegisterColumnPresetKey,
 } from "@/lib/asset-register-columns"
+import { useApiError } from "@/components/ui/use-api-error"
 
 export type AssetRegisterRow = {
   id: string
@@ -165,6 +166,7 @@ export function AssetRegisterTable({
   labels,
 }: AssetRegisterTableProps) {
   const t = useTranslations("asset")
+  const apiError = useApiError()
   const tCommon = useTranslations("common")
   const numberLocale = useLocale() === "th" ? "th-TH" : "en-US"
   const { isPending } = useAssetRegisterNavigation()
@@ -374,7 +376,7 @@ export function AssetRegisterTable({
       clearSelection()
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : labels.bulkUpdateFailed)
+      apiError.toast(error instanceof Error ? error : labels.bulkUpdateFailed)
     } finally {
       setBulkSaving(false)
     }

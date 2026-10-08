@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type EmployeeOption = { id: string; label: string }
 type ReviewAction = "approve" | "reject"
@@ -50,6 +51,7 @@ export function AuditFindingReviewActions({
   reviewBlockedReason?: string
 }) {
   const t = useTranslations("auditFinding")
+  const apiError = useApiError()
   const router = useRouter()
   const [reviewing, setReviewing] = useState<ReviewAction | null>(null)
   const [reviewModalAction, setReviewModalAction] = useState<ReviewAction | null>(null)
@@ -74,7 +76,7 @@ export function AuditFindingReviewActions({
       router.refresh()
       return null
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error")
+      apiError.toast(error)
       return null
     } finally {
       setReviewing(null)
@@ -301,6 +303,7 @@ function ActionPlanModal({
   onClose: () => void
 }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("auditFinding")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
@@ -332,7 +335,7 @@ function ActionPlanModal({
       onClose()
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }
@@ -404,6 +407,7 @@ function ActionPlanModal({
 
 function CloseFindingModal({ findingId, evidenceCount, onClose }: { findingId: string; evidenceCount: number; onClose: () => void }) {
   const router = useRouter()
+  const apiError = useApiError()
   const t = useTranslations("auditFinding")
   const tCommon = useTranslations("common")
   const [saving, setSaving] = useState(false)
@@ -427,7 +431,7 @@ function CloseFindingModal({ findingId, evidenceCount, onClose }: { findingId: s
       setFile(null)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setUploading(false)
     }
@@ -447,7 +451,7 @@ function CloseFindingModal({ findingId, evidenceCount, onClose }: { findingId: s
       onClose()
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

@@ -11,6 +11,7 @@ import {
   moveArrayItem,
   type CategoryCustomFieldDraft,
 } from "@/lib/category-form-arrays"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type CustomFieldDefinitionValue = CategoryCustomFieldDraft
 
@@ -41,6 +42,7 @@ export function CategoryForm({
   backHref?: string
 }) {
   const locale = useLocale()
+  const apiError = useApiError()
   const router = useRouter()
   const t = useTranslations("category")
   const tCommon = useTranslations("common")
@@ -89,7 +91,7 @@ export function CategoryForm({
       router.push(backHref)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

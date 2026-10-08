@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type EmployeeFormValues = {
   id?: string
@@ -78,6 +79,7 @@ export function EmployeeForm({
   backHref?: string
 }) {
   const locale = useLocale()
+  const apiError = useApiError()
   const router = useRouter()
   const t = useTranslations("employee")
   const tCommon = useTranslations("common")
@@ -136,7 +138,7 @@ export function EmployeeForm({
       router.push(backHref)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setSaving(false)
     }

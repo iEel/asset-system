@@ -2,6 +2,7 @@
 
 import { Loader2, SearchCheck } from "lucide-react"
 import { useTranslations } from "next-intl"
+import { ApiErrorText } from "@/components/ui/api-error-text"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/ui/status-badge"
 import type { AuditLookupAsset, AuditLookupMatch } from "@/components/audit/audit-scan-types"
@@ -78,7 +79,7 @@ export function AuditScanLookupCard({
       ) : null}
       {state.status === "unknown" ? <p className="mt-2 text-sm text-muted-foreground">{t("lookupUnknown")}</p> : null}
       {state.status === "offline" ? <p className="mt-2 text-sm text-warning">{t("lookupOffline")}</p> : null}
-      {state.status === "error" ? <p className="mt-2 text-sm text-danger" role="alert">{state.message}</p> : null}
+      {state.status === "error" ? <p className="mt-2 text-sm text-danger" role="alert"><ApiErrorText error={state.message} /></p> : null}
     </div>
   )
 }

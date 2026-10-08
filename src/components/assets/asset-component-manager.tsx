@@ -9,6 +9,7 @@ import { FileDropzone } from "@/components/ui/file-dropzone"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { formatDateTime } from "@/lib/utils"
+import { useApiError } from "@/components/ui/use-api-error"
 
 type AssetOption = {
   id: string
@@ -120,6 +121,7 @@ export function AssetComponentManager({
   labels: ManagerLabels
 }) {
   const router = useRouter()
+  const apiError = useApiError()
   const [installStep, setInstallStep] = useState<InstallStep>("identify")
   const [componentSearch, setComponentSearch] = useState("")
   const [candidates, setCandidates] = useState<AssetOption[]>([])
@@ -152,7 +154,7 @@ export function AssetComponentManager({
         setCandidates(payload?.data ?? [])
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return
-        toast.error(error instanceof Error ? error.message : labels.error)
+        apiError.toast(error instanceof Error ? error : labels.error)
       } finally {
         setSearching(false)
       }
@@ -162,7 +164,7 @@ export function AssetComponentManager({
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [assetId, canSearchCandidates, componentSearch, labels.error])
+  }, [apiError, assetId, canSearchCandidates, componentSearch, labels.error])
 
   function selectComponent(component: AssetOption) {
     setSelectedComponent(component)
@@ -213,7 +215,7 @@ export function AssetComponentManager({
       resetInstallFlow()
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : labels.error)
+      apiError.toast(error instanceof Error ? error : labels.error)
     } finally {
       setSaving(false)
     }
@@ -235,7 +237,7 @@ export function AssetComponentManager({
       setRemoveTarget(null)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : labels.error)
+      apiError.toast(error instanceof Error ? error : labels.error)
     } finally {
       setSaving(false)
     }

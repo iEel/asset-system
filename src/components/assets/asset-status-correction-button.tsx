@@ -3,6 +3,7 @@
 import { RotateCcw } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { ApiErrorText } from "@/components/ui/api-error-text"
 
 type AssetStatusCorrectionButtonProps = {
   assetId: string
@@ -74,7 +75,7 @@ export function AssetStatusCorrectionButton({ assetId, readyStatusId, labels }: 
             placeholder={labels.reasonPlaceholder}
             className="mt-1 min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
-          {error ? <p className="mt-2 text-sm text-danger">{error}</p> : null}
+          {error ? <p className="mt-2 text-sm text-danger"><ApiErrorText error={error} /></p> : null}
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
