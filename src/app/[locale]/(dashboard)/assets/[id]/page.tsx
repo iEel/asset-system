@@ -56,6 +56,7 @@ import { buildAssetDetailViewHref, isAssetDetailSectionVisible, parseAssetDetail
 import { withPerformanceTiming } from "@/lib/performance-timing"
 import { splitRelationshipPreview } from "@/lib/asset-relationship-preview"
 import { getAuditRoundItemResultLabelKey, getAuditRoundItemStatusLabelKey } from "@/lib/audit-round-result-filters"
+import { getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 import { getAssetDetailLoadPolicy } from "@/lib/asset-detail-data"
 import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-document"
 import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
@@ -127,6 +128,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   const tMaintenance = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
   const tAudit = await getTranslations("auditRound")
+  const tFinding = await getTranslations("auditFinding")
   const tCancellation = await getTranslations("transactionCancellation")
   const [rawAsset, qrBaseUrlSetting, readyStatus] = await withPerformanceTiming(
     "asset-detail.initial-data",
@@ -648,7 +650,10 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
     const resultLabelKey = getAuditRoundItemResultLabelKey(result)
     if (resultLabelKey) return tAudit(resultLabelKey)
     const statusLabelKey = getAuditRoundItemStatusLabelKey(status)
-    return statusLabelKey ? tAudit(statusLabelKey) : result ?? status
+    if (statusLabelKey) return tAudit(statusLabelKey)
+    if (result) return result
+    const itemStatusLabelKey = getAuditItemStatusLabelKey(status)
+    return itemStatusLabelKey ? tFinding(itemStatusLabelKey) : status
   }
   const unifiedTimelineItems = [
     ...movementTimelineItems,

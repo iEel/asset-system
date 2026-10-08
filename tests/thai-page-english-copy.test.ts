@@ -46,3 +46,16 @@ test("leftover English-only labels are translated on the Thai page (task 11b)", 
     assert.match(value, /[฀-๿]/, `${key} has no Thai: ${value}`)
   }
 })
+
+test("Thai copy writes License the same way everywhere (glossary: kept term)", () => {
+  const offenders: string[] = []
+  const walk = (node: unknown, path: string) => {
+    if (typeof node === "string") {
+      if (/ไลเซนส์/.test(node)) offenders.push(`${path}: ${node}`)
+      return
+    }
+    for (const [key, child] of Object.entries(node as Record<string, unknown>)) walk(child, path ? `${path}.${key}` : key)
+  }
+  walk(th, "")
+  assert.deepEqual(offenders, [])
+})

@@ -35,7 +35,7 @@
 
 ### 2.3 คงไว้
 
-- ชื่อเฉพาะและคำที่พนักงานใช้อยู่แล้ว: LDAP · AD · QR · PDF · Excel · CSV · URL · API · Serial · PM (หัวข้อเขียนเต็ม "บำรุงรักษาตามรอบ (PM)")
+- ชื่อเฉพาะและคำที่พนักงานใช้อยู่แล้ว: LDAP · AD · QR · PDF · Excel · CSV · URL · API · Serial · License (เขียนแบบนี้ทุกที่ ไม่ใช้ "ไลเซนส์") · PM (หัวข้อเขียนเต็ม "บำรุงรักษาตามรอบ (PM)")
 - หน้าผู้ดูแลระบบ (ตั้งค่า LDAP · Integration API · บันทึกระบบ) ใช้ศัพท์เทคนิคได้ เช่น Token · Client ID · JSON — แก้เฉพาะจุดที่มีคำไทยใช้ทั่วไป (เช่น ตัวกรอง ตัวอย่าง)
 - ภาษาอังกฤษ (`messages/en.json`): ให้ key ตรงกับไทยเสมอ และแก้คำในความหมายเดียวกัน (Finding → Discrepancy · Review → Decision) ไม่ขัดเกลาทั้งไฟล์
 
@@ -45,4 +45,6 @@
 - แก้ไฟล์ข้อความด้วย `node scripts/messages-edit.mjs <changes.json>` (รูปแบบไฟล์อยู่ในหัวสคริปต์) ไม่แก้ JSON ด้วยมือทั้งไฟล์
 - ข้อยกเว้นเฉพาะ key ใส่ใน `keyExceptions` ของ test พร้อมเหตุผล
 - ปีในหน้าไทยเป็น พ.ศ. (`src/lib/display-year.ts`) ยกเว้นรหัสที่มีปีในตัว
-- error จากเซิร์ฟเวอร์แปลที่ `src/lib/api-error-catalog.ts` (เพิ่ม error ใหม่ใน API ต้องเพิ่มคำแปลด้วย test จึงจะผ่าน)
+- error จากเซิร์ฟเวอร์แปลที่ `src/lib/api-error-catalog.ts` (เพิ่ม error ใหม่ใน API ต้องเพิ่มคำแปลด้วย test จึงจะผ่าน) · หน้าจอแสดงคำไทยก่อนและข้อความเดิมเป็นบรรทัดเล็กใต้ (`useApiError` / `ApiErrorText`)
+- error ที่ไม่ได้ตั้งใจโยน (ฐานข้อมูล ไฟล์ บั๊ก) ไม่ส่งข้อความจริงให้ผู้ใช้ — ได้ "Unexpected error · ref xxxxxxxx" และ log ฝั่งเซิร์ฟเวอร์มี ref เดียวกัน (`src/lib/api-error-exposure.ts`) · ข้อความที่ตั้งใจให้ผู้ใช้เห็นต้องโยนเป็น `Error` ไม่ใช่ `TypeError`/`RangeError`
+- รหัสสถานะจากฐานข้อมูล (เช่น `scanned`, `reviewed`) แสดงผ่านคำแปลเสมอ (`src/lib/audit-item-status-labels.ts`) · รหัสที่ยังไม่มีคำแปลแสดงตามจริง ไม่ซ่อน

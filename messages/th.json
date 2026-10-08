@@ -515,7 +515,7 @@
     "ownershipType_shared": "ส่วนกลาง",
     "ownershipType_stock": "Stock/สำรอง",
     "ownershipType_component": "ส่วนควบ",
-    "ownershipType_software_license": "ซอฟต์แวร์/ไลเซนส์",
+    "ownershipType_software_license": "ซอฟต์แวร์/License",
     "ownershipType_personal_help": "ใช้เมื่อทรัพย์สินถูกมอบให้พนักงานคนใดคนหนึ่งรับผิดชอบโดยตรง",
     "ownershipType_shared_help": "ใช้กับทรัพย์สินส่วนกลาง เช่น CCTV, อุปกรณ์ห้องประชุม โดยผูกกับแผนกและตำแหน่งติดตั้ง",
     "ownershipType_stock_help": "ใช้กับทรัพย์สินสำรองในคลังหรือแผนก IT ที่ยังไม่มีผู้ถือครองรายบุคคล",
@@ -864,7 +864,7 @@
     "quickMaintenance": "บันทึกซ่อม",
     "quickAudit": "ตรวจนับ",
     "quickLatestDocument": "เอกสารล่าสุด",
-    "quickAssignLicense": "ผูกไลเซนส์",
+    "quickAssignLicense": "ผูก License",
     "quickAssignedDevice": "เครื่องที่ผูก",
     "quickRenewLicense": "ต่ออายุ License",
     "quickAuditLicense": "ตรวจ License",
@@ -1131,7 +1131,7 @@
       "ownershipType": "ประเภทการถือครอง",
       "licenseTotalSeats": "จำนวนสิทธิ์ทั้งหมด",
       "licenseUsedSeats": "จำนวนสิทธิ์ที่ใช้งานแล้ว",
-      "licenseAssignedAssetTag": "รหัสทรัพย์สินที่ผูกไลเซนส์",
+      "licenseAssignedAssetTag": "รหัสทรัพย์สินที่ผูก License",
       "brand": "ยี่ห้อ",
       "model": "รุ่น",
       "departmentCode": "รหัสแผนก",
@@ -3039,8 +3039,8 @@
       "unresolved_audit_finding": "มีรายการไม่ตรงจากการตรวจนับที่ยังไม่ปิด",
       "installed_child_components": "ยังมีส่วนควบติดตั้งอยู่",
       "installed_in_parent": "ยังเป็นส่วนควบของทรัพย์สินอื่น",
-      "assigned_licenses": "ยังมีไลเซนส์ผูกกับทรัพย์สินนี้",
-      "license_assignment": "ยังผูกไลเซนส์กับทรัพย์สินอื่น"
+      "assigned_licenses": "ยังมี License ผูกกับทรัพย์สินนี้",
+      "license_assignment": "ยังผูก License กับทรัพย์สินอื่น"
     },
     "types": {
       "sell": "ขาย",

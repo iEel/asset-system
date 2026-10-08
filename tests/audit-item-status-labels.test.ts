@@ -72,3 +72,9 @@ test("audit round page falls back to item status labels and labels out_of_scope 
   assert.doesNotMatch(page, /statusLabelKey \? t\(statusLabelKey\) : item\.auditStatus,/)
   assert.match(page, /getTranslations\("auditFinding"\)/)
 })
+
+test("asset page audit history labels reviewed and reconciled items instead of printing codes", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/assets/[id]/page.tsx", "utf8")
+  assert.match(page, /getAuditItemStatusLabelKey\(status\)/)
+  assert.doesNotMatch(page, /statusLabelKey \? tAudit\(statusLabelKey\) : result \?\? status/)
+})
