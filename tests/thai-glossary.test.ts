@@ -38,9 +38,18 @@ const rules: Rule[] = [
 const allowedPhrases = ["Asset Management System", "พื้นที่จัดเก็บ"]
 
 // "namespace.key": "why this key may keep the word" — a reviewer must be able to check the reason.
-const keyExceptions: Record<string, string> = {
-  "asset.autoPhotoLabelHint": "only match is the ICU placeholder {label}, whose name is fixed by asset-form.tsx; the Thai text has no Label",
-  "asset.addAssetPhotoWithLabel": "only match is the ICU placeholder {label}, whose name is fixed by asset-form.tsx; the Thai text has no Label",
+const keyExceptions: Record<string, string> = {}
+
+// Bare ICU arguments like {label} are code names, not text a reader sees. Plural/select blocks
+// ({count, plural, …}) are not matched, so the Thai inside their branches is still checked.
+function readableText(value: string): string {
+  const withoutPlaceholders = value.replace(/\{\s*[A-Za-z_][A-Za-z0-9_]*\s*\}/g, "")
+  return allowedPhrases.reduce((current, phrase) => current.split(phrase).join(""), withoutPlaceholders)
+}
+
+function brokenRules(value: string): string[] {
+  const text = readableText(value)
+  return rules.filter((rule) => rule.pattern.test(text)).map((rule) => rule.term)
 }
 
 // Namespaces already clean. Tasks 5–7 add theirs; Task 8 replaces the list with every namespace.
@@ -59,13 +68,20 @@ test("cleaned Thai namespaces use the shared glossary", () => {
     assert.ok(namespace in th, `unknown namespace ${namespace}`)
     for (const [key, value] of flatEntries(th[namespace], namespace)) {
       if (keyExceptions[key]) continue
-      const text = allowedPhrases.reduce((current, phrase) => current.split(phrase).join(""), value)
+      const text = readableText(value)
       for (const rule of rules) {
         if (rule.pattern.test(text)) violations.push(`${key}: "${rule.term}" → ${rule.use} :: ${value}`)
       }
     }
   }
   assert.deepEqual(violations, [])
+})
+
+test("placeholder names are ignored but the words around them are still checked", () => {
+  assert.deepEqual(brokenRules("แนบรูป {label}"), [])
+  assert.deepEqual(brokenRules("พิมพ์ Label"), ["Label"])
+  assert.deepEqual(brokenRules("พิมพ์ Label {label}"), ["Label"])
+  assert.deepEqual(brokenRules("{count, plural, other {# Label}}"), ["Label"])
 })
 
 test("every glossary exception points at a real key and explains itself", () => {
