@@ -21,6 +21,8 @@ import { buildEmployeeDetailHrefs, buildEmployeeDetailSummary, buildEmployeeFoll
 import { formatDate, formatDateTime } from "@/lib/utils"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, maintenanceStatuses } from "@/lib/maintenance-status"
 import { openRepairRecordWhere } from "@/lib/repair-record-policy"
+import { getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
+import { getAuditRoundItemResultLabelKey } from "@/lib/audit-round-result-filters"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -41,6 +43,16 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
   const tCommon = await getTranslations("common")
   const tMaintenance = await getTranslations("maintenancePage")
   const tFinding = await getTranslations("auditFinding")
+  const tAuditRound = await getTranslations("auditRound")
+  const formatAuditItemStatus = (status: string) => {
+    const key = getAuditItemStatusLabelKey(status)
+    return key ? tFinding(key) : status
+  }
+  const formatAuditItemOutcome = (result: string | null, status: string) => {
+    const resultKey = getAuditRoundItemResultLabelKey(result)
+    if (resultKey) return tAuditRound(resultKey)
+    return result || formatAuditItemStatus(status)
+  }
   const tDisposal = await getTranslations("disposalPage")
 
   const employee = await prisma.employee.findFirst({
@@ -490,8 +502,8 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                   id: item.id,
                   title: `${item.asset.assetTag} - ${item.asset.name}`,
                   href: `/${locale}/audit/rounds/${item.auditRound.id}`,
-                  meta: `${item.auditRound.auditNo} / ${item.auditResult || item.auditStatus}`,
-                  badge: item.findingRequired ? t("auditItemHasFinding") : item.auditStatus,
+                  meta: `${item.auditRound.auditNo} / ${formatAuditItemOutcome(item.auditResult, item.auditStatus)}`,
+                  badge: item.findingRequired ? t("auditItemHasFinding") : formatAuditItemStatus(item.auditStatus),
                   tone: item.findingRequired ? "warning" : "info",
                 }))}
               />

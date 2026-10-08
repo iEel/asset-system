@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { useApiError } from "@/components/ui/use-api-error"
 
 export function useDeleteAction(endpoint: string, options?: { returnFocusRef?: { current: HTMLElement | null } }) {
   const router = useRouter()
   const confirm = useConfirm()
   const tCommon = useTranslations("common")
+  const apiError = useApiError()
   const [deleting, setDeleting] = useState(false)
 
   async function runDelete() {
@@ -31,7 +33,7 @@ export function useDeleteAction(endpoint: string, options?: { returnFocusRef?: {
       toast.success(tCommon("deletedSuccess"))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon("error"))
+      apiError.toast(error)
     } finally {
       setDeleting(false)
     }

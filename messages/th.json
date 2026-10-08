@@ -42,7 +42,8 @@
     "searchSelectPlaceholder": "พิมพ์เพื่อค้นหา...",
     "searchSelectNoResults": "ไม่พบรายการที่ตรงกับคำค้น",
     "imageOptimizing": "กำลังปรับขนาดรูป...",
-    "imageOptimizationHint": "รูปขนาดใหญ่จะถูกบีบอัดแบบรักษาความคมชัด และไม่ลดด้านยาวต่ำกว่า 1,800px"
+    "imageOptimizationHint": "รูปขนาดใหญ่จะถูกบีบอัดแบบรักษาความคมชัด และไม่ลดด้านยาวต่ำกว่า 1,800px",
+    "saving": "กำลังบันทึก..."
   },
   "globalSearch": {
     "label": "ค้นหาทั่วระบบ",
@@ -2213,7 +2214,19 @@
     "type_wrong_department": "แผนกไม่ตรง",
     "type_wrong_condition": "สภาพไม่ตรง",
     "type_not_found": "ไม่พบทรัพย์สิน",
-    "type_out_of_scope": "ทรัพย์สินนอกขอบเขต"
+    "type_out_of_scope": "ทรัพย์สินนอกขอบเขต",
+    "itemStatus_pending": "รอตรวจ",
+    "itemStatus_scanned": "ตรวจแล้ว",
+    "itemStatus_reviewed": "ตรวจแล้ว มีรายการไม่ตรง",
+    "itemStatus_reconciled": "ปรับปรุงข้อมูลแล้ว",
+    "itemStatus_out_of_scope": "นอกขอบเขต",
+    "reconcileStatus_pending": "รอพิจารณา",
+    "reconcileStatus_pending_investigation": "รอติดตามหาทรัพย์สิน",
+    "reconcileStatus_approved": "อนุมัติแล้ว",
+    "reconcileStatus_rejected": "ปฏิเสธแล้ว",
+    "reconcileStatus_exception": "ต้องตรวจสอบพิเศษ",
+    "reconcileStatus_reconciled": "ปรับปรุงข้อมูลแล้ว",
+    "reconcileStatus_reviewed": "พิจารณาแล้ว"
   },
   "auditPending": {
     "title": "รายการรอตรวจ",
@@ -3048,7 +3061,7 @@
     "matrixStatus_thin": "มีน้อย",
     "matrixStatus_missing": "ไม่มีผู้อนุมัติ",
     "approverCount": "{count} คน",
-    "permissionKey": "Permission ที่ใช้",
+    "permissionKey": "สิทธิ์ที่ใช้",
     "roles": "บทบาทที่ครอบคลุม",
     "approvers": "ผู้ใช้ที่อนุมัติได้",
     "noRoles": "ยังไม่มีบทบาท",
@@ -3139,7 +3152,7 @@
     "check_authSecret_title": "Auth secret",
     "check_authSecret_description": "ตรวจว่า AUTH_SECRET/NEXTAUTH_SECRET ถูกตั้งจริง ตรงกัน และไม่ใช่ค่า placeholder",
     "check_authSecret_action": "ดูค่าติดตั้ง",
-    "check_uploadDir_title": "Upload directory",
+    "check_uploadDir_title": "โฟลเดอร์เก็บไฟล์อัปโหลด",
     "check_uploadDir_description": "ตรวจ UPLOAD_DIR ว่าเป็น path ถาวรแบบ absolute สำหรับไฟล์แนบและรูปทรัพย์สิน",
     "check_uploadDir_action": "ดูค่าติดตั้ง",
     "check_databaseConfig_title": "Database connection",
@@ -3148,7 +3161,7 @@
     "check_schedulerTokens_title": "Scheduler tokens",
     "check_schedulerTokens_description": "ตรวจ token สำหรับ PM auto-generation, ซิงก์ LDAP และ notification digest ว่าตั้งครบก่อนใช้ systemd timer",
     "check_schedulerTokens_action": "ดูค่าติดตั้ง",
-    "check_uploadScanner_title": "Upload malware scanner",
+    "check_uploadScanner_title": "ตัวสแกนมัลแวร์ของไฟล์อัปโหลด",
     "check_uploadScanner_description": "ตรวจว่า optional server-side scanner สำหรับไฟล์ upload ถูกตั้งค่าและ timeout ใช้งานได้",
     "check_uploadScanner_action": "ดูค่าติดตั้ง",
     "check_schedulerRuns_title": "Scheduler last runs",

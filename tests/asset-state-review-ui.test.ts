@@ -33,3 +33,13 @@ test("snapshot loading groups active checkouts by handover mode", () => {
   assert.match(service, /openTemporaryLoans/)
   assert.match(service, /openUnknownHandovers/)
 })
+
+test("placeholder labels reach the workspace raw and common.saving exists", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/admin/data-quality/page.tsx", "utf8")
+  assert.match(page, /total: t\.raw\("assetStateReviews\.total"\)/)
+  assert.match(page, /scanSuccess: t\.raw\("assetStateReviews\.scanSuccess"\)/)
+  const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
+  assert.equal(th.common.saving, "กำลังบันทึก...")
+  assert.equal(en.common.saving, "Saving...")
+})

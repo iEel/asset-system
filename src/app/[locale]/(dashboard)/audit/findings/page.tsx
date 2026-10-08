@@ -25,6 +25,7 @@ import {
   type AuditFindingResolutionStatus,
 } from "@/lib/audit-finding-filters"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { getAuditItemReconcileStatusLabelKey, getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 
 type AuditFindingsPageProps = {
   params: Promise<{ locale: string }>
@@ -49,6 +50,14 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
 
   const t = await getTranslations("auditFinding")
   const tCommon = await getTranslations("common")
+  const formatAuditItemStatus = (status: string) => {
+    const key = getAuditItemStatusLabelKey(status)
+    return key ? t(key) : status
+  }
+  const formatReconcileStatus = (status: string | null) => {
+    const key = getAuditItemReconcileStatusLabelKey(status)
+    return key ? t(key) : (status ?? "-")
+  }
   const pageLoadedAt = new Date()
   const searchText = search.trim()
   const roundId = roundIdParam.trim()
@@ -453,8 +462,8 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                         {finding.actionOwnerId ? (employeeLabelById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : "-"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(finding.actionDueDate)}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{finding.auditItem.auditStatus}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{finding.auditItem.reconcileStatus ?? "-"}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatAuditItemStatus(finding.auditItem.auditStatus)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatReconcileStatus(finding.auditItem.reconcileStatus)}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         {canEdit || canApprove ? (
                           <AuditFindingReviewActions

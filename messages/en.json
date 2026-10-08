@@ -42,7 +42,8 @@
     "searchSelectPlaceholder": "Type to search...",
     "searchSelectNoResults": "No matching options",
     "imageOptimizing": "Optimizing image...",
-    "imageOptimizationHint": "Large photos are compressed with a sharpness guard and never reduced below a 1,800px long edge."
+    "imageOptimizationHint": "Large photos are compressed with a sharpness guard and never reduced below a 1,800px long edge.",
+    "saving": "Saving..."
   },
   "globalSearch": {
     "label": "Search globally",
@@ -2213,7 +2214,19 @@
     "type_wrong_department": "Wrong Department",
     "type_wrong_condition": "Wrong Condition",
     "type_not_found": "Not Found",
-    "type_out_of_scope": "Out of Scope"
+    "type_out_of_scope": "Out of Scope",
+    "itemStatus_pending": "Pending",
+    "itemStatus_scanned": "Scanned",
+    "itemStatus_reviewed": "Checked, discrepancy recorded",
+    "itemStatus_reconciled": "Register updated",
+    "itemStatus_out_of_scope": "Out of scope",
+    "reconcileStatus_pending": "Awaiting decision",
+    "reconcileStatus_pending_investigation": "Pending investigation",
+    "reconcileStatus_approved": "Approved",
+    "reconcileStatus_rejected": "Rejected",
+    "reconcileStatus_exception": "Exception",
+    "reconcileStatus_reconciled": "Register updated",
+    "reconcileStatus_reviewed": "Decided"
   },
   "auditPending": {
     "title": "Pending Assets",
