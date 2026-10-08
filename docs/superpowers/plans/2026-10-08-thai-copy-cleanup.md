@@ -60,6 +60,8 @@
 
 **Status wording (Task 9)** — `prisma/seed.ts`, `prisma/manual-migrations/2026-10-08-thai-status-wording.sql`, `tests/thai-status-wording.test.ts`.
 
+**Unexpected errors (Task 10, review S9 — added 2026-10-08 at the user's request)** — `src/lib/api-error-exposure.ts` (pure), `src/lib/api-response.ts`, `src/lib/api-error-catalog.ts`, `src/app/api/companies/route.ts`, `src/app/api/companies/[id]/route.ts`, `src/app/api/admin/settings/ldap-sync/route.ts`, `src/app/api/notifications/digest/route.ts`, `tests/api-error-exposure.test.ts`.
+
 > Order note: the spec lists dead-key cleanup as step 8. It runs as Task 2 here so the copy tasks never spend time rewording keys that are about to be deleted (the old scan form alone left ~140).
 
 ---
@@ -1004,7 +1006,138 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 10: Apply on dev, check the app, docs and wiki (main session)
+### Task 10: Hide unexpected server errors from users (review S9)
+
+Added 2026-10-08 at the user's request (spec §12). Task 3 shows the original server text as a small second line, so raw Prisma / filesystem / bug messages must never reach the browser.
+
+**Files:**
+- Create: `src/lib/api-error-exposure.ts`, `tests/api-error-exposure.test.ts`
+- Modify: `src/lib/api-response.ts`, `src/lib/api-error-catalog.ts`, `src/app/api/companies/route.ts`, `src/app/api/companies/[id]/route.ts`, `src/app/api/admin/settings/ldap-sync/route.ts`, `src/app/api/notifications/digest/route.ts`, `messages/*.json` (`apiErrors.unexpected`, via `messages-edit.mjs`)
+
+**Interfaces:**
+- Consumes: `getApiErrorKey`, `apiErrorKeyByMessage` (Task 3).
+- Produces: `isExposableError(error: unknown): boolean`, `unexpectedErrorText(reference: string): string` → `"Unexpected error · ref <reference>"`; `errorResponse` keeps its signature.
+
+- [ ] **Step 1: Write the failing test** — `tests/api-error-exposure.test.ts`:
+
+```ts
+import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+import test from "node:test"
+
+import { getApiErrorKey } from "../src/lib/api-error-catalog.ts"
+import { isExposableError, unexpectedErrorText } from "../src/lib/api-error-exposure.ts"
+
+class AppConflictError extends Error {}
+
+test("errors the code throws on purpose may be shown", () => {
+  assert.equal(isExposableError(new Error("Asset not found")), true)
+  assert.equal(isExposableError(new AppConflictError("ASSET_ACTIVE_CHECKOUT_EXISTS")), true)
+})
+
+test("database, filesystem, programming errors and non-errors are hidden", () => {
+  const prisma = Object.assign(new Error("Invalid `prisma.asset.update()` invocation: Unique constraint failed on the fields: (`assetTag`)"), { name: "PrismaClientKnownRequestError", code: "P2002", clientVersion: "7.10.0" })
+  const fsError = Object.assign(new Error("ENOENT: no such file or directory, open 'D:\\uploads\\x.jpg'"), { code: "ENOENT", errno: -4058, syscall: "open" })
+  assert.equal(isExposableError(prisma), false)
+  assert.equal(isExposableError(fsError), false)
+  assert.equal(isExposableError(new TypeError("Cannot read properties of undefined (reading 'id')")), false)
+  assert.equal(isExposableError(new RangeError("Invalid time value")), false)
+  assert.equal(isExposableError("boom"), false)
+  assert.equal(isExposableError(null), false)
+})
+
+test("the unexpected-error text carries a reference the client still recognises", () => {
+  const text = unexpectedErrorText("3f2a9c1d")
+  assert.equal(text, "Unexpected error · ref 3f2a9c1d")
+  assert.equal(getApiErrorKey(text), getApiErrorKey("Unexpected error"))
+  assert.ok(getApiErrorKey("Unexpected error"))
+})
+
+test("errorResponse hides what must not be shown and logs it with the same reference", () => {
+  const source = readFileSync("src/lib/api-response.ts", "utf8")
+  assert.match(source, /if \(!isExposableError\(error\)\)/)
+  assert.match(source, /randomUUID\(\)\.replaceAll\("-", ""\)\.slice\(0, 8\)/)
+  assert.match(source, /console\.error\(`\[api error\] ref \$\{reference\}`, error\)/)
+  assert.match(source, /\{ error: unexpectedErrorText\(reference\) \}, \{ status: 500 \}/)
+})
+
+test("routes that answered with error.message now go through the same rule", () => {
+  for (const file of ["src/app/api/companies/route.ts", "src/app/api/companies/[id]/route.ts", "src/app/api/admin/settings/ldap-sync/route.ts", "src/app/api/notifications/digest/route.ts"]) {
+    const source = readFileSync(file, "utf8")
+    assert.doesNotMatch(source, /error instanceof Error \? error\.message :/, file)
+  }
+})
+```
+
+- [ ] **Step 2: Run it and confirm it fails** — module missing.
+
+- [ ] **Step 3: Create `src/lib/api-error-exposure.ts`**
+
+```ts
+// Decides whether an error's message may be sent to the browser (review finding S9).
+// Messages the code throws on purpose are fine; database, filesystem and programming errors are not.
+
+const builtInProgrammingErrors = [TypeError, RangeError, ReferenceError, SyntaxError, EvalError, URIError]
+
+export function isExposableError(error: unknown): error is Error {
+  if (!(error instanceof Error)) return false
+  if (builtInProgrammingErrors.some((type) => error instanceof type)) return false
+  if (error.name.startsWith("PrismaClient")) return false
+  if ("syscall" in error || "errno" in error) return false
+  return true
+}
+
+export function unexpectedErrorText(reference: string) {
+  return `Unexpected error · ref ${reference}`
+}
+```
+
+- [ ] **Step 4: Change `src/lib/api-response.ts`**
+
+```ts
+import { randomUUID } from "node:crypto"
+import { NextResponse } from "next/server"
+import { isExposableError, unexpectedErrorText } from "@/lib/api-error-exposure"
+
+export function errorResponse(error: unknown, fallbackStatus = 500) {
+  if (!isExposableError(error)) {
+    const reference = randomUUID().replaceAll("-", "").slice(0, 8)
+    console.error(`[api error] ref ${reference}`, error)
+    return NextResponse.json({ error: unexpectedErrorText(reference) }, { status: 500 })
+  }
+  const message = error.message
+  const status =
+    message === "Unauthorized"
+      ? 401
+      : message.startsWith("Forbidden")
+        ? 403
+        : fallbackStatus
+
+  return NextResponse.json({ error: message }, { status })
+}
+```
+
+Check the existing route tests that mock `@/lib/api-response` or assert on 500 bodies still pass; a test that expected a raw Prisma/TypeError message in a 500 body now expects `Unexpected error · ref …` — update it and list it.
+
+- [ ] **Step 5: Catalog** — in `src/lib/api-error-catalog.ts`, make `getApiErrorKey` strip a trailing ` · ref <hex>` before the lookup (`raw.trim().replace(/ · ref [0-9a-f]{8}$/, "")`) and make sure `"Unexpected error": "unexpected"` is in the map. Set `apiErrors.unexpected` th "เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่ หรือแจ้งผู้ดูแลระบบพร้อมรหัสอ้างอิง" · en "Unexpected error" (via `messages-edit.mjs`).
+
+- [ ] **Step 6: Routes that bypass `errorResponse`**
+- `src/app/api/companies/route.ts` and `src/app/api/companies/[id]/route.ts`: replace each `const message = error instanceof Error ? error.message : "Unexpected error"` block with `return errorResponse(error, <the status that block used>)` (keep any special status such as 409 for linked data). This also closes review finding M4 ("DELETE company sends a raw error").
+- `src/app/api/admin/settings/ldap-sync/route.ts` and `src/app/api/notifications/digest/route.ts`: `error: isExposableError(error) ? error.message : "LDAP sync failed"` (resp. `"Notification digest failed"`), and `console.error` the original error. Make sure the fallback strings are in the catalog.
+- Do not touch routes that answer `{ code, error }` from the app's own conflict/service error classes — those messages are deliberate.
+
+- [ ] **Step 7: Run, full checks, commit** — `node --test tests/api-error-exposure.test.ts tests/api-error-catalog.test.ts` → PASS; `npm test`, `npx tsc --noEmit`, `npm run lint`.
+
+```bash
+git add src/lib/api-error-exposure.ts tests/api-error-exposure.test.ts src/lib/api-response.ts src/lib/api-error-catalog.ts src/app/api/companies/route.ts "src/app/api/companies/[id]/route.ts" src/app/api/admin/settings/ldap-sync/route.ts src/app/api/notifications/digest/route.ts messages/th.json messages/en.json <route tests you updated>
+git commit -m "fix(api): hide unexpected server errors behind a reference (review S9)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 11: Apply on dev, check the app, docs and wiki (main session)
 
 - [ ] **Step 1: Dev DB** — confirm `.env` points at `asset_management_dev` with login `asset_dev`, then `npm run migration:status`, then `npm run migration:apply -- 2026-10-08-thai-status-wording.sql --backup-confirmed --reason "B3 status wording (dev)" --by "Claude dev check"`; verify with a read-only SELECT of the three rows.
 
@@ -1014,7 +1147,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 1. Open in Thai: `/th/dashboard`, `/th/work-center`, `/th/assets`, an asset detail, checkout and check-in forms, `/th/audit/rounds` (+ a round, its scan page, pending list, `/th/audit/findings`), `/th/maintenance`, `/th/disposal`, `/th/reports`, `/th/master-data/locations`, `/th/admin/users`, `/th/admin/roles`, `/th/admin/settings`, `/th/admin/system-logs`. On each, scan `document.body.innerText` for `Finding|Scope|Review|Asset Tag|เบิกใช้งานชั่วคราว|ถูกเบิก|พื้นที่(?!จัดเก็บ)` and for a 4-digit year 19xx/20xx outside codes; list hits.
 2. Grep the dev-server log for `MISSING_MESSAGE` after visiting every page, especially the runtime-built namespaces Task 2 listed.
 3. `document.documentElement.lang` is `th` on `/th/...` and `en` on `/en/...`.
-4. Trigger a known error (save an asset with a duplicate Serial, or open a closed round's scan) → Thai first line + original English second line; an unknown error → "เกิดข้อผิดพลาด" + the original.
+4. Trigger a known error (save an asset with a duplicate Serial, or open a closed round's scan) → Thai first line + original English second line; an unknown error → "เกิดข้อผิดพลาด" + the original; an unexpected server error (e.g. a request that makes Prisma throw) → "เกิดข้อผิดพลาดที่ไม่คาดคิด…" + "Unexpected error · ref xxxxxxxx", and the same ref appears in the dev-server log with the full error.
 5. New audit round form shows 2569; typing 2026 is refused by the field; a round created with 2569 is stored as 2026 (round number AUD-2026-…).
 6. Asset status "ถูกยืม" shows in the register tabs and badges.
 7. Excel import preview with an old header file ("พื้นที่") still maps the location column.

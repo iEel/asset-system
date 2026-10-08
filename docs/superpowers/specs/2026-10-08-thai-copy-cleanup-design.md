@@ -121,7 +121,8 @@
 7. แก้คำกลุ่ม ตั้งค่า · ผู้ใช้ · บทบาท · บันทึกระบบ · เมนู · ข้อความกลาง · ข้อความไทยในโค้ด แล้วเปิด `thai-glossary` ตรวจทุกหมวด
 8. ล้างข้อความที่ไม่ใช้แล้ว
 9. ชื่อสถานะ "ถูกยืม" (seed + DB dev + ไฟล์ SQL Production)
-10. ตรวจบนแอป dev + เอกสาร + wiki (main session)
+10. ซ่อน error ที่ไม่คาดคิดจากผู้ใช้ (ข้อ 12 · รีวิว S9)
+11. ตรวจบนแอป dev + เอกสาร + wiki (main session)
 
 ทุกงาน: `npm test` · `npx tsc --noEmit` · `npm run lint` · แก้ข้อความด้วย Edit ทีละ key (ห้ามเขียน JSON ทั้งไฟล์ใหม่) · คงปลายบรรทัดเดิมของไฟล์
 
@@ -133,6 +134,15 @@
 - ฟอร์มสร้างรอบตรวจนับแสดง 2569 และรอบที่สร้างบันทึกปี 2026
 - นำเข้า Excel ด้วยหัวคอลัมน์เดิมยังผ่าน (preview)
 - `npm run verify`
+
+## 12. ซ่อน error ที่ไม่คาดคิด (รีวิว 2026-10-07 ข้อ S9 · ผู้ใช้สั่งเพิ่ม 2026-10-08)
+
+ข้อ 3 แสดงข้อความเดิมจากเซิร์ฟเวอร์เป็นบรรทัดล่าง จึงต้องไม่ให้ข้อความดิบของ Prisma/ฐานข้อมูล ระบบไฟล์ หรือบั๊กในโค้ด หลุดถึงผู้ใช้
+
+- `src/lib/api-error-exposure.ts` (ล้วน): `isExposableError(error)` — ส่งข้อความได้เฉพาะ error ที่โค้ดตั้งใจโยน (`new Error("…")` หรือ class ของแอปเอง) · ไม่ส่ง: ไม่ใช่ Error · TypeError/RangeError/ReferenceError/SyntaxError/EvalError/URIError · error ของ Prisma (`name` ขึ้นต้น `PrismaClient`) · error ระบบของ Node (มี `syscall` หรือ `errno`)
+- `errorResponse`: ถ้าไม่ควรส่ง → 500 `{ error: "Unexpected error · ref <8 ตัว>" }` และ `console.error("[api error] ref <8 ตัว>", error)` ลง log ของ service · ถ้าส่งได้ → พฤติกรรมเดิม
+- route ที่ไม่ผ่าน `errorResponse` แต่ส่ง `error.message` ตรง ๆ (บริษัท 5 จุด ซึ่งตรงกับรีวิวข้อ M4 · ซิงก์ AD · สรุปแจ้งเตือน) ใช้กติกาเดียวกัน · error ที่มี code ของแอป (409 ต่าง ๆ) คงเดิม
+- หน้าจอ: `getApiErrorKey` รู้จัก "Unexpected error" ทั้งแบบมีและไม่มี `· ref …` → "เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่ หรือแจ้งผู้ดูแลระบบพร้อมรหัสอ้างอิง" · บรรทัดล่างแสดง "Unexpected error · ref …" ให้ผู้ดูแลค้นใน log
 
 ## 10. Deploy และเอกสาร
 
