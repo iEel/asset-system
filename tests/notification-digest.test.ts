@@ -20,7 +20,7 @@ test("builds localized digest message from notification items", () => {
 
   assert.match(message, /วันนี้มีงานที่ควรติดตาม 5 รายการ/)
   assert.match(message, /PM ถึงกำหนด: 2/)
-  assert.match(message, /รายการส่งมอบใกล้ครบกำหนดคืน: 3/)
+  assert.match(message, /รายการยืมใช้ชั่วคราวใกล้ครบกำหนดคืน: 3/)
 })
 
 test("uses highest severity tone in digest", () => {

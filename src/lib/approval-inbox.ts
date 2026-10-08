@@ -133,19 +133,19 @@ function approvalInboxCopy(locale: string) {
     return {
       auditRoundReady: "รอบตรวจนับพร้อมปิดแล้ว ไม่มีรายการค้างที่ต้องตัดสินใจ",
       auditRoundAction: "อนุมัติปิดรอบตรวจนับ",
-      findingReview: "Finding รอตรวจสอบ",
-      findingAction: "ตรวจสอบ Finding",
+      findingReview: "รายการไม่ตรงรอพิจารณา",
+      findingAction: "พิจารณารายการไม่ตรง",
       disposalReady: (assetName: string) => `คำขอตัดจำหน่าย ${assetName} รออนุมัติ`,
-      disposalAction: "ตรวจอนุมัติตัดจำหน่าย",
+      disposalAction: "พิจารณาตัดจำหน่าย",
     }
   }
 
   return {
     auditRoundReady: "Audit round is ready to close with no pending decision items.",
     auditRoundAction: "Approve Round Closure",
-    findingReview: "Finding awaiting review",
-    findingAction: "Review Finding",
+    findingReview: "Discrepancy awaiting decision",
+    findingAction: "Decide Discrepancy",
     disposalReady: (assetName: string) => `Disposal request for ${assetName} is awaiting approval.`,
-    disposalAction: "Review Disposal",
+    disposalAction: "Decide Disposal",
   }
 }

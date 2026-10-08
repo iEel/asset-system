@@ -53,7 +53,7 @@ function brokenRules(value: string): string[] {
 }
 
 // Namespaces already clean. Tasks 5–7 add theirs; Task 8 replaces the list with every namespace.
-const enforcedNamespaces: string[] = ["common", "myAssets", "auth", "supplier", "repairRecord", "adminUsersPage", "transactionCancellation", "integrationApiPage", "asset", "assetTools", "location", "branch", "category", "company", "department", "brandModel", "checkin", "checkout", "bulkMove", "transfer", "globalSearch", "employee"]
+const enforcedNamespaces: string[] = ["common", "myAssets", "auth", "supplier", "repairRecord", "adminUsersPage", "transactionCancellation", "integrationApiPage", "asset", "assetTools", "location", "branch", "category", "company", "department", "brandModel", "checkin", "checkout", "bulkMove", "transfer", "globalSearch", "employee", "auditRound", "auditScan", "auditFinding", "auditPending", "dashboard", "workCenter", "notifications", "approvalInboxPage", "approvalHistoryPage"]
 
 function flatEntries(value: unknown, prefix: string): Array<[string, string]> {
   if (typeof value === "string") return [[prefix, value]]
