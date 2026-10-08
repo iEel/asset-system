@@ -61,3 +61,14 @@ test("employee page labels audit item status and result instead of printing code
   assert.match(page, /getAuditItemStatusLabelKey\(/)
   assert.match(page, /getAuditRoundItemResultLabelKey\(/)
 })
+
+test("itemStatus_reviewed reads as plain checked in Thai (controller ruling)", () => {
+  assert.equal(th.itemStatus_reviewed, "ตรวจแล้ว")
+})
+
+test("audit round page falls back to item status labels and labels out_of_scope results", () => {
+  const page = readFileSync("src/app/[locale]/(dashboard)/audit/rounds/[id]/page.tsx", "utf8")
+  assert.match(page, /getAuditItemStatusLabelKey\(item\.auditStatus\)/)
+  assert.doesNotMatch(page, /statusLabelKey \? t\(statusLabelKey\) : item\.auditStatus,/)
+  assert.match(page, /getTranslations\("auditFinding"\)/)
+})

@@ -54,11 +54,12 @@ const auditRoundItemStatusLabelKeys: Record<string, "pending" | "scanned"> = {
   scanned: "scanned",
 }
 
-const auditRoundItemResultLabelKeys: Record<string, "found" | "confirmedWithParent" | "notFound" | "mismatch"> = {
+const auditRoundItemResultLabelKeys: Record<string, "found" | "confirmedWithParent" | "notFound" | "mismatch" | "outOfScope"> = {
   found: "found",
   confirmed_with_parent: "confirmedWithParent",
   not_found: "notFound",
   mismatch: "mismatch",
+  out_of_scope: "outOfScope",
 }
 
 export function buildAuditRoundResultSummaryGroups(items: AuditRoundResultSummaryInput[]) {

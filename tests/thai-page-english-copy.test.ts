@@ -14,3 +14,35 @@ test("production readiness and approval inbox labels are Thai on the Thai page",
     assert.doesNotMatch(value, /Upload|Permission/)
   }
 })
+
+test("leftover English-only labels are translated on the Thai page (task 11b)", () => {
+  const keys = [
+    "asset.ownershipType_software_license",
+    "asset.labelTapeCustom",
+    "asset.quickAssignLicense",
+    "asset.licensePool",
+    "productionReadinessPage.check_notificationRules_title",
+    "productionReadinessPage.check_adminCoverage_title",
+    "productionReadinessPage.check_masterData_title",
+    "productionReadinessPage.check_appBaseUrl_title",
+    "productionReadinessPage.check_authSecret_title",
+    "productionReadinessPage.check_databaseConfig_title",
+    "productionReadinessPage.check_schedulerTokens_title",
+    "productionReadinessPage.check_schedulerRuns_title",
+    "productionReadinessPage.check_backupStatus_title",
+    "productionReadinessPage.check_pwaAssets_title",
+    "storagePage.dryRunAction",
+    "systemSettingsPage.tabAutomation",
+    "systemSettingsPage.labelLayout",
+    "systemSettingsPage.ldapSyncDefaultCompanyCode",
+    "systemSettingsPage.ldapSyncDefaultBranchCode",
+    "systemSettingsPage.ldapSyncDefaultDepartmentCode",
+    "integrationApiPage.rotate",
+    "systemLogPage.action_rotate_client",
+  ]
+  for (const key of keys) {
+    const value = key.split(".").reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], th) as string
+    assert.equal(typeof value, "string", `${key} missing`)
+    assert.match(value, /[฀-๿]/, `${key} has no Thai: ${value}`)
+  }
+})

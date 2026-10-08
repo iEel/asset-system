@@ -33,6 +33,7 @@ type PreviewResult = {
 
 type AssetImportPreviewPanelProps = {
   labels: {
+    fields: Record<string, string>
     importPreview: string
     chooseFile: string
     previewReady: string
@@ -257,9 +258,9 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
               <span
                 key={column.key}
                 className="rounded-full border border-primary/20 bg-surface px-2.5 py-1 text-xs text-foreground"
-                title={`${column.label}: ${column.sourceHeader ?? `${labels.sourceColumn} ${column.sourceColumn}`}`}
+                title={`${labels.fields[column.key] ?? column.label}: ${column.sourceHeader ?? `${labels.sourceColumn} ${column.sourceColumn}`}`}
               >
-                {column.label}
+                {labels.fields[column.key] ?? column.label}
                 {" -> "}
                 {column.sourceHeader ?? `${labels.sourceColumn} ${column.sourceColumn}`}
               </span>

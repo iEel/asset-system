@@ -57,6 +57,7 @@ export default async function AssetImportExportPage({ params }: AssetImportExpor
 
       <AssetImportPreviewPanel
         labels={{
+          fields: t.raw("importField") as Record<string, string>,
           importPreview: t("importPreview"),
           chooseFile: t("chooseImportFile"),
           previewReady: t("previewReady"),

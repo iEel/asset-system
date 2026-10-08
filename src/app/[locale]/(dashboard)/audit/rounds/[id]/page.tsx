@@ -36,6 +36,7 @@ import {
   type AuditRoundResultFilter,
   type AuditRoundResultListState,
 } from "@/lib/audit-round-result-filters"
+import { getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 
 type AuditRoundDetailPageProps = {
   params: Promise<{ locale: string; id: string }>
@@ -48,6 +49,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   const user = await requirePagePermission(locale, "audit", "view")
   const canApprove = hasPermission(user, "audit", "approve")
   const t = await getTranslations("auditRound")
+  const tFinding = await getTranslations("auditFinding")
   const tCommon = await getTranslations("common")
 
   const resultListState = parseAuditRoundResultListParams(rawSearchParams)
@@ -310,6 +312,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       }))
     : resultItems.map((item) => {
         const statusLabelKey = getAuditRoundItemStatusLabelKey(item.auditStatus)
+        const itemStatusLabelKey = statusLabelKey ? null : getAuditItemStatusLabelKey(item.auditStatus)
         const resultLabelKey = getAuditRoundItemResultLabelKey(item.auditResult)
         const auditResult = item.auditResult ?? "pending"
         const correctionHistory = correctionHistoryByItemId.get(item.id) ?? []
@@ -317,7 +320,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
           id: item.id,
           asset: item.asset,
           auditStatus: item.auditStatus,
-          auditStatusLabel: statusLabelKey ? t(statusLabelKey) : item.auditStatus,
+          auditStatusLabel: statusLabelKey ? t(statusLabelKey) : itemStatusLabelKey ? tFinding(itemStatusLabelKey) : item.auditStatus,
           auditResult,
           auditResultLabel: item.auditResult ? (resultLabelKey ? t(resultLabelKey) : item.auditResult) : "-",
           auditResultTone: item.auditResult === "found" || item.auditResult === "confirmed_with_parent" ? ("success" as const) : item.auditResult === "not_found" ? ("danger" as const) : ("muted" as const),

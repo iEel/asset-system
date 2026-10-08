@@ -270,3 +270,8 @@ test("audit round result rows surface scan correction history", () => {
     assert.equal(typeof messages.auditRound.correctionHistoryFields, "string")
   }
 })
+
+test("out_of_scope results map to the existing outOfScope label", () => {
+  assert.equal(getAuditRoundItemResultLabelKey("out_of_scope"), "outOfScope")
+  assert.equal(getAuditRoundItemResultLabelKey("mismatch"), "mismatch")
+})

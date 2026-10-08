@@ -426,6 +426,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
 
       <AssetImportPreviewPanel
         labels={{
+          fields: t.raw("importField") as Record<string, string>,
           importPreview: t("importPreview"),
           chooseFile: t("chooseImportFile"),
           previewReady: t("previewReady"),
