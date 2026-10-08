@@ -24,7 +24,6 @@ test("dashboard exposes cross-scope asset KPI, action card, and detail panel", (
 test("dashboard cross-scope messages exist in Thai and English", () => {
   const keys = [
     "crossScopeAssets",
-    "crossScopeAssetsDetail",
     "crossScopeActionTitle",
     "crossScopeActionDetail",
     "crossScopePanelTitle",

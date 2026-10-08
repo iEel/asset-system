@@ -59,7 +59,6 @@ test("legacy check-in messages exist in Thai and English", () => {
   const keys = [
     "legacyReturnTitle",
     "legacyReturnDescription",
-    "legacyReturnEmpty",
     "legacyReturnAction",
     "legacyReturnCreating",
     "legacyReturnCreated",

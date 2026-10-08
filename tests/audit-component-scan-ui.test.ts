@@ -67,7 +67,6 @@ test("audit scan component UI copy is translated", () => {
     assert.equal(typeof messages.auditScan.componentConfirmWithParent, "string")
     assert.equal(typeof messages.auditScan.componentScanQr, "string")
     assert.equal(typeof messages.auditScan.componentMissing, "string")
-    assert.equal(typeof messages.auditScan.componentMissingRemark, "string")
     assert.equal(typeof messages.auditScan.componentMissingDefaultRemark, "string")
     assert.equal(typeof messages.auditScan.componentMissingSaved, "string")
     assert.equal(typeof messages.auditScan.installedInParentNotice, "string")

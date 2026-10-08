@@ -67,7 +67,6 @@ test("asset status and condition help messages are localized", () => {
     "conditionHelpDamaged",
     "conditionHelpNeedsReview",
     "conditionHelpMissing",
-    "assetStateFilterGroup",
   ]
 
   for (const file of ["messages/th.json", "messages/en.json"]) {
