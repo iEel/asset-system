@@ -43,7 +43,7 @@
 | S6 | High | login ไม่มี rate-limit · ผิดแต่ละครั้ง bind AD | **แก้แล้ว** `0bef806` |
 | S7 | Medium | ไม่มีการจำกัดข้อมูลตามบริษัท/สาขา | เปิด (design gap) |
 | S8 | Medium | export ทะเบียนใช้แค่ `asset:view` · ตัด 5,000 แถวเงียบ · ไม่มี log | เปิด |
-| S9 | Medium | error message ดิบของ Prisma/filesystem ถึงผู้ใช้ (`src/lib/api-response.ts`) | เปิด |
+| S9 | Medium | error message ดิบของ Prisma/filesystem ถึงผู้ใช้ (`src/lib/api-response.ts`) | **แก้แล้ว** `4c2aa77`, `980b906` (branch `feat/thai-copy-cleanup`) · ส่ง "Unexpected error · ref" + log ref เดียวกัน |
 | S10 | Low | dashboard แสดง system log โดยไม่เช็ค `log:view` · `.codex/` ฯลฯ ไม่อยู่ใน `.gitignore` · host DB อยู่ใน git history · scheduler token เทียบด้วย `===` | เปิด |
 
 ## A — Logic ทรัพย์สิน (ส่งมอบ / คืน / โอน)
@@ -80,7 +80,7 @@
 | M1 | ลบแผนก/ยี่ห้อ/รุ่นได้แม้ยังมีข้อมูลผูก | `src/app/api/departments/[id]/route.ts`, `brands/[id]`, `models/[id]` |
 | M2 | dropdown ทรัพย์สินแม่/License ดึงแค่ 500 ชิ้นแรก (Prod มี 1,751) · เอกสารจัดซื้อ 300 | `src/lib/asset-form-options.ts:109` |
 | M3 | ตั้งค่า "องค์กร" ยังเป็น "บริษัท ตัวอย่าง จำกัด" และไม่มีโค้ดใช้ค่านี้ | `src/lib/system-setting-defaults.ts:133` |
-| M4 | DELETE บริษัทส่ง error ดิบต่างจากโมดูลอื่น | `src/app/api/companies/[id]/route.ts` |
+| M4 | DELETE บริษัทส่ง error ดิบต่างจากโมดูลอื่น — **แก้แล้ว** `4c2aa77` (ใช้ `errorResponse`) | `src/app/api/companies/[id]/route.ts` |
 
 ## U — UI/UX (heuristic 22/40 · Acceptable)
 
