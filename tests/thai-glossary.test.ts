@@ -38,10 +38,13 @@ const rules: Rule[] = [
 const allowedPhrases = ["Asset Management System", "พื้นที่จัดเก็บ"]
 
 // "namespace.key": "why this key may keep the word" — a reviewer must be able to check the reason.
-const keyExceptions: Record<string, string> = {}
+const keyExceptions: Record<string, string> = {
+  "asset.autoPhotoLabelHint": "only match is the ICU placeholder {label}, whose name is fixed by asset-form.tsx; the Thai text has no Label",
+  "asset.addAssetPhotoWithLabel": "only match is the ICU placeholder {label}, whose name is fixed by asset-form.tsx; the Thai text has no Label",
+}
 
 // Namespaces already clean. Tasks 5–7 add theirs; Task 8 replaces the list with every namespace.
-const enforcedNamespaces: string[] = ["common", "myAssets", "auth", "supplier", "repairRecord", "adminUsersPage", "transactionCancellation", "integrationApiPage"]
+const enforcedNamespaces: string[] = ["common", "myAssets", "auth", "supplier", "repairRecord", "adminUsersPage", "transactionCancellation", "integrationApiPage", "asset", "assetTools", "location", "branch", "category", "company", "department", "brandModel", "checkin", "checkout", "bulkMove", "transfer", "globalSearch", "employee"]
 
 function flatEntries(value: unknown, prefix: string): Array<[string, string]> {
   if (typeof value === "string") return [[prefix, value]]

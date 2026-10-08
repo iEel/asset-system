@@ -8,7 +8,7 @@ test("asset create forms label asset owner scope separately from custodian scope
 
   assert.equal(th.asset.assetOwnerCompany, "บริษัทเจ้าของทรัพย์สิน / ใช้สร้างรหัส")
   assert.equal(th.asset.assetOwnerBranch, "สาขาเจ้าของรหัส")
-  assert.match(th.asset.assetOwnerCompanyHelp, /Asset Tag/)
+  assert.match(th.asset.assetOwnerCompanyHelp, /รหัสทรัพย์สิน/)
   assert.equal(en.asset.assetOwnerCompany, "Asset Owner Company / Tag Scope")
   assert.equal(en.asset.assetOwnerBranch, "Owner Branch / Tag Scope")
 })

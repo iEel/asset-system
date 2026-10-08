@@ -46,6 +46,6 @@ test("asset scan page labels only the native input and uses asset-specific searc
   assert.match(tool, /inputClassName="min-h-11 w-full min-w-0[^"]*sm:flex-1/)
   assert.match(page, /placeholder: t\("scanPlaceholder"\)/)
   assert.doesNotMatch(page, /placeholder: tGlobalSearch\("placeholder"\)/)
-  assert.equal(th.assetTools.scanPlaceholder, "ค้นหาด้วย Asset Tag, Serial Number, ผู้ถือครอง หรือสถานที่")
+  assert.equal(th.assetTools.scanPlaceholder, "ค้นหาด้วยรหัสทรัพย์สิน, Serial Number, ผู้ถือครอง หรือที่ตั้ง")
   assert.equal(en.assetTools.scanPlaceholder, "Search by Asset Tag, Serial Number, custodian, or location")
 })

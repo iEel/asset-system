@@ -109,7 +109,7 @@ test("asset QR help tells users to frame the QR code instead of the whole label"
   const enMessages = readFileSync("messages/en.json", "utf8")
 
   assert.match(thMessages, /เล็งเฉพาะ QR Code/)
-  assert.match(thMessages, /ไม่ต้องใส่ทั้ง Label/)
+  assert.match(thMessages, /ไม่ต้องใส่ทั้งป้าย/)
   assert.match(enMessages, /Center only the QR code/)
   assert.match(enMessages, /not the whole label/)
 })
