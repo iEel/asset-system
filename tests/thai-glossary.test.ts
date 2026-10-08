@@ -38,7 +38,9 @@ const rules: Rule[] = [
 const allowedPhrases = ["Asset Management System", "พื้นที่จัดเก็บ"]
 
 // "namespace.key": "why this key may keep the word" — a reviewer must be able to check the reason.
-const keyExceptions: Record<string, string> = {}
+const keyExceptions: Record<string, string> = {
+  "productionReadinessPage.check_publicQrBaseUrl_description": "\"asset\" is the example host name in https://asset.company.com, not a word for readers",
+}
 
 // Bare ICU arguments like {label} are code names, not text a reader sees. Plural/select blocks
 // ({count, plural, …}) are not matched, so the Thai inside their branches is still checked.
@@ -53,7 +55,7 @@ function brokenRules(value: string): string[] {
 }
 
 // Namespaces already clean. Tasks 5–7 add theirs; Task 8 replaces the list with every namespace.
-const enforcedNamespaces: string[] = ["common", "myAssets", "auth", "supplier", "repairRecord", "adminUsersPage", "transactionCancellation", "integrationApiPage", "asset", "assetTools", "location", "branch", "category", "company", "department", "brandModel", "checkin", "checkout", "bulkMove", "transfer", "globalSearch", "employee", "auditRound", "auditScan", "auditFinding", "auditPending", "dashboard", "workCenter", "notifications", "approvalInboxPage", "approvalHistoryPage"]
+const enforcedNamespaces: string[] = ["common", "myAssets", "auth", "supplier", "repairRecord", "adminUsersPage", "transactionCancellation", "integrationApiPage", "asset", "assetTools", "location", "branch", "category", "company", "department", "brandModel", "checkin", "checkout", "bulkMove", "transfer", "globalSearch", "employee", "auditRound", "auditScan", "auditFinding", "auditPending", "dashboard", "workCenter", "notifications", "approvalInboxPage", "approvalHistoryPage", "maintenancePage", "disposalPage", "reportsPage", "dataQualityPage", "storagePage", "productionReadinessPage"]
 
 function flatEntries(value: unknown, prefix: string): Array<[string, string]> {
   if (typeof value === "string") return [[prefix, value]]
