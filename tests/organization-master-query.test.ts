@@ -174,7 +174,7 @@ test("builds branch count order, summary, drilldown, and delete guards", () => {
   assert.equal(getBranchDeleteBlockReason({ locations: 0, employees: 0, assets: 0, auditRounds: 0 }), null)
   assert.equal(
     getBranchDeleteBlockReason({ locations: 2, employees: 3, assets: 4, auditRounds: 1 }),
-    "ไม่สามารถลบสาขานี้ได้ เพราะยังมีพื้นที่ 2 รายการ, พนักงาน 3 รายการ, ทรัพย์สิน 4 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
+    "ไม่สามารถลบสาขานี้ได้ เพราะยังมีที่ตั้ง 2 รายการ, พนักงาน 3 รายการ, ทรัพย์สิน 4 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
   )
 })
 

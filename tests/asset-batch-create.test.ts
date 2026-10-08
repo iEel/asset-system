@@ -219,7 +219,7 @@ test("buildAssetBatchDuplicateMessage explains duplicate fields clearly", () => 
       existingSerials: ["sn-009"],
       existingAssetTags: ["tag-010"],
     }),
-    "พบข้อมูลซ้ำ: Serial Number ซ้ำในชุดนี้ sn-001; Serial Number ซ้ำกับข้อมูลเดิม sn-009; Asset Tag ซ้ำกับข้อมูลเดิม tag-010"
+    "พบข้อมูลซ้ำ: Serial Number ซ้ำในชุดนี้ sn-001; Serial Number ซ้ำกับข้อมูลเดิม sn-009; รหัสทรัพย์สินซ้ำกับข้อมูลเดิม tag-010"
   )
 })
 
@@ -258,7 +258,7 @@ test("buildAssetBatchDuplicateCheckSummary reports duplicate count and message",
     }),
     {
       ok: false,
-      message: "พบข้อมูลซ้ำ: Serial Number ซ้ำในชุดนี้ sn-001; Asset Tag ซ้ำในชุดนี้ tag-001; Serial Number ซ้ำกับข้อมูลเดิม sn-009",
+      message: "พบข้อมูลซ้ำ: Serial Number ซ้ำในชุดนี้ sn-001; รหัสทรัพย์สินซ้ำในชุดนี้ tag-001; Serial Number ซ้ำกับข้อมูลเดิม sn-009",
       duplicateCount: 3,
     }
   )

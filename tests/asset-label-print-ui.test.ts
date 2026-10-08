@@ -60,7 +60,7 @@ test("label print template settings expose compact printable asset names", () =>
   assert.match(settingsPage, /compactLabelAssetNameShort:\s*t\("compactLabelAssetNameShort"\)/)
   assert.match(settingsPage, /compactLabelAssetNameFull:\s*t\("compactLabelAssetNameFull"\)/)
 
-  assert.equal(th.systemSettingsPage.compactLabelAssetName, "ชื่อทรัพย์สินบน Label")
+  assert.equal(th.systemSettingsPage.compactLabelAssetName, "ชื่อทรัพย์สินบนป้าย")
   assert.equal(
     th.systemSettingsPage.compactLabelAssetNameDescription,
     "เลือกว่าจะย่อชื่อที่ระบบแนะนำเฉพาะตอนพิมพ์ หรือใช้ชื่อทรัพย์สินเต็ม"

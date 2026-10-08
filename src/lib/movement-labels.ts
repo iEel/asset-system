@@ -31,13 +31,13 @@ export function getMaintenanceMovementLabel(movementType: string, labels: Mainte
 const uuidPattern = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi
 
 const snapshotLabels: Record<string, string> = {
-  assetTag: "Asset Tag",
+  assetTag: "รหัสทรัพย์สิน",
   componentAssetTag: "ส่วนควบ",
   componentName: "ชื่อส่วนควบ",
   componentRole: "บทบาท",
   custodianId: "ผู้ถือครอง",
   departmentId: "แผนก",
-  locationId: "พื้นที่",
+  locationId: "ที่ตั้ง",
   parentAssetTag: "ทรัพย์สินหลัก",
   parentName: "ชื่อทรัพย์สินหลัก",
   reason: "เหตุผล",

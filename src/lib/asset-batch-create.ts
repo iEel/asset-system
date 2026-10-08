@@ -181,9 +181,9 @@ export function buildAssetBatchDuplicateMessage({
 }) {
   const parts = [
     duplicateBatchSerials.length ? `Serial Number ซ้ำในชุดนี้ ${duplicateBatchSerials.join(", ")}` : "",
-    duplicateBatchAssetTags.length ? `Asset Tag ซ้ำในชุดนี้ ${duplicateBatchAssetTags.join(", ")}` : "",
+    duplicateBatchAssetTags.length ? `รหัสทรัพย์สินซ้ำในชุดนี้ ${duplicateBatchAssetTags.join(", ")}` : "",
     existingSerials.length ? `Serial Number ซ้ำกับข้อมูลเดิม ${existingSerials.join(", ")}` : "",
-    existingAssetTags.length ? `Asset Tag ซ้ำกับข้อมูลเดิม ${existingAssetTags.join(", ")}` : "",
+    existingAssetTags.length ? `รหัสทรัพย์สินซ้ำกับข้อมูลเดิม ${existingAssetTags.join(", ")}` : "",
   ].filter(Boolean)
 
   return parts.length > 0 ? `พบข้อมูลซ้ำ: ${parts.join("; ")}` : ""

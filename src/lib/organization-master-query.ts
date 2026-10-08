@@ -464,7 +464,7 @@ export function getBranchDeleteBlockReason(counts: {
   auditRounds: number
 }) {
   const reasons = [
-    counts.locations > 0 ? `พื้นที่ ${counts.locations} รายการ` : null,
+    counts.locations > 0 ? `ที่ตั้ง ${counts.locations} รายการ` : null,
     counts.employees > 0 ? `พนักงาน ${counts.employees} รายการ` : null,
     counts.assets > 0 ? `ทรัพย์สิน ${counts.assets} รายการ` : null,
     counts.auditRounds > 0 ? `รอบตรวจนับ ${counts.auditRounds} รายการ` : null,

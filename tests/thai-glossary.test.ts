@@ -40,6 +40,8 @@ const allowedPhrases = ["Asset Management System", "พื้นที่จั�
 // "namespace.key": "why this key may keep the word" — a reviewer must be able to check the reason.
 const keyExceptions: Record<string, string> = {
   "productionReadinessPage.check_publicQrBaseUrl_description": "\"asset\" is the example host name in https://asset.company.com, not a word for readers",
+  "systemSettingsPage.publicQrBaseUrlDescription": "\"asset\" is the example host name in https://asset.company.com, not a word for readers",
+  "systemSettingsPage.publicQrBaseUrlPlaceholder": "the value is the example URL https://asset.company.com shown in an empty input, not a word for readers",
 }
 
 // Bare ICU arguments like {label} are code names, not text a reader sees. Plural/select blocks
@@ -54,15 +56,15 @@ function brokenRules(value: string): string[] {
   return rules.filter((rule) => rule.pattern.test(text)).map((rule) => rule.term)
 }
 
-// Namespaces already clean. Tasks 5–7 add theirs; Task 8 replaces the list with every namespace.
-const enforcedNamespaces: string[] = ["common", "myAssets", "auth", "supplier", "repairRecord", "adminUsersPage", "transactionCancellation", "integrationApiPage", "asset", "assetTools", "location", "branch", "category", "company", "department", "brandModel", "checkin", "checkout", "bulkMove", "transfer", "globalSearch", "employee", "auditRound", "auditScan", "auditFinding", "auditPending", "dashboard", "workCenter", "notifications", "approvalInboxPage", "approvalHistoryPage", "maintenancePage", "disposalPage", "reportsPage", "dataQualityPage", "storagePage", "productionReadinessPage"]
-
 function flatEntries(value: unknown, prefix: string): Array<[string, string]> {
   if (typeof value === "string") return [[prefix, value]]
   return Object.entries(value as Record<string, unknown>).flatMap(([key, child]) => flatEntries(child, `${prefix}.${key}`))
 }
 
 const th = JSON.parse(readFileSync("messages/th.json", "utf8")) as Record<string, unknown>
+
+// Every namespace in messages/th.json is checked.
+const enforcedNamespaces: string[] = Object.keys(th)
 
 test("cleaned Thai namespaces use the shared glossary", () => {
   const violations: string[] = []

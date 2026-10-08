@@ -103,7 +103,7 @@ test("blocks deleting locations that are still referenced", () => {
   assert.equal(getLocationDeleteBlockReason({ currentAssets: 0, homeAssets: 0, children: 0, auditRounds: 0 }), null)
   assert.equal(
     getLocationDeleteBlockReason({ currentAssets: 3, homeAssets: 1, children: 2, auditRounds: 1 }),
-    "ไม่สามารถลบพื้นที่นี้ได้ เพราะยังมีทรัพย์สินปัจจุบัน 3 รายการ, ทรัพย์สินที่ตั้งประจำ 1 รายการ, พื้นที่ย่อย 2 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
+    "ไม่สามารถลบที่ตั้งนี้ได้ เพราะยังมีทรัพย์สินปัจจุบัน 3 รายการ, ทรัพย์สินที่ตั้งประจำ 1 รายการ, ที่ตั้งย่อย 2 รายการ และรอบตรวจนับ 1 รายการใช้งานอยู่"
   )
 })
 

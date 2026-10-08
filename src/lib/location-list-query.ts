@@ -193,12 +193,12 @@ export function getLocationDeleteBlockReason(counts: {
   const reasons = [
     counts.currentAssets > 0 ? `ทรัพย์สินปัจจุบัน ${counts.currentAssets} รายการ` : null,
     counts.homeAssets > 0 ? `ทรัพย์สินที่ตั้งประจำ ${counts.homeAssets} รายการ` : null,
-    counts.children > 0 ? `พื้นที่ย่อย ${counts.children} รายการ` : null,
+    counts.children > 0 ? `ที่ตั้งย่อย ${counts.children} รายการ` : null,
     counts.auditRounds > 0 ? `รอบตรวจนับ ${counts.auditRounds} รายการ` : null,
   ].filter((reason): reason is string => Boolean(reason))
 
   if (reasons.length === 0) return null
-  return `ไม่สามารถลบพื้นที่นี้ได้ เพราะยังมี${joinThaiList(reasons)}ใช้งานอยู่`
+  return `ไม่สามารถลบที่ตั้งนี้ได้ เพราะยังมี${joinThaiList(reasons)}ใช้งานอยู่`
 }
 
 export function buildLocationDrilldownHrefs({

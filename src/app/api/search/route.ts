@@ -122,7 +122,7 @@ async function searchAssets(query: string, locale: string): Promise<SearchResult
       badge: { label: statusLabel, colorCode: asset.status.colorCode },
       metadata: compactMetadata([
         ["Serial", asset.serialNumber],
-        [locale === "th" ? "สถานที่" : "Location", location],
+        [locale === "th" ? "ที่ตั้ง" : "Location", location],
         [locale === "th" ? "ผู้ถือครอง" : "Custodian", custodian],
       ]),
       keywords: [asset.fixedAssetCode ?? "", category],
@@ -427,7 +427,7 @@ function label(type: GlobalSearchResultType, locale: string) {
     supplier: "ผู้ขาย",
     company: "บริษัท",
     branch: "สาขา",
-    location: "พื้นที่/ตำแหน่ง",
+    location: "ที่ตั้ง",
     maintenance: "งานซ่อม",
     audit: "ตรวจนับ",
     disposal: "ตัดจำหน่าย",

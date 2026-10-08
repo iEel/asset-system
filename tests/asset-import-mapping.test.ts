@@ -43,3 +43,14 @@ test("reads row values using the detected import mapping", () => {
   assert.equal(values.serialNumber, "FSVY060964")
   assert.equal(values.categoryCode, null)
 })
+
+test("old and new Thai location headers both map after the glossary rename", () => {
+  for (const header of ["พื้นที่", "ที่ตั้ง"]) {
+    const column = buildAssetImportColumnMapping([header]).find((entry) => entry.key === "currentLocationCode")
+    assert.equal(column?.sourceColumn, 1, header)
+  }
+  for (const header of ["พื้นที่ประจำ", "ที่ตั้งประจำ"]) {
+    const column = buildAssetImportColumnMapping([header]).find((entry) => entry.key === "homeLocationCode")
+    assert.equal(column?.sourceColumn, 1, header)
+  }
+})
