@@ -1,5 +1,7 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto"
 
+import { isExposableError } from "./api-error-exposure.ts"
+
 export type IntegrationScope =
   | "asset:read"
   | "reference:read"
@@ -107,10 +109,7 @@ export async function authenticateIntegrationRequest(
 }
 
 export function integrationErrorResponse(error: unknown, requestId?: string) {
-  const apiError =
-    error instanceof IntegrationApiError
-      ? error
-      : new IntegrationApiError(500, "INTEGRATION_ERROR", error instanceof Error ? error.message : "Unexpected integration API error")
+  const apiError = toIntegrationApiError(error, requestId)
 
   return Response.json(
     {
@@ -122,6 +121,14 @@ export function integrationErrorResponse(error: unknown, requestId?: string) {
     },
     { status: apiError.status }
   )
+}
+
+// Unexpected errors keep their details in the server log; the requestId is the client's reference to find them.
+function toIntegrationApiError(error: unknown, requestId?: string) {
+  if (error instanceof IntegrationApiError) return error
+  if (isExposableError(error)) return new IntegrationApiError(500, "INTEGRATION_ERROR", error.message)
+  console.error(`[integration api error] requestId ${requestId ?? "-"}`, error)
+  return new IntegrationApiError(500, "INTEGRATION_ERROR", "Unexpected integration API error")
 }
 
 export async function logIntegrationApiAccess(params: {

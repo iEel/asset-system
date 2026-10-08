@@ -6,6 +6,7 @@ import {
   type IntegrationClient,
   authenticateIntegrationRequest,
   hashIntegrationToken,
+  integrationErrorResponse,
 } from "../src/lib/integration-auth.ts"
 
 function integrationClient(overrides: Partial<IntegrationClient> = {}): IntegrationClient {
@@ -130,4 +131,23 @@ test("preserves wildcard and module wildcard integration scope behavior", async 
       [integrationClient({ clientId: "asset-admin", tokenHash: hashIntegrationToken("asset-admin-token"), scopes: ["asset:*"] })]
     )
   )
+})
+
+test("integration error responses hide unexpected errors and log them with the request id", async (t) => {
+  const logged: unknown[][] = []
+  t.mock.method(console, "error", (...args: unknown[]) => { logged.push(args) })
+  const original = new TypeError("Cannot read properties of undefined (reading 'id')")
+  const hidden = integrationErrorResponse(original, "req-123")
+  assert.equal(hidden.status, 500)
+  assert.deepEqual(await hidden.json(), {
+    error: { code: "INTEGRATION_ERROR", message: "Unexpected integration API error", requestId: "req-123" },
+  })
+  assert.equal(logged.length, 1)
+  assert.ok(logged[0].includes(original))
+  assert.ok(logged[0].some((part) => typeof part === "string" && part.includes("req-123")))
+
+  const deliberate = integrationErrorResponse(new Error("Asset not found"), "req-456")
+  assert.equal(deliberate.status, 500)
+  assert.equal(((await deliberate.json()) as { error: { message: string } }).error.message, "Asset not found")
+  assert.equal(logged.length, 1)
 })

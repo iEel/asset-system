@@ -136,14 +136,14 @@ export function parseAssetTransactionSnapshot(json: string | null | undefined): 
 
 export function serializeAssetTransactionSnapshot(snapshot: AssetTransactionSnapshotV1): string {
   if (!isAssetTransactionSnapshotV1(snapshot)) {
-    throw new TypeError("Invalid asset transaction snapshot")
+    throw new Error("Invalid asset transaction snapshot")
   }
   return JSON.stringify(snapshot)
 }
 
 function toIsoString(value: Date | string): string {
   const date = value instanceof Date ? value : new Date(value)
-  if (!Number.isFinite(date.getTime())) throw new TypeError("Invalid transaction snapshot date")
+  if (!Number.isFinite(date.getTime())) throw new Error("Invalid transaction snapshot date")
   return date.toISOString()
 }
 
@@ -176,7 +176,7 @@ export function createAssetTransactionSnapshot(input: {
     components: input.components,
   }
 
-  if (!isAssetTransactionSnapshotV1(snapshot)) throw new TypeError("Invalid asset transaction snapshot input")
+  if (!isAssetTransactionSnapshotV1(snapshot)) throw new Error("Invalid asset transaction snapshot input")
   return snapshot
 }
 
@@ -184,11 +184,11 @@ export function serializeAssetComponentTransactionSnapshots(
   changes: AssetComponentTransactionSnapshotChangeV1[]
 ): string {
   if (changes.length > maxAssetTransactionSnapshotComponents) {
-    throw new TypeError("Too many component transaction snapshots")
+    throw new Error("Too many component transaction snapshots")
   }
   for (const change of changes) {
     if (!isComponentSnapshot(change.before) || !isComponentSnapshot(change.after)) {
-      throw new TypeError("Invalid component transaction snapshot")
+      throw new Error("Invalid component transaction snapshot")
     }
   }
 
