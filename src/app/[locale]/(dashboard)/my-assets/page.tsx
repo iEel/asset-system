@@ -135,10 +135,10 @@ export default async function MyAssetsPage({ params }: MyAssetsPageProps) {
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{asset.serialNumber || "-"}</td>
                         <td className="px-4 py-3">
-                          <StatusBadge size="xs" label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} color={asset.status.colorCode} />
+                          <StatusBadge size="xs" label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} />
                         </td>
                         <td className="px-4 py-3">
-                          <StatusBadge size="xs" label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} color={asset.condition.colorCode} />
+                          <StatusBadge size="xs" label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} />
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                           {asset.currentLocation.code} - {asset.currentLocation.name}
@@ -236,11 +236,11 @@ function MobileAssetCard({ labels, asset, href }: { labels: Record<string, strin
         <MobileField label={labels.companyBranch} value={`${asset.company.code} / ${asset.branch.code}`} />
         <div className="flex items-center justify-between gap-3">
           <span className="text-muted-foreground">{labels.status}</span>
-          <StatusBadge size="xs" label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} color={asset.status.colorCode} />
+          <StatusBadge size="xs" label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} />
         </div>
         <div className="flex items-center justify-between gap-3">
           <span className="text-muted-foreground">{labels.condition}</span>
-          <StatusBadge size="xs" label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} color={asset.condition.colorCode} />
+          <StatusBadge size="xs" label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} />
         </div>
         <MobileField label={labels.updatedAt} value={formatDateTime(asset.updatedAt)} />
       </div>

@@ -53,14 +53,16 @@ test("muted badge foreground meets WCAG AA against the muted background", () => 
   assert.ok(contrast(token(source, "muted-foreground"), token(source, "muted")) >= 4.5)
 })
 
-test("semantic soft tokens are exposed to Tailwind and used by status badges", () => {
+test("semantic soft tokens are exposed to Tailwind; only statuses that need action use them in badges", () => {
   const source = css()
   const badges = readFileSync("src/components/ui/badge-variants.ts", "utf8")
 
   for (const tone of ["success", "warning", "danger", "info"] as const) {
     assert.match(source, new RegExp(`--color-${tone}-soft:\\s*var\\(--${tone}-soft\\);`))
+  }
+  for (const tone of ["warning", "danger"] as const) {
     assert.match(badges, new RegExp(`bg-${tone}-soft text-${tone}`))
   }
-  assert.match(badges, /bg-muted text-muted-foreground/)
+  assert.match(badges, /border-transparent text-muted-foreground/)
   assert.match(assetRegister(), /<StatusBadge\b/)
 })

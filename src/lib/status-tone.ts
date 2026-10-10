@@ -29,9 +29,3 @@ export function getStatusTone(status: string | null | undefined): StatusTone {
   if (!status) return "muted"
   return statusToneMap[status] ?? "muted"
 }
-
-export function getStatusDotColor(color: string | null | undefined) {
-  if (typeof color !== "string") return undefined
-  const value = color.trim()
-  return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value) ? value : undefined
-}

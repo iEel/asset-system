@@ -212,7 +212,7 @@ export function GlobalSearch() {
                         {result.typeLabel}
                       </span>
                       {result.badge.label !== result.typeLabel ? (
-                        <StatusBadge size="xs" tone="neutral" label={result.badge.label} color={result.badge.colorCode} />
+                        <StatusBadge size="xs" tone="neutral" label={result.badge.label} />
                       ) : null}
                     </span>
                     <span className="mt-0.5 block truncate text-sm text-foreground">{result.subtitle}</span>

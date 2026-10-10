@@ -95,3 +95,8 @@ test("full-bleed bars blend into the canvas", () => {
   assert.match(read("src/components/audit/audit-scan-search.tsx"), /sticky -top-4 sm:-top-6 z-20 -mx-4 bg-canvas /)
   assert.match(read("src/components/assets/asset-detail-tabs.tsx"), /border-r border-border bg-canvas\/95 /)
 })
+
+test("no caller passes a database color to StatusBadge", () => {
+  assert.deepEqual(findMatches(sources, /<StatusBadge[^>]*\bcolor=/g), [])
+  assert.deepEqual(findMatches(sources, /getStatusDotColor|statusDotVariants/g), [])
+})

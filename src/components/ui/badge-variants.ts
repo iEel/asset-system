@@ -15,38 +15,46 @@ export const badgeVariants = cva(
   },
 )
 
+// Two tiers: calm states read as plain text with a marker; states that need action keep a soft fill and border.
+// The border stays (transparent) on calm badges so both tiers have the same height side by side.
 export const statusBadgeVariants = cva(
   "inline-flex w-fit max-w-full shrink-0 items-center gap-1.5 rounded-md border font-medium whitespace-nowrap",
   {
     variants: {
       tone: {
-        success: "border-success-border bg-success-soft text-success",
+        success: "border-transparent text-muted-foreground",
+        info: "border-transparent text-muted-foreground",
+        primary: "border-transparent text-muted-foreground",
+        neutral: "border-transparent text-muted-foreground",
+        muted: "border-transparent text-muted-foreground",
         warning: "border-warning-border bg-warning-soft text-warning",
         danger: "border-danger-border bg-danger-soft text-danger",
-        info: "border-info-border bg-info-soft text-info",
-        primary: "border-info-border bg-primary-soft text-primary",
-        neutral: "border-border bg-muted text-foreground",
-        muted: "border-border bg-muted text-muted-foreground",
       },
       size: {
-        xs: "px-2 py-0.5 text-xs",
-        sm: "px-2.5 py-1 text-sm",
+        xs: "py-0.5 text-xs",
+        sm: "py-1 text-sm",
       },
     },
+    compoundVariants: [
+      { tone: ["warning", "danger"], size: "xs", class: "px-2" },
+      { tone: ["warning", "danger"], size: "sm", class: "px-2.5" },
+    ],
     defaultVariants: { tone: "muted", size: "sm" },
   },
 )
 
-export const statusDotVariants = cva("size-1.5 shrink-0 rounded-full", {
+// Shape carries the meaning for color-blind users: ring = open/info, dot = done/fine, triangle = warning, diamond = problem, bar = neutral.
+// forced-color-adjust-none keeps the shapes visible in Windows high-contrast mode.
+export const statusMarkerVariants = cva("shrink-0 forced-color-adjust-none", {
   variants: {
     tone: {
-      success: "bg-success",
-      warning: "bg-warning",
-      danger: "bg-danger",
-      info: "bg-info",
-      primary: "bg-primary",
-      neutral: "bg-muted-foreground",
-      muted: "bg-muted-foreground",
+      info: "size-[7px] rounded-full border-[1.5px] border-info",
+      success: "size-1.5 rounded-full bg-success",
+      primary: "size-1.5 rounded-full bg-primary",
+      neutral: "h-0.5 w-[7px] rounded-[1px] bg-muted-foreground",
+      muted: "h-0.5 w-[7px] rounded-[1px] bg-muted-foreground",
+      warning: "h-[7px] w-2 bg-warning [clip-path:polygon(50%_0,100%_100%,0_100%)]",
+      danger: "size-1.5 rotate-45 rounded-[1px] bg-danger",
     },
   },
   defaultVariants: { tone: "muted" },

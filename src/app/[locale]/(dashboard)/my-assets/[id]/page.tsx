@@ -86,8 +86,8 @@ export default async function MyAssetDetailPage({ params }: MyAssetDetailPagePro
             <h2 className="mt-1 break-words text-xl font-semibold text-foreground">{asset.assetTag}</h2>
             <p className="mt-1 break-words text-sm text-foreground">{asset.name}</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <StatusBadge size="xs" label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} color={asset.status.colorCode} />
-              <StatusBadge size="xs" label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} color={asset.condition.colorCode} />
+              <StatusBadge size="xs" label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} />
+              <StatusBadge size="xs" label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} />
             </div>
           </div>
         </div>
