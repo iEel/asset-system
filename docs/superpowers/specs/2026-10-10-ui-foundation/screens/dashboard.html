@@ -1,0 +1,325 @@
+<section class="mk-screen" id="s-dashboard">
+  <style>
+    #s-dashboard .panel-head p { margin: 1px 0 0; }
+    #s-dashboard .dash-caret { transform: rotate(90deg); }
+
+    /* Top area: focal list and trend end on one line */
+    #s-dashboard .dash-top { align-items: stretch; }
+    #s-dashboard .dash-col { display: grid; gap: 16px; align-content: start; min-width: 0; }
+
+    /* Needs-action rows: count column | what and why | next step, all on the first baseline */
+    #s-dashboard .dash-task { grid-template-columns: 40px minmax(0, 1fr) auto; gap: 0 16px; align-items: baseline; padding-block: 14px; }
+    #s-dashboard .dash-task p { margin: 2px 0 0; }
+    #s-dashboard .dash-finds { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; }
+    #s-dashboard .dash-finds > span { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+    #s-dashboard .dash-none { align-items: center; padding-block: 12px; }
+    #s-dashboard .dash-none > span { display: flex; justify-content: flex-end; }
+
+    /* Status distribution and legend (legend reads as a ledger: swatch, state, count, share) */
+    #s-dashboard .dist > span { min-width: 2px; }
+    #s-dashboard .sw-use { background: var(--ok); }
+    #s-dashboard .sw-ready { background: var(--teal); }
+    #s-dashboard .sw-loan { background: var(--navy-3); }
+    #s-dashboard .sw-fix { background: var(--warn); }
+    #s-dashboard .sw-other { background: var(--line-strong); }
+    #s-dashboard .dash-legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; row-gap: 0; margin: 16px 0 0; padding: 0; list-style: none; }
+    #s-dashboard .dash-legend li { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto 52px; column-gap: 8px; align-items: baseline; padding-block: 6px; border-top: 1px solid var(--line-soft); }
+    #s-dashboard .dash-legend li i { margin: 0; align-self: center; }
+    #s-dashboard .dash-legend .num, #s-dashboard .dash-legend .pct { text-align: right; }
+    #s-dashboard .dash-legend .pct { color: var(--ink-3); font-size: 13px; }
+    #s-dashboard .dash-legend + p { margin: 12px 0 0; }
+
+    /* Trend ledger lives in the 360px column: number columns shrink to their content so each row label stays on one line */
+    #s-dashboard table.ledger .col-num { width: 1%; }
+
+    /* Cross-owner breakdown */
+    #s-dashboard .dash-case { grid-template-columns: minmax(0, 168px) minmax(48px, 1fr) 48px 52px; gap: 16px; align-items: first baseline; }
+
+    /* Activity feed */
+    #s-dashboard .t-group { margin: 0; }
+    #s-dashboard .dash-act { grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: baseline; padding-block: 10px; }
+    #s-dashboard .dash-act-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    #s-dashboard .dash-act-obj { margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    @media (max-width: 1080px) {
+      #s-dashboard .stats > .stat:last-child { grid-column: 1 / -1; }
+    }
+    @media (max-width: 640px) {
+      #s-dashboard .dash-task { grid-template-columns: 40px minmax(0, 1fr); gap: 0 12px; }
+      #s-dashboard .dash-task > .btn { grid-column: 2; justify-self: start; margin-top: 10px; }
+      #s-dashboard .dash-legend { grid-template-columns: minmax(0, 1fr); }
+      #s-dashboard .dash-case { grid-template-columns: minmax(0, 1fr) 44px 52px; gap: 6px 12px; }
+      #s-dashboard .dash-case .progress { grid-column: 1 / -1; grid-row: 2; }
+    }
+    @media (max-width: 520px) {
+      #s-dashboard .stat { padding: 12px 14px; }
+    }
+  </style>
+  <header>
+    <h2>แดชบอร์ด</h2>
+    <ul>
+      <li>ตัวเลขหลักเหลือแถบเดียว 5 ช่อง สีกลาง ไม่มีไอคอนสีประจำตัวเลข และตัวเลขแต่ละตัวแสดงครั้งเดียวทั้งหน้า (แก้: ใช้สีเป็นของตกแต่ง)</li>
+      <li>จุดโฟกัสคือ “ต้องจัดการ” มีเฉพาะงานที่ต้องทำตอนนี้ เรียงตามความเร่งด่วน พร้อมรายการและปุ่มไปทำ คิวที่เป็นศูนย์รวมเป็นบรรทัดเดียว ส่วนยอดยังไม่ตรวจในรอบที่เปิดอยู่เป็นงานต่อเนื่อง จึงย้ายไปแถบตัวเลข (แก้: ลำดับความสำคัญแบน งานหลักจม)</li>
+      <li>สีในแถบสถานะตรงกับป้ายสถานะทุกหน้า แนวโน้มที่ควรติดตามมีไอคอนเตือน ไม่ใช้สีอย่างเดียว และไม่แสดง +100% เมื่อเดือนก่อนเป็นศูนย์ (แก้: โทนสีไม่ตรงกันระหว่างหน้า)</li>
+      <li>ตัวเลขในรายการกว้างเท่ากันและชิดขวา รหัสเป็น Plex Mono วันที่เป็น พ.ศ. (แก้: ตัวอักษรไทยและตัวเลขยังไม่ได้ปรับ)</li>
+    </ul>
+  </header>
+  <div class="app">
+    <nav class="nav" aria-label="เมนูหลัก">
+      <div class="brand"><img src="__ICON__" alt=""><strong>ระบบบริหารทรัพย์สิน</strong></div>
+      <div class="nav-group">
+        <div class="nav-label">งานประจำวัน</div>
+        <a href="#s-dashboard" aria-current="page"><svg aria-hidden="true"><use href="#i-dash"/></svg>แดชบอร์ด</a>
+        <a href="#s-workcenter"><svg aria-hidden="true"><use href="#i-inbox"/></svg>ศูนย์งานค้าง<span class="count">4</span></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">ทรัพย์สิน</div>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-box"/></svg>ทะเบียนทรัพย์สิน</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-swap"/></svg>ส่งมอบ · รับคืน · โอน</a>
+        <a href="#s-round"><svg aria-hidden="true"><use href="#i-audit"/></svg>ตรวจนับ</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-wrench"/></svg>ซ่อมบำรุง</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-archive"/></svg>ตัดจำหน่าย</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">ภาพรวมและระบบ</div>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-chart"/></svg>รายงาน</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-db"/></svg>ข้อมูลหลัก</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-sliders"/></svg>ตั้งค่า</a>
+      </div>
+    </nav>
+    <div class="main">
+      <div class="topbar">
+        <label class="gsearch" for="g-q-dashboard"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="vh">ค้นหาทั้งระบบ</span><input id="g-q-dashboard" type="search" placeholder="ค้นหาทั้งระบบ: รหัส ชื่อ Serial ผู้ถือครอง" aria-keyshortcuts="Control+K" autocomplete="off"><kbd class="kbd" aria-hidden="true">Ctrl K</kbd></label>
+        <div class="who"><span>ผู้ดูแลระบบ</span><div class="avatar" aria-hidden="true">ผด</div></div>
+      </div>
+      <div class="content">
+        <div class="page-head">
+          <div>
+            <h3 class="t-page">แดชบอร์ด</h3>
+            <p class="meta num">ทุกบริษัท ทุกสาขา · ข้อมูล ณ 08/10/2569 21:40&nbsp;น.</p>
+          </div>
+          <div class="actions">
+            <button class="btn" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="vh">แสดงข้อมูลของ</span>ทุกบริษัท<svg class="i dash-caret" aria-hidden="true"><use href="#i-chev"/></svg></button>
+            <button class="btn" type="button"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>ดาวน์โหลดรายงาน</button>
+          </div>
+        </div>
+
+        <div class="stats">
+          <a class="stat" href="#s-register">
+            <span class="t-label">ทรัพย์สินทั้งหมด</span>
+            <span class="t-metric">1,751</span>
+          </a>
+          <a class="stat" href="#s-register">
+            <span class="t-label">รอซ่อม / <span class="nw">อยู่ระหว่างซ่อม</span></span>
+            <span class="t-metric">10</span>
+          </a>
+          <a class="stat" href="#s-round" title="AUD-2026-0003 ตรวจนับแผนกบัญชี ไตรมาส 4/2569 · สิ้นสุด 31/10/2569">
+            <span class="t-label">ความคืบหน้ารอบตรวจนับ</span>
+            <span class="stat-value"><span class="t-metric">27<span class="unit">%</span></span><span class="t-small num">12 จาก 45</span></span>
+            <span class="foot"><span class="tag">AUD-2026-0003</span></span>
+          </a>
+          <a class="stat" href="#s-round">
+            <span class="t-label">ยังไม่ตรวจในรอบที่เปิดอยู่</span>
+            <span class="t-metric">1,538</span>
+            <span class="foot" title="งานต่อเนื่อง ไม่นับเป็นงานค้าง"><span>2 รอบ · งานต่อเนื่อง</span></span>
+          </a>
+          <a class="stat" href="#dash-oos">
+            <span class="t-label">นอกขอบเขตเจ้าของรหัส</span>
+            <span class="t-metric">909</span>
+            <span class="foot num"><span>51.9% ของทั้งหมด</span></span>
+          </a>
+        </div>
+
+        <div class="split dash-top">
+          <div class="panel" role="region" aria-labelledby="dash-todo-h">
+            <div class="panel-head">
+              <div>
+                <h4 class="t-section" id="dash-todo-h">ต้องจัดการ</h4>
+                <p class="t-small">งานที่ต้องทำตอนนี้ เรียงตามความเร่งด่วน</p>
+              </div>
+              <a class="link" href="#s-workcenter">เปิดศูนย์งานค้าง</a>
+            </div>
+            <div class="rows">
+              <div class="row dash-task">
+                <span class="t-count t-right">3</span>
+                <div>
+                  <div class="name">รายการไม่ตรง<span class="nw">รอพิจารณา</span></div>
+                  <p class="t-small">ผลตรวจนับรอบ <span class="tag">AUD-2026-0003</span> ต้องพิจารณาก่อนปิดรอบ</p>
+                  <div class="dash-finds">
+                    <span><span class="tag">GRL-EQU-20-0012</span><span class="badge b-warn">สภาพไม่ตรง</span></span>
+                    <span><span class="tag">GRL-COM-24-0003</span><span class="badge b-warn">ที่ตั้งไม่ตรง</span><span class="badge b-warn">นอกขอบเขต</span></span>
+                  </div>
+                </div>
+                <a class="btn sm primary" href="#s-round">พิจารณา</a>
+              </div>
+              <div class="row dash-task">
+                <span class="t-count t-right">1</span>
+                <div>
+                  <div class="name">ยังซ่อมไม่เสร็จ</div>
+                  <p class="t-small num">ใบซ่อม <span class="tag">MT-20261007-0005</span> · <span class="nw">ส่งซ่อม 07/10/2569</span></p>
+                  <p class="t-caption"><span class="tag">SNI-EQU-19-0271</span> Monitor DELL LCD 18.5 E1916H</p>
+                </div>
+                <a class="btn sm" href="#s-register">เปิดใบซ่อม</a>
+              </div>
+              <div class="row dash-task dash-none">
+                <span class="muted"><svg class="i" aria-hidden="true"><use href="#i-tick"/></svg></span>
+                <div>
+                  <p class="t-small">ไม่มี<span class="nw">งานค้าง</span>ในคิวอื่น</p>
+                  <p class="t-caption">งานรออนุมัติ · ตัดจำหน่ายรออนุมัติ · อนุมัติแล้วรอดำเนินการ · PM ถึงกำหนดใน 7&nbsp;วัน · แผนแก้ไขค้าง</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" role="region" aria-labelledby="dash-trend-h">
+            <div class="panel-head">
+              <div>
+                <h4 class="t-section" id="dash-trend-h">แนวโน้มเดือนนี้</h4>
+                <p class="t-small num">ต.ค. 2569 (ถึงวันที่ 8) เทียบกับ ก.ย. 2569</p>
+              </div>
+            </div>
+            <div class="panel-body">
+              <table class="ledger">
+                <caption class="vh">แนวโน้ม ต.ค. 2569 ถึงวันที่ 8 เทียบกับ ก.ย. 2569</caption>
+                <thead>
+                  <tr><th scope="col">รายการ</th><th scope="col" class="col-num">ก.ย.</th><th scope="col" class="col-num">ต.ค. 1–8</th><th scope="col" class="col-num">ผลต่าง</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">ใบซ่อมเปิดใหม่</th>
+                    <td class="col-num muted">2</td>
+                    <td class="col-num"><span class="t-count">5</span></td>
+                    <td class="col-num"><span class="delta bad"><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg><span aria-hidden="true">+3</span><span class="vh">เพิ่มขึ้น 3 จากเดือนก่อน ควรติดตาม</span></span></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">รายการไม่ตรงใหม่</th>
+                    <td class="col-num is-zero">0</td>
+                    <td class="col-num"><span class="t-count">7</span></td>
+                    <td class="col-num"><span class="delta bad"><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg><span aria-hidden="true">ใหม่</span><span class="vh">เดือนก่อนไม่มี ควรติดตาม</span></span></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">ทรัพย์สินเพิ่มใหม่</th>
+                    <td class="col-num muted">3</td>
+                    <td class="col-num"><span class="t-count is-zero">0</span></td>
+                    <td class="col-num"><span class="delta flat"><span aria-hidden="true">−3</span><span class="vh">น้อยกว่าเดือนก่อน 3</span></span></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">คำขอตัดจำหน่ายใหม่</th>
+                    <td class="col-num is-zero">0</td>
+                    <td class="col-num"><span class="t-count is-zero">0</span></td>
+                    <td class="col-num"><span class="delta flat">เท่าเดิม</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="split">
+          <div class="dash-col">
+            <div class="panel" role="region" aria-labelledby="dash-status-h">
+              <div class="panel-head">
+                <h4 class="t-section" id="dash-status-h">สถานะทรัพย์สิน</h4>
+                <a class="link" href="#s-register">ดูทะเบียน</a>
+              </div>
+              <div class="panel-body">
+                <div class="dist" aria-hidden="true">
+                  <span class="sw-use" style="width: 78.8%"></span>
+                  <span class="sw-ready" style="width: 7.3%"></span>
+                  <span class="sw-loan" style="width: 0.1%"></span>
+                  <span class="sw-fix" style="width: 0.6%"></span>
+                  <span class="sw-other" style="width: 13.2%"></span>
+                </div>
+                <ul class="legend dash-legend">
+                  <li><i class="sw-use"></i><span>ใช้งานอยู่</span><span class="num">1,380</span><span class="pct num">78.8%</span></li>
+                  <li><i class="sw-ready"></i><span>พร้อมใช้งาน</span><span class="num">127</span><span class="pct num">7.3%</span></li>
+                  <li><i class="sw-loan"></i><span>ถูกยืม</span><span class="num">2</span><span class="pct num">0.1%</span></li>
+                  <li><i class="sw-fix"></i><span>รอซ่อม</span><span class="num">7</span><span class="pct num">0.4%</span></li>
+                  <li><i class="sw-fix"></i><span class="nw">อยู่ระหว่างซ่อม</span><span class="num">3</span><span class="pct num">0.2%</span></li>
+                  <li><i class="sw-other"></i><span>สถานะอื่น</span><span class="num">232</span><span class="pct num">13.2%</span></li>
+                </ul>
+                <p class="t-caption">สถานะอื่น คือรายการที่ไม่อยู่ในแท็บสถานะใดของทะเบียน</p>
+              </div>
+            </div>
+
+            <div class="panel" id="dash-oos" role="region" aria-labelledby="dash-oos-h">
+              <div class="panel-head">
+                <div>
+                  <h4 class="t-section" id="dash-oos-h">ทรัพย์สินนอกขอบเขตเจ้าของรหัส</h4>
+                  <p class="t-small">หนึ่งรายการอาจเข้าได้หลายกรณี</p>
+                </div>
+                <a class="link" href="#s-register">ดูในทะเบียน</a>
+              </div>
+              <div class="rows">
+                <div class="row dash-case">
+                  <span class="name">ที่ตั้งต่างสาขา</span>
+                  <div class="progress" aria-hidden="true"><span style="width: 80.1%"></span></div>
+                  <span class="num t-right">728</span>
+                  <span class="t-caption num t-right">80.1%</span>
+                </div>
+                <div class="row dash-case">
+                  <span class="name"><span class="nw">ผู้ถือครอง</span>ต่างสาขา</span>
+                  <div class="progress" aria-hidden="true"><span style="width: 35.1%"></span></div>
+                  <span class="num t-right">319</span>
+                  <span class="t-caption num t-right">35.1%</span>
+                </div>
+                <div class="row dash-case">
+                  <span class="name"><span class="nw">ผู้ถือครอง</span>ต่างบริษัท</span>
+                  <div class="progress" aria-hidden="true"><span style="width: 25.4%"></span></div>
+                  <span class="num t-right">231</span>
+                  <span class="t-caption num t-right">25.4%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" role="region" aria-labelledby="dash-feed-h">
+            <div class="panel-head">
+              <h4 class="t-section" id="dash-feed-h">กิจกรรมล่าสุด</h4>
+              <a class="link" href="#s-register">ดูประวัติทั้งหมด</a>
+            </div>
+            <div class="rows">
+              <h5 class="t-group num">วันนี้ · 08/10/2569</h5>
+              <div class="row dash-act">
+                <time class="t-small num" datetime="2026-10-08T00:13">00:13</time>
+                <div>
+                  <div class="dash-act-top"><span class="name">อัปโหลดรูป</span><span class="t-caption">ผู้ดูแลระบบ</span></div>
+                  <div class="t-small dash-act-obj"><span class="tag">GRL-EQU-20-0012</span> VoIP Grandstream GXP1760W</div>
+                </div>
+              </div>
+              <div class="row dash-act">
+                <time class="t-small num" datetime="2026-10-08T00:13">00:13</time>
+                <div>
+                  <div class="dash-act-top"><span class="name">ตรวจนับ</span><span class="t-caption">ผู้ดูแลระบบ</span></div>
+                  <div class="t-small dash-act-obj"><span class="tag">GRL-EQU-20-0012</span> · รอบ <span class="tag">AUD-2026-0003</span></div>
+                </div>
+              </div>
+              <h5 class="t-group num">เมื่อวาน · 07/10/2569</h5>
+              <div class="row dash-act">
+                <time class="t-small num" datetime="2026-10-07T23:43">23:43</time>
+                <div>
+                  <div class="dash-act-top"><span class="name">ตรวจนับ</span><span class="t-caption">ผู้ดูแลระบบ</span></div>
+                  <div class="t-small dash-act-obj"><span class="tag">GRL-EQU-20-0010</span></div>
+                </div>
+              </div>
+              <div class="row dash-act">
+                <time class="t-small num" datetime="2026-10-07T23:31">23:31</time>
+                <div>
+                  <div class="dash-act-top"><span class="name">ตรวจนับ</span><span class="t-caption">ผู้ดูแลระบบ</span></div>
+                  <div class="t-small dash-act-obj"><span class="tag">GRL-EQU-20-0004</span></div>
+                </div>
+              </div>
+              <div class="row dash-act">
+                <time class="t-small num" datetime="2026-10-07T23:29">23:29</time>
+                <div>
+                  <div class="dash-act-top"><span class="name">ตรวจนับ</span><span class="t-caption">ผู้ดูแลระบบ</span></div>
+                  <div class="t-small dash-act-obj"><span class="tag">GRL-COM-22-0011</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,146 @@
+<section class="mk-screen" id="s-register">
+  <style>
+    /* Two-line asset cell: tag · category on the first line, name on the second */
+    #s-register .asset-cell { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: start; }
+    #s-register .thumb.sm { width: 40px; height: 40px; border-radius: var(--r); }
+    #s-register .thumb.sm svg { width: 20px; height: 20px; stroke-width: 1.8; }
+    #s-register .thumb.photo { background: var(--neutral-soft); color: var(--navy-3); border-color: var(--neutral-line); }
+    #s-register .asset-cell .tag { color: var(--ink-2); }
+    #s-register .asset-meta { display: flex; align-items: baseline; gap: 0 8px; min-width: 0; line-height: 22px; }
+    #s-register .asset-meta .sub { line-height: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    #s-register .asset-meta .sub::before { content: "·"; margin-right: 8px; }
+    #s-register td.col-asset { min-width: 300px; }
+  </style>
+  <header>
+    <h2>ทะเบียนทรัพย์สิน</h2>
+    <ul>
+      <li>คงโครงเดิมที่ดีอยู่แล้ว: แท็บสถานะพร้อมจำนวน ค้นหา ตัวกรอง · งานถัดไปเป็นปุ่มเงาความกว้างคงที่ ไอคอนนำหน้าคำ (แบบ ช1) และ ⋯ อยู่ตำแหน่งเดิมทุกแถว</li>
+      <li>คอลัมน์แรกรวมรูปย่อ รหัส (Plex Mono) ชื่อ และหมวดหมู่ไว้ด้วยกัน · ผู้ถือครองมีแผนก · สถานะมีสภาพเป็นบรรทัดรอง</li>
+      <li>เหลือ 5 คอลัมน์ที่ใช้ทุกวัน · มูลค่า Serial วันที่ซื้อ ประกัน และบริษัทเจ้าของรหัส เปิดได้จากปุ่ม "คอลัมน์"</li>
+      <li>รูปในตัวอย่างเป็นภาพแทน ในระบบจริงคือรูปย่อจากเซิร์ฟเวอร์เหมือนเดิม</li>
+    </ul>
+  </header>
+  <div class="app">
+    <nav class="nav" aria-label="เมนูหลัก">
+      <div class="brand"><img src="__ICON__" alt=""><strong>ระบบบริหารทรัพย์สิน</strong></div>
+      <div class="nav-group">
+        <div class="nav-label">งานประจำวัน</div>
+        <a href="#s-dashboard"><svg aria-hidden="true"><use href="#i-dash"/></svg>แดชบอร์ด</a>
+        <a href="#s-workcenter"><svg aria-hidden="true"><use href="#i-inbox"/></svg>ศูนย์งานค้าง<span class="count">4</span></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">ทรัพย์สิน</div>
+        <a href="#s-register" aria-current="page"><svg aria-hidden="true"><use href="#i-box"/></svg>ทะเบียนทรัพย์สิน</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-swap"/></svg>ส่งมอบ · รับคืน · โอน</a>
+        <a href="#s-round"><svg aria-hidden="true"><use href="#i-audit"/></svg>ตรวจนับ</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-wrench"/></svg>ซ่อมบำรุง</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-archive"/></svg>ตัดจำหน่าย</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">ภาพรวมและระบบ</div>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-chart"/></svg>รายงาน</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-db"/></svg>ข้อมูลหลัก</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-sliders"/></svg>ตั้งค่า</a>
+      </div>
+    </nav>
+    <div class="main">
+      <div class="topbar">
+        <label class="gsearch" for="g-q-register"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="vh">ค้นหาทั้งระบบ</span><input id="g-q-register" type="search" placeholder="ค้นหาทั้งระบบ: รหัส ชื่อ Serial ผู้ถือครอง" aria-keyshortcuts="Control+K" autocomplete="off"><kbd class="kbd" aria-hidden="true">Ctrl K</kbd></label>
+        <div class="who"><span>ผู้ดูแลระบบ</span><div class="avatar" aria-hidden="true">ผด</div></div>
+      </div>
+      <div class="content">
+        <div class="page-head">
+          <div>
+            <h3 class="t-page">ทะเบียนทรัพย์สิน</h3>
+            <p class="meta num">1,751&nbsp;รายการ · ข้อมูล ณ 08/10/2569 21:40&nbsp;น.</p>
+          </div>
+          <div class="actions">
+            <button class="btn" type="button"><svg class="i" aria-hidden="true"><use href="#i-upload"/></svg>นำเข้า Excel</button>
+            <button class="btn" type="button"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>ส่งออก</button>
+            <button class="btn primary" type="button"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>เพิ่มทรัพย์สิน</button>
+          </div>
+        </div>
+        <div class="tabs" role="tablist" aria-label="สถานะ">
+          <button role="tab" aria-selected="true" type="button">ทั้งหมด <span class="c">1,751</span></button>
+          <button role="tab" aria-selected="false" type="button">พร้อมใช้งาน <span class="c">127</span></button>
+          <button role="tab" aria-selected="false" type="button">ใช้งานอยู่ <span class="c">1,380</span></button>
+          <button role="tab" aria-selected="false" type="button">ถูกยืม <span class="c">2</span></button>
+          <button role="tab" aria-selected="false" type="button">รอซ่อม <span class="c">7</span></button>
+          <button role="tab" aria-selected="false" type="button">อยู่ระหว่างซ่อม <span class="c">3</span></button>
+        </div>
+        <div class="toolbar">
+          <label class="field-search" for="reg-q"><svg aria-hidden="true"><use href="#i-search"/></svg><span class="vh">ค้นหาในทะเบียน</span><input id="reg-q" type="search" placeholder="ค้นหาในทะเบียน: รหัส ชื่อ Serial ผู้ถือครอง"></label>
+          <button class="btn" type="button"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg>ตัวกรอง</button>
+          <button class="btn" type="button">คอลัมน์</button>
+          <span class="chip">ที่ตั้ง: IT ชั้น 1, LCB ชั้น 2<button class="chip-x" type="button" aria-label="ล้างตัวกรองที่ตั้ง"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button></span>
+        </div>
+        <div class="table-wrap">
+          <table style="min-width: 940px">
+            <colgroup><col><col style="width: 160px"><col style="width: 168px"><col style="width: 168px"><col style="width: 188px"></colgroup>
+            <thead>
+              <tr>
+                <th scope="col">ทรัพย์สิน</th>
+                <th scope="col">ที่ตั้ง</th>
+                <th scope="col">ผู้ถือครอง</th>
+                <th scope="col">สถานะ</th>
+                <th scope="col"><span class="vh">การดำเนินการ</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="col-asset"><div class="asset-cell"><div class="thumb sm photo" aria-hidden="true"><svg aria-hidden="true"><use href="#i-chip"/></svg></div><div><div class="asset-meta"><span class="tag">GRL-COM-26-0036</span><span class="sub" title="อุปกรณ์คอมพิวเตอร์">อุปกรณ์คอมพิวเตอร์</span></div><div class="name">Computer Component HYNIX DDR4 (2666,PC) 16GB 16CHIP</div></div></div></td>
+                <td>GRL ชั้น 3</td>
+                <td><span class="nil" aria-hidden="true">—</span><span class="vh">ไม่มีผู้ถือครอง</span></td>
+                <td><span class="badge b-ready">พร้อมใช้งาน</span><div class="sub">สภาพใหม่</div></td>
+                <td><div class="row-next"><a class="next-btn" href="#s-register"><svg aria-hidden="true"><use href="#i-handover"/></svg>ส่งมอบ<span class="vh"> GRL-COM-26-0036</span></a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่นของ GRL-COM-26-0036"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td>
+              </tr>
+              <tr>
+                <td class="col-asset"><div class="asset-cell"><div class="thumb sm" aria-hidden="true"><svg aria-hidden="true"><use href="#i-key"/></svg></div><div><div class="asset-meta"><span class="tag">SNI-SOF-21-0003</span><span class="sub" title="ซอฟต์แวร์/License · ผูกกับ PT-SRV-01">ซอฟต์แวร์/License · ผูกกับ PT-SRV-01</span></div><div class="name">License MICROSOFT Windows Server 2019/Essentials</div></div></div></td>
+                <td><span class="nw">ห้องเซิร์ฟเวอร์ PT</span></td>
+                <td>ทีมไอที<div class="sub">ส่วนกลาง</div></td>
+                <td><span class="badge b-ok">ใช้งานอยู่</span></td>
+                <td><div class="row-next"><span></span><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่นของ SNI-SOF-21-0003"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td>
+              </tr>
+              <tr>
+                <td class="col-asset"><div class="asset-cell"><div class="thumb sm photo" aria-hidden="true"><svg aria-hidden="true"><use href="#i-net"/></svg></div><div><div class="asset-meta"><span class="tag">GRL-COM-24-0003</span><span class="sub" title="อุปกรณ์เครือข่าย">อุปกรณ์เครือข่าย</span></div><div class="name">Network Equipment Cisco Meraki MX95</div></div></div></td>
+                <td>IT ชั้น 1</td>
+                <td>สุภาวดี ร.<div class="sub">แผนกไอที</div></td>
+                <td><span class="badge b-ok">ใช้งานอยู่</span><div class="sub">สภาพดี</div></td>
+                <td><div class="row-next"><a class="next-btn" href="#s-register"><svg aria-hidden="true"><use href="#i-return"/></svg>รับคืน<span class="vh"> GRL-COM-24-0003</span></a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่นของ GRL-COM-24-0003"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td>
+              </tr>
+              <tr>
+                <td class="col-asset"><div class="asset-cell"><div class="thumb sm photo" aria-hidden="true"><svg aria-hidden="true"><use href="#i-laptop"/></svg></div><div><div class="asset-meta"><span class="tag">SNI-COM-23-0118</span><span class="sub" title="คอมพิวเตอร์">คอมพิวเตอร์</span></div><div class="name">Notebook Dell Latitude 5440 Core i5 16GB</div></div></div></td>
+                <td>LCB ชั้น 2</td>
+                <td>ธนกร ศ.<div class="sub">แผนกบัญชี</div></td>
+                <td><span class="badge b-neutral">ถูกยืม</span><div class="sub"><span class="nw">ยืมใช้ถึง 31/10/2569</span></div></td>
+                <td><div class="row-next"><a class="next-btn" href="#s-register"><svg aria-hidden="true"><use href="#i-return"/></svg>รับคืน<span class="vh"> SNI-COM-23-0118</span></a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่นของ SNI-COM-23-0118"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td>
+              </tr>
+              <tr>
+                <td class="col-asset"><div class="asset-cell"><div class="thumb sm photo" aria-hidden="true"><svg aria-hidden="true"><use href="#i-printer"/></svg></div><div><div class="asset-meta"><span class="tag">SNI-EQU-06-0001</span><span class="sub" title="อุปกรณ์สำนักงาน">อุปกรณ์สำนักงาน</span></div><div class="name">Printer EPSON LQ 2090</div></div></div></td>
+                <td>LCB ชั้น 2</td>
+                <td><span class="nil" aria-hidden="true">—</span><span class="vh">ไม่มีผู้ถือครอง</span></td>
+                <td><span class="badge b-warn">รอซ่อม</span><div class="sub">หัวพิมพ์เสีย</div></td>
+                <td><div class="row-next"><a class="next-btn" href="#s-register"><svg aria-hidden="true"><use href="#i-wrench"/></svg>บันทึกซ่อม<span class="vh"> SNI-EQU-06-0001</span></a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่นของ SNI-EQU-06-0001"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td>
+              </tr>
+              <tr>
+                <td class="col-asset"><div class="asset-cell"><div class="thumb sm photo" aria-hidden="true"><svg aria-hidden="true"><use href="#i-monitor"/></svg></div><div><div class="asset-meta"><span class="tag">GRL-COM-26-0017</span><span class="sub" title="จอแสดงผล">จอแสดงผล</span></div><div class="name">Monitor Dell Pro 22 E2225HM FHD</div></div></div></td>
+                <td>ACC ชั้น 4</td>
+                <td>วิภาวรรณ ก.<div class="sub">แผนกบัญชี</div></td>
+                <td><span class="badge b-ok">ใช้งานอยู่</span><div class="sub">สภาพใหม่</div></td>
+                <td><div class="row-next"><a class="next-btn" href="#s-register"><svg aria-hidden="true"><use href="#i-return"/></svg>รับคืน<span class="vh"> GRL-COM-26-0017</span></a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่นของ GRL-COM-26-0017"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td>
+              </tr>
+              <tr>
+                <td class="col-asset"><div class="asset-cell"><div class="thumb sm" aria-hidden="true"><svg aria-hidden="true"><use href="#i-key"/></svg></div><div><div class="asset-meta"><span class="tag">SNI-SOF-24-0002</span><span class="sub" title="ซอฟต์แวร์/License">ซอฟต์แวร์/License</span></div><div class="name">License MICROSOFT Windows 11 Pro OEM 64Bits</div></div></div></td>
+                <td>IT ชั้น 1</td>
+                <td><span class="nil" aria-hidden="true">—</span><span class="vh">ไม่มีผู้ถือครอง</span></td>
+                <td><span class="badge b-ok">ใช้งานอยู่</span></td>
+                <td><div class="row-next"><span></span><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่นของ SNI-SOF-24-0002"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-foot num"><span>แสดง 1–7 จาก 1,751&nbsp;รายการ</span><div class="actions"><button class="btn sm" type="button">ก่อนหน้า</button><button class="btn sm" type="button">ถัดไป</button></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

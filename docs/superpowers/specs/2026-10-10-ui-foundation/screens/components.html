@@ -1,0 +1,277 @@
+<section class="mk-screen" id="s-components">
+  <style>
+    #s-components .demo-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; align-items: start; }
+    #s-components .demo { display: grid; gap: 8px; min-width: 0; }
+    #s-components .demo h4 { margin: 0; }
+    #s-components .demo .menu { min-width: 0; }
+    #s-components .variants { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    #s-components .variant { display: grid; gap: 10px; align-content: start; min-width: 0; }
+    #s-components .variant header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    #s-components .demo-cmdk { grid-column: span 2; }
+    #s-components .mini { width: 100%; border-collapse: collapse; }
+    #s-components .mini td { padding: 9px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+    #s-components .mini tr:last-child td { border-bottom: 0; }
+    #s-components .mini .asset-cell { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; align-items: center; }
+    #s-components .mini .thumb { width: 36px; height: 36px; border-radius: var(--r); background: var(--neutral-soft); color: var(--navy-3); border-color: var(--neutral-line); }
+    #s-components .mini .thumb svg { width: 18px; height: 18px; stroke-width: 2; }
+    #s-components .mini .tag { color: var(--ink-2); }
+    #s-components .mini .name { font-size: 14px; font-weight: 500; line-height: 22px; }
+    #s-components .act { display: grid; grid-template-columns: 104px var(--h-sm); justify-content: end; align-items: center; gap: 4px; }
+    #s-components .act .btn.sm { justify-content: center; }
+    #s-components .split-btn .btn:first-child { width: 96px; justify-content: center; }
+    #s-components .act-link { display: inline-flex; align-items: center; gap: 4px; justify-self: end; }
+    #s-components .act-link svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2.57; }
+    #s-components .faint { opacity: 0.55; }
+    #s-components tr.is-hover { --row-bg: var(--row-hover); }
+    #s-components .icon-act { display: flex; gap: 2px; justify-content: flex-end; align-items: center; }
+    #s-components .btn.icon { width: var(--h-sm); padding: 0; justify-content: center; }
+    #s-components .tip-wrap { position: relative; display: inline-flex; }
+    #s-components .tip { bottom: calc(100% + 6px); right: -4px; }
+    #s-components .act-link .lead { width: 15px; height: 15px; stroke-width: 2.4; }
+    #s-components .variant.wide { grid-column: 1 / -1; }
+    #s-components .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    #s-components .pair h5 { margin: 0 0 6px; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--ink-2); }
+    #s-components .next-slot { display: grid; grid-template-columns: 120px var(--h-sm); justify-content: end; align-items: center; gap: 4px; }
+    #s-components .next-btn.soft { background: var(--primary-soft); }
+    #s-components .next-btn.soft:hover, #s-components tr.is-hover .next-btn.soft { border-color: var(--primary-line); }
+    #s-components .next-slot .btn.sm.ghost { width: var(--h-sm); padding: 0; justify-content: center; }
+    /* Control states spec table: each cell shows one state, so the row itself does not react to the pointer */
+    #s-components .states-scroll { overflow-x: auto; border-bottom-left-radius: var(--r-lg); border-bottom-right-radius: var(--r-lg); }
+    #s-components .states { min-width: 960px; }
+    #s-components .states tbody th { text-align: left; font-weight: 500; color: var(--ink-2); padding: 12px 12px 12px var(--gutter); border-bottom: 1px solid var(--line-soft); vertical-align: middle; white-space: nowrap; }
+    #s-components .states tbody tr:last-child th { border-bottom: 0; }
+    #s-components .states tbody td { vertical-align: middle; }
+    #s-components .states tbody tr:is(:hover, :focus-within) { --row-bg: transparent; }
+    #s-components .states tbody tr:is(:hover, :focus-within) .next-btn:not(:hover):not(.is-hover):not(.is-active) { background: transparent; color: var(--primary); }
+    #s-components .states .menu { min-width: 0; max-width: 240px; padding: 4px; animation: none; }
+    #s-components .states .input { width: 180px; }
+    @media (max-width: 860px) { #s-components .pair { grid-template-columns: minmax(0, 1fr); } }
+    #s-components .proscons { margin: 0; padding-left: 18px; font-size: 13px; line-height: 20px; color: var(--ink-2); display: grid; gap: 2px; }
+    @media (max-width: 1180px) { #s-components .demo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 860px) { #s-components .demo-grid, #s-components .variants { grid-template-columns: minmax(0, 1fr); } #s-components .demo-cmdk { grid-column: auto; } }
+  </style>
+  <header>
+    <h2>Dropdown และปุ่มในแถว</h2>
+    <ul>
+      <li>Dropdown ทุกตัวใช้พื้นผิวเดียวกัน: ขอบบาง มุม 12px และมีเงาเฉพาะตอนเปิด (ของที่ลอยเหนือหน้าเท่านั้นที่มีเงา)</li>
+      <li>รายการที่กดไม่ได้บอกเหตุผลในเมนูเลย ไม่ต้องเดา · บนมือถือเมนูเหล่านี้เปิดเป็นแผ่นจากด้านล่าง ปุ่มสูง 44px</li>
+      <li>ปุ่มในแถวของทะเบียนเทียบ 7 แบบด้วยแถวเดียวกัน · แบบ ช รวมข้อดีของ ข ค และ ฉ โดยไม่ใช้ปุ่มแยก · ผมแนะนำ ช1</li>
+    </ul>
+  </header>
+
+  <div class="panel">
+    <div class="panel-head"><div><h3 class="t-section">Dropdown</h3><p class="t-small" style="margin:0">ภาพตอนเปิด เพื่อให้เห็นหน้าตาของรายการข้างใน</p></div></div>
+    <div class="panel-body">
+      <div class="demo-grid">
+        <div class="demo">
+          <h4 class="t-label">1 · ช่องเลือกแบบค้นหาได้</h4>
+          <div class="form-row">
+            <label for="cmp-loc">ที่ตั้ง</label>
+            <button class="select" id="cmp-loc" type="button" aria-expanded="true" aria-haspopup="listbox"><span class="val">IT ชั้น 1 · GRL</span><svg aria-hidden="true"><use href="#i-chevdown"/></svg></button>
+          </div>
+          <div class="menu" role="listbox" aria-label="ที่ตั้ง">
+            <div class="menu-search"><svg aria-hidden="true"><use href="#i-search"/></svg><span>ชั้น</span></div>
+            <button class="menu-item is-active" type="button" role="option" aria-selected="true"><span class="stack">IT ชั้น 1<small>GRL · IT_FL1</small></span><svg class="check"><use href="#i-tick"/></svg></button>
+            <button class="menu-item" type="button" role="option" aria-selected="false"><span class="stack">LCB ชั้น 2<small>LCB · LCB_FL2</small></span></button>
+            <button class="menu-item" type="button" role="option" aria-selected="false"><span class="stack">ACC ชั้น 4<small>GRL · ACC_FL4</small></span></button>
+            <button class="menu-item" type="button" role="option" aria-selected="false"><span class="stack">SNI ชั้น 4<small>SNI · SNI_FL4</small></span></button>
+          </div>
+          <p class="hint">พิมพ์ชื่อหรือรหัสที่ตั้ง · ↑↓ เลือก · Enter ยืนยัน</p>
+        </div>
+
+        <div class="demo">
+          <h4 class="t-label">2 · เมนู ⋯ ในแถว</h4>
+          <div style="display:flex; justify-content:flex-end"><button class="btn sm" type="button" aria-label="การดำเนินการอื่นของ SNI-COM-23-0118" aria-expanded="true"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div>
+          <div class="menu" role="menu" aria-label="SNI-COM-23-0118">
+            <div class="menu-label">งานถัดไป</div>
+            <button class="menu-item" type="button" role="menuitem"><svg aria-hidden="true"><use href="#i-back"/></svg>รับคืน</button>
+            <button class="menu-item" type="button" role="menuitem"><svg aria-hidden="true"><use href="#i-swap"/></svg>โอน</button>
+            <div class="menu-sep" role="separator"></div>
+            <div class="menu-label">ทรัพย์สิน</div>
+            <button class="menu-item" type="button" role="menuitem"><svg aria-hidden="true"><use href="#i-file"/></svg>ดูรายละเอียด</button>
+            <button class="menu-item" type="button" role="menuitem"><svg aria-hidden="true"><use href="#i-edit"/></svg>แก้ไขข้อมูล</button>
+            <button class="menu-item" type="button" role="menuitem"><svg aria-hidden="true"><use href="#i-qr"/></svg>พิมพ์ป้าย QR</button>
+            <div class="menu-sep" role="separator"></div>
+            <div class="menu-item" role="menuitem" aria-disabled="true"><svg aria-hidden="true"><use href="#i-wrench"/></svg><span class="stack">ส่งซ่อม<small>ต้องรับคืนก่อน เพราะถูกยืมอยู่</small></span></div>
+            <div class="menu-item" role="menuitem" aria-disabled="true"><svg aria-hidden="true"><use href="#i-archive"/></svg><span class="stack">ขอตัดจำหน่าย<small>ต้องรับคืนก่อน เพราะถูกยืมอยู่</small></span></div>
+          </div>
+        </div>
+
+        <div class="demo">
+          <h4 class="t-label">3 · ตัวเลือกคอลัมน์</h4>
+          <div style="display:flex; justify-content:flex-end"><button class="btn" type="button" aria-expanded="true"><svg class="i" aria-hidden="true"><use href="#i-columns"/></svg>คอลัมน์</button></div>
+          <div class="menu" role="group" aria-label="แสดงคอลัมน์">
+            <div class="menu-label">แสดงในตาราง</div>
+            <div class="menu-item" aria-disabled="true"><span class="cbox lock"><svg aria-hidden="true"><use href="#i-lock"/></svg></span>ทรัพย์สิน (รูป รหัส ชื่อ)<span class="trail">แสดงเสมอ</span></div>
+            <button class="menu-item" type="button" role="checkbox" aria-checked="true"><span class="cbox on"><svg aria-hidden="true"><use href="#i-tick"/></svg></span>ที่ตั้ง</button>
+            <button class="menu-item" type="button" role="checkbox" aria-checked="true"><span class="cbox on"><svg aria-hidden="true"><use href="#i-tick"/></svg></span>ผู้ถือครอง</button>
+            <button class="menu-item" type="button" role="checkbox" aria-checked="true"><span class="cbox on"><svg aria-hidden="true"><use href="#i-tick"/></svg></span>สถานะ</button>
+            <div class="menu-sep" role="separator"></div>
+            <div class="menu-label">เพิ่มได้</div>
+            <button class="menu-item" type="button" role="checkbox" aria-checked="false"><span class="cbox"></span>มูลค่า (บาท)</button>
+            <button class="menu-item" type="button" role="checkbox" aria-checked="false"><span class="cbox"></span>Serial</button>
+            <button class="menu-item" type="button" role="checkbox" aria-checked="false"><span class="cbox"></span>วันที่ซื้อ</button>
+            <button class="menu-item" type="button" role="checkbox" aria-checked="false"><span class="cbox"></span>ประกันถึง</button>
+            <button class="menu-item" type="button" role="checkbox" aria-checked="false"><span class="cbox"></span>บริษัทเจ้าของรหัส</button>
+            <div class="menu-foot"><span class="t-caption">จำไว้ในเครื่องนี้</span><a class="link" href="#s-components">คืนค่าเริ่มต้น</a></div>
+          </div>
+        </div>
+
+        <div class="demo">
+          <h4 class="t-label">4 · เลือกขอบเขตข้อมูล</h4>
+          <div style="display:flex; justify-content:flex-end"><button class="btn" type="button" aria-expanded="true"><svg class="i" aria-hidden="true"><use href="#i-building"/></svg>ทุกบริษัท<svg class="i" aria-hidden="true"><use href="#i-chevdown"/></svg></button></div>
+          <div class="menu" role="menu" aria-label="ขอบเขตข้อมูล">
+            <div class="menu-label">บริษัท</div>
+            <button class="menu-item is-active" type="button" role="menuitemradio" aria-checked="true">ทุกบริษัท<svg class="check"><use href="#i-tick"/></svg></button>
+            <button class="menu-item" type="button" role="menuitemradio" aria-checked="false"><span class="stack">GRL<small>รหัสทรัพย์สินขึ้นต้น GRL</small></span></button>
+            <button class="menu-item" type="button" role="menuitemradio" aria-checked="false"><span class="stack">SNI<small>รหัสทรัพย์สินขึ้นต้น SNI</small></span></button>
+            <div class="menu-sep" role="separator"></div>
+            <button class="menu-item" type="button" role="menuitem">เลือกสาขา…<span class="trail">ทุกสาขา</span></button>
+          </div>
+        </div>
+
+        <div class="demo demo-cmdk">
+          <h4 class="t-label">5 · ค้นหาทั้งระบบ (Ctrl K)</h4>
+          <label class="gsearch is-focus" for="g-q-cmdk"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="vh">ค้นหาทั้งระบบ</span><input id="g-q-cmdk" type="search" value="GRL-COM-24" placeholder="ค้นหาทั้งระบบ: รหัส ชื่อ Serial ผู้ถือครอง" aria-keyshortcuts="Control+K" aria-controls="cmdk-list" autocomplete="off"><kbd class="kbd" aria-hidden="true">Ctrl K</kbd></label>
+          <div class="cmdk">
+            <div class="cmdk-list" id="cmdk-list" role="listbox" aria-label="ผลการค้นหา">
+              <div role="group" aria-labelledby="cmdk-g-asset">
+                <div class="menu-label" id="cmdk-g-asset">ทรัพย์สิน</div>
+                <button class="menu-item is-active" type="button" role="option" aria-selected="true"><span class="stack"><span><span class="tag"><mark>GRL-COM-24</mark>-0003</span></span><small>Network Equipment Cisco Meraki MX95 · IT ชั้น 1</small></span><span class="trail"><span class="badge b-ok">ใช้งานอยู่</span></span></button>
+              </div>
+              <div role="group" aria-labelledby="cmdk-g-page">
+                <div class="menu-label" id="cmdk-g-page">ไปที่หน้า</div>
+                <button class="menu-item" type="button" role="option" aria-selected="false"><svg aria-hidden="true"><use href="#i-inbox"/></svg>ศูนย์งานค้าง<span class="trail num">4</span></button>
+                <button class="menu-item" type="button" role="option" aria-selected="false"><svg aria-hidden="true"><use href="#i-box"/></svg>ทะเบียนทรัพย์สิน</button>
+              </div>
+              <div role="group" aria-labelledby="cmdk-g-cmd">
+                <div class="menu-label" id="cmdk-g-cmd">คำสั่ง</div>
+                <button class="menu-item" type="button" role="option" aria-selected="false"><svg aria-hidden="true"><use href="#i-plus"/></svg>เพิ่มทรัพย์สิน</button>
+                <button class="menu-item" type="button" role="option" aria-selected="false"><svg aria-hidden="true"><use href="#i-audit"/></svg>เปิดหน้าตรวจนับ <span class="tag">AUD-2026-0003</span></button>
+              </div>
+            </div>
+            <div class="cmdk-foot"><kbd class="kbd">↑↓</kbd> เลือก · <kbd class="kbd">Enter</kbd> เปิด · <kbd class="kbd">Esc</kbd> ปิด</div>
+          </div>
+          <p class="hint">พิมพ์รหัสครบแล้วกด Enter เพื่อเปิดหน้าทรัพย์สินทันที</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><div><h3 class="t-section">สถานะของตัวควบคุม</h3><p class="t-small" style="margin:0">ปกติ · ชี้ · กด · โฟกัส · กดไม่ได้ ใช้เป็นสเปกให้ทีม</p></div></div>
+    <div class="states-scroll">
+      <table class="states">
+        <caption class="vh">สถานะของตัวควบคุมแต่ละแบบ: ปกติ ชี้ กด โฟกัส และกดไม่ได้</caption>
+        <thead>
+          <tr><th scope="col">ตัวควบคุม</th><th scope="col">ปกติ</th><th scope="col">ชี้</th><th scope="col">กด</th><th scope="col">โฟกัส</th><th scope="col">กดไม่ได้</th></tr>
+        </thead>
+        <tbody>
+              <tr><th scope="row"><span class="tag">.btn</span></th><td><button class="btn" type="button">ส่งออก</button></td><td><button class="btn is-hover" type="button">ส่งออก</button></td><td><button class="btn is-active" type="button">ส่งออก</button></td><td><button class="btn" type="button" style="outline: 2px solid var(--focus); outline-offset: 2px">ส่งออก</button></td><td><button class="btn" type="button" disabled>ส่งออก</button></td></tr>
+              <tr><th scope="row"><span class="tag">.btn.primary</span></th><td><button class="btn primary" type="button">รับคืน</button></td><td><button class="btn primary is-hover" type="button">รับคืน</button></td><td><button class="btn primary is-active" type="button">รับคืน</button></td><td><button class="btn primary" type="button" style="outline: 2px solid var(--focus); outline-offset: 2px">รับคืน</button></td><td><button class="btn primary" type="button" disabled>รับคืน</button></td></tr>
+              <tr><th scope="row"><span class="tag">.next-btn</span></th><td><button class="next-btn" type="button"><svg aria-hidden="true"><use href="#i-handover"/></svg>ส่งมอบ</button></td><td><button class="next-btn is-hover" type="button"><svg aria-hidden="true"><use href="#i-handover"/></svg>ส่งมอบ</button></td><td><button class="next-btn is-active" type="button"><svg aria-hidden="true"><use href="#i-handover"/></svg>ส่งมอบ</button></td><td><button class="next-btn" type="button" style="outline: 2px solid var(--focus); outline-offset: 2px"><svg aria-hidden="true"><use href="#i-handover"/></svg>ส่งมอบ</button></td><td><span class="nil" aria-hidden="true">—</span><span class="vh">ไม่มีสถานะนี้</span></td></tr>
+              <tr><th scope="row"><span class="tag">.seg</span></th><td><div class="seg" role="group" aria-label="แสดงงาน"><button type="button" aria-pressed="true">งานของฉัน</button><button type="button" aria-pressed="false">ทั้งหมด</button></div></td><td><div class="seg" role="group" aria-label="แสดงงาน"><button type="button" aria-pressed="true">งานของฉัน</button><button type="button" aria-pressed="false" class="is-hover">ทั้งหมด</button></div></td><td><span class="nil" aria-hidden="true">—</span><span class="vh">ไม่มีสถานะนี้</span></td><td><div class="seg" role="group" aria-label="แสดงงาน"><button type="button" aria-pressed="true">งานของฉัน</button><button type="button" aria-pressed="false" style="outline: 2px solid var(--focus); outline-offset: 2px">ทั้งหมด</button></div></td><td><span class="nil" aria-hidden="true">—</span><span class="vh">ไม่มีสถานะนี้</span></td></tr>
+              <tr><th scope="row"><span class="tag">.menu-item</span></th><td><div class="menu" role="menu" aria-label="ตัวอย่างรายการในเมนู"><button class="menu-item" type="button" role="menuitem"><svg aria-hidden="true"><use href="#i-file"/></svg>ดูรายละเอียด</button></div></td><td><div class="menu" role="menu" aria-label="ตัวอย่างรายการในเมนู"><button class="menu-item is-hover" type="button" role="menuitem"><svg aria-hidden="true"><use href="#i-file"/></svg>ดูรายละเอียด</button></div></td><td><div class="menu" role="menu" aria-label="ตัวอย่างรายการในเมนู"><button class="menu-item" type="button" role="menuitem" style="background: var(--neutral-soft)"><svg aria-hidden="true"><use href="#i-file"/></svg>ดูรายละเอียด</button></div></td><td><div class="menu" role="menu" aria-label="ตัวอย่างรายการในเมนู"><button class="menu-item" type="button" role="menuitem" style="outline: 2px solid var(--focus); outline-offset: -2px"><svg aria-hidden="true"><use href="#i-file"/></svg>ดูรายละเอียด</button></div></td><td><div class="menu" role="menu" aria-label="ตัวอย่างรายการในเมนู"><div class="menu-item" role="menuitem" aria-disabled="true"><svg aria-hidden="true"><use href="#i-file"/></svg>ดูรายละเอียด</div></div></td></tr>
+              <tr><th scope="row"><span class="tag">.input</span></th><td><input class="input" type="text" value="IT ชั้น 1" aria-label="ที่ตั้ง (ปกติ)"></td><td><span class="nil" aria-hidden="true">—</span><span class="vh">ไม่มีสถานะนี้</span></td><td><span class="nil" aria-hidden="true">—</span><span class="vh">ไม่มีสถานะนี้</span></td><td><input class="input is-focus" type="text" value="IT ชั้น 1" aria-label="ที่ตั้ง (โฟกัส)"></td><td><input class="input" type="text" value="IT ชั้น 1" aria-label="ที่ตั้ง (กดไม่ได้)" disabled></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><div><h3 class="t-section">ปุ่มในแถวของทะเบียน: เทียบ 7 แบบ</h3><p class="t-small" style="margin:0">แถวเดียวกันทั้ง 4 แบบ: พร้อมใช้งาน → ส่งมอบ · ถูกยืม → รับคืน · รอซ่อม → บันทึกซ่อม · License ที่ไม่มีงานถัดไป</p></div></div>
+    <div class="panel-body">
+      <div class="variants">
+
+        <div class="variant">
+          <header><h4 class="t-section">ก · ปุ่มงานถัดไป + ⋯</h4><span class="t-caption">แบบใน mockup ตอนนี้</span></header>
+          <div class="table-wrap"><table class="mini"><tbody>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-chip"/></svg></div><div><span class="tag">GRL-COM-26-0036</span><div class="name">Computer Component HYNIX DDR4 16GB</div></div></div></td><td><span class="badge b-ready">พร้อมใช้งาน</span></td><td><div class="row-actions"><button class="btn sm" type="button">ส่งมอบ</button><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-laptop"/></svg></div><div><span class="tag">SNI-COM-23-0118</span><div class="name">Notebook Dell Latitude 5440</div></div></div></td><td><span class="badge b-neutral">ถูกยืม</span></td><td><div class="row-actions"><button class="btn sm" type="button">รับคืน</button><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-printer"/></svg></div><div><span class="tag">SNI-EQU-06-0001</span><div class="name">Printer EPSON LQ 2090</div></div></div></td><td><span class="badge b-warn">รอซ่อม</span></td><td><div class="row-actions"><button class="btn sm" type="button">บันทึกซ่อม</button><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-key"/></svg></div><div><span class="tag">SNI-SOF-21-0003</span><div class="name">License Windows Server 2019</div></div></div></td><td><span class="badge b-ok">ใช้งานอยู่</span></td><td><div class="row-actions"><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+          </tbody></table></div>
+          <ul class="proscons"><li>เห็นงานถัดไปทันที กดครั้งเดียว</li><li>ปุ่มกว้างไม่เท่ากัน แถวที่ไม่มีงานถัดไปเหลือ ⋯ ลอยอยู่ คอลัมน์ดูไม่เรียบ</li></ul>
+        </div>
+
+        <div class="variant">
+          <header><h4 class="t-section">ข · ปุ่มแยก กว้างเท่ากันทุกแถว</h4></header>
+          <div class="table-wrap"><table class="mini"><tbody>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-chip"/></svg></div><div><span class="tag">GRL-COM-26-0036</span><div class="name">Computer Component HYNIX DDR4 16GB</div></div></div></td><td><span class="badge b-ready">พร้อมใช้งาน</span></td><td><div class="row-actions"><span class="split-btn"><button class="btn sm" type="button">ส่งมอบ</button><button class="btn sm" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-chevdown"/></svg></button></span></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-laptop"/></svg></div><div><span class="tag">SNI-COM-23-0118</span><div class="name">Notebook Dell Latitude 5440</div></div></div></td><td><span class="badge b-neutral">ถูกยืม</span></td><td><div class="row-actions"><span class="split-btn"><button class="btn sm" type="button">รับคืน</button><button class="btn sm" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-chevdown"/></svg></button></span></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-printer"/></svg></div><div><span class="tag">SNI-EQU-06-0001</span><div class="name">Printer EPSON LQ 2090</div></div></div></td><td><span class="badge b-warn">รอซ่อม</span></td><td><div class="row-actions"><span class="split-btn"><button class="btn sm" type="button">บันทึกซ่อม</button><button class="btn sm" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-chevdown"/></svg></button></span></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-key"/></svg></div><div><span class="tag">SNI-SOF-21-0003</span><div class="name">License Windows Server 2019</div></div></div></td><td><span class="badge b-ok">ใช้งานอยู่</span></td><td><div class="row-actions"><span class="split-btn"><button class="btn sm" type="button">จัดการ</button><button class="btn sm" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-chevdown"/></svg></button></span></div></td></tr>
+          </tbody></table></div>
+          <ul class="proscons"><li>ทุกแถวมีปุ่มหน้าตาเดียวกัน คอลัมน์ตรงเป็นแนว</li><li>ยังเป็นปุ่มทุกแถว เมื่อมีหลายแถวหน้าจะดูหนักกว่าแบบ ค</li></ul>
+        </div>
+
+        <div class="variant">
+          <header><h4 class="t-section">ค · ลิงก์งานถัดไป + ⋯</h4></header>
+          <div class="table-wrap"><table class="mini"><tbody>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-chip"/></svg></div><div><span class="tag">GRL-COM-26-0036</span><div class="name">Computer Component HYNIX DDR4 16GB</div></div></div></td><td><span class="badge b-ready">พร้อมใช้งาน</span></td><td><div class="act"><a class="link act-link" href="#s-components">ส่งมอบ<svg aria-hidden="true"><use href="#i-arrow"/></svg></a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-laptop"/></svg></div><div><span class="tag">SNI-COM-23-0118</span><div class="name">Notebook Dell Latitude 5440</div></div></div></td><td><span class="badge b-neutral">ถูกยืม</span></td><td><div class="act"><a class="link act-link" href="#s-components">รับคืน<svg aria-hidden="true"><use href="#i-arrow"/></svg></a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-printer"/></svg></div><div><span class="tag">SNI-EQU-06-0001</span><div class="name">Printer EPSON LQ 2090</div></div></div></td><td><span class="badge b-warn">รอซ่อม</span></td><td><div class="act"><a class="link act-link" href="#s-components">บันทึกซ่อม<svg aria-hidden="true"><use href="#i-arrow"/></svg></a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-key"/></svg></div><div><span class="tag">SNI-SOF-21-0003</span><div class="name">License Windows Server 2019</div></div></div></td><td><span class="badge b-ok">ใช้งานอยู่</span></td><td><div class="act"><span></span><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+          </tbody></table></div>
+          <ul class="proscons"><li>เบาที่สุดที่ยังเห็นงานถัดไปทุกแถว อ่านเหมือนคอลัมน์ในสมุดทะเบียน</li><li>⋯ อยู่ตำแหน่งเดิมทุกแถว · ลิงก์เป็นสีปุ่มหลักจึงรู้ว่ากดได้</li><li>ปุ่มเล็กกว่าแบบ ก/ข เล็กน้อย (บนมือถือใช้แตะทั้งแถวแทนอยู่แล้ว)</li></ul>
+        </div>
+
+        <div class="variant">
+          <header><h4 class="t-section">ง · เห็นปุ่มเมื่อชี้หรือโฟกัสแถว</h4></header>
+          <div class="table-wrap"><table class="mini"><tbody>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-chip"/></svg></div><div><span class="tag">GRL-COM-26-0036</span><div class="name">Computer Component HYNIX DDR4 16GB</div></div></div></td><td><span class="badge b-ready">พร้อมใช้งาน</span></td><td><div class="row-actions faint"><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr class="is-hover"><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-laptop"/></svg></div><div><span class="tag">SNI-COM-23-0118</span><div class="name">Notebook Dell Latitude 5440</div></div></div></td><td><span class="badge b-neutral">ถูกยืม</span></td><td><div class="row-actions"><button class="btn sm" type="button">รับคืน</button><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-printer"/></svg></div><div><span class="tag">SNI-EQU-06-0001</span><div class="name">Printer EPSON LQ 2090</div></div></div></td><td><span class="badge b-warn">รอซ่อม</span></td><td><div class="row-actions faint"><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-key"/></svg></div><div><span class="tag">SNI-SOF-21-0003</span><div class="name">License Windows Server 2019</div></div></div></td><td><span class="badge b-ok">ใช้งานอยู่</span></td><td><div class="row-actions faint"><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+          </tbody></table></div>
+          <ul class="proscons"><li>ตารางสะอาดที่สุดตอนไม่ได้ใช้ (แถวที่สองคือแถวที่เมาส์ชี้อยู่)</li><li>มองไม่เห็นว่าแถวไหนมีงานถัดไปจนกว่าจะชี้ · ผู้ใช้ใหม่หาไม่เจอ · จอสัมผัสไม่มีการชี้</li></ul>
+        </div>
+
+
+        <div class="variant">
+          <header><h4 class="t-section">จ · ไอคอนอย่างเดียว</h4><span class="t-caption">แถวที่สองคือตอนเมาส์ชี้ไอคอน</span></header>
+          <div class="table-wrap"><table class="mini"><tbody>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-chip"/></svg></div><div><span class="tag">GRL-COM-26-0036</span><div class="name">Computer Component HYNIX DDR4 16GB</div></div></div></td><td><span class="badge b-ready">พร้อมใช้งาน</span></td><td><div class="icon-act"><span class="tip-wrap"><button class="btn sm ghost icon" type="button" aria-label="ส่งมอบ"><svg class="i" aria-hidden="true"><use href="#i-handover"/></svg></button></span><button class="btn sm ghost icon" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-laptop"/></svg></div><div><span class="tag">SNI-COM-23-0118</span><div class="name">Notebook Dell Latitude 5440</div></div></div></td><td><span class="badge b-neutral">ถูกยืม</span></td><td><div class="icon-act"><span class="tip-wrap"><button class="btn sm ghost icon" type="button" aria-label="รับคืน"><svg class="i" aria-hidden="true"><use href="#i-return"/></svg></button><span class="tip" role="tooltip">รับคืน</span></span><button class="btn sm ghost icon" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-printer"/></svg></div><div><span class="tag">SNI-EQU-06-0001</span><div class="name">Printer EPSON LQ 2090</div></div></div></td><td><span class="badge b-warn">รอซ่อม</span></td><td><div class="icon-act"><span class="tip-wrap"><button class="btn sm ghost icon" type="button" aria-label="บันทึกซ่อม"><svg class="i" aria-hidden="true"><use href="#i-wrench"/></svg></button></span><button class="btn sm ghost icon" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-key"/></svg></div><div><span class="tag">SNI-SOF-21-0003</span><div class="name">License Windows Server 2019</div></div></div></td><td><span class="badge b-ok">ใช้งานอยู่</span></td><td><div class="icon-act"><span style="width: var(--h-sm)"></span><button class="btn sm ghost icon" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+          </tbody></table></div>
+          <ul class="proscons"><li>แคบที่สุด คอลัมน์ตรงเป็นแนว</li><li>ไอคอนเปลี่ยนตามสถานะแต่ละแถว ต้องจำว่ารูปไหนคืออะไร (ส่งมอบกับรับคืนคล้ายกัน)</li><li>ชื่อเห็นเฉพาะตอนชี้ จอสัมผัสไม่มีการชี้ · กดผิดมีผลกับ<span class="nw">ผู้ถือครอง</span>จริง</li></ul>
+        </div>
+
+        <div class="variant">
+          <header><h4 class="t-section">ฉ · ไอคอนนำหน้าข้อความ</h4><span class="t-caption">เลือกไว้ก่อนหน้า</span></header>
+          <div class="table-wrap"><table class="mini"><tbody>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-chip"/></svg></div><div><span class="tag">GRL-COM-26-0036</span><div class="name">Computer Component HYNIX DDR4 16GB</div></div></div></td><td><span class="badge b-ready">พร้อมใช้งาน</span></td><td><div class="act"><a class="link act-link" href="#s-components"><svg class="lead"><use href="#i-handover"/></svg>ส่งมอบ</a><button class="btn sm ghost icon" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-laptop"/></svg></div><div><span class="tag">SNI-COM-23-0118</span><div class="name">Notebook Dell Latitude 5440</div></div></div></td><td><span class="badge b-neutral">ถูกยืม</span></td><td><div class="act"><a class="link act-link" href="#s-components"><svg class="lead"><use href="#i-return"/></svg>รับคืน</a><button class="btn sm ghost icon" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-printer"/></svg></div><div><span class="tag">SNI-EQU-06-0001</span><div class="name">Printer EPSON LQ 2090</div></div></div></td><td><span class="badge b-warn">รอซ่อม</span></td><td><div class="act"><a class="link act-link" href="#s-components"><svg class="lead"><use href="#i-wrench"/></svg>บันทึกซ่อม</a><button class="btn sm ghost icon" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-key"/></svg></div><div><span class="tag">SNI-SOF-21-0003</span><div class="name">License Windows Server 2019</div></div></div></td><td><span class="badge b-ok">ใช้งานอยู่</span></td><td><div class="act"><span></span><button class="btn sm ghost icon" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+          </tbody></table></div>
+          <ul class="proscons"><li>อ่านออกเหมือนแบบ ค และไอคอนช่วยให้สแกนตาเร็วขึ้นเมื่อคุ้นแล้ว</li><li>คอลัมน์กว้างขึ้นเล็กน้อย · ไอคอนเป็นตัวช่วย ไม่ได้แทนคำ</li></ul>
+        </div>
+
+
+        <div class="variant wide">
+          <header><h4 class="t-section">ช · รวมข้อดี ข + ค + ฉ (ไม่ใช้ปุ่มแยก)</h4><span class="t-caption">เลือกแล้ว: ช1</span></header>
+          <p class="t-small" style="margin:0">ไอคอนนำหน้าคำ (ฉ) · ช่องกว้างเท่ากันทุกแถว ไอคอนเรียงเป็นแนวเดียว และ ⋯ อยู่ที่เดิม (ข) · ตอนปกติเบาเหมือนลิงก์ (ค) · ชี้หรือกด Tab ที่แถวแล้วช่องมีพื้นฟ้าอ่อน และกดได้ทั้งช่อง 120 × 32px · แถวที่สองคือตอนเมาส์ชี้</p>
+          <div class="pair">
+            <div><h5>ช1 · ตอนปกติไม่มีพื้น</h5><div class="table-wrap"><table class="mini"><tbody>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-chip"/></svg></div><div><span class="tag">GRL-COM-26-0036</span><div class="name">Computer Component HYNIX DDR4 16GB</div></div></div></td><td><span class="badge b-ready">พร้อมใช้งาน</span></td><td><div class="next-slot"><a class="next-btn" href="#s-components"><svg aria-hidden="true"><use href="#i-handover"/></svg>ส่งมอบ</a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr class="is-hover"><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-laptop"/></svg></div><div><span class="tag">SNI-COM-23-0118</span><div class="name">Notebook Dell Latitude 5440</div></div></div></td><td><span class="badge b-neutral">ถูกยืม</span></td><td><div class="next-slot"><a class="next-btn" href="#s-components"><svg aria-hidden="true"><use href="#i-return"/></svg>รับคืน</a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-printer"/></svg></div><div><span class="tag">SNI-EQU-06-0001</span><div class="name">Printer EPSON LQ 2090</div></div></div></td><td><span class="badge b-warn">รอซ่อม</span></td><td><div class="next-slot"><a class="next-btn" href="#s-components"><svg aria-hidden="true"><use href="#i-wrench"/></svg>บันทึกซ่อม</a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-key"/></svg></div><div><span class="tag">SNI-SOF-21-0003</span><div class="name">License Windows Server 2019</div></div></div></td><td><span class="badge b-ok">ใช้งานอยู่</span></td><td><div class="next-slot"><span></span><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+          </tbody></table></div></div>
+            <div><h5>ช2 · มีพื้นอ่อนตลอด</h5><div class="table-wrap"><table class="mini"><tbody>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-chip"/></svg></div><div><span class="tag">GRL-COM-26-0036</span><div class="name">Computer Component HYNIX DDR4 16GB</div></div></div></td><td><span class="badge b-ready">พร้อมใช้งาน</span></td><td><div class="next-slot"><a class="next-btn soft" href="#s-components"><svg aria-hidden="true"><use href="#i-handover"/></svg>ส่งมอบ</a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr class="is-hover"><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-laptop"/></svg></div><div><span class="tag">SNI-COM-23-0118</span><div class="name">Notebook Dell Latitude 5440</div></div></div></td><td><span class="badge b-neutral">ถูกยืม</span></td><td><div class="next-slot"><a class="next-btn soft" href="#s-components"><svg aria-hidden="true"><use href="#i-return"/></svg>รับคืน</a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-printer"/></svg></div><div><span class="tag">SNI-EQU-06-0001</span><div class="name">Printer EPSON LQ 2090</div></div></div></td><td><span class="badge b-warn">รอซ่อม</span></td><td><div class="next-slot"><a class="next-btn soft" href="#s-components"><svg aria-hidden="true"><use href="#i-wrench"/></svg>บันทึกซ่อม</a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+            <tr><td><div class="asset-cell"><div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-key"/></svg></div><div><span class="tag">SNI-SOF-21-0003</span><div class="name">License Windows Server 2019</div></div></div></td><td><span class="badge b-ok">ใช้งานอยู่</span></td><td><div class="next-slot"><span></span><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td></tr>
+          </tbody></table></div></div>
+          </div>
+          <ul class="proscons"><li>ช1 เบาที่สุดในบรรดาแบบที่ยังเห็นงานถัดไปทุกแถว ไอคอนกับคำเริ่มที่แนวเดียวกันทั้งตาราง และพื้นที่กดใหญ่กว่าลิงก์</li><li>ช2 ดูเป็นปุ่มชัดตั้งแต่แรก เหมาะถ้าผู้ใช้ไม่คุ้นกับการกดข้อความ แต่คอลัมน์จะเป็นแถบสีฟ้าเรียงกัน หนักกว่า ช1</li><li>บนมือถือยังแตะทั้งแถวเหมือนเดิม และงานถัดไปอยู่ในแถบปุ่มด้านล่างของหน้ารายละเอียด</li></ul>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>

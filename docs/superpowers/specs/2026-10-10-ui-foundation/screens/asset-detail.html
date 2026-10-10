@@ -1,0 +1,202 @@
+<section class="mk-screen" id="s-asset">
+  <style>
+    #s-asset .as-col { display: grid; gap: 16px; min-width: 0; align-content: start; }
+    #s-asset .as-find { grid-template-columns: minmax(0, 1fr); align-items: start; }
+    #s-asset .as-go { display: inline-flex; align-items: center; gap: 4px; }
+    #s-asset ol.as-tl { list-style: none; margin: 0; padding: 0; }
+    /* Timeline events start on the same x line as dl.kv values (one label column) */
+    #s-asset .as-tl > li { grid-template-columns: var(--kv-label) minmax(0, 1fr) auto; grid-template-areas: "d e a"; align-items: first baseline; gap: 2px 16px; }
+    #s-asset .as-tl time { grid-area: d; }
+    #s-asset .as-tl .as-ev { grid-area: e; display: flex; gap: 8px; align-items: flex-start; min-width: 0; }
+    #s-asset .as-tl .as-ev > svg { margin-top: 3px; }
+    #s-asset .as-tl .as-who { grid-area: a; text-align: right; }
+    #s-asset .as-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+    #s-asset .as-photos figure { margin: 0; display: grid; gap: 6px; }
+    #s-asset .as-ph { aspect-ratio: 4 / 3; border-radius: var(--r); background: var(--subtle); display: grid; place-items: center; color: var(--ink-3); }
+    #s-asset .as-ph svg { width: 28px; height: 28px; stroke-width: 1.29; }
+    #s-asset .as-qr { display: flex; gap: 16px; align-items: center; }
+    #s-asset .as-qr-code { width: 72px; height: 72px; flex: none; border-radius: var(--r); background: var(--subtle); display: grid; place-items: center; color: var(--ink-3); }
+    #s-asset .as-qr-code svg { width: 40px; height: 40px; stroke: currentColor; stroke-width: 0.9; }
+    #s-asset .as-qr-meta { display: grid; gap: 4px; min-width: 0; justify-items: start; }
+    @media (max-width: 600px) {
+      #s-asset dl.kv { grid-template-columns: minmax(0, 1fr); gap: 2px 0; }
+      #s-asset dl.kv dd + dt { margin-top: 8px; }
+      #s-asset .as-tl > li { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "d a" "e e"; }
+    }
+  </style>
+  <header>
+    <h2>รายละเอียดทรัพย์สิน</h2>
+    <ul>
+      <li>หัวระเบียนขึ้นก่อน: รหัส ชื่อ สถานะ และข้อเท็จจริงหลัก 6 ข้ออยู่ในจอแรก แทนกล่อง "ข้อมูลยังไม่ครบ" สีแดงที่ขึ้นก่อนในหน้าปัจจุบัน (แก้ลำดับชั้นแบนและวัตถุหลักจม)</li>
+      <li>ปุ่มหลักเหลือปุ่มเดียวคืองานถัดไป รับคืน · โอนเป็นปุ่มรอง · งานอื่นอยู่ในเมนู ⋯</li>
+      <li>รายการไม่ตรงที่รอพิจารณาขึ้นต้นคอลัมน์เนื้อหา จอแคบก็เห็นก่อน และเป็นสีเตือนจุดเดียว · ที่ตั้งในหัวระเบียนบอกว่าตรวจพบที่อื่น (แก้สีที่ใช้เป็นของตกแต่ง)</li>
+      <li>แผงข้อมูลแสดงเฉพาะสิ่งที่หัวระเบียนยังไม่มี ไม่เล่าซ้ำ ไม่มีกล่องซ้อนกล่อง · ป้าย QR ที่ยังไม่ได้พิมพ์อยู่ท้ายสุด (แก้ลำดับชั้นแบนแบบกล่องซ้อนกล่อง)</li>
+    </ul>
+  </header>
+  <div class="app">
+    <nav class="nav" aria-label="เมนูหลัก">
+      <div class="brand"><img src="__ICON__" alt=""><strong>ระบบบริหารทรัพย์สิน</strong></div>
+      <div class="nav-group">
+        <div class="nav-label">งานประจำวัน</div>
+        <a href="#s-dashboard"><svg aria-hidden="true"><use href="#i-dash"/></svg>แดชบอร์ด</a>
+        <a href="#s-workcenter"><svg aria-hidden="true"><use href="#i-inbox"/></svg>ศูนย์งานค้าง<span class="count">4</span></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">ทรัพย์สิน</div>
+        <a href="#s-register" aria-current="page"><svg aria-hidden="true"><use href="#i-box"/></svg>ทะเบียนทรัพย์สิน</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-swap"/></svg>ส่งมอบ · รับคืน · โอน</a>
+        <a href="#s-round"><svg aria-hidden="true"><use href="#i-audit"/></svg>ตรวจนับ</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-wrench"/></svg>ซ่อมบำรุง</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-archive"/></svg>ตัดจำหน่าย</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">ภาพรวมและระบบ</div>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-chart"/></svg>รายงาน</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-db"/></svg>ข้อมูลหลัก</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-sliders"/></svg>ตั้งค่า</a>
+      </div>
+    </nav>
+    <div class="main">
+      <div class="topbar">
+        <label class="gsearch" for="g-q-asset"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="vh">ค้นหาทั้งระบบ</span><input id="g-q-asset" type="search" placeholder="ค้นหาทั้งระบบ: รหัส ชื่อ Serial ผู้ถือครอง" aria-keyshortcuts="Control+K" autocomplete="off"><kbd class="kbd" aria-hidden="true">Ctrl K</kbd></label>
+        <div class="who"><span>ผู้ดูแลระบบ</span><div class="avatar" aria-hidden="true">ผด</div></div>
+      </div>
+      <div class="content">
+        <nav class="crumbs" aria-label="เส้นทางหน้า"><a href="#s-register">ทะเบียนทรัพย์สิน</a><svg class="i sep" aria-hidden="true"><use href="#i-chev"/></svg><span class="tag" aria-current="page">GRL-COM-24-0003</span></nav>
+
+        <div class="record">
+          <div class="record-top">
+            <div class="thumb" aria-hidden="true"><svg aria-hidden="true"><use href="#i-net"/></svg></div>
+            <div class="record-id">
+              <span class="copyable"><span class="tag">GRL-COM-24-0003</span><button class="copy-btn" type="button" aria-label="คัดลอกรหัสทรัพย์สิน GRL-COM-24-0003"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg></button></span>
+              <h3 class="t-page">Network Equipment Cisco Meraki MX95</h3>
+              <div class="badges"><span class="badge b-ok">ใช้งานอยู่</span><span class="badge b-neutral">สภาพดี</span></div>
+            </div>
+            <div class="actions">
+              <button class="btn ghost" type="button" aria-label="การดำเนินการอื่น" aria-haspopup="menu"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button>
+              <button class="btn" type="button">โอน</button>
+              <button class="btn primary" type="button">รับคืน</button>
+            </div>
+          </div>
+          <dl class="facts">
+            <div><dt>ที่ตั้ง</dt><dd>IT ชั้น 1 (GRL)<div class="sub attn"><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg><span><span class="nw">ตรวจพบที่อื่น</span> · <span class="nw">รอพิจารณา</span></span></div></dd></div>
+            <div><dt>ผู้ถือครอง</dt><dd>สุภาวดี ร.<div class="sub">แผนกไอที</div></dd></div>
+            <div><dt>หมวดหมู่</dt><dd>อุปกรณ์เครือข่าย</dd></div>
+            <div><dt>มูลค่า</dt><dd><span class="money">64,900.00</span>&nbsp;<span class="unit">บาท</span></dd></div>
+            <div><dt>วันที่ซื้อ</dt><dd class="num">12/03/2567</dd></div>
+            <div><dt>ตรวจนับล่าสุด</dt><dd class="num">07/10/2569<div class="sub"><span class="tag">AUD-2026-0003</span></div></dd></div>
+          </dl>
+        </div>
+
+        <nav class="tabs" aria-label="ส่วนข้อมูลทรัพย์สิน">
+          <a href="#s-asset" aria-current="page">ภาพรวม</a>
+          <a href="#s-asset">ประวัติ <span class="c">4</span></a>
+          <a href="#s-asset">ซ่อมบำรุง <span class="c">1</span></a>
+          <a href="#s-asset">ตรวจนับ <span class="c">1</span></a>
+          <a href="#s-asset">ไฟล์และรูป <span class="c">2</span></a>
+        </nav>
+
+        <div class="split">
+          <div class="as-col">
+            <div class="panel" role="region" aria-labelledby="as-follow-h">
+              <div class="panel-head">
+                <div>
+                  <h4 class="t-section" id="as-follow-h">รายการไม่ตรงจากการตรวจนับ</h4>
+                  <div class="t-small">รอบ <span class="tag">AUD-2026-0003</span> · ตรวจนับแผนกบัญชี ไตรมาส 4/2569</div>
+                </div>
+                <span class="badge b-warn">รอพิจารณา</span>
+              </div>
+              <div class="rows">
+                <div class="row as-find">
+                  <div class="name">ที่ตั้งไม่ตรง</div>
+                  <dl class="kv">
+                    <dt>ในระบบ</dt><dd>IT ชั้น 1 (GRL)</dd>
+                    <dt>ที่ตรวจพบ</dt><dd><span class="nw">ห้องเซิร์ฟเวอร์ PT</span></dd>
+                  </dl>
+                </div>
+                <div class="row as-find">
+                  <div class="name">นอกขอบเขต</div>
+                  <div class="t-small">ขอบเขตของรอบนี้ไม่รวมทรัพย์สินนี้ แต่ตรวจพบระหว่างตรวจนับ</div>
+                </div>
+                <div><a class="link as-go" href="#s-round">พิจารณารายการไม่ตรง<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a></div>
+              </div>
+            </div>
+
+            <div class="panel" role="region" aria-labelledby="as-info-h">
+              <div class="panel-head">
+                <h4 class="t-section" id="as-info-h">ข้อมูลทรัพย์สิน</h4>
+                <button class="btn sm ghost" type="button">แก้ไข</button>
+              </div>
+              <div class="panel-body">
+                <dl class="kv">
+                  <dt>ผู้ขาย</dt><dd>บริษัท เน็ตเวิร์ค โซลูชั่น จำกัด</dd>
+                  <dt>ประกันถึง</dt><dd><span class="num">12/03/2570</span> <span class="muted num">· เหลือ 155&nbsp;วัน</span></dd>
+                  <dt>Serial</dt><dd><span class="copyable"><span class="tag">Q2XX-8H4K-29WN</span><button class="copy-btn" type="button" aria-label="คัดลอก Serial Q2XX-8H4K-29WN"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg></button></span></dd>
+                  <dt>ยี่ห้อ/รุ่น</dt><dd>Cisco · Meraki MX95</dd>
+                </dl>
+              </div>
+            </div>
+
+            <div class="panel" role="region" aria-labelledby="as-tl-h">
+              <div class="panel-head">
+                <h4 class="t-section" id="as-tl-h">ลำดับเหตุการณ์ล่าสุด</h4>
+                <a class="link" href="#s-asset">ดูประวัติทั้งหมด</a>
+              </div>
+              <ol class="rows as-tl">
+                <li class="row">
+                  <time class="t-small num" datetime="2026-10-07">07/10/2569</time>
+                  <div class="as-ev"><svg class="i muted" aria-hidden="true"><use href="#i-audit"/></svg><div><div class="name">ตรวจนับในรอบ <span class="tag">AUD-2026-0003</span></div><div class="sub">พบรายการไม่ตรง</div></div></div>
+                  <span class="t-small as-who">ผู้ดูแลระบบ</span>
+                </li>
+                <li class="row">
+                  <time class="t-small num" datetime="2025-09-02">02/09/2568</time>
+                  <div class="as-ev"><svg class="i muted" aria-hidden="true"><use href="#i-wrench"/></svg><div><div class="name">ซ่อมเสร็จ</div><div class="sub">เปลี่ยนพาวเวอร์ซัพพลาย</div></div></div>
+                  <span class="t-small as-who">ณัฐพล ส.</span>
+                </li>
+                <li class="row">
+                  <time class="t-small num" datetime="2024-03-15">15/03/2567</time>
+                  <div class="as-ev"><svg class="i muted" aria-hidden="true"><use href="#i-swap"/></svg><div><div class="name">ส่งมอบให้ สุภาวดี ร.</div><div class="sub">แผนกไอที</div></div></div>
+                  <span class="t-small as-who">ธนกร ศ.</span>
+                </li>
+              </ol>
+            </div>
+          </div>
+
+          <aside class="as-col" aria-label="รูปและป้าย QR ของทรัพย์สินนี้">
+            <div class="panel" role="region" aria-labelledby="as-ph-h">
+              <div class="panel-head">
+                <h4 class="t-section" id="as-ph-h">รูปทรัพย์สิน</h4>
+                <button class="btn sm" type="button"><svg class="i" aria-hidden="true"><use href="#i-camera"/></svg>เพิ่มรูป</button>
+              </div>
+              <div class="panel-body as-photos">
+                <figure>
+                  <div class="as-ph" role="img" aria-label="รูปด้านหน้าเครื่อง"><svg class="i" aria-hidden="true"><use href="#i-image"/></svg></div>
+                  <figcaption class="t-caption">ด้านหน้า</figcaption>
+                </figure>
+                <figure>
+                  <div class="as-ph" role="img" aria-label="รูปด้านหลังเครื่องที่เห็น Serial"><svg class="i" aria-hidden="true"><use href="#i-image"/></svg></div>
+                  <figcaption class="t-caption">ด้านหลังและ Serial</figcaption>
+                </figure>
+              </div>
+            </div>
+
+            <div class="panel" role="region" aria-labelledby="as-qr-h">
+              <div class="panel-head">
+                <h4 class="t-section" id="as-qr-h">ป้าย QR</h4>
+                <button class="btn sm" type="button"><svg class="i" aria-hidden="true"><use href="#i-printer"/></svg>พิมพ์ป้าย</button>
+              </div>
+              <div class="panel-body as-qr">
+                <div class="as-qr-code" role="img" aria-label="ตัวอย่างป้าย QR ของ GRL-COM-24-0003"><svg aria-hidden="true"><use href="#i-qr"/></svg></div>
+                <div class="as-qr-meta">
+                  <span class="tag">GRL-COM-24-0003</span>
+                  <span class="badge b-neutral">ยังไม่ได้พิมพ์ป้าย</span>
+                  <span class="t-caption">ระหว่างนี้ตรวจนับโดยค้นหาด้วยรหัสทรัพย์สิน</span>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

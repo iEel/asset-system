@@ -1,0 +1,142 @@
+<section class="mk-screen" id="s-workcenter">
+  <header>
+    <h2>ศูนย์งานค้าง</h2>
+    <ul>
+      <li>ชื่อหน้าตรงกับเมนู (เดิม "ศูนย์แจ้งเตือนงานค้าง") · การ์ดตัวเลขระบายสีเปลี่ยนเป็นแท็บเฉพาะคิวที่มีงาน คิวที่เป็นศูนย์รวมเป็นบรรทัดเดียว แก้การใช้สีเป็นของตกแต่ง</li>
+      <li>รายการเดียว จัดกลุ่มตามคิว เรียงจากรอนานสุด ทุกแถวบอกรอใคร รอมานานเท่าไร และปุ่มงานถัดไป แก้งานหลักจมใต้กล่องซ้อน</li>
+      <li>ประเภทรายการไม่ตรงแสดงเป็นป้ายโทนเตือนแบบเดียวกับแดชบอร์ด (เดิมสองหน้าใช้คนละสี)</li>
+      <li>ยอดใหญ่ที่ไม่ใช่งานของวันนี้แยกไปแผงงานต่อเนื่อง ตัวเลขเล็กและเงียบ ไม่กลบงานค้าง</li>
+    </ul>
+  </header>
+  <div class="app">
+    <nav class="nav" aria-label="เมนูหลัก">
+      <div class="brand"><img src="__ICON__" alt=""><strong>ระบบบริหารทรัพย์สิน</strong></div>
+      <div class="nav-group">
+        <div class="nav-label">งานประจำวัน</div>
+        <a href="#s-dashboard"><svg aria-hidden="true"><use href="#i-dash"/></svg>แดชบอร์ด</a>
+        <a href="#s-workcenter" aria-current="page"><svg aria-hidden="true"><use href="#i-inbox"/></svg>ศูนย์งานค้าง<span class="count">4</span></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">ทรัพย์สิน</div>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-box"/></svg>ทะเบียนทรัพย์สิน</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-swap"/></svg>ส่งมอบ · รับคืน · โอน</a>
+        <a href="#s-round"><svg aria-hidden="true"><use href="#i-audit"/></svg>ตรวจนับ</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-wrench"/></svg>ซ่อมบำรุง</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-archive"/></svg>ตัดจำหน่าย</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">ภาพรวมและระบบ</div>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-chart"/></svg>รายงาน</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-db"/></svg>ข้อมูลหลัก</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-sliders"/></svg>ตั้งค่า</a>
+      </div>
+    </nav>
+    <div class="main">
+      <div class="topbar">
+        <label class="gsearch" for="g-q-workcenter"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="vh">ค้นหาทั้งระบบ</span><input id="g-q-workcenter" type="search" placeholder="ค้นหาทั้งระบบ: รหัส ชื่อ Serial ผู้ถือครอง" aria-keyshortcuts="Control+K" autocomplete="off"><kbd class="kbd" aria-hidden="true">Ctrl K</kbd></label>
+        <div class="who"><span>ผู้ดูแลระบบ</span><div class="avatar" aria-hidden="true">ผด</div></div>
+      </div>
+      <div class="content">
+        <div class="page-head">
+          <div>
+            <h3 class="t-page">ศูนย์งานค้าง</h3>
+            <p class="meta num">เรียงจากรอนานสุด · ข้อมูล ณ 08/10/2569 21:40&nbsp;น.</p>
+          </div>
+          <div class="actions">
+            <div class="seg" role="group" aria-label="แสดงงาน">
+              <button type="button" aria-pressed="false">งานของฉัน</button>
+              <button type="button" aria-pressed="true">ทั้งหมดที่เข้าถึงได้</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="คิวงาน">
+          <button role="tab" aria-selected="true" type="button">ทั้งหมด <span class="c">4</span></button>
+          <button role="tab" aria-selected="false" type="button">ตรวจนับ <span class="c">3</span></button>
+          <button role="tab" aria-selected="false" type="button">ซ่อมบำรุง <span class="c">1</span></button>
+        </div>
+
+        <div class="panel wc-queue">
+          <div class="rows">
+            <h4 class="t-group" id="wc-g-audit">ตรวจนับ · รายการไม่ตรง<span class="nw">รอพิจารณา</span></h4>
+            <div class="row wc-item">
+              <div class="wc-what">
+                <div class="wc-l1"><span class="tag id">GRL-COM-24-0003</span><span class="name">Network Equipment Cisco Meraki MX95</span></div>
+                <div class="sub">ในระบบ IT ชั้น 1 · พบที่<span class="nw">ห้องเซิร์ฟเวอร์ PT</span> · <span class="tag">AUD-2026-0003</span></div>
+              </div>
+              <div class="wc-who"><div><span class="muted">รอ</span> ผู้พิจารณาผลตรวจนับ</div><div class="sub">ทุกคนในบทบาทนี้</div></div>
+              <div class="wc-age t-right"><div class="num"><span class="vh">รอมา </span>1&nbsp;วัน</div><div class="sub num"><span class="nw">พบ 07/10/2569</span></div></div>
+              <div class="wc-st"><span class="badge b-warn">ที่ตั้งไม่ตรง</span><span class="badge b-warn">นอกขอบเขต</span></div>
+              <div class="wc-act row-next"><a class="next-btn" href="#s-round"><svg aria-hidden="true"><use href="#i-audit"/></svg>พิจารณา<span class="vh"> GRL-COM-24-0003 ที่ตั้งไม่ตรง และนอกขอบเขต</span></a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่นของ GRL-COM-24-0003"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div>
+            </div>
+            <div class="row wc-item">
+              <div class="wc-what">
+                <div class="wc-l1"><span class="tag id">GRL-EQU-20-0012</span><span class="name">VoIP Grandstream GXP1760W</span></div>
+                <div class="sub">แนบรูปหลักฐานแล้ว · <span class="tag">AUD-2026-0003</span></div>
+              </div>
+              <div class="wc-who"><div><span class="muted">รอ</span> ผู้พิจารณาผลตรวจนับ</div><div class="sub">ทุกคนในบทบาทนี้</div></div>
+              <div class="wc-age t-right"><div class="num"><span class="vh">รอมา </span>21&nbsp;ชม.</div><div class="sub num"><span class="nw">พบ 08/10/2569 00:13</span></div></div>
+              <div class="wc-st"><span class="badge b-warn">สภาพไม่ตรง</span></div>
+              <div class="wc-act row-next"><a class="next-btn" href="#s-round"><svg aria-hidden="true"><use href="#i-audit"/></svg>พิจารณา<span class="vh"> GRL-EQU-20-0012 สภาพไม่ตรง</span></a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่นของ GRL-EQU-20-0012"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div>
+            </div>
+
+            <h4 class="t-group" id="wc-g-repair">ซ่อมบำรุง · ยังซ่อมไม่เสร็จ</h4>
+            <div class="row wc-item">
+              <div class="wc-what">
+                <div class="wc-l1"><span class="tag id">SNI-EQU-19-0271</span><span class="name">Monitor DELL LCD 18.5 E1916H</span></div>
+                <div class="sub">ใบซ่อม <span class="tag">MT-20261007-0005</span> · รอผลซ่อมก่อนปิดงาน</div>
+              </div>
+              <div class="wc-who"><div><span class="muted">รอ</span> ณัฐพล ส.</div><div class="sub">ผู้รับเรื่องซ่อม</div></div>
+              <div class="wc-age t-right"><div class="num"><span class="vh">รอมา </span>1&nbsp;วัน</div><div class="sub num"><span class="nw">ส่งซ่อม 07/10/2569</span></div></div>
+              <div class="wc-st"><span class="badge b-warn">อยู่ระหว่างซ่อม</span></div>
+              <div class="wc-act row-next"><a class="next-btn" href="#s-workcenter"><svg aria-hidden="true"><use href="#i-wrench"/></svg>ซ่อมเสร็จ<span class="vh"> บันทึกใบซ่อม MT-20261007-0005</span></a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่นของ SNI-EQU-19-0271"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div>
+            </div>
+
+            <div class="empty"><svg class="i" aria-hidden="true"><use href="#i-tick"/></svg><span>ไม่มี<span class="nw">งานค้าง</span>: รออนุมัติ · อนุมัติแล้วรอดำเนินการ · ตัดจำหน่ายรออนุมัติ · PM ถึงกำหนดใน 7&nbsp;วัน · แผนแก้ไข</span></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h4 class="t-section">งานต่อเนื่อง</h4>
+              <div class="t-small">ยอดใหญ่ที่ทยอยทำตามแผน ไม่นับเป็น<span class="nw">งานค้าง</span>ของวันนี้</div>
+            </div>
+          </div>
+          <div class="rows">
+            <div class="row">
+              <div>
+                <div class="name">ยังไม่ตรวจในรอบที่เปิดอยู่</div>
+                <div class="sub num">2 รอบ · <span class="tag">AUD-2026-0003</span> รอตรวจ 33 · <span class="tag">AUD-2026-0002</span> “ทดสอบระบบ” รอตรวจ 1,505 · <a class="link" href="#s-round">ดูรอบตรวจนับ</a></div>
+              </div>
+              <span class="t-label num">1,538</span>
+            </div>
+            <div class="row">
+              <div>
+                <div class="name">ทรัพย์สินนอกขอบเขตเจ้าของรหัส</div>
+                <div class="sub num"><span class="nw">ผู้ถือครอง</span>ต่างบริษัท 231 · <span class="nw">ผู้ถือครอง</span>ต่างสาขา 319 · ที่ตั้งต่างสาขา 728 (รายการหนึ่งเข้าได้หลายข้อ) · <a class="link" href="#s-register">ดูรายการ</a></div>
+              </div>
+              <span class="t-label num">909</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <style>
+    #s-workcenter .wc-queue { overflow: hidden; }
+    #s-workcenter h4.t-group { margin: 0; }
+    #s-workcenter .wc-item { grid-template-columns: minmax(0, 1fr) 168px 132px 128px 154px; grid-template-areas: "what who age st act"; gap: 4px 16px; align-items: first baseline; }
+    #s-workcenter .wc-what { grid-area: what; min-width: 0; }
+    #s-workcenter .wc-l1 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; }
+    #s-workcenter .wc-who { grid-area: who; min-width: 0; }
+    #s-workcenter .wc-age { grid-area: age; }
+    #s-workcenter .wc-st { grid-area: st; display: flex; flex-wrap: wrap; gap: 4px 6px; }
+    #s-workcenter .wc-act { grid-area: act; justify-self: end; }
+    @media (max-width: 1279px) {
+      #s-workcenter .wc-item { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "what age" "who who" "st act"; gap: 8px 12px; }
+      #s-workcenter .wc-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
+      #s-workcenter .wc-who .sub { margin-top: 0; }
+    }
+  </style>
+</section>

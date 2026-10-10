@@ -1,0 +1,243 @@
+<section class="mk-screen" id="s-round">
+  <style>
+    #s-round .split { grid-template-columns: minmax(0, 1fr) 340px; }
+    @media (max-width: 1080px) { #s-round .split { grid-template-columns: minmax(0, 1fr); } }
+    #s-round h4, #s-round p { margin: 0; }
+    #s-round .page-head .meta { margin-top: 4px; }
+    #s-round .rd-icon { width: var(--h-md); padding: 0; justify-content: center; }
+    #s-round .rd-sum { display: grid; gap: 8px; }
+    #s-round .rd-stats { grid-template-columns: minmax(0, 1.7fr) repeat(5, minmax(0, 1fr)); }
+    #s-round .rd-prog-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+    /* The bar sits in the foot row of the stat subgrid */
+    #s-round .rd-prog .progress { align-self: center; margin: 0; }
+    #s-round .rd-note { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 16px; }
+    #s-round .rd-stack { display: grid; gap: 12px; min-width: 0; }
+    #s-round .rd-rail { display: grid; gap: 16px; min-width: 0; }
+    #s-round .rd-close { display: grid; gap: 8px; padding: 16px var(--gutter); border-top: 1px solid var(--line); }
+    #s-round .rd-close .btn { width: 100%; justify-content: center; }
+    #s-round .rd-ev { display: grid; gap: 10px; }
+    #s-round .rd-ev-line { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; }
+    #s-round .rd-photo { display: inline-flex; align-items: center; gap: 4px; }
+    #s-round .rd-photo svg { width: 14px; height: 14px; stroke-width: 2.57; }
+    @media (max-width: 1080px) {
+      #s-round .rd-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      #s-round .rd-prog { grid-column: 1 / -1; }
+    }
+  </style>
+  <header>
+    <h2>รอบตรวจนับ</h2>
+    <ul>
+      <li>ความคืบหน้าและผลตรวจอยู่ในแถบตัวเลขชุดเดียว ตัวเลขแต่ละตัวแสดงที่เดียว ผลไม่ตรงแยกตามประเภทโดยไม่รวมเป็นยอดเดียว เพราะรายการหนึ่งไม่ตรงได้หลายด้าน (แก้: ตัวเลข 45/33/12 ซ้ำหลายจุด และการ์ดสีหลายใบ)</li>
+      <li>รายการในรอบเป็นงานหลักทางซ้าย รายการรอพิจารณาขึ้นก่อน ปุ่มต่อแถวตรงกับสถานะ: รอตรวจ = ตรวจ · รอพิจารณา = พิจารณา ไม่มี "แก้ไขผลตรวจ" บนแถวรอตรวจ และตารางพอดีจอ 1440</li>
+      <li>ปุ่มหลักคือ "เปิดหน้าตรวจนับ" ที่ค้นหาด้วยการพิมพ์ เพราะยังไม่ได้พิมพ์ป้าย QR · ก่อนปิดรอบเป็นรายการตรวจ 4 ข้อ ข้อที่ยังไม่ผ่านมีลิงก์ไปแท็บที่ต้องแก้ เหตุผลที่ยังปิดไม่ได้อยู่ใต้ปุ่ม</li>
+      <li>ยกเลิกรอบย้ายเข้าเมนูตัวเลือกอื่นแทนแผงสีแดงขนาดใหญ่ หลักฐานรูปเหลือบรรทัดเดียว</li>
+    </ul>
+  </header>
+  <div class="app">
+    <nav class="nav" aria-label="เมนูหลัก">
+      <div class="brand"><img src="__ICON__" alt=""><strong>ระบบบริหารทรัพย์สิน</strong></div>
+      <div class="nav-group">
+        <div class="nav-label">งานประจำวัน</div>
+        <a href="#s-dashboard"><svg aria-hidden="true"><use href="#i-dash"/></svg>แดชบอร์ด</a>
+        <a href="#s-workcenter"><svg aria-hidden="true"><use href="#i-inbox"/></svg>ศูนย์งานค้าง<span class="count">4</span></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">ทรัพย์สิน</div>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-box"/></svg>ทะเบียนทรัพย์สิน</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-swap"/></svg>ส่งมอบ · รับคืน · โอน</a>
+        <a href="#s-round" aria-current="page"><svg aria-hidden="true"><use href="#i-audit"/></svg>ตรวจนับ</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-wrench"/></svg>ซ่อมบำรุง</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-archive"/></svg>ตัดจำหน่าย</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">ภาพรวมและระบบ</div>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-chart"/></svg>รายงาน</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-db"/></svg>ข้อมูลหลัก</a>
+        <a href="#s-register"><svg aria-hidden="true"><use href="#i-sliders"/></svg>ตั้งค่า</a>
+      </div>
+    </nav>
+    <div class="main">
+      <div class="topbar">
+        <label class="gsearch" for="g-q-round"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="vh">ค้นหาทั้งระบบ</span><input id="g-q-round" type="search" placeholder="ค้นหาทั้งระบบ: รหัส ชื่อ Serial ผู้ถือครอง" aria-keyshortcuts="Control+K" autocomplete="off"><kbd class="kbd" aria-hidden="true">Ctrl K</kbd></label>
+        <div class="who"><span>ผู้ดูแลระบบ</span><div class="avatar" aria-hidden="true">ผด</div></div>
+      </div>
+      <div class="content">
+        <div>
+          <nav class="crumbs" aria-label="เส้นทางหน้า"><a href="#s-round">ตรวจนับ</a><svg class="i sep" aria-hidden="true"><use href="#i-chev"/></svg><span class="tag" aria-current="page">AUD-2026-0003</span></nav>
+          <div class="page-head">
+            <div>
+              <h3 class="t-page">ตรวจนับแผนกบัญชี ไตรมาส 4/2569</h3>
+              <p class="meta num">
+                <span class="tag">AUD-2026-0003</span>
+                <span class="muted" aria-hidden="true">·</span>
+                <span class="badge b-neutral">เปิดตรวจ</span>
+                <span class="muted" aria-hidden="true">·</span>
+                <span>07/10/2569 – 31/10/2569 (เหลือ 23&nbsp;วัน)</span>
+                <span class="muted" aria-hidden="true">·</span>
+                <span>สร้างโดย วิภาวรรณ ก.</span>
+                <span class="muted" aria-hidden="true">·</span>
+                <span>ข้อมูล ณ 08/10/2569 21:40&nbsp;น.</span>
+              </p>
+            </div>
+            <div class="actions">
+              <button class="btn" type="button" aria-haspopup="menu" aria-expanded="false"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>ส่งออก</button>
+              <a class="btn primary" href="#s-mobile"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg>เปิดหน้าตรวจนับ</a>
+              <button class="btn rd-icon" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="ตัวเลือกอื่นของรอบ เช่น ยกเลิกรอบตรวจ" title="ตัวเลือกอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button>
+            </div>
+          </div>
+        </div>
+
+        <section class="rd-sum" aria-labelledby="rd-sum-h">
+          <h4 class="vh" id="rd-sum-h">ความคืบหน้าและผลตรวจ</h4>
+          <div class="stats rd-stats">
+            <div class="stat rd-prog">
+              <span class="t-label" id="rd-prog-h">ตรวจแล้ว</span>
+              <span class="rd-prog-line"><span class="t-metric num">12</span><span class="t-small num">จาก 45&nbsp;รายการ · 27%</span></span>
+              <div class="progress" role="progressbar" aria-labelledby="rd-prog-h" aria-valuemin="0" aria-valuemax="45" aria-valuenow="12" aria-valuetext="ตรวจแล้ว 12 จาก 45 รายการ 27%"><span style="width: 27%"></span></div>
+            </div>
+            <div class="stat"><span class="t-label">พบตรง</span><span class="t-metric num">10</span></div>
+            <div class="stat"><span class="t-label">ที่ตั้งไม่ตรง</span><span class="t-metric num">2</span></div>
+            <div class="stat"><span class="t-label">ผู้ถือครองไม่ตรง</span><span class="t-metric num">1</span></div>
+            <div class="stat"><span class="t-label">สภาพไม่ตรง</span><span class="t-metric num">2</span></div>
+            <div class="stat"><span class="t-label">นอกขอบเขต</span><span class="t-metric num">1</span></div>
+          </div>
+          <div class="rd-note">
+            <p class="t-caption num">ไม่พบ 0 · รายการหนึ่งอาจไม่ตรงได้มากกว่าหนึ่งด้าน จึงไม่รวมเป็นยอดเดียว</p>
+            <p class="t-caption num">ตรวจล่าสุด 08/10/2569 00:13&nbsp;น. โดย ผู้ดูแลระบบ</p>
+          </div>
+        </section>
+
+        <div class="split">
+          <section class="rd-stack" aria-labelledby="rd-items-h">
+            <h4 class="vh" id="rd-items-h">รายการในรอบ</h4>
+            <div class="tabs" role="tablist" aria-label="สถานะรายการ">
+              <button role="tab" aria-selected="true" type="button" id="rd-tab-all">ทั้งหมด</button>
+              <button role="tab" aria-selected="false" type="button" id="rd-tab-review">รอพิจารณา</button>
+              <button role="tab" aria-selected="false" type="button" id="rd-tab-todo">รอตรวจ</button>
+              <button role="tab" aria-selected="false" type="button" id="rd-tab-done">ตรวจแล้ว</button>
+            </div>
+            <div class="toolbar">
+              <label class="field-search" for="round-q"><svg aria-hidden="true"><use href="#i-search"/></svg><span class="vh">ค้นหาในรอบนี้</span><input id="round-q" type="search" placeholder="ค้นหาในรอบนี้: รหัส ชื่อ Serial ผู้ถือครอง"></label>
+              <button class="btn" type="button"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg>ตัวกรอง</button>
+            </div>
+            <div class="table-wrap">
+              <table style="min-width: 720px">
+                <caption class="vh">รายการทรัพย์สินในรอบ AUD-2026-0003 เรียงรายการรอพิจารณาก่อน ตามด้วยรายการรอตรวจ</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">รหัสทรัพย์สิน</th>
+                    <th scope="col">ชื่อทรัพย์สิน · ที่ตั้งในระบบ</th>
+                    <th scope="col">ผู้ถือครองในระบบ</th>
+                    <th scope="col">ผลตรวจ</th>
+                    <th scope="col"><span class="vh">การดำเนินการ</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="tag id">GRL-COM-24-0003</span></td>
+                    <td><div class="name">Network Equipment Cisco Meraki MX95</div><div class="sub">IT ชั้น 1</div></td>
+                    <td>สุภาวดี ร.</td>
+                    <td><div class="badges"><span class="badge b-warn">ที่ตั้งไม่ตรง</span><span class="badge b-warn">นอกขอบเขต</span></div><div class="sub"><span class="nw">รอพิจารณา</span>ทั้งสองด้าน · พบที่<span class="nw">ห้องเซิร์ฟเวอร์ PT</span></div></td>
+                    <td><div class="row-next"><a class="next-btn" href="#s-asset" aria-label="พิจารณา GRL-COM-24-0003"><svg aria-hidden="true"><use href="#i-audit"/></svg>พิจารณา</a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น GRL-COM-24-0003"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><span class="tag id">GRL-EQU-20-0012</span></td>
+                    <td><div class="name">VoIP Grandstream GXP1760W</div></td>
+                    <td>อรอุมา จ.</td>
+                    <td><span class="badge b-warn">สภาพไม่ตรง</span><div class="sub"><span class="nw">รอพิจารณา</span> · <span class="rd-photo"><svg class="i" aria-hidden="true"><use href="#i-camera"/></svg>มีรูปหลักฐาน</span></div></td>
+                    <td><div class="row-next"><a class="next-btn" href="#s-asset" aria-label="พิจารณา GRL-EQU-20-0012"><svg aria-hidden="true"><use href="#i-audit"/></svg>พิจารณา</a><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น GRL-EQU-20-0012"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><span class="tag id">SNI-EQU-21-0055</span></td>
+                    <td><div class="name">Notebook DELL Latitude 3410</div><div class="sub">SNI ชั้น 4</div></td>
+                    <td>ธนกร ศ.</td>
+                    <td><span class="badge b-neutral">รอตรวจ</span></td>
+                    <td><div class="row-next"><button class="next-btn" type="button" aria-label="ตรวจ SNI-EQU-21-0055"><svg aria-hidden="true"><use href="#i-search"/></svg>ตรวจ</button><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น SNI-EQU-21-0055"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><span class="tag id">SNI-EQU-26-0022</span></td>
+                    <td><div class="name">Desktop Computer DELL Pro Micro QCM1255</div><div class="sub">GRL ชั้น 4</div></td>
+                    <td>วิภาวรรณ ก.</td>
+                    <td><span class="badge b-neutral">รอตรวจ</span></td>
+                    <td><div class="row-next"><button class="next-btn" type="button" aria-label="ตรวจ SNI-EQU-26-0022"><svg aria-hidden="true"><use href="#i-search"/></svg>ตรวจ</button><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น SNI-EQU-26-0022"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><span class="tag id">GRL-COM-19-0023</span></td>
+                    <td><div class="name">Monitor DELL LCD 18.5 E1916H</div><div class="sub">PT ชั้น 2</div></td>
+                    <td>ณัฐพล ส.</td>
+                    <td><span class="badge b-neutral">รอตรวจ</span></td>
+                    <td><div class="row-next"><button class="next-btn" type="button" aria-label="ตรวจ GRL-COM-19-0023"><svg aria-hidden="true"><use href="#i-search"/></svg>ตรวจ</button><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น GRL-COM-19-0023"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><span class="tag id">SNI-EQU-21-0306</span></td>
+                    <td><div class="name">Printer Epson LQ-590II</div><div class="sub">DC ชั้น 1</div></td>
+                    <td><span class="nil" aria-hidden="true">—</span><span class="vh">ไม่มีผู้ถือครอง</span></td>
+                    <td><span class="badge b-neutral">รอตรวจ</span></td>
+                    <td><div class="row-next"><button class="next-btn" type="button" aria-label="ตรวจ SNI-EQU-21-0306"><svg aria-hidden="true"><use href="#i-search"/></svg>ตรวจ</button><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น SNI-EQU-21-0306"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><span class="tag id">GRL-COM-26-0017</span></td>
+                    <td><div class="name">Monitor Dell Pro 22 E2225HM FHD</div><div class="sub">ACC ชั้น 4</div></td>
+                    <td>อรอุมา จ.</td>
+                    <td><span class="badge b-neutral">รอตรวจ</span></td>
+                    <td><div class="row-next"><button class="next-btn" type="button" aria-label="ตรวจ GRL-COM-26-0017"><svg aria-hidden="true"><use href="#i-search"/></svg>ตรวจ</button><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น GRL-COM-26-0017"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><span class="tag id">GRL-COM-18-0087</span></td>
+                    <td><div class="name">Desktop Computer DELL Optiplex 3050</div></td>
+                    <td><span class="nil" aria-hidden="true">—</span><span class="vh">ไม่มีผู้ถือครอง</span></td>
+                    <td><span class="badge b-ok">พบตรง</span></td>
+                    <td><div class="row-next"><span></span><button class="btn sm ghost" type="button" aria-label="การดำเนินการอื่น GRL-COM-18-0087"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button></div></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="table-foot num"><span>แสดง 1–8 · หน้า 1 จาก 6</span><div class="actions"><button class="btn sm" type="button" disabled>ก่อนหน้า</button><button class="btn sm" type="button">ถัดไป</button></div></div>
+            </div>
+          </section>
+
+          <aside class="rd-rail" aria-label="ความพร้อมปิดรอบและหลักฐาน">
+            <section class="panel" aria-labelledby="rd-close-h">
+              <div class="panel-head"><h4 class="t-section" id="rd-close-h">ก่อนปิดรอบ</h4><span class="t-small num">ผ่าน 2 จาก 4 ข้อ</span></div>
+              <div class="rows">
+                <div class="check todo">
+                  <span class="mark" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-clock"/></svg></span>
+                  <div><span class="vh">ยังไม่ผ่าน: </span>รายการรอตรวจ<div><a class="link" href="#rd-tab-todo">ไปที่รายการรอตรวจ</a></div></div>
+                  <span class="t-small num">33</span>
+                </div>
+                <div class="check todo">
+                  <span class="mark" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-clock"/></svg></span>
+                  <div><span class="vh">ยังไม่ผ่าน: </span>รายการไม่ตรง<span class="nw">รอพิจารณา</span><div><a class="link" href="#rd-tab-review">ไปที่รายการ<span class="nw">รอพิจารณา</span></a></div></div>
+                  <span class="t-small num">3</span>
+                </div>
+                <div class="check done">
+                  <span class="mark" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-tick"/></svg></span>
+                  <div><span class="vh">ผ่าน: </span>แผนแก้ไขค้าง<div class="sub">ไม่มีรายการค้าง</div></div>
+                  <span></span>
+                </div>
+                <div class="check done">
+                  <span class="mark" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-tick"/></svg></span>
+                  <div><span class="vh">ผ่าน: </span>ผู้ปิดรอบต้องไม่ใช่ผู้สร้างรอบ<div class="sub">คุณปิดรอบนี้ได้</div></div>
+                  <span></span>
+                </div>
+              </div>
+              <div class="rd-close">
+                <button class="btn" type="button" disabled aria-describedby="rd-close-why">ปิดรอบตรวจ</button>
+                <p class="t-small" id="rd-close-why">ยังปิดรอบไม่ได้ ต้องตรวจให้ครบทุกรายการและพิจารณารายการไม่ตรงก่อน</p>
+              </div>
+            </section>
+
+            <section class="panel" aria-labelledby="rd-ev-h">
+              <div class="panel-body rd-ev">
+                <div class="rd-ev-line">
+                  <h4 class="t-label" id="rd-ev-h">หลักฐานรูป</h4>
+                  <span class="t-small num">มีรูป 3 · ยังไม่มีรูป 42</span>
+                </div>
+                <div class="progress" role="img" aria-label="มีรูปหลักฐาน 3 จาก 45 รายการ"><span style="width: 6.7%"></span></div>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

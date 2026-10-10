@@ -1,0 +1,302 @@
+<section class="mk-screen" id="s-mobile">
+  <style>
+    /* Phone viewport: fixed height, the body scrolls between the bars like a real device. */
+    #s-mobile .phone > .screen { height: 720px; min-height: 0; }
+    #s-mobile .m-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; padding: 16px; display: grid; grid-auto-rows: max-content; gap: 12px; align-content: start; }
+    #s-mobile .m-body::-webkit-scrollbar { display: none; }
+    #s-mobile .grow { flex: 1 1 auto; min-width: 0; }
+
+    /* Phone shell (base.css has no phone bars): top bar, 44px icon buttons, bottom navigation */
+    #s-mobile .m-top { flex: none; display: flex; align-items: center; min-height: 56px; padding: 6px 6px 6px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+    #s-mobile .m-top.back { padding-left: 4px; }
+    #s-mobile .m-top .t-page { white-space: nowrap; }
+    #s-mobile .m-title { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #s-mobile .m-icon { flex: none; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--r); background: transparent; color: var(--ink-2); cursor: pointer; text-decoration: none; }
+    #s-mobile .m-icon:hover { background: var(--subtle); color: var(--ink); }
+    #s-mobile .m-icon svg { width: 22px; height: 22px; stroke-width: 1.64; }
+    #s-mobile .m-tabbar { flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; padding: 4px 6px 10px; background: var(--surface); border-top: 1px solid var(--line); }
+    #s-mobile .m-tabbar a { position: relative; display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 52px; padding: 4px 2px; border-radius: var(--r); color: var(--ink-2); text-decoration: none; font-size: 12px; font-weight: 500; line-height: 16px; }
+    #s-mobile .m-tabbar a:hover { background: var(--subtle); color: var(--ink); }
+    #s-mobile .m-tabbar svg { width: 22px; height: 22px; stroke: var(--ink-3); stroke-width: 1.64; }
+    #s-mobile .m-tabbar a[aria-current="page"] { color: var(--ink); font-weight: 600; }
+    #s-mobile .m-tabbar a[aria-current="page"] svg { stroke: var(--teal); }
+    #s-mobile .m-tabbar .m-count { position: absolute; top: 2px; left: calc(50% + 5px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--navy-3); color: var(--surface); outline: 2px solid var(--surface); font-size: 12px; font-weight: 600; line-height: 18px; text-align: center; }
+
+    /* Panel and list density for a 321px column */
+    #s-mobile .panel { overflow: hidden; }
+    #s-mobile .panel-head { padding-block: 12px; }
+    #s-mobile .panel-body { padding-block: 12px 16px; }
+    #s-mobile ul.rows, #s-mobile ol.rows { list-style: none; margin: 0; padding: 0; }
+    #s-mobile .m-tap { height: 44px; justify-content: center; }
+    #s-mobile .m-wide { width: 100%; }
+    #s-mobile .m-sq { width: 44px; padding: 0; }
+
+    /* 1. Home: tappable rows (icon, text, count, chevron) and the 2 x 2 stat panel */
+    #s-mobile .m-act { grid-template-columns: 20px minmax(0, 1fr) auto 16px; gap: 0 12px; min-height: 64px; color: var(--ink); text-decoration: none; }
+    #s-mobile .m-act.m-quiet { grid-template-columns: 20px minmax(0, 1fr) 16px; }
+    #s-mobile .m-act:hover { background: var(--subtle); color: var(--ink); }
+    #s-mobile .m-act > svg:first-child { width: 20px; height: 20px; stroke-width: 1.8; }
+    #s-mobile .m-clear { margin: 0; gap: 10px; }
+    #s-mobile .stats { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #s-mobile .stat { padding: 12px 16px; }
+    /* The phone stat cell is narrow: let the foot wrap between whole phrases instead of clipping */
+    #s-mobile .stat .foot { flex-wrap: wrap; white-space: normal; overflow: visible; column-gap: 4px; }
+    #s-mobile a.stat:hover { color: var(--ink); }
+
+    /* 2. Asset: dossier header, one notice, fact rows, photos, history */
+    #s-mobile .record { padding: 16px; }
+    #s-mobile .m-stack { display: grid; gap: 8px; justify-items: start; min-width: 0; }
+    #s-mobile .m-stack ul { margin: 0; padding-left: 18px; }
+    #s-mobile .m-kv { margin: 0; }
+    #s-mobile .m-kv > div { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+    #s-mobile .m-kv dt { flex: none; }
+    #s-mobile .m-kv dd { margin: 0; min-width: 0; text-align: right; overflow-wrap: anywhere; }
+    #s-mobile .m-ph { padding-block: 4px; padding-right: 6px; }
+    #s-mobile .m-photos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    #s-mobile .m-photos li { display: grid; gap: 4px; align-content: start; min-width: 0; }
+    #s-mobile .m-photo { aspect-ratio: 1; width: 100%; display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--r); background: var(--neutral-soft); color: var(--ink-3); cursor: pointer; }
+    #s-mobile .m-photo svg { width: 24px; height: 24px; stroke-width: 1.5; }
+    #s-mobile .m-tl { grid-template-columns: 84px minmax(0, 1fr); gap: 12px; align-items: start; }
+    #s-mobile .m-tl .name { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+    #s-mobile .m-actionbar { flex: none; display: grid; grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr); gap: 8px; padding: 10px 16px; background: var(--surface); border-top: 1px solid var(--line); }
+
+    /* 3. Count: header with round progress and the typed search, then room, segments, list */
+    #s-mobile .m-head { flex: none; background: var(--surface); border-bottom: 1px solid var(--line); }
+    #s-mobile .m-head .m-top { border-bottom: 0; }
+    #s-mobile .m-prog { display: grid; gap: 6px; padding: 0 16px 12px; }
+    #s-mobile .m-prog-line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    #s-mobile .m-find { padding: 0 16px 12px; }
+    #s-mobile .m-search { height: 48px; padding: 0 0 0 12px; gap: 10px; }
+    #s-mobile .m-search input { height: 100%; font-size: 16px; }
+    #s-mobile .m-search .m-cam { flex: none; width: 46px; height: 46px; display: grid; place-items: center; padding: 0; border: 0; border-left: 1px solid var(--line); border-radius: 0 var(--r-sm) var(--r-sm) 0; background: transparent; color: var(--ink-2); cursor: pointer; }
+    #s-mobile .m-search .m-cam:hover { background: var(--subtle); color: var(--ink); }
+    #s-mobile .m-search .m-cam svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.64; }
+    #s-mobile .m-room { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); text-align: left; cursor: pointer; }
+    #s-mobile .m-room:hover { background: var(--subtle); }
+    #s-mobile .m-seg { display: flex; width: 100%; }
+    #s-mobile .m-seg button { flex: 1 1 0; min-width: 0; height: 44px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  </style>
+  <header>
+    <h2>มือถือ</h2>
+    <ul>
+      <li>แถบล่างทึบ 4 ปุ่มเท่ากัน ป้าย 12px (เดิม 11px) แท็บตรวจนับแทนปุ่มสแกนลอย · เมนูอื่นอยู่ที่ปุ่มเมนูบนแถบหัว (แก้ตัวอักษรไทยที่ยังไม่ได้ปรับ)</li>
+      <li>หน้าหลักเริ่มที่ต้องจัดการ ตามด้วยตัวเลข 4 ช่องในแผงเดียว แทนการ์ดสีแยกใบ (แก้สีที่ใช้ตกแต่ง)</li>
+      <li>รายละเอียดทรัพย์สินเปิดด้วยรหัส ชื่อ สถานะ และรายการไม่ตรงที่รอพิจารณา ปุ่มรับคืน · โอน 44px ติดล่าง (แก้ของสำคัญจมหาย)</li>
+      <li>หน้าตรวจนับเริ่มที่ช่องพิมพ์ค้นหา 48px อักษร 16px กล้องเป็นปุ่มรองเพราะยังไม่ได้ติดป้าย QR · ตัวเลขเป็นของทั้งรอบชุดเดียว (แก้ตัวเลขรอบกับห้องปนกัน)</li>
+    </ul>
+  </header>
+  <div class="phones">
+
+    <!-- 1. Home -->
+    <div class="phone">
+      <div class="screen">
+        <header class="m-top">
+          <h3 class="t-page grow">หน้าหลัก</h3>
+          <button class="m-icon" type="button" aria-label="การแจ้งเตือน"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg></button>
+          <button class="m-icon" type="button" aria-label="เปิดเมนูทั้งหมด" aria-expanded="false"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg></button>
+        </header>
+        <div class="m-body">
+          <div class="panel">
+            <div class="panel-head">
+              <h4 class="t-section">ต้องจัดการ</h4>
+              <span class="t-caption num">ณ 08/10/2569 21:40&nbsp;น.</span>
+            </div>
+            <div class="rows">
+              <a class="row m-act" href="#s-round">
+                <svg class="i muted" aria-hidden="true"><use href="#i-audit"/></svg>
+                <div><div class="name">รายการไม่ตรง<span class="nw">รอพิจารณา</span></div><div class="sub">ตรวจนับ <span class="tag">AUD-2026-0003</span></div></div>
+                <span class="t-count">3</span>
+                <svg class="i muted" aria-hidden="true"><use href="#i-chev"/></svg>
+              </a>
+              <a class="row m-act" href="#s-workcenter">
+                <svg class="i muted" aria-hidden="true"><use href="#i-wrench"/></svg>
+                <div><div class="name">ยังซ่อมไม่เสร็จ</div><div class="sub num"><span class="tag">SNI-EQU-19-0271</span> · <span class="nw">ส่งซ่อม 07/10/2569</span></div></div>
+                <span class="t-count">1</span>
+                <svg class="i muted" aria-hidden="true"><use href="#i-chev"/></svg>
+              </a>
+              <p class="empty m-clear"><svg class="i" aria-hidden="true"><use href="#i-tick"/></svg>ไม่มีค้าง: อนุมัติ · ตัดจำหน่าย · PM · แผนแก้ไข</p>
+            </div>
+          </div>
+
+          <h4 class="vh">ทรัพย์สินตามสถานะ</h4>
+          <div class="stats">
+            <a class="stat" href="#s-register"><span class="t-label">ทรัพย์สินทั้งหมด</span><span class="t-metric">1,751</span></a>
+            <a class="stat" href="#s-register"><span class="t-label">ใช้งานอยู่</span><span class="t-metric">1,380</span></a>
+            <a class="stat" href="#s-register"><span class="t-label">พร้อมใช้งาน</span><span class="t-metric">127</span></a>
+            <a class="stat" href="#s-register"><span class="t-label">รอซ่อม / <span class="nw">อยู่ระหว่างซ่อม</span></span><span class="t-metric">10</span><span class="foot num"><span class="nw">รอซ่อม 7</span><span aria-hidden="true">·</span><span class="nw">อยู่ระหว่างซ่อม 3</span></span></a>
+          </div>
+
+          <div class="panel">
+            <div class="rows">
+              <a class="row m-act m-quiet" href="#s-round">
+                <svg class="i muted" aria-hidden="true"><use href="#i-audit"/></svg>
+                <div><div class="name num">ยังไม่ตรวจในรอบที่เปิดอยู่ 1,538 · 2 รอบ</div><div class="sub">งานต่อเนื่อง ทยอยตรวจตามแผน ไม่นับเป็น<span class="nw">งานค้าง</span></div></div>
+                <svg class="i muted" aria-hidden="true"><use href="#i-chev"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <a class="btn m-tap m-wide" href="#s-dashboard">เปิดแดชบอร์ดแบบเต็ม<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        </div>
+        <nav class="m-tabbar" aria-label="เมนูงานภาคสนาม">
+          <a href="#s-mobile" aria-current="page"><svg aria-hidden="true"><use href="#i-dash"/></svg><span>หน้าหลัก</span></a>
+          <a href="#s-register"><svg aria-hidden="true"><use href="#i-box"/></svg><span>ทรัพย์สิน</span></a>
+          <a href="#s-round"><svg aria-hidden="true"><use href="#i-audit"/></svg><span>ตรวจนับ</span></a>
+          <a href="#s-workcenter"><svg aria-hidden="true"><use href="#i-inbox"/></svg><span>งานค้าง</span><span class="m-count num">4<span class="vh"> งาน</span></span></a>
+        </nav>
+      </div>
+      <div class="caption">หน้าหลัก · งานที่ต้องทำมาก่อนตัวเลข</div>
+    </div>
+
+    <!-- 2. Asset detail -->
+    <div class="phone">
+      <div class="screen">
+        <header class="m-top back">
+          <a class="m-icon" href="#s-register" aria-label="กลับไปทะเบียนทรัพย์สิน"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg></a>
+          <span class="m-title t-section grow">รายละเอียดทรัพย์สิน</span>
+          <button class="m-icon" type="button" aria-label="การแจ้งเตือน"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg></button>
+          <button class="m-icon" type="button" aria-label="เปิดเมนูทั้งหมด" aria-expanded="false"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg></button>
+        </header>
+        <div class="m-body">
+          <div class="record">
+            <div class="record-id">
+              <span class="copyable"><span class="tag">GRL-COM-24-0003</span><button class="copy-btn" type="button" aria-label="คัดลอกรหัสทรัพย์สิน GRL-COM-24-0003"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg></button></span>
+              <h3 class="t-page">Network Equipment Cisco Meraki MX95</h3>
+              <div class="t-small">อุปกรณ์เครือข่าย · สภาพดี</div>
+              <div class="badges"><span class="badge b-ok">ใช้งานอยู่</span></div>
+            </div>
+          </div>
+
+          <div class="notice">
+            <svg class="i" aria-hidden="true"><use href="#i-alert"/></svg>
+            <div class="m-stack">
+              <strong>รายการไม่ตรงจากการตรวจนับ <span class="nw">รอพิจารณา</span></strong>
+              <ul class="t-small">
+                <li>ที่ตั้งไม่ตรง: พบที่<span class="nw">ห้องเซิร์ฟเวอร์ PT</span></li>
+                <li>นอกขอบเขต: ไม่อยู่ในขอบเขตของรอบ <span class="tag">AUD-2026-0003</span></li>
+              </ul>
+              <a class="btn m-tap" href="#s-round">เปิดรายการรอพิจารณา</a>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h4 class="t-section">ข้อมูลหลัก</h4></div>
+            <dl class="rows m-kv">
+              <div><dt class="t-caption">ที่ตั้ง</dt><dd>IT ชั้น 1 (GRL)</dd></div>
+              <div><dt class="t-caption">ผู้ถือครอง</dt><dd>สุภาวดี ร.<div class="sub">แผนกไอที</div></dd></div>
+              <div><dt class="t-caption">มูลค่า</dt><dd><span class="money">64,900.00</span>&nbsp;<span class="unit">บาท</span></dd></div>
+              <div><dt class="t-caption">วันที่ซื้อ</dt><dd class="num">12/03/2567</dd></div>
+              <div><dt class="t-caption">ประกันถึง</dt><dd class="num">12/03/2570</dd></div>
+              <div><dt class="t-caption">Serial</dt><dd><span class="copyable"><span class="tag">Q2XX-8H4K-29WN</span><button class="copy-btn" type="button" aria-label="คัดลอก Serial Q2XX-8H4K-29WN"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg></button></span></dd></div>
+              <div><dt class="t-caption">ผู้ขาย</dt><dd>บริษัท เน็ตเวิร์ค โซลูชั่น จำกัด</dd></div>
+              <div><dt class="t-caption">ป้าย QR</dt><dd>ยังไม่พิมพ์</dd></div>
+            </dl>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head m-ph">
+              <h4 class="t-section">รูปภาพ</h4>
+              <button class="m-icon" type="button" aria-label="ถ่ายรูปเพิ่ม"><svg class="i" aria-hidden="true"><use href="#i-camera"/></svg></button>
+            </div>
+            <div class="panel-body">
+              <ul class="m-photos">
+                <li><button class="m-photo" type="button" aria-label="ดูรูป ด้านหน้า"><svg class="i" aria-hidden="true"><use href="#i-image"/></svg></button><span class="t-caption">ด้านหน้า</span></li>
+                <li><button class="m-photo" type="button" aria-label="ดูรูป ป้ายรุ่นและ Serial"><svg class="i" aria-hidden="true"><use href="#i-image"/></svg></button><span class="t-caption">ป้ายรุ่น · Serial</span></li>
+                <li><button class="m-photo" type="button" aria-label="ดูรูป ตอนตรวจนับ"><svg class="i" aria-hidden="true"><use href="#i-image"/></svg></button><span class="t-caption">ตอนตรวจนับ</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h4 class="t-section">ลำดับเหตุการณ์</h4></div>
+            <ol class="rows">
+              <li class="row m-tl"><time class="t-small num" datetime="2026-10-07">07/10/2569</time><div><div class="name">ตรวจนับ <span class="badge b-warn">ที่ตั้งไม่ตรง</span><span class="badge b-warn">นอกขอบเขต</span></div><div class="sub">พบที่<span class="nw">ห้องเซิร์ฟเวอร์ PT</span> · <span class="tag">AUD-2026-0003</span></div></div></li>
+              <li class="row m-tl"><time class="t-small num" datetime="2025-09-02">02/09/2568</time><div><div class="name">ส่งซ่อม <span class="badge b-ok">ซ่อมเสร็จ</span></div><div class="sub">เปลี่ยนพาวเวอร์ซัพพลาย</div></div></li>
+              <li class="row m-tl"><time class="t-small num" datetime="2024-03-15">15/03/2567</time><div><div class="name">ส่งมอบ</div><div class="sub">ให้ สุภาวดี ร. · แผนกไอที</div></div></li>
+              <li class="row m-tl"><time class="t-small num" datetime="2024-03-12">12/03/2567</time><div><div class="name">ลงทะเบียน</div></div></li>
+            </ol>
+          </div>
+        </div>
+        <div class="m-actionbar">
+          <button class="btn m-tap m-sq" type="button" aria-label="การดำเนินการอื่น"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button>
+          <button class="btn m-tap" type="button">โอน</button>
+          <button class="btn primary m-tap" type="button">รับคืน</button>
+        </div>
+        <nav class="m-tabbar" aria-label="เมนูงานภาคสนาม">
+          <a href="#s-mobile"><svg aria-hidden="true"><use href="#i-dash"/></svg><span>หน้าหลัก</span></a>
+          <a href="#s-register" aria-current="page"><svg aria-hidden="true"><use href="#i-box"/></svg><span>ทรัพย์สิน</span></a>
+          <a href="#s-round"><svg aria-hidden="true"><use href="#i-audit"/></svg><span>ตรวจนับ</span></a>
+          <a href="#s-workcenter"><svg aria-hidden="true"><use href="#i-inbox"/></svg><span>งานค้าง</span><span class="m-count num">4<span class="vh"> งาน</span></span></a>
+        </nav>
+      </div>
+      <div class="caption">รายละเอียดทรัพย์สิน · เลื่อนในจอได้ ปุ่มหลักอยู่ล่าง</div>
+    </div>
+
+    <!-- 3. Audit count page (focused route: no bottom navigation) -->
+    <div class="phone">
+      <div class="screen">
+        <header class="m-head">
+          <div class="m-top back">
+            <a class="m-icon" href="#s-round" aria-label="กลับหน้ารอบตรวจนับ"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg></a>
+            <div class="grow">
+              <h3 class="m-title t-section">ตรวจนับแผนกบัญชี ไตรมาส 4/2569</h3>
+              <span class="tag">AUD-2026-0003</span>
+            </div>
+          </div>
+          <div class="m-prog">
+            <div class="m-prog-line t-small num"><span>ความคืบหน้าทั้งรอบ</span><strong>27%</strong></div>
+            <div class="progress" role="progressbar" aria-label="ความคืบหน้าทั้งรอบ" aria-valuemin="0" aria-valuemax="45" aria-valuenow="12" aria-valuetext="ตรวจแล้ว 12 จาก 45 (27%)"><span style="width: 27%"></span></div>
+          </div>
+          <div class="m-find">
+            <div class="field-search m-search">
+              <svg aria-hidden="true"><use href="#i-search"/></svg>
+              <label class="vh" for="mob-scan-q">ค้นหาทรัพย์สินในรอบนี้</label>
+              <input id="mob-scan-q" type="search" placeholder="พิมพ์รหัส ชื่อ หรือ Serial" autocomplete="off">
+              <button class="m-cam" type="button" aria-label="เปิดกล้องอ่าน QR"><svg class="i" aria-hidden="true"><use href="#i-camera"/></svg></button>
+            </div>
+          </div>
+        </header>
+        <div class="m-body">
+          <button class="m-room" type="button" aria-haspopup="dialog">
+            <svg class="i muted" aria-hidden="true"><use href="#i-pin"/></svg>
+            <span class="grow">เลือกห้องที่กำลังตรวจ</span>
+            <svg class="i muted" aria-hidden="true"><use href="#i-chev"/></svg>
+          </button>
+
+          <div class="seg m-seg" role="group" aria-label="สถานะรายการในรอบนี้">
+            <button type="button" aria-pressed="true">รอตรวจ <span class="num">33</span></button>
+            <button type="button" aria-pressed="false">ตรวจแล้ว <span class="num">12</span></button>
+            <button type="button" aria-pressed="false">ทั้งหมด <span class="num">45</span></button>
+          </div>
+
+          <ul class="panel rows" aria-label="รายการรอตรวจในรอบนี้">
+            <li class="row">
+              <div><span class="tag">SNI-EQU-21-0055</span><div class="name">Notebook DELL Latitude 3410</div><div class="sub">ที่ตั้งในระบบ SNI ชั้น 4</div></div>
+              <button class="btn m-tap" type="button" aria-label="ตรวจ SNI-EQU-21-0055">ตรวจ</button>
+            </li>
+            <li class="row">
+              <div><span class="tag">SNI-EQU-26-0022</span><div class="name">Desktop Computer DELL Pro Micro QCM1255</div><div class="sub">ที่ตั้งในระบบ GRL ชั้น 4</div></div>
+              <button class="btn m-tap" type="button" aria-label="ตรวจ SNI-EQU-26-0022">ตรวจ</button>
+            </li>
+            <li class="row">
+              <div><span class="tag">GRL-COM-19-0023</span><div class="name">Monitor DELL LCD 18.5 E1916H</div><div class="sub">ที่ตั้งในระบบ PT ชั้น 2</div></div>
+              <button class="btn m-tap" type="button" aria-label="ตรวจ GRL-COM-19-0023">ตรวจ</button>
+            </li>
+            <li class="row">
+              <div><span class="tag">SNI-EQU-21-0306</span><div class="name">Printer Epson LQ-590II</div><div class="sub">ที่ตั้งในระบบ DC ชั้น 1</div></div>
+              <button class="btn m-tap" type="button" aria-label="ตรวจ SNI-EQU-21-0306">ตรวจ</button>
+            </li>
+            <li class="row">
+              <div><span class="tag">GRL-COM-26-0017</span><div class="name">Monitor Dell Pro 22 E2225HM FHD</div><div class="sub">ที่ตั้งในระบบ ACC ชั้น 4</div></div>
+              <button class="btn m-tap" type="button" aria-label="ตรวจ GRL-COM-26-0017">ตรวจ</button>
+            </li>
+          </ul>
+
+          <button class="btn m-tap m-wide" type="button">แสดงเพิ่มอีก 28 รายการ</button>
+        </div>
+      </div>
+      <div class="caption">หน้าตรวจนับ · พิมพ์ค้นหาเป็นหลัก กล้องเป็นปุ่มรอง ไม่มีเมนูล่าง</div>
+    </div>
+
+  </div>
+</section>
