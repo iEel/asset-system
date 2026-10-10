@@ -56,3 +56,19 @@ export function hasNavigationPermission(user: NavigationUser, permission: Naviga
   if (user.roles.includes("system_admin")) return true
   return user.permissions.includes(`${permission.module}:${permission.action}`)
 }
+
+export type PermissionedNavigationSection<TItem, TKey extends string = string> = {
+  labelKey: TKey
+  items: TItem[]
+}
+
+// A section heading shows only when at least one of its rows survives the permission filter.
+export function filterNavigationSectionsByPermission<TItem extends PermissionedNavigationItem<TItem>, TKey extends string>(
+  sections: PermissionedNavigationSection<TItem, TKey>[],
+  user: NavigationUser
+): PermissionedNavigationSection<TItem, TKey>[] {
+  return sections.flatMap((section) => {
+    const items = filterNavigationItemsByPermission(section.items, user)
+    return items.length > 0 ? [{ ...section, items }] : []
+  })
+}

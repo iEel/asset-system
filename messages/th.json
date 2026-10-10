@@ -152,7 +152,11 @@
     "importExport": "นำเข้า/ส่งออก",
     "notification": "การแจ้งเตือน",
     "systemLog": "ประวัติระบบ",
-    "systemSetting": "ตั้งค่าระบบ"
+    "systemSetting": "ตั้งค่าระบบ",
+    "brandName": "ระบบบริหารทรัพย์สิน",
+    "sectionDaily": "งานประจำวัน",
+    "sectionAssets": "ทรัพย์สิน",
+    "sectionSystem": "ภาพรวมและระบบ"
   },
   "myAssets": {
     "title": "ทรัพย์สินของฉัน",

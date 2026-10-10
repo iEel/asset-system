@@ -152,7 +152,11 @@
     "importExport": "Import / Export",
     "notification": "Notifications",
     "systemLog": "System Log",
-    "systemSetting": "System Settings"
+    "systemSetting": "System Settings",
+    "brandName": "Asset Management System",
+    "sectionDaily": "Daily work",
+    "sectionAssets": "Assets",
+    "sectionSystem": "Reports and system"
   },
   "myAssets": {
     "title": "My Assets",
