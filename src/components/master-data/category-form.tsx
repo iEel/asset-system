@@ -122,7 +122,7 @@ export function CategoryForm({
               onChange={(event) => setField("code", event.target.value)}
               maxLength={20}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
@@ -132,7 +132,7 @@ export function CategoryForm({
               onChange={(event) => setField("name", event.target.value)}
               maxLength={200}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
@@ -142,7 +142,7 @@ export function CategoryForm({
               onChange={(event) => setField("description", event.target.value)}
               maxLength={500}
               rows={4}
-              className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
@@ -151,7 +151,7 @@ export function CategoryForm({
               type="checkbox"
               checked={values.isActive}
               onChange={(event) => setField("isActive", event.target.checked)}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
             />
             {tCommon("active")}
           </label>
@@ -333,7 +333,7 @@ function CustomFieldTemplateEditor({
                 maxLength={100}
                 required
                 placeholder="cpu"
-                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
 
@@ -344,7 +344,7 @@ function CustomFieldTemplateEditor({
                 maxLength={200}
                 required
                 placeholder="CPU"
-                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
 
@@ -353,7 +353,7 @@ function CustomFieldTemplateEditor({
                 value={field.fieldLabelTh ?? ""}
                 onChange={(event) => updateField(index, "fieldLabelTh", event.target.value)}
                 maxLength={200}
-                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
 
@@ -361,7 +361,7 @@ function CustomFieldTemplateEditor({
               <select
                 value={field.fieldType}
                 onChange={(event) => updateField(index, "fieldType", event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               >
                 <option value="text">{labels.text}</option>
                 <option value="number">{labels.number}</option>
@@ -379,7 +379,7 @@ function CustomFieldTemplateEditor({
                     onChange={(event) => updateField(index, "options", event.target.value)}
                     rows={3}
                     placeholder="Windows 11&#10;Windows 10&#10;macOS"
-                    className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
                 </Field>
               </div>
@@ -392,7 +392,7 @@ function CustomFieldTemplateEditor({
                 type="checkbox"
                 checked={field.isRequired}
                 onChange={(event) => updateField(index, "isRequired", event.target.checked)}
-                className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
               />
               {labels.required}
             </label>
@@ -511,7 +511,7 @@ function PhotoChecklistEditor({
             onChange={(event) => updateItem(index, event.target.value)}
             maxLength={100}
             placeholder={labels.item}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
           <button
             type="button"

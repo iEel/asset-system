@@ -219,7 +219,7 @@ function AssetIdentity({ asset, href }: { asset: MyAssetRow; href?: string }) {
 
   if (!href) return content
   return (
-    <Link href={href} className="block rounded-md outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-primary">
+    <Link href={href} className="block rounded-md outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring">
       {content}
     </Link>
   )

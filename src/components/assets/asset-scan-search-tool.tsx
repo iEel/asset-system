@@ -123,7 +123,7 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
           placeholder={labels.placeholder}
           scanMode="asset-qr"
           onScanSuccess={handleScannedValue}
-          inputClassName="min-h-11 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0 sm:flex-1"
+          inputClassName="min-h-11 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0 sm:flex-1"
         />
       </section>
 

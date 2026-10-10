@@ -91,7 +91,7 @@ export function MaintenancePlanForm({
             required
             maxLength={200}
             onChange={(event) => setField("title", event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
         <Field label={t("pmFrequencyLabel")} required>
@@ -99,7 +99,7 @@ export function MaintenancePlanForm({
             value={values.frequency}
             required
             onChange={(event) => setField("frequency", event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           >
             <option value="monthly">{t("pmFrequencyMonthly")}</option>
             <option value="quarterly">{t("pmFrequencyQuarterly")}</option>
@@ -116,7 +116,7 @@ export function MaintenancePlanForm({
               value={values.intervalDays}
               required
               onChange={(event) => setField("intervalDays", event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
         ) : null}
@@ -126,7 +126,7 @@ export function MaintenancePlanForm({
             value={values.nextDueDate}
             required
             onChange={(event) => setField("nextDueDate", event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
         <MaintenanceOptionSelect type="supplier" label={t("pmExternalProvider")} value={values.vendorId} placeholder={t("pmNoExternalProvider")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={tCommon("loading")} onChange={(value) => setField("vendorId", value)} />
@@ -137,7 +137,7 @@ export function MaintenancePlanForm({
               rows={3}
               maxLength={4000}
               onChange={(event) => setField("notes", event.target.value)}
-              className="min-h-20 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="min-h-20 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
         </div>

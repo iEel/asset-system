@@ -709,7 +709,7 @@ export function AssetRegisterTable({
                 <select
                   value={bulkForm.toLocationId}
                   onChange={(event) => setBulkForm((current) => ({ ...current, toLocationId: event.target.value }))}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 >
                   <option value="">{labels.noChange}</option>
                   {bulkOptions.locations.map((location) => (
@@ -724,7 +724,7 @@ export function AssetRegisterTable({
                 <select
                   value={bulkForm.toCustodianId}
                   onChange={(event) => setBulkForm((current) => ({ ...current, toCustodianId: event.target.value }))}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 >
                   <option value="">{labels.noChange}</option>
                   {bulkOptions.employees.map((employee) => (
@@ -741,7 +741,7 @@ export function AssetRegisterTable({
                   onChange={(event) => setBulkForm((current) => ({ ...current, reason: event.target.value }))}
                   required
                   maxLength={500}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </label>
               <label className="block">
@@ -750,7 +750,7 @@ export function AssetRegisterTable({
                   value={bulkForm.remark}
                   onChange={(event) => setBulkForm((current) => ({ ...current, remark: event.target.value }))}
                   rows={3}
-                  className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </label>
               <div className="flex justify-end gap-2 border-t border-border pt-4">

@@ -69,7 +69,7 @@ export function SearchableSelect({
             <button
               type="button"
               disabled={disabled}
-              className={`flex min-h-11 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-background px-3 text-left text-sm outline-none transition-colors hover:bg-accent focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground sm:h-10 sm:min-h-0 ${showClear ? "pr-24 sm:pr-20" : "pr-10"}`}
+              className={`flex min-h-11 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-background px-3 text-left text-sm outline-none transition-colors hover:bg-accent focus:border-ring focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground sm:h-10 sm:min-h-0 ${showClear ? "pr-24 sm:pr-20" : "pr-10"}`}
               aria-labelledby={label ? labelId : undefined}
               aria-label={label ? undefined : placeholder}
             >
@@ -102,7 +102,7 @@ export function SearchableSelect({
           <button
             type="button"
             onClick={() => selectValue("")}
-            className="absolute inset-y-0 right-8 inline-flex min-h-11 w-11 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-0 sm:w-10"
+            className="absolute inset-y-0 right-8 inline-flex min-h-11 w-11 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-0 sm:w-10"
             aria-label={clearLabel ?? placeholder}
             title={clearLabel ?? placeholder}
           >

@@ -1,26 +1,11 @@
 import assert from "node:assert/strict"
-import { readdirSync, readFileSync, statSync } from "node:fs"
-import { join } from "node:path"
 import test from "node:test"
-
-export function readSourceFiles(root: string): Array<{ path: string; source: string }> {
-  const files: Array<{ path: string; source: string }> = []
-  for (const entry of readdirSync(root)) {
-    const path = join(root, entry)
-    if (statSync(path).isDirectory()) files.push(...readSourceFiles(path))
-    else if (/\.(ts|tsx)$/.test(entry)) {
-      files.push({ path: path.replace(/\\/g, "/"), source: readFileSync(path, "utf8").replace(/\r\n/g, "\n") })
-    }
-  }
-  return files
-}
+import { findMatches as findSourceMatches, readSourceFiles } from "./helpers/source-files.ts"
 
 const sources = readSourceFiles("src")
 
 function findMatches(pattern: RegExp, allow: (path: string) => boolean = () => false) {
-  return sources
-    .filter((file) => !allow(file.path))
-    .flatMap((file) => [...file.source.matchAll(pattern)].map((match) => `${file.path}: ${match[0]}`))
+  return findSourceMatches(sources, pattern, allow)
 }
 
 test("status tints use soft tokens instead of opacity", () => {

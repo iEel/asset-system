@@ -30,7 +30,7 @@ test("returns stable metric card classes for each tone", () => {
 
 test("returns shared panel, form control, and action button classes", () => {
   assert.match(getPanelClasses(), /border-border/)
-  assert.match(getFieldControlClasses(), /focus:border-primary/)
+  assert.match(getFieldControlClasses(), /focus:border-ring/)
   assert.match(getActionButtonClasses("primary"), /bg-primary/)
   assert.match(getActionButtonClasses("secondary", "sm"), /h-8/)
   assert.match(getSafeActionLinkClasses("primary"), /min-h-11/)

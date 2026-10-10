@@ -16,8 +16,8 @@ type Option = { id: string; label: string }
 type Outcome = "usable" | "beyond_repair"
 type Dialog = "complete" | "cancel" | "edit" | null
 
-const inputClass = "h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-const textareaClass = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+const inputClass = "h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+const textareaClass = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
 const secondaryButton = "inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-accent disabled:opacity-50"
 
 export function RepairRecordActions({

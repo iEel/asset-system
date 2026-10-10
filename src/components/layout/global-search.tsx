@@ -135,7 +135,7 @@ export function GlobalSearch() {
             onFocus={() => setOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder={t("placeholder")}
-            className="h-9 w-[min(28rem,36vw)] min-w-0 rounded-md border border-border bg-background pl-10 pr-10 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-9 w-[min(28rem,36vw)] min-w-0 rounded-md border border-border bg-background pl-10 pr-10 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             role="combobox"
             aria-label={t("label")}
             aria-expanded={showPanel}

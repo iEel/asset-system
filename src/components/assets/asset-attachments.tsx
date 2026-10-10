@@ -179,7 +179,7 @@ export function AssetAttachments({
                     <button
                       type="button"
                       onClick={() => setPreviewPhoto({ title: item.label, attachment })}
-                      className="relative block aspect-video w-full bg-muted/40 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="relative block aspect-video w-full bg-muted/40 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring"
                     >
                       <Image
                         src={`/api/attachments/${attachment.id}?inline=1`}
@@ -263,7 +263,7 @@ export function AssetAttachments({
           <select
             value={photoLabel}
             onChange={(event) => setPhotoLabel(event.target.value)}
-            className="mb-3 h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="mb-3 h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           >
             <option value="">{t("selectPhotoType")}</option>
             {photoChecklist.map((item) => (
@@ -349,7 +349,7 @@ function PhotoPreview({
       <button
         type="button"
         onClick={() => onPreview({ title, attachment })}
-        className="relative block h-32 w-full bg-muted/40 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-primary"
+        className="relative block h-32 w-full bg-muted/40 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring"
       >
         <Image
           src={`/api/attachments/${attachment.id}?inline=1`}
@@ -388,7 +388,7 @@ function AttachmentCard({
         <button
           type="button"
           onClick={onPreview}
-          className="relative block h-28 w-full bg-muted/40 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-primary"
+          className="relative block h-28 w-full bg-muted/40 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <Image
             src={`/api/attachments/${attachment.id}?inline=1`}

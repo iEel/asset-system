@@ -958,7 +958,7 @@ export function SystemSettingsForm({
       <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.searchSettings}</span>
-          <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+          <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3 focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               type="search"
@@ -977,7 +977,7 @@ export function SystemSettingsForm({
                   key={result.key}
                   type="button"
                   onClick={() => openSettingGroup(result.tab)}
-                  className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <span className="min-w-0">
                     <span className="block truncate font-mono text-xs font-medium text-foreground">{result.key}</span>
@@ -1016,7 +1016,7 @@ export function SystemSettingsForm({
                 id="asset-tag-template"
                 value={formatTemplate}
                 onChange={(event) => setValue(assetTagFormatTemplateKey, event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
               <p className="text-sm text-muted-foreground">{labels.assetTagTemplateHelp}</p>
               {hasInvalidTemplate ? <ValidationMessage message={labels.invalidFormatTemplate} /> : null}
@@ -1074,7 +1074,7 @@ export function SystemSettingsForm({
               max={12}
               value={getValue("asset_tag_running_digits")}
               onChange={(event) => setValue("asset_tag_running_digits", event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
           <Field label={labels.separator} htmlFor="asset-tag-separator">
@@ -1082,7 +1082,7 @@ export function SystemSettingsForm({
               id="asset-tag-separator"
               value={getValue("asset_tag_separator")}
               onChange={(event) => setValue("asset_tag_separator", event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
           <Field label={labels.globalPrefix} htmlFor="asset-tag-global-prefix">
@@ -1090,7 +1090,7 @@ export function SystemSettingsForm({
               id="asset-tag-global-prefix"
               value={getValue("asset_tag_prefix")}
               onChange={(event) => setValue("asset_tag_prefix", event.target.value.toUpperCase())}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
         </div>
@@ -1110,7 +1110,7 @@ export function SystemSettingsForm({
                   value={publicQrBaseUrl}
                   placeholder={labels.publicQrBaseUrlPlaceholder}
                   onChange={(event) => setValue(assetQrPublicBaseUrlKey, event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
               <p className="text-sm text-muted-foreground">{labels.publicQrBaseUrlDescription}</p>
@@ -1128,7 +1128,7 @@ export function SystemSettingsForm({
                 id="asset-label-default-tape-size"
                 value={getValue("asset_label_default_tape_size")}
                 onChange={(event) => setValue("asset_label_default_tape_size", event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               >
                 {assetLabelTapeSizes.map((size) => (
                   <option key={size} value={size}>
@@ -1194,7 +1194,7 @@ export function SystemSettingsForm({
                   id="checkout-document-template"
                   value={checkoutDocumentTemplate}
                   onChange={(event) => setValue(checkoutDocumentTemplateKey, event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
               <Field label={labels.checkinDocumentTemplate} htmlFor="checkin-document-template">
@@ -1202,7 +1202,7 @@ export function SystemSettingsForm({
                   id="checkin-document-template"
                   value={checkinDocumentTemplate}
                   onChange={(event) => setValue(checkinDocumentTemplateKey, event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
               <Field label={labels.operationDocumentRunningDigits} htmlFor="operation-document-running-digits">
@@ -1213,7 +1213,7 @@ export function SystemSettingsForm({
                   max={12}
                   value={getValue(operationDocumentRunningDigitsKey)}
                   onChange={(event) => setValue(operationDocumentRunningDigitsKey, event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
             </div>
@@ -1366,7 +1366,7 @@ export function SystemSettingsForm({
                         )
                       }
                       maxLength={10}
-                      className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm uppercase outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                     />
                   </Field>
                   <div className="rounded-md border border-border bg-muted/20 px-3 py-2">
@@ -1494,7 +1494,7 @@ export function SystemSettingsForm({
               id="company-name"
               value={getValue("company_name")}
               onChange={(event) => setValue("company_name", event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
           <Field label={labels.defaultCurrency} htmlFor="default-currency">
@@ -1502,7 +1502,7 @@ export function SystemSettingsForm({
               id="default-currency"
               value={getValue("default_currency")}
               onChange={(event) => setValue("default_currency", event.target.value.toUpperCase())}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
           <div className="md:col-span-2">
@@ -1531,7 +1531,7 @@ export function SystemSettingsForm({
               max={365}
               value={getValue(notificationReturnDueSoonDaysKey)}
               onChange={(event) => setValue(notificationReturnDueSoonDaysKey, event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
           <Field label={labels.auditActionDueSoonDays} htmlFor="notification-audit-action-days">
@@ -1542,7 +1542,7 @@ export function SystemSettingsForm({
               max={365}
               value={getValue(notificationAuditActionDueSoonDaysKey)}
               onChange={(event) => setValue(notificationAuditActionDueSoonDaysKey, event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
           <Field label={labels.warrantyExpiryDays} htmlFor="notification-warranty-expiry-days">
@@ -1553,7 +1553,7 @@ export function SystemSettingsForm({
               max={365}
               value={getValue(notificationWarrantyExpiryDaysKey)}
               onChange={(event) => setValue(notificationWarrantyExpiryDaysKey, event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
           <Field label={labels.licenseExpiryDays} htmlFor="notification-license-expiry-days">
@@ -1564,7 +1564,7 @@ export function SystemSettingsForm({
               max={365}
               value={getValue(notificationLicenseExpiryDaysKey)}
               onChange={(event) => setValue(notificationLicenseExpiryDaysKey, event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
         </div>
@@ -1606,7 +1606,7 @@ export function SystemSettingsForm({
                 max={5}
                 value={getValue(workflowApprovalMinApproversKey)}
                 onChange={(event) => setValue(workflowApprovalMinApproversKey, event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
             <Field label={labels.workflowApprovalSlaDays} htmlFor="workflow-approval-sla-days">
@@ -1617,7 +1617,7 @@ export function SystemSettingsForm({
                 max={90}
                 value={getValue(workflowApprovalSlaDaysKey)}
                 onChange={(event) => setValue(workflowApprovalSlaDaysKey, event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
           </div>
@@ -1651,7 +1651,7 @@ export function SystemSettingsForm({
             </div>
             <a
               href={`/${locale}/admin/storage`}
-              className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:w-fit"
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-fit"
             >
               {labels.openStorageGovernance}
             </a>
@@ -1665,7 +1665,7 @@ export function SystemSettingsForm({
                 max={3650}
                 value={getValue(retentionAttachmentDaysKey)}
                 onChange={(event) => setValue(retentionAttachmentDaysKey, event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
             <Field label={labels.retentionAuditLogDays} htmlFor="retention-audit-log-days">
@@ -1676,7 +1676,7 @@ export function SystemSettingsForm({
                 max={3650}
                 value={getValue(retentionAuditLogDaysKey)}
                 onChange={(event) => setValue(retentionAuditLogDaysKey, event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
             <Field label={labels.retentionOrphanFileDays} htmlFor="retention-orphan-file-days">
@@ -1687,7 +1687,7 @@ export function SystemSettingsForm({
                 max={3650}
                 value={getValue(retentionOrphanFileDaysKey)}
                 onChange={(event) => setValue(retentionOrphanFileDaysKey, event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
           </div>
@@ -1728,7 +1728,7 @@ export function SystemSettingsForm({
                   value={getValue("ldap_url")}
                   onChange={(event) => setValue("ldap_url", event.target.value)}
                   placeholder="ldap://dc.company.local:389"
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
               <Field label={labels.ldapBaseDn} htmlFor="ldap-base-dn">
@@ -1737,7 +1737,7 @@ export function SystemSettingsForm({
                   value={getValue("ldap_base_dn")}
                   onChange={(event) => setValue("ldap_base_dn", event.target.value)}
                   placeholder="DC=company,DC=local"
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
               <Field label={labels.ldapBindDn} htmlFor="ldap-bind-dn">
@@ -1746,7 +1746,7 @@ export function SystemSettingsForm({
                   value={getValue("ldap_bind_dn")}
                   onChange={(event) => setValue("ldap_bind_dn", event.target.value)}
                   placeholder="CN=ldap-reader,OU=Service Accounts,DC=company,DC=local"
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
               <Field label={labels.ldapBindPassword} htmlFor="ldap-bind-password">
@@ -1755,7 +1755,7 @@ export function SystemSettingsForm({
                   type="password"
                   value={getValue("ldap_bind_password")}
                   onChange={(event) => setValue("ldap_bind_password", event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
             </div>
@@ -1777,7 +1777,7 @@ export function SystemSettingsForm({
                   id="ldap-user-filter"
                   value={getValue("ldap_user_filter")}
                   onChange={(event) => setValue("ldap_user_filter", event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
               <Field label={labels.ldapUpnDomain} htmlFor="ldap-upn-domain">
@@ -1786,7 +1786,7 @@ export function SystemSettingsForm({
                   value={getValue("ldap_upn_domain")}
                   onChange={(event) => setValue("ldap_upn_domain", event.target.value)}
                   placeholder="company.local"
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
               <Field label={labels.ldapDomain} htmlFor="ldap-domain">
@@ -1795,7 +1795,7 @@ export function SystemSettingsForm({
                   value={getValue("ldap_domain")}
                   onChange={(event) => setValue("ldap_domain", event.target.value)}
                   placeholder="COMPANY"
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
               <div className="lg:col-span-2">
@@ -1805,7 +1805,7 @@ export function SystemSettingsForm({
                     value={getValue("ldap_user_dn_template")}
                     onChange={(event) => setValue("ldap_user_dn_template", event.target.value)}
                     placeholder="CN={username},OU=Users,DC=company,DC=local"
-                    className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
                 </Field>
               </div>
@@ -1822,7 +1822,7 @@ export function SystemSettingsForm({
                     type="checkbox"
                     checked={getValue("ldap_auto_provision") === "true"}
                     onChange={(event) => setBooleanValue("ldap_auto_provision", event.target.checked)}
-                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                    className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
                   />
                 </label>
               </div>
@@ -1873,7 +1873,7 @@ export function SystemSettingsForm({
                   id="ldap-sync-mode"
                   value={getValue("ldap_sync_mode")}
                   onChange={(event) => setValue("ldap_sync_mode", event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 >
                   <option value="preview">Preview</option>
                   <option value="manual">Manual</option>
@@ -1887,7 +1887,7 @@ export function SystemSettingsForm({
                   min={0}
                   value={getValue("ldap_sync_max_scheduled_deactivations")}
                   onChange={(event) => setValue("ldap_sync_max_scheduled_deactivations", event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
               <Field label={labels.ldapSyncBaseDn} htmlFor="ldap-sync-base-dn">
@@ -1896,7 +1896,7 @@ export function SystemSettingsForm({
                   value={getValue("ldap_sync_base_dn")}
                   onChange={(event) => setValue("ldap_sync_base_dn", event.target.value)}
                   placeholder="OU=Employees,DC=company,DC=local"
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
             </div>
@@ -1912,7 +1912,7 @@ export function SystemSettingsForm({
                       id="ldap-sync-default-company"
                       value={getValue("ldap_sync_default_company_code")}
                       onChange={(event) => setValue("ldap_sync_default_company_code", event.target.value.toUpperCase())}
-                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                     />
                   </Field>
                   <Field label={labels.ldapSyncDefaultBranchCode} htmlFor="ldap-sync-default-branch">
@@ -1920,7 +1920,7 @@ export function SystemSettingsForm({
                       id="ldap-sync-default-branch"
                       value={getValue("ldap_sync_default_branch_code")}
                       onChange={(event) => setValue("ldap_sync_default_branch_code", event.target.value.toUpperCase())}
-                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                     />
                   </Field>
                   <Field label={labels.ldapSyncDefaultDepartmentCode} htmlFor="ldap-sync-default-department">
@@ -1928,7 +1928,7 @@ export function SystemSettingsForm({
                       id="ldap-sync-default-department"
                       value={getValue("ldap_sync_default_department_code")}
                       onChange={(event) => setValue("ldap_sync_default_department_code", event.target.value.toUpperCase())}
-                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                     />
                   </Field>
                 </div>
@@ -1948,7 +1948,7 @@ export function SystemSettingsForm({
                     setValue("ldap_sync_schedule", value)
                   }
                 }}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               >
                 {ldapSchedulePresets.map((preset) => (
                   <option key={preset.value} value={preset.value}>
@@ -1963,7 +1963,7 @@ export function SystemSettingsForm({
                   id="ldap-sync-filter"
                   value={getValue("ldap_sync_filter")}
                   onChange={(event) => setValue("ldap_sync_filter", event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
             </div>
@@ -1975,7 +1975,7 @@ export function SystemSettingsForm({
                     value={syncSchedule}
                     onChange={(event) => setValue("ldap_sync_schedule", event.target.value)}
                     placeholder="0 2 * * *"
-                    className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
                 </Field>
               </div>
@@ -2045,7 +2045,7 @@ export function SystemSettingsForm({
                       <input
                         value={values[setting.key] ?? ""}
                         onChange={(event) => setValues((current) => ({ ...current, [setting.key]: event.target.value }))}
-                        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                       />
                     </td>
                     <td className="min-w-80 px-4 py-3 text-muted-foreground">{setting.description || "-"}</td>
@@ -2076,7 +2076,7 @@ export function SystemSettingsForm({
                       <button
                         type="button"
                         onClick={() => openSettingGroup(getSystemSettingsTabForKey(setting.key))}
-                        className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                        className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
                         {setting.key}
                         <span className="ml-2 text-xs font-normal text-muted-foreground">{labels.openSettingGroup}</span>
@@ -2306,7 +2306,7 @@ function CategoryTransferRow({
         type="checkbox"
         checked={checked}
         onChange={onChange}
-        className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+        className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
       />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-medium text-foreground">{category.name}</span>
@@ -2379,7 +2379,7 @@ function ToggleField({
         type="checkbox"
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
-        className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+        className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
       />
     </label>
   )
@@ -2549,7 +2549,7 @@ function LabelAssetNameModeField({
               type="button"
               aria-pressed={isActive}
               onClick={() => onChange(option.value)}
-              className={`inline-flex h-8 items-center justify-center gap-1.5 rounded px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+              className={`inline-flex h-8 items-center justify-center gap-1.5 rounded px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                 isActive
                   ? "bg-primary text-white shadow-sm"
                   : "text-muted-foreground hover:bg-background hover:text-foreground"
@@ -2613,7 +2613,7 @@ function LabelTemplatePanel({
             max={120}
             value={getValue(`${prefix}_width_mm`)}
             onChange={(event) => setValue(`${prefix}_width_mm`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
         <Field label={labels.labelHeightMm} htmlFor={`${prefix}-height-mm`}>
@@ -2624,7 +2624,7 @@ function LabelTemplatePanel({
             max={100}
             value={getValue(`${prefix}_height_mm`)}
             onChange={(event) => setValue(`${prefix}_height_mm`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
         <Field label={labels.labelQrSize} htmlFor={`${prefix}-qr-size`}>
@@ -2635,7 +2635,7 @@ function LabelTemplatePanel({
             max={90}
             value={getValue(`${prefix}_qr_size`)}
             onChange={(event) => setValue(`${prefix}_qr_size`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
         <Field label={labels.labelMarginMm} htmlFor={`${prefix}-margin-mm`}>
@@ -2647,7 +2647,7 @@ function LabelTemplatePanel({
             step="0.5"
             value={getValue(`${prefix}_margin_mm`)}
             onChange={(event) => setValue(`${prefix}_margin_mm`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
         <Field label={labels.labelGapMm} htmlFor={`${prefix}-gap-mm`}>
@@ -2659,7 +2659,7 @@ function LabelTemplatePanel({
             step="0.5"
             value={getValue(`${prefix}_gap_mm`)}
             onChange={(event) => setValue(`${prefix}_gap_mm`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
         <Field label={labels.labelLayout} htmlFor={`${prefix}-layout`}>
@@ -2667,7 +2667,7 @@ function LabelTemplatePanel({
             id={`${prefix}-layout`}
             value={getValue(`${prefix}_layout`)}
             onChange={(event) => setValue(`${prefix}_layout`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           >
             <option value="qr-left">{labels.labelLayoutQrLeft}</option>
             <option value="qr-top">{labels.labelLayoutQrTop}</option>
@@ -2682,7 +2682,7 @@ function LabelTemplatePanel({
             id={`${prefix}-primary-template`}
             value={getValue(`${prefix}_primary_template`)}
             onChange={(event) => setValue(`${prefix}_primary_template`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
         <Field label={labels.labelSecondaryLine} htmlFor={`${prefix}-secondary-template`}>
@@ -2690,7 +2690,7 @@ function LabelTemplatePanel({
             id={`${prefix}-secondary-template`}
             value={getValue(`${prefix}_secondary_template`)}
             onChange={(event) => setValue(`${prefix}_secondary_template`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
         <Field label={labels.labelTertiaryLine} htmlFor={`${prefix}-tertiary-template`}>
@@ -2698,7 +2698,7 @@ function LabelTemplatePanel({
             id={`${prefix}-tertiary-template`}
             value={getValue(`${prefix}_tertiary_template`)}
             onChange={(event) => setValue(`${prefix}_tertiary_template`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
       </div>

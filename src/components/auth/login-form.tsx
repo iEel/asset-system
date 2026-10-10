@@ -79,7 +79,7 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
             setUsername(event.target.value)
             setError("")
           }}
-          className="h-11 w-full rounded-md border border-border bg-surface px-3 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/20 sm:h-10 sm:text-sm"
+          className="h-11 w-full rounded-md border border-border bg-surface px-3 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 sm:h-10 sm:text-sm"
           required
           autoFocus
         />
@@ -101,7 +101,7 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
               setPassword(event.target.value)
               setError("")
             }}
-            className="h-11 w-full rounded-md border border-border bg-surface px-3 pr-12 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/20 sm:h-10 sm:text-sm"
+            className="h-11 w-full rounded-md border border-border bg-surface px-3 pr-12 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 sm:h-10 sm:text-sm"
             required
           />
           <button
@@ -114,7 +114,7 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
               setShowPassword((visible) => !visible)
               passwordRef.current?.focus()
             }}
-            className="absolute inset-y-0 right-0 inline-flex min-h-11 min-w-11 items-center justify-center rounded-r-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-accent sm:min-h-10 sm:min-w-10"
+            className="absolute inset-y-0 right-0 inline-flex min-h-11 min-w-11 items-center justify-center rounded-r-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:min-h-10 sm:min-w-10"
           >
             {showPassword ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
           </button>
@@ -136,7 +136,7 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
         type="submit"
         disabled={loading}
         aria-busy={loading}
-        className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-70 sm:h-10"
+        className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-70 sm:h-10"
       >
         {loading ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
         <span>{loading ? t("loggingIn") : t("login")}</span>

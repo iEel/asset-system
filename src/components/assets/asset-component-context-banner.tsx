@@ -41,7 +41,7 @@ export function AssetComponentContextBanner({
                 <Link
                   key={link.id}
                   href={link.parentHref}
-                  className="group inline-flex min-h-11 items-center gap-2 rounded-md py-1 text-sm text-foreground outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  className="group inline-flex min-h-11 items-center gap-2 rounded-md py-1 text-sm text-foreground outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <span className="min-w-0">
                     <span className="block break-words font-mono font-semibold">{link.parentAsset.assetTag}</span>

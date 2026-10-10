@@ -244,7 +244,7 @@ function ActionLink({
   description: string
 }) {
   return (
-    <a href={href} className="rounded-lg border border-border bg-surface p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+    <a href={href} className="rounded-lg border border-border bg-surface p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
       <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-primary-soft text-primary">
         {icon}
       </span>

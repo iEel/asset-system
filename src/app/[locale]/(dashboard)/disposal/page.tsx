@@ -282,11 +282,11 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
           <input type="hidden" name="pageSize" value={filters.pageSize} />
           <label>
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("search")}</span>
-            <input type="search" name="search" defaultValue={filters.search} placeholder={t("searchPlaceholder")} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="search" name="search" defaultValue={filters.search} placeholder={t("searchPlaceholder")} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </label>
           <label>
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("status")}</span>
-            <select name="status" defaultValue={filters.status} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+            <select name="status" defaultValue={filters.status} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring">
               <option value="">{tCommon("all")}</option>
               <option value="pending">{t("statuses.pending")}</option>
               <option value="approved">{t("statuses.approved")}</option>
@@ -296,18 +296,18 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
           </label>
           <label>
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("disposalType")}</span>
-            <select name="disposalType" defaultValue={filters.disposalType} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+            <select name="disposalType" defaultValue={filters.disposalType} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring">
               <option value="">{tCommon("all")}</option>
               {["sell", "donate", "destroy", "lost", "dispose"].map((type) => <option key={type} value={type}>{t(`types.${type}`)}</option>)}
             </select>
           </label>
           <label>
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("dateFrom")}</span>
-            <input type="date" name="dateFrom" defaultValue={filters.dateFrom} max={filters.dateTo || undefined} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="date" name="dateFrom" defaultValue={filters.dateFrom} max={filters.dateTo || undefined} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </label>
           <label>
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("dateTo")}</span>
-            <input type="date" name="dateTo" defaultValue={filters.dateTo} min={filters.dateFrom || undefined} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="date" name="dateTo" defaultValue={filters.dateTo} min={filters.dateFrom || undefined} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </label>
           <div className="flex flex-col gap-2 self-end sm:flex-row">
             <button type="submit" className="min-h-11 w-full rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:h-10 sm:min-h-0 sm:w-auto">{t("filter")}</button>
@@ -389,7 +389,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
 function DisposalFilterForm({ locale, filters, t, tCommon }: { locale: string; filters: ReturnType<typeof parseDisposalListParams>; t: Awaited<ReturnType<typeof getTranslations>>; tCommon: Awaited<ReturnType<typeof getTranslations>> }) {
   return <form className="grid grid-cols-1 gap-3" action={`/${locale}/disposal`}>
     <input type="hidden" name="pageSize" value={filters.pageSize} />
-    <label><span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("search")}</span><input type="search" name="search" defaultValue={filters.search} placeholder={t("searchPlaceholder")} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" /></label>
+    <label><span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("search")}</span><input type="search" name="search" defaultValue={filters.search} placeholder={t("searchPlaceholder")} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" /></label>
     <label><span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("status")}</span><select name="status" defaultValue={filters.status} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm"><option value="">{tCommon("all")}</option><option value="pending">{t("statuses.pending")}</option><option value="approved">{t("statuses.approved")}</option><option value="disposed">{t("statuses.disposed")}</option><option value="rejected">{t("statuses.rejected")}</option></select></label>
     <label><span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("disposalType")}</span><select name="disposalType" defaultValue={filters.disposalType} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm"><option value="">{tCommon("all")}</option>{["sell", "donate", "destroy", "lost", "dispose"].map((type) => <option key={type} value={type}>{t(`types.${type}`)}</option>)}</select></label>
     <div className="grid grid-cols-2 gap-3">

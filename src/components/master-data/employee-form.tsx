@@ -168,7 +168,7 @@ export function EmployeeForm({
               onChange={(event) => setField("code", event.target.value)}
               maxLength={20}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
@@ -178,7 +178,7 @@ export function EmployeeForm({
               onChange={(event) => setField("fullNameTh", event.target.value)}
               maxLength={200}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
@@ -187,7 +187,7 @@ export function EmployeeForm({
               value={values.fullNameEn ?? ""}
               onChange={(event) => setField("fullNameEn", event.target.value)}
               maxLength={200}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
@@ -197,7 +197,7 @@ export function EmployeeForm({
               value={values.email ?? ""}
               onChange={(event) => setField("email", event.target.value)}
               maxLength={200}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
@@ -206,7 +206,7 @@ export function EmployeeForm({
               value={values.companyId}
               onChange={(event) => handleCompanyChange(event.target.value)}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="">{t("selectCompany")}</option>
               {companies.map((company) => (
@@ -222,7 +222,7 @@ export function EmployeeForm({
               value={values.branchId}
               onChange={(event) => setField("branchId", event.target.value)}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="">{t("selectBranch")}</option>
               {filteredBranches.map((branch) => (
@@ -238,7 +238,7 @@ export function EmployeeForm({
               value={values.departmentId}
               onChange={(event) => setField("departmentId", event.target.value)}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="">{t("selectDepartment")}</option>
               {filteredDepartments.map((department) => (
@@ -254,7 +254,7 @@ export function EmployeeForm({
               value={values.position ?? ""}
               onChange={(event) => setField("position", event.target.value)}
               maxLength={200}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
@@ -265,7 +265,7 @@ export function EmployeeForm({
                 setField("employmentStatus", event.target.value as EmployeeFormValues["employmentStatus"])
               }
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="active">{t("statusActive")}</option>
               <option value="resigned">{t("statusResigned")}</option>
@@ -277,7 +277,7 @@ export function EmployeeForm({
             <select
               value={values.managerId ?? ""}
               onChange={(event) => setField("managerId", event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="">{t("noManager")}</option>
               {managers.map((manager) => (
@@ -293,7 +293,7 @@ export function EmployeeForm({
               type="checkbox"
               checked={values.isActive}
               onChange={(event) => setField("isActive", event.target.checked)}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
             />
             {tCommon("active")}
           </label>

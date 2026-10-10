@@ -71,7 +71,7 @@ export function getEmptyStateClasses() {
 }
 
 export function getFieldControlClasses() {
-  return "min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0"
+  return "min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0"
 }
 
 const legacyButtonVariant = {
@@ -97,7 +97,7 @@ export function getSafeActionLinkClasses(variant: Extract<UiButtonVariant, "prim
     ghost: "text-foreground hover:bg-accent",
   }[variant]
 
-  return `inline-flex min-h-11 w-full min-w-0 max-w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-center text-sm font-medium leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:w-fit ${variantClass}`
+  return `inline-flex min-h-11 w-full min-w-0 max-w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-center text-sm font-medium leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-fit ${variantClass}`
 }
 
 export function getResponsiveActionRowClasses() {
@@ -109,5 +109,5 @@ export function getMobileSafeBottomPaddingClasses() {
 }
 
 export function getTouchIconButtonClasses() {
-  return "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+  return "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 }

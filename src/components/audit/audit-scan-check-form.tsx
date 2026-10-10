@@ -276,7 +276,7 @@ export function AuditScanCheckForm({
                 onChange={(event) => setRemark(event.target.value)}
                 rows={2}
                 disabled={saving || disabled}
-                className="min-h-16 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="min-h-16 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </label>
             {photoChecklist.length > 0 ? (

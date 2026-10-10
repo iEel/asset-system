@@ -108,7 +108,7 @@ export function MaintenanceAttachments({
           <select
             value={attachmentType}
             onChange={(event) => setAttachmentType(event.target.value as MaintenanceAttachmentType)}
-            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           >
             {maintenanceAttachmentTypes.map((type) => (
               <option key={type} value={type}>

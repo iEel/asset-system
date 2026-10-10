@@ -172,7 +172,7 @@ export default async function CategoriesPage({ params, searchParams }: Categorie
               name="search"
               defaultValue={searchText}
               placeholder={t("searchPlaceholder")}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </label>
           <FilterSelect
@@ -500,7 +500,7 @@ function FilterSelect({
       <select
         name={name}
         defaultValue={defaultValue}
-        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>

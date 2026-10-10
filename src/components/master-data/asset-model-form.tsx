@@ -235,7 +235,7 @@ export function AssetModelForm({
               onChange={(event) => setField("name", event.target.value)}
               maxLength={200}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
@@ -244,7 +244,7 @@ export function AssetModelForm({
               value={values.brandId}
               onChange={(event) => setField("brandId", event.target.value)}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="">{t("selectBrand")}</option>
               {brands.map((brand) => (
@@ -260,7 +260,7 @@ export function AssetModelForm({
               value={values.categoryId}
               onChange={(event) => setField("categoryId", event.target.value)}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="">{t("selectCategory")}</option>
               {categories.map((category) => (
@@ -276,7 +276,7 @@ export function AssetModelForm({
               type="checkbox"
               checked={values.isActive}
               onChange={(event) => setField("isActive", event.target.checked)}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
             />
             {tCommon("active")}
           </label>
@@ -310,13 +310,13 @@ export function AssetModelForm({
                       value={item.label}
                       onChange={(event) => setSpecItem(item.id, "label", event.target.value)}
                       placeholder={t("specLabel")}
-                      className="h-10 rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      className="h-10 rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                     />
                     <input
                       value={item.value}
                       onChange={(event) => setSpecItem(item.id, "value", event.target.value)}
                       placeholder={t("specValue")}
-                      className="h-10 rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      className="h-10 rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                     />
                     <button
                       type="button"
@@ -345,7 +345,7 @@ export function AssetModelForm({
                   value={structuredSpecs.notes}
                   onChange={(event) => setStructuredSpecs((current) => ({ ...current, notes: event.target.value }))}
                   rows={3}
-                  className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
             </div>

@@ -21,6 +21,7 @@ import type {
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { shouldGuardLinkClick } from "@/lib/navigation-guard"
+import { cn } from "@/lib/utils"
 
 export const MAX_DISPOSAL_BULK_APPROVAL_ITEMS = 50
 
@@ -379,7 +380,7 @@ export function DisposalBulkApprovalProvider({
 
   return (
     <DisposalBulkApprovalContext.Provider value={value}>
-      <div ref={restoreTargetRef} tabIndex={-1} className={className} onClickCapture={handleClickCapture} onSubmitCapture={handleSubmitCapture}>
+      <div ref={restoreTargetRef} tabIndex={-1} className={cn("outline-none", className)} onClickCapture={handleClickCapture} onSubmitCapture={handleSubmitCapture}>
         {children}
         {dialogState !== "closed" ? <DisposalBulkApprovalDialog /> : null}
       </div>
@@ -401,7 +402,7 @@ export function DisposalBulkSelectionToggle() {
   }
 
   return (
-    <button type="button" onClick={toggleMode} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 md:hidden">
+    <button type="button" onClick={toggleMode} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 md:hidden">
       <ListChecks className="h-4 w-4" />
       {active ? copy.cancelSelectionMode : copy.selectionMode}
     </button>
@@ -417,9 +418,9 @@ export function DisposalBulkApprovalToolbar() {
       <span className="sr-only" aria-live="polite">{formatCopy(copy.selectedCount, { count: selected.size })}</span>
       <div className="flex items-center gap-2 text-sm font-medium text-foreground"><CheckSquare2 className="h-4 w-4 text-primary" />{formatCopy(copy.selectedCount, { count: selected.size })}</div>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <button type="button" onClick={selectPage} disabled={busy} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">{copy.selectPage}</button>
-        <button type="button" onClick={clear} disabled={busy} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">{copy.clearSelection}</button>
-        <button ref={triggerRef} type="button" onClick={() => void preview()} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">
+        <button type="button" onClick={selectPage} disabled={busy} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">{copy.selectPage}</button>
+        <button type="button" onClick={clear} disabled={busy} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">{copy.clearSelection}</button>
+        <button ref={triggerRef} type="button" onClick={() => void preview()} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ListChecks className="h-4 w-4" />}
           {copy.reviewAndApprove}
         </button>
@@ -452,7 +453,7 @@ export function DisposalBulkApprovalSelectPageControl() {
       onChange={togglePageSelection}
       aria-label={copy.selectPage}
       aria-checked={partiallySelected ? "mixed" : allSelected}
-      className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary"
+      className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
     />
   )
 }
@@ -479,7 +480,7 @@ export function DisposalBulkApprovalCheckbox({
         tabIndex={0}
         aria-label={blockedReason}
         title={blockedReason}
-        className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md text-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${variant === "mobile" ? "px-2 text-xs" : ""}`}
+        className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md text-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${variant === "mobile" ? "px-2 text-xs" : ""}`}
       >
         <ShieldAlert className="h-5 w-5 shrink-0" aria-hidden="true" />
         {variant === "mobile" ? <span>{blockedReason}</span> : <span className="sr-only">{blockedReason}</span>}
@@ -488,14 +489,14 @@ export function DisposalBulkApprovalCheckbox({
   }
 
   return (
-    <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md focus-within:ring-2 focus-within:ring-primary">
+    <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md focus-within:ring-2 focus-within:ring-ring">
       <input
         type="checkbox"
         checked={checked}
         disabled={disabled}
         onChange={() => toggle(item.requestId)}
         aria-label={label}
-        className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary"
+        className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
       />
     </label>
   )
@@ -548,14 +549,14 @@ function DisposalBulkApprovalDialog() {
             <BulkSummary selected={response.summary.selected} eligible={response.summary.eligible} blocked={response.summary.blocked} approved={response.summary.approved} failed={response.summary.failed} />
             {groups.length ? <div className="space-y-2">{groups.map(([code, group]) => <details key={code} className="rounded-md border border-border bg-muted/30 p-3"><summary className="cursor-pointer text-sm font-medium text-foreground"><span className="inline-flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-warning" />{getErrorLabel(code)} ({group.length})</span></summary><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{group.map((item) => <li key={item.requestId}>{item.disposalNo} - {item.assetTag}</li>)}</ul></details>)}</div> : null}
             {dialogState === "preview" && eligible.length === 0 ? <p role="alert" className="rounded-md border border-warning/30 bg-warning-soft p-3 text-sm text-foreground">{copy.zeroEligible}</p> : null}
-            {dialogState === "preview" ? <label className="block"><span className="mb-1.5 block text-sm font-medium text-foreground">{copy.sharedRemark}</span><textarea value={approvalRemark} maxLength={4000} rows={4} disabled={busy} onChange={(event) => setApprovalRemark(event.target.value)} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" /><span className="mt-1 block text-xs text-muted-foreground">{copy.sharedRemarkHelp}</span><span className="mt-1 block text-xs text-muted-foreground">{formatCopy(copy.remarkLimit, { count: approvalRemark.length })}</span></label> : null}
+            {dialogState === "preview" ? <label className="block"><span className="mb-1.5 block text-sm font-medium text-foreground">{copy.sharedRemark}</span><textarea value={approvalRemark} maxLength={4000} rows={4} disabled={busy} onChange={(event) => setApprovalRemark(event.target.value)} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" /><span className="mt-1 block text-xs text-muted-foreground">{copy.sharedRemarkHelp}</span><span className="mt-1 block text-xs text-muted-foreground">{formatCopy(copy.remarkLimit, { count: approvalRemark.length })}</span></label> : null}
             {dialogState === "result" && (approved.length || failed.length || blocked.length) ? <ResultDetails approved={approved} blocked={blocked} failed={failed} getErrorLabel={getErrorLabel} /> : null}
           </> : null}
           {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
           <div className="flex flex-col justify-end gap-2 sm:flex-row">
-            <button type="button" onClick={closeDialog} disabled={busy} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">{dialogState === "result" ? copy.close : copy.cancel}</button>
-            {dialogState === "preview" && error ? <button type="button" onClick={() => void commit()} disabled={busy || eligible.length === 0} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">{copy.retry}</button> : null}
-            {dialogState === "preview" ? <button type="submit" disabled={busy || eligible.length === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckSquare2 className="h-4 w-4" />}{formatCopy(copy.confirmApproval, { count: eligible.length })}</button> : null}
+            <button type="button" onClick={closeDialog} disabled={busy} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">{dialogState === "result" ? copy.close : copy.cancel}</button>
+            {dialogState === "preview" && error ? <button type="button" onClick={() => void commit()} disabled={busy || eligible.length === 0} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">{copy.retry}</button> : null}
+            {dialogState === "preview" ? <button type="submit" disabled={busy || eligible.length === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckSquare2 className="h-4 w-4" />}{formatCopy(copy.confirmApproval, { count: eligible.length })}</button> : null}
           </div>
         </div>
       </form>

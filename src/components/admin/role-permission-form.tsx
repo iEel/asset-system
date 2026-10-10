@@ -156,7 +156,7 @@ function togglePermission(permissionId: string) {
                 pattern="[a-z][a-z0-9_]*"
                 disabled={isSystemRole}
                 onChange={(event) => setMeta((current) => ({ ...current, name: event.target.value }))}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-60"
               />
             </Field>
             <Field label={t("displayName")} required>
@@ -165,7 +165,7 @@ function togglePermission(permissionId: string) {
                 required
                 maxLength={200}
                 onChange={(event) => setMeta((current) => ({ ...current, displayName: event.target.value }))}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
             <Field label={t("displayNameTh")}>
@@ -173,7 +173,7 @@ function togglePermission(permissionId: string) {
                 value={meta.displayNameTh}
                 maxLength={200}
                 onChange={(event) => setMeta((current) => ({ ...current, displayNameTh: event.target.value }))}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
             <label className="flex items-center gap-2 self-end pb-2 text-sm font-medium text-foreground">
@@ -182,7 +182,7 @@ function togglePermission(permissionId: string) {
                 checked={meta.isActive}
                 disabled={isSystemRole}
                 onChange={(event) => setMeta((current) => ({ ...current, isActive: event.target.checked }))}
-                className="h-4 w-4 rounded border-border text-primary focus:ring-primary disabled:opacity-60"
+                className="h-4 w-4 rounded border-border text-primary focus:ring-ring disabled:opacity-60"
               />
               {tCommon("active")}
             </label>
@@ -193,7 +193,7 @@ function togglePermission(permissionId: string) {
                   rows={3}
                   maxLength={500}
                   onChange={(event) => setMeta((current) => ({ ...current, description: event.target.value }))}
-                  className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
             </div>
@@ -232,7 +232,7 @@ function togglePermission(permissionId: string) {
                           checked={modulePermissions.every((permission) => values.has(permission.id))}
                           disabled={permissionsLocked}
                           onChange={(event) => setModulePermissions(modulePermissions, event.target.checked)}
-                          className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary disabled:opacity-60"
+                          className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-ring disabled:opacity-60"
                         />
                         {t("selectModule")}
                       </label>
@@ -249,7 +249,7 @@ function togglePermission(permissionId: string) {
                               checked={values.has(permission.id)}
                               disabled={permissionsLocked}
                               onChange={() => togglePermission(permission.id)}
-                              className="h-4 w-4 rounded border-border text-primary focus:ring-primary disabled:opacity-60"
+                              className="h-4 w-4 rounded border-border text-primary focus:ring-ring disabled:opacity-60"
                             />
                             <span className="text-sm text-foreground">{t(`actions.${permission.action}`)}</span>
                           </label>

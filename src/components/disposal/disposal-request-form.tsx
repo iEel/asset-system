@@ -148,7 +148,7 @@ export function DisposalRequestForm({
             step="0.01"
             value={values.saleValue}
             onChange={(event) => setField("saleValue", event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field> : null}
         {showsEstimatedSalvageValue(values.disposalType as DisposalType) ? <Field label={t("salvageValue")}>
@@ -158,7 +158,7 @@ export function DisposalRequestForm({
             step="0.01"
             value={values.salvageValue}
             onChange={(event) => setField("salvageValue", event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field> : null}
         <div className="md:col-span-2">
@@ -170,7 +170,7 @@ export function DisposalRequestForm({
               rows={4}
               maxLength={4000}
               onChange={(event) => setField("reason", event.target.value)}
-              className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
             <p className="mt-1 text-right text-xs text-muted-foreground">{t("reasonCharacterCount", { count: values.reason.length, max: 4000 })}</p>
           </Field>
@@ -255,7 +255,7 @@ function Select({
         value={value}
         required={required}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
       >
         {children}
       </select>

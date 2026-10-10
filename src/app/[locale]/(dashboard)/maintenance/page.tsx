@@ -175,22 +175,22 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
           {filters.assetId ? <input type="hidden" name="assetId" value={filters.assetId} /> : null}
           <label className="min-w-0">
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("search")}</span>
-            <input type="search" name="search" defaultValue={filters.search} placeholder={t("searchPlaceholder")} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="search" name="search" defaultValue={filters.search} placeholder={t("searchPlaceholder")} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </label>
           <label className="min-w-0">
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("filterStatus")}</span>
-            <select name="status" defaultValue={filters.status} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+            <select name="status" defaultValue={filters.status} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring">
               <option value="">{tCommon("all")}</option>
               {maintenanceStatusFilters.map((status) => <option key={status} value={status}>{t(`status.${status}`)}</option>)}
             </select>
           </label>
           <label className="min-w-0">
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("dateFrom")}</span>
-            <input type="date" name="dateFrom" defaultValue={filters.dateFrom} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="date" name="dateFrom" defaultValue={filters.dateFrom} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </label>
           <label className="min-w-0">
             <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("dateTo")}</span>
-            <input type="date" name="dateTo" defaultValue={filters.dateTo} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="date" name="dateTo" defaultValue={filters.dateTo} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </label>
           <div className="flex flex-col gap-2 self-end sm:flex-row">
             <button type="submit" className="min-h-11 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover">{t("filter")}</button>

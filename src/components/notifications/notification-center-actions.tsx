@@ -124,7 +124,7 @@ export function NotificationCenterActions({ item, assignees, labels }: Notificat
             setAssignedToUserId(value)
             mutate({ action: "assign", assignedToUserId: value || null })
           }}
-          className="h-9 min-w-44 rounded-md border border-input bg-surface px-3 text-sm outline-none focus:border-primary"
+          className="h-9 min-w-44 rounded-md border border-input bg-surface px-3 text-sm outline-none focus:border-ring"
         >
           <option value="">{labels.unassigned}</option>
           {assignees.map((assignee) => (

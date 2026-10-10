@@ -90,7 +90,7 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
       </div>
 
       <details className="rounded-lg border border-border bg-surface shadow-sm md:hidden" open={hasActiveFilters}>
-        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
           <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
           {t("filtersTitle")}
         </summary>
@@ -155,7 +155,7 @@ type FilterLabels = {
 }
 
 function SupplierFilterForm({ basePath, current, labels, className }: { basePath: string; current: SupplierListState; labels: FilterLabels; className: string }) {
-  const controlClassName = "min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+  const controlClassName = "min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
   return (
     <form className={className} action={basePath}>
       <input type="hidden" name="page" value="1" />
@@ -177,8 +177,8 @@ function SupplierFilterForm({ basePath, current, labels, className }: { basePath
         <option value="withoutPurchaseDocuments">{labels.withoutPurchaseDocuments}</option>
       </FilterSelect>
       <div className="grid grid-cols-2 items-end gap-2 md:flex">
-        <button type="submit" className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">{labels.filter}</button>
-        <Link href={basePath} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">{labels.clear}</Link>
+        <button type="submit" className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{labels.filter}</button>
+        <Link href={basePath} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{labels.clear}</Link>
       </div>
     </form>
   )
@@ -190,7 +190,7 @@ function FilterSelect({ label, name, defaultValue, className, children }: { labe
 
 function SummaryTile({ label, value, detail, href, tone = "neutral" }: { label: string; value: number; detail: string; href: string; tone?: "neutral" | "warning" }) {
   return (
-    <Link href={href} className={`min-h-32 rounded-lg border bg-surface p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${tone === "warning" ? "border-warning/40" : "border-border"}`}>
+    <Link href={href} className={`min-h-32 rounded-lg border bg-surface p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${tone === "warning" ? "border-warning/40" : "border-border"}`}>
       <div className="text-sm font-medium text-muted-foreground">{label}</div>
       <div className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString()}</div>
       <div className="mt-1 text-sm text-muted-foreground">{detail}</div>

@@ -110,7 +110,7 @@ export function AuditMarkNotFoundButton({ itemId, variant = "icon" }: { itemId: 
                 disabled={saving}
                 rows={4}
                 placeholder={t("notFoundRemarkPlaceholder")}
-                className="mt-2 min-h-28 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+                className="mt-2 min-h-28 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-60"
               />
             </div>
 

@@ -110,7 +110,7 @@ export function AssetEvidenceDrawer({
                   href={item.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="group overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="group overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   {item.fileType.startsWith("image/") ? (
                     <div className="flex h-28 w-full items-center justify-center bg-muted/40 p-2">

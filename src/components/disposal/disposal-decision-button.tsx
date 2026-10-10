@@ -97,7 +97,7 @@ export function DisposalDecisionButton({
         ref={triggerRef}
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-10 sm:min-h-0 sm:w-auto"
+        className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-10 sm:min-h-0 sm:w-auto"
       >
         <ClipboardCheck className="h-3.5 w-3.5" />
         {t("reviewRequest")}
@@ -167,13 +167,13 @@ function DecisionDialog({
       <form onSubmit={onSubmit}>
         <div className="grid grid-cols-1 gap-5 p-4 sm:p-5 md:grid-cols-2">
           <Field label={t("decision")} required>
-            <select ref={decisionRef} value={values.decision} required disabled={saving} onChange={(event) => onFieldChange("decision", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0">
+            <select ref={decisionRef} value={values.decision} required disabled={saving} onChange={(event) => onFieldChange("decision", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0">
               <option value="approve">{t("approve")}</option>
               <option value="reject">{t("reject")}</option>
             </select>
           </Field>
           {values.decision === "approve" ? <Field label={t("nextStatus")} required>
-            <select value={values.nextStatusId} required disabled={saving || values.decision === "approve"} onChange={(event) => onFieldChange("nextStatusId", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0">
+            <select value={values.nextStatusId} required disabled={saving || values.decision === "approve"} onChange={(event) => onFieldChange("nextStatusId", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0">
               {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
             </select>
             <p className="mt-1 text-xs text-muted-foreground">{t("approveKeepsPendingDisposal")}</p>
@@ -183,14 +183,14 @@ function DecisionDialog({
             </div>
           )}
           {showSaleValue ? <Field label={t("saleValue")}>
-            <input type="number" min="0" step="0.01" value={values.saleValue} disabled={saving} onChange={(event) => onFieldChange("saleValue", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0" />
+            <input type="number" min="0" step="0.01" value={values.saleValue} disabled={saving} onChange={(event) => onFieldChange("saleValue", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0" />
           </Field> : null}
           {showSalvageValue ? <Field label={t("salvageValue")}>
-            <input type="number" min="0" step="0.01" value={values.salvageValue} disabled={saving} onChange={(event) => onFieldChange("salvageValue", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0" />
+            <input type="number" min="0" step="0.01" value={values.salvageValue} disabled={saving} onChange={(event) => onFieldChange("salvageValue", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0" />
           </Field> : null}
           <div className="md:col-span-2">
             <Field label={t("approvalRemark")} required={rejectionReasonRequired}>
-              <textarea value={values.approvalRemark} rows={4} maxLength={4000} required={rejectionReasonRequired} disabled={saving} onChange={(event) => onFieldChange("approvalRemark", event.target.value)} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+              <textarea value={values.approvalRemark} rows={4} maxLength={4000} required={rejectionReasonRequired} disabled={saving} onChange={(event) => onFieldChange("approvalRemark", event.target.value)} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
               {rejectionReasonRequired ? <p className="mt-1 text-xs text-muted-foreground">{t("rejectionReasonRequired")}</p> : null}
             </Field>
           </div>

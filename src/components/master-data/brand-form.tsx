@@ -95,7 +95,7 @@ export function BrandForm({
               onChange={(event) => setValues((current) => ({ ...current, name: event.target.value }))}
               maxLength={200}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </label>
 
@@ -104,7 +104,7 @@ export function BrandForm({
               type="checkbox"
               checked={values.isActive}
               onChange={(event) => setValues((current) => ({ ...current, isActive: event.target.checked }))}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
             />
             {tCommon("active")}
           </label>

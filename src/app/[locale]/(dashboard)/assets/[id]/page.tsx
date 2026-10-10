@@ -1011,7 +1011,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           followUpItems={activityFollowUpItems}
           details={dataHealthDone < dataHealthItems.length ? (
             <details data-testid="asset-data-health-details" className="rounded-md border border-border bg-background">
-              <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 px-3 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+              <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 px-3 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                 <span>{t("dataHealthTitle")}</span>
                 <span className={`rounded-full px-2 py-0.5 text-xs ${getHealthBadgeClass(dataHealthTone)}`}>
                   {t("dataHealthProgress", { done: dataHealthDone, total: dataHealthItems.length })}
@@ -1957,7 +1957,7 @@ function AssetRelationshipMap({
               ))}
               {childPreview.remaining.length > 0 ? (
                 <details className="rounded-md border border-border bg-surface">
-                  <summary className="flex min-h-11 cursor-pointer items-center px-3 text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                  <summary className="flex min-h-11 cursor-pointer items-center px-3 text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     {moreItemsLabel}
                   </summary>
                   <div className="space-y-2 border-t border-border p-2">
@@ -2123,7 +2123,7 @@ function RelationshipAssetCard({
       ) : null}
     </div>
   )
-  const className = `block rounded-md border px-3 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${current ? "min-h-36" : ""} ${getRelationshipCardClass(variant, Boolean(current))}`
+  const className = `block rounded-md border px-3 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${current ? "min-h-36" : ""} ${getRelationshipCardClass(variant, Boolean(current))}`
 
   if (link) {
     return (
@@ -2256,7 +2256,7 @@ function SidebarPhotoCard({
       {attachment ? (
         <a
           href="#photos"
-          className="group block overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary"
+          className="group block overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <div className="flex h-32 w-full items-center justify-center bg-muted/40 p-2">
             {/* Authenticated attachment URLs render more reliably as browser-native images. */}
@@ -2311,7 +2311,7 @@ function EvidenceLinks({
               href={`/api/attachments/${attachment.id}?inline=1`}
               target="_blank"
               rel="noreferrer"
-              className="group block overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary"
+              className="group block overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring"
               title={attachment.originalName}
             >
               {attachment.fileType.startsWith("image/") ? (

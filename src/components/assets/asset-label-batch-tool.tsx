@@ -306,7 +306,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder={labels.searchPlaceholder}
-                  className="h-11 w-full rounded-md border border-border bg-background pl-10 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-11 w-full rounded-md border border-border bg-background pl-10 pr-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </div>
               {trimmedQuery.length < 2 ? (
@@ -331,7 +331,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                         type="button"
                         disabled={selectedIds.has(asset.id)}
                         onClick={() => addAsset(asset)}
-                        className="flex min-h-11 w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex min-h-11 w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">
                           <Plus className="h-4 w-4" />
@@ -374,7 +374,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                   type="button"
                   disabled={recentAssets.length === 0}
                   onClick={addRecentAssets}
-                  className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-1 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground sm:w-auto"
+                  className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-1 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground sm:w-auto"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   {recentAssets.length === 0 ? labels.addFilteredQueueUnavailable : labels.addFilteredQueue}
@@ -391,7 +391,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                 <button
                   type="button"
                   onClick={resetQueueFilters}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <RotateCcw className="h-4 w-4" />
                   {labels.resetQueueFilters}
@@ -448,7 +448,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                     type="date"
                     value={queueFilters.createdFrom}
                     onChange={(event) => updateQueueFilter("createdFrom", event.target.value)}
-                    className="h-11 w-full rounded-md border border-border bg-surface px-3 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="h-11 w-full rounded-md border border-border bg-surface px-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
                 </label>
                 <label className="block text-sm">
@@ -457,7 +457,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                     type="date"
                     value={queueFilters.createdTo}
                     onChange={(event) => updateQueueFilter("createdTo", event.target.value)}
-                    className="h-11 w-full rounded-md border border-border bg-surface px-3 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="h-11 w-full rounded-md border border-border bg-surface px-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
                 </label>
               </div>
@@ -479,7 +479,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                       type="button"
                       disabled={selectedIds.has(asset.id)}
                       onClick={() => addAsset(asset)}
-                      className="flex min-h-11 w-full items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex min-h-11 w-full items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Plus className="mt-1 h-3.5 w-3.5 shrink-0 text-primary" />
                       <AssetLabelSearchResult asset={asset} serialLabel={labels.serial} printLabels={labels} compact />
@@ -493,7 +493,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
               <button
                 type="button"
                 onClick={loadMoreQueue}
-                className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 {labels.loadMoreQueue}
               </button>
@@ -524,7 +524,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                 type="button"
                 disabled={selectedForPrint.length === 0}
                 onClick={printFirstLabel}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Printer className="h-4 w-4" />
                 {labels.printFirstLabel}
@@ -533,7 +533,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                 type="button"
                 disabled={selectedForPrint.length === 0}
                 onClick={printLabels}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Printer className="h-4 w-4" />
                 {labels.print}
@@ -746,7 +746,7 @@ function QueueSelect({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-md border border-border bg-surface px-3 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+        className="h-11 w-full rounded-md border border-border bg-surface px-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring"
       >
         {allLabel ? <option value="all">{allLabel}</option> : null}
         {options.map((option) => (

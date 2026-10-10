@@ -326,7 +326,7 @@ export function AssetComponentManager({
                     value={componentRole}
                     onChange={(event) => setComponentRole(event.target.value)}
                     maxLength={100}
-                    className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
                   <datalist id="component-role-suggestions">
                     {componentRoles.map((role) => <option key={role} value={role} />)}
@@ -338,7 +338,7 @@ export function AssetComponentManager({
                     value={slotNo}
                     onChange={(event) => setSlotNo(event.target.value)}
                     maxLength={50}
-                    className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
                 </label>
                 <label className="block">
@@ -347,7 +347,7 @@ export function AssetComponentManager({
                     type="datetime-local"
                     value={installedAt}
                     onChange={(event) => setInstalledAt(event.target.value)}
-                    className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
                 </label>
                 <label className="block md:col-span-2">
@@ -357,7 +357,7 @@ export function AssetComponentManager({
                     onChange={(event) => setReason(event.target.value)}
                     maxLength={500}
                     rows={3}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
                 </label>
               </div>
@@ -569,7 +569,7 @@ function ComponentRemovalDialog({
         <div className="space-y-4 px-4 py-4">
           <label className="block">
             <span className="text-sm font-medium text-foreground">{labels.removeReason}</span>
-            <textarea ref={reasonRef} value={reason} onChange={(event) => setReason(event.target.value)} disabled={busy} rows={4} maxLength={500} className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50" />
+            <textarea ref={reasonRef} value={reason} onChange={(event) => setReason(event.target.value)} disabled={busy} rows={4} maxLength={500} className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-50" />
           </label>
           <FileDropzone file={removeEvidence} onFileChange={setRemoveEvidence} disabled={busy} accept="image/*" capture="environment" title={labels.removeEvidence} hint={labels.evidenceHint} browseLabel={labels.browseEvidence} />
         </div>

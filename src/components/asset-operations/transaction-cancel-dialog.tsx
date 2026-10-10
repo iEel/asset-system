@@ -145,7 +145,7 @@ export function TransactionCancelDialog({
               ) : null}
               <label className="mt-4 block text-sm font-medium text-foreground">
                 {labels.reasonLabel}
-                <textarea ref={reasonRef} value={reason} onChange={(event) => setReason(event.target.value)} disabled={saving || blockers.length > 0} rows={4} maxLength={2000} placeholder={labels.reasonPlaceholder} className="mt-2 min-h-28 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60" />
+                <textarea ref={reasonRef} value={reason} onChange={(event) => setReason(event.target.value)} disabled={saving || blockers.length > 0} rows={4} maxLength={2000} placeholder={labels.reasonPlaceholder} className="mt-2 min-h-28 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-60" />
               </label>
               <p className="mt-2 min-h-5 text-sm text-danger" aria-live="polite">{error ? <ApiErrorText error={error} /> : null}</p>
             </>

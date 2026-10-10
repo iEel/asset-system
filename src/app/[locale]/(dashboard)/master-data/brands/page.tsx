@@ -347,7 +347,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                     name="search"
                     defaultValue={searchText}
                     placeholder={t("searchPlaceholder")}
-                    className="h-10 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="h-10 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
                 </span>
               </label>
@@ -583,7 +583,7 @@ function FilterSelect({
       <select
         name={name}
         defaultValue={defaultValue}
-        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
       >
         {allLabel ? <option value="">{allLabel}</option> : null}
         {options.map((option) => (

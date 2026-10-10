@@ -36,7 +36,7 @@ export function AuditScanCheckPanel({
   if (isWide) {
     return open ? (
       <aside data-audit-check-panel aria-label={title} className="sticky top-4 self-start rounded-lg border border-border bg-surface p-4 shadow-sm">
-        <h2 ref={headingRef} tabIndex={-1} className="text-base font-semibold text-foreground">{title}</h2>
+        <h2 ref={headingRef} tabIndex={-1} className="text-base font-semibold text-foreground outline-none">{title}</h2>
         <p className="mb-3 truncate text-sm text-muted-foreground">{description}</p>
         {children}
       </aside>

@@ -17,8 +17,8 @@ import { useApiError } from "@/components/ui/use-api-error"
 type Option = { id: string; label: string }
 type Outcome = "usable" | "beyond_repair"
 
-const inputClass = "h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-const textareaClass = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+const inputClass = "h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+const textareaClass = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
 
 export function RepairRecordForm({
   locale,

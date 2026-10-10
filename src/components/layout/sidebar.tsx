@@ -203,7 +203,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={onMobileClose}
-              className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+              className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
               aria-label="Close menu"
             >
               <X size={18} />
@@ -299,7 +299,7 @@ function SidebarItem({
         <button
           onClick={() => setOpen(!open)}
           className={cn(
-            "flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-accent",
+            "flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
             hasActiveChild && "font-semibold",
             collapsed && "lg:justify-center lg:px-2"
           )}
@@ -334,7 +334,7 @@ function SidebarItem({
       href={item.href || "#"}
       onClick={onNavigate}
       className={cn(
-        "flex min-h-11 items-center gap-3 px-4 py-2.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-accent",
+        "flex min-h-11 items-center gap-3 px-4 py-2.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
         isActive
           ? "bg-sidebar-active font-medium text-sidebar-active-foreground"
           : undefined,

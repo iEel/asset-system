@@ -126,7 +126,7 @@ export function LocationForm({
               onChange={(event) => setField("code", event.target.value)}
               maxLength={50}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
@@ -136,7 +136,7 @@ export function LocationForm({
               onChange={(event) => setField("name", event.target.value)}
               maxLength={200}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
@@ -145,7 +145,7 @@ export function LocationForm({
               value={values.branchId}
               onChange={(event) => setField("branchId", event.target.value)}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="">{t("selectBranch")}</option>
               {branches.map((branch) => (
@@ -163,7 +163,7 @@ export function LocationForm({
                 setField("locationType", event.target.value as LocationFormValues["locationType"])
               }
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               {locationTypes.map((type) => (
                 <option key={type} value={type}>
@@ -177,7 +177,7 @@ export function LocationForm({
             <select
               value={values.parentId ?? ""}
               onChange={(event) => setField("parentId", event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="">{t("noParent")}</option>
               {parentLocations.map((parent) => (
@@ -193,7 +193,7 @@ export function LocationForm({
               type="checkbox"
               checked={values.isActive}
               onChange={(event) => setField("isActive", event.target.checked)}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
             />
             {tCommon("active")}
           </label>
@@ -205,7 +205,7 @@ export function LocationForm({
                 onChange={(event) => setField("description", event.target.value)}
                 rows={4}
                 maxLength={500}
-                className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
           </div>

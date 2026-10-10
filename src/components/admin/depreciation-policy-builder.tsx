@@ -320,14 +320,14 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
           value={policyJson}
           onChange={(event) => onPolicyJsonChange(event.target.value)}
           rows={8}
-          className="mt-3 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          className="mt-3 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
         />
       </details>
     </div>
   )
 }
 
-const inputClassName = "h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+const inputClassName = "h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
 const previewInputClassName = "mt-1 h-7 w-full bg-transparent text-base font-semibold text-foreground outline-none focus:text-primary"
 const compactButtonClassName = "inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
 
@@ -389,7 +389,7 @@ function CategoryPicker({
       {onSearchChange ? (
         <label className="relative block border-b border-border p-2">
           <Search className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input value={searchValue ?? ""} disabled={disabled} onChange={(event) => onSearchChange(event.target.value)} placeholder={searchLabel} className="h-9 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+          <input value={searchValue ?? ""} disabled={disabled} onChange={(event) => onSearchChange(event.target.value)} placeholder={searchLabel} className="h-9 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
         </label>
       ) : null}
       <div className="max-h-72 space-y-1 overflow-y-auto p-2">

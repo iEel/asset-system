@@ -120,7 +120,7 @@ export function SupplierListView({
                   <td className="min-w-56 px-4 py-3 text-muted-foreground">{supplier.email || "-"}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                     {supplier._count.assets > 0 ? (
-                      <Link href={hrefs.assets} aria-label={`${labels.assets}: ${supplier._count.assets}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                      <Link href={hrefs.assets} aria-label={`${labels.assets}: ${supplier._count.assets}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         {supplier._count.assets.toLocaleString()}
                       </Link>
                     ) : "0"}
@@ -129,7 +129,7 @@ export function SupplierListView({
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{supplier._count.maintenanceTickets.toLocaleString()}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-1">
-                      <Link href={hrefs.edit} aria-label={`${labels.edit}: ${supplier.name}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                      <Link href={hrefs.edit} aria-label={`${labels.edit}: ${supplier.name}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         <Edit className="h-4 w-4" aria-hidden="true" />
                       </Link>
                       <SupplierDeleteButton id={supplier.id} />
@@ -147,7 +147,7 @@ export function SupplierListView({
           const hrefs = buildSupplierRowHrefs({ supplier, locale, supplierReturnHref })
           return (
             <article key={supplier.id} className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-              <Link href={hrefs.detail} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+              <Link href={hrefs.detail} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <div className="text-xs font-medium text-muted-foreground">{supplier.code}</div>
                 <h2 className="mt-1 break-words text-base font-semibold text-primary">{supplier.name}</h2>
                 {supplier.address ? <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{supplier.address}</p> : null}
@@ -171,10 +171,10 @@ export function SupplierListView({
               </div>
 
               <div className="mt-3 flex items-center justify-end gap-1">
-                <Link href={hrefs.detail} aria-label={`${labels.view}: ${supplier.name}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                <Link href={hrefs.detail} aria-label={`${labels.view}: ${supplier.name}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <Eye className="h-4 w-4" aria-hidden="true" />
                 </Link>
-                <Link href={hrefs.edit} aria-label={`${labels.edit}: ${supplier.name}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                <Link href={hrefs.edit} aria-label={`${labels.edit}: ${supplier.name}`} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <Edit className="h-4 w-4" aria-hidden="true" />
                 </Link>
                 <SupplierDeleteButton id={supplier.id} />
@@ -200,7 +200,7 @@ function buildSupplierRowHrefs({ supplier, locale, supplierReturnHref }: { suppl
 
 function RelationshipCount({ label, value, href }: { label: string; value: number; href?: string }) {
   const content = <><span className="block text-base font-semibold text-foreground">{value.toLocaleString()}</span><span className="mt-0.5 block line-clamp-2 text-[11px] text-muted-foreground">{label}</span></>
-  return href ? <Link href={href} aria-label={`${label}: ${value}`} className="min-h-11 rounded-md px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">{content}</Link> : <div className="min-h-11 px-1 py-1">{content}</div>
+  return href ? <Link href={href} aria-label={`${label}: ${value}`} className="min-h-11 rounded-md px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{content}</Link> : <div className="min-h-11 px-1 py-1">{content}</div>
 }
 
 function SupplierSortableColumnHeader({ children, field, current, basePath }: { children: React.ReactNode; field: SupplierSort; current: SupplierListState; basePath: string }) {
@@ -209,7 +209,7 @@ function SupplierSortableColumnHeader({ children, field, current, basePath }: { 
   const href = `${basePath}?${buildSupplierQueryString(current, { sort: field, direction: nextDirection, page: 1 })}`
   return (
     <th scope="col" aria-sort={active ? (current.direction === "asc" ? "ascending" : "descending") : undefined} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-      <Link href={href} className="inline-flex min-h-11 items-center gap-1 rounded-sm hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+      <Link href={href} className="inline-flex min-h-11 items-center gap-1 rounded-sm hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         {children}
         {active ? current.direction === "asc" ? <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" /> : <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" /> : null}
       </Link>
@@ -221,7 +221,7 @@ function SupplierPagination({ current, total, basePath, labels }: { current: Sup
   const { start, end, totalPages } = paginationRange(current.page, current.pageSize, total)
   const previousPage = Math.max(1, current.page - 1)
   const nextPage = Math.min(totalPages, current.page + 1)
-  const targetClassName = "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border px-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+  const targetClassName = "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border px-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
   return (
     <nav aria-label={`${labels.page} ${current.page} ${labels.of} ${totalPages}`} className="flex flex-col gap-3 border-t border-border px-4 py-3 text-sm text-muted-foreground lg:flex-row lg:items-center lg:justify-between">
       <div>{start}-{end} {labels.of} {total}</div>

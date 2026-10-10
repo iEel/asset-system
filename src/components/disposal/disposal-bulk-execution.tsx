@@ -40,6 +40,7 @@ import {
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { shouldGuardLinkClick } from "@/lib/navigation-guard"
+import { cn } from "@/lib/utils"
 
 const BULK_EXECUTION_MODES = {
   preview: { mode: "preview" as const },
@@ -577,7 +578,7 @@ export function DisposalBulkExecutionProvider({
           restoreTargetRef.current = element
         }}
         tabIndex={-1}
-        className={className}
+        className={cn("outline-none", className)}
         onClickCapture={onClickCapture}
         onSubmitCapture={onSubmitCapture}
       >
@@ -598,7 +599,7 @@ export function DisposalBulkExecutionSelectionToggle() {
       onClick={() => setSelectionMode(!selection.selectionMode)}
       disabled={busy}
       aria-pressed={selection.selectionMode}
-      className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
+      className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
     >
       <ListChecks className="h-4 w-4" aria-hidden="true" />
       {selection.selectionMode ? copy.cancelSelectionMode : copy.selectionMode}
@@ -685,7 +686,7 @@ export function DisposalBulkExecutionSelectPageControl() {
         onChange={togglePageSelection}
         aria-label={copy.selectPage}
         aria-checked={partiallySelected ? "mixed" : allSelected}
-        className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary"
+        className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
       />
     </label>
   )
@@ -718,7 +719,7 @@ export function DisposalBulkExecutionCheckbox({
         tabIndex={0}
         title={copy.incompatibleType}
         aria-label={copy.incompatibleType}
-        className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md text-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${variant === "mobile" ? "px-2 text-xs" : ""}`}
+        className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md text-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${variant === "mobile" ? "px-2 text-xs" : ""}`}
       >
         <ShieldAlert className="h-5 w-5" aria-hidden="true" />
         {variant === "mobile" ? <span>{copy.incompatibleType}</span> : null}
@@ -727,14 +728,14 @@ export function DisposalBulkExecutionCheckbox({
   }
 
   return (
-    <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md focus-within:ring-2 focus-within:ring-primary">
+    <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md focus-within:ring-2 focus-within:ring-ring">
       <input
         type="checkbox"
         checked={checked}
         disabled={disabled}
         onChange={() => toggle(item.requestId)}
         aria-label={label}
-        className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary"
+        className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
       />
     </label>
   )
@@ -868,7 +869,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
                   checked={useHistoricalEvidenceException}
                   onChange={(event) => setUseHistoricalEvidenceException(event.target.checked)}
                   aria-describedby={`${historicalWarningId} ${historicalHelpId}`}
-                  className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary"
+                  className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 {copy.historicalException}
               </label>
@@ -883,7 +884,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
                       maxLength={2000}
                       required
                       aria-describedby={`${historicalWarningId} ${historicalHelpId}`}
-                      className="mt-2 min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="mt-2 min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                   </label>
                   <p id={historicalHelpId} className="text-xs text-muted-foreground">
@@ -899,7 +900,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
                       onChange={(event) => setEvidenceExceptionAcknowledged(event.target.checked)}
                       required
                       aria-describedby={`${historicalWarningId} ${historicalHelpId}`}
-                      className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary"
+                      className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
                     />
                     {copy.historicalAcknowledgement}
                   </label>
@@ -928,7 +929,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
                 type="checkbox"
                 checked={permanentConfirmed}
                 onChange={(event) => setPermanentConfirmed(event.target.checked)}
-                className="mt-0.5 h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary"
+                className="mt-0.5 h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
               />
               {copy.permanentConfirmation}
             </label>
@@ -1033,7 +1034,7 @@ function SharedValueFields({
           value={executionDate}
           onChange={(event) => onExecutionDateChange(event.target.value)}
           required
-          className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
+          className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
         />
       </label>
       <label className="text-sm font-medium text-foreground">
@@ -1042,7 +1043,7 @@ function SharedValueFields({
           value={executedById}
           onChange={(event) => onExecutedByChange(event.target.value)}
           required
-          className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
+          className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
         >
           <option value="">{copy.selectEmployee}</option>
           {employees.map((employee) => (
@@ -1056,7 +1057,7 @@ function SharedValueFields({
           value={nextStatusId}
           onChange={(event) => onNextStatusChange(event.target.value)}
           required
-          className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
+          className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
         >
           <option value="">{copy.selectStatus}</option>
           {executionStatuses.map((status) => (
@@ -1071,7 +1072,7 @@ function SharedValueFields({
             value={sharedRecipientName}
             onChange={(event) => onSharedRecipientNameChange(event.target.value)}
             maxLength={200}
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
+            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
           />
           <span className="mt-1 block text-xs text-muted-foreground">
             {copy.sharedRecipientHelp}

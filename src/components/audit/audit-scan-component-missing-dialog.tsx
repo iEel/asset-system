@@ -51,7 +51,7 @@ export function AuditScanComponentMissingDialog({
               disabled={saving}
               rows={3}
               placeholder={t("componentMissingRemarkPlaceholder")}
-              className="min-h-24 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring disabled:opacity-60"
+              className="min-h-24 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring disabled:opacity-60"
             />
           </label>
           <FileDropzone

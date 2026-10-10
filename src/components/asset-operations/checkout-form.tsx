@@ -241,7 +241,7 @@ export function CheckoutForm({
                   return (
                     <label
                       key={mode}
-                      className={`flex min-h-16 cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
+                      className={`flex min-h-16 cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${
                         selected ? "border-primary bg-primary-soft" : "border-border bg-background hover:border-primary/60"
                       }`}
                     >
@@ -283,7 +283,7 @@ export function CheckoutForm({
           ))}
         </Select>
         <Field label={t("checkoutDate")} required>
-          <input type="date" value={values.checkoutDate} onChange={(event) => setField("checkoutDate", event.target.value)} required className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+          <input type="date" value={values.checkoutDate} onChange={(event) => setField("checkoutDate", event.target.value)} required className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
         </Field>
         {values.handoverMode === "temporary_loan" ? (
           <Field label={t("expectedReturn")} required>
@@ -293,13 +293,13 @@ export function CheckoutForm({
               min={values.checkoutDate}
               onChange={(event) => setField("expectedReturnDate", event.target.value)}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
         ) : null}
         <div className="md:col-span-2">
           <Field label={t("remark")}>
-            <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </Field>
         </div>
         <div className="md:col-span-2">
@@ -430,7 +430,7 @@ function Select({
 }) {
   return (
     <Field label={label} required={required}>
-      <select value={value} required={required} onChange={(event) => onChange(event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0">
+      <select value={value} required={required} onChange={(event) => onChange(event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0">
         {children}
       </select>
     </Field>

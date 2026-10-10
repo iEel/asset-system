@@ -684,7 +684,7 @@ export function AssetBatchForm({
                 type="checkbox"
                 checked={allowCrossCompanyCustodian}
                 onChange={(event) => handleCrossCompanyCustodianToggle(event.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-ring"
               />
               <span>
                 <span className="block font-medium text-foreground">{t("allowCrossCompanyCustodian")}</span>
@@ -701,7 +701,7 @@ export function AssetBatchForm({
                 type="checkbox"
                 checked={allowCrossBranchLocation}
                 onChange={(event) => handleCrossBranchLocationToggle(event.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-ring"
               />
               <span>
                 <span className="block font-medium text-foreground">{t("allowCrossBranchLocation")}</span>
@@ -765,7 +765,7 @@ export function AssetBatchForm({
               ) : (
                 purchaseDocuments.map((document) => (
                   <label key={document.id} className="flex items-start gap-2 rounded-md border border-border bg-background p-3 text-sm">
-                    <input type="checkbox" checked={selectedPurchaseDocumentIds.includes(document.id)} onChange={() => togglePurchaseDocument(document.id)} className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary" />
+                    <input type="checkbox" checked={selectedPurchaseDocumentIds.includes(document.id)} onChange={() => togglePurchaseDocument(document.id)} className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-ring" />
                     <span className="min-w-0">
                       <span className="block truncate font-medium text-foreground">{document.documentNo}</span>
                       <span className="mt-1 block text-xs text-muted-foreground">{document.supplierName ?? document.documentType} · {t("linkedAssets", { count: document.assetCount })}</span>
@@ -1118,7 +1118,7 @@ function BatchOptionalColumnToggle({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+      className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
         active
           ? "border-primary bg-primary-soft text-primary hover:bg-primary-soft"
           : "border-border bg-background text-foreground hover:bg-accent"
@@ -1169,4 +1169,4 @@ function SelectField({
   )
 }
 
-const inputClassName = "min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0"
+const inputClassName = "min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0"

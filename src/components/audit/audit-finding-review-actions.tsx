@@ -237,7 +237,7 @@ function ReviewDecisionModal({
               rows={3}
               maxLength={4000}
               onChange={(event) => setReviewRemark(event.target.value)}
-              className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </label>
 
@@ -353,7 +353,7 @@ function ActionPlanModal({
               rows={4}
               maxLength={4000}
               onChange={(event) => setValues((current) => ({ ...current, actionPlan: event.target.value }))}
-              className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </label>
           <div className="grid gap-4 md:grid-cols-2">
@@ -372,7 +372,7 @@ function ActionPlanModal({
                 type="date"
                 value={values.actionDueDate}
                 onChange={(event) => setValues((current) => ({ ...current, actionDueDate: event.target.value }))}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </label>
           </div>
@@ -381,7 +381,7 @@ function ActionPlanModal({
             <select
               value={values.actionStatus}
               onChange={(event) => setValues((current) => ({ ...current, actionStatus: event.target.value }))}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               {["planned", "in_progress", "done"].map((status) => (
                 <option key={status} value={status}>
@@ -481,7 +481,7 @@ function CloseFindingModal({ findingId, evidenceCount, onClose }: { findingId: s
               rows={3}
               maxLength={4000}
               onChange={(event) => setClosureRemark(event.target.value)}
-              className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </label>
           <div className="flex flex-col justify-end gap-2 sm:flex-row">

@@ -76,7 +76,7 @@ export function ReportPresetControls({ locale, currentQuery, labels }: ReportPre
               setMessage("")
             }}
             maxLength={60}
-            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </label>
         <button
@@ -101,7 +101,7 @@ export function ReportPresetControls({ locale, currentQuery, labels }: ReportPre
               <button
                 type="button"
                 onClick={() => deletePreset(preset.id)}
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-danger-soft hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-8 sm:w-8"
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-danger-soft hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-8 sm:w-8"
                 aria-label={`${labels.deletePreset}: ${preset.name}`}
               >
                 <Trash2 className="h-4 w-4" />

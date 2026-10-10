@@ -119,11 +119,11 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
           </div>
           <SearchableSelect label={t("toLocation")} value={values.toLocationId} required options={locations} placeholder={t("selectLocation")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toLocationId", value)} />
           <Field label={t("reason")} required>
-            <input value={values.reason} onChange={(event) => setField("reason", event.target.value)} required maxLength={500} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input value={values.reason} onChange={(event) => setField("reason", event.target.value)} required maxLength={500} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </Field>
           <div className="md:col-span-2">
             <Field label={t("remark")}>
-              <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+              <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
             </Field>
           </div>
           <div className="md:col-span-2 flex justify-end">

@@ -166,14 +166,14 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Link
             href={returnToHref}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <ArrowLeft aria-hidden="true" className="h-4 w-4" />
             {tCommon("back")}
           </Link>
           <Link
             href={editHref}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Edit aria-hidden="true" className="h-4 w-4" />
             {tCommon("edit")}
@@ -228,7 +228,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
             ) : (
               <div className="mt-4 divide-y divide-border">
                 {assets.map((asset) => (
-                  <Link key={asset.id} href={`/${locale}/assets/${asset.id}`} className="flex min-h-11 flex-col gap-2 py-3 transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset sm:flex-row sm:items-center sm:justify-between">
+                  <Link key={asset.id} href={`/${locale}/assets/${asset.id}`} className="flex min-h-11 flex-col gap-2 py-3 transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:flex-row sm:items-center sm:justify-between">
                     <span className="min-w-0">
                       <span className="block font-medium text-primary">{asset.assetTag} - {asset.name}</span>
                       <span className="mt-1 block text-xs text-muted-foreground">
@@ -277,7 +277,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
             ) : (
               <div className="mt-4 space-y-3">
                 {maintenanceTickets.map((ticket) => (
-                  <Link key={ticket.id} href={`/${locale}/maintenance/${ticket.id}`} className="block min-h-11 rounded-md border border-border bg-background p-3 transition-colors hover:border-primary/40 hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                  <Link key={ticket.id} href={`/${locale}/maintenance/${ticket.id}`} className="block min-h-11 rounded-md border border-border bg-background p-3 transition-colors hover:border-primary/40 hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <div className="font-medium text-primary">{ticket.repairNo} - {ticket.asset.assetTag}</div>
@@ -336,7 +336,7 @@ function MetricCard({
   )
 
   return href ? (
-    <Link href={href} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+    <Link href={href} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
       {content}
     </Link>
   ) : content
@@ -347,7 +347,7 @@ function SectionTitle({ title, actionHref, actionLabel }: { title: string; actio
     <div className="flex items-start justify-between gap-3">
       <h2 className="text-base font-semibold text-foreground">{title}</h2>
       {actionHref && actionLabel ? (
-        <Link href={actionHref} className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-primary hover:bg-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+        <Link href={actionHref} className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-primary hover:bg-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           {actionLabel}
         </Link>
       ) : null}

@@ -843,7 +843,7 @@ export function AssetForm({
               onChange={(event) => setField("assetTag", event.target.value)}
               maxLength={50}
               placeholder={t("autoTagHint")}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
             {duplicateState.assetTagExists && (
               <p className="mt-1.5 text-xs font-medium text-danger">{t("duplicateAssetTag")}</p>
@@ -858,7 +858,7 @@ export function AssetForm({
               }}
               maxLength={200}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
             <p className="mt-1.5 text-xs text-muted-foreground">{t("assetNameHelp")}</p>
             {suggestedAssetName && (
@@ -963,7 +963,7 @@ export function AssetForm({
                   type="checkbox"
                   checked={allowCrossCompanyCustodian}
                   onChange={(event) => handleCrossCompanyCustodianToggle(event.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                  className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-ring"
                 />
                 <span>
                   <span className="block font-medium text-foreground">{t("allowCrossCompanyCustodian")}</span>
@@ -991,7 +991,7 @@ export function AssetForm({
                 step="1"
                 value={values.licenseTotalSeats ?? ""}
                 onChange={(event) => setField("licenseTotalSeats", event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
             <Field label={t("licenseUsedSeats")}>
@@ -1001,7 +1001,7 @@ export function AssetForm({
                 step="1"
                 value={values.licenseUsedSeats ?? ""}
                 onChange={(event) => setField("licenseUsedSeats", event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
             <SelectField
@@ -1028,7 +1028,7 @@ export function AssetForm({
                 type="checkbox"
                 checked={allowCrossBranchLocation}
                 onChange={(event) => handleCrossBranchLocationToggle(event.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-ring"
               />
               <span>
                 <span className="block font-medium text-foreground">{t("allowCrossBranchLocation")}</span>
@@ -1053,7 +1053,7 @@ export function AssetForm({
               value={values.statusId}
               required
               onChange={(event) => setField("statusId", event.target.value)}
-              className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0"
+              className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0"
             >
               <option value="">{t("selectStatus")}</option>
               {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
@@ -1082,7 +1082,7 @@ export function AssetForm({
               value={values.conditionId}
               required
               onChange={(event) => setField("conditionId", event.target.value)}
-              className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0"
+              className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0"
             >
               <option value="">{t("selectCondition")}</option>
               {conditions.map((condition) => <option key={condition.id} value={condition.id}>{condition.label}</option>)}
@@ -1119,7 +1119,7 @@ export function AssetForm({
                 maxLength={100}
                 placeholder="Harddisk"
                 disabled={!installAfterCreate.parentAssetId}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-60"
               />
             </Field>
             <Field label={t("slotNo")}>
@@ -1129,7 +1129,7 @@ export function AssetForm({
                 maxLength={50}
                 placeholder="Slot 1"
                 disabled={!installAfterCreate.parentAssetId}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-60"
               />
             </Field>
             <Field label={t("reason")}>
@@ -1138,7 +1138,7 @@ export function AssetForm({
                 onChange={(event) => setInstallField("reason", event.target.value)}
                 maxLength={500}
                 disabled={!installAfterCreate.parentAssetId}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-60"
               />
             </Field>
           </Section>
@@ -1146,29 +1146,29 @@ export function AssetForm({
 
         <Section title={t("purchaseWarranty")}>
           <Field label={t("purchaseDate")}>
-            <input type="date" value={values.purchaseDate ?? ""} onChange={(event) => setField("purchaseDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="date" value={values.purchaseDate ?? ""} onChange={(event) => setField("purchaseDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </Field>
           <Field label={t("purchasePrice")}>
-            <input type="number" min="0" step="0.01" value={values.purchasePrice ?? ""} onChange={(event) => setField("purchasePrice", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="number" min="0" step="0.01" value={values.purchasePrice ?? ""} onChange={(event) => setField("purchasePrice", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </Field>
           <SelectField label={t("supplier")} value={values.supplierId ?? ""} onChange={(value) => setField("supplierId", value)}>
             <option value="">{t("selectSupplier")}</option>
             {suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.label}</option>)}
           </SelectField>
           <Field label={t("warrantyStart")}>
-            <input type="date" value={values.warrantyStartDate ?? ""} onChange={(event) => setField("warrantyStartDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="date" value={values.warrantyStartDate ?? ""} onChange={(event) => setField("warrantyStartDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </Field>
           <Field label={t("warrantyEnd")}>
-            <input type="date" value={values.warrantyEndDate ?? ""} onChange={(event) => setField("warrantyEndDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="date" value={values.warrantyEndDate ?? ""} onChange={(event) => setField("warrantyEndDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </Field>
           <Field label={t("fixedAssetCode")}>
-            <input value={values.fixedAssetCode ?? ""} onChange={(event) => setField("fixedAssetCode", event.target.value)} maxLength={50} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input value={values.fixedAssetCode ?? ""} onChange={(event) => setField("fixedAssetCode", event.target.value)} maxLength={50} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </Field>
           <Field label={t("poNumber")}>
-            <input value={values.poNumber ?? ""} onChange={(event) => setField("poNumber", event.target.value)} maxLength={50} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input value={values.poNumber ?? ""} onChange={(event) => setField("poNumber", event.target.value)} maxLength={50} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </Field>
           <Field label={t("invoiceNumber")}>
-            <input value={values.invoiceNumber ?? ""} onChange={(event) => setField("invoiceNumber", event.target.value)} maxLength={50} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input value={values.invoiceNumber ?? ""} onChange={(event) => setField("invoiceNumber", event.target.value)} maxLength={50} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </Field>
           <div className="md:col-span-2">
             <div className="rounded-md border border-border bg-background p-4">
@@ -1196,7 +1196,7 @@ export function AssetForm({
                           type="checkbox"
                           checked={selectedPurchaseDocumentIds.includes(document.id)}
                           onChange={() => togglePurchaseDocument(document.id)}
-                          className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                          className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-ring"
                         />
                         <span className="min-w-0">
                           <span className="block truncate font-medium text-foreground">
@@ -1218,7 +1218,7 @@ export function AssetForm({
                   <select
                     value={purchaseDocumentType}
                     onChange={(event) => setPurchaseDocumentType(event.target.value as (typeof purchaseDocumentTypes)[number])}
-                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   >
                     {purchaseDocumentTypes.map((type) => (
                       <option key={type} value={type}>{t(`purchaseDocumentTypes.${type}`)}</option>
@@ -1229,13 +1229,13 @@ export function AssetForm({
                     onChange={(event) => setPurchaseDocumentNo(event.target.value)}
                     maxLength={100}
                     placeholder={t("purchaseDocumentNo")}
-                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
                   <input
                     type="date"
                     value={purchaseDocumentDate}
                     onChange={(event) => setPurchaseDocumentDate(event.target.value)}
-                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
                   <input
                     type="number"
@@ -1244,7 +1244,7 @@ export function AssetForm({
                     value={purchaseDocumentTotalAmount}
                     onChange={(event) => setPurchaseDocumentTotalAmount(event.target.value)}
                     placeholder={t("purchaseDocumentAmount")}
-                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
                 </div>
                 <FileDropzone
@@ -1369,7 +1369,7 @@ export function AssetForm({
                       href={`/api/attachments/${photo.id}?inline=1`}
                       target="_blank"
                       rel="noreferrer"
-                      className="overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring"
                     >
                       <div className="flex aspect-video items-center justify-center bg-muted/40 p-2">
                         {/* Authenticated attachment URLs render more reliably as browser-native images. */}
@@ -1431,7 +1431,7 @@ export function AssetForm({
         <Section title={t("customFields")}>
           <div className="md:col-span-2">
             <Field label={t("remark")}>
-              <textarea value={values.remark ?? ""} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+              <textarea value={values.remark ?? ""} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
             </Field>
           </div>
           <div className="md:col-span-2">
@@ -1485,7 +1485,7 @@ export function AssetForm({
                     value={values.customFieldsJson ?? ""}
                     onChange={(event) => handleRawJsonChange(event.target.value)}
                     rows={5}
-                    className="min-h-32 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="min-h-32 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
                   <p className="mt-1.5 text-xs text-muted-foreground">{t("customFieldsJsonHelp")}</p>
                 </Field>
@@ -1493,7 +1493,7 @@ export function AssetForm({
             </div>
           </div>
           <label className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
-            <input type="checkbox" checked={values.isActive} onChange={(event) => setField("isActive", event.target.checked)} className="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
+            <input type="checkbox" checked={values.isActive} onChange={(event) => setField("isActive", event.target.checked)} className="h-4 w-4 rounded border-border text-primary focus:ring-ring" />
             {tCommon("active")}
           </label>
         </Section>
@@ -1580,7 +1580,7 @@ function SelectField({
         value={value}
         required={required}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0"
+        className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0"
       >
         {children}
       </select>
@@ -1641,13 +1641,13 @@ function CustomFieldRowsEditor({
                 value={row.key}
                 onChange={(event) => updateRow(row.id, "key", event.target.value)}
                 placeholder={labels.key}
-                className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0"
+                className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0"
               />
               <input
                 value={row.value}
                 onChange={(event) => updateRow(row.id, "value", event.target.value)}
                 placeholder={labels.value}
-                className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0"
+                className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0"
               />
               <button
                 type="button"
@@ -1666,7 +1666,7 @@ function CustomFieldRowsEditor({
       <button
         type="button"
         onClick={() => onChange([...rows, createCustomFieldRow()])}
-        className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:h-9 sm:min-h-0"
+        className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-9 sm:min-h-0"
       >
         <Plus className="h-4 w-4" />
         {labels.add}
@@ -1726,7 +1726,7 @@ function TemplateField({
           type="checkbox"
           checked={value === "true"}
           onChange={(event) => onChange(event.target.checked ? "true" : "false")}
-          className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+          className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
         />
         {label}
       </label>
@@ -1741,7 +1741,7 @@ function TemplateField({
           value={value}
           required={definition.isRequired}
           onChange={(event) => onChange(event.target.value)}
-          className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
         >
           <option value=""></option>
           {definition.options.map((option) => (
@@ -1760,7 +1760,7 @@ function TemplateField({
         value={value}
         required={definition.isRequired}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
       />
     </label>
   )

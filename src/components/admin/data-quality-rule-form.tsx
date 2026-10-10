@@ -81,7 +81,7 @@ export function DataQualityRuleForm({ rules, labels }: DataQualityRuleFormProps)
             <select
               value={rule.severity}
               onChange={(event) => updateRule(rule.key, { severity: event.target.value as AssetDataQualityRule["severity"] })}
-              className="h-10 rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="warning">{labels.warning}</option>
               <option value="danger">{labels.danger}</option>

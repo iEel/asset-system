@@ -136,16 +136,16 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
       <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("name")} required>
-            <input value={values.name} onChange={(event) => setField("name", event.target.value)} required maxLength={200} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input value={values.name} onChange={(event) => setField("name", event.target.value)} required maxLength={200} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </Field>
           <Field label={t("auditYear")} required>
-            <input type="number" value={values.auditYear} onChange={(event) => setField("auditYear", event.target.value)} required min={yearRange.min} max={yearRange.max} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="number" value={values.auditYear} onChange={(event) => setField("auditYear", event.target.value)} required min={yearRange.min} max={yearRange.max} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </Field>
           <Field label={t("startDate")} required>
-            <input type="date" value={values.startDate} onChange={(event) => setField("startDate", event.target.value)} required className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="date" value={values.startDate} onChange={(event) => setField("startDate", event.target.value)} required className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </Field>
           <Field label={t("endDate")} required>
-            <input type="date" value={values.endDate} onChange={(event) => setField("endDate", event.target.value)} required className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="date" value={values.endDate} onChange={(event) => setField("endDate", event.target.value)} required className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </Field>
           <Select label={t("status")} value={values.status} required onChange={(value) => setField("status", value)}>
             <option value="draft">{t("statusDraft")}</option>
@@ -173,7 +173,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
                   required
                   min={1}
                   max={100}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
                 <p className="mt-1.5 text-xs text-muted-foreground">{t("sampleRateHelp")}</p>
               </Field>
@@ -259,7 +259,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
               type="checkbox"
               checked={values.includeClosedAssets}
               onChange={(event) => setIncludeClosedAssets(event.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-ring"
             />
             <span>
               <span className="block text-sm font-medium text-foreground">{t("includeClosedAssets")}</span>
@@ -325,7 +325,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
 function Select({ label, value, required, onChange, children }: { label: string; value: string; required?: boolean; onChange: (value: string) => void; children: React.ReactNode }) {
   return (
     <Field label={label} required={required}>
-      <select value={value} required={required} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+      <select value={value} required={required} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring">
         {children}
       </select>
     </Field>

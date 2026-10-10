@@ -295,14 +295,14 @@ export function ScannerTextInput({
           placeholder={placeholder}
           className={
             inputClassName ??
-            "min-h-11 min-w-0 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-10 sm:min-h-0 sm:flex-1"
+            "min-h-11 min-w-0 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0 sm:flex-1"
           }
         />
         <button
           type="button"
           disabled={disabled}
           onClick={handleToggleScanner}
-          className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
+          className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
           title={scannerRunning || scannerLoading ? labels.stop : labels.start}
         >
           {scannerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
@@ -323,7 +323,7 @@ export function ScannerTextInput({
               <select
                 value={selectedCameraId}
                 onChange={(event) => void handleCameraChange(event.target.value)}
-                className="mt-1 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:h-9 sm:min-h-0"
+                className="mt-1 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-9 sm:min-h-0"
               >
                 <option value={environmentCameraId}>{labels.cameraRear}</option>
                 {cameras.map((camera, index) => (
@@ -359,7 +359,7 @@ export function ScannerTextInput({
                       aria-pressed={active}
                       aria-label={label}
                       title={label}
-                      className={`inline-flex min-h-9 min-w-11 items-center justify-center rounded px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60 ${
+                      className={`inline-flex min-h-9 min-w-11 items-center justify-center rounded px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60 ${
                         active ? "bg-white text-slate-950" : "text-white hover:bg-white/15"
                       }`}
                     >
@@ -377,7 +377,7 @@ export function ScannerTextInput({
                 aria-pressed={torchEnabled}
                 aria-label={getScannerTorchLabel(labels, torchEnabled)}
                 title={getScannerTorchLabel(labels, torchEnabled)}
-                className={`absolute right-3 top-3 z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-md border px-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60 ${
+                className={`absolute right-3 top-3 z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-md border px-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60 ${
                   torchEnabled
                     ? "border-warning/50 bg-warning text-white hover:bg-warning-hover"
                     : "border-white/50 bg-slate-950/70 text-white hover:bg-slate-950/85"

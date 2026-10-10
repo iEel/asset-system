@@ -105,7 +105,7 @@ export function CompanyForm({
               onChange={(event) => setField("code", event.target.value.toUpperCase())}
               maxLength={20}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
             <p className="mt-1.5 text-xs text-muted-foreground">{t("codeHelp")}</p>
           </Field>
@@ -116,7 +116,7 @@ export function CompanyForm({
               onChange={(event) => setField("assetTagCode", event.target.value.toUpperCase())}
               maxLength={20}
               placeholder={values.code || t("code")}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
             <p className="mt-1.5 text-xs text-muted-foreground">{t("assetTagCodeHelp")}</p>
           </Field>
@@ -127,7 +127,7 @@ export function CompanyForm({
               onChange={(event) => setField("nameTh", event.target.value)}
               maxLength={200}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
@@ -136,7 +136,7 @@ export function CompanyForm({
               value={values.nameEn ?? ""}
               onChange={(event) => setField("nameEn", event.target.value)}
               maxLength={200}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
@@ -145,7 +145,7 @@ export function CompanyForm({
               value={values.taxId ?? ""}
               onChange={(event) => setField("taxId", event.target.value)}
               maxLength={20}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
@@ -156,7 +156,7 @@ export function CompanyForm({
                 onChange={(event) => setField("address", event.target.value)}
                 rows={4}
                 maxLength={500}
-                className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
           </div>
@@ -166,7 +166,7 @@ export function CompanyForm({
               type="checkbox"
               checked={values.isActive}
               onChange={(event) => setField("isActive", event.target.checked)}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
             />
             {tCommon("active")}
           </label>

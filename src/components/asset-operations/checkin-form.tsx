@@ -354,7 +354,7 @@ export function CheckinForm({
                     value={legacyReturnSearch}
                     onChange={(event) => setLegacyReturnSearch(event.target.value)}
                     placeholder={t("legacyReturnSearch")}
-                    className="min-h-11 w-full rounded-md border border-border bg-surface pl-9 pr-3 text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary"
+                    className="min-h-11 w-full rounded-md border border-border bg-surface pl-9 pr-3 text-sm outline-none transition-colors focus:border-ring focus:ring-1 focus:ring-ring"
                   />
                 </label>
               </div>
@@ -398,7 +398,7 @@ export function CheckinForm({
           {hasActiveCheckouts && (
             <>
           <Field label={t("returnDate")} required>
-            <input type="date" value={values.returnDate} onChange={(event) => setField("returnDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="date" value={values.returnDate} onChange={(event) => setField("returnDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </Field>
 
           {selectedCheckout && (
@@ -467,16 +467,16 @@ export function CheckinForm({
             ))}
           </Select>
           <Field label={t("missingAccessories")}>
-            <input value={values.missingAccessories} onChange={(event) => setField("missingAccessories", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input value={values.missingAccessories} onChange={(event) => setField("missingAccessories", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
           </Field>
           <div className="md:col-span-2">
             <Field label={t("damageNote")}>
-              <textarea value={values.damageNote} onChange={(event) => handleDamageNoteChange(event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+              <textarea value={values.damageNote} onChange={(event) => handleDamageNoteChange(event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
             </Field>
           </div>
           <div className="md:col-span-2">
             <Field label={t("remark")}>
-              <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+              <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
             </Field>
           </div>
 
@@ -553,7 +553,7 @@ export function CheckinForm({
               <p className="mt-1 text-xs text-warning">{t("sendToRepairHelp")}</p>
               <div className="mt-3">
                 <Field label={t("maintenanceProblem")}>
-                  <textarea value={values.maintenanceProblem} onChange={(event) => setField("maintenanceProblem", event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder={t("maintenanceProblemPlaceholder")} />
+                  <textarea value={values.maintenanceProblem} onChange={(event) => setField("maintenanceProblem", event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" placeholder={t("maintenanceProblemPlaceholder")} />
                 </Field>
               </div>
             </div>
@@ -600,7 +600,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
 function Select({ label, value, required, disabled, onChange, children }: { label: string; value: string; required?: boolean; disabled?: boolean; onChange: (value: string) => void; children: React.ReactNode }) {
   return (
     <Field label={label} required={required}>
-      <select value={value} required={required} disabled={disabled} onChange={(event) => onChange(event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground sm:h-10 sm:min-h-0">
+      <select value={value} required={required} disabled={disabled} onChange={(event) => onChange(event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground sm:h-10 sm:min-h-0">
         {children}
       </select>
     </Field>

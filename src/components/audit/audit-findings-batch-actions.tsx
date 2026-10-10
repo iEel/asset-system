@@ -110,7 +110,7 @@ export function AuditFindingsBatchActions({ findings }: { findings: BatchFinding
                 type="checkbox"
                 checked={selectedSet.has(finding.id)}
                 onChange={() => toggleFinding(finding.id)}
-                className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-ring"
               />
               <span className="min-w-0">
                 <span className="block break-words font-medium text-foreground">{finding.label}</span>

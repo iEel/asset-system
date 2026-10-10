@@ -849,7 +849,7 @@ function DashboardCard({
 
   if (href) {
     return (
-      <Link href={href} className={`block rounded-md border px-3 py-3 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${toneClass} ${activeClassName}`}>
+      <Link href={href} className={`block rounded-md border px-3 py-3 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${toneClass} ${activeClassName}`}>
         {content}
       </Link>
     )

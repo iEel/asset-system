@@ -124,7 +124,7 @@ export function Topbar({
         <button
           onClick={onMobileMenuToggle}
           className={cn(
-            "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 lg:hidden",
+            "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:hidden",
             mobileNavigationMode && "hidden",
           )}
           aria-label="Open menu"
@@ -135,7 +135,7 @@ export function Topbar({
         {/* Desktop sidebar toggle */}
         <button
           onClick={onToggleSidebar}
-          className="hidden min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 lg:inline-flex"
+          className="hidden min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:inline-flex"
           title="Toggle sidebar"
           aria-label="Toggle sidebar"
         >
@@ -149,7 +149,7 @@ export function Topbar({
       <div className="flex min-w-0 items-center gap-1 sm:gap-2">
         <Link
           href={`/${locale}/asset-management/scan`}
-          className="hidden min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 sm:h-9 sm:min-h-0 sm:min-w-0 sm:px-3 lg:inline-flex"
+          className="hidden min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-9 sm:min-h-0 sm:min-w-0 sm:px-3 lg:inline-flex"
           title={tAssetTools("globalScanShortcut")}
           aria-label={tAssetTools("globalScanShortcut")}
         >
@@ -163,7 +163,7 @@ export function Topbar({
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
+                className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 aria-label={tNotifications("title")}
                 title={tNotifications("title")}
               >
@@ -234,7 +234,7 @@ export function Topbar({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
+                className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 aria-label="Change language"
               >
                 <Globe size={18} />
@@ -257,7 +257,7 @@ export function Topbar({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md px-2 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 sm:px-3"
+                className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md px-2 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-3"
                 aria-label="User menu"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-white">

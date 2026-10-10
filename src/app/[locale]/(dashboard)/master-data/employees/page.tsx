@@ -145,7 +145,7 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
               name="search"
               defaultValue={listState.search}
               placeholder={t("searchPlaceholder")}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </label>
           <FilterSelect label={t("company")} name="companyId" defaultValue={listState.companyId}>
@@ -352,7 +352,7 @@ function FilterSelect({
       <select
         name={name}
         defaultValue={defaultValue}
-        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
       >
         {children}
       </select>
