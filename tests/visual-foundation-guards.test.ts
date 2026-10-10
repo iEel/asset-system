@@ -100,3 +100,18 @@ test("no caller passes a database color to StatusBadge", () => {
   assert.deepEqual(findMatches(sources, /<StatusBadge[^>]*\bcolor=/g), [])
   assert.deepEqual(findMatches(sources, /getStatusDotColor|statusDotVariants/g), [])
 })
+
+test("the topbar is flat and the bottom bar is solid with Thai-safe labels", () => {
+  assert.doesNotMatch(read("src/components/layout/topbar.tsx"), /shadow-sm/)
+  const nav = read("src/components/layout/mobile-field-navigation.tsx")
+  assert.doesNotMatch(nav, /backdrop-blur|bg-surface\/95|leading-tight|text-\[11px\]/)
+  assert.match(nav, /"fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface px-2 /)
+  assert.equal(nav.match(/text-xs font-medium text-muted-foreground/g)?.length, 2)
+})
+
+test("the offline page and service worker follow the new palette", () => {
+  const offline = read("public/offline.html")
+  assert.match(offline, /<meta name="theme-color" content="#FFFFFF" \/>/)
+  assert.doesNotMatch(offline, /#1E3A5F|#1e3a5f|Inter,/)
+  assert.match(read("public/sw.js"), /const ASSET_SYSTEM_PWA_CACHE = "asset-system-pwa-v2"/)
+})

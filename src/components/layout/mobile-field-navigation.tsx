@@ -48,7 +48,7 @@ export function MobileFieldNavigation({
     <nav
       data-mobile-field-navigation
       aria-label={t("mobileNavigationLabel")}
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 shadow-md backdrop-blur lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 lg:hidden"
     >
       <div className="mx-auto flex min-h-16 max-w-lg items-end justify-around gap-1">
         {destinations.map((destination) => {
@@ -61,7 +61,7 @@ export function MobileFieldNavigation({
               href={destination.href}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-1 text-[11px] font-medium leading-tight text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                "flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-1 text-xs font-medium text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 isActive && !destination.emphasized && "text-primary",
                 destination.emphasized && "relative -mt-3 text-primary",
               )}
@@ -89,7 +89,7 @@ export function MobileFieldNavigation({
           aria-expanded={sidebarOpen}
           aria-controls="mobile-primary-navigation-drawer"
           className={cn(
-            "flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-1 text-[11px] font-medium leading-tight text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            "flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-1 text-xs font-medium text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             activeItem === "more" && "text-primary",
           )}
         >

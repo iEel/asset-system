@@ -117,7 +117,7 @@ export function Topbar({
   }
 
   return (
-    <header className="flex h-16 max-w-full shrink-0 items-center justify-between gap-1 border-b border-border bg-surface px-3 shadow-sm sm:gap-2 sm:px-4">
+    <header className="flex h-16 max-w-full shrink-0 items-center justify-between gap-1 border-b border-border bg-surface px-3 sm:gap-2 sm:px-4">
       {/* Left side */}
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         {/* Mobile menu button */}

@@ -14,8 +14,9 @@ test("app shell uses the light-shell visual tokens", async () => {
   assert.equal(tokens["sidebar-active"], tokens["brand-navy"])
   assert.notEqual(tokens.primary, tokens["brand-navy"])
   assert.notEqual(tokens.canvas, tokens.card)
-  assert.match(layout, /themeColor: "#0F172A"/)
-  assert.equal(manifest().theme_color, "#0F172A")
+  assert.equal(layout.match(/themeColor: "(#[0-9A-F]{6})"/)?.[1], tokens.card, "the browser bar matches the white topbar")
+  assert.equal(manifest().theme_color, tokens.card)
+  assert.equal(manifest().background_color, tokens.canvas)
 })
 
 test("one shared status badge replaces the old status pill", () => {

@@ -1,4 +1,4 @@
-const ASSET_SYSTEM_PWA_CACHE = "asset-system-pwa-v1"
+const ASSET_SYSTEM_PWA_CACHE = "asset-system-pwa-v2"
 
 const STATIC_ASSETS = [
   "/offline.html",

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync, statSync } from "node:fs"
 import test from "node:test"
+import { readRootTokens } from "../src/lib/color-contrast.ts"
 
 test("browser app icons are project-branded raster assets", () => {
   const favicon = readFileSync("src/app/favicon.ico")
@@ -23,7 +24,9 @@ test("PWA manifest and install icons are available", async () => {
   assert.equal(result.short_name, "Asset System")
   assert.equal(result.start_url, "/th")
   assert.equal(result.display, "standalone")
-  assert.equal(result.theme_color, "#0F172A")
+  const tokens = readRootTokens(readFileSync("src/app/globals.css", "utf8"))
+  assert.equal(result.theme_color, tokens.card, "the status bar matches the white topbar")
+  assert.equal(result.background_color, tokens.canvas, "the splash screen matches the page canvas")
   assert.deepEqual(
     result.icons?.map((icon) => [icon.src, icon.sizes, icon.purpose]),
     [
