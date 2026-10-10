@@ -22,7 +22,7 @@ export function AssetRegisterStatusTabs({ label, items }: { label: string; items
               className={cn(
                 "inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:-mb-px md:min-h-10 md:rounded-none md:border-0 md:border-b-2",
                 item.active
-                  ? "border-info-border bg-primary-soft text-primary md:border-primary md:bg-transparent"
+                  ? "border-primary-border bg-primary-soft text-primary md:border-primary md:bg-transparent"
                   : "border-border bg-surface text-muted-foreground hover:text-foreground md:border-transparent md:bg-transparent",
               )}
             >

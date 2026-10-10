@@ -28,7 +28,7 @@ export function AssetRegisterFilterChips({
           href={chip.href}
           aria-label={`${labels.remove}: ${chip.label}`}
           className={cn(
-            "inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border border-info-border bg-primary-soft px-3 text-sm font-medium text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-8",
+            "inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border border-primary-border bg-primary-soft px-3 text-sm font-medium text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-8",
             chip.mobileOnly && "md:hidden",
           )}
         >

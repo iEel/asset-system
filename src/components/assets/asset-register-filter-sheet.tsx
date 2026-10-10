@@ -248,7 +248,7 @@ function ChipGroup<T extends string>({
             className={cn(
               "inline-flex min-h-11 items-center rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-9",
               active
-                ? "border-info-border bg-primary-soft text-primary"
+                ? "border-primary-border bg-primary-soft text-primary"
                 : "border-border bg-surface text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
           >

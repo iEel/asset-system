@@ -31,18 +31,21 @@ function token(source: string, name: string) {
 
 test("modern enterprise tokens keep brand, action, and navigation roles separate", () => {
   const source = css()
-  assert.match(source, /--brand-navy:\s*#0F172A;/)
-  assert.match(source, /--brand-accent:\s*#3B82F6;/)
-  assert.match(source, /--primary:\s*#2563EB;/)
-  assert.match(source, /--sidebar:\s*#0F172A;/)
-  assert.match(source, /--sidebar-foreground:\s*#CBD5E1;/)
-  assert.match(source, /--sidebar-active:\s*#1E3A8A;/)
+  assert.notEqual(token(source, "primary"), token(source, "brand-navy"), "actions use their own blue, not the logo navy")
+  assert.equal(token(source, "sidebar-active"), token(source, "brand-navy"), "the selected menu row carries the logo navy")
+  assert.equal(token(source, "sidebar-active-icon"), token(source, "brand-accent"), "the selected menu icon carries the logo teal")
+  assert.equal(token(source, "sidebar"), token(source, "card"), "the light-shell sidebar is a white surface")
+  assert.notEqual(token(source, "info"), token(source, "primary"), "info has its own teal ink")
 })
 
 test("normal white action text meets WCAG AA contrast", () => {
-  assert.ok(contrast("#FFFFFF", "#2563EB") >= 4.5)
-  assert.ok(contrast("#FFFFFF", "#0F172A") >= 4.5)
-  assert.ok(contrast("#FFFFFF", "#3B82F6") < 4.5, "electric blue must remain an accent, not the normal white-text button fill")
+  const source = css()
+  assert.ok(contrast("#FFFFFF", token(source, "primary")) >= 4.5)
+  assert.ok(contrast("#FFFFFF", token(source, "brand-navy")) >= 4.5)
+  assert.ok(
+    contrast("#FFFFFF", token(source, "brand-accent")) < 4.5,
+    "the teal brand accent is for icons and focus, never a white-text fill",
+  )
 })
 
 test("muted badge foreground meets WCAG AA against the muted background", () => {

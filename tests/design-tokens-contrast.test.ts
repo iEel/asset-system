@@ -14,11 +14,17 @@ const tokens = readRootTokens(readFileSync("src/app/globals.css", "utf8"))
 const color = (name: string) => parseHexColor(resolveToken(tokens, name))
 const white = parseHexColor("#FFFFFF")
 const AA = 4.5
+// WCAG 1.4.11: focus rings, field borders and meaningful icons need 3:1 against what they sit on.
+const NON_TEXT = 3
 
-function assertAA(foreground: string, background: string | Rgb, label: string) {
+function assertContrast(foreground: string, background: string | Rgb, minimum: number, label: string) {
   const backgroundColor = typeof background === "string" ? color(background) : background
   const ratio = contrastRatio(color(foreground), backgroundColor)
-  assert.ok(ratio >= AA, `${label}: ${ratio.toFixed(3)}:1 < 4.5:1`)
+  assert.ok(ratio >= minimum, `${label}: ${ratio.toFixed(3)}:1 < ${minimum}:1`)
+}
+
+function assertAA(foreground: string, background: string | Rgb, label: string) {
+  assertContrast(foreground, background, AA, label)
 }
 
 test("contrast helpers match WCAG reference values", () => {
@@ -37,7 +43,7 @@ test("resolveToken follows var() aliases and rejects cycles", () => {
 for (const tone of ["success", "warning", "danger", "info"] as const) {
   test(`${tone} text is AA on every surface it sits on`, () => {
     assertAA(tone, white, `${tone} on white`)
-    for (const surface of ["background", "card", "muted", `${tone}-soft`]) {
+    for (const surface of ["background", "card", "muted", "accent", "canvas", `${tone}-soft`]) {
       assertAA(tone, surface, `${tone} on ${surface}`)
     }
   })
@@ -52,12 +58,14 @@ test("primary and destructive pairs are AA", () => {
   assertAA("primary-foreground", "primary", "primary-foreground on primary")
   assertAA("primary-foreground", "primary-hover", "primary-foreground on primary-hover")
   assertAA("primary", "primary-soft", "primary on primary-soft")
-  assertAA("primary", "background", "primary on background")
+  for (const surface of ["background", "muted", "accent", "canvas"]) {
+    assertAA("primary", surface, `primary on ${surface}`)
+  }
   assertAA("destructive-foreground", "destructive", "destructive-foreground on destructive")
 })
 
 test("neutral text pairs are AA", () => {
-  for (const surface of ["background", "card", "popover", "muted"]) {
+  for (const surface of ["background", "card", "popover", "muted", "accent", "canvas"]) {
     assertAA("foreground", surface, `foreground on ${surface}`)
     assertAA("muted-foreground", surface, `muted-foreground on ${surface}`)
   }
@@ -65,6 +73,31 @@ test("neutral text pairs are AA", () => {
   assertAA("popover-foreground", "popover", "popover-foreground on popover")
   assertAA("secondary-foreground", "secondary", "secondary-foreground on secondary")
   assertAA("accent-foreground", "accent", "accent-foreground on accent")
+})
+
+test("light sidebar pairs are readable", () => {
+  assertAA("sidebar-foreground", "sidebar", "sidebar-foreground on sidebar")
+  assertAA("sidebar-foreground", "sidebar-hover", "sidebar-foreground on sidebar-hover")
+  assertAA("sidebar-muted", "sidebar", "sidebar-muted on sidebar")
+  assertAA("sidebar-active-foreground", "sidebar-active", "sidebar-active-foreground on sidebar-active")
+  assertContrast("sidebar-active-icon", "sidebar-active", NON_TEXT, "sidebar-active-icon on sidebar-active")
+  assertContrast("ring", "sidebar", NON_TEXT, "ring on sidebar")
+})
+
+test("focus ring and field borders reach 3:1 on the surfaces they sit on", () => {
+  for (const surface of ["card", "background", "canvas", "muted"]) {
+    assertContrast("ring", surface, NON_TEXT, `ring on ${surface}`)
+  }
+  for (const surface of ["card", "background", "canvas"]) {
+    assertContrast("input", surface, NON_TEXT, `input on ${surface}`)
+  }
+})
+
+test("roles that must look different stay different", () => {
+  const value = (name: string) => resolveToken(tokens, name).toUpperCase()
+  assert.notEqual(value("info"), value("primary"), "info must not reuse the primary color")
+  assert.notEqual(value("canvas"), value("card"), "the page canvas must differ from panels")
+  assert.notEqual(value("canvas"), value("background"), "the canvas must differ from field and dialog backgrounds")
 })
 
 test("every token is exposed to Tailwind through @theme inline", () => {

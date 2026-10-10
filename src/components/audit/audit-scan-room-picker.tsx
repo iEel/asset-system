@@ -45,7 +45,7 @@ export function AuditScanRoomPicker({
           data-audit-scan-room
           className={cn(
             "flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md border px-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            selected ? "border-info-border bg-primary-soft text-primary" : "border-dashed border-border bg-surface text-muted-foreground hover:bg-accent",
+            selected ? "border-primary-border bg-primary-soft text-primary" : "border-dashed border-border bg-surface text-muted-foreground hover:bg-accent",
           )}
         >
           <MapPin className="size-4 shrink-0" aria-hidden="true" />

@@ -1,57 +1,62 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Enterprise color tokens — shadcn/ui naming. Every text pair is checked by tests/design-tokens-contrast.test.ts. */
+/* Enterprise color tokens, UI round 4 "light shell" palette (shadcn/ui naming). Every pair is checked by tests/design-tokens-contrast.test.ts. */
 :root {
-  --brand-navy: #0F172A;
-  --brand-accent: #3B82F6;
-  --background: #F8FAFC;
-  --foreground: #0F172A;
+  --brand-navy: #083161;
+  --brand-accent: #18A0A8;
+  --canvas: #EEF1F6;
+  --background: #F6F8FB;
+  --foreground: #0B1D35;
   --card: #FFFFFF;
-  --card-foreground: #0F172A;
+  --card-foreground: #0B1D35;
   --surface: var(--card);
   --popover: #FFFFFF;
-  --popover-foreground: #0F172A;
-  --primary: #2563EB;
+  --popover-foreground: #0B1D35;
+  --primary: #1E4F94;
   --primary-foreground: #FFFFFF;
-  --primary-soft: #EFF6FF;
-  --primary-hover: #1D4ED8;
-  --secondary: #F1F5F9;
-  --secondary-foreground: #0F172A;
-  --muted: #F1F5F9;
-  --muted-foreground: #475569;
-  --accent: #F1F5F9;
-  --accent-foreground: #0F172A;
-  --border: #E2E8F0;
-  --input: #E2E8F0;
-  --ring: #3B82F6;
-  --success: #15803D;
+  --primary-soft: #E9EFF8;
+  --primary-hover: #173E76;
+  --primary-border: #BACBE4;
+  --secondary: #E9EEF5;
+  --secondary-foreground: #0B1D35;
+  --muted: #E9EEF5;
+  --muted-foreground: #3C4F6B;
+  --accent: #EBF0F7;
+  --accent-foreground: #0B1D35;
+  --border: #D7DEE8;
+  --input: #7C8BA0;
+  --ring: #10858D;
+  --success: #1D7A35;
   --success-foreground: #FFFFFF;
-  --success-soft: #F0FDF4;
-  --success-border: #BBF7D0;
-  --success-hover: #166534;
-  --warning: #B45309;
+  --success-soft: #ECF7EF;
+  --success-border: #B3DCBF;
+  --success-hover: #17652C;
+  --warning: #A14A05;
   --warning-foreground: #FFFFFF;
-  --warning-soft: #FFFBEB;
-  --warning-border: #FDE68A;
-  --warning-hover: #92400E;
-  --danger: #B91C1C;
+  --warning-soft: #FDF4E4;
+  --warning-border: #EDCB93;
+  --warning-hover: #843C04;
+  --danger: #B3261E;
   --danger-foreground: #FFFFFF;
-  --danger-soft: #FEF2F2;
-  --danger-border: #FECACA;
-  --danger-hover: #991B1B;
+  --danger-soft: #FCEFEE;
+  --danger-border: #F1BEB9;
+  --danger-hover: #931F18;
   --destructive: var(--danger);
   --destructive-foreground: var(--danger-foreground);
-  --info: #2563EB;
+  --info: #0A6E75;
   --info-foreground: #FFFFFF;
-  --info-soft: #EFF6FF;
-  --info-border: #BFDBFE;
-  --info-hover: #1D4ED8;
-  --sidebar: #0F172A;
-  --sidebar-foreground: #CBD5E1;
-  --sidebar-muted: #94A3B8;
-  --sidebar-hover: #1E293B;
-  --sidebar-active: #1E3A8A;
+  --info-soft: #E5F4F5;
+  --info-border: #A3D8DB;
+  --info-hover: #085A60;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #1F3657;
+  --sidebar-muted: #586A84;
+  --sidebar-hover: #EBF0F7;
+  --sidebar-active: #083161;
+  --sidebar-active-foreground: #FFFFFF;
+  --sidebar-active-icon: #18A0A8;
+  --sidebar-border: #D7DEE8;
   --radius: 0.5rem;
 }
 
@@ -60,6 +65,7 @@
   --color-brand-navy: var(--brand-navy);
   --color-brand-accent: var(--brand-accent);
   --color-background: var(--background);
+  --color-canvas: var(--canvas);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -70,6 +76,7 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-soft: var(--primary-soft);
   --color-primary-hover: var(--primary-hover);
+  --color-primary-border: var(--primary-border);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -106,9 +113,18 @@
   --color-sidebar-muted: var(--sidebar-muted);
   --color-sidebar-hover: var(--sidebar-hover);
   --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-active-foreground: var(--sidebar-active-foreground);
+  --color-sidebar-active-icon: var(--sidebar-active-icon);
+  --color-sidebar-border: var(--sidebar-border);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 4px);
+}
+
+/* Values that are not plain colors live here, not in :root (the token test expects a --color-* mapping for every :root entry). */
+@theme {
+  --color-scrim: rgb(8 49 97 / 0.45);
+  --shadow-overlay: 0 12px 32px -8px rgb(8 49 97 / 0.18), 0 2px 6px -2px rgb(8 49 97 / 0.1);
 }
 
 /* Base Styles */

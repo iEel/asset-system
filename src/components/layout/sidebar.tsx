@@ -194,16 +194,16 @@ export function Sidebar({
     return (
       <>
         {/* Logo */}
-        <div className="flex h-16 min-w-0 items-center border-b border-white/10 px-4">
+        <div className="flex h-16 min-w-0 items-center border-b border-sidebar-border px-4">
           <Package className="h-8 w-8 shrink-0 text-brand-accent" />
-          <span className={cn("ml-3 truncate text-lg font-semibold text-white", bodyCollapsed && "lg:hidden")}>
+          <span className={cn("ml-3 truncate text-lg font-semibold text-foreground", bodyCollapsed && "lg:hidden")}>
             AMS
           </span>
           {mobile ? (
             <button
               type="button"
               onClick={onMobileClose}
-              className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-hover hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+              className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
               aria-label="Close menu"
             >
               <X size={18} />
@@ -232,7 +232,7 @@ export function Sidebar({
     <>
       <aside
         className={cn(
-          "relative hidden max-h-dvh flex-col border-r border-white/10 bg-sidebar text-sidebar-foreground transition-all duration-300 lg:flex",
+          "relative hidden max-h-dvh flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300 lg:flex",
           collapsed ? "lg:w-16" : "lg:w-64"
         )}
       >
@@ -264,7 +264,7 @@ export function Sidebar({
             event.preventDefault()
             target.focus()
           }}
-          className="w-[min(18rem,85vw)] gap-0 border-r border-white/10 bg-sidebar p-0 text-sidebar-foreground lg:hidden"
+          className="w-[min(18rem,85vw)] gap-0 border-r border-sidebar-border bg-sidebar p-0 text-sidebar-foreground lg:hidden"
         >
           <SheetTitle className="sr-only">{t("mainNavigation")}</SheetTitle>
           {renderBody(true)}
@@ -299,8 +299,8 @@ function SidebarItem({
         <button
           onClick={() => setOpen(!open)}
           className={cn(
-            "flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-hover hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-accent",
-            hasActiveChild && "text-brand-accent",
+            "flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-accent",
+            hasActiveChild && "font-semibold",
             collapsed && "lg:justify-center lg:px-2"
           )}
         >
@@ -311,7 +311,7 @@ function SidebarItem({
           </span>
         </button>
         {open && (
-          <div className={cn("border-l border-white/10", depth === 0 ? "ml-4" : "ml-6")}>
+          <div className={cn("border-l border-sidebar-border", depth === 0 ? "ml-4" : "ml-6")}>
             {item.children.map((child) => (
               <SidebarItem
                 key={child.labelKey}
@@ -334,9 +334,9 @@ function SidebarItem({
       href={item.href || "#"}
       onClick={onNavigate}
       className={cn(
-        "flex min-h-11 items-center gap-3 px-4 py-2.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-hover hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-accent",
+        "flex min-h-11 items-center gap-3 px-4 py-2.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-accent",
         isActive
-          ? "bg-sidebar-active font-medium text-white"
+          ? "bg-sidebar-active font-medium text-sidebar-active-foreground"
           : undefined,
         collapsed && "lg:justify-center lg:px-2"
       )}

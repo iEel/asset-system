@@ -258,7 +258,7 @@ function NextActionLink({
       href={transaction.href}
       onClick={onNavigate}
       aria-label={`${label}: ${assetTag}`}
-      className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md border border-info-border bg-primary-soft px-2.5 text-xs font-medium text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md border border-primary-border bg-primary-soft px-2.5 text-xs font-medium text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <Icon className="size-3.5" aria-hidden="true" />
       {label}

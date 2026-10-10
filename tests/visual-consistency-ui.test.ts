@@ -1,18 +1,19 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
+import { readRootTokens } from "../src/lib/color-contrast.ts"
 
 const readSource = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 
-test("app shell uses the agreed Navy and Electric Blue visual tokens", async () => {
+test("app shell uses the light-shell visual tokens", async () => {
   const globals = readSource("src/app/globals.css")
   const layout = readSource("src/app/layout.tsx")
   const { default: manifest } = await import("../src/app/manifest.ts")
+  const tokens = readRootTokens(globals)
 
-  assert.match(globals, /--brand-navy: #0F172A/)
-  assert.match(globals, /--brand-accent: #3B82F6/)
-  assert.match(globals, /--primary: #2563EB/)
-  assert.match(globals, /--sidebar-active: #1E3A8A/)
+  assert.equal(tokens["sidebar-active"], tokens["brand-navy"])
+  assert.notEqual(tokens.primary, tokens["brand-navy"])
+  assert.notEqual(tokens.canvas, tokens.card)
   assert.match(layout, /themeColor: "#0F172A"/)
   assert.equal(manifest().theme_color, "#0F172A")
 })
