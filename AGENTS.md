@@ -31,7 +31,8 @@ Wiki ความรู้เชิงธุรกิจอยู่นอก re
   LDAP ฝั่ง server เท่านั้น · ห้าม NEXT_PUBLIC_* · key ผู้ใช้ = objectGUID · กลุ่มเข้าระบบ APP-<PROJECT>-USERS
   ข้อยกเว้นของโปรเจกต์นี้ (มีก่อน Shared): ค่า LDAP รวม bind password เก็บในตาราง `system_settings` แก้ผ่าน Admin > Settings ไม่ได้ copy ไป `.env.local` · ยังจับคู่บัญชีด้วย username / email / employeeID ไม่ใช่ objectGUID และยังไม่ใช้กลุ่ม `APP-*-USERS` (ค้างใน `AssetSystem/ams-open-questions.md`)
 - **SQL Server connection** — `D:\Obsidian\Eltross\Shared\conventions\sqlserver-connection\sqlserver-connection.md`
-  ข้อยกเว้น: ใช้ตัวแปร `DB_SERVER` / `DB_INSTANCE` / `DB_USER` / `DB_PASSWORD` / `DATABASE_URL` เดิมใน `.env` · DB Production ชื่อ `asset_management` · เครื่องพัฒนาใช้ `asset_management_dev` กับ login `asset_dev` (ห้ามใส่ `sa` หรือ DB Production ใน `.env` ของเครื่องพัฒนา)
+  ข้อยกเว้น: ใช้ตัวแปร `DB_SERVER` / `DB_INSTANCE` / `DB_USER` / `DB_PASSWORD` / `DATABASE_URL` เดิมใน `.env` · DB Production ชื่อ `asset_management` · เครื่องพัฒนาใช้ `asset_management_dev` กับ login `asset_dev`
+  `.env` ชี้ DB dev เสมอ · login ของ Production อยู่ใน `.env.prod-admin` (git ignore · ผู้ใช้กรอกเอง) ใช้กับคำสั่ง migration ผ่าน `--db-env .env.prod-admin` เท่านั้น (ดู `docs/03_DATABASE.md`)
 
 - ค่าลับอยู่ใน `.env` (ถูก git ignore) เท่านั้น · ห้าม commit · ลงทะเบียนชื่อตัวแปร (ไม่จดค่า) ใน `Shared/shared-adoption.md`
 - **ระบบบริษัท (HR, SMF, AD, เครื่อง HIP) อ่านอย่างเดียว** — คำสั่งที่ไม่ใช่ `SELECT` ห้ามรันจนกว่าผู้ใช้อนุมัติต่อครั้ง พร้อมแสดง SQL เต็ม

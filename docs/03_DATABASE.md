@@ -98,6 +98,15 @@ Apply exactly one new repository migration:
 npm run migration:apply -- 2026-08-27-example.sql --backup-confirmed --reason "Approved production change record CHG-0001"
 ```
 
+Target another database without touching `.env` (which stays on the dev database): add `--db-env <file>` to any migration command. All connection settings (`DB_SERVER`, `DB_INSTANCE`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DATABASE_URL`, `DB_TLS_SERVER_NAME`) then come only from that file; nothing is inherited from `.env`, and the command refuses a file without `DB_SERVER`, `DB_USER`, `DB_PASSWORD` and `DATABASE_URL`. The Production login lives in `.env.prod-admin` (git-ignored, created by the operator). Production writes still need a verified backup and approval of the full SQL.
+
+```powershell
+npm run migration:status -- --db-env .env.prod-admin
+npm run migration:apply -- 2026-08-27-example.sql --db-env .env.prod-admin --backup-confirmed --reason "Approved production change record CHG-0001"
+```
+
+The flag is not called `--env-file` on purpose: Node 24 inspects `--env-file` even after the script name and exits when the path is missing.
+
 Record a migration that was applied before the ledger existed, after verifying its database effect:
 
 ```powershell
