@@ -106,7 +106,8 @@ test("every token is exposed to Tailwind through @theme inline", () => {
     if (name === "radius") continue
     assert.match(css, new RegExp(`--color-${name}:\\s*var\\(--${name}\\);`), `--color-${name} missing in @theme inline`)
   }
-  assert.match(css, /--font-sans:\s*var\(--font-inter\),\s*var\(--font-thai\)/)
+  assert.match(css, /--font-sans:\s*var\(--font-plex-sans\),\s*var\(--font-plex-thai\),/)
+  assert.match(css, /--font-mono:\s*var\(--font-plex-mono\),\s*ui-monospace/)
   assert.match(css, /@import "tw-animate-css";/)
   assert.doesNotMatch(css, /@custom-variant dark/)
 })

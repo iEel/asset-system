@@ -16,7 +16,7 @@ export function MetricCard({ label, value, helper, compact = false, tone = "neut
   return (
     <div className={cn("rounded-lg border p-5 shadow-sm", toneClasses.container, className)}>
       <div className="text-sm text-muted-foreground">{label}</div>
-      <div className={cn("mt-2 font-bold", compact ? "text-xl" : "text-2xl", toneClasses.value)}>{value}</div>
+      <div className={cn("num mt-2 font-bold", compact ? "text-xl" : "text-2xl", toneClasses.value)}>{value}</div>
       {helper ? <div className="mt-1 text-xs text-muted-foreground">{helper}</div> : null}
     </div>
   )

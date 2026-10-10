@@ -61,7 +61,8 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-inter), var(--font-thai), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-plex-sans), var(--font-plex-thai), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --color-brand-navy: var(--brand-navy);
   --color-brand-accent: var(--brand-accent);
   --color-background: var(--background);
@@ -125,6 +126,8 @@
 @theme {
   --color-scrim: rgb(8 49 97 / 0.45);
   --shadow-overlay: 0 12px 32px -8px rgb(8 49 97 / 0.18), 0 2px 6px -2px rgb(8 49 97 / 0.1);
+  /* Only text-sm differs from Tailwind's defaults for every language (20px → 22px). Ratios, so children with an arbitrary font size inherit a ratio, not a fixed px value. */
+  --text-sm--line-height: calc(22 / 14);
 }
 
 /* Base Styles */
@@ -176,4 +179,34 @@ body {
     outline: 2px solid CanvasText;
     outline-offset: 2px;
   }
+}
+
+/* Thai stacked vowels and tone marks need at least ~1.44× the font size. Values are ratios. */
+@layer base {
+  html:lang(th) {
+    --text-xs--line-height: calc(18 / 12);
+    --text-xl--line-height: calc(30 / 20);
+    --text-2xl--line-height: calc(36 / 24);
+    --text-3xl--line-height: calc(44 / 30);
+  }
+
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Asset tags and document numbers (adopted in phase 2). */
+@utility tag {
+  font-family: var(--font-mono);
+  font-size: calc(1em - 1px);
+  white-space: nowrap;
+}
+
+/* Sonner injects its own unlayered CSS; this selector is more specific, so toasts use the app font. */
+:root [data-sonner-toaster] {
+  font-family: var(--font-sans);
 }
