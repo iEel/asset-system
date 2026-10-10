@@ -19,6 +19,11 @@ export function getActiveNavigationHref(pathname: string, hrefs: readonly string
   return active
 }
 
+// True only when the current page IS this menu entry (not a detail page under it).
+export function isExactNavigationMatch(pathname: string, href: string): boolean {
+  return normalizePath(pathname) === href
+}
+
 export function collectNavigationHrefs(items: readonly NavigationHrefNode[]): string[] {
   return items.flatMap((item) => [...(item.href ? [item.href] : []), ...collectNavigationHrefs(item.children ?? [])])
 }

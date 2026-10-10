@@ -8,8 +8,8 @@ const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 const globals = () => read("src/app/globals.css")
 
 test("focus styles use the single ring token", () => {
-  assert.deepEqual(findMatches(sources, /(focus|focus-visible|focus-within):(ring|border)-(primary|brand-accent)(?![\w-])/g), [])
-  assert.deepEqual(findMatches(sources, /focus-visible:ring-ring\/40(?![\w-])/g), [], "a see-through ring alone cannot reach 3:1")
+  assert.deepEqual(findMatches(sources, /(focus|focus-visible|focus-within):(ring|border)-(primary|brand-accent|danger|success|warning|info|destructive)(?![\w-])/g), [])
+  assert.deepEqual(findMatches(sources, /focus-visible:ring-[a-z-]+\/\d+/g), [], "a see-through ring alone cannot reach 3:1")
 })
 
 test("every element gets a visible focus outline, also in Windows high-contrast mode", () => {
@@ -69,7 +69,9 @@ test("overlays use the navy scrim and the overlay shadow, and respect reduced mo
 })
 
 test("panels and bottom action bars are flat", () => {
-  assert.doesNotMatch(read("src/lib/design-system.ts").match(/function getPanelClasses\(\) \{[\s\S]*?\n\}/)?.[0] ?? "", /shadow/)
+  const panel = read("src/lib/design-system.ts").match(/function getPanelClasses\(\) \{[\s\S]*?\n\}/)?.[0]
+  assert.ok(panel, "getPanelClasses() not found")
+  assert.doesNotMatch(panel, /shadow/)
   assert.match(read("src/components/ui/metric-card.tsx"), /cn\("rounded-lg border p-5", toneClasses\.container, className\)/)
   for (const path of ["src/components/ui/mobile-action-bar.tsx", "src/components/disposal/disposal-mobile-action-bar.tsx"]) {
     assert.doesNotMatch(read(path), /backdrop-blur|bg-surface\/95|shadow-md/, path)
@@ -86,6 +88,7 @@ test("globals keep a light-only, token-driven base", () => {
   assert.match(css, /::backdrop \{\s*border-color: var\(--border\);\s*\}/)
   assert.match(css, /::selection \{\s*background-color: var\(--primary-border\);/)
   assert.doesNotMatch(css, /@custom-variant dark|scrollbar-color/)
+  assert.match(css, /@source not "\.\.\/\.\.\/docs";/)
 })
 
 test("full-bleed bars blend into the canvas", () => {
@@ -97,7 +100,9 @@ test("full-bleed bars blend into the canvas", () => {
 })
 
 test("no caller passes a database color to StatusBadge", () => {
-  assert.deepEqual(findMatches(sources, /<StatusBadge[^>]*\bcolor=/g), [])
+  const badges = findMatches(sources, /<StatusBadge\b[\s\S]*?\/>/g)
+  assert.ok(badges.length > 40, `expected the shared StatusBadge call sites, found ${badges.length}`)
+  assert.deepEqual(badges.filter((match) => /\bcolor=/.test(match)), [])
   assert.deepEqual(findMatches(sources, /getStatusDotColor|statusDotVariants/g), [])
 })
 
@@ -120,6 +125,9 @@ test("A4 documents keep the 20px text-sm line height so signatures stay on page 
   assert.match(read("src/components/asset-operations/operation-document-print.tsx"), /className="operation-print-page \[--text-sm--line-height:calc\(20\/14\)\] /)
 })
 
-test("the selected register status tab keeps its underline on desktop", () => {
-  assert.match(read("src/components/assets/asset-register-status-tabs.tsx"), /data-asset-status-tabs className="[^"]*\bmd:overflow-visible\b/)
+test("the selected register status tab keeps its underline on desktop and the row still scrolls", () => {
+  const source = read("src/components/assets/asset-register-status-tabs.tsx")
+  assert.doesNotMatch(source, /md:overflow-visible|md:-mb-px/)
+  assert.match(source, /data-asset-status-tabs className="[^"]*\boverflow-x-auto\b/)
+  assert.match(source, /md:shadow-\[inset_0_-1px_0_var\(--border\)\]/)
 })

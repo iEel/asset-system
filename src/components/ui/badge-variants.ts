@@ -48,13 +48,13 @@ export const statusBadgeVariants = cva(
 export const statusMarkerVariants = cva("shrink-0 forced-color-adjust-none", {
   variants: {
     tone: {
-      info: "size-[7px] rounded-full border-[1.5px] border-info",
-      success: "size-1.5 rounded-full bg-success",
-      primary: "size-1.5 rounded-full bg-primary",
-      neutral: "h-0.5 w-[7px] rounded-[1px] bg-muted-foreground",
-      muted: "h-0.5 w-[7px] rounded-[1px] bg-muted-foreground",
-      warning: "h-[7px] w-2 bg-warning [clip-path:polygon(50%_0,100%_100%,0_100%)]",
-      danger: "size-1.5 rotate-45 rounded-[1px] bg-danger",
+      info: "size-[7px] rounded-full border-[1.5px] border-info forced-colors:border-[CanvasText]",
+      success: "size-1.5 rounded-full bg-success forced-colors:bg-[CanvasText]",
+      primary: "size-1.5 rounded-full bg-primary forced-colors:bg-[CanvasText]",
+      neutral: "h-0.5 w-[7px] rounded-[1px] bg-muted-foreground forced-colors:bg-[CanvasText]",
+      muted: "h-0.5 w-[7px] rounded-[1px] bg-muted-foreground forced-colors:bg-[CanvasText]",
+      warning: "h-[7px] w-2 bg-warning [clip-path:polygon(50%_0,100%_100%,0_100%)] forced-colors:bg-[CanvasText]",
+      danger: "size-1.5 rotate-45 rounded-[1px] bg-danger forced-colors:bg-[CanvasText]",
     },
   },
   defaultVariants: { tone: "muted" },

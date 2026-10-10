@@ -45,7 +45,7 @@ import {
   filterNavigationSectionsByPermission,
   type NavigationPermission,
 } from "@/lib/navigation-permissions"
-import { collectNavigationHrefs, containsNavigationHref, getActiveNavigationHref } from "@/lib/navigation-active"
+import { collectNavigationHrefs, containsNavigationHref, getActiveNavigationHref, isExactNavigationMatch } from "@/lib/navigation-active"
 import type { SessionUser } from "@/lib/auth-utils"
 
 type MenuItem = {
@@ -252,28 +252,33 @@ export function Sidebar({
 
         {/* Menu */}
         <nav aria-label={t("mainNavigation")} className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
-          {visibleSections.map((section, index) => (
-            <div key={section.labelKey} className={cn(index > 0 && "mt-4")}>
-              {bodyCollapsed && index > 0 ? (
-                <div aria-hidden="true" className="mx-2 mb-3 hidden h-px bg-sidebar-border lg:block" />
-              ) : null}
-              <p className={cn("flex h-6 items-center px-3 text-xs font-medium text-sidebar-muted", bodyCollapsed && "lg:sr-only")}>
-                {t(section.labelKey)}
-              </p>
-              <div className="space-y-0.5">
-                {section.items.map((item) => (
-                  <SidebarItem
-                    key={item.labelKey}
-                    item={item}
-                    collapsed={bodyCollapsed}
-                    activeHref={activeHref}
-                    t={t}
-                    onNavigate={onMobileNavigate}
-                  />
-                ))}
+          {visibleSections.map((section, index) => {
+            // The body renders twice (desktop aside and mobile drawer), so heading ids must differ.
+            const headingId = `${mobile ? "mobile-" : ""}nav-section-${section.labelKey}`
+            return (
+              <div key={section.labelKey} role="group" aria-labelledby={headingId} className={cn(index > 0 && "mt-4")}>
+                {bodyCollapsed && index > 0 ? (
+                  <div aria-hidden="true" className="mx-2 mb-3 hidden h-px bg-sidebar-border lg:block" />
+                ) : null}
+                <p id={headingId} className={cn("flex h-6 items-center px-3 text-xs font-medium text-sidebar-muted", bodyCollapsed && "lg:sr-only")}>
+                  {t(section.labelKey)}
+                </p>
+                <div className="space-y-0.5">
+                  {section.items.map((item) => (
+                    <SidebarItem
+                      key={item.labelKey}
+                      item={item}
+                      collapsed={bodyCollapsed}
+                      activeHref={activeHref}
+                      pathname={pathname}
+                      t={t}
+                      onNavigate={onMobileNavigate}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </nav>
       </>
     )
@@ -329,6 +334,7 @@ type SidebarItemProps = {
   item: MenuItem
   collapsed: boolean
   activeHref: string | null
+  pathname: string
   t: (key: string) => string
   onNavigate: () => void
   depth?: number
@@ -338,7 +344,7 @@ function SidebarItem(props: SidebarItemProps) {
   return props.item.children ? <SidebarGroup {...props} /> : <SidebarLink {...props} />
 }
 
-function SidebarGroup({ item, collapsed, activeHref, t, onNavigate, depth = 0 }: SidebarItemProps) {
+function SidebarGroup({ item, collapsed, activeHref, pathname, t, onNavigate, depth = 0 }: SidebarItemProps) {
   const containsActive = containsNavigationHref(item, activeHref)
   const [open, setOpen] = useState(containsActive)
   const [seenActiveHref, setSeenActiveHref] = useState(activeHref)
@@ -377,6 +383,7 @@ function SidebarGroup({ item, collapsed, activeHref, t, onNavigate, depth = 0 }:
               item={child}
               collapsed={collapsed}
               activeHref={activeHref}
+              pathname={pathname}
               t={t}
               onNavigate={onNavigate}
               depth={depth + 1}
@@ -388,17 +395,18 @@ function SidebarGroup({ item, collapsed, activeHref, t, onNavigate, depth = 0 }:
   )
 }
 
-function SidebarLink({ item, collapsed, activeHref, t, onNavigate }: SidebarItemProps) {
+function SidebarLink({ item, collapsed, activeHref, pathname, t, onNavigate }: SidebarItemProps) {
   const isActive = item.href !== undefined && item.href === activeHref
+  const ariaCurrent = isActive && item.href !== undefined ? (isExactNavigationMatch(pathname, item.href) ? "page" : "true") : undefined
 
   return (
     <Link
       href={item.href || "#"}
       onClick={onNavigate}
-      aria-current={isActive ? "page" : undefined}
+      aria-current={ariaCurrent}
       className={cn(
         rowClasses,
-        isActive && "bg-sidebar-active font-medium text-sidebar-active-foreground hover:bg-sidebar-active",
+        isActive && "bg-sidebar-active font-medium text-sidebar-active-foreground hover:bg-sidebar-active forced-colors:outline forced-colors:outline-2 forced-colors:-outline-offset-2",
         collapsed && "lg:justify-center lg:px-2"
       )}
     >

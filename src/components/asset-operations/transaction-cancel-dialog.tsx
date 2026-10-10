@@ -120,7 +120,7 @@ export function TransactionCancelDialog({
   return (
     <>
       {hideTrigger ? null : (
-        <button type="button" onClick={() => void openPreview()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-danger/40 bg-surface px-3 text-sm font-medium text-danger transition-colors hover:bg-danger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/40">
+        <button type="button" onClick={() => void openPreview()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-danger/40 bg-surface px-3 text-sm font-medium text-danger transition-colors hover:bg-danger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Undo2 className="h-4 w-4" aria-hidden="true" />
           {labels.action}
         </button>

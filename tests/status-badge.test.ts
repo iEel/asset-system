@@ -40,7 +40,7 @@ test("statuses that need action keep the soft fill, tone border and AA ink", () 
 test("each meaning has its own marker shape, kept in high-contrast mode", () => {
   type Tone = (typeof calmTones)[number] | (typeof actionTones)[number]
   const marker = (tone: Tone) => statusMarkerVariants({ tone })
-  const shapeOf = (tone: Tone) => marker(tone).replace(/\b(bg|border)-(info|success|primary|warning|danger|muted-foreground)\b/g, "").trim()
+  const shapeOf = (tone: Tone) => marker(tone).replace(/\b(bg|border)-(info|success|primary|warning|danger|muted-foreground)\b/g, "").replace(/forced-colors:\S+/g, "").trim()
   const shapeTones = ["info", "success", "warning", "danger", "neutral"] as const
   assert.match(marker("info"), /rounded-full border-\[1\.5px\] border-info/)
   assert.match(marker("success"), /rounded-full bg-success/)
@@ -51,6 +51,10 @@ test("each meaning has its own marker shape, kept in high-contrast mode", () => 
   assert.match(marker("muted"), /h-0\.5 w-\[7px\]/)
   assert.equal(new Set(shapeTones.map(shapeOf)).size, shapeTones.length, "ring, dot, triangle, diamond and bar must differ without their color")
   for (const tone of [...calmTones, ...actionTones]) assert.match(marker(tone), /forced-color-adjust-none/)
+  assert.match(marker("info"), /forced-colors:border-\[CanvasText\]/)
+  for (const tone of ["success", "primary", "neutral", "muted", "warning", "danger"] as const) {
+    assert.match(marker(tone), /forced-colors:bg-\[CanvasText\]/)
+  }
 })
 
 test("StatusBadge takes no database color", () => {

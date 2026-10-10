@@ -1,12 +1,18 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { collectNavigationHrefs, containsNavigationHref, getActiveNavigationHref } from "../src/lib/navigation-active.ts"
+import { collectNavigationHrefs, containsNavigationHref, getActiveNavigationHref, isExactNavigationMatch } from "../src/lib/navigation-active.ts"
 import { filterNavigationSectionsByPermission } from "../src/lib/navigation-permissions.ts"
 
 const hrefs = ["/th/dashboard", "/th/assets", "/th/assets/new", "/th/asset-management/scan", "/th/audit/rounds", "/th/admin/settings"]
 
 test("an exact match selects its row", () => {
   assert.equal(getActiveNavigationHref("/th/assets", hrefs), "/th/assets")
+})
+
+test("an exact match is told apart from a page under the entry", () => {
+  assert.equal(isExactNavigationMatch("/th/assets", "/th/assets"), true)
+  assert.equal(isExactNavigationMatch("/th/assets/?page=2", "/th/assets"), true)
+  assert.equal(isExactNavigationMatch("/th/assets/123", "/th/assets"), false)
 })
 
 test("the longest matching href wins", () => {
