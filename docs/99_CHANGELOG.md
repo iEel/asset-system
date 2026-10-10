@@ -25,7 +25,9 @@ Branch `feat/ui-foundation` (จาก `master` `60bea4f`) · design `docs/super
   - guard ใน `visual-foundation-guards` ไม่ผ่านแบบว่างเปล่าแล้ว (ต้องหา `getPanelClasses()` และ `<StatusBadge>` มากกว่า 40 จุดเจอก่อน)
   - `globals.css` สั่ง Tailwind ไม่สแกน `docs/` และ `tests/` (`@source not`) เลิกสร้าง class ที่ไม่มีใครใช้จาก regex ใน plan และ test
 - ภาพก่อน/หลัง (1440 และ 375): `.superpowers/sdd/screenshots/ui-foundation/before/` และ `after/` (git ignore อยู่บนเครื่องพัฒนา)
-- ไม่มี migration · ไม่มี dependency ใหม่ · test ใหม่ `tests/visual-foundation-guards.test.ts` และ `tests/navigation-active.test.ts` · `npm test` 1,617 (ผ่าน 1,616 · ไม่ผ่าน 0 · ข้าม 1)
+- ไม่มี migration · ไม่มี dependency ใหม่ · test ใหม่ `tests/visual-foundation-guards.test.ts` และ `tests/navigation-active.test.ts`
+- `npm run verify` ผ่าน (test 1,618 · ผ่าน 1,617 · ข้าม 1 · build 60/60 หน้า) หลังแก้ตาม final review
+- **ตรวจซ้ำบน production build:** dev server ที่เปิดค้างไว้ตั้งแต่ก่อนเริ่มงานไม่ได้โหลด `globals.css` ส่วนท้ายใหม่ (Turbopack บน Windows ไม่เห็นการแก้ไฟล์) จึงตรวจทุกอย่างซ้ำบน `next start` ของ build ล่าสุด: CSS ครบ (`color-scheme: light only` · ขอบเริ่มต้น #D7DEE8 · checkbox สีหลัก) · ภาพ after ถ่ายใหม่ · axe contrast 0 ทุกหน้าที่ตรวจ ยกเว้นปุ่ม "เอกสารล่าสุด" ที่มีอยู่เดิม · เดินโฟกัส 40/40 · ใบรับคืน A4 สูง 1,003px พิมพ์ได้ 1 หน้า ใบส่งมอบ 1 หน้า · ยังไม่ได้พรีวิวใบโอนเพราะ DB dev ไม่มีเอกสารโอน · **ก่อนดูหน้าตาใหม่บนเครื่องพัฒนาให้รีสตาร์ต `npm run dev`**
 - **ก่อน deploy:** ป้ายพิมพ์ความร้อนหนาสุดเหลือ 700 (เดิม 900) ผู้ใช้ต้องพิมพ์ทดสอบก่อน
 - เลื่อนไว้: ปุ่ม "เอกสารล่าสุด" ในหน้ารายละเอียดทรัพย์สินดูเหมือนกดไม่ได้แต่ไม่มี disabled (axe แจ้ง 1 จุด) · การ์ดในแดชบอร์ดและหน้าผู้ดูแลยังมี `shadow-sm` · ตารางผู้ใช้ในหน้าผู้ดูแลล้นที่ 1440 (มีมาก่อน) · กล่องแจ้งข้อมูล ชิปบทบาท และไอคอน info บางตัวยังเป็นสี teal · `tag` กับรหัสทรัพย์สิน ช่องกรอกกลาง toast แบบเงียบ (เฟส 2) · จัดหน้าใหม่และแยกป้าย "พร้อมใช้งาน" กับ "ใช้งานอยู่" (เฟส 3) · ชื่อแท็บ หน้า 404 สีหัวตาราง Excel (เฟส 4)
 
