@@ -425,7 +425,7 @@ function WizardStep({
       ].join(" ")}
     >
       <div className="flex items-center gap-2">
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs font-semibold">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-current text-xs font-semibold">
           {isDone ? <CheckCircle2 className="h-3.5 w-3.5" /> : index + 1}
         </span>
         <span className="font-medium">{label}</span>

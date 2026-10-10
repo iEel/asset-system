@@ -91,7 +91,7 @@ export function AssetDetailTabs({
     {showOverflowCue ? (
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 right-0 flex w-9 items-center justify-end border-r border-border bg-background/95 pr-1 text-muted-foreground sm:hidden"
+        className="pointer-events-none absolute inset-y-0 right-0 flex w-9 items-center justify-end border-r border-border bg-canvas/95 pr-1 text-muted-foreground sm:hidden"
       >
         <ChevronRight className="h-5 w-5" />
       </span>

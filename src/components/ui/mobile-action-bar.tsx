@@ -15,7 +15,7 @@ export function MobileActionBar({ actions }: { actions: MobileAction[] }) {
   const gridClassName = getMobileActionGridClass(visibleActions.length)
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-md backdrop-blur md:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 md:hidden">
       <div className={`grid min-w-0 gap-2 ${gridClassName}`}>
         {visibleActions.map((action) =>
           action.disabled ? (

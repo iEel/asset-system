@@ -104,7 +104,7 @@ export function DashboardShell({
 
   return (
     <ConfirmProvider>
-      <div ref={shellRef} onScroll={resetShellScroll} className="fixed inset-0 flex max-w-full overflow-hidden bg-background">
+      <div ref={shellRef} onScroll={resetShellScroll} className="fixed inset-0 flex max-w-full overflow-hidden bg-canvas">
         <Sidebar
           collapsed={sidebarCollapsed}
           mobileOpen={mobileSidebarOpen}

@@ -33,7 +33,7 @@ export function AssetRegisterToolbar({
   return (
     <div
       data-asset-register-toolbar
-      className="sticky top-0 z-20 -mx-4 mb-3 bg-background px-4 py-2 sm:-mx-6 sm:px-6 md:static md:mx-0 md:rounded-lg md:border md:border-border md:bg-surface md:p-3 md:shadow-sm"
+      className="sticky top-0 z-20 -mx-4 mb-3 bg-canvas px-4 py-2 sm:-mx-6 sm:px-6 md:static md:mx-0 md:rounded-lg md:border md:border-border md:bg-surface md:p-3"
     >
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <AssetRegisterSearchField locale={locale} className="min-w-0 flex-1 basis-56" />

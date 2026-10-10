@@ -26,11 +26,15 @@ test("returns stable metric card classes for each tone", () => {
   assert.equal(getMetricCardToneClasses("neutral").container, "border-border bg-surface")
   assert.match(getMetricCardToneClasses("warning").container, /border-warning/)
   assert.match(getMetricCardToneClasses("danger").value, /text-danger/)
+  assert.match(getMetricCardToneClasses("warning").container, /border-warning-border/)
+  assert.equal(getMetricCardToneClasses("muted").container, "border-border bg-background")
 })
 
 test("returns shared panel, form control, and action button classes", () => {
   assert.match(getPanelClasses(), /border-border/)
   assert.match(getFieldControlClasses(), /focus:border-ring/)
+  assert.doesNotMatch(getPanelClasses(), /shadow/)
+  assert.match(getFieldControlClasses(), /border-input/)
   assert.match(getActionButtonClasses("primary"), /bg-primary/)
   assert.match(getActionButtonClasses("secondary", "sm"), /h-8/)
   assert.match(getSafeActionLinkClasses("primary"), /min-h-11/)

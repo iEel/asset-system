@@ -74,7 +74,7 @@ export function AccessibleDialog({
           target.focus()
         }}
         className={cn(
-          "top-auto bottom-3 flex max-h-[92dvh] w-[calc(100%-1.5rem)] max-w-none translate-y-0 flex-col gap-0 overflow-hidden rounded-lg border-border bg-surface p-0 shadow-xl sm:top-[50%] sm:bottom-auto sm:translate-y-[-50%]",
+          "top-auto bottom-3 flex max-h-[92dvh] w-[calc(100%-1.5rem)] max-w-none translate-y-0 flex-col gap-0 overflow-hidden rounded-lg border-border bg-surface p-0 shadow-overlay sm:top-[50%] sm:bottom-auto sm:translate-y-[-50%]",
           sizeClasses[size],
         )}
       >

@@ -18,7 +18,7 @@ export function DisposalMobileActionBar({
   const visibleActions = actions.slice(0, 3)
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-md backdrop-blur md:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 md:hidden">
       <div className="mx-auto grid max-w-lg gap-2">
         {primaryAction ? <div className="min-w-0 [&>button]:w-full">{primaryAction}</div> : null}
         <div className={`grid min-w-0 gap-2 ${getMobileActionGridClass(visibleActions.length)}`}>

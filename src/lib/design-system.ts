@@ -10,11 +10,11 @@ export type UiButtonSize = (typeof uiButtonSizes)[number]
 
 const metricToneClasses: Record<UiTone, { container: string; value: string }> = {
   neutral: { container: "border-border bg-surface", value: "text-foreground" },
-  info: { container: "border-info/30 bg-info-soft", value: "text-info" },
-  success: { container: "border-success/30 bg-success-soft", value: "text-success" },
-  warning: { container: "border-warning/30 bg-warning-soft", value: "text-warning" },
-  danger: { container: "border-danger/30 bg-danger-soft", value: "text-danger" },
-  muted: { container: "border-border bg-muted/40", value: "text-foreground" },
+  info: { container: "border-info-border bg-info-soft", value: "text-info" },
+  success: { container: "border-success-border bg-success-soft", value: "text-success" },
+  warning: { container: "border-warning-border bg-warning-soft", value: "text-warning" },
+  danger: { container: "border-danger-border bg-danger-soft", value: "text-danger" },
+  muted: { container: "border-border bg-background", value: "text-foreground" },
 }
 
 const successAssetStateValues = new Set(["ready", "in use", "new", "excellent", "good", "active"])
@@ -47,7 +47,7 @@ export function getAssetStateTone(value?: string | null): UiTone {
 }
 
 export function getPanelClasses() {
-  return "min-w-0 max-w-full rounded-lg border border-border bg-surface shadow-sm"
+  return "min-w-0 max-w-full rounded-lg border border-border bg-surface"
 }
 
 export function getTableShellClasses() {
@@ -71,7 +71,7 @@ export function getEmptyStateClasses() {
 }
 
 export function getFieldControlClasses() {
-  return "min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0"
+  return "min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0"
 }
 
 const legacyButtonVariant = {

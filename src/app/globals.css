@@ -139,8 +139,8 @@ body {
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -148,12 +148,14 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
+  background-color: var(--border);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
+  background-color: var(--input);
 }
 
 .scrollbar-none {
@@ -209,4 +211,24 @@ body {
 /* Sonner injects its own unlayered CSS; this selector is more specific, so toasts use the app font. */
 :root [data-sonner-toaster] {
   font-family: var(--font-sans);
+}
+
+/* Base surface rules. They must stay below the token :root block, because tests read the first :root block as the token list. */
+@layer base {
+  :root {
+    color-scheme: only light;
+    accent-color: var(--primary);
+  }
+
+  *,
+  ::before,
+  ::after,
+  ::backdrop {
+    border-color: var(--border);
+  }
+
+  ::selection {
+    background-color: var(--primary-border);
+    color: var(--foreground);
+  }
 }

@@ -51,3 +51,47 @@ test("line heights are ratios, and Thai pages get room for stacked marks", () =>
   assert.match(css, /:root \[data-sonner-toaster\] \{\s*font-family: var\(--font-sans\);\s*\}/)
   assert.match(read("src/components/ui/metric-card.tsx"), /cn\("num mt-2 font-bold"/)
 })
+
+test("overlays use the navy scrim and the overlay shadow, and respect reduced motion", () => {
+  const ui = sources.filter((file) => file.path.startsWith("src/components/ui/"))
+  assert.deepEqual(findMatches(ui, /\bbg-black\/\d+/g), [])
+  for (const name of ["dialog", "alert-dialog", "sheet"]) {
+    const source = read(`src/components/ui/${name}.tsx`)
+    assert.match(source, /"fixed inset-0 z-50 bg-scrim [^"]*motion-reduce:animate-none!"/, `${name} scrim`)
+    assert.match(source, /shadow-overlay[^"]*motion-reduce:animate-none!/, `${name} content`)
+  }
+  for (const name of ["popover", "dropdown-menu", "accessible-dialog"]) {
+    const source = read(`src/components/ui/${name}.tsx`)
+    assert.match(source, /shadow-overlay/, name)
+    assert.doesNotMatch(source, /\bshadow-(sm|md|lg|xl)\b/, name)
+  }
+  assert.match(read("src/components/ui/sheet.tsx"), /ease-out data-\[state=closed\]:animate-out data-\[state=closed\]:duration-200 data-\[state=open\]:animate-in data-\[state=open\]:duration-250/)
+})
+
+test("panels and bottom action bars are flat", () => {
+  assert.doesNotMatch(read("src/lib/design-system.ts").match(/function getPanelClasses\(\) \{[\s\S]*?\n\}/)?.[0] ?? "", /shadow/)
+  assert.match(read("src/components/ui/metric-card.tsx"), /cn\("rounded-lg border p-5", toneClasses\.container, className\)/)
+  for (const path of ["src/components/ui/mobile-action-bar.tsx", "src/components/disposal/disposal-mobile-action-bar.tsx"]) {
+    assert.doesNotMatch(read(path), /backdrop-blur|bg-surface\/95|shadow-md/, path)
+  }
+})
+
+test("globals keep a light-only, token-driven base", () => {
+  const css = globals()
+  assert.ok(css.indexOf(":root {") < css.indexOf("@layer base"), "the token :root block must stay first")
+  assert.match(css, /--canvas: #[0-9A-F]{6};/)
+  assert.match(css, /--color-scrim: rgb\(/)
+  assert.match(css, /--shadow-overlay: /)
+  assert.match(css, /:root \{\s*color-scheme: only light;\s*accent-color: var\(--primary\);\s*\}/)
+  assert.match(css, /::backdrop \{\s*border-color: var\(--border\);\s*\}/)
+  assert.match(css, /::selection \{\s*background-color: var\(--primary-border\);/)
+  assert.doesNotMatch(css, /@custom-variant dark|scrollbar-color/)
+})
+
+test("full-bleed bars blend into the canvas", () => {
+  assert.match(read("src/components/layout/dashboard-shell.tsx"), /className="fixed inset-0 flex max-w-full overflow-hidden bg-canvas"/)
+  assert.match(read("src/components/assets/asset-register-toolbar.tsx"), /sticky top-0 z-20 -mx-4 mb-3 bg-canvas /)
+  assert.doesNotMatch(read("src/components/assets/asset-register-toolbar.tsx"), /md:shadow-sm/)
+  assert.match(read("src/components/audit/audit-scan-search.tsx"), /sticky -top-4 sm:-top-6 z-20 -mx-4 bg-canvas /)
+  assert.match(read("src/components/assets/asset-detail-tabs.tsx"), /border-r border-border bg-canvas\/95 /)
+})
