@@ -25,7 +25,7 @@ Before editing UI, read:
 
 | Concern | Desktop Management / Review | Mobile Field Operation |
 |---|---|---|
-| Navigation | Navy sidebar and light topbar | Field navigation on navigation routes; hidden in focus-task routes |
+| Navigation | White sidebar with sections and a light topbar | Field navigation on navigation routes; hidden in focus-task routes |
 | Asset Register | Dense table, presets, columns, bulk actions | Search-first cards, compact filters, touch-safe row actions |
 | Asset Detail | Comparison, history, documents, review actions | Compact identity, collapsible sections, contextual quick actions |
 | Audit | Round setup, pending review, findings, close readiness | Scanner-first counting, evidence, pending queue, recent scans |
@@ -63,6 +63,7 @@ When a focused specification is added, replaced, or retired, update this registr
 | Login | [`2026-07-11-login-ux-design.md`](superpowers/specs/2026-07-11-login-ux-design.md) | [`2026-07-11-login-ux.md`](superpowers/plans/2026-07-11-login-ux.md) sequences implementation and verification. |
 | Disposal | [`2026-07-13-disposal-production-readiness-design.md`](superpowers/specs/2026-07-13-disposal-production-readiness-design.md) | [`2026-07-13-disposal-production-readiness.md`](superpowers/plans/2026-07-13-disposal-production-readiness.md) sequences implementation and verification. |
 | Maintenance | [`2026-10-07-simple-repair-records-design.md`](superpowers/specs/2026-10-07-simple-repair-records-design.md) (one-form repair records; supersedes [`2026-07-14-maintenance-production-hardening-design.md`](superpowers/specs/2026-07-14-maintenance-production-hardening-design.md)) | [`2026-10-07-simple-repair-records.md`](superpowers/plans/2026-10-07-simple-repair-records.md) sequences implementation and verification. |
+| App shell and visual foundation | [`2026-10-10-ui-foundation-design.md`](superpowers/specs/2026-10-10-ui-foundation-design.md) (UI round 4 phase 1: light-shell color tokens, single focus ring, IBM Plex fonts and Thai line heights, flat panels, two-tier status badge, white sidebar with sections, topbar, mobile bottom bar, PWA theme color) | [`2026-10-10-ui-foundation.md`](superpowers/plans/2026-10-10-ui-foundation.md) sequences implementation and verification. |
 | Cross-cutting UI hardening | [`2026-07-10-ui-ux-hardening-design.md`](superpowers/specs/2026-07-10-ui-ux-hardening-design.md) | [`2026-07-10-ui-ux-hardening.md`](superpowers/plans/2026-07-10-ui-ux-hardening.md) sequences implementation and verification; [`2026-07-10-module-ux-roadmap.md`](superpowers/plans/2026-07-10-module-ux-roadmap.md) provides module-level sequencing. |
 
 ## UI QA Checklist

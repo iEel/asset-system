@@ -1,169 +1,212 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-07T00:00:00+07:00",
+  "generatedAt": "2026-10-10T00:00:00+07:00",
   "title": "Design System: Asset Management System",
   "extensions": {
     "colorMeta": {
       "brand-navy": {
         "role": "primary",
         "displayName": "Brand Navy",
-        "canonical": "#0F172A",
+        "canonical": "#083161",
         "tonalRamp": [
-          "oklch(21% 0.04 265)",
-          "oklch(28% 0.045 265)",
-          "oklch(37% 0.05 265)",
-          "oklch(47% 0.05 265)",
-          "oklch(60% 0.04 265)",
-          "oklch(73% 0.03 265)",
-          "oklch(86% 0.02 265)",
-          "oklch(96% 0.008 265)"
+          "oklch(21% 0.057 256)",
+          "oklch(28% 0.077 256)",
+          "oklch(37% 0.091 256)",
+          "oklch(47% 0.096 256)",
+          "oklch(60% 0.086 256)",
+          "oklch(73% 0.067 256)",
+          "oklch(86% 0.034 256)",
+          "oklch(96% 0.01 256)"
         ]
       },
-      "action-blue": {
+      "primary": {
         "role": "primary",
-        "displayName": "Action Blue",
-        "canonical": "#2563EB",
+        "displayName": "Primary",
+        "canonical": "#1E4F94",
         "tonalRamp": [
-          "oklch(28% 0.09 264)",
-          "oklch(38% 0.15 264)",
-          "oklch(49% 0.22 264)",
-          "oklch(55% 0.22 263)",
-          "oklch(62% 0.19 260)",
-          "oklch(71% 0.14 255)",
-          "oklch(88% 0.06 254)",
-          "oklch(97% 0.014 254)"
+          "oklch(21% 0.075 258)",
+          "oklch(28% 0.1 258)",
+          "oklch(37% 0.119 258)",
+          "oklch(47% 0.125 258)",
+          "oklch(60% 0.113 258)",
+          "oklch(73% 0.088 258)",
+          "oklch(86% 0.044 258)",
+          "oklch(96% 0.013 258)"
         ]
       },
       "brand-accent": {
         "role": "accent",
-        "displayName": "Electric Blue",
-        "canonical": "#3B82F6",
+        "displayName": "Icon Teal",
+        "canonical": "#18A0A8",
         "tonalRamp": [
-          "oklch(28% 0.09 260)",
-          "oklch(38% 0.15 262)",
-          "oklch(49% 0.22 264)",
-          "oklch(55% 0.22 263)",
-          "oklch(62% 0.19 260)",
-          "oklch(71% 0.14 255)",
-          "oklch(88% 0.06 254)",
-          "oklch(97% 0.014 254)"
+          "oklch(21% 0.063 201)",
+          "oklch(28% 0.084 201)",
+          "oklch(37% 0.1 201)",
+          "oklch(47% 0.106 201)",
+          "oklch(60% 0.095 201)",
+          "oklch(73% 0.074 201)",
+          "oklch(86% 0.037 201)",
+          "oklch(96% 0.011 201)"
+        ]
+      },
+      "ring": {
+        "role": "accent",
+        "displayName": "Focus Ring",
+        "canonical": "#10858D",
+        "tonalRamp": [
+          "oklch(21% 0.056 203)",
+          "oklch(28% 0.074 203)",
+          "oklch(37% 0.088 203)",
+          "oklch(47% 0.093 203)",
+          "oklch(60% 0.084 203)",
+          "oklch(73% 0.065 203)",
+          "oklch(86% 0.032 203)",
+          "oklch(96% 0.009 203)"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Canvas",
+        "canonical": "#EEF1F6",
+        "tonalRamp": [
+          "oklch(21% 0.004 261)",
+          "oklch(28% 0.006 261)",
+          "oklch(37% 0.007 261)",
+          "oklch(47% 0.007 261)",
+          "oklch(60% 0.007 261)",
+          "oklch(73% 0.005 261)",
+          "oklch(86% 0.003 261)",
+          "oklch(96% 0.001 261)"
         ]
       },
       "soft-system-background": {
         "role": "neutral",
         "displayName": "Soft System Background",
-        "canonical": "#F8FAFC",
+        "canonical": "#F6F8FB",
         "tonalRamp": [
-          "oklch(16% 0.01 250)",
-          "oklch(28% 0.01 250)",
-          "oklch(40% 0.01 250)",
-          "oklch(55% 0.008 250)",
-          "oklch(70% 0.008 250)",
-          "oklch(82% 0.006 250)",
-          "oklch(91% 0.004 250)",
-          "oklch(98% 0.003 250)"
+          "oklch(21% 0.003 258)",
+          "oklch(28% 0.004 258)",
+          "oklch(37% 0.004 258)",
+          "oklch(47% 0.005 258)",
+          "oklch(60% 0.004 258)",
+          "oklch(73% 0.003 258)",
+          "oklch(86% 0.002 258)",
+          "oklch(96% 0 258)"
         ]
       },
       "primary-slate-ink": {
         "role": "neutral",
-        "displayName": "Primary Slate Ink",
-        "canonical": "#0F172A",
+        "displayName": "Ink",
+        "canonical": "#0B1D35",
         "tonalRamp": [
-          "oklch(14% 0.03 260)",
-          "oklch(24% 0.035 260)",
-          "oklch(34% 0.035 260)",
-          "oklch(46% 0.03 260)",
-          "oklch(60% 0.025 260)",
-          "oklch(74% 0.018 260)",
-          "oklch(86% 0.012 260)",
-          "oklch(96% 0.006 260)"
+          "oklch(21% 0.032 256)",
+          "oklch(28% 0.042 256)",
+          "oklch(37% 0.05 256)",
+          "oklch(47% 0.053 256)",
+          "oklch(60% 0.047 256)",
+          "oklch(73% 0.037 256)",
+          "oklch(86% 0.018 256)",
+          "oklch(96% 0.005 256)"
+        ]
+      },
+      "input": {
+        "role": "neutral",
+        "displayName": "Input Border",
+        "canonical": "#7C8BA0",
+        "tonalRamp": [
+          "oklch(21% 0.022 257)",
+          "oklch(28% 0.029 257)",
+          "oklch(37% 0.034 257)",
+          "oklch(47% 0.036 257)",
+          "oklch(60% 0.033 257)",
+          "oklch(73% 0.025 257)",
+          "oklch(86% 0.013 257)",
+          "oklch(96% 0.004 257)"
         ]
       },
       "success": {
         "role": "status",
         "displayName": "Success Green",
-        "canonical": "#15803D",
+        "canonical": "#1D7A35",
         "tonalRamp": [
-          "oklch(26% 0.06 153)",
-          "oklch(39% 0.095 153)",
-          "oklch(45% 0.11 152)",
-          "oklch(53% 0.14 150)",
-          "oklch(63% 0.17 149)",
-          "oklch(79% 0.15 152)",
-          "oklch(92% 0.06 155)",
-          "oklch(98% 0.018 156)"
+          "oklch(21% 0.081 148)",
+          "oklch(28% 0.107 148)",
+          "oklch(37% 0.128 148)",
+          "oklch(47% 0.134 148)",
+          "oklch(60% 0.121 148)",
+          "oklch(73% 0.094 148)",
+          "oklch(86% 0.047 148)",
+          "oklch(96% 0.013 148)"
         ]
       },
       "warning": {
         "role": "status",
-        "displayName": "Warning Amber",
-        "canonical": "#B45309",
+        "displayName": "Warning Orange",
+        "canonical": "#A14A05",
         "tonalRamp": [
-          "oklch(28% 0.07 46)",
-          "oklch(41% 0.11 46)",
-          "oklch(47% 0.12 46)",
-          "oklch(55% 0.15 49)",
-          "oklch(67% 0.16 58)",
-          "oklch(77% 0.16 70)",
-          "oklch(92% 0.1 96)",
-          "oklch(99% 0.02 95)"
+          "oklch(21% 0.08 50)",
+          "oklch(28% 0.107 50)",
+          "oklch(37% 0.127 50)",
+          "oklch(47% 0.134 50)",
+          "oklch(60% 0.121 50)",
+          "oklch(73% 0.094 50)",
+          "oklch(86% 0.047 50)",
+          "oklch(96% 0.013 50)"
         ]
       },
       "danger": {
         "role": "status",
         "displayName": "Danger Red",
-        "canonical": "#B91C1C",
+        "canonical": "#B3261E",
         "tonalRamp": [
-          "oklch(26% 0.09 26)",
-          "oklch(40% 0.13 26)",
-          "oklch(44% 0.16 26)",
-          "oklch(51% 0.19 27)",
-          "oklch(58% 0.22 27)",
-          "oklch(71% 0.17 22)",
-          "oklch(89% 0.05 18)",
-          "oklch(97% 0.013 17)"
+          "oklch(21% 0.107 29)",
+          "oklch(28% 0.143 29)",
+          "oklch(37% 0.169 29)",
+          "oklch(47% 0.178 29)",
+          "oklch(60% 0.16 29)",
+          "oklch(73% 0.125 29)",
+          "oklch(86% 0.062 29)",
+          "oklch(96% 0.018 29)"
         ]
       },
       "info": {
         "role": "status",
-        "displayName": "Info Blue",
-        "canonical": "#2563EB",
+        "displayName": "Info Teal",
+        "canonical": "#0A6E75",
         "tonalRamp": [
-          "oklch(28% 0.09 264)",
-          "oklch(38% 0.15 264)",
-          "oklch(49% 0.22 264)",
-          "oklch(55% 0.22 263)",
-          "oklch(62% 0.19 260)",
-          "oklch(71% 0.14 255)",
-          "oklch(88% 0.06 254)",
-          "oklch(97% 0.014 254)"
+          "oklch(21% 0.049 203)",
+          "oklch(28% 0.065 203)",
+          "oklch(37% 0.077 203)",
+          "oklch(47% 0.081 203)",
+          "oklch(60% 0.073 203)",
+          "oklch(73% 0.057 203)",
+          "oklch(86% 0.028 203)",
+          "oklch(96% 0.008 203)"
         ]
       }
     },
     "typographyMeta": {
       "display": {
         "displayName": "Compact Display",
+        "fontFamily": "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif",
         "purpose": "Page titles and high-level report titles only."
       },
       "body": {
         "displayName": "Operational Body",
+        "fontFamily": "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif",
         "purpose": "Dense Thai and English UI text, table cells, and workflow copy."
       },
       "label": {
         "displayName": "Interface Label",
+        "fontFamily": "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif",
         "purpose": "Controls, navigation, field labels, and filter labels."
       }
     },
     "shadows": [
       {
-        "name": "structured-panel",
-        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
-        "purpose": "Subtle grouping for content panels, metric cards, and operational cards."
-      },
-      {
-        "name": "floating-overlay",
-        "value": "0 10px 15px -3px rgb(0 0 0 / 0.10), 0 4px 6px -4px rgb(0 0 0 / 0.10)",
-        "purpose": "Dropdowns, popovers, and overlays above dense content."
+        "name": "overlay",
+        "value": "0 12px 32px -8px rgb(8 49 97 / 0.18), 0 2px 6px -2px rgb(8 49 97 / 0.1)",
+        "purpose": "shadow-overlay: dialogs, sheets, popovers, and dropdown menus only. Panels, cards, and the topbar are flat."
       }
     ],
     "motion": [
@@ -204,7 +247,7 @@
       "refersTo": "button-primary",
       "description": "Primary action button for save, create, submit, approve, or workflow-forward actions.",
       "html": "<button class=\"ds-btn-primary\">Save changes</button>",
-      "css": ".ds-btn-primary { min-height: 44px; height: 40px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 8px; background: #2563EB; color: #FFFFFF; font: 500 14px/1.4 Inter, \"Noto Sans Thai\", system-ui, sans-serif; transition: background-color 150ms ease-out; } .ds-btn-primary:hover { background: #1D4ED8; } .ds-btn-primary:focus-visible { outline: 2px solid #3B82F6; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }"
+      "css": ".ds-btn-primary { min-height: 44px; height: 40px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 8px; background: #1E4F94; color: #FFFFFF; font: 500 14px/1.5714 \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; transition: background-color 150ms ease-out; } .ds-btn-primary:hover { background: #173E76; } .ds-btn-primary:focus-visible { outline: 2px solid #10858D; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }"
     },
     {
       "name": "Secondary Button",
@@ -212,7 +255,7 @@
       "refersTo": "button-secondary",
       "description": "Secondary action for filters, navigation-adjacent actions, and lower-priority commands.",
       "html": "<button class=\"ds-btn-secondary\">Export current result</button>",
-      "css": ".ds-btn-secondary { min-height: 44px; height: 40px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #E2E8F0; border-radius: 8px; background: #FFFFFF; color: #0F172A; font: 500 14px/1.4 Inter, \"Noto Sans Thai\", system-ui, sans-serif; transition: background-color 150ms ease-out; } .ds-btn-secondary:hover { background: #F1F5F9; } .ds-btn-secondary:focus-visible { outline: 2px solid #3B82F6; outline-offset: 2px; } .ds-btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }"
+      "css": ".ds-btn-secondary { min-height: 44px; height: 40px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #D7DEE8; border-radius: 8px; background: #FFFFFF; color: #0B1D35; font: 500 14px/1.5714 \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; transition: background-color 150ms ease-out; } .ds-btn-secondary:hover { background: #EBF0F7; } .ds-btn-secondary:focus-visible { outline: 2px solid #10858D; outline-offset: 2px; } .ds-btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }"
     },
     {
       "name": "Text Field",
@@ -220,31 +263,31 @@
       "refersTo": "input",
       "description": "Standard form input for asset, employee, location, search, and settings fields.",
       "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Asset tag</span><input class=\"ds-input\" placeholder=\"Search asset tag\" /></label>",
-      "css": ".ds-field { display: grid; gap: 6px; font-family: Inter, \"Noto Sans Thai\", system-ui, sans-serif; color: #0F172A; } .ds-field-label { font-size: 14px; line-height: 1.4; font-weight: 500; } .ds-input { min-height: 44px; height: 40px; width: 100%; border: 1px solid #E2E8F0; border-radius: 8px; background: #F8FAFC; color: #0F172A; padding: 0 12px; font: 400 14px/1.5 Inter, \"Noto Sans Thai\", system-ui, sans-serif; outline: none; } .ds-input::placeholder { color: #475569; } .ds-input:focus { border-color: #3B82F6; box-shadow: 0 0 0 1px #3B82F6; } .ds-input:disabled { background: #F1F5F9; color: #475569; cursor: not-allowed; }"
+      "css": ".ds-field { display: grid; gap: 6px; font-family: \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; color: #0B1D35; } .ds-field-label { font-size: 14px; line-height: 1.5714; font-weight: 500; } .ds-input { min-height: 44px; height: 40px; width: 100%; border: 1px solid #7C8BA0; border-radius: 8px; background: #F6F8FB; color: #0B1D35; padding: 0 12px; font: 400 14px/1.5714 \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; outline: none; } .ds-input::placeholder { color: #3C4F6B; } .ds-input:focus { border-color: #10858D; box-shadow: 0 0 0 1px #10858D; } .ds-input:disabled { background: #E9EEF5; color: #3C4F6B; cursor: not-allowed; }"
     },
     {
       "name": "Content Panel",
       "kind": "card",
       "refersTo": "panel",
-      "description": "Default grouped surface for forms, dashboard modules, settings sections, and operational content.",
+      "description": "Default grouped surface for forms, dashboard modules, settings sections, and operational content. Flat: separated from the canvas by surface color and border, no shadow.",
       "html": "<section class=\"ds-panel\"><h2 class=\"ds-panel-title\">Asset custody</h2><p class=\"ds-panel-copy\">Review current custodian, branch, department, and audit trail context.</p></section>",
-      "css": ".ds-panel { min-width: 0; max-width: 100%; border: 1px solid #E2E8F0; border-radius: 12px; background: #FFFFFF; color: #0F172A; padding: 16px; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); font-family: Inter, \"Noto Sans Thai\", system-ui, sans-serif; } .ds-panel-title { margin: 0; font-size: 16px; line-height: 1.5; font-weight: 600; } .ds-panel-copy { margin: 4px 0 0; max-width: 72ch; font-size: 14px; line-height: 1.5; color: #475569; }"
+      "css": ".ds-panel { min-width: 0; max-width: 100%; border: 1px solid #D7DEE8; border-radius: 12px; background: #FFFFFF; color: #0B1D35; padding: 16px; font-family: \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; } .ds-panel-title { margin: 0; font-size: 16px; line-height: 1.5; font-weight: 600; } .ds-panel-copy { margin: 4px 0 0; max-width: 72ch; font-size: 14px; line-height: 1.5714; color: #3C4F6B; }"
     },
     {
       "name": "Status Badge",
       "kind": "chip",
       "refersTo": "badge-status",
-      "description": "One StatusBadge: status dot, tone soft background, tone border, and AA tone ink text. Every badge carries a text label; a valid hex status color from the database tints the dot only.",
-      "html": "<span class=\"ds-status-badge ds-status-warning\"><span class=\"ds-status-dot\" aria-hidden=\"true\"></span><span>รอตรวจสอบ</span></span>",
-      "css": ".ds-status-badge { display: inline-flex; width: fit-content; max-width: 100%; align-items: center; gap: 6px; border: 1px solid #E2E8F0; border-radius: 8px; padding: 4px 10px; background: #F1F5F9; color: #475569; font: 500 14px/1.4 Inter, \"Noto Sans Thai\", system-ui, sans-serif; white-space: nowrap; } .ds-status-dot { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 9999px; background: currentColor; } .ds-status-success { background: #F0FDF4; border-color: #BBF7D0; color: #15803D; } .ds-status-warning { background: #FFFBEB; border-color: #FDE68A; color: #B45309; } .ds-status-danger { background: #FEF2F2; border-color: #FECACA; color: #B91C1C; } .ds-status-info { background: #EFF6FF; border-color: #BFDBFE; color: #2563EB; } .ds-status-primary { background: #EFF6FF; border-color: #BFDBFE; color: #2563EB; }"
+      "description": "One StatusBadge in two tiers with shape-coded markers. Calm tier (info ring, success/primary dot, neutral bar): no fill or side padding, muted-foreground text. Attention tier (warning triangle, danger diamond): soft fill, border, and tone ink. Every badge carries a text label; database status colors are not shown.",
+      "html": "<span class=\"ds-status-badge ds-status-info\"><span class=\"ds-status-marker\" aria-hidden=\"true\"></span><span>เปิด</span></span> <span class=\"ds-status-badge ds-status-warning\"><span class=\"ds-status-marker\" aria-hidden=\"true\"></span><span>รอตรวจสอบ</span></span>",
+      "css": ".ds-status-badge { display: inline-flex; width: fit-content; max-width: 100%; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: 8px; padding: 4px 0; background: transparent; color: #3C4F6B; font: 500 14px/1.5714 \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; white-space: nowrap; } .ds-status-marker { flex: 0 0 auto; forced-color-adjust: none; } .ds-status-info .ds-status-marker { width: 7px; height: 7px; border: 1.5px solid #0A6E75; border-radius: 9999px; } .ds-status-success .ds-status-marker { width: 6px; height: 6px; border-radius: 9999px; background: #1D7A35; } .ds-status-primary .ds-status-marker { width: 6px; height: 6px; border-radius: 9999px; background: #1E4F94; } .ds-status-neutral .ds-status-marker { width: 7px; height: 2px; border-radius: 1px; background: #3C4F6B; } .ds-status-warning { padding: 4px 10px; background: #FDF4E4; border-color: #EDCB93; color: #A14A05; } .ds-status-warning .ds-status-marker { width: 8px; height: 7px; background: #A14A05; clip-path: polygon(50% 0, 100% 100%, 0 100%); } .ds-status-danger { padding: 4px 10px; background: #FCEFEE; border-color: #F1BEB9; color: #B3261E; } .ds-status-danger .ds-status-marker { width: 6px; height: 6px; border-radius: 1px; background: #B3261E; transform: rotate(45deg); }"
     },
     {
       "name": "Sidebar Navigation Item",
       "kind": "nav",
       "refersTo": "navigation",
-      "description": "RBAC-filtered row in the Brand Navy sidebar with Lucide icon, readable sidebar foreground label, Sidebar Hover, and Sidebar Active states.",
+      "description": "RBAC-filtered row in the white sidebar (three sections with headings). Inset rounded row, sidebar-muted icon, Sidebar Hover; the active row is solid navy with white text, a teal icon, and aria-current; its focus ring sits outside the row on white.",
       "html": "<a class=\"ds-nav-item ds-nav-item-active\" href=\"#\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z\" fill=\"currentColor\"/></svg><span>Dashboard</span></a>",
-      "css": ".ds-nav-item { min-height: 44px; display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: #0F172A; color: #CBD5E1; text-decoration: none; font: 500 14px/1.4 Inter, \"Noto Sans Thai\", system-ui, sans-serif; transition: background-color 150ms ease-out, color 150ms ease-out; } .ds-nav-item svg { width: 20px; height: 20px; flex: 0 0 auto; } .ds-nav-item:hover { background: #1E293B; color: #FFFFFF; } .ds-nav-item:focus-visible { outline: 2px solid #3B82F6; outline-offset: -2px; } .ds-nav-item-active { background: #1E3A8A; color: #FFFFFF; }"
+      "css": ".ds-nav-item { min-height: 36px; margin: 0 8px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 8px; background: #FFFFFF; color: #1F3657; text-decoration: none; font: 500 14px/1.5714 \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; transition: background-color 150ms ease-out, color 150ms ease-out; } .ds-nav-item svg { width: 20px; height: 20px; flex: 0 0 auto; color: #586A84; } .ds-nav-item:hover { background: #EBF0F7; } .ds-nav-item:focus-visible { outline: 2px solid #10858D; outline-offset: 2px; } .ds-nav-item-active, .ds-nav-item-active:hover { background: #083161; color: #FFFFFF; } .ds-nav-item-active svg { color: #18A0A8; }"
     }
   ],
   "narrative": {
@@ -253,19 +296,19 @@
     "keyCharacteristics": [
       "Corporate, restrained, and audit-friendly.",
       "Dense enough for enterprise scanning, never cramped.",
-      "Bordered and tonal by default, lightly lifted only where grouping matters.",
+      "Bordered and tonal by default; only floating layers are lifted.",
       "Status-rich, permission-aware, and readable in Thai and English.",
       "Built for desktop administration and mobile field audit work."
     ],
     "rules": [
       {
-        "name": "The Brand and Action Rule",
-        "body": "Brand Navy is for the desktop sidebar and identity. Action Blue is for normal white-text primary actions. Electric Blue is for focus, icons, links, and selected emphasis. Do not use these colors as decorative fill across inactive cards or marketing-style sections.",
+        "name": "The Where Color Lives Rule",
+        "body": "Navy #083161 lives only in the logo and the selected menu row. Actions and links use Primary #1E4F94. Teal is for info status, the focus ring (#10858D) and the selected menu icon. Green, orange and red appear only inside status badges. Until phase 2, info notices, role chips and a few info icons also use the info tokens and so appear teal.",
         "section": "colors"
       },
       {
         "name": "The Status With Evidence Rule",
-        "body": "Status cues must never rely on color alone. Pair semantic color with readable labels, consistent tone mapping, and visible workflow context.",
+        "body": "Status cues must never rely on color alone. Pair semantic color with readable labels, marker shapes, consistent tone mapping, and visible workflow context.",
         "section": "colors"
       },
       {
@@ -284,33 +327,40 @@
         "section": "typography"
       },
       {
+        "name": "The Thai Line-Height Rule",
+        "body": "text-sm is 22/14 in every language; Thai pages raise text-xs, text-xl, text-2xl and text-3xl to 18/12, 30/20, 36/24 and 44/30. A4 operation documents keep text-sm at 20/14 so the signature row stays on page 1.",
+        "section": "typography"
+      },
+      {
         "name": "The Thai Readability Rule",
         "body": "Thai and English labels must remain readable at operational density. Do not shrink helper text or placeholders below accessible contrast or touch usability.",
         "section": "typography"
       },
       {
         "name": "The Border First Rule",
-        "body": "Use a border and tonal surface before adding elevation. Add `shadow-sm` only when grouping or layer separation improves task clarity.",
+        "body": "Use a border and tonal surface for grouping. Panels, cards, and the topbar are flat; only dialogs, sheets, popovers, and menus use shadow-overlay, over a bg-scrim backdrop.",
         "section": "elevation"
       },
       {
         "name": "The No Floating Marketing Cards Rule",
-        "body": "Panels may be lightly lifted for structure, but they must not become decorative cards arranged for landing-page drama.",
+        "body": "Panels must not become decorative cards arranged for landing-page drama.",
         "section": "elevation"
       }
     ],
     "dos": [
       "Do preserve existing tokens and design-system helpers such as panel, action button, field control, table shell, mobile card list, empty state, and touch icon button classes.",
-      "Do use Brand Navy for sidebar identity, Action Blue for normal white-text primary actions, and Electric Blue for focus, icons, links, and selected emphasis.",
-      "Do use borders and tonal layers as the default grouping mechanism, with `shadow-sm` only for important panels, cards, modals, and grouped sections.",
+      "Do keep navy #083161 for the logo and the selected menu row, Primary #1E4F94 for actions and links, and teal for info status, focus and the selected menu icon.",
+      "Do use borders and tonal layers as the grouping mechanism; use shadow-overlay only for dialogs, sheets, popovers and menus, and bg-scrim behind them.",
       "Do keep tables and forms dense enough for enterprise scanning, but not cramped.",
-      "Do pair status colors with readable labels, icons, shapes, or explicit workflow context so status does not rely on color alone.",
+      "Do pair status colors with readable labels, marker shapes, icons, or explicit workflow context so status does not rely on color alone.",
       "Do support Thai and English text, keyboard navigation, visible focus states, reduced motion, touch-safe mobile/tablet controls, and clear empty, loading, error, permission-denied, and validation states.",
       "Do preserve business workflows, RBAC, locale routing, audit trail expectations, Prisma/SQL Server behavior, and production readiness assumptions."
     ],
     "donts": [
       "Don't use consumer-app styling, bright playful colors, heavy animation, marketing-style hero layouts, gamified UI, casual startup dashboards, decorative gradients, or anything that makes the system feel like a landing page instead of an enterprise operations tool.",
       "Don't use glassmorphism, heavy shadows, decorative gradients, floating marketing cards, or playful surfaces.",
+      "Don't bring back a dark navy sidebar, a second focus color, or green, orange and red outside status badges.",
+      "Don't show database status colors on badges, or use teal brand-accent as text.",
       "Don't redesign business workflows for visual effect.",
       "Don't invent inconsistent button, input, modal, badge, or navigation vocabularies across screens.",
       "Don't rely on color alone for status, permission, validation, audit, or lifecycle state.",
