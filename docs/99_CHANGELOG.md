@@ -4,6 +4,20 @@
 
 ---
 
+## 2026-10-10
+
+### คำสั่ง migration เลือกฐานข้อมูลด้วย `--db-env`
+
+Commit `014f0eb` (push `origin` และ `company` แล้ว) · ไม่มี migration · ไม่แก้โค้ดแอป
+
+- **ปัญหา:** `.env` ชี้ DB dev เสมอ แต่การ apply migration บน Production ต้องให้ผู้ใช้ตั้ง login ใน terminal ของตัวเองทุกครั้ง
+- **แก้:** `npm run migration:* -- … --db-env <ไฟล์>` อ่านค่าเชื่อมต่อ (`DB_SERVER`, `DB_INSTANCE`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DATABASE_URL`, `DB_TLS_SERVER_NAME`) จากไฟล์นั้นอย่างเดียว ไม่ปนกับ `.env` · ไฟล์ที่ขาด `DB_SERVER`/`DB_USER`/`DB_PASSWORD`/`DATABASE_URL` ถูกปฏิเสธ · พิมพ์ชื่อไฟล์ที่ใช้และซ่อนค่าลับ · login ของ Production อยู่ใน `.env.prod-admin` (git ignore · ผู้ใช้กรอกเอง)
+- **ชื่อ flag:** ไม่ใช้ `--env-file` เพราะ Node 24 ตรวจ flag นี้เองแม้อยู่หลังชื่อสคริปต์ แล้วหยุดทำงานเมื่อไม่พบไฟล์
+- **กฎที่ยังอยู่:** เขียนลง `asset_management` ต้อง backup ที่ตรวจแล้วและให้ผู้ใช้อนุมัติ SQL เต็มทุกครั้ง · `AGENTS.md` เอากฎห้าม `sa` ใน `.env` ออกตามที่ผู้ใช้สั่ง แต่ `.env` ยังชี้ DB dev
+- test 1,590 (ผ่าน 1,589 · ข้าม 1) · ไฟล์ใหม่ `src/lib/manual-migration-env.ts` + `tests/manual-migration-env.test.ts` · คู่มือ `docs/03_DATABASE.md`
+
+---
+
 ## 2026-10-08
 
 ### จัดข้อความภาษาไทย (รอบที่ 3 ส่วน B3) + ซ่อน error ที่ไม่คาดคิด (S9)
