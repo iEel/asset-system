@@ -110,7 +110,7 @@ components:
     rounded: "{rounded.lg}"
     padding: "16px"
   badge-status:
-    backgroundColor: "{colors.surface}"
+    backgroundColor: "transparent"
     textColor: "{colors.muted-slate}"
     rounded: "{rounded.md}"
     padding: "4px 0"
@@ -275,7 +275,7 @@ Components should feel consistent, restrained, and task-first. The system alread
 
 ### Focus
 
-- One focus color everywhere: `--ring` #10858D. Focus classes use `ring-ring` / `border-ring`; `(focus|focus-visible|focus-within):(ring|border)-(primary|brand-accent)` is blocked by `tests/visual-foundation-guards.test.ts`.
+- One focus color everywhere, danger and destructive controls included: `--ring` #10858D. Focus classes use `ring-ring` / `border-ring`; `(focus|focus-visible|focus-within):(ring|border)-(primary|brand-accent|danger|success|warning|info|destructive)` and see-through `focus-visible:ring-*/NN` rings are blocked by `tests/visual-foundation-guards.test.ts`.
 - A base rule gives every `:focus-visible` element without its own ring a `2px solid var(--ring)` outline with a 2px offset. Elements focused by code (`tabIndex={-1}`) and the sheet, alert-dialog and dropdown containers use `outline-none`.
 - Windows high-contrast mode: an unlayered `@media (forced-colors: active)` rule draws a `CanvasText` outline, because box-shadow rings disappear there.
 - On the selected menu row the ring sits outside the row on white (`ring-offset-2 ring-offset-sidebar`, 4.41:1), because an inset ring on navy reaches only 2.94:1.
@@ -286,7 +286,7 @@ Components should feel consistent, restrained, and task-first. The system alread
   - **Calm tier** (no fill, no side padding, so it lines up with other text in a column; muted-foreground text): `info` = hollow ring in info teal (open, planned, reported, and unknown asset states) · `success` = solid dot in success green (including Ready and In Use) · `primary` = solid dot in primary (approved, done, received) · `neutral` / `muted` = short bar in muted-foreground.
   - **Attention tier** (soft fill, border and tone ink text): `warning` = triangle · `danger` = diamond.
 - **Database colors are not shown.** Status colors stored in the database (`asset_statuses.colorCode`, `asset_conditions.colorCode`) are no longer used on badges; the `color` prop and `getStatusDotColor` were removed. The data itself is unchanged.
-- **State:** Every badge carries a text label. Tones follow workflow meaning (`getStatusTone`, `getAssetStateTone`). Markers use `forced-color-adjust-none` so they stay visible in high-contrast mode.
+- **State:** Every badge carries a text label. Tones follow workflow meaning (`getStatusTone`, `getAssetStateTone`). Markers use `forced-color-adjust-none` so they stay visible in high-contrast mode, and there they use the system text color (`forced-colors:bg-[CanvasText]`, the info ring `forced-colors:border-[CanvasText]`) so they also show on dark high-contrast themes.
 
 ### Dialogs, Menus and Confirmation
 
@@ -315,9 +315,9 @@ Components should feel consistent, restrained, and task-first. The system alread
 The app uses a fixed dashboard shell with a white sidebar and a white topbar on the canvas.
 
 - **Sidebar** (`src/components/layout/sidebar.tsx`): white with a right `border-sidebar-border`. The brand mark is the app icon (32px, rounded) with the name "ระบบบริหารทรัพย์สิน" / "Asset Management System" (`nav.brandName`); when collapsed only the icon shows and the name is `sr-only`.
-- **Three sections with headings:** งานประจำวัน / Daily work (dashboard, work center, my assets) · ทรัพย์สิน / Assets (asset management, audit, maintenance, disposal) · ภาพรวมและระบบ / Reports and system (reports, master data, settings). A section with no permitted item is hidden (`filterNavigationSectionsByPermission` in `src/lib/navigation-permissions.ts`); when the sidebar is collapsed, headings become divider lines.
-- **Rows:** inset (`mx-2 rounded-md px-3`), 36px on desktop and 44px in the mobile drawer, icons in `sidebar-muted`, hover `sidebar-hover`.
-- **Active row:** solid navy `sidebar-active` with white text (weight 500), a teal `sidebar-active-icon` and `aria-current="page"`; the parent group of the active row is semibold with no fill. The active row is the longest matching href (`getActiveNavigationHref` in `src/lib/navigation-active.ts`, so `/th/assets/new` selects "add asset", not the register), and its group opens by itself. No colored side stripe.
+- **Three sections with headings:** งานประจำวัน / Daily work (dashboard, work center, my assets) · ทรัพย์สิน / Assets (asset management, audit, maintenance, disposal) · ภาพรวมและระบบ / Reports and system (reports, master data, settings). A section with no permitted item is hidden (`filterNavigationSectionsByPermission` in `src/lib/navigation-permissions.ts`); when the sidebar is collapsed, headings become divider lines. Each section is a `role="group"` labelled by its heading (`aria-labelledby`; drawer ids are prefixed `mobile-` because the body renders twice).
+- **Rows:** full width inside the nav's `px-2` gutter (`rounded-md px-3`), 36px on desktop and 44px in the mobile drawer, icons in `sidebar-muted`, hover `sidebar-hover`.
+- **Active row:** solid navy `sidebar-active` with white text (weight 500), a teal `sidebar-active-icon`, and an outline in Windows high-contrast mode (`forced-colors:outline`), where the fill is dropped. `aria-current="page"` is set only when the page is the entry itself (`isExactNavigationMatch`); on a detail page under an entry (for example `/th/assets/123`) that entry gets `aria-current="true"`. The parent group of the active row is semibold with no fill. The active row is the longest matching href (`getActiveNavigationHref` in `src/lib/navigation-active.ts`, so `/th/assets/new` selects "add asset", not the register), and its group opens by itself. No colored side stripe.
 - **Topbar:** white, `border-b`, no shadow.
 - **Mobile:** a slide-in sidebar `Sheet` with 44px targets and the scrim; the bottom field bar is solid `bg-surface` with `border-t`, no blur or bar shadow (the round scan button keeps its own), and `text-xs` labels. The PWA `themeColor` / manifest `theme_color` is #FFFFFF and `background_color` is #EEF1F6.
 
@@ -328,7 +328,7 @@ Tables are core product surfaces. Use bordered shells, readable row spacing, cle
 **List page pattern (asset register, 2026-10-07).** New list pages follow the register (`/[locale]/assets`):
 
 - **Search bar card:** a search field that searches while typing (400ms pause, 2+ characters, not during IME composition, Enter searches at once, × clears) plus the two or three scope selects a person uses most. Below `md` the bar holds only search and ⚙, and it sticks to the top while the list scrolls.
-- **Status tabs with live counts** for the handful of states people switch between; any other state lives in the filter sheet. The tab nav scrolls horizontally on phones and uses `md:overflow-visible` from `md` up, so the active tab's underline is not clipped.
+- **Status tabs with live counts** for the handful of states people switch between; any other state lives in the filter sheet. The tab nav keeps `overflow-x-auto` at every width, so the row scrolls when the tabs do not fit. From `md` up the baseline is an inset shadow on the list (`md:min-w-full md:shadow-[inset_0_-1px_0_var(--border)]`), and the active tab's `md:border-b-2 md:border-primary` sits inside the list over it, so the underline scrolls with the tabs and is never clipped. Do not use `md:overflow-visible` or a `-mb-px` overlap on a scrolling tab row.
 - **⚙ filter Sheet** (right on desktop, bottom on phones) for everything else. Changes apply at once, the sheet stays open, and its footer reads "ล้าง" and "แสดง N รายการ" with the real result count.
 - **Removable chips** for every active filter that is not visible on screen, plus "ล้างทั้งหมด".
 - **Filters live in the URL.** Changes go through `router.replace` with an optimistic state (`AssetRegisterNavigationProvider`), so the back button leaves the page in one step and controls never bounce back.

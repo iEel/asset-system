@@ -8,15 +8,22 @@
 
 ### รากฐานหน้าตาใหม่ (UI รอบ 4 เฟส 1)
 
-Branch `feat/ui-foundation` (จาก `master` `e3a91bb`) · design `docs/superpowers/specs/2026-10-10-ui-foundation-design.md` · plan `docs/superpowers/plans/2026-10-10-ui-foundation.md` · ค่าทั้งหมดอยู่ใน `DESIGN.md`
+Branch `feat/ui-foundation` (จาก `master` `60bea4f`) · design `docs/superpowers/specs/2026-10-10-ui-foundation-design.md` · plan `docs/superpowers/plans/2026-10-10-ui-foundation.md` · ค่าทั้งหมดอยู่ใน `DESIGN.md`
 
 - **สีจากไอคอนแอป (ชุด "เมนูสว่าง"):** ชื่อ token เดิม เปลี่ยนแค่ค่า · ปุ่มหลัก/ลิงก์ #1E4F94 · กรมท่า #083161 ใช้แค่โลโก้กับแถวเมนูที่เลือก · info เป็น teal #0A6E75 (แยกจากปุ่มหลักแล้ว) · ขอบช่องกรอก #7C8BA0 ผ่าน 3:1 · token ใหม่ `canvas` `primary-border` และสีเมนูข้าง · เขียว ส้ม แดงอยู่เฉพาะในป้ายสถานะ
 - **โฟกัสสีเดียว** #10858D ทั้งแอป (codemod class โฟกัสเดิม) · กรอบโฟกัสสำรองใน base และในโหมดสีตัดกันสูงของ Windows
 - **ฟอนต์ IBM Plex Sans + IBM Plex Sans Thai + IBM Plex Mono** · ตัวเลขกว้างเท่ากัน · `text-sm` สูง 22px · หน้าไทยเพิ่มระยะบรรทัดให้สระและวรรณยุกต์ซ้อน · utility `num` และ `tag` · toast ใช้ฟอนต์แอป · PDF ยังใช้ Noto Sans Thai
-- **พื้นผิวแบน:** แผง การ์ดตัวเลข แถบบน และแถบล่างมือถือไม่มีเงา · หน้าต่าง แผ่นเลื่อน เมนู ใช้ `shadow-overlay` บนฉากหลัง `bg-scrim` · ลดการเคลื่อนไหวแล้วไม่มี animation · ใช้โหมดสว่างอย่างเดียว
+- **พื้นผิวแบน:** แผง การ์ดตัวเลข แถบบน และแถบล่างมือถือไม่มีเงา · หน้าต่าง แผ่นเลื่อน เมนู ใช้ `shadow-overlay` บนฉากหลัง `bg-scrim` · เมื่อตั้งลดการเคลื่อนไหว หน้าต่าง หน้าต่างยืนยัน แผ่นเลื่อน และฉากหลังของมันหยุด animation (dropdown กับ popover ยังจางและขยายอยู่) · ใช้โหมดสว่างอย่างเดียว
 - **ป้ายสถานะ 2 ระดับ:** สถานะปกติเป็นตัวหนังสือพร้อมเครื่องหมาย (วงกลมกลวง จุด ขีด) · สถานะที่ต้องจัดการมีพื้นและขอบ (สามเหลี่ยม = เตือน · ข้าวหลามตัด = ปัญหา) · ไม่แสดงสีสถานะจากฐานข้อมูลแล้ว (ข้อมูลไม่แก้)
 - **เมนูข้างสีขาว** มีโลโก้แอป ชื่อระบบ และ 3 หัวข้อ (งานประจำวัน · ทรัพย์สิน · ภาพรวมและระบบ) · แถวที่เลือกพื้นกรมท่า ไอคอน teal เลือกจาก href ที่ตรงยาวที่สุด (`getActiveNavigationHref`) · แถบบนขาวไม่มีเงา · แถบล่างมือถือทึบ · PWA `theme_color` #FFFFFF และ cache `asset-system-pwa-v2`
-- **ตรวจบนแอป dev:** เดินโฟกัสด้วยคีย์บอร์ด 40/40 เห็นทุกจุด · axe contrast 0 ที่แดชบอร์ด ทะเบียน ฟอร์มเพิ่มทรัพย์สิน รอบตรวจนับ (1440 และ 375) · ภาษาไทยที่ zoom 125%/200% ไม่ถูกตัด · แก้เพิ่ม 2 จุด (`fe760ae`): เอกสาร A4 (ใบส่งมอบ/รับคืน) คง `text-sm` 20px ด้วย `[--text-sm--line-height:calc(20/14)]` ที่ `.operation-print-page` ให้แถวลายเซ็นอยู่หน้า 1 · แท็บสถานะในทะเบียนใช้ `md:overflow-visible` ให้เส้นใต้แท็บที่เลือกไม่ถูกตัด
+- **ตรวจบนแอป dev:** เดินโฟกัสด้วยคีย์บอร์ด 40/40 เห็นทุกจุด · axe contrast 0 ที่แดชบอร์ด ทะเบียน ฟอร์มเพิ่มทรัพย์สิน รอบตรวจนับ (1440 และ 375) · ภาษาไทยที่ zoom 125%/200% ไม่ถูกตัด · แก้เพิ่ม 2 จุด (`fe760ae`): เอกสาร A4 (ใบส่งมอบ/รับคืน) คง `text-sm` 20px ด้วย `[--text-sm--line-height:calc(20/14)]` ที่ `.operation-print-page` ให้แถวลายเซ็นอยู่หน้า 1 · แท็บสถานะในทะเบียนใช้ `md:overflow-visible` ให้เส้นใต้แท็บที่เลือกไม่ถูกตัด (final review เปลี่ยนวิธีแล้ว ดูข้อถัดไป)
+- **แก้หลัง final review:**
+  - โฟกัสสีเดียวจริง: ปุ่มลบ/ยกเลิกสีแดง 8 จุดเปลี่ยน `focus-visible:ring-danger` (และ `/40`) เป็น `focus-visible:ring-ring` · guard ห้ามสีโทน (danger success warning info destructive) และวงโฟกัสโปร่งแสง `/NN`
+  - แท็บสถานะในทะเบียนกลับมาเลื่อนแนวนอนได้ทุกขนาดจอ (`overflow-x-auto`) · เส้นฐานเป็น inset shadow บนรายการ (`md:shadow-[inset_0_-1px_0_var(--border)]`) เส้นใต้แท็บที่เลือกจึงอยู่ในกล่องเลื่อนและไม่ถูกตัด
+  - เครื่องหมายสถานะในโหมดสีตัดกันสูงใช้สีตัวอักษรของระบบ (`forced-colors:bg-[CanvasText]` / `forced-colors:border-[CanvasText]`) จึงเห็นได้บนธีมพื้นมืด
+  - เมนูข้าง: แถวที่เลือกมีกรอบในโหมดสีตัดกันสูง · หัวข้อเมนูเป็น `role="group"` ที่ผูกชื่อกับหัวข้อ · `aria-current="page"` เฉพาะหน้าที่ตรงพอดี (`isExactNavigationMatch`) หน้ารายละเอียดใต้เมนูได้ `"true"`
+  - guard ใน `visual-foundation-guards` ไม่ผ่านแบบว่างเปล่าแล้ว (ต้องหา `getPanelClasses()` และ `<StatusBadge>` มากกว่า 40 จุดเจอก่อน)
+  - `globals.css` สั่ง Tailwind ไม่สแกน `docs/` และ `tests/` (`@source not`) เลิกสร้าง class ที่ไม่มีใครใช้จาก regex ใน plan และ test
 - ภาพก่อน/หลัง (1440 และ 375): `.superpowers/sdd/screenshots/ui-foundation/before/` และ `after/` (git ignore อยู่บนเครื่องพัฒนา)
 - ไม่มี migration · ไม่มี dependency ใหม่ · test ใหม่ `tests/visual-foundation-guards.test.ts` และ `tests/navigation-active.test.ts` · `npm test` 1,617 (ผ่าน 1,616 · ไม่ผ่าน 0 · ข้าม 1)
 - **ก่อน deploy:** ป้ายพิมพ์ความร้อนหนาสุดเหลือ 700 (เดิม 900) ผู้ใช้ต้องพิมพ์ทดสอบก่อน
