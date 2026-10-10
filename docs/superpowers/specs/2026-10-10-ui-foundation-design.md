@@ -121,7 +121,7 @@ token ใหม่ (ทุกตัวต้องมี `--color-X: var(--X);` 
 ## 4. โฟกัส
 
 - วงโฟกัสสีเดียวทั้งแอป คือ `--ring` #10858D
-- codemod แบบกลไก (regex จำกัดเฉพาะ prefix โฟกัส): `(focus|focus-visible|focus-within):(ring|border)-(primary|brand-accent)(/d+)?(?![w-])` → `$1:$2-ring$4` (ตรวจแล้วไม่มี class อย่าง `focus:ring-primary-foreground` ที่ regex จะจับผิด)
+- codemod แบบกลไก (regex จำกัดเฉพาะ prefix โฟกัส): `/(focus|focus-visible|focus-within):(ring|border)-(primary|brand-accent)(\/\d+)?(?![\w-])/g` → `$1:$2-ring$4` (ตรวจแล้วไม่มี class อย่าง `focus:ring-primary-foreground` ที่ regex จะจับผิด)
   - ครอบคลุม `focus:ring-primary` 286 · `focus-visible:ring-primary` 71 (+15 แบบ `/40`) · `focus-within:ring-primary` 4 · `focus:ring-primary/30` 2 · `focus:border-primary` 253 · `focus-within:border-primary` 1 · `focus-visible:ring-brand-accent` 11 · `focus:ring-brand-accent/20` 2 · `focus:border-brand-accent` 2 (ช่องกรอกหน้า login)
   - ไม่แตะ `ring-primary` ที่ไม่มี prefix โฟกัส (3 จุด เป็นตัวบอกการเลือก ไม่ใช่โฟกัส)
 - กันพลาดใน `@layer base`: `:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px }` สำหรับ element ที่ไม่มี class โฟกัส
@@ -327,3 +327,28 @@ guard ใหม่ `tests/visual-foundation-guards.test.ts` (ย้าย `readS
 - **สีสถานะที่ผู้ดูแลตั้งในฐานข้อมูลจะไม่แสดงบนป้ายอีกต่อไป** — เป็นการตัดสินใจโดยตั้งใจ (ข้อ 7)
 - **เปลี่ยน cache ของ PWA** — เครื่องที่ติดตั้งแอปไว้จะโหลด precache ใหม่ 1 ครั้ง
 - **ผู้ใช้เห็นหน้าตาเปลี่ยนทันทีทั้งระบบ** — เฟสนี้ไม่แตะฐานข้อมูล ถ้าต้องถอยกลับ revert ได้ทั้ง branch
+
+## 15. ข้อตัดสินหลังสำรวจโค้ด (2026-10-10 · ใช้แทนข้อความเดิมที่ขัดกัน)
+
+สำรวจโค้ดจริงก่อนเขียน plan (อ่าน 8 ส่วน + จำลองการแก้ใน copy แยกแล้วรัน test) พบจุดที่สเปกข้างบนไม่ครบหรือไม่ตรงโค้ด ตัดสินดังนี้:
+
+| # | เรื่อง | ตัดสิน |
+|---|---|---|
+| 1 | test ที่พังจริง (ข้อ 9) | จำลองแล้วพัง 8 test ใน 7 ไฟล์: `modern-enterprise-theme` · `visual-consistency-ui` · `asset-label-print-ui:54` · `design-system:33` · `design-tokens-contrast:76` · `status-badge` · `app-icon:26` · ส่วน `approval-inbox`, `asset-form-sticky-actions`, `attachment-thumbnail-route`, `login-page-ui`, `settings-ldap-role-ui` ไม่พัง · แก้ test ในงานเดียวกับที่ทำให้พัง ไม่รวมไว้ท้าย |
+| 2 | วงโฟกัสแบบโปร่ง `/40` 15 จุด (หน้าผู้ขาย) | ตัด `/40` ออก เพราะเป็นตัวบอกโฟกัสอย่างเดียวและไม่ถึง 3:1 · `/30` 2 จุดและ `/20` 2 จุดคงไว้ เพราะอยู่คู่กับขอบ `focus:border-ring` ทึบ |
+| 3 | วงโฟกัสบนแถวเมนูที่เลือก | ring แบบ inset บนพื้น #083161 ได้แค่ 2.94:1 · แถวเมนูใช้ `ring-offset-2 ring-offset-sidebar` (วงอยู่นอกแถว บนพื้นขาว 4.41:1) |
+| 4 | element ที่ถูก focus ด้วยโค้ด (`tabIndex={-1}`) 3 จุด และ container ของ sheet / alert-dialog / dropdown | ใส่ `outline-none` เพื่อไม่ให้กรอบโฟกัสใหม่ล้อมทั้งฟอร์ม |
+| 5 | line-height (ข้อ 5.2) | เขียนเป็นอัตราส่วน (`calc(22 / 14)`) ไม่ใช่ px เพื่อให้ลูกที่ใช้ `text-[11px]` ไม่ได้ 22px ตาม · ค่าที่ต่างจากค่าตั้งต้นของ Tailwind จริงมีแค่ `text-sm` (ทุกภาษา) กับ xs / xl / 2xl / 3xl (หน้าไทย) |
+| 6 | แถบล่างมือถือ | เอา `leading-tight` ออกด้วย ไม่งั้นป้ายสูงแค่ 15px ไม่ถึงเกณฑ์ไทย · เงาของปุ่มสแกนวงกลมคงไว้ (ปุ่มลอย) |
+| 7 | เงาที่ไม่ได้ระบุ | `accessible-dialog.tsx` `shadow-xl` (20 หน้าต่าง) → `shadow-overlay` · `metric-card` `shadow-sm` และ toolbar ทะเบียน `md:shadow-sm` เอาออก · แถบปุ่มล่างมือถือ `mobile-action-bar` และ `disposal-mobile-action-bar` ทำแบบเดียวกับแถบล่าง (ทึบ ไม่มีเงา/เบลอ) · `command.tsx` ไม่มีเงาของตัวเอง ไม่ต้องแก้ |
+| 8 | ลดการเคลื่อนไหว | `motion-reduce:animate-none` ธรรมดาแพ้ `data-[state]:animate-*` ใช้ `motion-reduce:animate-none!` ที่ scrim ทั้ง 3 และเนื้อหา dialog / alert-dialog / sheet |
+| 9 | `border-info-border bg-primary-soft` | StatusBadge `primary` เป็นแบบสงบ ไม่มีขอบแล้ว · ข้อ "เปลี่ยนเป็น `border-primary-border`" ใช้กับ 5 จุดนอก badge แทน (ชิปตัวกรอง ลิ้นชักตัวกรอง ปุ่มในแถว แท็บสถานะ ตัวเลือกห้อง) |
+| 10 | จำนวน StatusBadge | badge กลางจริง 59 จุดใน 22 ไฟล์ (อีก 5 จุดเป็น component ชื่อซ้ำในไฟล์ของตัวเอง ไม่เปลี่ยน) · pill ที่ยังใช้สีจากฐานข้อมูลแบบ inline 2 จุด (`asset-scan-search-tool`, `asset-label-batch-tool`) ย้ายไปเฟส 2 |
+| 11 | `public/offline.html` | เปลี่ยน `theme-color` เป็น #FFFFFF และสีในหน้าเป็นชุดใหม่ (อยู่ใน precache ของ PWA) |
+| 12 | ชื่อในเมนู ภาษาอังกฤษ | `nav.brandName` en = "Asset Management System" (ถ้าใช้ "Asset Management" จะซ้ำกับชื่อกลุ่มเมนู "จัดการทรัพย์สิน" ฝั่งอังกฤษ) · ไทยคง "ระบบบริหารทรัพย์สิน" |
+| 13 | ลำดับงาน | งานสี (ข้อ 13 ขั้น 1) แก้ class สีเข้มในเมนูข้างแบบขั้นต่ำด้วย (`text-white`, `border-white/10`) ไม่งั้นเมนูอ่านไม่ออกจนถึงขั้น 6 |
+| 14 | ขอบที่ตั้งใจใช้ currentColor | วงกลมขั้นตอนใน `asset-import-preview-panel.tsx` ใส่ `border-current` ก่อนเพิ่ม base rule เรื่องสีขอบ |
+| 15 | แถบบอกว่าเลื่อนแท็บได้ (`asset-detail-tabs.tsx`) | `bg-background/95` → `bg-canvas/95` แบบเดียวกับแถบ sticky |
+| 16 | ตรวจบนแอป dev (ข้อ 10) | เพิ่มพรีวิวเอกสาร A4 (ใบส่งมอบ/รับคืน/โอน) ว่าบล็อกลายเซ็นไม่ตกไปหน้า 2 |
+| 17 | เอกสาร (ข้อ 11) | เพิ่ม `.impeccable/design.json` และ `docs/07_UAT_CHECKLIST.md:14` (ข้อความ Action Blue / Electric Blue) |
+| 18 | หมวดในเมนูข้าง | กรองหมวดด้วย helper ใหม่ `filterNavigationSectionsByPermission` ใน `src/lib/navigation-permissions.ts` (มี test) แทนการให้หมวดเป็นรายการเมนูแบบไม่มีลิงก์ |
