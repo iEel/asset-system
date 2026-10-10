@@ -115,3 +115,11 @@ test("the offline page and service worker follow the new palette", () => {
   assert.doesNotMatch(offline, /#1E3A5F|#1e3a5f|Inter,/)
   assert.match(read("public/sw.js"), /const ASSET_SYSTEM_PWA_CACHE = "asset-system-pwa-v2"/)
 })
+
+test("A4 documents keep the 20px text-sm line height so signatures stay on page 1", () => {
+  assert.match(read("src/components/asset-operations/operation-document-print.tsx"), /className="operation-print-page \[--text-sm--line-height:calc\(20\/14\)\] /)
+})
+
+test("the selected register status tab keeps its underline on desktop", () => {
+  assert.match(read("src/components/assets/asset-register-status-tabs.tsx"), /data-asset-status-tabs className="[^"]*\bmd:overflow-visible\b/)
+})

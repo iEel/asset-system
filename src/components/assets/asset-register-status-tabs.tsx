@@ -12,7 +12,7 @@ export type AssetRegisterStatusTabItem = {
 
 export function AssetRegisterStatusTabs({ label, items }: { label: string; items: AssetRegisterStatusTabItem[] }) {
   return (
-    <nav aria-label={label} data-asset-status-tabs className="-mx-4 mb-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6 md:mx-0 md:mb-3 md:border-b md:border-border md:px-0">
+    <nav aria-label={label} data-asset-status-tabs className="-mx-4 mb-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6 md:mx-0 md:mb-3 md:overflow-visible md:border-b md:border-border md:px-0">
       <ul className="flex w-max gap-2 md:w-auto md:gap-1">
         {items.map((item) => (
           <li key={item.key}>
