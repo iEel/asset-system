@@ -3,11 +3,15 @@
 import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Loader2, Save } from "lucide-react"
+import { Save } from "lucide-react"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
+import { Input } from "@/components/ui/input"
 import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { Textarea } from "@/components/ui/textarea"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 import { useApiError } from "@/components/ui/use-api-error"
 
@@ -133,19 +137,19 @@ export function TransferForm({
           <SearchableSelect label={t("toDepartment")} value={values.toDepartmentId} options={departments} placeholder={t("noChange")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toDepartmentId", value)} />
           <div className="md:col-span-2">
             <Field label={t("reason")} required>
-              <input value={values.reason} onChange={(event) => setField("reason", event.target.value)} required maxLength={500} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+              <Input value={values.reason} onChange={(event) => setField("reason", event.target.value)} required maxLength={500} />
             </Field>
           </div>
           <div className="md:col-span-2">
             <Field label={t("remark")}>
-              <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+              <Textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28" />
             </Field>
           </div>
           <div className="md:col-span-2 flex justify-end">
-            <button type="submit" disabled={saving} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:w-auto">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            <Button type="submit" busy={saving} className="w-full sm:w-auto">
+              <Save />
               {tCommon("save")}
-            </button>
+            </Button>
           </div>
         </form>
         <OperationReviewDialog
@@ -162,17 +166,5 @@ export function TransferForm({
         />
       </section>
     </div>
-  )
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
-      {children}
-    </label>
   )
 }
