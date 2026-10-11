@@ -3,10 +3,19 @@
 import { useId, useImperativeHandle, useState, type FormEvent, type Ref, type RefObject } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, Loader2 } from "lucide-react"
+import { AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
-import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import {
+  AccessibleDialog,
+  AccessibleDialogBody,
+  AccessibleDialogCancel,
+  AccessibleDialogFooter,
+  accessibleDialogFormClasses,
+} from "@/components/ui/accessible-dialog"
+import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type AuditMarkNotFoundButtonVariant = "icon" | "button"
@@ -79,29 +88,24 @@ export function AuditMarkNotFoundButton({
     }
   }
 
-  const icon = saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />
+  const icon = <AlertTriangle className="text-warning" aria-hidden="true" />
   const trigger =
     variant === "button" ? (
-      <button
-        type="button"
-        onClick={openDialog}
-        disabled={saving}
-        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm font-semibold text-warning transition-colors hover:bg-warning-soft disabled:opacity-50"
-      >
+      <Button variant="outline" busy={saving} onClick={openDialog} className="w-full">
         {icon}
         {t("markNotFound")}
-      </button>
+      </Button>
     ) : (
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        busy={saving}
         onClick={openDialog}
-        disabled={saving}
         title={t("markNotFound")}
         aria-label={t("markNotFound")}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-warning transition-colors hover:bg-warning-soft disabled:opacity-50"
       >
         {icon}
-      </button>
+      </Button>
     )
 
   return (
@@ -116,22 +120,19 @@ export function AuditMarkNotFoundButton({
         returnFocusRef={returnFocusRef}
         onClose={closeDialog}
       >
-        <form onSubmit={handleSubmit}>
-          <div className="max-h-[calc(92dvh-9rem)] space-y-4 overflow-y-auto px-4 py-4">
-            <div>
-              <label htmlFor={remarkId} className="text-sm font-medium text-foreground">
-                {t("notFoundRemarkOptional")}
-              </label>
-              <textarea
+        <form onSubmit={handleSubmit} className={accessibleDialogFormClasses}>
+          <AccessibleDialogBody className="space-y-4">
+            <Field label={t("notFoundRemarkOptional")}>
+              <Textarea
                 id={remarkId}
                 value={remark}
                 onChange={(event) => setRemark(event.target.value)}
                 disabled={saving}
                 rows={4}
                 placeholder={t("notFoundRemarkPlaceholder")}
-                className="mt-2 min-h-28 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-60"
+                className="min-h-28"
               />
-            </div>
+            </Field>
 
             <FileDropzone
               file={evidenceFile}
@@ -143,26 +144,15 @@ export function AuditMarkNotFoundButton({
               hint={t("notFoundEvidenceSelected")}
               browseLabel={t("notFoundEvidenceBrowse")}
             />
-          </div>
+          </AccessibleDialogBody>
 
-          <div className="grid gap-2 border-t border-border bg-background px-4 py-4 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={closeDialog}
-              disabled={saving}
-              className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
-            >
-              {tCommon("cancel")}
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-warning px-4 text-sm font-semibold text-white transition-colors hover:bg-warning-hover disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
+          <AccessibleDialogFooter>
+            <AccessibleDialogCancel />
+            <Button type="submit" variant="warning" busy={saving}>
+              <AlertTriangle aria-hidden="true" />
               {t("notFoundConfirm")}
-            </button>
-          </div>
+            </Button>
+          </AccessibleDialogFooter>
         </form>
       </AccessibleDialog>
     </>

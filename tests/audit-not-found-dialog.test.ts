@@ -11,7 +11,7 @@ test("audit not-found action uses an in-app dialog instead of browser prompt", (
   assert.match(source, /const \[evidenceFile, setEvidenceFile\] = useState<File \| null>\(null\)/)
   assert.match(source, /<AccessibleDialog/)
   assert.doesNotMatch(source, /fixed inset-0|role="dialog"/)
-  assert.match(source, /<textarea/)
+  assert.match(source, /<Textarea/)
   assert.match(source, /FileDropzone/)
   assert.match(source, /onSubmit=\{handleSubmit\}/)
   assert.match(source, /t\("notFoundDialogTitle"\)/)
