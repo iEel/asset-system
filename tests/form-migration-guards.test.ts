@@ -65,6 +65,7 @@ const MIGRATED_FILES: string[] = [
   `${C}assets/asset-batch-form.tsx`,
   `${C}assets/asset-component-manager.tsx`,
   `${C}assets/asset-attachments.tsx`,
+  `${C}admin/system-settings-form.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -134,7 +135,6 @@ const LOCAL_FIELD: Record<string, number> = {
   // 1g
   // 1e
   // 1f
-  [`${C}admin/system-settings-form.tsx`]: 1,
   // 2
   [`${C}master-data/branch-form.tsx`]: 1,
   [`${C}master-data/category-form.tsx`]: 1,
@@ -159,7 +159,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 1g
   // 1e
   // 1f
-  [`${C}admin/system-settings-form.tsx`]: 50,
   [`${C}admin/depreciation-policy-builder.tsx`]: 9,
   // 2
   [`${C}master-data/branch-form.tsx`]: 5,
@@ -202,7 +201,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1g
   // 1e
   // 1f
-  [`${C}admin/system-settings-form.tsx`]: 48,
   [`${C}admin/depreciation-policy-builder.tsx`]: 3,
   // 2
   [`${C}master-data/branch-form.tsx`]: 5,
@@ -295,7 +293,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 1g
   // 1e
   // 1f
-  [`${C}admin/system-settings-form.tsx`]: 4,
   // 2
   [`${C}master-data/branch-form.tsx`]: 3,
   [`${C}master-data/brand-form.tsx`]: 3,
@@ -336,7 +333,6 @@ const LOADER2: Record<string, number> = {
   // 1e
   [`${C}assets/asset-component-manager.tsx`]: 1, // → 1: the status line :474
   // 1f
-  [`${C}admin/system-settings-form.tsx`]: 4,
   // 2
   [`${C}master-data/branch-form.tsx`]: 1,
   [`${C}master-data/brand-form.tsx`]: 1,
@@ -367,13 +363,11 @@ const LOADER2: Record<string, number> = {
 
 // GL3 old helpers: FormStep, WizardStep, Choice, AssetStateFieldLabel and the batch asset tag help label
 const OLD_HELPERS: Record<string, number> = {
-  [`${C}admin/system-settings-form.tsx`]: 1, // function WizardStep (1f)
   [`${C}assets/asset-import-preview-panel.tsx`]: 1, // function WizardStep (batch 4)
 }
 
 // GD4 flex-col-reverse in the 2C files and in ui/ (Task 4 already fixed ui/dialog.tsx DialogFooter and ui/alert-dialog.tsx:94)
 const REVERSE: Record<string, number> = {
-  [`${C}admin/system-settings-form.tsx`]: 1, // 1f
   [`${C}disposal/disposal-bulk-execution.tsx`]: 1, // batch 3
   [`${C}maintenance/maintenance-plan-state-actions.tsx`]: 1, // batch 3
   [`${C}admin/IntegrationClientManager.tsx`]: 1, // batch 4
@@ -381,7 +375,6 @@ const REVERSE: Record<string, number> = {
 
 // GD1 closeLabel={…cancel…}: the X read "Cancel"
 const CLOSE_LABEL_IS_CANCEL: Record<string, number> = {
-  [`${C}admin/system-settings-form.tsx`]: 1, // → 0 in 1f
   [`${C}admin/IntegrationClientManager.tsx`]: 1, // → 0 in batch 4
 }
 
@@ -401,7 +394,6 @@ const PENDING_FOOTER_PARTS = new Set([
   // 1d
   // 1e
   // 1f
-  `${C}admin/system-settings-form.tsx`,
   // 3
   `${C}disposal/disposal-bulk-approval.tsx`,
   `${C}disposal/disposal-bulk-execution.tsx`,

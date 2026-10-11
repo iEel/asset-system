@@ -3,13 +3,23 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, ArrowRight, ExternalLink, History, Loader2, Pencil, PlugZap, Plus, Save, Search, Trash2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, ExternalLink, History, Pencil, PlugZap, Plus, Save, Trash2 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
 import { DepreciationPolicyBuilder } from "@/components/admin/depreciation-policy-builder"
 import { SearchableSelect } from "@/components/ui/searchable-select"
-import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import { AccessibleDialog, AccessibleDialogBody, AccessibleDialogCancel, AccessibleDialogFooter } from "@/components/ui/accessible-dialog"
+import { Button } from "@/components/ui/button"
+import { buttonVariants, linkVariants } from "@/components/ui/button-variants"
+import { Field, FieldHint } from "@/components/ui/field"
+import { checkboxVariants, fieldLabelClasses } from "@/components/ui/field-variants"
+import { FormSection } from "@/components/ui/form-section"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
+import { SearchField } from "@/components/ui/search-field"
 import { Segmented } from "@/components/ui/segmented"
+import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
+import { cn } from "@/lib/utils"
 import {
   assetLabelLayouts,
   assetLabelPresets,
@@ -957,19 +967,9 @@ export function SystemSettingsForm({
       </div>
 
       <div className="rounded-lg border border-border bg-surface p-4">
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.searchSettings}</span>
-          <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3 focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <input
-              type="search"
-              value={settingsSearch}
-              onChange={(event) => setSettingsSearch(event.target.value)}
-              placeholder={labels.searchSettingsHelp}
-              className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none"
-            />
-          </div>
-        </label>
+        <Field label={labels.searchSettings}>
+          <SearchField value={settingsSearch} onChange={(event) => setSettingsSearch(event.target.value)} placeholder={labels.searchSettingsHelp} />
+        </Field>
         {settingsSearch.trim() ? (
           settingsSearchResults.length > 0 ? (
             <div className="mt-3 grid gap-2" role="list">
@@ -1010,30 +1010,29 @@ export function SystemSettingsForm({
         <div className="space-y-4 px-4 py-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-foreground" htmlFor="asset-tag-template">
-                {labels.assetTagTemplate}
-              </label>
-              <input
-                id="asset-tag-template"
-                value={formatTemplate}
-                onChange={(event) => setValue(assetTagFormatTemplateKey, event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-              />
+              <Field label={labels.assetTagTemplate}>
+                <Input
+                  id="asset-tag-template"
+                  value={formatTemplate}
+                  onChange={(event) => setValue(assetTagFormatTemplateKey, event.target.value)}
+                  className="font-mono"
+                />
+              </Field>
               <p className="text-sm text-muted-foreground">{labels.assetTagTemplateHelp}</p>
               {hasInvalidTemplate ? <ValidationMessage message={labels.invalidFormatTemplate} /> : null}
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-medium text-foreground">{labels.formatPresets}</div>
+              <div className={fieldLabelClasses}>{labels.formatPresets}</div>
               <div className="grid gap-2">
                 {formatPresets.map((preset) => (
-                  <button
-                    type="button"
+                  <Button
                     key={preset.value}
+                    variant="outline"
                     onClick={() => setValue(assetTagFormatTemplateKey, preset.value)}
-                    className="min-h-10 rounded-md border border-border px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent"
+                    className="h-auto justify-start whitespace-normal py-2 text-left md:h-auto md:min-h-10"
                   >
                     {labels[preset.labelKey]}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -1042,19 +1041,19 @@ export function SystemSettingsForm({
             <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{labels.availableTokens}</div>
             <div className="flex flex-wrap gap-2">
               {assetTagFormatTokens.map((token) => (
-                <button
-                  type="button"
+                <Button
                   key={token}
+                  variant="outline"
+                  size="sm"
                   onClick={() =>
                     setValues((current) => ({
                       ...current,
                       [assetTagFormatTemplateKey]: `${current[assetTagFormatTemplateKey] ?? defaultAssetTagFormatTemplate}{${token}}`,
                     }))
                   }
-                  className="inline-flex min-h-11 items-center rounded-md border border-border px-2 font-mono text-xs text-foreground transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
                 >
-                  {`{${token}}`}
-                </button>
+                  <span className="font-mono">{`{${token}}`}</span>
+                </Button>
               ))}
             </div>
           </div>
@@ -1067,31 +1066,29 @@ export function SystemSettingsForm({
       <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.numberingOptions} />
         <div className="grid gap-4 px-4 py-4 md:grid-cols-3">
-          <Field label={labels.runningDigits} htmlFor="asset-tag-running-digits">
-            <input
+          <Field label={labels.runningDigits}>
+            <Input
               id="asset-tag-running-digits"
               type="number"
               min={1}
               max={12}
               value={getValue("asset_tag_running_digits")}
               onChange={(event) => setValue("asset_tag_running_digits", event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
-          <Field label={labels.separator} htmlFor="asset-tag-separator">
-            <input
+          <Field label={labels.separator}>
+            <Input
               id="asset-tag-separator"
               value={getValue("asset_tag_separator")}
               onChange={(event) => setValue("asset_tag_separator", event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
-          <Field label={labels.globalPrefix} htmlFor="asset-tag-global-prefix">
-            <input
+          <Field label={labels.globalPrefix}>
+            <Input
               id="asset-tag-global-prefix"
               value={getValue("asset_tag_prefix")}
               onChange={(event) => setValue("asset_tag_prefix", event.target.value.toUpperCase())}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+              className="uppercase"
             />
           </Field>
         </div>
@@ -1105,13 +1102,13 @@ export function SystemSettingsForm({
         <div className="space-y-4 px-4 py-4">
           <div className="grid gap-4 rounded-md border border-border bg-background p-3 xl:grid-cols-[minmax(0,1fr)_minmax(260px,360px)]">
             <div className="space-y-2">
-              <Field label={labels.publicQrBaseUrl} htmlFor="asset-qr-public-base-url">
-                <input
+              <Field label={labels.publicQrBaseUrl}>
+                <Input
                   id="asset-qr-public-base-url"
                   value={publicQrBaseUrl}
                   placeholder={labels.publicQrBaseUrlPlaceholder}
                   onChange={(event) => setValue(assetQrPublicBaseUrlKey, event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                  className="font-mono"
                 />
               </Field>
               <p className="text-sm text-muted-foreground">{labels.publicQrBaseUrlDescription}</p>
@@ -1124,19 +1121,18 @@ export function SystemSettingsForm({
             </div>
           </div>
           <div className="grid gap-4 md:grid-cols-[minmax(220px,330px)_minmax(300px,420px)] md:items-start">
-            <Field label={labels.defaultTapeSize} htmlFor="asset-label-default-tape-size">
-              <select
+            <Field label={labels.defaultTapeSize}>
+              <NativeSelect
                 id="asset-label-default-tape-size"
                 value={getValue("asset_label_default_tape_size")}
                 onChange={(event) => setValue("asset_label_default_tape_size", event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               >
                 {assetLabelTapeSizes.map((size) => (
                   <option key={size} value={size}>
                     {assetLabelPresets[size].label}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </Field>
             <LabelAssetNameModeField
               label={labels.compactLabelAssetName}
@@ -1190,31 +1186,30 @@ export function SystemSettingsForm({
         <div className="space-y-4 px-4 py-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_260px]">
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label={labels.checkoutDocumentTemplate} htmlFor="checkout-document-template">
-                <input
+              <Field label={labels.checkoutDocumentTemplate}>
+                <Input
                   id="checkout-document-template"
                   value={checkoutDocumentTemplate}
                   onChange={(event) => setValue(checkoutDocumentTemplateKey, event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                  className="font-mono"
                 />
               </Field>
-              <Field label={labels.checkinDocumentTemplate} htmlFor="checkin-document-template">
-                <input
+              <Field label={labels.checkinDocumentTemplate}>
+                <Input
                   id="checkin-document-template"
                   value={checkinDocumentTemplate}
                   onChange={(event) => setValue(checkinDocumentTemplateKey, event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                  className="font-mono"
                 />
               </Field>
-              <Field label={labels.operationDocumentRunningDigits} htmlFor="operation-document-running-digits">
-                <input
+              <Field label={labels.operationDocumentRunningDigits}>
+                <Input
                   id="operation-document-running-digits"
                   type="number"
                   min={1}
                   max={12}
                   value={getValue(operationDocumentRunningDigitsKey)}
                   onChange={(event) => setValue(operationDocumentRunningDigitsKey, event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
             </div>
@@ -1258,14 +1253,10 @@ export function SystemSettingsForm({
                 })}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => openPrefixEditor()}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover sm:h-10 sm:min-h-0"
-            >
-              <Plus className="h-4 w-4" />
+            <Button onClick={() => openPrefixEditor()}>
+              <Plus />
               {labels.addPrefix}
-            </button>
+            </Button>
           </div>
 
           {prefixGroups.length === 0 ? (
@@ -1311,24 +1302,24 @@ export function SystemSettingsForm({
                       </td>
                       <td className="w-32 px-4 py-3">
                         <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
+                          <Button
+                            variant="outline"
+                            size="icon"
                             onClick={() => openPrefixEditor(group.prefix)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                             title={labels.editPrefix}
                             aria-label={labels.editPrefix}
                           >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
+                            <Pencil />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
                             onClick={() => removePrefixGroup(group.prefix)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-danger-soft hover:text-destructive"
                             title={labels.removePrefix}
                             aria-label={labels.removePrefix}
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                            <Trash2 />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -1350,15 +1341,14 @@ export function SystemSettingsForm({
           title={prefixEditor?.previousPrefix ? labels.editPrefix : labels.addPrefix}
           description={labels.categoryPrefixesDescription}
           size="xl"
-          closeLabel={labels.cancel}
           onClose={closePrefixEditor}
         >
           {prefixEditor ? (
             <>
-              <div className="space-y-4 px-4 py-4">
+              <AccessibleDialogBody className="space-y-4">
                 <div className="grid gap-4 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
-                  <Field label={labels.prefix} htmlFor="category-prefix-editor-prefix">
-                    <input
+                  <Field label={labels.prefix}>
+                    <Input
                       id="category-prefix-editor-prefix"
                       value={prefixEditor.prefix}
                       onChange={(event) =>
@@ -1367,7 +1357,7 @@ export function SystemSettingsForm({
                         )
                       }
                       maxLength={10}
-                      className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm uppercase outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                      className="font-mono uppercase"
                     />
                   </Field>
                   <div className="rounded-md border border-border bg-background px-3 py-2">
@@ -1414,24 +1404,14 @@ export function SystemSettingsForm({
                   </CategoryTransferPanel>
 
                   <div className="flex items-center justify-center gap-2 lg:flex-col">
-                    <button
-                      type="button"
-                      onClick={addCheckedCategoriesToPrefix}
-                      disabled={checkedAvailableCategoryIds.length === 0}
-                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:min-h-0"
-                    >
-                      <ArrowRight className="h-4 w-4" />
-                      <span className="hidden sm:inline">{labels.addSelectedCategories}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={removeCheckedCategoriesFromPrefix}
-                      disabled={checkedSelectedCategoryIds.length === 0}
-                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:min-h-0"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                      <span className="hidden sm:inline">{labels.removeSelectedCategories}</span>
-                    </button>
+                    <Button variant="outline" onClick={addCheckedCategoriesToPrefix} disabled={checkedAvailableCategoryIds.length === 0}>
+                      <ArrowRight />
+                      <span className="sr-only sm:not-sr-only">{labels.addSelectedCategories}</span>
+                    </Button>
+                    <Button variant="outline" onClick={removeCheckedCategoriesFromPrefix} disabled={checkedSelectedCategoryIds.length === 0}>
+                      <ArrowLeft />
+                      <span className="sr-only sm:not-sr-only">{labels.removeSelectedCategories}</span>
+                    </Button>
                   </div>
 
                   <CategoryTransferPanel
@@ -1460,26 +1440,14 @@ export function SystemSettingsForm({
                     )}
                   </CategoryTransferPanel>
                 </div>
-              </div>
-
-              <div className="sticky bottom-0 z-10 flex flex-col-reverse gap-2 border-t border-border bg-surface px-4 py-3 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={closePrefixEditor}
-                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:h-10 sm:min-h-0"
-                >
-                  {labels.cancel}
-                </button>
-                <button
-                  type="button"
-                  onClick={applyPrefixEditor}
-                  disabled={!canApplyPrefixEditor}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:min-h-0"
-                >
-                  <Save className="h-4 w-4" />
+              </AccessibleDialogBody>
+              <AccessibleDialogFooter>
+                <AccessibleDialogCancel>{labels.cancel}</AccessibleDialogCancel>
+                <Button onClick={applyPrefixEditor} disabled={!canApplyPrefixEditor}>
+                  <Save />
                   {labels.savePrefixGroup}
-                </button>
-              </div>
+                </Button>
+              </AccessibleDialogFooter>
             </>
           ) : null}
         </AccessibleDialog>
@@ -1490,20 +1458,19 @@ export function SystemSettingsForm({
       <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.organizationDefaults} description={labels.organizationDefaultsDescription} />
         <div className="grid gap-4 px-4 py-4 md:grid-cols-2">
-          <Field label={labels.companyName} htmlFor="company-name">
-            <input
+          <Field label={labels.companyName}>
+            <Input
               id="company-name"
               value={getValue("company_name")}
               onChange={(event) => setValue("company_name", event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
-          <Field label={labels.defaultCurrency} htmlFor="default-currency">
-            <input
+          <Field label={labels.defaultCurrency}>
+            <Input
               id="default-currency"
               value={getValue("default_currency")}
               onChange={(event) => setValue("default_currency", event.target.value.toUpperCase())}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+              className="uppercase"
             />
           </Field>
           <div className="md:col-span-2">
@@ -1524,48 +1491,44 @@ export function SystemSettingsForm({
       <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.notificationRules} description={labels.notificationRulesDescription} />
         <div className="grid gap-4 px-4 py-4 md:grid-cols-2 xl:grid-cols-4">
-          <Field label={labels.returnDueSoonDays} htmlFor="notification-return-due-days">
-            <input
+          <Field label={labels.returnDueSoonDays}>
+            <Input
               id="notification-return-due-days"
               type="number"
               min={0}
               max={365}
               value={getValue(notificationReturnDueSoonDaysKey)}
               onChange={(event) => setValue(notificationReturnDueSoonDaysKey, event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
-          <Field label={labels.auditActionDueSoonDays} htmlFor="notification-audit-action-days">
-            <input
+          <Field label={labels.auditActionDueSoonDays}>
+            <Input
               id="notification-audit-action-days"
               type="number"
               min={0}
               max={365}
               value={getValue(notificationAuditActionDueSoonDaysKey)}
               onChange={(event) => setValue(notificationAuditActionDueSoonDaysKey, event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
-          <Field label={labels.warrantyExpiryDays} htmlFor="notification-warranty-expiry-days">
-            <input
+          <Field label={labels.warrantyExpiryDays}>
+            <Input
               id="notification-warranty-expiry-days"
               type="number"
               min={0}
               max={365}
               value={getValue(notificationWarrantyExpiryDaysKey)}
               onChange={(event) => setValue(notificationWarrantyExpiryDaysKey, event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
-          <Field label={labels.licenseExpiryDays} htmlFor="notification-license-expiry-days">
-            <input
+          <Field label={labels.licenseExpiryDays}>
+            <Input
               id="notification-license-expiry-days"
               type="number"
               min={0}
               max={365}
               value={getValue(notificationLicenseExpiryDaysKey)}
               onChange={(event) => setValue(notificationLicenseExpiryDaysKey, event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
         </div>
@@ -1599,26 +1562,24 @@ export function SystemSettingsForm({
               checked={getValue(workflowApprovalSegregationRequiredKey) === "true"}
               onChange={(checked) => setBooleanValue(workflowApprovalSegregationRequiredKey, checked)}
             />
-            <Field label={labels.workflowApprovalMinApprovers} htmlFor="workflow-approval-min-approvers">
-              <input
+            <Field label={labels.workflowApprovalMinApprovers}>
+              <Input
                 id="workflow-approval-min-approvers"
                 type="number"
                 min={1}
                 max={5}
                 value={getValue(workflowApprovalMinApproversKey)}
                 onChange={(event) => setValue(workflowApprovalMinApproversKey, event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
-            <Field label={labels.workflowApprovalSlaDays} htmlFor="workflow-approval-sla-days">
-              <input
+            <Field label={labels.workflowApprovalSlaDays}>
+              <Input
                 id="workflow-approval-sla-days"
                 type="number"
                 min={1}
                 max={90}
                 value={getValue(workflowApprovalSlaDaysKey)}
                 onChange={(event) => setValue(workflowApprovalSlaDaysKey, event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
           </div>
@@ -1650,45 +1611,39 @@ export function SystemSettingsForm({
               <h3 className="text-base font-semibold text-foreground">{labels.retentionPolicy}</h3>
               <p className="mt-1 text-sm text-muted-foreground">{labels.retentionPolicyDescription}</p>
             </div>
-            <a
-              href={`/${locale}/admin/storage`}
-              className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-fit"
-            >
+            <a href={`/${locale}/admin/storage`} className={cn(buttonVariants({ variant: "outline" }), "w-full sm:w-fit")}>
               {labels.openStorageGovernance}
             </a>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
-            <Field label={labels.retentionAttachmentDays} htmlFor="retention-attachment-days">
-              <input
+            <Field label={labels.retentionAttachmentDays}>
+              <Input
                 id="retention-attachment-days"
                 type="number"
                 min={1}
                 max={3650}
                 value={getValue(retentionAttachmentDaysKey)}
                 onChange={(event) => setValue(retentionAttachmentDaysKey, event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
-            <Field label={labels.retentionAuditLogDays} htmlFor="retention-audit-log-days">
-              <input
+            <Field label={labels.retentionAuditLogDays}>
+              <Input
                 id="retention-audit-log-days"
                 type="number"
                 min={1}
                 max={3650}
                 value={getValue(retentionAuditLogDaysKey)}
                 onChange={(event) => setValue(retentionAuditLogDaysKey, event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
-            <Field label={labels.retentionOrphanFileDays} htmlFor="retention-orphan-file-days">
-              <input
+            <Field label={labels.retentionOrphanFileDays}>
+              <Input
                 id="retention-orphan-file-days"
                 type="number"
                 min={1}
                 max={3650}
                 value={getValue(retentionOrphanFileDaysKey)}
                 onChange={(event) => setValue(retentionOrphanFileDaysKey, event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
           </div>
@@ -1703,8 +1658,8 @@ export function SystemSettingsForm({
       {activeTab === "ldap-login" ? (
       <div className="overflow-visible rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.ldapSettings} description={labels.ldapSettingsDescription} />
-        <div className="space-y-5 px-4 py-4">
-          <WizardStep number={1} title={labels.ldapStepConnection}>
+        <div className="space-y-6 px-4 py-4">
+          <FormSection as="h3" number={1} title={labels.ldapStepConnection}>
             <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
               <ToggleField
                 label={labels.ldapEnabled}
@@ -1723,107 +1678,96 @@ export function SystemSettingsForm({
               />
             </div>
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              <Field label={labels.ldapUrl} htmlFor="ldap-url">
-                <input
+              <Field label={labels.ldapUrl}>
+                <Input
                   id="ldap-url"
                   value={getValue("ldap_url")}
                   onChange={(event) => setValue("ldap_url", event.target.value)}
                   placeholder="ldap://dc.company.local:389"
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
-              <Field label={labels.ldapBaseDn} htmlFor="ldap-base-dn">
-                <input
+              <Field label={labels.ldapBaseDn}>
+                <Input
                   id="ldap-base-dn"
                   value={getValue("ldap_base_dn")}
                   onChange={(event) => setValue("ldap_base_dn", event.target.value)}
                   placeholder="DC=company,DC=local"
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
-              <Field label={labels.ldapBindDn} htmlFor="ldap-bind-dn">
-                <input
+              <Field label={labels.ldapBindDn}>
+                <Input
                   id="ldap-bind-dn"
                   value={getValue("ldap_bind_dn")}
                   onChange={(event) => setValue("ldap_bind_dn", event.target.value)}
                   placeholder="CN=ldap-reader,OU=Service Accounts,DC=company,DC=local"
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
-              <Field label={labels.ldapBindPassword} htmlFor="ldap-bind-password">
-                <input
+              <Field label={labels.ldapBindPassword}>
+                <Input
                   id="ldap-bind-password"
                   type="password"
                   value={getValue("ldap_bind_password")}
                   onChange={(event) => setValue("ldap_bind_password", event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
             </div>
-            <button
-              type="button"
-              onClick={handleLdapTest}
-              disabled={testingLdap}
-              className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
-            >
-              {testingLdap ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlugZap className="h-4 w-4" />}
+            <Button variant="outline" onClick={handleLdapTest} busy={testingLdap} className="mt-4 w-full sm:w-auto">
+              <PlugZap />
               {labels.testLdapConnection}
-            </button>
-          </WizardStep>
+            </Button>
+          </FormSection>
 
-          <WizardStep number={2} title={labels.ldapStepLoginMapping}>
+          <FormSection as="h3" number={2} title={labels.ldapStepLoginMapping}>
             <div className="grid gap-4 lg:grid-cols-2">
-              <Field label={labels.ldapUserFilter} htmlFor="ldap-user-filter">
-                <input
+              <Field label={labels.ldapUserFilter}>
+                <Input
                   id="ldap-user-filter"
                   value={getValue("ldap_user_filter")}
                   onChange={(event) => setValue("ldap_user_filter", event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                  className="font-mono"
                 />
               </Field>
-              <Field label={labels.ldapUpnDomain} htmlFor="ldap-upn-domain">
-                <input
+              <Field label={labels.ldapUpnDomain}>
+                <Input
                   id="ldap-upn-domain"
                   value={getValue("ldap_upn_domain")}
                   onChange={(event) => setValue("ldap_upn_domain", event.target.value)}
                   placeholder="company.local"
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
-              <Field label={labels.ldapDomain} htmlFor="ldap-domain">
-                <input
+              <Field label={labels.ldapDomain}>
+                <Input
                   id="ldap-domain"
                   value={getValue("ldap_domain")}
                   onChange={(event) => setValue("ldap_domain", event.target.value)}
                   placeholder="COMPANY"
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
               <div className="lg:col-span-2">
-                <Field label={labels.ldapUserDnTemplate} htmlFor="ldap-user-dn-template">
-                  <input
+                <Field label={labels.ldapUserDnTemplate}>
+                  <Input
                     id="ldap-user-dn-template"
                     value={getValue("ldap_user_dn_template")}
                     onChange={(event) => setValue("ldap_user_dn_template", event.target.value)}
                     placeholder="CN={username},OU=Users,DC=company,DC=local"
-                    className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                    className="font-mono"
                   />
                 </Field>
               </div>
             </div>
-          </WizardStep>
+          </FormSection>
 
-          <WizardStep number={3} title={labels.ldapStepProvisioning}>
+          <FormSection as="h3" number={3} title={labels.ldapStepProvisioning}>
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="space-y-2">
-                <span className="block text-sm font-medium text-foreground">{labels.ldapAutoProvision}</span>
+                <div className={fieldLabelClasses}>{labels.ldapAutoProvision}</div>
                 <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground">
                   <span>{getValue("ldap_auto_provision") === "true" ? labels.enabled : labels.disabled}</span>
                   <input
                     type="checkbox"
                     checked={getValue("ldap_auto_provision") === "true"}
                     onChange={(event) => setBooleanValue("ldap_auto_provision", event.target.checked)}
-                    className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
+                    className={checkboxVariants()}
                   />
                 </label>
               </div>
@@ -1845,7 +1789,7 @@ export function SystemSettingsForm({
                 ) : null}
               </div>
             </div>
-          </WizardStep>
+          </FormSection>
         </div>
       </div>
       ) : null}
@@ -1853,11 +1797,11 @@ export function SystemSettingsForm({
       {activeTab === "ldap-sync" ? (
       <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.ldapSyncStrategy} description={labels.ldapSyncStrategyDescription} />
-        <div className="space-y-4 px-4 py-4">
+        <div className="space-y-6 px-4 py-4">
           <p className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
             {labels.ldapSyncRecommendation}
           </p>
-          <WizardStep number={1} title={labels.ldapStepSyncStrategy}>
+          <FormSection as="h3" number={1} title={labels.ldapStepSyncStrategy}>
             <div className="grid gap-4 lg:grid-cols-2">
               <ToggleField
                 label={labels.ldapSyncEnabled}
@@ -1869,77 +1813,74 @@ export function SystemSettingsForm({
                 checked={getValue("ldap_sync_deactivate_missing") === "true"}
                 onChange={(checked) => setBooleanValue("ldap_sync_deactivate_missing", checked)}
               />
-              <Field label={labels.ldapSyncMode} htmlFor="ldap-sync-mode">
-                <select
+              <Field label={labels.ldapSyncMode}>
+                <NativeSelect
                   id="ldap-sync-mode"
                   value={getValue("ldap_sync_mode")}
                   onChange={(event) => setValue("ldap_sync_mode", event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 >
                   <option value="preview">Preview</option>
                   <option value="manual">Manual</option>
                   <option value="scheduled">Scheduled</option>
-                </select>
+                </NativeSelect>
               </Field>
-              <Field label={labels.ldapSyncMaxScheduledDeactivations} htmlFor="ldap-sync-max-scheduled-deactivations">
-                <input
+              <Field label={labels.ldapSyncMaxScheduledDeactivations}>
+                <Input
                   id="ldap-sync-max-scheduled-deactivations"
                   type="number"
                   min={0}
                   value={getValue("ldap_sync_max_scheduled_deactivations")}
                   onChange={(event) => setValue("ldap_sync_max_scheduled_deactivations", event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
-              <Field label={labels.ldapSyncBaseDn} htmlFor="ldap-sync-base-dn">
-                <input
+              <Field label={labels.ldapSyncBaseDn}>
+                <Input
                   id="ldap-sync-base-dn"
                   value={getValue("ldap_sync_base_dn")}
                   onChange={(event) => setValue("ldap_sync_base_dn", event.target.value)}
                   placeholder="OU=Employees,DC=company,DC=local"
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
             </div>
-          </WizardStep>
+          </FormSection>
 
-          <WizardStep number={2} title={labels.ldapStepOrgMapping}>
+          <FormSection as="h3" number={2} title={labels.ldapStepOrgMapping}>
               <div className="rounded-md border border-border bg-background px-3 py-3">
                 <div className="text-sm font-medium text-foreground">{labels.ldapSyncDefaultMapping}</div>
                 <p className="mt-1 text-sm text-muted-foreground">{labels.ldapSyncDefaultMappingDescription}</p>
                 <div className="mt-3 grid gap-3 md:grid-cols-3">
-                  <Field label={labels.ldapSyncDefaultCompanyCode} htmlFor="ldap-sync-default-company">
-                    <input
+                  <Field label={labels.ldapSyncDefaultCompanyCode}>
+                    <Input
                       id="ldap-sync-default-company"
                       value={getValue("ldap_sync_default_company_code")}
                       onChange={(event) => setValue("ldap_sync_default_company_code", event.target.value.toUpperCase())}
-                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                      className="uppercase"
                     />
                   </Field>
-                  <Field label={labels.ldapSyncDefaultBranchCode} htmlFor="ldap-sync-default-branch">
-                    <input
+                  <Field label={labels.ldapSyncDefaultBranchCode}>
+                    <Input
                       id="ldap-sync-default-branch"
                       value={getValue("ldap_sync_default_branch_code")}
                       onChange={(event) => setValue("ldap_sync_default_branch_code", event.target.value.toUpperCase())}
-                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                      className="uppercase"
                     />
                   </Field>
-                  <Field label={labels.ldapSyncDefaultDepartmentCode} htmlFor="ldap-sync-default-department">
-                    <input
+                  <Field label={labels.ldapSyncDefaultDepartmentCode}>
+                    <Input
                       id="ldap-sync-default-department"
                       value={getValue("ldap_sync_default_department_code")}
                       onChange={(event) => setValue("ldap_sync_default_department_code", event.target.value.toUpperCase())}
-                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm uppercase outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                      className="uppercase"
                     />
                   </Field>
                 </div>
               </div>
-          </WizardStep>
+          </FormSection>
 
-          <WizardStep number={3} title={labels.ldapStepSchedule}>
+          <FormSection as="h3" number={3} title={labels.ldapStepSchedule}>
             <div className="grid gap-4 lg:grid-cols-2">
-            <Field label={labels.ldapSyncSchedule} htmlFor="ldap-sync-schedule-preset">
-              <select
+            <Field label={labels.ldapSyncSchedule}>
+              <NativeSelect
                 id="ldap-sync-schedule-preset"
                 value={selectedSyncSchedulePreset}
                 onChange={(event) => {
@@ -1949,61 +1890,59 @@ export function SystemSettingsForm({
                     setValue("ldap_sync_schedule", value)
                   }
                 }}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               >
                 {ldapSchedulePresets.map((preset) => (
                   <option key={preset.value} value={preset.value}>
                     {labels[preset.labelKey]}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </Field>
             <div className="lg:col-span-2">
-              <Field label={labels.ldapSyncFilter} htmlFor="ldap-sync-filter">
-                <input
+              <Field label={labels.ldapSyncFilter}>
+                <Input
                   id="ldap-sync-filter"
                   value={getValue("ldap_sync_filter")}
                   onChange={(event) => setValue("ldap_sync_filter", event.target.value)}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                  className="font-mono"
                 />
               </Field>
             </div>
             {selectedSyncSchedulePreset === "custom" ? (
               <div className="lg:col-span-2">
-                <Field label={labels.ldapSyncCustomSchedule} htmlFor="ldap-sync-custom-schedule">
-                  <input
+                <Field label={labels.ldapSyncCustomSchedule}>
+                  <Input
                     id="ldap-sync-custom-schedule"
                     value={syncSchedule}
                     onChange={(event) => setValue("ldap_sync_schedule", event.target.value)}
                     placeholder="0 2 * * *"
-                    className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                    className="font-mono"
                   />
                 </Field>
               </div>
             ) : null}
           </div>
-          </WizardStep>
+          </FormSection>
 
-          <WizardStep number={4} title={labels.ldapStepPreviewApply}>
+          <FormSection as="h3" number={4} title={labels.ldapStepPreviewApply}>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <button
-              type="button"
+            <Button
+              variant="outline"
               onClick={() => handleLdapSync("preview")}
-              disabled={syncingLdap !== null}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
+              busy={syncingLdap === "preview"}
+              disabled={syncingLdap === "apply"}
+              className="w-full sm:w-auto"
             >
-              {syncingLdap === "preview" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {labels.ldapSyncPreview}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
               onClick={() => handleLdapSync("apply")}
-              disabled={syncingLdap !== null || !syncPreview}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
+              busy={syncingLdap === "apply"}
+              disabled={syncingLdap === "preview" || !syncPreview}
+              className="w-full sm:w-auto"
             >
-              {syncingLdap === "apply" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {labels.ldapSyncApply}
-            </button>
+            </Button>
           </div>
           {syncError ? (
             <div className="rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-sm text-danger">
@@ -2011,7 +1950,7 @@ export function SystemSettingsForm({
             </div>
           ) : null}
           <SyncPreviewPanel labels={labels} preview={syncPreview} locale={locale} />
-          </WizardStep>
+          </FormSection>
           <LdapSyncHistoryPanel labels={labels} history={ldapSyncHistory} locale={locale} />
         </div>
       </div>
@@ -2043,11 +1982,12 @@ export function SystemSettingsForm({
                   <tr key={setting.key} className="hover:bg-row-hover">
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{setting.key}</td>
                     <td className="min-w-80 px-4 py-3">
-                      <input
-                        value={values[setting.key] ?? ""}
-                        onChange={(event) => setValues((current) => ({ ...current, [setting.key]: event.target.value }))}
-                        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                      />
+                      <Field label={setting.key} hideLabel>
+                        <Input
+                          value={values[setting.key] ?? ""}
+                          onChange={(event) => setValues((current) => ({ ...current, [setting.key]: event.target.value }))}
+                        />
+                      </Field>
                     </td>
                     <td className="min-w-80 px-4 py-3 text-muted-foreground">{setting.description || "-"}</td>
                   </tr>
@@ -2077,7 +2017,7 @@ export function SystemSettingsForm({
                       <button
                         type="button"
                         onClick={() => openSettingGroup(getSystemSettingsTabForKey(setting.key))}
-                        className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className={linkVariants({ size: "inherit" })}
                       >
                         {setting.key}
                         <span className="ml-2 text-xs font-normal text-muted-foreground">{labels.openSettingGroup}</span>
@@ -2097,24 +2037,21 @@ export function SystemSettingsForm({
         </div>
       ) : null}
 
-      <div className="sticky bottom-3 z-20 rounded-lg border border-border bg-surface/95 p-3 shadow-lg backdrop-blur">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="text-sm font-semibold text-foreground">
+      <StickyFormFooter
+        status={
+          <>
+            <p className="text-sm font-semibold text-foreground">
               {changedCount > 0 ? labels.unsavedChanges.replace("{count}", String(changedCount)) : labels.noUnsavedChanges}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">{labels.settingsOverviewDescription}</div>
-          </div>
-          <button
-            type="submit"
-            disabled={saving || changedCount === 0}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {labels.save}
-          </button>
-        </div>
-      </div>
+            </p>
+            <p className="mt-1 hidden text-meta text-muted-foreground sm:block">{labels.settingsOverviewDescription}</p>
+          </>
+        }
+      >
+        <Button type="submit" busy={saving} disabled={changedCount === 0}>
+          <Save />
+          {labels.save}
+        </Button>
+      </StickyFormFooter>
     </form>
   )
 }
@@ -2138,11 +2075,8 @@ function LdapSyncHistoryPanel({
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{labels.ldapSyncHistoryDescription}</p>
         </div>
-        <Link
-          href={buildSystemLogFilterHref(locale, "ldap_sync")}
-          className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:w-auto"
-        >
-          <ExternalLink className="h-4 w-4" />
+        <Link href={buildSystemLogFilterHref(locale, "ldap_sync")} className={cn(buttonVariants({ variant: "outline" }), "w-full sm:w-auto")}>
+          <ExternalLink />
           {labels.ldapSyncHistoryViewAll}
         </Link>
       </div>
@@ -2275,15 +2209,7 @@ function CategoryTransferPanel({
         <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">{count}</span>
       </div>
       <div className="border-b border-border p-3">
-        <div className="flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-3">
-          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <input
-            value={searchValue}
-            onChange={(event) => onSearchChange(event.target.value)}
-            placeholder={searchPlaceholder}
-            className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none"
-          />
-        </div>
+        <SearchField aria-label={searchPlaceholder} placeholder={searchPlaceholder} value={searchValue} onChange={(event) => onSearchChange(event.target.value)} />
       </div>
       <div className="max-h-80 min-h-72 overflow-y-auto p-2">{children}</div>
     </div>
@@ -2307,7 +2233,7 @@ function CategoryTransferRow({
         type="checkbox"
         checked={checked}
         onChange={onChange}
-        className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
+        className={checkboxVariants()}
       />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-medium text-foreground">{category.name}</span>
@@ -2326,36 +2252,11 @@ function EmptyTransferState({ label }: { label: string }) {
   return <div className="flex min-h-64 items-center justify-center px-4 text-center text-sm text-muted-foreground">{label}</div>
 }
 
-function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-foreground" htmlFor={htmlFor}>
-        {label}
-      </label>
-      {children}
-    </div>
-  )
-}
-
 function ValidationMessage({ message }: { message: string }) {
   return (
     <p className="my-2 rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-sm font-medium text-danger">
       {message}
     </p>
-  )
-}
-
-function WizardStep({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-md border border-border bg-background p-4">
-      <div className="mb-4 flex items-center gap-3">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
-          {number}
-        </span>
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-      </div>
-      {children}
-    </div>
   )
 }
 
@@ -2380,7 +2281,7 @@ function ToggleField({
         type="checkbox"
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
-        className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
+        className={checkboxVariants()}
       />
     </label>
   )
@@ -2449,7 +2350,7 @@ function SyncPreviewPanel({
                     </div>
                     <a
                       href={`/${locale}/assets?custodianId=${encodeURIComponent(impact.employeeId)}&page=1`}
-                      className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+                      className={buttonVariants({ variant: "outline", size: "md" })}
                     >
                       {labels.ldapSyncOpenAssets}
                     </a>
@@ -2535,9 +2436,9 @@ function LabelAssetNameModeField({
 }) {
   return (
     <div className="space-y-2">
-      <div className="text-sm font-medium text-foreground">{label}</div>
+      <div className={fieldLabelClasses}>{label}</div>
       <Segmented aria-label={label} value={compactEnabled ? "compact" : "full"} options={[{ value: "compact", label: compactLabel }, { value: "full", label: fullLabel }]} onValueChange={(next) => onChange(next === "compact")} showCheck />
-      <p className="text-xs leading-5 text-muted-foreground">{description}</p>
+      <FieldHint>{description}</FieldHint>
     </div>
   )
 }
@@ -2562,8 +2463,9 @@ function LabelTemplatePanel({
     <div className="rounded-md border border-border bg-background p-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => {
             setValue(`${prefix}_width_mm`, String(preset.widthMm))
             setValue(`${prefix}_height_mm`, String(preset.heightMm))
@@ -2575,47 +2477,43 @@ function LabelTemplatePanel({
             setValue(`${prefix}_secondary_template`, preset.lines[1])
             setValue(`${prefix}_tertiary_template`, preset.lines[2])
           }}
-          className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-2 text-xs font-medium text-foreground transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
         >
           {labels.labelPreset}
-        </button>
+        </Button>
       </div>
       <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <Field label={labels.labelWidthMm} htmlFor={`${prefix}-width-mm`}>
-          <input
+        <Field label={labels.labelWidthMm}>
+          <Input
             id={`${prefix}-width-mm`}
             type="number"
             min={30}
             max={120}
             value={getValue(`${prefix}_width_mm`)}
             onChange={(event) => setValue(`${prefix}_width_mm`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
-        <Field label={labels.labelHeightMm} htmlFor={`${prefix}-height-mm`}>
-          <input
+        <Field label={labels.labelHeightMm}>
+          <Input
             id={`${prefix}-height-mm`}
             type="number"
             min={10}
             max={100}
             value={getValue(`${prefix}_height_mm`)}
             onChange={(event) => setValue(`${prefix}_height_mm`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
-        <Field label={labels.labelQrSize} htmlFor={`${prefix}-qr-size`}>
-          <input
+        <Field label={labels.labelQrSize}>
+          <Input
             id={`${prefix}-qr-size`}
             type="number"
             min={20}
             max={90}
             value={getValue(`${prefix}_qr_size`)}
             onChange={(event) => setValue(`${prefix}_qr_size`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
-        <Field label={labels.labelMarginMm} htmlFor={`${prefix}-margin-mm`}>
-          <input
+        <Field label={labels.labelMarginMm}>
+          <Input
             id={`${prefix}-margin-mm`}
             type="number"
             min={0}
@@ -2623,11 +2521,10 @@ function LabelTemplatePanel({
             step="0.5"
             value={getValue(`${prefix}_margin_mm`)}
             onChange={(event) => setValue(`${prefix}_margin_mm`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
-        <Field label={labels.labelGapMm} htmlFor={`${prefix}-gap-mm`}>
-          <input
+        <Field label={labels.labelGapMm}>
+          <Input
             id={`${prefix}-gap-mm`}
             type="number"
             min={0}
@@ -2635,46 +2532,44 @@ function LabelTemplatePanel({
             step="0.5"
             value={getValue(`${prefix}_gap_mm`)}
             onChange={(event) => setValue(`${prefix}_gap_mm`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
-        <Field label={labels.labelLayout} htmlFor={`${prefix}-layout`}>
-          <select
+        <Field label={labels.labelLayout}>
+          <NativeSelect
             id={`${prefix}-layout`}
             value={getValue(`${prefix}_layout`)}
             onChange={(event) => setValue(`${prefix}_layout`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           >
             <option value="qr-left">{labels.labelLayoutQrLeft}</option>
             <option value="qr-top">{labels.labelLayoutQrTop}</option>
             <option value="text-only">{labels.labelLayoutTextOnly}</option>
             <option value="qr-only">{labels.labelLayoutQrOnly}</option>
-          </select>
+          </NativeSelect>
         </Field>
       </div>
       <div className="mt-3 grid gap-3">
-        <Field label={labels.labelPrimaryLine} htmlFor={`${prefix}-primary-template`}>
-          <input
+        <Field label={labels.labelPrimaryLine}>
+          <Input
             id={`${prefix}-primary-template`}
             value={getValue(`${prefix}_primary_template`)}
             onChange={(event) => setValue(`${prefix}_primary_template`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+            className="font-mono"
           />
         </Field>
-        <Field label={labels.labelSecondaryLine} htmlFor={`${prefix}-secondary-template`}>
-          <input
+        <Field label={labels.labelSecondaryLine}>
+          <Input
             id={`${prefix}-secondary-template`}
             value={getValue(`${prefix}_secondary_template`)}
             onChange={(event) => setValue(`${prefix}_secondary_template`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+            className="font-mono"
           />
         </Field>
-        <Field label={labels.labelTertiaryLine} htmlFor={`${prefix}-tertiary-template`}>
-          <input
+        <Field label={labels.labelTertiaryLine}>
+          <Input
             id={`${prefix}-tertiary-template`}
             value={getValue(`${prefix}_tertiary_template`)}
             onChange={(event) => setValue(`${prefix}_tertiary_template`, event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+            className="font-mono"
           />
         </Field>
       </div>

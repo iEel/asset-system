@@ -41,3 +41,16 @@ test("the asset form ends its <form> with the sticky footer: cancel first, save 
   assert.match(footer, /busy=\{saving\}/)
   assert.doesNotMatch(source, /shadow-lg|fixed bottom-|backdrop-blur/)
 })
+
+test("the settings form ends with the sticky save bar, inside its <form> (K14, 1f)", () => {
+  const source = readFileSync("src/components/admin/system-settings-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  const formStart = source.indexOf("<form onSubmit={handleSubmit}")
+  const formEnd = source.indexOf("</form>", formStart)
+  const footerStart = source.indexOf("<StickyFormFooter", formStart)
+  assert.ok(formStart !== -1 && footerStart > formStart && footerStart < formEnd, "StickyFormFooter sits inside the settings <form>")
+  // It is the form's last child, so type="submit", Enter in a field and the busy guard keep working (spec 2C section 6.8).
+  assert.match(source.slice(footerStart, formEnd), /^<StickyFormFooter[\s\S]*<\/StickyFormFooter>\s*$/)
+  assert.match(source, /<Button type="submit" busy=\{saving\} disabled=\{changedCount === 0\}>/)
+  assert.match(source, /<p className="mt-1 hidden text-meta text-muted-foreground sm:block">\{labels\.settingsOverviewDescription\}<\/p>/, "the long description hides on phones")
+  assert.doesNotMatch(source, /sticky bottom-3|bg-surface\/95|backdrop-blur|shadow-lg/)
+})

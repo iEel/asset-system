@@ -88,3 +88,17 @@ test("dialog primitives keep the primary action last on phones (K8)", () => {
     assert.doesNotMatch(read(path), /flex-col-reverse/, path)
   }
 })
+
+test("the settings prefix dialog renders inside the settings form, so it has no form or submit button of its own (P13, 1f)", () => {
+  const source = read("src/components/admin/system-settings-form.tsx")
+  const start = source.indexOf("<AccessibleDialog\n")
+  const end = source.indexOf("</AccessibleDialog>", start)
+  assert.ok(start !== -1 && end > start, "the prefix dialog")
+  assert.ok(source.lastIndexOf("<form onSubmit={handleSubmit}", start) !== -1, "the dialog is written inside the settings <form>")
+  const dialog = source.slice(start, end)
+  // React sends a submit from the portal up the component tree: a <form> or a submit button here would save every setting.
+  assert.doesNotMatch(dialog, /<form(?=[\s>])|type="submit"|\sform=/)
+  assert.doesNotMatch(dialog, /closeLabel=/, "the X reads ปิด from tCommon(\"close\"), not ยกเลิก")
+  assert.match(dialog, /<AccessibleDialogBody className="space-y-4">/)
+  assert.match(dialog, /<AccessibleDialogFooter>\s*<AccessibleDialogCancel>\{labels\.cancel\}<\/AccessibleDialogCancel>\s*<Button onClick=\{applyPrefixEditor\} disabled=\{!canApplyPrefixEditor\}>/)
+})

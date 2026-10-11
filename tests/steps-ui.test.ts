@@ -92,3 +92,13 @@ test("the component install flow shows its three steps on the shared rail (K17)"
     }
   }
 })
+
+test("the LDAP settings steps are quiet numbered sections, not a third layer of cards (K18, 1f)", () => {
+  const source = read("src/components/admin/system-settings-form.tsx")
+  const sections = [...source.matchAll(/<FormSection as="h3" number=\{(\d)\} title=\{labels\.(\w+)\}>/g)].map((match) => `${match[1]} ${match[2]}`)
+  assert.deepEqual(sections, ["1 ldapStepConnection", "2 ldapStepLoginMapping", "3 ldapStepProvisioning", "1 ldapStepSyncStrategy", "2 ldapStepOrgMapping", "3 ldapStepSchedule", "4 ldapStepPreviewApply"])
+  assert.equal(source.match(/<\/FormSection>/g)?.length, 7)
+  assert.doesNotMatch(source, /WizardStep/)
+  // Without the step cards, 24px separates the sections on both LDAP tabs (spec 2C section 7.3).
+  assert.equal(source.match(/<div className="space-y-6 px-4 py-4">/g)?.length, 2)
+})
