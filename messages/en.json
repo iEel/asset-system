@@ -46,7 +46,9 @@
     "saving": "Saving...",
     "breadcrumb": "Breadcrumb",
     "noValue": "None",
-    "baht": "THB"
+    "baht": "THB",
+    "removeFile": "Remove {name}",
+    "selectedFiles": "Selected files"
   },
   "globalSearch": {
     "label": "Search globally",

@@ -52,6 +52,8 @@ type ScannerTextInputProps = {
   disabled?: boolean
   maxLength?: number
   placeholder?: string
+  // Names the text field when it has no visible label and no hint (a table cell). With a label or a hint, use Field.
+  "aria-label"?: string
   // Passed on to the text field, so a Field (phase 2C) can wire its hint, error and required state.
   "aria-describedby"?: string
   "aria-invalid"?: React.AriaAttributes["aria-invalid"]
@@ -69,6 +71,7 @@ export function ScannerTextInput({
   disabled,
   maxLength,
   placeholder,
+  "aria-label": ariaLabel,
   "aria-describedby": ariaDescribedBy,
   "aria-invalid": ariaInvalid,
   "aria-required": ariaRequired,
@@ -303,6 +306,8 @@ export function ScannerTextInput({
           onPaste={onPaste}
           maxLength={maxLength}
           placeholder={placeholder}
+          disabled={disabled}
+          aria-label={ariaLabel}
           aria-describedby={ariaDescribedBy}
           aria-invalid={ariaInvalid}
           aria-required={ariaRequired}

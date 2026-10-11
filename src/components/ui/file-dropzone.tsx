@@ -5,6 +5,9 @@ import { useTranslations } from "next-intl"
 import { Upload } from "lucide-react"
 import { optimizeEvidenceImageFile } from "@/lib/evidence-image-optimization"
 
+// The status line, the description and the image hint under the title.
+const subLineClasses = "mt-1 block text-meta text-faint-foreground"
+
 export function FileDropzone({
   file,
   onFileChange,
@@ -15,8 +18,12 @@ export function FileDropzone({
   multiple = false,
   title,
   hint,
+  description,
   browseLabel,
   optimizeImages = true,
+  id,
+  "aria-describedby": ariaDescribedBy,
+  "aria-invalid": ariaInvalid,
 }: {
   file: File | null
   onFileChange: (file: File | null) => void
@@ -26,16 +33,33 @@ export function FileDropzone({
   capture?: "user" | "environment"
   multiple?: boolean
   title: string
-  hint: string
+  // Shown in the box after a file is chosen (single-file mode). Without it the box repeats browseLabel.
+  hint?: string
+  // Always shown under the status line, before and after a file is chosen.
+  description?: React.ReactNode
   browseLabel: string
   optimizeImages?: boolean
+  // id, aria-describedby and aria-invalid come from a wrapping Field. aria-required is accepted so Field's control
+  // props type-check, but it is not passed on: a file input has no role that supports it. Field still shows the asterisk.
+  id?: string
+  "aria-describedby"?: string
+  "aria-invalid"?: boolean | "true" | "false"
+  "aria-required"?: boolean | "true" | "false"
 }) {
-  const inputId = useId()
+  const generatedId = useId()
+  const inputId = id ?? generatedId
   const tCommon = useTranslations("common")
   const [dragging, setDragging] = useState(false)
   const [optimizing, setOptimizing] = useState(false)
   const isDisabled = disabled || optimizing
   const showImageOptimizationHint = optimizeImages && (accept?.includes("image") ?? true)
+  const invalid = ariaInvalid === true || ariaInvalid === "true"
+  // The title is the field's name. The three sub-lines are aria-hidden inside the <label> and reach screen readers
+  // through aria-describedby, which still reads hidden text (spec 2C I13).
+  const statusId = `${inputId}-status`
+  const descriptionId = description ? `${inputId}-description` : undefined
+  const optimizeId = showImageOptimizationHint ? `${inputId}-optimize` : undefined
+  const describedBy = [ariaDescribedBy, statusId, descriptionId, optimizeId].filter(Boolean).join(" ")
 
   async function handleSelectedFiles(nextFileList: FileList | File[] | null | undefined) {
     const files = Array.from(nextFileList ?? [])
@@ -97,12 +121,14 @@ export function FileDropzone({
       onDrop={handleDrop}
       className={[
         "block cursor-pointer rounded-md border border-dashed p-4 text-center transition-colors motion-reduce:transition-none has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring",
-        isDisabled ? "pointer-events-none border-border bg-background" : dragging ? "border-primary bg-primary-soft" : "border-input bg-surface hover:bg-background",
+        isDisabled ? "pointer-events-none border-border bg-background" : dragging ? "border-primary bg-primary-soft" : invalid ? "border-danger bg-surface hover:bg-background" : "border-input bg-surface hover:bg-background",
       ].join(" ")}
     >
       <input
         id={inputId}
         type="file"
+        aria-describedby={describedBy}
+        aria-invalid={invalid || undefined}
         accept={accept}
         capture={capture}
         multiple={multiple}
@@ -115,9 +141,18 @@ export function FileDropzone({
       />
       <Upload className="mx-auto size-5 text-muted-foreground" aria-hidden="true" />
       <span className={`mt-3 block text-sm font-medium ${isDisabled ? "text-faint-foreground" : "text-foreground"}`}>{file ? file.name : title}</span>
-      <span className="mt-1 block text-meta text-faint-foreground">{optimizing ? tCommon("imageOptimizing") : file ? hint : browseLabel}</span>
+      <span id={statusId} aria-hidden="true" className={subLineClasses}>
+        {optimizing ? tCommon("imageOptimizing") : file ? (hint ?? browseLabel) : browseLabel}
+      </span>
+      {description ? (
+        <span id={descriptionId} aria-hidden="true" className={subLineClasses}>
+          {description}
+        </span>
+      ) : null}
       {showImageOptimizationHint ? (
-        <span className="mt-1 block text-meta text-faint-foreground">{tCommon("imageOptimizationHint")}</span>
+        <span id={optimizeId} aria-hidden="true" className={subLineClasses}>
+          {tCommon("imageOptimizationHint")}
+        </span>
       ) : null}
     </label>
   )

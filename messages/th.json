@@ -46,7 +46,9 @@
     "saving": "กำลังบันทึก...",
     "breadcrumb": "เส้นทางหน้า",
     "noValue": "ไม่มีข้อมูล",
-    "baht": "บาท"
+    "baht": "บาท",
+    "removeFile": "นำ {name} ออก",
+    "selectedFiles": "ไฟล์ที่เลือก"
   },
   "globalSearch": {
     "label": "ค้นหาทั่วระบบ",

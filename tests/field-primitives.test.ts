@@ -128,7 +128,9 @@ test("FileDropzone shows keyboard focus and a disabled look without opacity", ()
   assert.match(source, /"pointer-events-none border-border bg-background"/)
   assert.doesNotMatch(source, /opacity-/)
   assert.doesNotMatch(source, /rounded-md bg-primary-soft text-primary/, "no tinted icon tile")
-  assert.equal(source.match(/"mt-1 block text-meta text-faint-foreground"/g)?.length, 2)
+  // One constant for the three sub-lines under the title: status, description, image hint (spec 2C I13).
+  assert.equal(source.match(/const subLineClasses = "mt-1 block text-meta text-faint-foreground"/g)?.length, 1)
+  assert.equal(source.match(/className=\{subLineClasses\}/g)?.length, 3)
 })
 
 test("Segmented works in server components, names its group and keeps 44px options below md", () => {

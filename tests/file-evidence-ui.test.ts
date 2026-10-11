@@ -1,0 +1,72 @@
+import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+import test from "node:test"
+
+// Phase 2C K19 (spec 2C sections 7.6.1, 7.6.2, I13-I15). Call sites join this file in batches 1a-1e.
+const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+const common = (locale: "th" | "en") => (JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { common: Record<string, unknown> }).common
+
+test("FileDropzone takes its id and aria wiring from a Field and an always-visible description", () => {
+  const source = read("src/components/ui/file-dropzone.tsx")
+  assert.match(source, /\n {2}hint\?: string\n/, "hint is optional: queue-mode call sites stop passing it")
+  assert.match(source, /\n {2}description\?: React\.ReactNode\n/)
+  assert.match(source, /\n {2}id\?: string\n/)
+  assert.match(source, /\n {2}"aria-describedby"\?: string\n/)
+  assert.match(source, /\n {2}"aria-invalid"\?: boolean \| "true" \| "false"\n/)
+  assert.match(source, /\n {2}"aria-required"\?: boolean \| "true" \| "false"\n/)
+  assert.match(source, /const inputId = id \?\? generatedId/)
+  assert.match(source, /const describedBy = \[ariaDescribedBy, statusId, descriptionId, optimizeId\]\.filter\(Boolean\)\.join\(" "\)/)
+  const input = source.match(/<input\n[\s\S]*?\/>/)?.[0]
+  assert.ok(input, "file input not found")
+  assert.match(input, /id=\{inputId\}/)
+  assert.match(input, /aria-describedby=\{describedBy\}/)
+  assert.match(input, /aria-invalid=\{invalid \|\| undefined\}/)
+  // aria-required is accepted so Field's control props type-check, but a file input has no role that supports it.
+  assert.doesNotMatch(input, /aria-required/)
+})
+
+test("FileDropzone is named by its title only; the three sub-lines are its description", () => {
+  const source = read("src/components/ui/file-dropzone.tsx")
+  assert.equal(source.match(/aria-hidden="true" className=\{subLineClasses\}/g)?.length, 3)
+  assert.match(source, /<span id=\{statusId\} aria-hidden="true" className=\{subLineClasses\}>\n\s+\{optimizing \? tCommon\("imageOptimizing"\) : file \? \(hint \?\? browseLabel\) : browseLabel\}\n/)
+  assert.match(source, /\{description \? \(\n\s+<span id=\{descriptionId\} aria-hidden="true" className=\{subLineClasses\}>\n\s+\{description\}\n/)
+  assert.match(source, /<span id=\{optimizeId\} aria-hidden="true" className=\{subLineClasses\}>\n\s+\{tCommon\("imageOptimizationHint"\)\}\n/)
+  // The status line comes first, the description second, the image hint last.
+  assert.ok(source.indexOf("id={statusId}") < source.indexOf("id={descriptionId}"))
+  assert.ok(source.indexOf("id={descriptionId}") < source.indexOf("id={optimizeId}"))
+})
+
+test("an invalid FileDropzone gets a red dashed border, after the disabled and drag states", () => {
+  const source = read("src/components/ui/file-dropzone.tsx")
+  assert.match(source, /const invalid = ariaInvalid === true \|\| ariaInvalid === "true"/)
+  assert.match(
+    source,
+    /isDisabled \? "pointer-events-none border-border bg-background" : dragging \? "border-primary bg-primary-soft" : invalid \? "border-danger bg-surface hover:bg-background" : "border-input bg-surface hover:bg-background"/,
+  )
+})
+
+test("FileQueueList: one row per queued file, each with a neutral remove button that names the file", () => {
+  const source = read("src/components/ui/file-queue-list.tsx")
+  assert.match(source, /^"use client"\n/)
+  assert.match(source, /export type FileQueueItem = \{ id: string; name: string; detail\?: ReactNode \}/)
+  assert.match(source, /<ul data-slot="file-queue-list" aria-label=\{label \?\? t\("selectedFiles"\)\} className=\{cn\("grid gap-2", className\)\}>/)
+  assert.match(source, /<li key=\{item\.id\} className="flex min-h-11 items-center gap-3 rounded-md border border-border bg-surface py-1 pl-3 pr-1 text-sm">/)
+  assert.match(source, /<span className="grid min-w-0 flex-1">/)
+  assert.match(source, /<span className="truncate text-foreground">\{item\.name\}<\/span>/)
+  assert.match(source, /\{item\.detail \? <span className="truncate text-meta text-faint-foreground">\{item\.detail\}<\/span> : null\}/)
+  assert.match(
+    source,
+    /<Button\n\s+variant="outline"\n\s+size="icon-sm"\n\s+disabled=\{disabled\}\n\s+aria-label=\{t\("removeFile", \{ name: item\.name \}\)\}\n\s+onClick=\{\(\) => onRemove\(item\.id\)\}\n\s+>\n\s+<X aria-hidden="true" \/>/,
+  )
+  assert.match(source, /return emptyLabel \? <EmptyNote className=\{className\}>\{emptyLabel\}<\/EmptyNote> : null/)
+  // Taking a file out of the queue deletes nothing that is saved, so the button is neutral (K22 family, I16).
+  assert.doesNotMatch(source, /variant="(?:danger|destructive)"|Trash2|text-danger/)
+  assert.doesNotMatch(source, /opacity-|shadow-|leading-tight|rounded-\[/)
+})
+
+test("queue words exist in Thai and English with the same placeholder", () => {
+  assert.equal(common("th").removeFile, "นำ {name} ออก")
+  assert.equal(common("en").removeFile, "Remove {name}")
+  assert.equal(common("th").selectedFiles, "ไฟล์ที่เลือก")
+  assert.equal(common("en").selectedFiles, "Selected files")
+})

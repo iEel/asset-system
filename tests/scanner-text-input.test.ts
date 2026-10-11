@@ -200,3 +200,16 @@ test("scanner input keeps mobile controls labelled, touch-safe, and unambiguous"
   assert.doesNotMatch(source, /aria-label=\{labels\.stop\}/)
   assert.doesNotMatch(source, /onClick=\{\(\) => void stopScanner\(\)\}/)
 })
+
+test("a scanner field without a visible label takes an aria-label, and disabled covers the text field too", () => {
+  const source = readFileSync("src/components/ui/scanner-text-input.tsx", "utf8").replace(/\r\n/g, "\n")
+  const input = source.match(/<Input\n[\s\S]*?\/>/)?.[0]
+  assert.ok(input, "text field not found")
+
+  assert.match(source, /\n {2}"aria-label"\?: string\n/)
+  assert.match(source, /\n {2}"aria-label": ariaLabel,\n/)
+  assert.match(input, /aria-label=\{ariaLabel\}/)
+  assert.match(input, /disabled=\{disabled\}/)
+  // The camera button keeps its visible text as its name (see the test above).
+  assert.doesNotMatch(source, /aria-label=\{labels\.stop\}/)
+})
