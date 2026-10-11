@@ -17,8 +17,10 @@ export const badgeVariants = cva(
 
 // Two tiers: calm states read as plain text with a marker; states that need action keep a soft fill and border.
 // The border stays (transparent) on calm badges so both tiers have the same height side by side.
+// One size everywhere: a fixed 22px box (1px border + one 20px line of 13px text) that matches a table line
+// and never stretches in a flex row. 6px corners (rounded-control) because the badge is a small control.
 export const statusBadgeVariants = cva(
-  "inline-flex w-fit max-w-full shrink-0 items-center gap-1.5 rounded-md border font-medium whitespace-nowrap",
+  "inline-flex h-5.5 w-fit max-w-full shrink-0 items-center gap-1.5 rounded-control border text-meta font-medium whitespace-nowrap",
   {
     variants: {
       tone: {
@@ -27,19 +29,11 @@ export const statusBadgeVariants = cva(
         primary: "border-transparent text-muted-foreground",
         neutral: "border-transparent text-muted-foreground",
         muted: "border-transparent text-muted-foreground",
-        warning: "border-warning-border bg-warning-soft text-warning",
-        danger: "border-danger-border bg-danger-soft text-danger",
-      },
-      size: {
-        xs: "py-0.5 text-xs",
-        sm: "py-1 text-sm",
+        warning: "border-warning-border bg-warning-soft text-warning px-2",
+        danger: "border-danger-border bg-danger-soft text-danger px-2",
       },
     },
-    compoundVariants: [
-      { tone: ["warning", "danger"], size: "xs", class: "px-2" },
-      { tone: ["warning", "danger"], size: "sm", class: "px-2.5" },
-    ],
-    defaultVariants: { tone: "muted", size: "sm" },
+    defaultVariants: { tone: "muted" },
   },
 )
 
@@ -51,8 +45,8 @@ export const statusMarkerVariants = cva("shrink-0 forced-color-adjust-none", {
       info: "size-[7px] rounded-full border-[1.5px] border-info forced-colors:border-[CanvasText]",
       success: "size-1.5 rounded-full bg-success forced-colors:bg-[CanvasText]",
       primary: "size-1.5 rounded-full bg-primary forced-colors:bg-[CanvasText]",
-      neutral: "h-0.5 w-[7px] rounded-[1px] bg-muted-foreground forced-colors:bg-[CanvasText]",
-      muted: "h-0.5 w-[7px] rounded-[1px] bg-muted-foreground forced-colors:bg-[CanvasText]",
+      neutral: "h-0.5 w-[7px] rounded-[1px] bg-neutral-ink forced-colors:bg-[CanvasText]",
+      muted: "h-0.5 w-[7px] rounded-[1px] bg-neutral-ink forced-colors:bg-[CanvasText]",
       warning: "h-[7px] w-2 bg-warning [clip-path:polygon(50%_0,100%_100%,0_100%)] forced-colors:bg-[CanvasText]",
       danger: "size-1.5 rotate-45 rounded-[1px] bg-danger forced-colors:bg-[CanvasText]",
     },
