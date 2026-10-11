@@ -1764,9 +1764,7 @@
     "photoTypeSerial": "รูป Serial Number",
     "photoTypeAccessories": "รูปอุปกรณ์ที่คืน",
     "photoTypeDamage": "รูปความเสียหาย",
-    "photoQueued": "เพิ่มรูปเข้าคิวแล้ว",
     "noQueuedPhotos": "ยังไม่มีรูปในรายการ",
-    "removePhoto": "ลบรูป",
     "returnSignature": "ลายเซ็นผู้คืน",
     "returnSignatureHelp": "ให้ผู้คืนเซ็นในช่องนี้เพื่อเก็บเป็นหลักฐานการคืนทรัพย์สิน",
     "receiveSignature": "ลายเซ็นผู้รับคืน",
@@ -1785,7 +1783,8 @@
     "reviewEvidence": "หลักฐาน",
     "reviewEvidenceCount": "รูปหรือ ลายเซ็น {count} รายการ",
     "reviewNoEvidence": "ยังไม่ได้แนบรูปหรือ ลายเซ็น",
-    "reviewConfirm": "ยืนยันรับคืน"
+    "reviewConfirm": "ยืนยันรับคืน",
+    "photoAfterDescription": "ถ่ายได้หลายรูป รูปจะบันทึกพร้อมรายการรับคืน"
   },
   "transfer": {
     "title": "โอนย้ายทรัพย์สิน",

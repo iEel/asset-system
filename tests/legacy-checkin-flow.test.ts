@@ -77,3 +77,11 @@ test("legacy check-in messages exist in Thai and English", () => {
     assert.deepEqual(missing, [], `${locale} checkin messages are missing keys`)
   }
 })
+
+test("the legacy return row keeps its label while it works, and its search box is a SearchField (2C batch 1b)", () => {
+  const source = checkinFormSource().replace(/\r\n/g, "\n")
+  assert.match(source, /<Button\n\s+variant="outline"\n\s+busy=\{legacyBackfillSavingId === asset\.id\}\n\s+disabled=\{saving\}/)
+  assert.match(source, /<PackageCheck className="text-warning" \/>\n\s+\{t\("legacyReturnAction"\)\}/)
+  assert.doesNotMatch(source, /t\("legacyReturnCreating"\)/)
+  assert.match(source, /<SearchField\n\s+aria-label=\{t\("legacyReturnSearch"\)\}/)
+})

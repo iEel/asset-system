@@ -46,3 +46,13 @@ test("checkin custody copy is localized", () => {
     }
   }
 })
+
+test("the check-in form uses the shared fields and a busy save button (2C batch 1b)", () => {
+  const source = formSource.replace(/\r\n/g, "\n")
+  assert.doesNotMatch(source, /function Field\(|<input|<select|<textarea|Loader2/)
+  assert.match(source, /<form onSubmit=\{handleSubmit\} noValidate /)
+  assert.match(source, /<Field label=\{t\("returnDate"\)\} required>\n\s+<Input type="date" value=\{values\.returnDate\}/)
+  assert.match(source, /<NativeSelect value=\{value\} required=\{required\} disabled=\{disabled\} onChange=/)
+  assert.match(source, /<Button type="submit" busy=\{saving\} className="w-full sm:w-auto">\n\s+<Save \/>/)
+  assert.match(source, /className=\{cn\(buttonVariants\(\{ variant: "outline" \}\), "w-full shrink-0 sm:w-auto"\)\}/)
+})

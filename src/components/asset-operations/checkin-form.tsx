@@ -4,16 +4,24 @@ import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FileImage, Loader2, PackageCheck, Save, Search, Trash2, Wrench } from "lucide-react"
+import { PackageCheck, Save, Wrench } from "lucide-react"
 import { toast } from "sonner"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { FileQueueList } from "@/components/ui/file-queue-list"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
 import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
+import { SearchField } from "@/components/ui/search-field"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { Textarea } from "@/components/ui/textarea"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
 import { toLocalDateInputValue } from "@/lib/local-date"
+import { cn } from "@/lib/utils"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string; disabled?: boolean }
@@ -318,7 +326,7 @@ export function CheckinForm({
                     <div className="mt-1 text-xs text-muted-foreground">{t("noActiveCheckoutsDescription")}</div>
                   </div>
                 </div>
-                <Link href={`/${locale}/asset-management/checkout`} className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:w-auto">
+                <Link href={`/${locale}/asset-management/checkout`} className={cn(buttonVariants({ variant: "outline" }), "w-full shrink-0 sm:w-auto")}>
                   {t("goToCheckout")}
                 </Link>
               </div>
@@ -347,16 +355,13 @@ export function CheckinForm({
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">{t("legacyReturnDescription")}</div>
                 </div>
-                <label className="relative w-full lg:max-w-sm">
-                  <span className="sr-only">{t("legacyReturnSearch")}</span>
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    value={legacyReturnSearch}
-                    onChange={(event) => setLegacyReturnSearch(event.target.value)}
-                    placeholder={t("legacyReturnSearch")}
-                    className="min-h-11 w-full rounded-md border border-border bg-surface pl-9 pr-3 text-sm outline-none transition-colors focus:border-ring focus:ring-1 focus:ring-ring"
-                  />
-                </label>
+                <SearchField
+                  aria-label={t("legacyReturnSearch")}
+                  placeholder={t("legacyReturnSearch")}
+                  className="w-full lg:max-w-sm"
+                  value={legacyReturnSearch}
+                  onChange={(event) => setLegacyReturnSearch(event.target.value)}
+                />
               </div>
               <div className="mt-3 grid max-h-96 gap-2 overflow-y-auto pr-1">
                 {filteredLegacyReturnCandidates.length === 0 ? (
@@ -379,15 +384,16 @@ export function CheckinForm({
                           <span className="truncate" title={asset.currentLocationLabel}>{t("legacyReturnCurrentLocation")}: {asset.currentLocationLabel}</span>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        disabled={saving || legacyBackfillSavingId === asset.id}
+                      <Button
+                        variant="outline"
+                        busy={legacyBackfillSavingId === asset.id}
+                        disabled={saving}
                         onClick={() => handleCreateLegacyCheckout(asset.id)}
-                        className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-md border border-warning-border bg-warning-soft px-3 text-sm font-medium text-warning transition-colors hover:bg-warning-soft disabled:opacity-50 lg:w-auto"
+                        className="w-full shrink-0 lg:w-auto"
                       >
-                        {legacyBackfillSavingId === asset.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
-                        {legacyBackfillSavingId === asset.id ? t("legacyReturnCreating") : t("legacyReturnAction")}
-                      </button>
+                        <PackageCheck className="text-warning" />
+                        {t("legacyReturnAction")}
+                      </Button>
                     </div>
                   ))
                 )}
@@ -398,7 +404,7 @@ export function CheckinForm({
           {hasActiveCheckouts && (
             <>
           <Field label={t("returnDate")} required>
-            <input type="date" value={values.returnDate} onChange={(event) => setField("returnDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+            <Input type="date" value={values.returnDate} onChange={(event) => setField("returnDate", event.target.value)} />
           </Field>
 
           {selectedCheckout && (
@@ -467,28 +473,23 @@ export function CheckinForm({
             ))}
           </Select>
           <Field label={t("missingAccessories")}>
-            <input value={values.missingAccessories} onChange={(event) => setField("missingAccessories", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+            <Input value={values.missingAccessories} onChange={(event) => setField("missingAccessories", event.target.value)} />
           </Field>
           <div className="md:col-span-2">
             <Field label={t("damageNote")}>
-              <textarea value={values.damageNote} onChange={(event) => handleDamageNoteChange(event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+              <Textarea value={values.damageNote} onChange={(event) => handleDamageNoteChange(event.target.value)} rows={3} />
             </Field>
           </div>
           <div className="md:col-span-2">
             <Field label={t("remark")}>
-              <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+              <Textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={3} />
             </Field>
           </div>
 
           <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
-            <div className="mb-3 flex items-start gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary-soft text-primary">
-                <FileImage className="h-5 w-5" />
-              </span>
-              <div>
-                <div className="text-sm font-semibold text-foreground">{t("returnPhotoChecklist")}</div>
-                <div className="mt-1 text-xs text-muted-foreground">{t("returnPhotoChecklistHelp")}</div>
-              </div>
+            <div className="mb-3">
+              <div className="text-sm font-semibold text-foreground">{t("returnPhotoChecklist")}</div>
+              <div className="mt-1 text-xs text-muted-foreground">{t("returnPhotoChecklistHelp")}</div>
             </div>
             <div className="mb-3 grid gap-3 md:grid-cols-[220px_1fr]">
               <Select label={t("photoType")} value={photoType} onChange={setPhotoType}>
@@ -503,28 +504,16 @@ export function CheckinForm({
                 accept="image/*"
                 capture="environment"
                 title={t("photoAfterDropTitle")}
-                hint={t("photoQueued")}
+                description={t("photoAfterDescription")}
                 browseLabel={t("photoAfterDropHint")}
               />
             </div>
-            <div className="grid gap-2">
-              {photosAfter.length === 0 ? (
-                <div className="rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">{t("noQueuedPhotos")}</div>
-              ) : (
-                photosAfter.map((photo) => (
-                  <div key={photo.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2 text-sm">
-                    <div className="min-w-0">
-                      <div className="font-medium text-foreground">{photo.label}</div>
-                      <div className="truncate text-xs text-muted-foreground">{photo.file.name}</div>
-                    </div>
-                    <button type="button" onClick={() => setPhotosAfter((current) => current.filter((item) => item.id !== photo.id))} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">{t("removePhoto")}</span>
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
+            <FileQueueList
+              items={photosAfter.map((photo) => ({ id: photo.id, name: photo.label, detail: photo.file.name }))}
+              emptyLabel={t("noQueuedPhotos")}
+              disabled={saving}
+              onRemove={(id) => setPhotosAfter((current) => current.filter((item) => item.id !== id))}
+            />
           </div>
 
           <div className="md:col-span-2 grid gap-4 md:grid-cols-2">
@@ -553,17 +542,17 @@ export function CheckinForm({
               <p className="mt-1 text-xs text-warning">{t("sendToRepairHelp")}</p>
               <div className="mt-3">
                 <Field label={t("maintenanceProblem")}>
-                  <textarea value={values.maintenanceProblem} onChange={(event) => setField("maintenanceProblem", event.target.value)} rows={3} className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" placeholder={t("maintenanceProblemPlaceholder")} />
+                  <Textarea value={values.maintenanceProblem} onChange={(event) => setField("maintenanceProblem", event.target.value)} rows={3} placeholder={t("maintenanceProblemPlaceholder")} />
                 </Field>
               </div>
             </div>
           ) : null}
 
           <div className="md:col-span-2 flex justify-end">
-            <button type="submit" disabled={saving} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:w-auto">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            <Button type="submit" busy={saving} className="w-full sm:w-auto">
+              <Save />
               {tCommon("save")}
-            </button>
+            </Button>
           </div>
             </>
           )}
@@ -585,24 +574,12 @@ export function CheckinForm({
   )
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
-      {children}
-    </label>
-  )
-}
-
 function Select({ label, value, required, disabled, onChange, children }: { label: string; value: string; required?: boolean; disabled?: boolean; onChange: (value: string) => void; children: React.ReactNode }) {
   return (
     <Field label={label} required={required}>
-      <select value={value} required={required} disabled={disabled} onChange={(event) => onChange(event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground sm:h-10 sm:min-h-0">
+      <NativeSelect value={value} required={required} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
         {children}
-      </select>
+      </NativeSelect>
     </Field>
   )
 }

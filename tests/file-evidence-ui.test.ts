@@ -107,3 +107,20 @@ test("the finish-repair dialog picks files the same way, and src has no raw file
   const rawFileInputs = readSourceFiles("src").filter((file) => /type="file"/.test(file.source)).map((file) => file.path)
   assert.deepEqual(rawFileInputs.sort(), ["src/components/assets/asset-import-preview-panel.tsx", "src/components/ui/file-dropzone.tsx"])
 })
+
+test("the check-in photo picker explains itself before a pick and lists the queue with FileQueueList (2C batch 1b)", () => {
+  const source = readFileSync("src/components/asset-operations/checkin-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  const start = source.indexOf("<FileDropzone")
+  const dropzone = source.slice(start, source.indexOf("/>", start))
+  assert.doesNotMatch(dropzone, /\bhint=/)
+  assert.match(dropzone, /description=\{t\("photoAfterDescription"\)\}/)
+  assert.match(source, /<FileQueueList\n\s+items=\{photosAfter\.map\(\(photo\) => \(\{ id: photo\.id, name: photo\.label, detail: photo\.file\.name \}\)\)\}\n\s+emptyLabel=\{t\("noQueuedPhotos"\)\}\n\s+disabled=\{saving\}/)
+  assert.equal(source.match(/rounded-md bg-primary-soft text-primary/g)?.length, 1, "only the no-checkouts icon tile stays")
+  assert.doesNotMatch(source, /Trash2|FileImage|t\("photoQueued"\)|t\("removePhoto"\)/)
+  for (const locale of ["th", "en"]) {
+    const checkin = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).checkin as Record<string, string>
+    assert.ok(checkin.photoAfterDescription?.trim(), `${locale}.checkin.photoAfterDescription`)
+    assert.equal(checkin.photoQueued, undefined, `${locale}.checkin.photoQueued has no reader and is removed`)
+    assert.equal(checkin.removePhoto, undefined, `${locale}.checkin.removePhoto has no reader and is removed`)
+  }
+})

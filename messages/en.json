@@ -1764,9 +1764,7 @@
     "photoTypeSerial": "Serial number",
     "photoTypeAccessories": "Returned accessories",
     "photoTypeDamage": "Damage",
-    "photoQueued": "Photo added to the queue",
     "noQueuedPhotos": "No checklist photos yet",
-    "removePhoto": "Remove photo",
     "returnSignature": "Returner Signature",
     "returnSignatureHelp": "Ask the returner to sign here as asset return evidence.",
     "receiveSignature": "Receiver Signature",
@@ -1785,7 +1783,8 @@
     "reviewEvidence": "Evidence",
     "reviewEvidenceCount": "{count} photo/signature items",
     "reviewNoEvidence": "No photo or signature attached",
-    "reviewConfirm": "Confirm return"
+    "reviewConfirm": "Confirm return",
+    "photoAfterDescription": "Add as many photos as you need. They are saved with the return."
   },
   "transfer": {
     "title": "Transfer Asset",

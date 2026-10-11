@@ -161,7 +161,23 @@ test("DataFreshnessBanner shows stale data as a warning Notice with a busy refre
   assert.doesNotMatch(source, /AlertTriangle/)
 })
 
-test("busy comes from client state, and a busy Button never also gets disabled", () => {
+// Phase 2C (spec 6.5.1, guard GB4): `disabled` may still hold another condition (a validation gate, the form's own
+// save), but never the busy expression itself: that would drop keyboard focus the moment the work starts.
+function repeatsBusy(tag: string): boolean {
+  if (!/\sdisabled[=\s/>]/.test(tag)) return false
+  if (/\sdisabled(?=[\s/>])/.test(tag)) return true
+  const busy = /\sbusy=\{([^}]*)\}/.exec(tag)?.[1]?.trim()
+  if (!busy) return true
+  const disabled = /\sdisabled=\{([^}]*)\}/.exec(tag)?.[1] ?? ""
+  const escaped = busy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  return new RegExp(`(?<![\\w.$])${escaped}(?![\\w$])`).test(disabled)
+}
+
+test("busy comes from client state, and a busy Button's disabled never repeats the busy condition", () => {
+  assert.equal(repeatsBusy("<Button busy={saving} disabled={saving || missingPhoto}>"), true)
+  assert.equal(repeatsBusy("<Button busy={saving} disabled>"), true)
+  assert.equal(repeatsBusy("<Button busy={legacyBackfillSavingId === asset.id} disabled={saving}>"), false)
+  assert.equal(repeatsBusy('<Button busy={syncingLdap === "preview"} disabled={syncingLdap === "apply"}>'), false)
   const offenders: string[] = []
   let busyButtons = 0
   for (const file of sources.filter((entry) => entry.path.endsWith(".tsx"))) {
@@ -169,7 +185,7 @@ test("busy comes from client state, and a busy Button never also gets disabled",
       if (!/\sbusy[=\s/>]/.test(tag)) continue
       busyButtons += 1
       if (!isClientModule(file.source)) offenders.push(`${file.path}: busy in a server file (its click guard cannot cross to the client)`)
-      if (/\sdisabled[=\s/>]/.test(tag)) offenders.push(`${file.path}: busy with disabled drops keyboard focus`)
+      if (repeatsBusy(tag)) offenders.push(`${file.path}: disabled repeats the busy condition and drops keyboard focus`)
     }
   }
   assert.ok(busyButtons >= 1, "the guard must see at least one busy Button (DataFreshnessBanner)")
