@@ -38,6 +38,11 @@ export const textareaClasses = `${fieldBase} min-h-24 py-2 text-base md:text-sm 
 // A read-only value stays readable and copyable: quiet box, normal text color, same focus ring.
 export const fieldReadOnlyClasses = "read-only:border-border read-only:bg-background"
 
+// The label of a Field, also for the <legend> that names a group of checkboxes or radios:
+// <fieldset className="min-w-0"><legend className={cn(fieldLabelClasses, "mb-1.5")}>{label}<FieldRequiredMark /></legend>.
+// The fieldset needs min-w-0: it defaults to min-inline-size: min-content and can push a phone page sideways.
+export const fieldLabelClasses = "text-meta font-medium text-foreground"
+
 // Native checkbox and radio. Color comes from accent-color and focus from the base :focus-visible outline
 // (phase 1), so no outline-none. The 44px hit area belongs to the <label> row around the box.
 export const checkboxVariants = cva("shrink-0 cursor-pointer disabled:cursor-not-allowed", {

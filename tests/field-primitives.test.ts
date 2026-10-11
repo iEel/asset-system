@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
-import { checkboxVariants, fieldControlVariants, fieldReadOnlyClasses, textareaClasses } from "../src/components/ui/field-variants.ts"
+import { checkboxVariants, fieldControlVariants, fieldLabelClasses, fieldReadOnlyClasses, textareaClasses } from "../src/components/ui/field-variants.ts"
 import { getFieldControlClasses } from "../src/lib/design-system.ts"
 import { cn } from "../src/lib/utils.ts"
 
@@ -145,4 +145,32 @@ test("Segmented works in server components, names its group and keeps 44px optio
   // The room list keeps 36px from md and fills its row; the label setting turns its boolean into two string values.
   assert.match(read("src/components/audit/audit-scan-room-list.tsx"), /<Segmented[\s\S]*?size="md"\s+fill\s/)
   assert.match(read("src/components/admin/system-settings-form.tsx"), /value=\{compactEnabled \? "compact" : "full"\}[\s\S]*?onValueChange=\{\(next\) => onChange\(next === "compact"\)\} showCheck \/>/)
+})
+
+test("a Field label and a <legend> share one label class and one required star", () => {
+  assert.equal(fieldLabelClasses, "text-meta font-medium text-foreground")
+  const field = read("src/components/ui/field.tsx")
+  assert.match(field, /import \{ fieldLabelClasses \} from "@\/components\/ui\/field-variants"/)
+  assert.match(field, /<label data-slot="field-label" className=\{cn\(fieldLabelClasses, visuallyHidden && "sr-only", className\)\}/)
+  assert.doesNotMatch(field, /"text-meta font-medium text-foreground"/, "the label classes live in field-variants.ts only")
+  // One source for the star: FieldLabel and every required <legend> render FieldRequiredMark.
+  assert.match(field, /function FieldRequiredMark\(\) \{\s*return <span aria-hidden="true" className="ml-1 text-warning">\*<\/span>\s*\}/)
+  assert.equal(field.match(/className="ml-1 text-warning"/g)?.length, 1)
+  assert.match(field, /\{required \? <FieldRequiredMark \/> : null\}/)
+  assert.match(field, /export \{ Field, FieldError, FieldHint, FieldLabel, FieldRequiredMark \}/)
+})
+
+test("Field puts labelAction beside the label, outside the <label>", () => {
+  const field = read("src/components/ui/field.tsx")
+  assert.match(field, /labelAction\?: React\.ReactNode/)
+  assert.match(field, /function Field\(\{ label, hideLabel, required, hint, error, id, className, labelAction, children \}: FieldProps\)/)
+  const labelElement = field.slice(field.indexOf("<FieldLabel htmlFor={controlId}"), field.indexOf("</FieldLabel>"))
+  assert.ok(labelElement.length > 0, "the FieldLabel element was not found")
+  // A button inside the <label> would move focus to the field when it is clicked.
+  assert.doesNotMatch(labelElement, /labelAction/)
+  // Without labelAction the label renders exactly as before; with it, label and button share one row.
+  assert.match(
+    field,
+    /\{labelAction \? \(\s*<div data-slot="field-label-row" className="flex min-w-0 items-center gap-1\.5">\s*\{labelNode\}\s*<span data-slot="field-label-action" className="-my-0\.5 inline-flex shrink-0">\{labelAction\}<\/span>\s*<\/div>\s*\) : \(\s*labelNode\s*\)\}/,
+  )
 })

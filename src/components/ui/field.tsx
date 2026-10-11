@@ -1,4 +1,5 @@
 import * as React from "react"
+import { fieldLabelClasses } from "@/components/ui/field-variants"
 import { cn } from "@/lib/utils"
 
 // What Field hands to its control. aria-required, never required: a real required attribute would start the
@@ -18,6 +19,9 @@ type FieldProps = {
   error?: React.ReactNode
   id?: string
   className?: string
+  // One icon button beside the label, for example AssetStateHelpPopover. It sits outside the <label>, so clicking it
+  // does not move focus to the field. It needs its own accessible name and must not be a <label> or hold a field.
+  labelAction?: React.ReactNode
   // One element that accepts id and aria-* (Input, NativeSelect, Textarea, ScannerTextInput), or a function for a
   // control built from several parts. Never wrap SearchableSelect: it renders its own label.
   children: React.ReactElement<{ id?: string; "aria-describedby"?: string }> | ((control: FieldControlProps) => React.ReactNode)
@@ -25,7 +29,7 @@ type FieldProps = {
 
 // Label, control, hint, error. Server-safe: useId is the only hook and there is no context. Never put a Field
 // inside a <label>.
-function Field({ label, hideLabel, required, hint, error, id, className, children }: FieldProps) {
+function Field({ label, hideLabel, required, hint, error, id, className, labelAction, children }: FieldProps) {
   const generatedId = React.useId()
   const renderControl = typeof children === "function" ? children : null
   const element = typeof children === "function" ? null : children
@@ -40,11 +44,25 @@ function Field({ label, hideLabel, required, hint, error, id, className, childre
     ...(required ? { "aria-required": true } : {}),
   }
 
+  const labelNode = (
+    <FieldLabel htmlFor={controlId} required={required} visuallyHidden={hideLabel}>
+      {label}
+    </FieldLabel>
+  )
+
+  // With labelAction, label and button share one row. -my-0.5 keeps a 24px icon button from making the row taller
+  // than the 20px label, so fields in neighbouring columns stay level. hideLabel still works: the label is sr-only
+  // and the button stays visible. Without labelAction the label renders exactly as before.
   return (
     <div data-slot="field" className={cn("grid min-w-0 gap-1.5", className)}>
-      <FieldLabel htmlFor={controlId} required={required} visuallyHidden={hideLabel}>
-        {label}
-      </FieldLabel>
+      {labelAction ? (
+        <div data-slot="field-label-row" className="flex min-w-0 items-center gap-1.5">
+          {labelNode}
+          <span data-slot="field-label-action" className="-my-0.5 inline-flex shrink-0">{labelAction}</span>
+        </div>
+      ) : (
+        labelNode
+      )}
       {renderControl ? renderControl(control) : element ? React.cloneElement(element, control) : null}
       {hint ? <FieldHint id={hintId}>{hint}</FieldHint> : null}
       {error ? <FieldError id={errorId}>{error}</FieldError> : null}
@@ -61,11 +79,17 @@ function FieldLabel({
   ...props
 }: React.ComponentProps<"label"> & { required?: boolean; visuallyHidden?: boolean }) {
   return (
-    <label data-slot="field-label" className={cn("text-meta font-medium text-foreground", visuallyHidden && "sr-only", className)} {...props}>
+    <label data-slot="field-label" className={cn(fieldLabelClasses, visuallyHidden && "sr-only", className)} {...props}>
       {children}
-      {required ? <span aria-hidden="true" className="ml-1 text-warning">*</span> : null}
+      {required ? <FieldRequiredMark /> : null}
     </label>
   )
+}
+
+// The orange star after a required label, and after the text of a required <legend>. aria-hidden, because the
+// control itself carries aria-required or required, so screen readers say "required" instead of "star".
+function FieldRequiredMark() {
+  return <span aria-hidden="true" className="ml-1 text-warning">*</span>
 }
 
 function FieldHint({ className, ...props }: React.ComponentProps<"p">) {
@@ -76,4 +100,4 @@ function FieldError({ className, ...props }: React.ComponentProps<"p">) {
   return <p data-slot="field-error" role="alert" className={cn("text-meta text-danger", className)} {...props} />
 }
 
-export { Field, FieldError, FieldHint, FieldLabel }
+export { Field, FieldError, FieldHint, FieldLabel, FieldRequiredMark }
