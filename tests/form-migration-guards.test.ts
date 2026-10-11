@@ -51,6 +51,7 @@ const MIGRATED_FILES: string[] = [
   `${C}ui/operation-review-dialog.tsx`,
   `${C}disposal/disposal-request-form.tsx`,
   `${C}disposal/disposal-batch-form.tsx`,
+  `${C}disposal/disposal-execution-button.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -117,7 +118,6 @@ const LOCAL_FIELD: Record<string, number> = {
   // 1a
   // 1b
   // 1c
-  [`${C}disposal/disposal-execution-button.tsx`]: 1,
   [`${C}disposal/disposal-decision-button.tsx`]: 1,
   // 1g
   [`${C}master-data/asset-model-form.tsx`]: 1,
@@ -146,7 +146,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 1a
   // 1b
   // 1c
-  [`${C}disposal/disposal-execution-button.tsx`]: 8,
   [`${C}disposal/disposal-asset-picker.tsx`]: 1,
   [`${C}disposal/disposal-decision-button.tsx`]: 5,
   // 1d
@@ -201,7 +200,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1a
   // 1b
   // 1c
-  [`${C}disposal/disposal-execution-button.tsx`]: 8,
   [`${C}disposal/disposal-asset-picker.tsx`]: 1,
   [`${C}disposal/disposal-decision-button.tsx`]: 5,
   // 1d
@@ -306,7 +304,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 1a
   // 1b
   // 1c
-  [`${C}disposal/disposal-execution-button.tsx`]: 4,
   [`${C}disposal/disposal-asset-picker.tsx`]: 1,
   [`${C}disposal/disposal-decision-button.tsx`]: 2,
   // 1d
@@ -351,7 +348,6 @@ const LOADER2: Record<string, number> = {
   [`${C}maintenance/maintenance-attachments.tsx`]: 1, // → 1: the delete button :210 (2D)
   // 1b
   // 1c
-  [`${C}disposal/disposal-execution-button.tsx`]: 1,
   [`${C}disposal/disposal-asset-picker.tsx`]: 1, // → 1: the spinner in the search field :58
   [`${C}disposal/disposal-decision-button.tsx`]: 1,
   // 1d
@@ -434,7 +430,6 @@ const PENDING_FOOTER_PARTS = new Set([
   `${C}maintenance/maintenance-attachments.tsx`, // the delete dialog :239 waits for batch 5 (K12)
   // 1b
   // 1c
-  `${C}disposal/disposal-execution-button.tsx`,
   `${C}disposal/disposal-decision-button.tsx`,
   // 1d
   `${C}audit/audit-finding-review-actions.tsx`,
