@@ -285,3 +285,15 @@ test("the two segmented controls mark the chosen option with primary-soft and 6p
   assert.match(settings, /className=\{`inline-flex h-8 items-center justify-center gap-1\.5 rounded-control px-3 text-sm transition-colors /)
   assert.match(settings, /\? "bg-primary-soft font-semibold text-primary-hover"\n\s+: "font-medium text-muted-foreground hover:bg-background hover:text-foreground"/)
 })
+
+test("R3 no text smaller than 12px outside the thermal label", () => {
+  // The thermal label prints at its physical size, so it keeps its own type scale. On screen the floor is text-xs (12px).
+  const labelPrint = "src/components/assets/asset-label-print.tsx"
+  assert.deepEqual(findMatches(sources, /text-\[(?:\d|1[01])(?:\.\d+)?px\]/g, (path) => path === labelPrint), [])
+  // leading-4 (16px) is below the Thai minimum of 1.44 × 12px; without it text-xs gets calc(18 / 12) on Thai pages.
+  for (const path of ["src/components/admin/IntegrationClientManager.tsx", "src/components/ui/file-dropzone.tsx"]) {
+    assert.doesNotMatch(read(path), /\bleading-4\b/, path)
+  }
+  // The white count on the solid red dot is 600, not 700 (spec 2A section 9.8, ruling 11).
+  assert.match(read("src/components/layout/topbar.tsx"), /rounded-full bg-danger px-1 text-xs font-semibold leading-none text-white/)
+})

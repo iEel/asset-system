@@ -337,7 +337,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
               </Link>
             ))}
           </div>
-          <div className="flex items-center justify-end gap-1 px-4 pb-2 text-[11px] text-muted-foreground sm:hidden">{t("stageScrollHint")}<ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></div>
+          <div className="flex items-center justify-end gap-1 px-4 pb-2 text-xs text-muted-foreground sm:hidden">{t("stageScrollHint")}<ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></div>
         </div>
         <div className={`${getMobileCardListClasses()} p-3`}>
           {requestsWithEvidence.length === 0 ? <DisposalEmptyState locale={locale} t={t} hasActiveFilters={hasActiveFilters} canCreate={canCreate} /> : requestsWithEvidence.map((request) => {

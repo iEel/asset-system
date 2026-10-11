@@ -771,7 +771,7 @@ function OperationMetric({
 }) {
   return (
     <div className="rounded-md border border-border bg-background px-2 py-1">
-      <div className="text-[11px] leading-4 text-muted-foreground">{label}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
       <div className={`text-sm font-semibold ${tone === "danger" ? "text-danger" : "text-foreground"}`}>
         {value.toLocaleString()}
       </div>

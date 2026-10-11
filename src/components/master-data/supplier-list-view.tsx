@@ -199,7 +199,7 @@ function buildSupplierRowHrefs({ supplier, locale, supplierReturnHref }: { suppl
 }
 
 function RelationshipCount({ label, value, href }: { label: string; value: number; href?: string }) {
-  const content = <><span className="block text-base font-semibold text-foreground">{value.toLocaleString()}</span><span className="mt-0.5 block line-clamp-2 text-[11px] text-muted-foreground">{label}</span></>
+  const content = <><span className="block text-base font-semibold text-foreground">{value.toLocaleString()}</span><span className="mt-0.5 block line-clamp-2 text-xs text-muted-foreground">{label}</span></>
   return href ? <Link href={href} aria-label={`${label}: ${value}`} className="min-h-11 rounded-md px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{content}</Link> : <div className="min-h-11 px-1 py-1">{content}</div>
 }
 

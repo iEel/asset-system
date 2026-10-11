@@ -2187,7 +2187,7 @@ function LdapSyncHistoryPanel({
 function MiniMetric({ label, value, locale }: { label: string; value: number; locale: string }) {
   return (
     <div className="rounded-md border border-border px-2 py-2">
-      <div className="truncate text-[11px] text-muted-foreground">{label}</div>
+      <div className="truncate text-xs text-muted-foreground">{label}</div>
       <div className="mt-1 text-base font-semibold text-foreground">{formatHistoryNumber(value, locale)}</div>
     </div>
   )

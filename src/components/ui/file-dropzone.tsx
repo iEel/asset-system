@@ -120,7 +120,7 @@ export function FileDropzone({
       <span className="mt-3 block text-sm font-medium text-foreground">{file ? file.name : title}</span>
       <span className="mt-1 block text-xs text-muted-foreground">{optimizing ? tCommon("imageOptimizing") : file ? hint : browseLabel}</span>
       {showImageOptimizationHint ? (
-        <span className="mt-1 block text-[11px] leading-4 text-muted-foreground">{tCommon("imageOptimizationHint")}</span>
+        <span className="mt-1 block text-xs text-muted-foreground">{tCommon("imageOptimizationHint")}</span>
       ) : null}
     </label>
   )

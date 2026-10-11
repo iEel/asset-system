@@ -864,11 +864,11 @@ export function AssetBatchForm({
                 <div className="grid gap-3">
                   <Field label={t("batchAssetTag")}>
                     <input value={row.assetTag} onChange={(event) => setRowField(row.clientId, "assetTag", event.target.value)} placeholder={t("autoTagHint")} aria-label={t("batchAssetTagHelp")} className={inputClassName} />
-                    <p className="mt-1 text-[11px] text-muted-foreground">{t("batchAssetTagHelp")}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t("batchAssetTagHelp")}</p>
                   </Field>
                   <Field label={t("batchSerialNumber")}>
                     <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
-                    <p className="mt-1 text-[11px] text-muted-foreground">{t("batchPasteSerialHint")}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t("batchPasteSerialHint")}</p>
                   </Field>
                   {showRowCustodian ? (
                     <SearchableSelect label={t("batchCustodian")} value={row.custodianId} options={getRowEmployeeOptions(row)} placeholder={t("batchUseSharedCustodian")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "custodianId", value)} />
@@ -915,11 +915,11 @@ export function AssetBatchForm({
                     <td className="px-3 py-3 font-medium text-foreground">{index + 1}</td>
                     <td className="px-3 py-3">
                       <input value={row.assetTag} onChange={(event) => setRowField(row.clientId, "assetTag", event.target.value)} placeholder={t("autoTagHint")} aria-label={t("batchAssetTagHelp")} className={inputClassName} />
-                      <p className="mt-1 text-[11px] text-muted-foreground">{t("batchAssetTagHelp")}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{t("batchAssetTagHelp")}</p>
                     </td>
                     <td className="px-3 py-3">
                       <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
-                      <p className="mt-1 text-[11px] text-muted-foreground">{t("batchPasteSerialHint")}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{t("batchPasteSerialHint")}</p>
                     </td>
                     {showRowCustodian ? (
                       <td className="px-3 py-3">
