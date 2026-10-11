@@ -58,6 +58,7 @@ const MIGRATED_FILES: string[] = [
   `${C}audit/audit-finding-review-actions.tsx`,
   `${C}audit/audit-mark-not-found-button.tsx`,
   `${C}audit/audit-scan-component-missing-dialog.tsx`,
+  `${C}master-data/asset-model-form.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -125,7 +126,6 @@ const LOCAL_FIELD: Record<string, number> = {
   // 1b
   // 1c
   // 1g
-  [`${C}master-data/asset-model-form.tsx`]: 1,
   // 1e
   [`${C}assets/asset-form.tsx`]: 1,
   [`${C}assets/asset-batch-form.tsx`]: 1,
@@ -153,7 +153,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 1c
   // 1d
   // 1g
-  [`${C}master-data/asset-model-form.tsx`]: 6,
   // 1e
   [`${C}assets/asset-form.tsx`]: 27,
   [`${C}assets/asset-batch-form.tsx`]: 13,
@@ -201,7 +200,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1c
   // 1d
   // 1g
-  [`${C}master-data/asset-model-form.tsx`]: 6,
   // 1e
   [`${C}assets/asset-form.tsx`]: 27,
   [`${C}assets/asset-batch-form.tsx`]: 1,
@@ -299,7 +297,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 1c
   // 1d
   // 1g
-  [`${C}master-data/asset-model-form.tsx`]: 3,
   // 1e
   [`${C}assets/asset-form.tsx`]: 10,
   [`${C}assets/asset-batch-form.tsx`]: 5,
@@ -343,7 +340,6 @@ const LOADER2: Record<string, number> = {
   [`${C}audit/audit-scan-check-form.tsx`]: 1, // components header toggle :242 (§6.14)
   [`${C}audit/audit-finding-review-actions.tsx`]: 2, // → 2: the row triggers :102, :112 (2B, O21)
   // 1g
-  [`${C}master-data/asset-model-form.tsx`]: 2,
   // 1e
   [`${C}assets/asset-form.tsx`]: 1,
   [`${C}assets/asset-batch-form.tsx`]: 2,

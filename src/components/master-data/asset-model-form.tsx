@@ -4,12 +4,18 @@ import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { ArrowLeft, ImageIcon, Loader2, Plus, Save, Sparkles, Trash2 } from "lucide-react"
+import { ArrowLeft, ImageIcon, Plus, Save, Sparkles, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import Link from "next/link"
 import { formatFileSize } from "@/lib/uploads"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { checkboxVariants } from "@/components/ui/field-variants"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
+import { Textarea } from "@/components/ui/textarea"
 import {
   chooseSpecPreset,
   createSpecId,
@@ -230,21 +236,19 @@ export function AssetModelForm({
         <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-6">
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("modelName")} required>
-            <input
+            <Input
               value={values.name}
               onChange={(event) => setField("name", event.target.value)}
               maxLength={200}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
           <Field label={t("brand")} required>
-            <select
+            <NativeSelect
               value={values.brandId}
               onChange={(event) => setField("brandId", event.target.value)}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="">{t("selectBrand")}</option>
               {brands.map((brand) => (
@@ -252,15 +256,14 @@ export function AssetModelForm({
                   {brand.name}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </Field>
 
           <Field label={t("category")} required>
-            <select
+            <NativeSelect
               value={values.categoryId}
               onChange={(event) => setField("categoryId", event.target.value)}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="">{t("selectCategory")}</option>
               {categories.map((category) => (
@@ -268,7 +271,7 @@ export function AssetModelForm({
                   {category.code} - {category.name}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </Field>
 
           <label className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm md:self-end">
@@ -276,7 +279,7 @@ export function AssetModelForm({
               type="checkbox"
               checked={values.isActive}
               onChange={(event) => setField("isActive", event.target.checked)}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
+              className={checkboxVariants()}
             />
             {tCommon("active")}
           </label>
@@ -288,14 +291,10 @@ export function AssetModelForm({
                   <div className="text-sm font-medium text-foreground">{t("structuredSpecs")}</div>
                   <p className="mt-1 text-sm text-muted-foreground">{t("structuredSpecsHelp")}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={applyPreset}
-                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
-                >
-                  <Sparkles className="h-4 w-4 text-primary" />
+                <Button variant="outline" size="md" onClick={applyPreset}>
+                  <Sparkles className="text-primary" aria-hidden="true" />
                   {t("applySpecPreset")}
-                </button>
+                </Button>
               </div>
 
               <div className="space-y-2">
@@ -305,47 +304,45 @@ export function AssetModelForm({
                   </div>
                 ) : null}
                 {structuredSpecs.items.map((item) => (
-                  <div key={item.id} className="grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)_40px]">
-                    <input
-                      value={item.label}
-                      onChange={(event) => setSpecItem(item.id, "label", event.target.value)}
-                      placeholder={t("specLabel")}
-                      className="h-10 rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                    />
-                    <input
-                      value={item.value}
-                      onChange={(event) => setSpecItem(item.id, "value", event.target.value)}
-                      placeholder={t("specValue")}
-                      className="h-10 rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                    />
-                    <button
-                      type="button"
+                  <div key={item.id} className="grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)_auto]">
+                    <Field label={t("specLabel")} hideLabel>
+                      <Input
+                        value={item.label}
+                        onChange={(event) => setSpecItem(item.id, "label", event.target.value)}
+                        placeholder={t("specLabel")}
+                      />
+                    </Field>
+                    <Field label={t("specValue")} hideLabel>
+                      <Input
+                        value={item.value}
+                        onChange={(event) => setSpecItem(item.id, "value", event.target.value)}
+                        placeholder={t("specValue")}
+                      />
+                    </Field>
+                    <Button
+                      variant="danger"
+                      size="icon"
                       onClick={() => removeSpecItem(item.id)}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft"
+                      className="justify-self-start"
                       title={t("removeSpec")}
                       aria-label={t("removeSpec")}
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                      <Trash2 aria-hidden="true" />
+                    </Button>
                   </div>
                 ))}
               </div>
 
-              <button
-                type="button"
-                onClick={() => addSpecItem()}
-                className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent"
-              >
-                <Plus className="h-4 w-4" />
+              <Button variant="outline" size="md" onClick={() => addSpecItem()}>
+                <Plus aria-hidden="true" />
                 {t("addSpec")}
-              </button>
+              </Button>
 
               <Field label={t("specNotes")}>
-                <textarea
+                <Textarea
                   value={structuredSpecs.notes}
                   onChange={(event) => setStructuredSpecs((current) => ({ ...current, notes: event.target.value }))}
                   rows={3}
-                  className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
             </div>
@@ -353,20 +350,13 @@ export function AssetModelForm({
           </div>
 
           <div className="mt-6 flex justify-end gap-3 border-t border-border pt-5">
-          <Link
-            href={backHref}
-            className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-          >
+          <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
             {tCommon("cancel")}
           </Link>
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          <Button type="submit" busy={saving}>
+            <Save aria-hidden="true" />
             {tCommon("save")}
-          </button>
+          </Button>
           </div>
         </form>
 
@@ -430,15 +420,15 @@ export function AssetModelForm({
                           </div>
                           <div className="mt-1 text-xs text-muted-foreground">{formatFileSize(photo.fileSize)}</div>
                         </div>
-                        <button
-                          type="button"
+                        <Button
+                          variant="danger"
+                          size="icon-sm"
+                          busy={deletingId === photo.id}
                           onClick={() => handlePhotoDelete(photo.id)}
-                          disabled={deletingId === photo.id}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft disabled:opacity-50"
                           title={tCommon("delete")}
                         >
-                          {deletingId === photo.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                        </button>
+                          <Trash2 aria-hidden="true" />
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -449,25 +439,5 @@ export function AssetModelForm({
         </section>
       </div>
     </div>
-  )
-}
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string
-  required?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
-      {children}
-    </label>
   )
 }
