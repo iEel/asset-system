@@ -4,23 +4,22 @@ import test from "node:test"
 
 const assetFormSource = () => readFileSync("src/components/assets/asset-form.tsx", "utf8")
 
-test("asset form keeps save actions visible in a fixed bottom bar", () => {
+test("asset form keeps save actions in a sticky form footer", () => {
   const source = assetFormSource()
 
-  assert.match(source, /pb-36 sm:pb-24/)
-  assert.match(source, /fixed bottom-3/)
-  assert.match(source, /lg:left-\[calc\(16rem\+1\.5rem\)\]/)
-  assert.match(source, /bg-surface\/95/)
-  assert.match(source, /backdrop-blur/)
-  assert.match(source, /sm:flex-row sm:items-center sm:justify-end/)
-  assert.match(source, /<Save className="h-4 w-4" \/>/)
+  assert.match(source, /<StickyFormFooter[\s>]/)
+  assert.match(source, /<form onSubmit=\{handleSubmit\} className="space-y-5">/)
+  assert.doesNotMatch(source, /fixed bottom-3|lg:left-\[calc|bg-surface\/95|backdrop-blur|pb-36 sm:pb-24/)
 })
 
-test("asset form fixed save action preserves existing disabled guards", () => {
+test("asset form save action is busy while saving and keeps its other disabled guards", () => {
   const source = assetFormSource()
 
+  assert.match(source, /busy=\{saving\}/)
   assert.match(
     source,
-    /disabled=\{saving \|\| isProtectedStatusChange \|\| duplicateState\.checking \|\| duplicateState\.assetTagExists \|\| duplicateState\.serialNumberExists\}/,
+    /disabled=\{isProtectedStatusChange\s*\|\|\s*duplicateState\.checking\s*\|\|\s*duplicateState\.assetTagExists\s*\|\|\s*duplicateState\.serialNumberExists\}/,
   )
+  // The two "add" buttons and the serial scanner keep disabled={saving} on purpose; only the save gate loses it.
+  assert.doesNotMatch(source, /disabled=\{saving\s*\|\|/)
 })

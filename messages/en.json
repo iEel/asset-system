@@ -1167,7 +1167,10 @@
       "poNumber": "PO Number",
       "invoiceNumber": "Invoice Number",
       "remark": "Remark"
-    }
+    },
+    "purchasePriceBaht": "Purchase Price (THB)",
+    "purchaseDocumentAmountBaht": "Total amount (THB)",
+    "purchaseDocumentDate": "Document Date"
   },
   "company": {
     "title": "Companies",

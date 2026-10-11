@@ -1167,7 +1167,10 @@
       "poNumber": "เลข PO",
       "invoiceNumber": "เลขใบกำกับ",
       "remark": "หมายเหตุ"
-    }
+    },
+    "purchasePriceBaht": "ราคาซื้อ (บาท)",
+    "purchaseDocumentAmountBaht": "ยอดรวม (บาท)",
+    "purchaseDocumentDate": "วันที่เอกสาร"
   },
   "company": {
     "title": "บริษัท",

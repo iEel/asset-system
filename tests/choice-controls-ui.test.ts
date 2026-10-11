@@ -96,3 +96,17 @@ test("the disposal asset picker marks options with the 16px box of the menu chec
   assert.match(source, /<FieldLabel htmlFor=\{showSearch \? inputId : undefined\} required>/)
   assert.match(source, /<Input id=\{inputId\}[\s\S]*?role="combobox"/)
 })
+
+test("the asset form's photo types are one radio group of chips with a legend and a hint (T5)", () => {
+  const source = readFileSync("src/components/assets/asset-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /const photoLabelRadioName = useId\(\)/)
+  assert.match(
+    source,
+    /<fieldset className="min-w-0" aria-describedby=\{photoLabelHintId\}>\n\s*<legend className=\{fieldLabelClasses\}>\{t\("selectPhotoType"\)\}<\/legend>\n\s*<p id=\{photoLabelHintId\} className="mt-1 text-meta text-faint-foreground">/,
+  )
+  assert.match(
+    source,
+    /<ChoiceChip\n\s*key=\{item\}\n\s*type="radio"\n\s*name=\{photoLabelRadioName\}\n\s*checked=\{isSelected\}\n\s*onChange=\{\(\) => setPhotoLabel\(item\)\}/,
+  )
+  assert.doesNotMatch(source, /onClick=\{\(\) => setPhotoLabel\(item\)\}/, "the chips are radio inputs now, not buttons whose state no screen reader hears")
+})

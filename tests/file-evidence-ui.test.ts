@@ -169,3 +169,13 @@ test("the audit check sheet says when its photos upload, before any is chosen (s
     assert.equal(auditScan.dropAuditPhotoSelected, undefined, `${locale}.dropAuditPhotoSelected is deleted`)
   }
 })
+
+test("the asset form's evidence boxes lose their tinted icon squares and the repeated photo title (call sites 7 and 8)", () => {
+  const source = readFileSync("src/components/assets/asset-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.equal(source.match(/rounded-md bg-primary-soft text-primary/g)?.length ?? 0, 0)
+  assert.doesNotMatch(source, /\b(?:Camera|FileText)\b/)
+  assert.equal(source.match(/\{t\("initialAssetPhotos"\)\}/g)?.length, 1, "the photo section title shows once, as its Section heading")
+  // The two drop zones themselves do not change.
+  assert.match(source, /<FileDropzone\n\s*file=\{selectedPurchaseFile\}/)
+  assert.match(source, /<FileDropzone\n\s*file=\{selectedAssetPhotoFile\}/)
+})

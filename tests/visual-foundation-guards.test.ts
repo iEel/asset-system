@@ -264,7 +264,6 @@ test("R2 only floating layers, camera controls and paper previews cast a shadow"
     "src/components/assets/asset-label-print.tsx": 1, // label sheet preview
     "src/components/asset-operations/operation-document-print.tsx": 1, // A4 page preview
     "src/components/admin/system-settings-form.tsx": 2, // label preview; sticky save bar shadow-lg → StickyFormFooter (2C)
-    "src/components/assets/asset-form.tsx": 1, // sticky save bar shadow-lg → StickyFormFooter (2C)
     "src/components/layout/mobile-field-navigation.tsx": 1, // round scan button shadow-md, kept since phase 1
     "src/app/[locale]/(dashboard)/admin/roles/page.tsx": 1, // floating add button shadow-lg (2D)
     "src/app/[locale]/(dashboard)/admin/users/page.tsx": 1, // floating add button shadow-lg (2D)

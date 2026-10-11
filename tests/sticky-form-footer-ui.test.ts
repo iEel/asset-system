@@ -26,3 +26,18 @@ test("StickyFormFooter is flat, keeps the DOM button order and blends into the c
   // Full-bleed sticky bars use the canvas fill (DESIGN.md §2, visual-foundation-guards "full-bleed bars blend into the canvas").
   assert.doesNotMatch(source, /\bbg-surface\b|\bshadow-|\bfixed\b|backdrop-blur|\brounded-|flex-col-reverse/)
 })
+
+test("the asset form ends its <form> with the sticky footer: cancel first, save last (K8, K14)", () => {
+  const source = readFileSync("src/components/assets/asset-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  const formStart = source.indexOf("<form onSubmit={handleSubmit}")
+  const footerStart = source.indexOf("<StickyFormFooter>")
+  const footerEnd = source.indexOf("</StickyFormFooter>")
+  const formEnd = source.indexOf("</form>", footerEnd)
+  assert.ok(formStart !== -1 && formStart < footerStart && footerStart < footerEnd && footerEnd < formEnd, "the footer sits inside the asset <form>")
+  assert.match(source.slice(footerEnd, formEnd), /^<\/StickyFormFooter>\s*$/, "the footer is the last child of the form, so Enter and type=submit still work")
+  const footer = source.slice(footerStart, footerEnd)
+  assert.match(footer, /<Link href=\{backHref\} className=\{buttonVariants\(\{ variant: "outline" \}\)\}>/)
+  assert.ok(footer.indexOf('variant: "outline"') < footer.indexOf('type="submit"'), "cancel comes before save in the DOM (K8)")
+  assert.match(footer, /busy=\{saving\}/)
+  assert.doesNotMatch(source, /shadow-lg|fixed bottom-|backdrop-blur/)
+})

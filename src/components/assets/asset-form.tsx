@@ -1,14 +1,23 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useId, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, ArrowLeft, Camera, Code2, Copy, FileText, Loader2, Plus, Save, Trash2 } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Code2, Copy, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { linkVariants } from "@/components/ui/button-variants"
+import { ChoiceChip } from "@/components/ui/choice-card"
+import { Field } from "@/components/ui/field"
+import { checkboxVariants, fieldLabelClasses } from "@/components/ui/field-variants"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
+import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
+import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
@@ -16,6 +25,7 @@ import { resolveModelIdForScope } from "@/lib/asset-model-selection"
 import { assetOwnershipTypes, defaultAssetOwnershipType, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { optionMatchesOrganizationScope } from "@/lib/organization-option-filter"
 import { formatFileSize } from "@/lib/uploads"
+import { cn } from "@/lib/utils"
 
 type Option = {
   id: string
@@ -210,6 +220,9 @@ export function AssetForm({
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
   const apiError = useApiError()
+  // The photo-type chips are one radio group (T5): one name for the group and one id for its hint.
+  const photoLabelRadioName = useId()
+  const photoLabelHintId = useId()
   const [values, setValues] = useState<AssetFormValues>(asset ?? emptyAsset)
   const [customFieldRows, setCustomFieldRows] = useState<CustomFieldRow[]>(() => parseCustomFieldRows(asset?.customFieldsJson))
   const [installAfterCreate, setInstallAfterCreate] = useState({
@@ -835,52 +848,48 @@ export function AssetForm({
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="space-y-5 pb-36 sm:pb-24">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <Section title={t("basicInfo")}>
-          <Field label={t("assetTag")}>
-            <input
+          <Field label={t("assetTag")} error={duplicateState.assetTagExists ? t("duplicateAssetTag") : undefined}>
+            <Input
               value={values.assetTag ?? ""}
               onChange={(event) => setField("assetTag", event.target.value)}
               maxLength={50}
               placeholder={t("autoTagHint")}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
-            {duplicateState.assetTagExists && (
-              <p className="mt-1.5 text-xs font-medium text-danger">{t("duplicateAssetTag")}</p>
-            )}
           </Field>
-          <Field label={t("assetName")} required>
-            <input
-              value={values.name}
-              onChange={(event) => {
-                setNameManuallyEdited(true)
-                setField("name", event.target.value)
-              }}
-              maxLength={200}
-              required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-            />
-            <p className="mt-1.5 text-xs text-muted-foreground">{t("assetNameHelp")}</p>
+          <div className="grid min-w-0 gap-2">
+            <Field label={t("assetName")} required hint={t("assetNameHelp")}>
+              <Input
+                value={values.name}
+                onChange={(event) => {
+                  setNameManuallyEdited(true)
+                  setField("name", event.target.value)
+                }}
+                maxLength={200}
+                required
+              />
+            </Field>
             {suggestedAssetName && (
-              <div className="mt-2 flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-md bg-accent px-2.5 py-1 text-xs text-muted-foreground">
                   {t("suggestedAssetName")}: <span className="font-medium text-foreground">{suggestedAssetName}</span>
                 </span>
                 {values.name !== suggestedAssetName && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => {
                       setNameManuallyEdited(false)
                       setField("name", suggestedAssetName)
                     }}
-                    className="inline-flex h-8 items-center rounded-md border border-border px-2.5 text-xs font-medium transition-colors hover:bg-accent"
                   >
                     {t("useSuggestedName")}
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
-          </Field>
+          </div>
           <SelectField label={t("category")} value={values.categoryId} required onChange={handleCategoryChange}>
             <option value="">{t("selectCategory")}</option>
             {categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
@@ -893,7 +902,7 @@ export function AssetForm({
             <option value="">{t("selectModel")}</option>
             {filteredModels.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
           </SelectField>
-          <Field label={isSoftwareLicense ? t("licenseKey") : t("serialNumber")}>
+          <Field label={isSoftwareLicense ? t("licenseKey") : t("serialNumber")} error={duplicateState.serialNumberExists ? t("duplicateSerialNumber") : undefined}>
             <ScannerTextInput
               value={values.serialNumber ?? ""}
               onChange={(value) => setField("serialNumber", value)}
@@ -914,35 +923,25 @@ export function AssetForm({
                 scanned: t("serialScanned"),
               }}
             />
-            {duplicateState.serialNumberExists && (
-              <p className="mt-1.5 text-xs font-medium text-danger">{t("duplicateSerialNumber")}</p>
-            )}
           </Field>
         </Section>
 
         <Section title={t("ownership")}>
           <div className="md:col-span-2">
-            <SelectField label={t("ownershipType")} value={ownershipType} required onChange={handleOwnershipTypeChange}>
+            <SelectField label={t("ownershipType")} value={ownershipType} required hint={t(`ownershipType_${ownershipType}_help`)} onChange={handleOwnershipTypeChange}>
               {assetOwnershipTypes.map((type) => (
                 <option key={type} value={type}>{t(`ownershipType_${type}`)}</option>
               ))}
             </SelectField>
-            <p className="mt-1.5 text-xs text-muted-foreground">{t(`ownershipType_${ownershipType}_help`)}</p>
           </div>
-          <div>
-            <SelectField label={t("assetOwnerCompany")} value={values.companyId} required onChange={handleCompanyChange}>
-              <option value="">{t("selectCompany")}</option>
-              {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
-            </SelectField>
-            <p className="mt-1.5 text-xs text-muted-foreground">{t("assetOwnerCompanyHelp")}</p>
-          </div>
-          <div>
-            <SelectField label={t("assetOwnerBranch")} value={values.branchId} required onChange={handleBranchChange}>
-              <option value="">{t("selectBranch")}</option>
-              {filteredBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
-            </SelectField>
-            <p className="mt-1.5 text-xs text-muted-foreground">{t("assetOwnerBranchHelp")}</p>
-          </div>
+          <SelectField label={t("assetOwnerCompany")} value={values.companyId} required hint={t("assetOwnerCompanyHelp")} onChange={handleCompanyChange}>
+            <option value="">{t("selectCompany")}</option>
+            {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
+          </SelectField>
+          <SelectField label={t("assetOwnerBranch")} value={values.branchId} required hint={t("assetOwnerBranchHelp")} onChange={handleBranchChange}>
+            <option value="">{t("selectBranch")}</option>
+            {filteredBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
+          </SelectField>
           <SelectField label={t("department")} value={values.departmentId ?? ""} required={ownershipType !== "personal" && !isSoftwareLicense} onChange={(value) => setField("departmentId", value)}>
             <option value="">{t("selectDepartment")}</option>
             {filteredDepartments.map((department) => <option key={department.id} value={department.id}>{department.label}</option>)}
@@ -958,12 +957,12 @@ export function AssetForm({
                 emptyLabel={tCommon("searchSelectNoResults")}
                 onChange={(value) => setField("custodianId", value)}
               />
-              <label className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
+              <label className="mt-2 flex min-h-11 items-start gap-2 py-2 text-xs text-muted-foreground">
                 <input
                   type="checkbox"
                   checked={allowCrossCompanyCustodian}
                   onChange={(event) => handleCrossCompanyCustodianToggle(event.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-ring"
+                  className={cn(checkboxVariants(), "mt-0.5")}
                 />
                 <span>
                   <span className="block font-medium text-foreground">{t("allowCrossCompanyCustodian")}</span>
@@ -985,23 +984,21 @@ export function AssetForm({
         {isSoftwareLicense && (
           <Section title={t("licenseManagement")}>
             <Field label={t("licenseTotalSeats")} required>
-              <input
+              <Input
                 type="number"
                 min="0"
                 step="1"
                 value={values.licenseTotalSeats ?? ""}
                 onChange={(event) => setField("licenseTotalSeats", event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
             <Field label={t("licenseUsedSeats")}>
-              <input
+              <Input
                 type="number"
                 min="0"
                 step="1"
                 value={values.licenseUsedSeats ?? ""}
                 onChange={(event) => setField("licenseUsedSeats", event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
             <SelectField
@@ -1023,12 +1020,12 @@ export function AssetForm({
 
         <Section title={t("locationCustodian")}>
           <div className="md:col-span-2">
-            <label className="flex items-start gap-2 text-xs text-muted-foreground">
+            <label className="flex min-h-11 items-start gap-2 py-2 text-xs text-muted-foreground">
               <input
                 type="checkbox"
                 checked={allowCrossBranchLocation}
                 onChange={(event) => handleCrossBranchLocationToggle(event.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-ring"
+                className={cn(checkboxVariants(), "mt-0.5")}
               />
               <span>
                 <span className="block font-medium text-foreground">{t("allowCrossBranchLocation")}</span>
@@ -1048,17 +1045,12 @@ export function AssetForm({
             {filteredLocations.map((location) => <option key={location.id} value={location.id}>{getLocationOptionLabel(location, allowCrossBranchLocation, branches)}</option>)}
           </SelectField>
           <div>
-            <AssetStateFieldLabel label={t("status")} required help={assetStatusHelp} />
-            <select
-              value={values.statusId}
-              required
-              onChange={(event) => setField("statusId", event.target.value)}
-              className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0"
-            >
-              <option value="">{t("selectStatus")}</option>
-              {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
-            </select>
-            {selectedStatus?.description ? <p className="mt-1 text-xs text-muted-foreground">{selectedStatus.description}</p> : null}
+            <Field label={t("status")} required labelAction={<AssetStateHelpPopover {...assetStatusHelp} />} hint={selectedStatus?.description}>
+              <NativeSelect value={values.statusId} required onChange={(event) => setField("statusId", event.target.value)}>
+                <option value="">{t("selectStatus")}</option>
+                {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
+              </NativeSelect>
+            </Field>
             {isProtectedStatusChange && (
               <div className="mt-2 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-xs text-warning">
                 <div className="flex gap-2">
@@ -1067,7 +1059,7 @@ export function AssetForm({
                     <p className="font-medium">{t("protectedStatusEditBlocked")}</p>
                     <p className="mt-1 leading-relaxed">{protectedStatusHelp}</p>
                     {isSelectedRepairStatus && repairWorkflowHref && (
-                      <Link href={repairWorkflowHref} className="mt-2 inline-flex font-medium underline underline-offset-2">
+                      <Link href={repairWorkflowHref} className={cn(linkVariants({ size: "inherit" }), "mt-2 inline-flex decoration-current")}>
                         {t("openRepairWorkflow")}
                       </Link>
                     )}
@@ -1076,23 +1068,17 @@ export function AssetForm({
               </div>
             )}
           </div>
-          <div>
-            <AssetStateFieldLabel label={t("condition")} required help={assetConditionHelp} />
-            <select
-              value={values.conditionId}
-              required
-              onChange={(event) => setField("conditionId", event.target.value)}
-              className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0"
-            >
+          <Field
+            label={t("condition")}
+            required
+            labelAction={<AssetStateHelpPopover {...assetConditionHelp} />}
+            hint={conditions.find((condition) => condition.id === values.conditionId)?.description}
+          >
+            <NativeSelect value={values.conditionId} required onChange={(event) => setField("conditionId", event.target.value)}>
               <option value="">{t("selectCondition")}</option>
               {conditions.map((condition) => <option key={condition.id} value={condition.id}>{condition.label}</option>)}
-            </select>
-            {conditions.find((condition) => condition.id === values.conditionId)?.description ? (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {conditions.find((condition) => condition.id === values.conditionId)?.description}
-              </p>
-            ) : null}
-          </div>
+            </NativeSelect>
+          </Field>
         </Section>
 
         {!isEdit && (
@@ -1113,32 +1099,29 @@ export function AssetForm({
               ))}
             </SelectField>
             <Field label={t("componentRole")} required={Boolean(installAfterCreate.parentAssetId)}>
-              <input
+              <Input
                 value={installAfterCreate.componentRole}
                 onChange={(event) => setInstallField("componentRole", event.target.value)}
                 maxLength={100}
                 placeholder="Harddisk"
                 disabled={!installAfterCreate.parentAssetId}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-60"
               />
             </Field>
             <Field label={t("slotNo")}>
-              <input
+              <Input
                 value={installAfterCreate.slotNo}
                 onChange={(event) => setInstallField("slotNo", event.target.value)}
                 maxLength={50}
                 placeholder="Slot 1"
                 disabled={!installAfterCreate.parentAssetId}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-60"
               />
             </Field>
             <Field label={t("reason")}>
-              <input
+              <Input
                 value={installAfterCreate.reason}
                 onChange={(event) => setInstallField("reason", event.target.value)}
                 maxLength={500}
                 disabled={!installAfterCreate.parentAssetId}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-60"
               />
             </Field>
           </Section>
@@ -1146,40 +1129,35 @@ export function AssetForm({
 
         <Section title={t("purchaseWarranty")}>
           <Field label={t("purchaseDate")}>
-            <input type="date" value={values.purchaseDate ?? ""} onChange={(event) => setField("purchaseDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+            <Input type="date" value={values.purchaseDate ?? ""} onChange={(event) => setField("purchaseDate", event.target.value)} />
           </Field>
-          <Field label={t("purchasePrice")}>
-            <input type="number" min="0" step="0.01" value={values.purchasePrice ?? ""} onChange={(event) => setField("purchasePrice", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+          <Field label={t("purchasePriceBaht")}>
+            <Input type="number" min="0" step="0.01" inputMode="decimal" value={values.purchasePrice ?? ""} onChange={(event) => setField("purchasePrice", event.target.value)} />
           </Field>
           <SelectField label={t("supplier")} value={values.supplierId ?? ""} onChange={(value) => setField("supplierId", value)}>
             <option value="">{t("selectSupplier")}</option>
             {suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.label}</option>)}
           </SelectField>
           <Field label={t("warrantyStart")}>
-            <input type="date" value={values.warrantyStartDate ?? ""} onChange={(event) => setField("warrantyStartDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+            <Input type="date" value={values.warrantyStartDate ?? ""} onChange={(event) => setField("warrantyStartDate", event.target.value)} />
           </Field>
           <Field label={t("warrantyEnd")}>
-            <input type="date" value={values.warrantyEndDate ?? ""} onChange={(event) => setField("warrantyEndDate", event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+            <Input type="date" value={values.warrantyEndDate ?? ""} onChange={(event) => setField("warrantyEndDate", event.target.value)} />
           </Field>
           <Field label={t("fixedAssetCode")}>
-            <input value={values.fixedAssetCode ?? ""} onChange={(event) => setField("fixedAssetCode", event.target.value)} maxLength={50} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+            <Input value={values.fixedAssetCode ?? ""} onChange={(event) => setField("fixedAssetCode", event.target.value)} maxLength={50} />
           </Field>
           <Field label={t("poNumber")}>
-            <input value={values.poNumber ?? ""} onChange={(event) => setField("poNumber", event.target.value)} maxLength={50} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+            <Input value={values.poNumber ?? ""} onChange={(event) => setField("poNumber", event.target.value)} maxLength={50} />
           </Field>
           <Field label={t("invoiceNumber")}>
-            <input value={values.invoiceNumber ?? ""} onChange={(event) => setField("invoiceNumber", event.target.value)} maxLength={50} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+            <Input value={values.invoiceNumber ?? ""} onChange={(event) => setField("invoiceNumber", event.target.value)} maxLength={50} />
           </Field>
           <div className="md:col-span-2">
             <div className="rounded-md border border-border bg-background p-4">
-              <div className="mb-3 flex items-start gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">
-                  <FileText className="h-4 w-4" />
-                </span>
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">{t("purchaseDocuments")}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{t("purchaseDocumentsHelp")}</p>
-                </div>
+              <div className="mb-3">
+                <h3 className="text-sm font-semibold text-foreground">{t("purchaseDocuments")}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{t("purchaseDocumentsHelp")}</p>
               </div>
 
               <div className="mb-4 space-y-2">
@@ -1196,7 +1174,7 @@ export function AssetForm({
                           type="checkbox"
                           checked={selectedPurchaseDocumentIds.includes(document.id)}
                           onChange={() => togglePurchaseDocument(document.id)}
-                          className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-ring"
+                          className={cn(checkboxVariants(), "mt-0.5")}
                         />
                         <span className="min-w-0">
                           <span className="block truncate font-medium text-foreground">
@@ -1215,37 +1193,32 @@ export function AssetForm({
               <div className="border-t border-border pt-4">
                 <div className="mb-3 text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("createPurchaseDocument")}</div>
                 <div className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-4">
-                  <select
-                    value={purchaseDocumentType}
-                    onChange={(event) => setPurchaseDocumentType(event.target.value as (typeof purchaseDocumentTypes)[number])}
-                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                  >
-                    {purchaseDocumentTypes.map((type) => (
-                      <option key={type} value={type}>{t(`purchaseDocumentTypes.${type}`)}</option>
-                    ))}
-                  </select>
-                  <input
-                    value={purchaseDocumentNo}
-                    onChange={(event) => setPurchaseDocumentNo(event.target.value)}
-                    maxLength={100}
-                    placeholder={t("purchaseDocumentNo")}
-                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                  />
-                  <input
-                    type="date"
-                    value={purchaseDocumentDate}
-                    onChange={(event) => setPurchaseDocumentDate(event.target.value)}
-                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={purchaseDocumentTotalAmount}
-                    onChange={(event) => setPurchaseDocumentTotalAmount(event.target.value)}
-                    placeholder={t("purchaseDocumentAmount")}
-                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                  />
+                  <Field label={t("documentType")}>
+                    <NativeSelect
+                      value={purchaseDocumentType}
+                      onChange={(event) => setPurchaseDocumentType(event.target.value as (typeof purchaseDocumentTypes)[number])}
+                    >
+                      {purchaseDocumentTypes.map((type) => (
+                        <option key={type} value={type}>{t(`purchaseDocumentTypes.${type}`)}</option>
+                      ))}
+                    </NativeSelect>
+                  </Field>
+                  <Field label={t("purchaseDocumentNo")}>
+                    <Input value={purchaseDocumentNo} onChange={(event) => setPurchaseDocumentNo(event.target.value)} maxLength={100} />
+                  </Field>
+                  <Field label={t("purchaseDocumentDate")}>
+                    <Input type="date" value={purchaseDocumentDate} onChange={(event) => setPurchaseDocumentDate(event.target.value)} />
+                  </Field>
+                  <Field label={t("purchaseDocumentAmountBaht")}>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={purchaseDocumentTotalAmount}
+                      onChange={(event) => setPurchaseDocumentTotalAmount(event.target.value)}
+                    />
+                  </Field>
                 </div>
                 <FileDropzone
                   file={selectedPurchaseFile}
@@ -1258,15 +1231,10 @@ export function AssetForm({
                 />
               </div>
 
-              <button
-                type="button"
-                onClick={addPurchaseDocument}
-                disabled={saving}
-                className="mt-3 inline-flex h-9 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
-              >
-                <Plus className="h-4 w-4" />
+              <Button variant="outline" size="md" className="mt-3" onClick={addPurchaseDocument} disabled={saving}>
+                <Plus aria-hidden="true" />
                 {t("addPurchaseDocument")}
-              </button>
+              </Button>
 
               {newPurchaseDocuments.length > 0 && (
                 <div className="mt-4 space-y-2">
@@ -1278,15 +1246,16 @@ export function AssetForm({
                         </div>
                         <div className="mt-0.5 text-xs text-muted-foreground">{formatFileSize(document.file.size)}</div>
                       </div>
-                      <button
-                        type="button"
+                      <Button
+                        variant="danger"
+                        size="icon-sm"
+                        className="shrink-0"
                         onClick={() => removePurchaseDocument(document.id)}
-                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-8 sm:w-8"
                         aria-label={t("removePurchaseDocument")}
                         title={t("removePurchaseDocument")}
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                        <Trash2 aria-hidden="true" />
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -1297,50 +1266,39 @@ export function AssetForm({
 
         <Section title={t("initialAssetPhotos")}>
           <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
-            <div className="mb-3 flex items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">
-                <Camera className="h-5 w-5" />
-              </span>
-              <div>
-                <div className="text-sm font-semibold text-foreground">{t("initialAssetPhotos")}</div>
-                <p className="mt-1 text-sm text-muted-foreground">{t("initialAssetPhotosHelp")}</p>
-              </div>
-            </div>
+            <p className="mb-3 text-sm text-muted-foreground">{t("initialAssetPhotosHelp")}</p>
 
             {selectedPhotoChecklist.length > 0 ? (
               <div className="mb-3 rounded-md border border-border bg-surface p-3">
-                <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-sm font-semibold text-foreground">{t("selectPhotoType")}</div>
-                  <div className="text-xs text-muted-foreground">
+                <fieldset className="min-w-0" aria-describedby={photoLabelHintId}>
+                  <legend className={fieldLabelClasses}>{t("selectPhotoType")}</legend>
+                  <p id={photoLabelHintId} className="mt-1 text-meta text-faint-foreground">
                     {t("autoPhotoLabelHint", { label: effectivePhotoLabel || t("generalPhoto") })}
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {selectedPhotoChecklist.map((item) => {
-                    const isSelected = effectivePhotoLabel === item
-                    const isQueued = queuedPhotoLabels.has(item)
-                    const alreadyExists = existingPhotoLabels.has(item)
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {selectedPhotoChecklist.map((item) => {
+                      const isSelected = effectivePhotoLabel === item
+                      const isQueued = queuedPhotoLabels.has(item)
+                      const alreadyExists = existingPhotoLabels.has(item)
 
-                    return (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => setPhotoLabel(item)}
-                        className={[
-                          "inline-flex min-h-9 items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors",
-                          isSelected
-                            ? "border-primary bg-primary-soft text-primary"
-                            : "border-border bg-background text-foreground hover:bg-accent",
-                        ].join(" ")}
-                        >
-                        <span>{item}</span>
-                        <span className={alreadyExists || isQueued ? "text-xs text-success" : "text-xs text-muted-foreground"}>
-                          {alreadyExists ? t("photoChecklistDone") : isQueued ? t("photoChecklistQueued") : t("photoChecklistPending")}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
+                      return (
+                        <ChoiceChip
+                          key={item}
+                          type="radio"
+                          name={photoLabelRadioName}
+                          checked={isSelected}
+                          onChange={() => setPhotoLabel(item)}
+                          label={item}
+                          detail={
+                            <span className={alreadyExists || isQueued ? "text-success" : undefined}>
+                              {alreadyExists ? t("photoChecklistDone") : isQueued ? t("photoChecklistQueued") : t("photoChecklistPending")}
+                            </span>
+                          }
+                        />
+                      )
+                    })}
+                  </div>
+                </fieldset>
               </div>
             ) : (
               <p className="mb-3 rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
@@ -1392,15 +1350,10 @@ export function AssetForm({
                 </div>
               </div>
             )}
-            <button
-              type="button"
-              onClick={addAssetPhoto}
-              disabled={saving}
-              className="mt-3 inline-flex h-9 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
-            >
-              <Plus className="h-4 w-4" />
+            <Button variant="outline" size="md" className="mt-3" onClick={addAssetPhoto} disabled={saving}>
+              <Plus aria-hidden="true" />
               {effectivePhotoLabel ? t("addAssetPhotoWithLabel", { label: effectivePhotoLabel }) : t("addAssetPhoto")}
-            </button>
+            </Button>
 
             {newAssetPhotos.length > 0 && (
               <div className="mt-4 space-y-2">
@@ -1412,15 +1365,16 @@ export function AssetForm({
                       </div>
                       <div className="mt-0.5 text-xs text-muted-foreground">{formatFileSize(photo.file.size)}</div>
                     </div>
-                    <button
-                      type="button"
+                    <Button
+                      variant="danger"
+                      size="icon-sm"
+                      className="shrink-0"
                       onClick={() => removeAssetPhoto(photo.id)}
-                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-8 sm:w-8"
                       aria-label={t("removeAssetPhoto")}
                       title={t("removeAssetPhoto")}
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                      <Trash2 aria-hidden="true" />
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -1431,7 +1385,7 @@ export function AssetForm({
         <Section title={t("customFields")}>
           <div className="md:col-span-2">
             <Field label={t("remark")}>
-              <textarea value={values.remark ?? ""} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+              <Textarea value={values.remark ?? ""} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28" />
             </Field>
           </div>
           <div className="md:col-span-2">
@@ -1441,14 +1395,10 @@ export function AssetForm({
                   <h3 className="text-sm font-semibold text-foreground">{t("customFieldsStructuredTitle")}</h3>
                   <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{t("customFieldsStructuredHelp")}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowRawJson((current) => !current)}
-                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent"
-                >
-                  <Code2 className="h-4 w-4" />
+                <Button variant="outline" size="md" onClick={() => setShowRawJson((current) => !current)}>
+                  <Code2 aria-hidden="true" />
                   {showRawJson ? t("hideJson") : t("showJson")}
-                </button>
+                </Button>
               </div>
 
               {selectedCustomFieldDefinitions.length > 0 ? (
@@ -1480,41 +1430,36 @@ export function AssetForm({
               </div>
 
               {showRawJson && (
-                <Field label={t("customFieldsJson")}>
-                  <textarea
+                <Field label={t("customFieldsJson")} hint={t("customFieldsJsonHelp")}>
+                  <Textarea
                     value={values.customFieldsJson ?? ""}
                     onChange={(event) => handleRawJsonChange(event.target.value)}
                     rows={5}
-                    className="min-h-32 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                    className="min-h-32 font-mono"
                   />
-                  <p className="mt-1.5 text-xs text-muted-foreground">{t("customFieldsJsonHelp")}</p>
                 </Field>
               )}
             </div>
           </div>
           <label className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
-            <input type="checkbox" checked={values.isActive} onChange={(event) => setField("isActive", event.target.checked)} className="h-4 w-4 rounded border-border text-primary focus:ring-ring" />
+            <input type="checkbox" checked={values.isActive} onChange={(event) => setField("isActive", event.target.checked)} className={checkboxVariants()} />
             {tCommon("active")}
           </label>
         </Section>
 
-        <div className="fixed bottom-3 left-4 right-4 z-40 lg:left-[calc(16rem+1.5rem)] lg:right-6">
-          <div className="mx-auto max-w-6xl rounded-lg border border-border bg-surface/95 p-3 shadow-lg backdrop-blur">
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
-              <Link href={backHref} className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:w-auto">
-                {tCommon("cancel")}
-              </Link>
-              <button
-                type="submit"
-                disabled={saving || isProtectedStatusChange || duplicateState.checking || duplicateState.assetTagExists || duplicateState.serialNumberExists}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:w-auto"
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {tCommon("save")}
-              </button>
-            </div>
-          </div>
-        </div>
+        <StickyFormFooter>
+          <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
+            {tCommon("cancel")}
+          </Link>
+          <Button
+            type="submit"
+            busy={saving}
+            disabled={isProtectedStatusChange || duplicateState.checking || duplicateState.assetTagExists || duplicateState.serialNumberExists}
+          >
+            <Save aria-hidden="true" />
+            {tCommon("save")}
+          </Button>
+        </StickyFormFooter>
       </form>
     </div>
   )
@@ -1529,61 +1474,28 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
-      {children}
-    </label>
-  )
-}
-
-function AssetStateFieldLabel({
-  label,
-  required,
-  help,
-}: {
-  label: string
-  required?: boolean
-  help: { title: string; description: string; items: string[] }
-}) {
-  return (
-    <div className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-foreground">
-      <span>
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
-      <AssetStateHelpPopover {...help} />
-    </div>
-  )
-}
-
+// Keeps the name and props it had before 2C, so its 12 call sites stay as they are. hint carries the help line
+// that used to sit in a <p> under 3 of them (spec 2C section 4.3 F6).
 function SelectField({
   label,
   value,
   required,
+  hint,
   onChange,
   children,
 }: {
   label: string
   value: string
   required?: boolean
+  hint?: React.ReactNode
   onChange: (value: string) => void
   children: React.ReactNode
 }) {
   return (
-    <Field label={label} required={required}>
-      <select
-        value={value}
-        required={required}
-        onChange={(event) => onChange(event.target.value)}
-        className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0"
-      >
+    <Field label={label} required={required} hint={hint}>
+      <NativeSelect value={value} required={required} onChange={(event) => onChange(event.target.value)}>
         {children}
-      </select>
+      </NativeSelect>
     </Field>
   )
 }
@@ -1636,41 +1548,32 @@ function CustomFieldRowsEditor({
       ) : (
         <div className="space-y-2">
           {rows.map((row) => (
-            <div key={row.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)_2.5rem]">
-              <input
-                value={row.key}
-                onChange={(event) => updateRow(row.id, "key", event.target.value)}
-                placeholder={labels.key}
-                className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0"
-              />
-              <input
-                value={row.value}
-                onChange={(event) => updateRow(row.id, "value", event.target.value)}
-                placeholder={labels.value}
-                className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0"
-              />
-              <button
-                type="button"
+            <div key={row.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)_auto]">
+              <Field label={labels.key} hideLabel>
+                <Input value={row.key} onChange={(event) => updateRow(row.id, "key", event.target.value)} placeholder={labels.key} />
+              </Field>
+              <Field label={labels.value} hideLabel>
+                <Input value={row.value} onChange={(event) => updateRow(row.id, "value", event.target.value)} placeholder={labels.value} />
+              </Field>
+              <Button
+                variant="outline"
+                size="icon"
+                className="justify-self-start"
                 onClick={() => removeRow(row.id)}
                 aria-label={labels.remove}
                 title={labels.remove}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-danger-soft hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-10 sm:w-10"
               >
-                <Trash2 className="h-4 w-4" />
-              </button>
+                <Trash2 aria-hidden="true" />
+              </Button>
             </div>
           ))}
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => onChange([...rows, createCustomFieldRow()])}
-        className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-9 sm:min-h-0"
-      >
-        <Plus className="h-4 w-4" />
+      <Button variant="outline" size="md" onClick={() => onChange([...rows, createCustomFieldRow()])}>
+        <Plus aria-hidden="true" />
         {labels.add}
-      </button>
+      </Button>
     </div>
   )
 }
@@ -1712,13 +1615,6 @@ function TemplateField({
   value: string
   onChange: (value: string) => void
 }) {
-  const fieldLabel = (
-    <span className="mb-1.5 block text-sm font-medium text-foreground">
-      {label}
-      {definition.isRequired && <span className="ml-1 text-danger">*</span>}
-    </span>
-  )
-
   if (definition.fieldType === "boolean") {
     return (
       <label className="flex min-h-10 items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
@@ -1726,7 +1622,7 @@ function TemplateField({
           type="checkbox"
           checked={value === "true"}
           onChange={(event) => onChange(event.target.checked ? "true" : "false")}
-          className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
+          className={checkboxVariants()}
         />
         {label}
       </label>
@@ -1735,34 +1631,26 @@ function TemplateField({
 
   if (definition.fieldType === "select") {
     return (
-      <label className="block">
-        {fieldLabel}
-        <select
-          value={value}
-          required={definition.isRequired}
-          onChange={(event) => onChange(event.target.value)}
-          className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-        >
+      <Field label={label} required={definition.isRequired}>
+        <NativeSelect value={value} required={definition.isRequired} onChange={(event) => onChange(event.target.value)}>
           <option value=""></option>
           {definition.options.map((option) => (
             <option key={option} value={option}>{option}</option>
           ))}
-        </select>
-      </label>
+        </NativeSelect>
+      </Field>
     )
   }
 
   return (
-    <label className="block">
-      {fieldLabel}
-      <input
+    <Field label={label} required={definition.isRequired}>
+      <Input
         type={definition.fieldType === "number" ? "number" : definition.fieldType === "date" ? "date" : "text"}
         value={value}
         required={definition.isRequired}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
       />
-    </label>
+    </Field>
   )
 }
 
