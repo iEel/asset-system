@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
+import { Segmented } from "@/components/ui/segmented"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
 import { getAuditItemBadge, type AuditItemBadge, type AuditScanItemRow, type AuditScanListTab } from "@/lib/audit-scan-session"
 import { cn } from "@/lib/utils"
@@ -69,23 +70,22 @@ export function AuditScanRoomList({
 
   return (
     <section data-audit-scan-room-list aria-label={t("roomListLabel")}>
-      <div role="group" aria-label={t("roomListTabs")} className="flex gap-0.5 rounded-md border border-border bg-surface p-0.5">
-        {(["pending", "checked", "all"] as const).map((key) => (
-          <button
-            key={key}
-            type="button"
-            aria-pressed={tab === key}
-            onClick={() => onTabChange(key)}
-            className={cn(
-              "flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-control px-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-9",
-              tab === key ? "bg-primary-soft font-semibold text-primary-hover" : "text-muted-foreground hover:bg-background hover:text-foreground",
-            )}
-          >
-            {t(tabLabelKey[key])}
-            <span className="tabular-nums">{counts[key]}</span>
-          </button>
-        ))}
-      </div>
+      <Segmented
+        aria-label={t("roomListTabs")}
+        value={tab}
+        onValueChange={onTabChange}
+        size="md"
+        fill
+        options={(["pending", "checked", "all"] as const).map((key) => ({
+          value: key,
+          label: (
+            <>
+              {t(tabLabelKey[key])}
+              <span className="tabular-nums">{counts[key]}</span>
+            </>
+          ),
+        }))}
+      />
 
       {rows.length === 0 ? (
         <p className="px-2 py-6 text-center text-sm text-muted-foreground">{t(emptyLabelKey[tab])}</p>

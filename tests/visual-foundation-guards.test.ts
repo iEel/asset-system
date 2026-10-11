@@ -272,21 +272,21 @@ test("R2 only floating layers, camera controls and paper previews cast a shadow"
   })
 })
 
-test("the two segmented controls mark the chosen option with primary-soft and 6px corners, not a shadow", () => {
+test("the shared segmented control marks the chosen option with primary-soft and 6px corners, not a shadow", () => {
   // Mockup .seg (base.css): white frame with a 1px line, 8px corners, 2px padding and gap; buttons 6px;
   // the pressed one is primary-soft with primary-hover text at weight 600; the others hover to the subtle fill.
   assert.match(globals(), /--radius-control: 6px;/, "rounded-control needs its token, or Tailwind drops the class without an error")
 
-  const roomList = read("src/components/audit/audit-scan-room-list.tsx")
-  assert.match(roomList, /aria-label=\{t\("roomListTabs"\)\} className="flex gap-0\.5 rounded-md border border-border bg-surface p-0\.5"/)
-  assert.match(roomList, /"flex min-h-11 flex-1 items-center justify-center gap-1\.5 rounded-control px-2 text-sm font-medium transition-colors /)
-  assert.match(roomList, /tab === key \? "bg-primary-soft font-semibold text-primary-hover" : "text-muted-foreground hover:bg-background hover:text-foreground"/)
-
-  const settings = read("src/components/admin/system-settings-form.tsx")
-  assert.match(settings, /<div className="inline-flex gap-0\.5 rounded-md border border-border bg-surface p-0\.5" role="group" aria-label=\{label\}>/)
-  // A template string, not cn(): font-medium and font-semibold must never sit in the same class list.
-  assert.match(settings, /className=\{`inline-flex h-8 items-center justify-center gap-1\.5 rounded-control px-3 text-sm transition-colors /)
-  assert.match(settings, /\? "bg-primary-soft font-semibold text-primary-hover"\n\s+: "font-medium text-muted-foreground hover:bg-background hover:text-foreground"/)
+  const segmented = read("src/components/ui/segmented.tsx")
+  assert.match(segmented, /<div role="group" aria-label=\{ariaLabel\} data-slot="segmented" className=\{cn\(fill \? "flex" : "inline-flex", segmentedFrameClasses, className\)\}>/)
+  assert.match(segmented, /const segmentedFrameClasses = "gap-0\.5 rounded-md border border-border bg-surface p-0\.5"/)
+  // No weight in the shared part (font-medium and font-semibold never sit in one class list) and no ring offset (2px gap).
+  assert.equal(segmented.match(/const segmentedOptionClasses = "([^"]+)"/)?.[1], "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-control text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring")
+  assert.match(segmented, /const segmentedPressedClasses = "bg-primary-soft font-semibold text-primary-hover"/)
+  assert.match(segmented, /const segmentedIdleClasses = "font-medium text-muted-foreground hover:bg-background hover:text-foreground"/)
+  assert.match(segmented, /aria-pressed=\{pressed\}/)
+  for (const path of ["src/components/audit/audit-scan-room-list.tsx", "src/components/admin/system-settings-form.tsx"]) assert.match(read(path), /<Segmented\b/, path)
+  assert.doesNotMatch(read("src/components/audit/audit-scan-room-list.tsx"), /aria-pressed/, "the room list tabs get aria-pressed from Segmented")
 })
 
 test("R3 no text smaller than 12px outside the thermal label", () => {

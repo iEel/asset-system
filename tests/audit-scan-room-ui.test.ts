@@ -34,7 +34,7 @@ test("the room picker is a sheet with search, pending counts, department and a c
 test("the room list has three counted tabs, 44px rows, show-more and a link to the pending page", () => {
   const source = read("src/components/audit/audit-scan-room-list.tsx")
   assert.match(source, /\(\["pending", "checked", "all"\] as const\)/)
-  assert.match(source, /aria-pressed=\{tab === key\}/)
+  assert.match(source, /<Segmented[\s\S]*?value=\{tab\}[\s\S]*?onValueChange=\{onTabChange\}/)
   assert.match(source, /data-audit-scan-row/)
   assert.match(source, /min-h-14/)
   assert.match(source, /queuedAssetIds\.has\(item\.assetId\)/)
@@ -80,7 +80,7 @@ test("the room hook prefers the memory copy when storage is read-only and drops 
 
 test("the room list tab group has its own label", () => {
   const source = read("src/components/audit/audit-scan-room-list.tsx")
-  assert.match(source, /role="group" aria-label=\{t\("roomListTabs"\)\}/)
+  assert.match(source, /<Segmented[\s\S]*?aria-label=\{t\("roomListTabs"\)\}/)
   for (const locale of ["th", "en"] as const) {
     assert.equal(typeof messages(locale).roomListTabs, "string", locale)
   }

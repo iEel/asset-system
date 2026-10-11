@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, ArrowRight, Check, ExternalLink, History, Loader2, Pencil, PlugZap, Plus, Save, Search, Trash2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, ExternalLink, History, Loader2, Pencil, PlugZap, Plus, Save, Search, Trash2 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
 import { DepreciationPolicyBuilder } from "@/components/admin/depreciation-policy-builder"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import { Segmented } from "@/components/ui/segmented"
 import {
   assetLabelLayouts,
   assetLabelPresets,
@@ -2532,35 +2533,10 @@ function LabelAssetNameModeField({
   compactEnabled: boolean
   onChange: (compactEnabled: boolean) => void
 }) {
-  const options = [
-    { value: true, label: compactLabel },
-    { value: false, label: fullLabel },
-  ]
-
   return (
     <div className="space-y-2">
       <div className="text-sm font-medium text-foreground">{label}</div>
-      <div className="inline-flex gap-0.5 rounded-md border border-border bg-surface p-0.5" role="group" aria-label={label}>
-        {options.map((option) => {
-          const isActive = compactEnabled === option.value
-          return (
-            <button
-              key={String(option.value)}
-              type="button"
-              aria-pressed={isActive}
-              onClick={() => onChange(option.value)}
-              className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-control px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                isActive
-                  ? "bg-primary-soft font-semibold text-primary-hover"
-                  : "font-medium text-muted-foreground hover:bg-background hover:text-foreground"
-              }`}
-            >
-              {isActive ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
-              {option.label}
-            </button>
-          )
-        })}
-      </div>
+      <Segmented aria-label={label} value={compactEnabled ? "compact" : "full"} options={[{ value: "compact", label: compactLabel }, { value: "full", label: fullLabel }]} onValueChange={(next) => onChange(next === "compact")} showCheck />
       <p className="text-xs leading-5 text-muted-foreground">{description}</p>
     </div>
   )
