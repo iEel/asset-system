@@ -19,8 +19,12 @@ const focusTaskRoutes = [
   /^\/assets\/(?!labels(?:\/|$))[^/]+(?:\/(?:edit|label))?$/,
   /^\/audit\/rounds\/new$/,
   /^\/audit\/rounds\/[^/]+(?:\/scan)?$/,
-  /^\/maintenance\/[^/]+$/,
-  /^\/disposal\/(?:new|batch\/new|[^/]+)$/,
+  /^\/maintenance\/(?!pm$)[^/]+$/,
+  /^\/disposal\/(?:new|batch\/new|(?!batches$)[^/]+)$/,
+  // K15 (spec 2C section 6.9): the settings page and every new or [id]/edit form of users, roles, PM plans and
+  // master data (brand models included) are focus tasks. Their list and detail pages keep the bottom navigation.
+  /^\/admin\/settings$/,
+  /^\/(?:admin\/(?:users|roles)|maintenance\/pm|master-data\/(?:brands\/models|[^/]+))\/(?:new|[^/]+\/edit)$/,
 ]
 
 export function getMobileShellMode(pathname: string): MobileShellMode {

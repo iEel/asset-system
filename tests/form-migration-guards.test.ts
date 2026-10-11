@@ -1,4 +1,6 @@
 import assert from "node:assert/strict"
+import { readdirSync, statSync } from "node:fs"
+import { join } from "node:path"
 import test from "node:test"
 import { getMobileShellMode } from "../src/lib/mobile-field-navigation.ts"
 import {
@@ -684,7 +686,30 @@ test("GL1 the long-form save bar is a flat sticky bar, used only on focus routes
   assertWithinBudget(countByFile(sources, (file) => classStringsWhere(file.source, fixedBottom), notOwned), FIXED_BOTTOM_BARS, "GL1 fixed bottom bars")
 })
 
-// GL2 (form routes hide the bottom navigation, K15) arrives with the K15 commit in Task 18.
+// Every route under the dashboard, read from its page.tsx files, with [segments] kept as written (spec 2C section 9.3).
+function dashboardRoutes(dir = "src/app/[locale]/(dashboard)", prefix = ""): string[] {
+  return readdirSync(dir).flatMap((entry) => {
+    const path = join(dir, entry)
+    if (statSync(path).isDirectory()) return dashboardRoutes(path, prefix ? `${prefix}/${entry}` : entry)
+    return entry === "page.tsx" ? [prefix] : []
+  })
+}
+// The four asset task pages are focus routes without being forms (phase 1).
+const TASK_ROUTES = new Set(["asset-management/checkout", "asset-management/checkin", "asset-management/transfer", "asset-management/bulk-move"])
+
+test("GL2 form routes hide the bottom navigation and list routes keep it (K15)", () => {
+  const routes = dashboardRoutes()
+  assert.ok(routes.length > 70, `expected the dashboard routes, found ${routes.length}`)
+  const wrong: string[] = []
+  for (const route of routes) {
+    const mode = getMobileShellMode(`/th/${route.replace(/\[[^\]]+\]/g, "sample-1")}`)
+    const isForm = /(?:^|\/)new$|\/\[[^\]]+\]\/edit$/.test(route) || route === "admin/settings"
+    const isList = !route.includes("[") && !isForm && !TASK_ROUTES.has(route)
+    if (isForm && mode !== "focus") wrong.push(`${route}: ${mode}, a form route must be focus`)
+    if (isList && mode !== "navigation") wrong.push(`${route}: ${mode}, a list route keeps the bottom navigation`)
+  }
+  assert.deepEqual(wrong, [])
+})
 
 test("GL3 the old step, choice and label helpers do not come back", () => {
   assertWithinBudget(countMatchesByFile(sources, OLD_HELPER_MARKUP, notOwned), OLD_HELPERS, "GL3 old helpers")

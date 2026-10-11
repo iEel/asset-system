@@ -20,6 +20,16 @@ test("mobile shell keeps browsing and pending queues in navigation mode", () => 
     "/th/audit/rounds/round-1/pending",
     "/th/maintenance",
     "/th/disposal",
+    "/th/maintenance/pm",
+    "/th/disposal/batches",
+    "/th/disposal/batches/batch-1",
+    "/th/admin/users",
+    "/th/admin/roles",
+    "/th/admin/data-quality",
+    "/th/admin/integrations",
+    "/th/master-data/brands",
+    "/th/master-data/employees/employee-1",
+    "/th/master-data/suppliers/supplier-1",
   ]) {
     assert.equal(getMobileShellMode(pathname), "navigation", pathname)
   }
@@ -40,6 +50,41 @@ test("mobile shell reserves scanner and contextual action routes for focus mode"
     "/th/audit/rounds/round-1",
     "/th/maintenance/ticket-1",
     "/th/disposal/request-1",
+  ]) {
+    assert.equal(getMobileShellMode(pathname), "focus", pathname)
+  }
+})
+
+test("form routes hide the field navigation (K15)", () => {
+  // The settings page and every new or [id]/edit form of users, roles, PM plans and master data. A save bar sits at
+  // the bottom of these forms, so the bottom navigation would cover it. Their list pages keep the navigation (above).
+  for (const pathname of [
+    "/th/admin/settings",
+    "/en/admin/settings",
+    "/th/admin/users/new",
+    "/th/admin/users/user-1/edit",
+    "/th/admin/roles/new",
+    "/th/admin/roles/role-1/edit",
+    "/th/maintenance/pm/new",
+    "/th/maintenance/pm/plan-1/edit",
+    "/th/master-data/branches/new",
+    "/th/master-data/branches/branch-1/edit",
+    "/th/master-data/brands/new",
+    "/th/master-data/brands/brand-1/edit",
+    "/th/master-data/brands/models/new",
+    "/th/master-data/brands/models/model-1/edit",
+    "/th/master-data/categories/new",
+    "/th/master-data/categories/category-1/edit",
+    "/th/master-data/companies/new",
+    "/th/master-data/companies/company-1/edit",
+    "/th/master-data/departments/new",
+    "/th/master-data/departments/department-1/edit",
+    "/th/master-data/employees/new",
+    "/th/master-data/employees/employee-1/edit",
+    "/th/master-data/locations/new",
+    "/th/master-data/locations/location-1/edit",
+    "/th/master-data/suppliers/new",
+    "/th/master-data/suppliers/supplier-1/edit",
   ]) {
     assert.equal(getMobileShellMode(pathname), "focus", pathname)
   }
