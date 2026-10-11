@@ -1174,7 +1174,9 @@
     "componentInstallSteps": "Component installation steps",
     "componentStepIdentify": "Choose component",
     "componentStepDetails": "Enter details",
-    "componentStepReview": "Check and confirm"
+    "componentStepReview": "Check and confirm",
+    "photoType": "Photo type",
+    "checklistPhotoDescription": "The photo uploads as soon as you choose it."
   },
   "company": {
     "title": "Companies",

@@ -4,9 +4,12 @@ import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { CheckCircle2, Download, FileText, ImageIcon, Loader2, Trash2 } from "lucide-react"
+import { CheckCircle2, Download, FileText, ImageIcon, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { Field } from "@/components/ui/field"
+import { NativeSelect } from "@/components/ui/native-select"
 import { getAssetPhotoGalleryState } from "@/lib/asset-photo-gallery"
 import { formatFileSize } from "@/lib/uploads"
 import { FileDropzone } from "@/components/ui/file-dropzone"
@@ -208,19 +211,16 @@ export function AssetAttachments({
                           <Download className="h-3.5 w-3.5" />
                           {t("download")}
                         </a>
-                        <button
-                          type="button"
+                        <Button
+                          variant="danger"
+                          size="icon-sm"
                           onClick={() => handleDelete(attachment.id)}
-                          disabled={deletingId === attachment.id}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft disabled:opacity-50"
+                          busy={deletingId === attachment.id}
+                          aria-label={tCommon("delete")}
                           title={tCommon("delete")}
                         >
-                          {deletingId === attachment.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5" />
-                          )}
-                        </button>
+                          <Trash2 aria-hidden="true" />
+                        </Button>
                       </div>
                     </div>
                   </>
@@ -230,16 +230,18 @@ export function AssetAttachments({
                       <div className="text-sm font-medium text-foreground">{item.label}</div>
                       <span className="text-xs text-muted-foreground">{t("photoChecklistPending")}</span>
                     </div>
-                    <FileDropzone
-                      file={null}
-                      onFileChange={(file) => handleChecklistUpload(item.label, file)}
-                      disabled={uploadingPhotoLabel === item.label}
-                      accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
-                      capture="environment"
-                      title={t("dropAssetPhotoTitle")}
-                      hint={uploadingPhotoLabel === item.label ? t("uploading") : t("dropFileSelected")}
-                      browseLabel={t("dropAssetPhotoHint")}
-                    />
+                    <Field label={item.label} hideLabel>
+                      <FileDropzone
+                        file={null}
+                        onFileChange={(file) => handleChecklistUpload(item.label, file)}
+                        disabled={uploadingPhotoLabel === item.label}
+                        accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
+                        capture="environment"
+                        title={t("dropAssetPhotoTitle")}
+                        description={uploadingPhotoLabel === item.label ? t("uploading") : t("checklistPhotoDescription")}
+                        browseLabel={t("dropAssetPhotoHint")}
+                      />
+                    </Field>
                   </div>
                 )}
               </div>
@@ -260,16 +262,14 @@ export function AssetAttachments({
 
       <div className="mb-4 rounded-md border border-border bg-background p-3">
         {photoChecklist.length > 0 && (
-          <select
-            value={photoLabel}
-            onChange={(event) => setPhotoLabel(event.target.value)}
-            className="mb-3 h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-          >
-            <option value="">{t("selectPhotoType")}</option>
-            {photoChecklist.map((item) => (
-              <option key={item} value={item}>{item}</option>
-            ))}
-          </select>
+          <Field label={t("photoType")} className="mb-3">
+            <NativeSelect value={photoLabel} onChange={(event) => setPhotoLabel(event.target.value)}>
+              <option value="">{t("selectPhotoType")}</option>
+              {photoChecklist.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </NativeSelect>
+          </Field>
         )}
         <FileDropzone
           file={selectedFile}
@@ -329,7 +329,6 @@ export function AssetAttachments({
         alt={previewPhoto?.attachment.originalName}
         downloadHref={previewPhoto ? `/api/attachments/${previewPhoto.attachment.id}` : undefined}
         downloadLabel={t("download")}
-        closeLabel={tCommon("close")}
       />
     </section>
   )
@@ -414,19 +413,9 @@ function AttachmentCard({
             <Download className="h-3.5 w-3.5" />
             {downloadLabel}
           </a>
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={deleting}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger-soft disabled:opacity-50"
-            title={deleteLabel}
-          >
-            {deleting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Trash2 className="h-3.5 w-3.5" />
-            )}
-          </button>
+          <Button variant="danger" size="icon-sm" onClick={onDelete} busy={deleting} aria-label={deleteLabel} title={deleteLabel}>
+            <Trash2 aria-hidden="true" />
+          </Button>
         </div>
       </div>
     </div>

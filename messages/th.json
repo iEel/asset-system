@@ -1174,7 +1174,9 @@
     "componentInstallSteps": "ขั้นตอนติดตั้งส่วนควบ",
     "componentStepIdentify": "เลือกส่วนควบ",
     "componentStepDetails": "ระบุรายละเอียด",
-    "componentStepReview": "ตรวจสอบและยืนยัน"
+    "componentStepReview": "ตรวจสอบและยืนยัน",
+    "photoType": "ประเภทรูป",
+    "checklistPhotoDescription": "รูปจะอัปโหลดทันทีที่เลือก"
   },
   "company": {
     "title": "บริษัท",

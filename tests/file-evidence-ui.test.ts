@@ -179,3 +179,17 @@ test("the asset form's evidence boxes lose their tinted icon squares and the rep
   assert.match(source, /<FileDropzone\n\s*file=\{selectedPurchaseFile\}/)
   assert.match(source, /<FileDropzone\n\s*file=\{selectedAssetPhotoFile\}/)
 })
+
+test("each checklist photo box is named by its checklist item and says up front when the photo uploads (call site 3)", () => {
+  const source = readFileSync("src/components/assets/asset-attachments.tsx", "utf8").replace(/\r\n/g, "\n")
+  const box = source.match(/<Field label=\{item\.label\} hideLabel>\n\s*<FileDropzone[\s\S]*?\/>\n\s*<\/Field>/)?.[0]
+  assert.ok(box, "the checklist FileDropzone sits in <Field label={item.label} hideLabel>")
+  assert.match(box, /description=\{uploadingPhotoLabel === item\.label \? t\("uploading"\) : t\("checklistPhotoDescription"\)\}/)
+  assert.doesNotMatch(box, /\shint=/)
+  // The free upload box (call site 4) keeps its hint.
+  assert.match(source, /hint=\{uploading \? t\("uploading"\) : t\("dropFileSelected"\)\}/)
+  for (const [locale, text] of [["th", "รูปจะอัปโหลดทันทีที่เลือก"], ["en", "The photo uploads as soon as you choose it."]]) {
+    const asset = (JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { asset: Record<string, unknown> }).asset
+    assert.equal(asset.checklistPhotoDescription, text, locale)
+  }
+})

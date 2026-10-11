@@ -118,3 +118,16 @@ test("component removal dialog uses the shared parts, a code tag in its descript
   assert.match(manager, /<span className="tag">\{component\.componentAsset\.assetTag\}<\/span> · \{component\.componentAsset\.name\}/)
   assert.doesNotMatch(manager, /closeLabel=/)
 })
+
+test("asset photos: the photo-type select has a visible label and the delete icons are busy buttons (K20)", () => {
+  const source = read("src/components/assets/asset-attachments.tsx")
+  assert.match(source, /<Field label=\{t\("photoType"\)\} className="mb-3">\n\s*<NativeSelect value=\{photoLabel\}/)
+  assert.equal(source.match(/variant="danger"\s+size="icon-sm"/g)?.length, 2)
+  assert.match(source, /busy=\{deletingId === attachment\.id\}/)
+  assert.match(source, /busy=\{deleting\}/)
+  assert.doesNotMatch(source, /Loader2|<select\b/)
+  assert.doesNotMatch(source, /closeLabel=/, "the preview dialog's X already reads ปิด by default")
+
+  assert.equal(assetMessages("th").photoType, "ประเภทรูป")
+  assert.equal(assetMessages("en").photoType, "Photo type")
+})

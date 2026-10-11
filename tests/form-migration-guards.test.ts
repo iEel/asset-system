@@ -62,6 +62,7 @@ const MIGRATED_FILES: string[] = [
   `${C}assets/asset-form.tsx`,
   `${C}assets/asset-batch-form.tsx`,
   `${C}assets/asset-component-manager.tsx`,
+  `${C}assets/asset-attachments.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -155,7 +156,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 1d
   // 1g
   // 1e
-  [`${C}assets/asset-attachments.tsx`]: 1,
   // 1f
   [`${C}admin/system-settings-form.tsx`]: 50,
   [`${C}admin/depreciation-policy-builder.tsx`]: 9,
@@ -199,7 +199,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1d
   // 1g
   // 1e
-  [`${C}assets/asset-attachments.tsx`]: 1,
   // 1f
   [`${C}admin/system-settings-form.tsx`]: 48,
   [`${C}admin/depreciation-policy-builder.tsx`]: 3,
@@ -334,7 +333,6 @@ const LOADER2: Record<string, number> = {
   // 1g
   // 1e
   [`${C}assets/asset-component-manager.tsx`]: 1, // → 1: the status line :474
-  [`${C}assets/asset-attachments.tsx`]: 2,
   // 1f
   [`${C}admin/system-settings-form.tsx`]: 4,
   // 2
