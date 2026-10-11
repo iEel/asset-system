@@ -42,8 +42,8 @@ export function AssetRegisterSortMenu() {
           <span>{activeLabel}</span>
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">{t("sortMenu")}</DropdownMenuLabel>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>{t("sortMenu")}</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={activeKey ?? ""} onValueChange={(key) => {
           const option = assetRegisterSortOptions.find((item) => item.key === key)
           if (option) navigate({ sort: option.sort, direction: option.direction })

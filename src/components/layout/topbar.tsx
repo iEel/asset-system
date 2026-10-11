@@ -21,6 +21,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -62,6 +64,7 @@ export function Topbar({
   const tAuth = useTranslations("auth")
   const tAssetTools = useTranslations("assetTools")
   const tNotifications = useTranslations("notifications")
+  const tNav = useTranslations("nav")
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
@@ -70,6 +73,7 @@ export function Topbar({
   const [notificationRequestGuard] = useState(createLatestNotificationRequestGuard)
   const userDisplayLabel = getUserDisplayLabel(user)
   const userSecondaryLabel = getUserSecondaryLabel(user)
+  const localeCode = locale === "th" ? "TH" : "EN"
 
   const loadNotificationSummary = useCallback(async () => {
     const requestId = notificationRequestGuard.begin()
@@ -127,7 +131,7 @@ export function Topbar({
             "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:hidden",
             mobileNavigationMode && "hidden",
           )}
-          aria-label="Open menu"
+          aria-label={tNav("openMenu")}
         >
           <Menu size={20} />
         </button>
@@ -136,8 +140,8 @@ export function Topbar({
         <button
           onClick={onToggleSidebar}
           className="hidden min-h-11 min-w-11 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:inline-flex"
-          title="Toggle sidebar"
-          aria-label="Toggle sidebar"
+          title={tNav("toggleSidebar")}
+          aria-label={tNav("toggleSidebar")}
         >
           <PanelLeftClose size={20} />
         </button>
@@ -235,19 +239,23 @@ export function Topbar({
             <DropdownMenuTrigger asChild>
               <button
                 className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                aria-label="Change language"
+                aria-label={tNav("languageMenu", { code: localeCode })}
               >
                 <Globe size={18} />
-                <span className="hidden sm:inline">{locale === "th" ? "TH" : "EN"}</span>
+                <span className="hidden sm:inline">{localeCode}</span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onSelect={() => switchLocale("th")} className={cn(locale === "th" && "font-medium text-primary")}>
-                🇹🇭 ภาษาไทย
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => switchLocale("en")} className={cn(locale === "en" && "font-medium text-primary")}>
-                🇺🇸 English
-              </DropdownMenuItem>
+            <DropdownMenuContent align="end">
+              <DropdownMenuRadioGroup value={locale} onValueChange={(next) => {
+                if (next !== locale) switchLocale(next)
+              }}>
+                <DropdownMenuRadioItem value="th">
+                  <span lang="th">ภาษาไทย</span>
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="en">
+                  <span lang="en">English</span>
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -258,7 +266,7 @@ export function Topbar({
             <DropdownMenuTrigger asChild>
               <button
                 className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md px-2 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-3"
-                aria-label="User menu"
+                aria-label={tNav("userMenu", { name: userDisplayLabel })}
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-white">
                   {getUserInitial(user)}
@@ -268,9 +276,9 @@ export function Topbar({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] max-w-[16rem]">
-              <DropdownMenuLabel className="font-normal">
-                <span className="block truncate text-sm font-medium">{userDisplayLabel}</span>
-                {userSecondaryLabel ? <span className="mt-0.5 block truncate text-xs text-muted-foreground">{userSecondaryLabel}</span> : null}
+              <DropdownMenuLabel className="py-1.5 text-sm font-normal text-foreground">
+                <span className="block truncate font-medium">{userDisplayLabel}</span>
+                {userSecondaryLabel ? <span className="block truncate text-meta text-faint-foreground">{userSecondaryLabel}</span> : null}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onSelect={() => void signOut({ callbackUrl: `/${locale}/login` })}>

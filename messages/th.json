@@ -53,7 +53,9 @@
     "loading": "กำลังค้นหา...",
     "noResults": "ไม่พบข้อมูลที่ตรงกับคำค้น",
     "serial": "Serial",
-    "keyboardHint": "ใช้ ↑ ↓ เพื่อเลือก และ Enter เพื่อเปิดรายละเอียด"
+    "keyboardSelect": "เลือก",
+    "keyboardOpen": "เปิด",
+    "keyboardClose": "ปิด"
   },
   "notifications": {
     "title": "การแจ้งเตือน",
@@ -156,7 +158,12 @@
     "brandName": "ระบบบริหารทรัพย์สิน",
     "sectionDaily": "งานประจำวัน",
     "sectionAssets": "ทรัพย์สิน",
-    "sectionSystem": "ภาพรวมและระบบ"
+    "sectionSystem": "ภาพรวมและระบบ",
+    "openMenu": "เปิดเมนู",
+    "closeMenu": "ปิดเมนู",
+    "toggleSidebar": "ย่อหรือขยายเมนูข้าง",
+    "languageMenu": "เปลี่ยนภาษา ({code})",
+    "userMenu": "เมนูผู้ใช้: {name}"
   },
   "myAssets": {
     "title": "ทรัพย์สินของฉัน",

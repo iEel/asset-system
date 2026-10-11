@@ -8,6 +8,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuItemDescription,
+  DropdownMenuItemText,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -99,18 +101,18 @@ export function AssetRegisterRowActions({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent data-no-row-click align="end" className="w-64">
-            <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">{t("transactionMenu")}</DropdownMenuLabel>
+            <DropdownMenuLabel>{t("transactionMenu")}</DropdownMenuLabel>
             {ordered.map((transaction) => {
               const Icon = transactionIcons[transaction.action]
               const title = t(transactionLabelKeys[transaction.action])
               if (!transaction.enabled) {
                 return (
-                  <DropdownMenuItem key={transaction.action} disabled className="items-start">
-                    <Icon className="mt-0.5" aria-hidden="true" />
-                    <span className="min-w-0">
-                      <span className="block font-medium text-foreground">{title}</span>
-                      <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">{reasonOf(transaction)}</span>
-                    </span>
+                  <DropdownMenuItem key={transaction.action} unavailable>
+                    <Icon aria-hidden="true" />
+                    <DropdownMenuItemText>
+                      {title}
+                      <DropdownMenuItemDescription>{reasonOf(transaction)}</DropdownMenuItemDescription>
+                    </DropdownMenuItemText>
                   </DropdownMenuItem>
                 )
               }

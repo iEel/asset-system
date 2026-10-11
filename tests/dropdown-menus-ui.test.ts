@@ -32,12 +32,34 @@ test("register row menus are Radix overlays and delete through the shared action
   assert.equal(source.match(/ref=\{triggerRef\}/g)?.length, 2)
   assert.match(source, /variant="destructive"/)
   assert.doesNotMatch(source, /createPortal|getBoundingClientRect|addEventListener|AssetDeleteButton/)
+  // A blocked transaction stays reachable by arrow keys and reads its reason (spec 5.4).
+  assert.match(source, /<DropdownMenuItem key=\{transaction\.action\} unavailable>/)
+  assert.match(source, /<DropdownMenuItemDescription>\{reasonOf\(transaction\)\}<\/DropdownMenuItemDescription>/)
+  assert.doesNotMatch(source, /disabled className="items-start"|<DropdownMenuLabel className=/)
 })
 
 test("topbar language and user menus are Radix dropdowns", () => {
   const source = read("src/components/layout/topbar.tsx")
   assert.ok((source.match(/<DropdownMenu\b/g)?.length ?? 0) >= 2)
   assert.doesNotMatch(source, /langMenuOpen|userMenuOpen/)
+  // The language menu is a radio group; each language is named in its own language, with no flag.
+  assert.match(source, /<DropdownMenuRadioGroup value=\{locale\}/)
+  assert.match(source, /<span lang="th">ภาษาไทย<\/span>/)
+  assert.match(source, /<span lang="en">English<\/span>/)
+  // Accessible names come from messages and contain the text shown on the button (WCAG 2.5.3).
+  assert.match(source, /aria-label=\{tNav\("languageMenu", \{ code: localeCode \}\)\}/)
+  assert.match(source, /aria-label=\{tNav\("userMenu", \{ name: userDisplayLabel \}\)\}/)
+  for (const path of ["src/components/layout/topbar.tsx", "src/components/layout/sidebar.tsx"]) {
+    assert.doesNotMatch(read(path), /(?:aria-label|title)="[A-Z]/, path)
+  }
+  for (const locale of ["th", "en"] as const) {
+    const nav = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).nav
+    for (const key of ["openMenu", "closeMenu", "toggleSidebar", "languageMenu", "userMenu"]) {
+      assert.equal(typeof nav[key], "string", `${locale} nav.${key}`)
+    }
+    assert.match(nav.languageMenu, /\{code\}/, locale)
+    assert.match(nav.userMenu, /\{name\}/, locale)
+  }
 })
 
 test("delete confirm returns focus to the menu trigger once the menu item is gone", () => {

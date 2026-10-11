@@ -72,11 +72,14 @@ test("overlays use the navy scrim and the overlay shadow, and respect reduced mo
     assert.match(source, /"fixed inset-0 z-50 bg-scrim [^"]*motion-reduce:animate-none!"/, `${name} scrim`)
     assert.match(source, /shadow-overlay[^"]*motion-reduce:animate-none!/, `${name} content`)
   }
-  for (const name of ["popover", "dropdown-menu", "accessible-dialog"]) {
+  for (const name of ["popover", "dropdown-menu"]) {
     const source = read(`src/components/ui/${name}.tsx`)
-    assert.match(source, /shadow-overlay/, name)
-    assert.doesNotMatch(source, /\bshadow-(sm|md|lg|xl)\b/, name)
+    assert.match(source, /shadow-overlay[^"]*motion-reduce:animate-none!/, `${name} panel`)
+    assert.doesNotMatch(source, /\bshadow-(sm|md|lg|xl)\b|zoom-(?:in|out)/, name)
   }
+  const accessibleDialog = read("src/components/ui/accessible-dialog.tsx")
+  assert.match(accessibleDialog, /shadow-overlay/, "accessible-dialog")
+  assert.doesNotMatch(accessibleDialog, /\bshadow-(sm|md|lg|xl)\b/, "accessible-dialog")
   assert.match(read("src/components/ui/sheet.tsx"), /ease-out data-\[state=closed\]:animate-out data-\[state=closed\]:duration-200 data-\[state=open\]:animate-in data-\[state=open\]:duration-250/)
 })
 
@@ -296,4 +299,10 @@ test("R3 no text smaller than 12px outside the thermal label", () => {
   }
   // The white count on the solid red dot is 600, not 700 (spec 2A section 9.8, ruling 11).
   assert.match(read("src/components/layout/topbar.tsx"), /rounded-full bg-danger px-1 text-xs font-semibold leading-none text-white/)
+})
+
+test("no emoji in source or messages: icons come from lucide and languages are named in words", () => {
+  // Emoji_Presentation covers flags and pictographs; U+FE0F turns a text symbol into an emoji. © ® ✓ ↑ ↓ · › ⋯ stay allowed.
+  const messages = ["messages/th.json", "messages/en.json"].map((path) => ({ path, source: read(path) }))
+  assert.deepEqual(findMatches([...sources, ...messages], /\p{Emoji_Presentation}|\uFE0F/gu), [])
 })

@@ -18,7 +18,9 @@ import {
 } from "lucide-react"
 
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
+import { Kbd } from "@/components/ui/kbd"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { cn } from "@/lib/utils"
 
 type GlobalSearchResult = {
   id: string
@@ -184,7 +186,7 @@ export function GlobalSearch() {
         ) : results.length === 0 ? (
           <div className="px-4 py-3 text-sm text-muted-foreground">{t("noResults")}</div>
         ) : (
-          <ul role="listbox" aria-label={t("label")} className="max-h-[26rem] overflow-y-auto py-1">
+          <ul role="listbox" aria-label={t("label")} className="grid max-h-100 gap-px overflow-y-auto p-1.5">
             {results.map((result, index) => {
               const selected = index === selectedIndex
 
@@ -197,26 +199,24 @@ export function GlobalSearch() {
                   onMouseDown={(event) => event.preventDefault()}
                   onMouseEnter={() => setSelectedIndex(index)}
                   onClick={() => openResult(result)}
-                  className={[
-                    "flex w-full min-w-0 cursor-pointer gap-3 px-4 py-3 text-left transition-colors",
-                    selected ? "bg-accent" : "hover:bg-row-hover",
-                  ].join(" ")}
+                  className={cn(
+                    "flex w-full min-w-0 cursor-pointer items-start gap-2.5 rounded-control px-2.5 py-1.5 text-left",
+                    selected && "bg-primary-soft",
+                  )}
                 >
-                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">
+                  <span className="mt-[3px] flex size-4 shrink-0 text-muted-foreground">
                     {getResultIcon(result.type)}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex min-w-0 flex-wrap items-center gap-2">
                       <span className="min-w-0 truncate font-medium text-foreground">{result.title}</span>
-                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                        {result.typeLabel}
-                      </span>
                       {result.badge.label !== result.typeLabel ? (
                         <StatusBadge size="xs" tone="neutral" label={result.badge.label} />
                       ) : null}
+                      <span className="ml-auto shrink-0 text-meta text-faint-foreground">{result.typeLabel}</span>
                     </span>
-                    <span className="mt-0.5 block truncate text-sm text-foreground">{result.subtitle}</span>
-                    <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="block truncate text-meta text-muted-foreground">{result.subtitle}</span>
+                    <span className="flex flex-wrap gap-x-3 text-meta text-faint-foreground">
                       {result.metadata.slice(0, 3).map((item) => (
                         <span key={`${result.id}-${item.label}`} className="min-w-0 truncate">
                           {item.label}: {item.value}
@@ -230,7 +230,20 @@ export function GlobalSearch() {
           </ul>
         )}
         {results.length > 0 ? (
-          <div className="border-t border-border px-4 py-2 text-xs text-muted-foreground">{t("keyboardHint")}</div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border bg-background px-3.5 py-2 text-meta text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <Kbd>↑↓</Kbd>
+              {t("keyboardSelect")}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Kbd>Enter</Kbd>
+              {t("keyboardOpen")}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Kbd>Esc</Kbd>
+              {t("keyboardClose")}
+            </span>
+          </div>
         ) : null}
       </PopoverContent>
     </Popover>

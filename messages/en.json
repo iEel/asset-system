@@ -53,7 +53,9 @@
     "loading": "Searching...",
     "noResults": "No matching records found",
     "serial": "Serial",
-    "keyboardHint": "Use ↑ ↓ to select and Enter to open detail"
+    "keyboardSelect": "select",
+    "keyboardOpen": "open",
+    "keyboardClose": "close"
   },
   "notifications": {
     "title": "Notifications",
@@ -156,7 +158,12 @@
     "brandName": "Asset Management System",
     "sectionDaily": "Daily work",
     "sectionAssets": "Assets",
-    "sectionSystem": "Reports and system"
+    "sectionSystem": "Reports and system",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "toggleSidebar": "Toggle sidebar",
+    "languageMenu": "Change language ({code})",
+    "userMenu": "User menu: {name}"
   },
   "myAssets": {
     "title": "My Assets",

@@ -63,8 +63,8 @@ export function AssetRegisterColumnPicker({
           {t("columns")}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60">
-        <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">{t("columnPresets")}</DropdownMenuLabel>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>{t("columnPresets")}</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={activePreset} onValueChange={(value) => onApplyPreset(value as AssetRegisterColumnPresetKey)}>
           {presetKeys.map((preset) => (
             <DropdownMenuRadioItem key={preset} value={preset} onSelect={(event) => event.preventDefault()}>
@@ -73,7 +73,7 @@ export function AssetRegisterColumnPicker({
           ))}
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">{t("columns")}</DropdownMenuLabel>
+        <DropdownMenuLabel>{t("columns")}</DropdownMenuLabel>
         {assetRegisterColumnOrder.map((column) => {
           const checked = visibleColumns.has(column)
           return (

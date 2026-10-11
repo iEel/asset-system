@@ -112,9 +112,10 @@ export function SearchableSelect({
                     value={option.id}
                     disabled={option.disabled}
                     onSelect={() => selectValue(option.id)}
+                    className={option.id === value ? "font-medium" : undefined}
                   >
-                    <Check className={option.id === value ? "size-4 text-primary" : "size-4 text-transparent"} aria-hidden="true" />
                     <span className="min-w-0 truncate">{option.label}</span>
+                    {option.id === value ? <Check className="ml-auto size-4 text-primary" aria-hidden="true" /> : null}
                   </CommandItem>
                 ))}
               </CommandList>

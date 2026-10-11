@@ -18,7 +18,7 @@ export function AssetRegisterExportMenu({ exportHref, templateHref }: { exportHr
           {t("exportMenu")}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end">
         <DropdownMenuItem asChild>
           <a href={exportHref}>
             <FileDown aria-hidden="true" />
