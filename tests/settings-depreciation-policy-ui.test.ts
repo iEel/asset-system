@@ -50,7 +50,7 @@ test("depreciation policy builder uses adapter helpers and exposes required sect
   assert.match(builder, /type="text"[\s\S]*inputMode="decimal"[\s\S]*formatPurchasePriceInput\(previewPurchasePrice\)/)
   assert.match(builder, /labels\.depreciationLegacyRules/)
   assert.match(builder, /<details[\s\S]*labels\.depreciationAdvancedJson/)
-  assert.match(builder, /<textarea[\s\S]*onPolicyJsonChange/)
+  assert.match(builder, /<Textarea[\s\S]*onPolicyJsonChange/)
   assert.match(builder, /if \(!isPolicyJsonValid\) return/)
   assert.match(builder, /disabled=\{!isPolicyJsonValid\}/)
   assert.match(builder, /disabled=\{!isPolicyJsonValid \|\|/)
@@ -88,4 +88,16 @@ test("depreciation policy builder sanitizes structured numeric policy inputs", (
   assert.doesNotMatch(builder, /defaultResidualRatePercent: Number\(event\.target\.value\)/)
   assert.doesNotMatch(builder, /usefulLifeMonths: Number\(event\.target\.value\)/)
   assert.doesNotMatch(builder, /residualRatePercent: Number\(event\.target\.value\)/)
+})
+
+test("the depreciation builder uses the shared fields: compact preview and search, and a named JSON box (1f)", () => {
+  const builder = readFileSync("src/components/admin/depreciation-policy-builder.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(builder, /<Field label=\{labels\.depreciationPreviewPurchasePrice\}>\s*<Input fieldSize="md" type="text" inputMode="decimal"/)
+  assert.match(builder, /<Field label=\{labels\.depreciationPreviewPurchaseDate\}>\s*<Input fieldSize="md" type="date"/)
+  assert.match(builder, /<SearchField fieldSize="md" aria-label=\{searchLabel\} placeholder=\{searchLabel\}/)
+  // The <summary> names the box on screen; the hidden label names the field, and the description becomes its hint.
+  assert.match(builder, /<Field label=\{labels\.depreciationAdvancedJson\} hideLabel hint=\{labels\.depreciationAdvancedJsonDescription\} className="mt-3">/)
+  assert.match(builder, /className=\{cn\(checkboxVariants\(\), "mt-0\.5"\)\}/)
+  assert.match(builder, /has-disabled:cursor-not-allowed has-disabled:text-faint-foreground/)
+  assert.doesNotMatch(builder, /<input(?![^>]*type="checkbox")|<textarea|<label className="space-y-1/)
 })

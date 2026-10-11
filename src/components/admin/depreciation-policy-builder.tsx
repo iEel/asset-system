@@ -1,7 +1,15 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { Plus, Search, Trash2 } from "lucide-react"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { Plus, Trash2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { ChoiceChip } from "@/components/ui/choice-card"
+import { Field } from "@/components/ui/field"
+import { checkboxVariants } from "@/components/ui/field-variants"
+import { Input } from "@/components/ui/input"
+import { SearchField } from "@/components/ui/search-field"
+import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
 import { parseDepreciationPolicySetting, type DepreciationPolicy } from "@/lib/asset-depreciation"
 import {
   buildDepreciationPolicyEditorState,
@@ -73,6 +81,9 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
   const [previewPurchasePrice, setPreviewPurchasePrice] = useState("120000")
   const [previewPurchaseDate, setPreviewPurchaseDate] = useState("2024-05-20")
   const lastEmittedPolicyJsonRef = useRef(policyJson)
+  // The group chips are one radio group, named by the "groups" heading (spec 2C section 7.4.4, T6).
+  const groupsHeadingId = useId()
+  const groupRadioName = useId()
 
   useEffect(() => {
     if (policyJson === lastEmittedPolicyJsonRef.current) return
@@ -169,21 +180,18 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
       <div className="grid gap-3 md:grid-cols-2">
         <ReadonlyFact label={labels.depreciationMethod} value={labels.depreciationMethodStraightLine} />
         <ReadonlyFact label={labels.depreciationStartBasis} value={labels.depreciationStartBasisPurchaseDate} />
-        <label className="space-y-1 text-sm font-medium text-foreground">
-          <span>{labels.depreciationDefaultUsefulLifeMonths}</span>
-          <input
+        <Field label={labels.depreciationDefaultUsefulLifeMonths}>
+          <Input
             type="number"
             min={1}
             max={600}
             value={state.defaultUsefulLifeMonths}
             disabled={!isPolicyJsonValid}
             onChange={(event) => updateState({ defaultUsefulLifeMonths: sanitizeUsefulLifeMonthsInput(event.target.value, state.defaultUsefulLifeMonths) })}
-            className={inputClassName}
           />
-        </label>
-        <label className="space-y-1 text-sm font-medium text-foreground">
-          <span>{labels.depreciationDefaultResidualPercent}</span>
-          <input
+        </Field>
+        <Field label={labels.depreciationDefaultResidualPercent}>
+          <Input
             type="number"
             min={0}
             max={90}
@@ -191,55 +199,49 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
             value={state.defaultResidualRatePercent}
             disabled={!isPolicyJsonValid}
             onChange={(event) => updateState({ defaultResidualRatePercent: sanitizeResidualPercentInput(event.target.value, state.defaultResidualRatePercent) })}
-            className={inputClassName}
           />
-        </label>
+        </Field>
       </div>
 
       <div className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="text-base font-semibold text-foreground">{labels.depreciationPolicyGroups}</h3>
-          <button type="button" onClick={addGroup} disabled={!isPolicyJsonValid} className={compactButtonClassName}>
-            <Plus className="h-4 w-4" />
+          <h3 id={groupsHeadingId} className="text-base font-semibold text-foreground">{labels.depreciationPolicyGroups}</h3>
+          <Button variant="outline" onClick={addGroup} disabled={!isPolicyJsonValid}>
+            <Plus />
             {labels.depreciationAddGroup}
-          </button>
+          </Button>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {state.groups.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{labels.depreciationNoGroups}</p>
-          ) : (
-            state.groups.map((group) => (
-              <button
+        {state.groups.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{labels.depreciationNoGroups}</p>
+        ) : (
+          <div role="radiogroup" aria-labelledby={groupsHeadingId} className="flex flex-wrap gap-2">
+            {state.groups.map((group) => (
+              <ChoiceChip
                 key={group.id}
-                type="button"
+                type="radio"
+                name={groupRadioName}
+                checked={activeGroup?.id === group.id}
                 disabled={!isPolicyJsonValid}
-                onClick={() => setActiveGroupId(group.id)}
-                className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-                  activeGroup?.id === group.id ? "border-primary bg-primary-soft text-primary" : "border-border text-foreground hover:bg-accent"
-                }`}
-              >
-                <span className="block font-medium">{group.name}</span>
-                <span className="block text-xs text-muted-foreground">{group.categoryIds.length} / {categories.length}</span>
-              </button>
-            ))
-          )}
-        </div>
+                onChange={() => setActiveGroupId(group.id)}
+                label={group.name}
+                detail={<span className="num">{group.categoryIds.length} / {categories.length}</span>}
+              />
+            ))}
+          </div>
+        )}
 
         {activeGroup ? (
           <div className="space-y-4 rounded-md border border-border bg-background p-4">
             <div className="grid gap-3 md:grid-cols-3">
-              <label className="space-y-1 text-sm font-medium text-foreground">
-                <span>{labels.depreciationPolicyGroupName}</span>
-                <input value={activeGroup.name} disabled={!isPolicyJsonValid} onChange={(event) => updateGroup(activeGroup.id, { name: event.target.value })} className={inputClassName} />
-              </label>
-              <label className="space-y-1 text-sm font-medium text-foreground">
-                <span>{labels.depreciationUsefulLifeMonths}</span>
-                <input type="number" min={1} max={600} value={activeGroup.usefulLifeMonths} disabled={!isPolicyJsonValid} onChange={(event) => updateGroup(activeGroup.id, { usefulLifeMonths: sanitizeUsefulLifeMonthsInput(event.target.value, activeGroup.usefulLifeMonths) })} className={inputClassName} />
-              </label>
-              <label className="space-y-1 text-sm font-medium text-foreground">
-                <span>{labels.depreciationResidualPercent}</span>
-                <input type="number" min={0} max={90} step={0.01} value={activeGroup.residualRatePercent} disabled={!isPolicyJsonValid} onChange={(event) => updateGroup(activeGroup.id, { residualRatePercent: sanitizeResidualPercentInput(event.target.value, activeGroup.residualRatePercent) })} className={inputClassName} />
-              </label>
+              <Field label={labels.depreciationPolicyGroupName}>
+                <Input value={activeGroup.name} disabled={!isPolicyJsonValid} onChange={(event) => updateGroup(activeGroup.id, { name: event.target.value })} />
+              </Field>
+              <Field label={labels.depreciationUsefulLifeMonths}>
+                <Input type="number" min={1} max={600} value={activeGroup.usefulLifeMonths} disabled={!isPolicyJsonValid} onChange={(event) => updateGroup(activeGroup.id, { usefulLifeMonths: sanitizeUsefulLifeMonthsInput(event.target.value, activeGroup.usefulLifeMonths) })} />
+              </Field>
+              <Field label={labels.depreciationResidualPercent}>
+                <Input type="number" min={0} max={90} step={0.01} value={activeGroup.residualRatePercent} disabled={!isPolicyJsonValid} onChange={(event) => updateGroup(activeGroup.id, { residualRatePercent: sanitizeResidualPercentInput(event.target.value, activeGroup.residualRatePercent) })} />
+              </Field>
             </div>
 
             <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
@@ -257,12 +259,12 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
                 disabled={!isPolicyJsonValid}
               />
               <div className="flex flex-row items-center justify-center gap-2 xl:flex-col">
-                <button type="button" onClick={addSelectedCategories} disabled={!isPolicyJsonValid || selectedAvailableIds.length === 0} className={compactButtonClassName}>
+                <Button variant="outline" onClick={addSelectedCategories} disabled={!isPolicyJsonValid || selectedAvailableIds.length === 0}>
                   {labels.depreciationAddSelectedCategories}
-                </button>
-                <button type="button" onClick={removeSelectedCategories} disabled={!isPolicyJsonValid || selectedAssignedIds.length === 0} className={compactButtonClassName}>
+                </Button>
+                <Button variant="outline" onClick={removeSelectedCategories} disabled={!isPolicyJsonValid || selectedAssignedIds.length === 0}>
                   {labels.depreciationRemoveSelectedCategories}
-                </button>
+                </Button>
               </div>
               <CategoryPicker
                 title={labels.depreciationSelectedCategories}
@@ -276,10 +278,10 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
               />
             </div>
 
-            <button type="button" onClick={() => removeGroup(activeGroup.id)} disabled={!isPolicyJsonValid} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-danger-border px-3 text-sm font-medium text-danger transition-colors hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-50">
-              <Trash2 className="h-4 w-4" />
+            <Button variant="danger" onClick={() => removeGroup(activeGroup.id)} disabled={!isPolicyJsonValid}>
+              <Trash2 />
               {labels.depreciationRemoveGroup}
-            </button>
+            </Button>
           </div>
         ) : null}
       </div>
@@ -288,12 +290,12 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
         <h3 className="text-base font-semibold text-foreground">{labels.depreciationPreviewTitle}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{labels.depreciationPreviewDescription}</p>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <PreviewInputField label={labels.depreciationPreviewPurchasePrice}>
-            <input type="text" inputMode="decimal" value={formatPurchasePriceInput(previewPurchasePrice)} onChange={(event) => setPreviewPurchasePrice(sanitizePurchasePriceInput(event.target.value))} className={previewInputClassName} />
-          </PreviewInputField>
-          <PreviewInputField label={labels.depreciationPreviewPurchaseDate}>
-            <input type="date" value={previewPurchaseDate} onChange={(event) => setPreviewPurchaseDate(event.target.value)} className={previewInputClassName} />
-          </PreviewInputField>
+          <Field label={labels.depreciationPreviewPurchasePrice}>
+            <Input fieldSize="md" type="text" inputMode="decimal" value={formatPurchasePriceInput(previewPurchasePrice)} onChange={(event) => setPreviewPurchasePrice(sanitizePurchasePriceInput(event.target.value))} />
+          </Field>
+          <Field label={labels.depreciationPreviewPurchaseDate}>
+            <Input fieldSize="md" type="date" value={previewPurchaseDate} onChange={(event) => setPreviewPurchaseDate(event.target.value)} />
+          </Field>
           <PreviewMetric label={labels.depreciationPreviewMonthly} value={formatMoney(preview.monthlyDepreciation)} />
           <PreviewMetric label={labels.depreciationPreviewNetBook} value={formatMoney(preview.netBookValue)} />
           <PreviewMetric label={labels.depreciationPreviewAccumulated} value={formatMoney(preview.accumulatedDepreciation)} />
@@ -315,21 +317,13 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
 
       <details className="rounded-md border border-border bg-background p-4">
         <summary className="cursor-pointer text-sm font-semibold text-foreground">{labels.depreciationAdvancedJson}</summary>
-        <p className="mt-2 text-sm text-muted-foreground">{labels.depreciationAdvancedJsonDescription}</p>
-        <textarea
-          value={policyJson}
-          onChange={(event) => onPolicyJsonChange(event.target.value)}
-          rows={8}
-          className="mt-3 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-        />
+        <Field label={labels.depreciationAdvancedJson} hideLabel hint={labels.depreciationAdvancedJsonDescription} className="mt-3">
+          <Textarea value={policyJson} onChange={(event) => onPolicyJsonChange(event.target.value)} rows={8} className="font-mono" />
+        </Field>
       </details>
     </div>
   )
 }
-
-const inputClassName = "h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-const previewInputClassName = "mt-1 h-7 w-full bg-transparent text-base font-semibold text-foreground outline-none focus:text-primary"
-const compactButtonClassName = "inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
 
 function ReadonlyFact({ label, value }: { label: string; value: string }) {
   return (
@@ -346,15 +340,6 @@ function PreviewMetric({ label, value }: { label: string; value: string }) {
       <div className="text-xs font-medium text-muted-foreground">{label}</div>
       <div className="mt-1 text-base font-semibold text-foreground">{value}</div>
     </div>
-  )
-}
-
-function PreviewInputField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block min-h-[66px] rounded-md border border-border bg-background px-3 py-2">
-      <span className="block text-xs font-medium text-muted-foreground">{label}</span>
-      {children}
-    </label>
   )
 }
 
@@ -387,10 +372,9 @@ function CategoryPicker({
     <div className="min-w-0 rounded-md border border-border">
       <div className="border-b border-border px-3 py-2 text-sm font-semibold text-foreground">{title}</div>
       {onSearchChange ? (
-        <label className="relative block border-b border-border p-2">
-          <Search className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input value={searchValue ?? ""} disabled={disabled} onChange={(event) => onSearchChange(event.target.value)} placeholder={searchLabel} className="h-9 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
-        </label>
+        <div className="border-b border-border p-2">
+          <SearchField fieldSize="md" aria-label={searchLabel} placeholder={searchLabel} value={searchValue ?? ""} disabled={disabled} onChange={(event) => onSearchChange(event.target.value)} />
+        </div>
       ) : null}
       <div className="max-h-72 space-y-1 overflow-y-auto p-2">
         {categories.length === 0 ? <p className="px-2 py-3 text-sm text-muted-foreground">{emptyLabel}</p> : null}
@@ -398,7 +382,13 @@ function CategoryPicker({
           const isSelected = selectedIds.includes(category.id)
           const isConflict = assignedByOtherGroup.has(category.id)
           return (
-            <label key={category.id} className={`flex cursor-pointer items-start gap-2 rounded-md px-2 py-2 text-sm transition-colors ${isConflict ? "text-muted-foreground" : "hover:bg-accent"}`}>
+            <label
+              key={category.id}
+              className={cn(
+                "flex cursor-pointer items-start gap-2 rounded-md px-2 py-2 text-sm transition-colors has-disabled:cursor-not-allowed has-disabled:text-faint-foreground",
+                isConflict ? "text-muted-foreground" : "hover:bg-accent",
+              )}
+            >
               <input
                 type="checkbox"
                 checked={isSelected}
@@ -407,7 +397,7 @@ function CategoryPicker({
                   if (event.target.checked) onSelectedIdsChange([...selectedIds, category.id])
                   else onSelectedIdsChange(selectedIds.filter((id) => id !== category.id))
                 }}
-                className="mt-0.5"
+                className={cn(checkboxVariants(), "mt-0.5")}
               />
               <span className="min-w-0">
                 <span className="block truncate font-medium text-foreground">{category.code}</span>

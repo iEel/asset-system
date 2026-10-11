@@ -124,3 +124,16 @@ test("a component candidate row says whether it is the selected one (P3)", () =>
   const source = readFileSync("src/components/assets/asset-component-manager.tsx", "utf8").replace(/\r\n/g, "\n")
   assert.match(source, /onClick=\{\(\) => onSelect\(candidate\)\}\n\s*aria-pressed=\{selectedId === candidate\.id\}/)
 })
+
+test("the depreciation groups are radio chips in a group named by its heading (T6, 1f)", () => {
+  const source = read("src/components/admin/depreciation-policy-builder.tsx")
+  assert.match(source, /<h3 id=\{groupsHeadingId\} className="text-base font-semibold text-foreground">\{labels\.depreciationPolicyGroups\}<\/h3>/)
+  // The "no groups" line sits outside the radio group, so an empty group never gets a role.
+  assert.match(source, /state\.groups\.length === 0 \? \(\s*<p className="text-sm text-muted-foreground">\{labels\.depreciationNoGroups\}<\/p>\s*\) : \(\s*<div role="radiogroup" aria-labelledby=\{groupsHeadingId\} className="flex flex-wrap gap-2">/)
+  assert.match(
+    source,
+    /<ChoiceChip\s+key=\{group\.id\}\s+type="radio"\s+name=\{groupRadioName\}\s+checked=\{activeGroup\?\.id === group\.id\}\s+disabled=\{!isPolicyJsonValid\}\s+onChange=\{\(\) => setActiveGroupId\(group\.id\)\}\s+label=\{group\.name\}\s+detail=\{<span className="num">\{group\.categoryIds\.length\} \/ \{categories\.length\}<\/span>\}\s+\/>/,
+  )
+  // A real radio inside the settings <form>: ChoiceChip's Enter guard keeps Enter from saving every setting.
+  assert.doesNotMatch(source, /aria-pressed|compactButtonClassName|inputClassName|previewInputClassName|function PreviewInputField/)
+})
