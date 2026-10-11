@@ -51,7 +51,7 @@ export default async function MaintenancePlansPage({ params }: Props) {
         ) : null}
       </div>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-border bg-surface">
         {plans.length === 0 ? (
           <div className="p-4">
             <ActionEmptyState title={t("pmEmptyTitle")} description={t("pmEmptyHelp")} />

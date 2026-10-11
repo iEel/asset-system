@@ -94,7 +94,7 @@ export function MaintenanceAttachments({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+    <section className="rounded-lg border border-border bg-surface p-6">
       <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
         <FileText className="h-5 w-5 text-primary" />
         {t("attachments")}

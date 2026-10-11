@@ -482,7 +482,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       ) : null}
 
       {round.status === "cancelled" ? (
-        <section className="mb-6 rounded-lg border border-danger-border bg-danger-soft p-4 text-sm text-danger shadow-sm">
+        <section className="mb-6 rounded-lg border border-danger-border bg-danger-soft p-4 text-sm text-danger">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
             <div className="min-w-0">
@@ -531,7 +531,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         />
       </div>
 
-      <section className="mb-6 rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <section className="mb-6 rounded-lg border border-border bg-surface p-4">
         <div className="mb-4">
           <h2 className="text-base font-semibold text-foreground">{t("resultDashboard")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("resultDashboardHelp")}</p>
@@ -574,7 +574,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         </div>
       </section>
 
-      <section className="mb-6 rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <section className="mb-6 rounded-lg border border-border bg-surface p-4">
         <div className="mb-4">
           <h2 className="text-base font-semibold text-foreground">{t("evidenceSummary")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("evidenceSummaryHelp")}</p>
@@ -594,7 +594,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             disabled={!canCloseRound}
             checklist={closeChecklist}
           />
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm lg:min-w-72 lg:self-start">
+          <section className="rounded-lg border border-border bg-surface p-4 lg:min-w-72 lg:self-start">
             <h2 className="text-base font-semibold text-foreground">{t("cancelRound")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("cancelDialogHelp")}</p>
             <div className="mt-4">
@@ -605,7 +605,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       ) : null}
 
       <section id="audit-result-list" className="scroll-mt-24">
-        <div className="mb-4 flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-sm lg:flex-row lg:items-start lg:justify-between">
+        <div className="mb-4 flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h2 className="text-base font-semibold text-foreground">{resultListTitle}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{resultListDescription}</p>
@@ -636,7 +636,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
           submitLabel={tCommon("search")}
           hiddenInputs={{ result: resultListState.result, page: 1, pageSize: resultListState.pageSize, returnTo: returnToHref }}
         />
-        <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface">
           <div className={`${getMobileCardListClasses()} p-3`}>
             {resultRows.length === 0 ? (
               <ActionEmptyState
@@ -793,7 +793,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
 
 function Metric({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+    <div className="rounded-lg border border-border bg-surface p-4">
       <div className="text-sm text-muted-foreground">{label}</div>
       <div className="mt-2 text-2xl font-semibold text-foreground">{value}</div>
     </div>

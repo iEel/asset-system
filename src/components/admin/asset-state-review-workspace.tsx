@@ -123,7 +123,7 @@ export function AssetStateReviewWorkspace({
   const numberLocale = locale === "th" ? "th-TH" : "en-US"
 
   return (
-    <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+    <section className="overflow-hidden rounded-lg border border-border bg-surface">
       <div className="flex flex-col gap-4 border-b border-border p-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <div className="flex items-center gap-2">

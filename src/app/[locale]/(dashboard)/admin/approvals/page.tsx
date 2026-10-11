@@ -72,7 +72,7 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
         <SummaryCard label={t("audit")} value={summary.audit} tone={summary.audit > 0 ? "warning" : "muted"} />
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h2 className="font-semibold text-foreground">{t("policyTitle")}</h2>
@@ -95,7 +95,7 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
         </div>
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h2 className="font-semibold text-foreground">{t("approverMatrixTitle")}</h2>
@@ -130,7 +130,7 @@ export default async function ApprovalInboxPage({ params, searchParams }: Approv
         </div>
       </section>
 
-      <section className="rounded-lg border border-border bg-surface shadow-sm">
+      <section className="rounded-lg border border-border bg-surface">
         <div className="border-b border-border p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -263,7 +263,7 @@ function SummaryCard({
   tone: "danger" | "warning" | "success" | "muted"
 }) {
   return (
-    <div className={`rounded-lg border p-4 shadow-sm ${summaryClass(tone)}`}>
+    <div className={`rounded-lg border p-4 ${summaryClass(tone)}`}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">{label}</p>

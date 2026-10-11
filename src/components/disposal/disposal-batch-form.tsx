@@ -60,7 +60,7 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
 
   if (reviewing) {
     return (
-      <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
+      <section className="rounded-lg border border-border bg-surface p-4 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-foreground">{t("batchReviewTitle")}</h2>
@@ -94,7 +94,7 @@ export function DisposalBatchForm({ employees }: { employees: Option[] }) {
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
+    <section className="rounded-lg border border-border bg-surface p-4 sm:p-6">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
         <div className="min-w-0 space-y-4">
           <FormStep number={1} title={t("formSteps.asset")} />

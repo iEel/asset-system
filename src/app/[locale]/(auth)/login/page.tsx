@@ -44,7 +44,7 @@ export default async function LoginPage({ params, searchParams }: LoginPageProps
           <p className="mt-1 text-sm text-muted-foreground">Asset Management System</p>
         </header>
 
-        <section aria-labelledby="login-heading" className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <section aria-labelledby="login-heading" className="rounded-lg border border-border bg-surface p-5 sm:p-7">
           <h2 id="login-heading" className="mb-6 text-center text-xl font-semibold text-brand-navy">
             {tAuth("login")}
           </h2>

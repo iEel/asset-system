@@ -29,7 +29,7 @@ export function AuditProgressBar({
   const toneClass = percent >= 100 ? "bg-success" : percent >= 50 ? "bg-primary" : "bg-warning"
 
   return (
-    <div className={compact ? "min-w-44" : "rounded-lg border border-border bg-surface p-4 shadow-sm"}>
+    <div className={compact ? "min-w-44" : "rounded-lg border border-border bg-surface p-4"}>
       <div className="mb-2 flex items-center justify-between gap-3">
         <div className={compact ? "text-xs font-medium text-muted-foreground" : "text-sm font-medium text-foreground"}>
           {label}

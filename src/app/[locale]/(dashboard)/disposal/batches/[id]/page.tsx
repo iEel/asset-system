@@ -72,7 +72,7 @@ export default async function DisposalBatchDetailPage({ params }: { params: Prom
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
+          <section className="rounded-lg border border-border bg-surface p-4 sm:p-6">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground"><PackageCheck className="h-5 w-5 text-primary" />{t("batchSharedDetail")}</h2>
             <dl className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <BatchInfo label={t("disposalType")} value={t(`types.${batch.disposalType}`)} />
@@ -85,7 +85,7 @@ export default async function DisposalBatchDetailPage({ params }: { params: Prom
             <div className="mt-5 border-t border-border pt-4"><BatchInfo label={t("reason")} value={batch.reason} /></div>
           </section>
 
-          <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+          <section className="overflow-hidden rounded-lg border border-border bg-surface">
             <div className="border-b border-border px-4 py-3"><h2 className="text-base font-semibold text-foreground">{t("batchChildren")}</h2></div>
             <div className="divide-y divide-border md:hidden">
               {batch.disposalRequests.map((request) => <BatchRequestCard key={request.id} locale={locale} batchHref={batchHref} request={request} statusLabel={t(`statuses.${request.requestStatus}`)} openLabel={t("openRequest")} />)}

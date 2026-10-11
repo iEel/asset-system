@@ -249,3 +249,39 @@ test("R7 interim: table-header fills wait for DataTable (2B)", () => {
   const total = Object.values(fills).reduce((sum, count) => sum + count, 0)
   assert.ok(total <= 44, `at most 44 table-header fills may remain, found ${total}: ${JSON.stringify(fills)}`)
 })
+
+// R2: panels and cards are flat. A shadow belongs only to floating layers (shadow-overlay, not matched here),
+// controls drawn over the camera image or a photo, paper previews, and the few bars that later phases own.
+const SURFACE_SHADOW = /(?<![\w-])(?:[\w\-\[\]=&\/]+:)*shadow-(?:sm|md|lg|xl|2xl)(?![\w-])/g
+
+test("R2 only floating layers, camera controls and paper previews cast a shadow", () => {
+  assertWithinBudget(SURFACE_SHADOW, {
+    "src/components/ui/scanner-text-input.tsx": 2, // two controls over the camera image
+    "src/components/audit/audit-scan-check-form.tsx": 1, // delete button over a photo thumbnail
+    "src/components/assets/asset-label-print.tsx": 1, // label sheet preview
+    "src/components/asset-operations/operation-document-print.tsx": 1, // A4 page preview
+    "src/components/admin/system-settings-form.tsx": 2, // label preview; sticky save bar shadow-lg → StickyFormFooter (2C)
+    "src/components/assets/asset-form.tsx": 1, // sticky save bar shadow-lg → StickyFormFooter (2C)
+    "src/components/layout/mobile-field-navigation.tsx": 1, // round scan button shadow-md, kept since phase 1
+    "src/app/[locale]/(dashboard)/admin/roles/page.tsx": 1, // floating add button shadow-lg (2D)
+    "src/app/[locale]/(dashboard)/admin/users/page.tsx": 1, // floating add button shadow-lg (2D)
+    "src/components/assets/asset-register-table.tsx": 1, // mobile bulk-action bar shadow-lg (2B / phase 3)
+  })
+})
+
+test("the two segmented controls mark the chosen option with primary-soft and 6px corners, not a shadow", () => {
+  // Mockup .seg (base.css): white frame with a 1px line, 8px corners, 2px padding and gap; buttons 6px;
+  // the pressed one is primary-soft with primary-hover text at weight 600; the others hover to the subtle fill.
+  assert.match(globals(), /--radius-control: 6px;/, "rounded-control needs its token, or Tailwind drops the class without an error")
+
+  const roomList = read("src/components/audit/audit-scan-room-list.tsx")
+  assert.match(roomList, /aria-label=\{t\("roomListTabs"\)\} className="flex gap-0\.5 rounded-md border border-border bg-surface p-0\.5"/)
+  assert.match(roomList, /"flex min-h-11 flex-1 items-center justify-center gap-1\.5 rounded-control px-2 text-sm font-medium transition-colors /)
+  assert.match(roomList, /tab === key \? "bg-primary-soft font-semibold text-primary-hover" : "text-muted-foreground hover:bg-background hover:text-foreground"/)
+
+  const settings = read("src/components/admin/system-settings-form.tsx")
+  assert.match(settings, /<div className="inline-flex gap-0\.5 rounded-md border border-border bg-surface p-0\.5" role="group" aria-label=\{label\}>/)
+  // A template string, not cn(): font-medium and font-semibold must never sit in the same class list.
+  assert.match(settings, /className=\{`inline-flex h-8 items-center justify-center gap-1\.5 rounded-control px-3 text-sm transition-colors /)
+  assert.match(settings, /\? "bg-primary-soft font-semibold text-primary-hover"\n\s+: "font-medium text-muted-foreground hover:bg-background hover:text-foreground"/)
+})

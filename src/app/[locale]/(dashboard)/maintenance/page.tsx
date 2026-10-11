@@ -106,7 +106,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
       </div>
 
       {stuckTotal > 0 ? (
-        <section id="stuck" className="rounded-lg border border-warning-border bg-warning-soft p-4 shadow-sm">
+        <section id="stuck" className="rounded-lg border border-warning-border bg-warning-soft p-4">
           <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
             <AlertTriangle className="h-5 w-5 text-warning" />{t("stuckTitle")} ({stuckTotal})
           </h2>
@@ -131,7 +131,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
         </section>
       ) : null}
 
-      <section id="pm-due" className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <section id="pm-due" className="rounded-lg border border-border bg-surface p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
@@ -170,7 +170,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
         ) : null}
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-4">
         <form className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_repeat(3,minmax(150px,180px))_auto]" action={`/${locale}/maintenance`}>
           {filters.assetId ? <input type="hidden" name="assetId" value={filters.assetId} /> : null}
           <label className="min-w-0">
@@ -203,7 +203,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
         ) : null}
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-border bg-surface">
         <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-base font-semibold text-foreground">{t("listTitle")}</h2>

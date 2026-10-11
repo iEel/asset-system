@@ -118,7 +118,7 @@ export default async function RolesPage({ params }: RolesPageProps) {
         />
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-border bg-surface">
         <div className="border-b border-border px-4 py-3">
           <h2 className="text-base font-semibold text-foreground">{t("roleSummary")}</h2>
         </div>
@@ -185,7 +185,7 @@ export default async function RolesPage({ params }: RolesPageProps) {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-border bg-surface">
         <div className="border-b border-border px-4 py-3">
           <h2 className="text-base font-semibold text-foreground">{t("permissionMatrix")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("permissionMatrixSubtitle")}</p>
@@ -264,7 +264,7 @@ function RoleAuditCard({
   tone: "primary" | "warning" | "danger" | "muted"
 }) {
   return (
-    <div className={`rounded-lg border p-4 shadow-sm ${roleAuditToneClass(tone)}`}>
+    <div className={`rounded-lg border p-4 ${roleAuditToneClass(tone)}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-foreground">{label}</p>

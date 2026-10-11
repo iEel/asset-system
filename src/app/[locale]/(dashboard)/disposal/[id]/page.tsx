@@ -230,7 +230,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
         <div className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-6">
             <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
               <FileText className="h-5 w-5 text-primary" />
               {t("requestDetail")}
@@ -249,13 +249,13 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
             </div>
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-6">
             <h2 className="mb-4 text-lg font-semibold text-foreground">{t("reason")}</h2>
             <p className="whitespace-pre-wrap text-sm text-muted-foreground">{disposalRequest.reason}</p>
           </section>
 
           {disposalRequest.requestStatus !== "pending" ? (
-            <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <section className="rounded-lg border border-border bg-surface p-6">
               <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
                 <ClipboardCheck className="h-5 w-5 text-primary" />
                 {t("decisionDetail")}
@@ -265,7 +265,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
           ) : null}
 
           {disposalRequest.requestStatus === "disposed" ? (
-            <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <section className="rounded-lg border border-border bg-surface p-6">
               <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
                 <ClipboardCheck className="h-5 w-5 text-primary" />
                 {t("executionDetail")}
@@ -300,7 +300,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
             </section>
           ) : null}
 
-          <section id="history" className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section id="history" className="rounded-lg border border-border bg-surface p-6">
             <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
               <History className="h-5 w-5 text-primary" />
               {t("disposalHistory")}
@@ -340,7 +340,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
         </div>
 
         <aside className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-6">
             <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
               <Package className="h-5 w-5 text-primary" />
               {t("asset")}

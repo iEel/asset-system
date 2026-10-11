@@ -92,7 +92,7 @@ export default async function ApprovalHistoryPage({ params, searchParams }: Appr
         <SummaryCard label={t("closed")} value={summary.close + summary.execute} tone="warning" icon={<ClipboardList className="h-5 w-5" />} />
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-5">
         <div className="flex flex-col gap-4">
           <div>
             <h2 className="font-semibold text-foreground">{t("filterTitle")}</h2>
@@ -117,7 +117,7 @@ export default async function ApprovalHistoryPage({ params, searchParams }: Appr
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-border bg-surface">
         <div className="flex flex-col gap-2 border-b border-border p-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="font-semibold text-foreground">{t("timelineTitle")}</h2>
@@ -296,7 +296,7 @@ function SummaryCard({
   icon: React.ReactNode
 }) {
   return (
-    <div className={`rounded-lg border p-4 shadow-sm ${summaryClass(tone)}`}>
+    <div className={`rounded-lg border p-4 ${summaryClass(tone)}`}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">{label}</p>

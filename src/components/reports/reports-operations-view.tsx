@@ -137,7 +137,7 @@ export function ReportsOperationsView({
 
   return (
     <div className="space-y-5">
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-5">
         <h2 className="mb-4 text-base font-semibold text-foreground">{labels.dataQuality}</h2>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           {dataQualityCards.map((card) => (
@@ -152,7 +152,7 @@ export function ReportsOperationsView({
         </div>
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-5">
         <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="text-base font-semibold text-foreground">{labels.crossScopeTitle}</h2>
@@ -179,7 +179,7 @@ export function ReportsOperationsView({
         <CrossScopePreviewTable rows={crossScope.rows} locale={locale} emptyLabel={crossScopeEmpty} labels={labels} />
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-5">
         <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-base font-semibold text-foreground">{labels.dataQualityActionTitle}</h2>
@@ -229,7 +229,7 @@ export function ReportsOperationsView({
         </div>
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-5">
         <div className="mb-4">
           <h2 className="text-base font-semibold text-foreground">{labels.operationInsightsTitle}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{labels.operationInsightsHelp}</p>
@@ -238,7 +238,7 @@ export function ReportsOperationsView({
           <ReportTable title={labels.byCustodian} rows={insights.custodians} emptyLabel={insightsEmpty} />
           <ReportTable title={labels.byLocation} rows={insights.locations} emptyLabel={insightsEmpty} />
           <ReportTable title={labels.frequentRepairAssets} rows={insights.repairs} emptyLabel={insightsEmpty} />
-          <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-5">
             <h2 className="mb-4 text-base font-semibold text-foreground">{labels.idleAssets}</h2>
             <Link href={idleAssetsHref} className="block min-h-11 rounded-md border border-warning-border bg-warning-soft p-4 transition-colors hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
               <div className="text-sm text-muted-foreground">{labels.idleAssetsHelp}</div>
@@ -340,7 +340,7 @@ function getCrossScopeFlagLabels(asset: AssetCrossScopeSummaryRow, labels: Repor
 
 function ReportTable({ title, rows, emptyLabel }: { title: string; rows: ReportInsightRow[]; emptyLabel: string }) {
   return (
-    <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+    <section className="rounded-lg border border-border bg-surface p-5">
       <h2 className="mb-4 text-base font-semibold text-foreground">{title}</h2>
       <div className="space-y-2">
         {rows.length === 0 ? (

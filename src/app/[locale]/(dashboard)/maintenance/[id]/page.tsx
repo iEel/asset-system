@@ -150,7 +150,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
         <div className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-6">
             <h2 className="mb-5 text-lg font-semibold text-foreground">{t("detailTitle")}</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <Info label={t("date")} value={formatDate(ticket.reportedDate)} />
@@ -169,7 +169,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
           </section>
 
           {hasLegacyDetails ? (
-            <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <section className="rounded-lg border border-border bg-surface p-6">
               <h2 className="mb-4 text-base font-semibold text-foreground">{t("legacyTitle")}</h2>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {legacyFields.map((field) => <Info key={field.label} label={field.label} value={field.value} />)}
@@ -177,7 +177,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
             </section>
           ) : null}
 
-          <section id="history" className="scroll-mt-6 rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section id="history" className="scroll-mt-6 rounded-lg border border-border bg-surface p-6">
             <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
               <History className="h-5 w-5 text-primary" />{t("history")}
             </h2>
@@ -214,7 +214,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
         </div>
 
         <aside className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-6">
             <h2 className="mb-5 text-lg font-semibold text-foreground">{t("assetSection")}</h2>
             <div className="space-y-4">
               <Info label={t("asset")} value={`${ticket.asset.assetTag} - ${ticket.asset.name}`} />
@@ -228,7 +228,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
           </section>
 
           {shouldReviewDisposal && canCreateDisposal ? (
-            <section className="rounded-lg border border-warning-border bg-warning-soft p-6 shadow-sm">
+            <section className="rounded-lg border border-warning-border bg-warning-soft p-6">
               <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
                 <AlertTriangle className="h-5 w-5 text-warning" />{t("disposalReviewTitle")}
               </h2>

@@ -38,7 +38,7 @@ export default async function DisposalBatchHistoryPage({ params }: { params: Pro
       {batches.length === 0 ? (
         <ActionEmptyState icon={<FileStack className="h-6 w-6" />} title={t("batchHistoryEmpty")} description={t("batchHistoryEmptyHelp")} actionHref={canCreate ? `/${locale}/disposal/batch/new` : undefined} actionLabel={canCreate ? t("batchCreateTitle") : undefined} />
       ) : (
-        <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <section className="overflow-hidden rounded-lg border border-border bg-surface">
           <div className="divide-y divide-border md:hidden">
             {batches.map((batch) => {
               const status = deriveDisposalBatchStatus(batch.disposalRequests.map((request) => request.requestStatus))

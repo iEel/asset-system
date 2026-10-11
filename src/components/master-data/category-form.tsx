@@ -114,7 +114,7 @@ export function CategoryForm({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+        <section className="rounded-lg border border-border bg-surface p-6">
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("code")} required>
             <input
@@ -158,7 +158,7 @@ export function CategoryForm({
           </div>
         </section>
 
-        <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+        <section className="rounded-lg border border-border bg-surface p-6">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-foreground">{t("customFieldTemplate")}</h2>
@@ -198,7 +198,7 @@ export function CategoryForm({
           />
         </section>
 
-        <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+        <section className="rounded-lg border border-border bg-surface p-6">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-foreground">{t("photoChecklistTemplate")}</h2>

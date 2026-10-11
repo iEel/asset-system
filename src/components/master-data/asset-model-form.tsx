@@ -227,7 +227,7 @@ export function AssetModelForm({
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
-        <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+        <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-6">
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("modelName")} required>
             <input
@@ -370,7 +370,7 @@ export function AssetModelForm({
           </div>
         </form>
 
-        <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+        <section className="rounded-lg border border-border bg-surface p-6">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
             <ImageIcon className="h-5 w-5 text-primary" />
             {t("modelPhoto")}

@@ -105,7 +105,7 @@ export function DisposalRequestForm({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
+    <section className="rounded-lg border border-border bg-surface p-4 sm:p-6">
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <FormStep number={1} title={t("formSteps.asset")} />
         <DisposalAssetPicker

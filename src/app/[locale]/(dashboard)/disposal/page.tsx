@@ -267,7 +267,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         </div>
       </div>
 
-      <details className="group rounded-lg border border-border bg-surface shadow-sm md:hidden" open={hasActiveFilters}>
+      <details className="group rounded-lg border border-border bg-surface md:hidden" open={hasActiveFilters}>
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-foreground">
           <span className="inline-flex items-center gap-2"><SlidersHorizontal className="h-4 w-4 text-primary" />{t("filter")}</span>
           {hasActiveFilters ? <span className="rounded-md bg-primary-soft px-2 py-1 text-xs text-primary">{t("clearFilters")}</span> : null}
@@ -277,7 +277,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         </div>
       </details>
 
-      <section className="hidden rounded-lg border border-border bg-surface p-4 shadow-sm md:block">
+      <section className="hidden rounded-lg border border-border bg-surface p-4 md:block">
         <form className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(220px,1fr)_160px_160px_160px_160px_auto]" action={`/${locale}/disposal`}>
           <input type="hidden" name="pageSize" value={filters.pageSize} />
           <label>
@@ -317,7 +317,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         {dateRangeError ? <p role="alert" className="mt-3 text-sm font-medium text-danger">{t("invalidDateRange")}</p> : null}
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-border bg-surface">
         <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-base font-semibold text-foreground">{t("requestList")}</h2>

@@ -934,7 +934,7 @@ export function SystemSettingsForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="min-w-0 rounded-lg border border-border bg-surface p-2 shadow-sm">
+      <div className="min-w-0 rounded-lg border border-border bg-surface p-2">
         <div className="flex max-w-full gap-2 overflow-x-auto overscroll-x-contain">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id
@@ -955,7 +955,7 @@ export function SystemSettingsForm({
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <div className="rounded-lg border border-border bg-surface p-4">
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.searchSettings}</span>
           <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3 focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
@@ -993,7 +993,7 @@ export function SystemSettingsForm({
         ) : null}
       </div>
 
-      <div id="settings-workspace" className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div id="settings-workspace" className="overflow-hidden rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.settingsOverview} description={labels.settingsOverviewDescription} />
         <div className="grid gap-3 px-4 py-4 sm:grid-cols-2 xl:grid-cols-4">
           {overviewCards.map((card) => (
@@ -1004,7 +1004,7 @@ export function SystemSettingsForm({
 
       {activeTab === "asset-numbering" ? (
       <>
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.assetTagFormat} description={labels.assetTagFormatDescription} />
         <div className="space-y-4 px-4 py-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -1063,7 +1063,7 @@ export function SystemSettingsForm({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.numberingOptions} />
         <div className="grid gap-4 px-4 py-4 md:grid-cols-3">
           <Field label={labels.runningDigits} htmlFor="asset-tag-running-digits">
@@ -1099,7 +1099,7 @@ export function SystemSettingsForm({
       ) : null}
 
       {activeTab === "label-template" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.labelPrintTemplate} description={labels.labelPrintTemplateDescription} />
         <div className="space-y-4 px-4 py-4">
           <div className="grid gap-4 rounded-md border border-border bg-background p-3 xl:grid-cols-[minmax(0,1fr)_minmax(260px,360px)]">
@@ -1184,7 +1184,7 @@ export function SystemSettingsForm({
       ) : null}
 
       {activeTab === "documents" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.operationDocumentNumbers} description={labels.operationDocumentNumbersDescription} />
         <div className="space-y-4 px-4 py-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_260px]">
@@ -1242,7 +1242,7 @@ export function SystemSettingsForm({
       ) : null}
 
       {activeTab === "asset-numbering" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.categoryPrefixes} description={labels.categoryPrefixesDescription} />
         <div className="space-y-4 px-4 py-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -1486,7 +1486,7 @@ export function SystemSettingsForm({
       ) : null}
 
       {activeTab === "organization" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.organizationDefaults} description={labels.organizationDefaultsDescription} />
         <div className="grid gap-4 px-4 py-4 md:grid-cols-2">
           <Field label={labels.companyName} htmlFor="company-name">
@@ -1520,7 +1520,7 @@ export function SystemSettingsForm({
       ) : null}
 
       {activeTab === "notifications" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.notificationRules} description={labels.notificationRulesDescription} />
         <div className="grid gap-4 px-4 py-4 md:grid-cols-2 xl:grid-cols-4">
           <Field label={labels.returnDueSoonDays} htmlFor="notification-return-due-days">
@@ -1576,7 +1576,7 @@ export function SystemSettingsForm({
       ) : null}
 
       {activeTab === "workflow-approval" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.workflowApprovalPolicy} description={labels.workflowApprovalPolicyDescription} />
         <div className="space-y-4 px-4 py-4">
           <p className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
@@ -1629,7 +1629,7 @@ export function SystemSettingsForm({
       ) : null}
 
       {activeTab === "automation" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.schedulerSettings} description={labels.schedulerSettingsDescription} />
         <div className="space-y-4 px-4 py-4">
           <p className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
@@ -1641,7 +1641,7 @@ export function SystemSettingsForm({
       ) : null}
 
       {activeTab === "governance" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.governanceSettings} description={labels.governanceSettingsDescription} />
         <div className="space-y-4 px-4 py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1700,7 +1700,7 @@ export function SystemSettingsForm({
       ) : null}
 
       {activeTab === "ldap-login" ? (
-      <div className="overflow-visible rounded-lg border border-border bg-surface shadow-sm">
+      <div className="overflow-visible rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.ldapSettings} description={labels.ldapSettingsDescription} />
         <div className="space-y-5 px-4 py-4">
           <WizardStep number={1} title={labels.ldapStepConnection}>
@@ -1850,7 +1850,7 @@ export function SystemSettingsForm({
       ) : null}
 
       {activeTab === "ldap-sync" ? (
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <SectionHeader title={labels.ldapSyncStrategy} description={labels.ldapSyncStrategyDescription} />
         <div className="space-y-4 px-4 py-4">
           <p className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
@@ -2017,7 +2017,7 @@ export function SystemSettingsForm({
       ) : null}
 
       {activeTab === "advanced" && generalSettings.length > 0 ? (
-        <details className="overflow-hidden rounded-lg border border-warning-border bg-surface shadow-sm">
+        <details className="overflow-hidden rounded-lg border border-warning-border bg-surface">
           <summary className="cursor-pointer list-none border-b border-warning-border bg-warning-soft px-4 py-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -2058,7 +2058,7 @@ export function SystemSettingsForm({
       ) : null}
 
       {changedCount > 0 ? (
-        <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <div className="overflow-hidden rounded-lg border border-border bg-surface">
           <SectionHeader title={labels.changeReview} description={labels.changeReviewDescription} />
           <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
             <table className="min-w-full divide-y divide-border text-sm">
@@ -2540,7 +2540,7 @@ function LabelAssetNameModeField({
   return (
     <div className="space-y-2">
       <div className="text-sm font-medium text-foreground">{label}</div>
-      <div className="inline-flex rounded-md border border-border bg-background p-1" role="group" aria-label={label}>
+      <div className="inline-flex gap-0.5 rounded-md border border-border bg-surface p-0.5" role="group" aria-label={label}>
         {options.map((option) => {
           const isActive = compactEnabled === option.value
           return (
@@ -2549,10 +2549,10 @@ function LabelAssetNameModeField({
               type="button"
               aria-pressed={isActive}
               onClick={() => onChange(option.value)}
-              className={`inline-flex h-8 items-center justify-center gap-1.5 rounded px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+              className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-control px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                 isActive
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-muted-foreground hover:bg-background hover:text-foreground"
+                  ? "bg-primary-soft font-semibold text-primary-hover"
+                  : "font-medium text-muted-foreground hover:bg-background hover:text-foreground"
               }`}
             >
               {isActive ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}

@@ -135,7 +135,7 @@ function togglePermission(permissionId: string) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+        <section className="rounded-lg border border-border bg-surface p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <h2 className="text-base font-semibold text-foreground">{t("roleMetadata")}</h2>
@@ -200,14 +200,14 @@ function togglePermission(permissionId: string) {
           </div>
         </section>
 
-        <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+        <section className="rounded-lg border border-border bg-surface p-6">
           <h2 className="text-base font-semibold text-foreground">{t("permissionSelection")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {permissionsLocked ? t("permissionLockedSubtitle") : t("formSubtitle")}
           </p>
         </section>
 
-        <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <section className="overflow-hidden rounded-lg border border-border bg-surface">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-border text-sm">
               <thead className="bg-muted/40">

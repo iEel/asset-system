@@ -50,7 +50,7 @@ test("label print template settings expose compact printable asset names", () =>
   assert.match(form, /compactLabelAssetNameFull/)
   assert.match(form, /aria-pressed=\{isActive\}/)
   assert.match(form, /Check/)
-  assert.match(form, /bg-primary text-white/)
+  assert.match(form, /\? "bg-primary-soft font-semibold text-primary-hover"/)
   assert.match(form, /focus-visible:ring-2 focus-visible:ring-ring/)
   assert.doesNotMatch(form, /role="switch"/)
   assert.doesNotMatch(form, /<InlineToggleField[\s\S]*label=\{labels\.compactLabelAssetName\}/)

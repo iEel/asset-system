@@ -77,7 +77,7 @@ export function SupplierListView({
 }) {
   if (suppliers.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <div className="rounded-lg border border-border bg-surface p-4">
         <ActionEmptyState
           title={hasActiveFilters ? labels.filteredEmptyTitle : labels.emptyTitle}
           description={hasActiveFilters ? labels.filteredEmptyDescription : labels.emptyDescription}
@@ -89,7 +89,7 @@ export function SupplierListView({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+    <div className="overflow-hidden rounded-lg border border-border bg-surface">
       <div data-supplier-desktop-table className="hidden overflow-x-auto md:block">
         <table className="min-w-full divide-y divide-border text-sm">
           <thead className="bg-muted/40">
@@ -146,7 +146,7 @@ export function SupplierListView({
         {suppliers.map((supplier) => {
           const hrefs = buildSupplierRowHrefs({ supplier, locale, supplierReturnHref })
           return (
-            <article key={supplier.id} className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+            <article key={supplier.id} className="rounded-lg border border-border bg-surface p-4">
               <Link href={hrefs.detail} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <div className="text-xs font-medium text-muted-foreground">{supplier.code}</div>
                 <h2 className="mt-1 break-words text-base font-semibold text-primary">{supplier.name}</h2>

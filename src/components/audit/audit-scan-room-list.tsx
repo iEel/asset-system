@@ -69,7 +69,7 @@ export function AuditScanRoomList({
 
   return (
     <section data-audit-scan-room-list aria-label={t("roomListLabel")}>
-      <div role="group" aria-label={t("roomListTabs")} className="flex gap-1 rounded-md bg-muted p-1">
+      <div role="group" aria-label={t("roomListTabs")} className="flex gap-0.5 rounded-md border border-border bg-surface p-0.5">
         {(["pending", "checked", "all"] as const).map((key) => (
           <button
             key={key}
@@ -77,8 +77,8 @@ export function AuditScanRoomList({
             aria-pressed={tab === key}
             onClick={() => onTabChange(key)}
             className={cn(
-              "flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded px-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-9",
-              tab === key ? "bg-surface text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              "flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-control px-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-9",
+              tab === key ? "bg-primary-soft font-semibold text-primary-hover" : "text-muted-foreground hover:bg-background hover:text-foreground",
             )}
           >
             {t(tabLabelKey[key])}

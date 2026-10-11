@@ -65,7 +65,7 @@ export function AuditFindingsBatchActions({ findings }: { findings: BatchFinding
 
   return (
     <>
-      <section className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <section className="mb-4 rounded-lg border border-border bg-surface p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">{t("batchReview")}</h2>

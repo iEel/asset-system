@@ -1522,7 +1522,7 @@ export function AssetForm({
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="min-w-0 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
+    <section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-6">
       <h2 className="mb-4 break-words text-lg font-semibold text-foreground sm:mb-5">{title}</h2>
       <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">{children}</div>
     </section>

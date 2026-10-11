@@ -368,7 +368,7 @@ export default async function WorkCenterPage({ params, searchParams }: WorkCente
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid grid-cols-2 rounded-md border border-border bg-background p-1 sm:inline-flex">
           <WorkCenterViewLink
             href={buildWorkCenterHref(locale, workCenterParams, { view: "all", panel: workCenterParams.panel })}
@@ -598,7 +598,7 @@ function MetricCard({ metric }: { metric: WorkCenterMetric }) {
   return (
     <Link
       href={metric.href}
-      className={`rounded-lg border p-4 shadow-sm transition-colors hover:bg-accent ${toneClass(metric.tone)}`}
+      className={`rounded-lg border p-4 transition-colors hover:bg-accent ${toneClass(metric.tone)}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -675,7 +675,7 @@ function FollowUpPanel({
 }) {
   const isExpanded = currentParams.panel === panel
   return (
-    <section className={`min-w-0 rounded-lg border bg-surface p-4 shadow-sm ${isExpanded ? "border-primary-border" : "border-border"}`}>
+    <section className={`min-w-0 rounded-lg border bg-surface p-4 ${isExpanded ? "border-primary-border" : "border-border"}`}>
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h2 className="font-semibold text-foreground">{title}</h2>

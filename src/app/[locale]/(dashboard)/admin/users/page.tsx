@@ -85,7 +85,7 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
         hiddenInputs={{ pageSize: listState.pageSize, sort: listState.sort, direction: listState.direction }}
       />
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-border bg-surface">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">

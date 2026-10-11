@@ -178,7 +178,7 @@ function Metric({ label, value, tone }: { label: string; value: number; tone: "n
   }[tone]
 
   return (
-    <div className={`rounded-lg border px-4 py-3 shadow-sm ${toneClass}`}>
+    <div className={`rounded-lg border px-4 py-3 ${toneClass}`}>
       <div className="text-sm text-muted-foreground">{label}</div>
       <div className="mt-1 text-2xl font-semibold text-foreground">{value.toLocaleString("th-TH")}</div>
     </div>
@@ -227,7 +227,7 @@ function AssetIdentity({ asset, href }: { asset: MyAssetRow; href?: string }) {
 
 function MobileAssetCard({ labels, asset, href }: { labels: Record<string, string>; asset: MyAssetRow; href: string }) {
   return (
-    <article className="rounded-md border border-border bg-surface p-4 shadow-sm">
+    <article className="rounded-md border border-border bg-surface p-4">
       <AssetIdentity asset={asset} href={href} />
       <div className="mt-3 grid gap-2 text-sm">
         <MobileField label={labels.serialNumber} value={asset.serialNumber || "-"} />

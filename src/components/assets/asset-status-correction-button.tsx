@@ -62,7 +62,7 @@ export function AssetStatusCorrectionButton({ assetId, readyStatusId, labels }: 
         {labels.button}
       </button>
       {open ? (
-        <div className="rounded-md border border-warning-border bg-background p-4 shadow-sm">
+        <div className="rounded-md border border-warning-border bg-background p-4">
           <h3 className="text-sm font-semibold text-foreground">{labels.title}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{labels.description}</p>
           <label className="mt-3 block text-sm font-medium text-foreground" htmlFor="asset-status-correction-reason">

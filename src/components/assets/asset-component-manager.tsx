@@ -245,7 +245,7 @@ export function AssetComponentManager({
 
   return (
     <div className="space-y-5 pb-6">
-      <section className="sticky top-0 z-20 rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <section className="sticky top-0 z-20 rounded-lg border border-border bg-surface p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{labels.title}</p>
@@ -263,7 +263,7 @@ export function AssetComponentManager({
       </section>
 
       {canEdit ? (
-        <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <section className="rounded-lg border border-border bg-surface p-4">
           <div className="mb-4">
             <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
               <PackagePlus className="h-5 w-5 text-primary" />
@@ -410,7 +410,7 @@ export function AssetComponentManager({
         </section>
       ) : null}
 
-      <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-4">
         <h2 className="text-base font-semibold text-foreground">{labels.current}</h2>
         {currentComponents.length === 0 ? (
           <p className="mt-3 rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">{labels.noCurrent}</p>
@@ -423,7 +423,7 @@ export function AssetComponentManager({
         )}
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-4">
         <h2 className="text-base font-semibold text-foreground">{labels.history}</h2>
         {componentHistory.length === 0 ? (
           <p className="mt-3 rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">{labels.noHistory}</p>

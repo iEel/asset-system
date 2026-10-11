@@ -73,7 +73,7 @@ export function ReportsOverviewView({
 
   return (
     <div className="space-y-5">
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-border bg-surface">
         <div className="flex flex-col gap-2 border-b border-border px-5 py-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-base font-semibold text-foreground">{labels.previewTitle}</h2>
@@ -131,7 +131,7 @@ export function ReportsOverviewView({
 
 function ReportTable({ title, rows, emptyLabel }: { title: string; rows: ReportCountRow[]; emptyLabel: string }) {
   return (
-    <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+    <section className="rounded-lg border border-border bg-surface p-5">
       <h2 className="mb-4 text-base font-semibold text-foreground">{title}</h2>
       <div className="space-y-2">
         {rows.length === 0 ? (

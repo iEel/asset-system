@@ -296,7 +296,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="min-w-0 space-y-5">
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
+          <section className="rounded-lg border border-border bg-surface p-4 sm:p-5">
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.searchLabel}</span>
               <div className="relative">
@@ -345,7 +345,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
             ) : null}
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
+          <section className="rounded-lg border border-border bg-surface p-4 sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <h2 className="inline-flex items-center gap-2 text-base font-semibold text-foreground">
@@ -501,7 +501,7 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
           </section>
         </div>
 
-        <section className="min-w-0 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5 xl:sticky xl:top-20 xl:self-start">
+        <section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-5 xl:sticky xl:top-20 xl:self-start">
           <div className="mb-4 flex flex-col gap-3">
             <div className="min-w-0">
               <h2 className="text-base font-semibold text-foreground">{labels.selectedTitle}</h2>

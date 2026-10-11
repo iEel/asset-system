@@ -191,7 +191,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
 
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <div className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-5">
             <SectionTitle title={t("profileTitle")} />
             <dl className="mt-4 space-y-3 text-sm">
               <InfoRow label={t("contactPerson")} value={supplier.contactPerson} icon={<Mail aria-hidden="true" className="h-4 w-4" />} />
@@ -201,7 +201,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
             </dl>
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-5">
             <SectionTitle title={t("followUpTitle")} />
             {followUpItems.length === 0 ? (
               <div className="mt-4 rounded-md border border-success-border bg-success-soft p-3 text-sm text-success">
@@ -221,7 +221,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
         </div>
 
         <div className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-5">
             <SectionTitle title={t("linkedAssetsTitle")} actionHref={hrefs.assets} actionLabel={t("viewAllAssets")} />
             {assets.length === 0 ? (
               <ActionEmptyState title={t("noAssets")} description={t("noAssetsHelp")} />
@@ -245,7 +245,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
             )}
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-5">
             <SectionTitle title={t("purchaseDocumentsTitle")} />
             <SupplierPurchaseDocuments
               documents={purchaseDocuments.map((document) => ({
@@ -270,7 +270,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
             />
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-5">
             <SectionTitle title={t("maintenanceHistoryTitle")} />
             {maintenanceTickets.length === 0 ? (
               <ActionEmptyState title={t("noMaintenance")} description={t("noMaintenanceHelp")} />
@@ -320,7 +320,7 @@ function MetricCard({
 }) {
   const content = (
     <div className={[
-      "rounded-lg border bg-surface p-4 shadow-sm transition-colors",
+      "rounded-lg border bg-surface p-4 transition-colors",
       tone === "warning" ? "border-warning-border bg-warning-soft" : "border-border",
       href ? "hover:border-primary-border hover:bg-accent" : "",
     ].join(" ")}>

@@ -70,7 +70,7 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
         submitLabel={tCommon("search")}
       />
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">

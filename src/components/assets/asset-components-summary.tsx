@@ -52,7 +52,7 @@ export function AssetComponentsSummary({
   const visibleComponents = currentComponents.slice(0, 5)
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+    <section className="rounded-lg border border-border bg-surface p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">

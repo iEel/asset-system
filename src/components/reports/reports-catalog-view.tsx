@@ -94,7 +94,7 @@ export function ReportsCatalogView({
         <MetricCard label={labels.catalogItems} value={reportCount.toLocaleString("th-TH")} />
       </div>
 
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-5">
         <div className="mb-4">
           <h2 className="text-base font-semibold text-foreground">{labels.assetPresetScopeTitle}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{labels.assetPresetScopeHelp}</p>
@@ -114,7 +114,7 @@ export function ReportsCatalogView({
         />
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-5">
         <div className="mb-4">
           <h2 className="text-base font-semibold text-foreground">{labels.moduleExportScopeTitle}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{labels.moduleExportScopeHelp}</p>
@@ -144,7 +144,7 @@ export function ReportsCatalogView({
         </div>
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-6">
         <div className="mb-5">
           <h2 className="text-lg font-semibold text-foreground">{labels.reportCatalog}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{labels.reportCatalogHelp}</p>
@@ -191,7 +191,7 @@ export function ReportsCatalogView({
         )}
       </section>
 
-      <details className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <details className="rounded-lg border border-border bg-surface p-5">
         <summary className="cursor-pointer text-base font-semibold text-foreground">{labels.permissionTitle}</summary>
         <p className="mt-2 text-sm text-muted-foreground">{labels.permissionHelp}</p>
         <div className="mt-4 flex flex-wrap gap-2">

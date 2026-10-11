@@ -112,7 +112,7 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
         />
       </div>
 
-      <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <div className="rounded-lg border border-border bg-surface p-4">
         <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1.5fr)_repeat(2,minmax(160px,1fr))_auto]" action={basePath}>
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="pageSize" value={listState.pageSize} />
@@ -165,7 +165,7 @@ export default async function CompaniesPage({ params, searchParams }: CompaniesP
         </form>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">
@@ -286,7 +286,7 @@ function SummaryTile({
   return (
     <Link
       href={href}
-      className={`rounded-lg border bg-surface p-4 shadow-sm transition-colors hover:border-primary-border hover:bg-primary-soft ${
+      className={`rounded-lg border bg-surface p-4 transition-colors hover:border-primary-border hover:bg-primary-soft ${
         tone === "warning" ? "border-warning-border" : "border-border"
       }`}
     >

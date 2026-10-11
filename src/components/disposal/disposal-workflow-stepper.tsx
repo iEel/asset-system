@@ -31,7 +31,7 @@ export function DisposalWorkflowStepper({
   const steps = [labels.request, labels.decision, labels.execution]
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
+    <section className="rounded-lg border border-border bg-surface p-4 sm:p-5">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
         <p className="text-sm font-semibold text-foreground">{currentStageLabel}</p>
         <p className="text-sm text-muted-foreground">{ownerRoleLabel}: {ownerLabel}</p>

@@ -76,7 +76,7 @@ export function DisposalAttachments({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
+    <section className="rounded-lg border border-border bg-surface p-4 sm:p-6">
       <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
         <FileText className="h-5 w-5 text-primary" />
         {title ?? t("requestEvidence")}

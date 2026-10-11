@@ -111,7 +111,7 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
         <p className="mt-1 break-words text-sm text-muted-foreground">{labels.subtitle}</p>
       </div>
 
-      <section className="min-w-0 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
+      <section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-5">
         <label htmlFor="asset-scan-query" className="mb-1.5 block text-sm font-medium text-foreground">
           {labels.queryLabel}
         </label>
@@ -152,7 +152,7 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
           {labels.noResults}
         </section>
       ) : (
-        <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        <section className="overflow-hidden rounded-lg border border-border bg-surface">
           <div className="divide-y divide-border">
             {visibleResults.map((result) => (
               <button

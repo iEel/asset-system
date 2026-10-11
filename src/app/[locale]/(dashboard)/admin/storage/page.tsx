@@ -301,7 +301,7 @@ function SummaryCard({
           : "border-primary-border bg-primary-soft text-primary"
 
   return (
-    <div className={`rounded-lg border p-4 shadow-sm ${toneClass}`}>
+    <div className={`rounded-lg border p-4 ${toneClass}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-sm font-semibold text-foreground">{label}</div>

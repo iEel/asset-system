@@ -89,7 +89,7 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
         <SummaryTile label={t("summaryWithoutPurchaseDocuments")} value={summaryWithoutPurchaseDocuments} detail={t("summaryWithoutPurchaseDocumentsHelp")} href={`${basePath}?${buildSupplierQueryString(listState, { purchaseDocumentUsage: "withoutPurchaseDocuments", page: 1 })}`} tone={summaryWithoutPurchaseDocuments > 0 ? "warning" : "neutral"} />
       </div>
 
-      <details className="rounded-lg border border-border bg-surface shadow-sm md:hidden" open={hasActiveFilters}>
+      <details className="rounded-lg border border-border bg-surface md:hidden" open={hasActiveFilters}>
         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
           <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
           {t("filtersTitle")}
@@ -97,7 +97,7 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
         <SupplierFilterForm basePath={basePath} current={listState} labels={filterLabels} className="grid gap-3 border-t border-border p-4" />
       </details>
 
-      <div className="hidden rounded-lg border border-border bg-surface p-4 shadow-sm md:block">
+      <div className="hidden rounded-lg border border-border bg-surface p-4 md:block">
         <SupplierFilterForm basePath={basePath} current={listState} labels={filterLabels} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1.5fr)_repeat(2,minmax(160px,1fr))_auto]" />
       </div>
 
@@ -190,7 +190,7 @@ function FilterSelect({ label, name, defaultValue, className, children }: { labe
 
 function SummaryTile({ label, value, detail, href, tone = "neutral" }: { label: string; value: number; detail: string; href: string; tone?: "neutral" | "warning" }) {
   return (
-    <Link href={href} className={`min-h-32 rounded-lg border bg-surface p-4 shadow-sm transition-colors hover:border-primary-border hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${tone === "warning" ? "border-warning-border" : "border-border"}`}>
+    <Link href={href} className={`min-h-32 rounded-lg border bg-surface p-4 transition-colors hover:border-primary-border hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${tone === "warning" ? "border-warning-border" : "border-border"}`}>
       <div className="text-sm font-medium text-muted-foreground">{label}</div>
       <div className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString()}</div>
       <div className="mt-1 text-sm text-muted-foreground">{detail}</div>

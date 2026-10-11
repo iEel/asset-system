@@ -258,7 +258,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
         createLabel={t("createTitle")}
       />
 
-      <section className="mb-6 rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <section className="mb-6 rounded-lg border border-border bg-surface p-4">
         <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h2 className="text-base font-semibold text-foreground">{t("coverageTitle", { year: toDisplayYear(currentYear, locale) })}</h2>
@@ -332,7 +332,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
         hiddenInputs={activeView === "all" ? undefined : { view: activeView }}
       />
 
-      <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface">
         <div className={`${getMobileCardListClasses()} p-3`}>
           {filteredRounds.length === 0 ? (
             <div className="rounded-md border border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
@@ -524,7 +524,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
 
 function ActionPanel({ title, help, actions }: { title: string; help: string; actions: ActionPanelItem[] }) {
   return (
-    <section className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
+    <section className="mb-4 rounded-lg border border-border bg-surface p-4">
       <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">{title}</h2>
@@ -572,7 +572,7 @@ function QuickFilterBar({
   filters: Array<{ value: AuditRoundView; label: string; count: number; href: string }>
 }) {
   return (
-    <section className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
+    <section className="mb-4 rounded-lg border border-border bg-surface p-4">
       <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
         <ListFilter className="h-4 w-4 text-primary" />
         {title}

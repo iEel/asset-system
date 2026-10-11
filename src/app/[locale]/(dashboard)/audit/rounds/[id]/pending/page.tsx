@@ -133,7 +133,7 @@ export default async function AuditPendingPage({ params, searchParams }: AuditPe
         </p>
       </div>
 
-      <div className="mb-4 rounded-lg border border-border bg-surface p-3 text-sm text-muted-foreground shadow-sm sm:p-4">
+      <div className="mb-4 rounded-lg border border-border bg-surface p-3 text-sm text-muted-foreground sm:p-4">
         {t("pendingCount", { count: round.items.length })}
         {locationFilter ? (
           <div className="mt-1 flex flex-wrap items-center gap-x-3">
@@ -182,7 +182,7 @@ export default async function AuditPendingPage({ params, searchParams }: AuditPe
         )}
       </div>
 
-      <div className={`${getDesktopTableOnlyClasses()} overflow-hidden rounded-lg border border-border bg-surface shadow-sm`}>
+      <div className={`${getDesktopTableOnlyClasses()} overflow-hidden rounded-lg border border-border bg-surface`}>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">

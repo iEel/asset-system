@@ -86,7 +86,7 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
         <SummaryCard label={t("summaryFail")} value={summary.fail} tone="danger" icon={<XCircle className="h-5 w-5" />} />
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-5">
         <div className="flex items-start gap-3">
           <div className="rounded-md border border-primary-border bg-primary-soft p-2 text-primary">
             <ShieldCheck className="h-5 w-5" />
@@ -114,7 +114,7 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
         </div>
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-5">
         <div className="flex items-start gap-3">
           <div className="rounded-md border border-border bg-background p-2 text-muted-foreground">
             <Database className="h-5 w-5" />
@@ -141,7 +141,7 @@ function SummaryCard({
   icon: React.ReactNode
 }) {
   return (
-    <div className={`rounded-lg border p-4 shadow-sm ${summaryClass(tone)}`}>
+    <div className={`rounded-lg border p-4 ${summaryClass(tone)}`}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">{label}</p>

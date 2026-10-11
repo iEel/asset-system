@@ -188,14 +188,14 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
 
   if (!isOpen) {
     return (
-      <section className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <section className="mb-4 rounded-lg border border-border bg-surface p-4">
         {header}
       </section>
     )
   }
 
   return (
-    <section className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
+    <section className="mb-4 rounded-lg border border-border bg-surface p-4">
       {header}
 
       <div className="mt-4 flex justify-end">

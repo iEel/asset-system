@@ -29,7 +29,7 @@ function MetricGridSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {Array.from({ length: count }, (_, index) => (
-        <div key={index} className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div key={index} className="rounded-lg border border-border bg-surface p-5">
           <SkeletonBlock className="h-4 w-28" />
           <SkeletonBlock className="mt-3 h-8 w-16" />
           <SkeletonBlock className="mt-2 h-3 w-32" />
@@ -62,7 +62,7 @@ function TableSkeleton({ rows = 6, columns = 5 }: TableSkeletonProps) {
 
 function FilterPanelSkeleton() {
   return (
-    <div className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
+    <div className="rounded-lg border border-border bg-surface p-4 sm:p-5">
       <SkeletonBlock className="h-5 w-32" />
       <SkeletonBlock className="mt-2 h-4 w-80 max-w-full" />
       <div className="mt-4 flex flex-wrap gap-2">
@@ -85,7 +85,7 @@ export function PageSkeleton() {
       <PageHeaderSkeleton />
       <MetricGridSkeleton count={4} />
       <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="rounded-lg border border-border bg-surface p-5">
           <SkeletonBlock className="h-5 w-40" />
           <div className="mt-4 space-y-3">
             <SkeletonBlock className="h-16" />
@@ -93,7 +93,7 @@ export function PageSkeleton() {
             <SkeletonBlock className="h-16" />
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="rounded-lg border border-border bg-surface p-5">
           <SkeletonBlock className="h-5 w-36" />
           <div className="mt-4 space-y-3">
             <SkeletonBlock className="h-12" />
@@ -111,7 +111,7 @@ export function DashboardPageSkeleton() {
     <div aria-busy="true" className="mx-auto flex w-full max-w-7xl flex-col gap-5">
       <PageHeaderSkeleton />
       <MetricGridSkeleton count={5} />
-      <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <div className="rounded-lg border border-border bg-surface p-5">
         <SkeletonBlock className="h-5 w-48" />
         <div className="mt-4 grid gap-3 md:grid-cols-4">
           {Array.from({ length: 4 }, (_, index) => (
@@ -120,7 +120,7 @@ export function DashboardPageSkeleton() {
         </div>
       </div>
       <div className="grid gap-5 lg:grid-cols-2">
-        <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="rounded-lg border border-border bg-surface p-5">
           <SkeletonBlock className="h-5 w-52" />
           <div className="mt-4 space-y-3">
             <SkeletonBlock className="h-12" />
@@ -128,7 +128,7 @@ export function DashboardPageSkeleton() {
             <SkeletonBlock className="h-12" />
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="rounded-lg border border-border bg-surface p-5">
           <SkeletonBlock className="h-5 w-32" />
           <div className="mt-4 space-y-3">
             {Array.from({ length: 5 }, (_, index) => (
@@ -146,7 +146,7 @@ export function AssetRegisterPageSkeleton() {
     <div aria-busy="true" className="mx-auto flex w-full max-w-7xl flex-col gap-5">
       <PageHeaderSkeleton />
       <FilterPanelSkeleton />
-      <div className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
+      <div className="rounded-lg border border-border bg-surface p-4 sm:p-5">
         <div className="mb-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
             <SkeletonBlock className="h-5 w-44" />
@@ -167,7 +167,7 @@ export function AssetDetailPageSkeleton() {
   return (
     <div aria-busy="true" className="mx-auto flex w-full max-w-7xl flex-col gap-5">
       <PageHeaderSkeleton />
-      <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <div className="rounded-lg border border-border bg-surface p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <SkeletonBlock className="h-24 w-24 shrink-0" />
           <div className="min-w-0 flex-1 space-y-3">
@@ -182,7 +182,7 @@ export function AssetDetailPageSkeleton() {
       </div>
       <MetricGridSkeleton count={4} />
       <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="rounded-lg border border-border bg-surface p-5">
           <SkeletonBlock className="h-5 w-44" />
           <div className="mt-4 space-y-3">
             <SkeletonBlock className="h-16" />
@@ -190,7 +190,7 @@ export function AssetDetailPageSkeleton() {
             <SkeletonBlock className="h-16" />
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <div className="rounded-lg border border-border bg-surface p-5">
           <SkeletonBlock className="h-5 w-36" />
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
             <SkeletonBlock className="h-20" />
@@ -214,7 +214,7 @@ export function ReportsPageSkeleton() {
       </div>
       <FilterPanelSkeleton />
       <MetricGridSkeleton count={2} />
-      <div data-report-view-skeleton className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <div data-report-view-skeleton className="rounded-lg border border-border bg-surface p-5">
         <SkeletonBlock className="h-5 w-44" />
         <SkeletonBlock className="mt-4 h-64 w-full" />
       </div>

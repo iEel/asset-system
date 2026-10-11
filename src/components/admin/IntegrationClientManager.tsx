@@ -324,7 +324,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
       </section>
 
       {oneTimeToken ? (
-        <section className="rounded-lg border border-warning-border bg-warning-soft p-4 shadow-sm">
+        <section className="rounded-lg border border-warning-border bg-warning-soft p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-warning">
@@ -451,7 +451,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
         ) : null}
       </AccessibleDialog>
 
-      <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-4">
         <div className="mb-4 flex items-center gap-2">
           <Plus className="h-5 w-5 text-primary" />
           <h2 className="font-semibold text-foreground">{labels.createTitle}</h2>
@@ -510,7 +510,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
         </form>
       </section>
 
-      <section className="rounded-lg border border-border bg-surface shadow-sm">
+      <section className="rounded-lg border border-border bg-surface">
         <div className="flex items-center justify-between gap-3 border-b border-border p-4">
           <div className="min-w-0">
             <h2 className="font-semibold text-foreground">{labels.clientsTitle}</h2>
@@ -782,7 +782,7 @@ function OperationMetric({
 function SummaryCard({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: number; tone: "primary" | "success" | "muted" }) {
   const toneClass = tone === "success" ? "text-success" : tone === "primary" ? "text-primary" : "text-muted-foreground"
   return (
-    <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+    <div className="rounded-lg border border-border bg-surface p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">{label}</p>

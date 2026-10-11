@@ -99,7 +99,7 @@ export function RepairRecordForm({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
+    <section className="rounded-lg border border-border bg-surface p-4 sm:p-6">
       <form onSubmit={handleSubmit} className="space-y-5">
         {plan ? <FormContextBanner label={t("planLabel")} value={plan.label} /> : null}
         <MaintenanceOptionSelect

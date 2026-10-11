@@ -398,7 +398,7 @@ function OperationShell({ title, children }: { title: string; children: React.Re
       <div className="mb-6">
         <h1 className="break-words text-2xl font-bold text-foreground">{title}</h1>
       </div>
-      <section className="min-w-0 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">{children}</section>
+      <section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-6">{children}</section>
     </div>
   )
 }

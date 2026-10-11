@@ -229,7 +229,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(180px,220px)_minmax(0,1fr)]">
-        <aside className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm lg:sticky lg:top-4 lg:self-start">
+        <aside className="overflow-hidden rounded-lg border border-border bg-surface lg:sticky lg:top-4 lg:self-start">
           <div className="border-b border-border px-3 py-3">
             <h2 className="text-sm font-semibold text-foreground">{t("brandNavigatorTitle")}</h2>
             <p className="mt-1 text-xs text-muted-foreground">{t("brandNavigatorSubtitle")}</p>
@@ -315,7 +315,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
         </aside>
 
         <section className="min-w-0 space-y-4">
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+          <div className="rounded-lg border border-border bg-surface p-4">
             <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">{t("modelWorkspaceTitle")}</h2>
@@ -412,7 +412,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
             </details>
           ) : null}
 
-          <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+          <div className="overflow-hidden rounded-lg border border-border bg-surface">
             <div className="flex flex-col gap-3 border-b border-border px-4 py-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">{t("modelsTitle")}</h2>
@@ -556,7 +556,7 @@ function SummaryTile({
   tone?: "neutral" | "warning"
 }) {
   return (
-    <div className={`rounded-lg border bg-surface p-4 shadow-sm ${tone === "warning" ? "border-warning-border" : "border-border"}`}>
+    <div className={`rounded-lg border bg-surface p-4 ${tone === "warning" ? "border-warning-border" : "border-border"}`}>
       <div className="text-sm font-medium text-muted-foreground">{label}</div>
       <div className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString()}</div>
       <div className="mt-1 text-sm text-muted-foreground">{detail}</div>

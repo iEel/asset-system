@@ -205,7 +205,7 @@ function RuleStatusCard({
   href: string
 }) {
   return (
-    <div className={`rounded-lg border p-4 shadow-sm ${rule.enabled ? severityClass(rule.severity) : "border-border bg-surface text-muted-foreground"}`}>
+    <div className={`rounded-lg border p-4 ${rule.enabled ? severityClass(rule.severity) : "border-border bg-surface text-muted-foreground"}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -227,7 +227,7 @@ function RuleStatusCard({
 
 function SummaryCard({ label, value, tone }: { label: string; value: number; tone: "primary" | "danger" | "success" | "muted" }) {
   return (
-    <div className={`rounded-lg border p-4 shadow-sm ${summaryClass(tone)}`}>
+    <div className={`rounded-lg border p-4 ${summaryClass(tone)}`}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">{label}</p>

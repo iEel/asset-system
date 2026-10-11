@@ -1040,7 +1040,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       ) : null}
 
       {assetDetailView === "overview" && canEditAsset ? (
-        <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <section className="rounded-lg border border-border bg-surface p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold text-foreground">{t("quickActions")}</h2>
@@ -1081,7 +1081,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
       <div className={`grid grid-cols-1 gap-6 ${assetDetailView === "overview" ? "xl:grid-cols-[1fr_280px]" : ""}`}>
         <div className="space-y-6">
           {isAssetDetailSectionVisible(assetDetailView, "overview") ? (
-            <section id="overview" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <section id="overview" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
             <SectionHeading title={t("detailSections.overview")} subtitle={t("detailSections.overviewSubtitle")} />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <Info label={t("category")} value={`${asset.category.code} - ${asset.category.name}`} />
@@ -1101,7 +1101,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "specs") && asset.model && (modelSpecs.items.length > 0 || modelSpecs.notes) ? (
-            <section id="specs" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <section id="specs" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
               <SectionHeading title={tBrandModel("structuredSpecs")} subtitle={t("detailSections.specsSubtitle")} />
               {modelSpecs.items.length > 0 ? (
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -1119,7 +1119,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "ownership") ? (
-            <section id="ownership" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <section id="ownership" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
             <SectionHeading title={t("ownership")} subtitle={t("detailSections.ownershipSubtitle")} />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <Info label={t("company")} value={`${asset.company.code} - ${asset.company.nameTh}`} />
@@ -1215,7 +1215,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "purchase") ? (
-            <section id="purchase" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <section id="purchase" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
             <SectionHeading title={t("purchaseWarranty")} subtitle={t("detailSections.purchaseSubtitle")} />
             <div className={`mb-4 rounded-md border px-4 py-3 ${getWarrantyPanelClass(warrantyState.tone)}`}>
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -1250,7 +1250,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "handover") ? (
-            <section id="handover" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <section id="handover" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
             <SectionHeading title={t("detailSections.handover")} subtitle={t("detailSections.handoverSubtitle")} icon={<FileText className="h-5 w-5 text-primary" />} />
             {asset.checkouts.length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
@@ -1362,7 +1362,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "movement") ? (
-            <section id="movement" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <section id="movement" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
             <SectionHeading title={t("movementHistory")} subtitle={t("detailSections.movementSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
             <div className="mb-5 rounded-md border border-border bg-background p-4">
               <div className="mb-3 text-sm font-semibold text-foreground">{t("movementSnapshot")}</div>
@@ -1402,14 +1402,14 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "notes") ? (
-            <section id="notes" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <section id="notes" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
               <SectionHeading title={t("remark")} subtitle={t("detailSections.notesSubtitle")} />
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">{asset.remark || "-"}</p>
             </section>
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "maintenance") ? (
-            <section id="maintenance" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <section id="maintenance" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
             <SectionHeading title={tMaintenance("maintenanceHistory")} subtitle={t("detailSections.maintenanceSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
             <SummaryStrip
               items={[
@@ -1483,7 +1483,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "audit") ? (
-            <section id="audit" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <section id="audit" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
             <SectionHeading title={t("auditHistory")} subtitle={t("detailSections.auditSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
             <SummaryStrip
               items={[
@@ -1540,7 +1540,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
 
         {assetDetailView === "overview" ? (
           <aside className="space-y-6">
-          <section id="qr" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 text-center shadow-sm">
+          <section id="qr" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6 text-center">
             <h2 className="mb-4 flex items-center justify-center gap-2 text-lg font-semibold text-foreground">
               <QrCode className="h-5 w-5 text-primary" />
               {t("qrCode")}
@@ -1733,7 +1733,7 @@ function ActivitySummaryPanel({
   details?: React.ReactNode
 }) {
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+    <section className="rounded-lg border border-border bg-surface p-4">
       <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">{title}</h2>
@@ -1906,7 +1906,7 @@ function AssetRelationshipMap({
   const childPreview = splitRelationshipPreview(childLinks)
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
+    <section className="rounded-lg border border-border bg-surface p-4 sm:p-6">
       <SectionHeading title={title} subtitle={subtitle} icon={<GitBranch className="h-5 w-5 text-primary" />} />
 
       <div className="mb-5 flex flex-col gap-3 rounded-md border border-border bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -2212,8 +2212,8 @@ function getRelationshipSummaryClass(state: RelationshipState) {
 }
 
 function getRelationshipCardClass(variant: RelationshipCardVariant, current: boolean) {
-  if (current && (variant === "component" || variant === "parentAndComponent")) return "border-amber-300 bg-amber-50/70 shadow-sm"
-  if (current && variant === "parent") return "border-primary-border bg-primary-soft shadow-sm"
+  if (current && (variant === "component" || variant === "parentAndComponent")) return "border-amber-300 bg-amber-50/70"
+  if (current && variant === "parent") return "border-primary-border bg-primary-soft"
   if (current) return "border-border bg-surface"
   if (variant === "child") return "border-border bg-surface hover:border-primary-border hover:bg-primary-soft"
   if (variant === "parent") return "border-border bg-surface hover:border-primary-border hover:bg-primary-soft"
@@ -2248,7 +2248,7 @@ function SidebarPhotoCard({
   viewLabel: string
 }) {
   return (
-    <section className="scroll-mt-24 rounded-lg border border-border bg-surface p-4 shadow-sm">
+    <section className="scroll-mt-24 rounded-lg border border-border bg-surface p-4">
       <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
         <ImageIcon className="h-5 w-5 text-primary" />
         {title}

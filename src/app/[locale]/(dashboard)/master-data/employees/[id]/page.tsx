@@ -295,7 +295,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-6">
             <SectionHeading icon={<UserRound className="h-5 w-5 text-primary" />} title={t("detailProfileTitle")} subtitle={t("detailProfileHelp")} />
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <Info label={t("company")} value={`${employee.company.code} - ${employee.company.nameTh}`} />
@@ -313,7 +313,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
             </div>
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-6">
             <SectionHeading icon={<Boxes className="h-5 w-5 text-primary" />} title={t("detailCurrentAssets")} subtitle={t("detailCurrentAssetsSectionHelp", { shown: currentAssets.length, total: currentAssetCount })} />
             {currentAssets.length === 0 ? (
               <ActionEmptyState icon={<Boxes className="h-6 w-6" />} title={t("emptyCurrentAssetsTitle")} description={t("emptyCurrentAssetsHelp")} />
@@ -358,7 +358,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
             ) : null}
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-6">
             <SectionHeading icon={<History className="h-5 w-5 text-primary" />} title={t("handoverHistoryTitle")} subtitle={t("handoverHistoryHelp")} />
             {checkoutHistory.length === 0 ? (
               <ActionEmptyState icon={<History className="h-6 w-6" />} title={t("emptyHandoverTitle")} description={t("emptyHandoverHelp")} />
@@ -402,7 +402,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
             )}
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-6">
             <SectionHeading icon={<Wrench className="h-5 w-5 text-primary" />} title={t("maintenanceRelatedTitle")} subtitle={t("maintenanceRelatedHelp")} />
             {maintenanceTickets.length === 0 ? (
               <ActionEmptyState icon={<Wrench className="h-6 w-6" />} title={t("emptyMaintenanceTitle")} description={t("emptyMaintenanceHelp")} />
@@ -448,7 +448,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
         </div>
 
         <aside className="space-y-6">
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-6">
             <SectionHeading icon={<AlertTriangle className="h-5 w-5 text-primary" />} title={t("followUpTitle")} subtitle={t("followUpHelp")} />
             {followUpItems.length === 0 ? (
               <ActionEmptyState icon={<ShieldCheck className="h-6 w-6" />} title={t("followUpEmptyTitle")} description={t("followUpEmptyHelp")} />
@@ -464,7 +464,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
             )}
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-6">
             <SectionHeading icon={<Users className="h-5 w-5 text-primary" />} title={t("subordinatesTitle")} />
             {employee.subordinates.length === 0 ? (
               <div className="text-sm text-muted-foreground">{t("noSubordinates")}</div>
@@ -480,7 +480,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
             )}
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-6">
             <SectionHeading icon={<ClipboardCheck className="h-5 w-5 text-primary" />} title={t("auditRelatedTitle")} subtitle={t("auditRelatedHelp")} />
             <div className="space-y-4">
               <MiniList
@@ -522,7 +522,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
             </div>
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <section className="rounded-lg border border-border bg-surface p-6">
             <SectionHeading icon={<Trash2 className="h-5 w-5 text-primary" />} title={t("disposalRelatedTitle")} subtitle={t("disposalRelatedHelp")} />
             <MiniList
               emptyLabel={t("emptyDisposals")}
@@ -587,7 +587,7 @@ function SummaryTile({
       <div className="mt-1 text-sm text-muted-foreground">{detail}</div>
     </>
   )
-  const className = `rounded-lg border bg-surface p-4 shadow-sm ${
+  const className = `rounded-lg border bg-surface p-4 ${
     tone === "warning" ? "border-warning-border" : "border-border"
   } ${href ? "transition-colors hover:border-primary-border hover:bg-primary-soft" : ""}`
 

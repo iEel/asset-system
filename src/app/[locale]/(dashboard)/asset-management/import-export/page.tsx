@@ -149,7 +149,7 @@ function ImportHistoryPanel({
   }
 }) {
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+    <section className="rounded-lg border border-border bg-surface p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -244,7 +244,7 @@ function ActionLink({
   description: string
 }) {
   return (
-    <a href={href} className="rounded-lg border border-border bg-surface p-4 shadow-sm transition-colors hover:border-primary-border hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+    <a href={href} className="rounded-lg border border-border bg-surface p-4 transition-colors hover:border-primary-border hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
       <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-primary-soft text-primary">
         {icon}
       </span>

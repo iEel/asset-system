@@ -53,7 +53,7 @@ export function MasterDataSearch({
   hiddenInputs?: Record<string, string | number>
 }) {
   return (
-    <div className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-sm">
+    <div className="mb-4 rounded-lg border border-border bg-surface p-4">
       <form className="flex flex-col gap-3 sm:flex-row" action={action}>
         {Object.entries(hiddenInputs).map(([name, value]) => (
           <input key={name} type="hidden" name={name} value={value} />

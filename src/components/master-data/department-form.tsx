@@ -99,7 +99,7 @@ export function DepartmentForm({
         </Link>
       </div>
 
-      <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+      <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-6">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("code")} required>
             <input

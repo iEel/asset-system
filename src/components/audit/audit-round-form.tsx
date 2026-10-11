@@ -133,7 +133,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground">{t("createTitle")}</h1>
       </div>
-      <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-6">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("name")} required>
             <input value={values.name} onChange={(event) => setField("name", event.target.value)} required maxLength={200} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />

@@ -430,7 +430,7 @@ export function AssetRegisterTable({
   }
 
   return (
-    <div aria-busy={isPending} className="min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+    <div aria-busy={isPending} className="min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-surface">
       <div data-asset-register-summary className="flex items-center justify-between gap-2 border-b border-border px-3 md:px-4 py-0 md:py-2">
         <p className="text-sm text-muted-foreground">{rangeLabel}</p>
         <div className="flex items-center gap-2">

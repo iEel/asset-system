@@ -78,7 +78,7 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
           {t("selectedCount", { count: assetIds.length })}
         </div>
       </div>
-      <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-6">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div className="md:col-span-2">
             <span className="mb-1.5 block text-sm font-medium text-foreground">

@@ -60,7 +60,7 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
         <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
 
-      <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-4">
         <div className="mb-4">
           <div className="mb-2 text-xs font-medium text-muted-foreground">{t("quickFilters")}</div>
           <div className="flex flex-wrap gap-2">
@@ -94,7 +94,7 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
         </form>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-border bg-surface">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-muted/40">

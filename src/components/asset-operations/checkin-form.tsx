@@ -287,7 +287,7 @@ export function CheckinForm({
       <div className="mb-6">
         <h1 className="break-words text-2xl font-bold text-foreground">{t("title")}</h1>
       </div>
-      <section className="min-w-0 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
+      <section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-6">
         <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
           {initialCheckout ? (
             <div className="md:col-span-2">

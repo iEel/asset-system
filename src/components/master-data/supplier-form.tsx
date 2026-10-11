@@ -159,7 +159,7 @@ export function SupplierForm({
         </Link>
       </div>
 
-      <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
+      <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-4 sm:p-6">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("code")} required error={fieldErrors.code ? getErrorMessage(fieldErrors.code) : undefined} errorId="supplier-code-error">
             <input

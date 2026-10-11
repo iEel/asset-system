@@ -48,7 +48,7 @@ export function DataQualityRuleForm({ rules, labels }: DataQualityRuleFormProps)
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+    <section className="rounded-lg border border-border bg-surface p-4">
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="font-semibold text-foreground">{labels.enabled}: {enabledCount.toLocaleString("th-TH")}</h2>

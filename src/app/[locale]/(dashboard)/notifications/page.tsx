@@ -73,7 +73,7 @@ export default async function NotificationsPage({ params }: NotificationsPagePro
           </div>
         ) : (
           center.items.map((item) => (
-            <article key={item.key} className={`rounded-lg border bg-surface p-4 shadow-sm ${item.isSuppressed ? "opacity-70" : ""}`}>
+            <article key={item.key} className={`rounded-lg border bg-surface p-4 ${item.isSuppressed ? "opacity-70" : ""}`}>
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -119,7 +119,7 @@ export default async function NotificationsPage({ params }: NotificationsPagePro
           </div>
         ) : (
           deliveredNotifications.map((notification) => (
-            <article key={notification.id} className="rounded-lg border border-border bg-surface p-4 shadow-sm">
+            <article key={notification.id} className="rounded-lg border border-border bg-surface p-4">
               <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -141,7 +141,7 @@ export default async function NotificationsPage({ params }: NotificationsPagePro
 
 function SummaryCard({ icon, label, value, tone }: { icon: ReactNode; label: string; value: number; tone: "primary" | "success" | "warning" | "muted" }) {
   return (
-    <div className={`rounded-lg border p-4 shadow-sm ${summaryClass(tone)}`}>
+    <div className={`rounded-lg border p-4 ${summaryClass(tone)}`}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">{label}</p>

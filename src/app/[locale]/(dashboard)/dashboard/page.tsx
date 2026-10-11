@@ -330,7 +330,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         {kpiCards.map((card) => (
           <Link
             key={card.label}
-            className="rounded-lg border border-border bg-surface p-5 shadow-sm transition-shadow hover:shadow-md"
+            className="rounded-lg border border-border bg-surface p-5 transition-colors hover:bg-background"
             href={card.href}
           >
             <div className="flex items-center justify-between">
@@ -346,7 +346,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         ))}
       </div>
 
-      <section className="mb-8 rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="mb-8 rounded-lg border border-border bg-surface p-5">
         <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">{t("actionableTitle")}</h2>
@@ -377,7 +377,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         </div>
       </section>
 
-      <section className="mb-8 rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="mb-8 rounded-lg border border-border bg-surface p-5">
         <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">{t("crossScopePanelTitle")}</h2>
@@ -413,7 +413,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         />
       </section>
 
-      <section className="mb-8 rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <section className="mb-8 rounded-lg border border-border bg-surface p-5">
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-foreground">{t("monthlyTrendTitle")}</h2>
           <p className="text-sm text-muted-foreground">{t("monthlyTrendSubtitle")}</p>
@@ -435,7 +435,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+        <div className="rounded-lg border border-border bg-surface p-6">
           <h2 className="mb-4 text-lg font-semibold">{t("statusOverview")}</h2>
           <div className="grid gap-3">
             {[
@@ -451,7 +451,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
             ))}
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
+        <div className="rounded-lg border border-border bg-surface p-6">
           <h2 className="mb-4 text-lg font-semibold">{t("recentActivity")}</h2>
           {recentLogs.length === 0 ? (
             <div className="flex h-48 items-center justify-center text-muted-foreground">{t("noRecentActivity")}</div>
