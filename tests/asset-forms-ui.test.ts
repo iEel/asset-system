@@ -60,3 +60,21 @@ test("asset form: every button is a Button, the repeater's remove button fits an
     /<Link href=\{repairWorkflowHref\} className=\{cn\(linkVariants\(\{ size: "inherit" \}\), "mt-2 inline-flex decoration-current"\)\}>/,
   )
 })
+
+test("asset batch form: row fields are named by Field and their help, not by aria-label help text (K20)", () => {
+  const source = read("src/components/assets/asset-batch-form.tsx")
+  assert.match(source, /<Field label=\{t\("batchAssetTag"\)\} hint=\{t\("batchAssetTagHelp"\)\}>/)
+  assert.match(source, /<Field label=\{t\("batchAssetTag"\)\} hideLabel hint=\{t\("batchAssetTagHelp"\)\}>/)
+  assert.match(source, /<Field label=\{t\("batchSerialNumber"\)\} hideLabel hint=\{t\("batchPasteSerialHint"\)\}>\n\s*<ScannerTextInput /)
+  assert.match(source, /<Field label=\{t\("batchRemark"\)\} hideLabel>/)
+  assert.doesNotMatch(source, /aria-label=\{t\("batchAssetTagHelp"\)\}/)
+  assert.match(source, /<Field label=\{t\("purchasePriceBaht"\)\}>\n\s*<Input type="number" min="0" step="0\.01" inputMode="decimal" /)
+  assert.match(source, /<fieldset className="min-w-0" aria-describedby=\{optionalColumnsHelpId\}>\n\s*<legend className=\{fieldLabelClasses\}>\{t\("batchOptionalColumns"\)\}<\/legend>/)
+})
+
+test("asset batch form: the duplicate check and the save button are busy without a label swap (K13)", () => {
+  const source = read("src/components/assets/asset-batch-form.tsx")
+  assert.match(source, /busy=\{checkingDuplicates\} disabled=\{hasClientDuplicates\}>\n\s*\{t\("batchCheckDuplicates"\)\}/)
+  assert.match(source, /<Button type="submit" className="w-full sm:w-auto" busy=\{saving\} disabled=\{hasClientDuplicates\}>/)
+  assert.doesNotMatch(source, /batchCheckDuplicatesRunning|<button\b|inputClassName/)
+})

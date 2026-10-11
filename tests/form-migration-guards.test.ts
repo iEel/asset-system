@@ -60,6 +60,7 @@ const MIGRATED_FILES: string[] = [
   `${C}audit/audit-scan-component-missing-dialog.tsx`,
   `${C}master-data/asset-model-form.tsx`,
   `${C}assets/asset-form.tsx`,
+  `${C}assets/asset-batch-form.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -128,7 +129,6 @@ const LOCAL_FIELD: Record<string, number> = {
   // 1c
   // 1g
   // 1e
-  [`${C}assets/asset-batch-form.tsx`]: 1,
   // 1f
   [`${C}admin/system-settings-form.tsx`]: 1,
   // 2
@@ -154,7 +154,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 1d
   // 1g
   // 1e
-  [`${C}assets/asset-batch-form.tsx`]: 13,
   [`${C}assets/asset-component-manager.tsx`]: 5,
   [`${C}assets/asset-attachments.tsx`]: 1,
   // 1f
@@ -200,7 +199,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1d
   // 1g
   // 1e
-  [`${C}assets/asset-batch-form.tsx`]: 1,
   [`${C}assets/asset-component-manager.tsx`]: 5,
   [`${C}assets/asset-attachments.tsx`]: 1,
   // 1f
@@ -296,7 +294,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 1d
   // 1g
   // 1e
-  [`${C}assets/asset-batch-form.tsx`]: 5,
   [`${C}assets/asset-component-manager.tsx`]: 4,
   // 1f
   [`${C}admin/system-settings-form.tsx`]: 4,
@@ -338,7 +335,6 @@ const LOADER2: Record<string, number> = {
   [`${C}audit/audit-finding-review-actions.tsx`]: 2, // → 2: the row triggers :102, :112 (2B, O21)
   // 1g
   // 1e
-  [`${C}assets/asset-batch-form.tsx`]: 2,
   [`${C}assets/asset-component-manager.tsx`]: 3, // → 1: the status line :474
   [`${C}assets/asset-attachments.tsx`]: 2,
   // 1f
@@ -373,7 +369,6 @@ const LOADER2: Record<string, number> = {
 
 // GL3 old helpers: FormStep, WizardStep, Choice, AssetStateFieldLabel and the batch asset tag help label
 const OLD_HELPERS: Record<string, number> = {
-  [`${C}assets/asset-batch-form.tsx`]: 2, // aria-label={t("batchAssetTagHelp")} (1e)
   [`${C}admin/system-settings-form.tsx`]: 1, // function WizardStep (1f)
   [`${C}assets/asset-import-preview-panel.tsx`]: 1, // function WizardStep (batch 4)
 }

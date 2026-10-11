@@ -1,13 +1,20 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useId, useMemo, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
-import { Copy, Download, Loader2, Plus, Save, Trash2 } from "lucide-react"
+import { Copy, Download, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { AssetForm } from "@/components/assets/asset-form"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { ChoiceChip } from "@/components/ui/choice-card"
+import { Field } from "@/components/ui/field"
+import { checkboxVariants, fieldLabelClasses } from "@/components/ui/field-variants"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { cn } from "@/lib/utils"
 import { buildSuggestedAssetName } from "@/lib/asset-name-suggestion"
 import { resolveModelIdForScope } from "@/lib/asset-model-selection"
 import { defaultAssetOwnershipType, normalizeAssetOwnershipType, assetOwnershipTypes } from "@/lib/asset-ownership"
@@ -124,6 +131,8 @@ export function AssetBatchForm({
   const apiError = useApiError()
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
+  // The help line under the row-column chips, read when focus enters the group (T4).
+  const optionalColumnsHelpId = useId()
   const [common, setCommon] = useState<BatchCommonValues>(emptyCommon)
   const [rows, setRows] = useState<BatchRow[]>(() => createAssetBatchRows())
   const [visibleRowColumns, setVisibleRowColumns] = useState<Record<BatchOptionalColumnKey, boolean>>(emptyRowColumns)
@@ -604,38 +613,38 @@ export function AssetBatchForm({
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <Section title={t("batchCommonData")}>
-          <Field label={t("assetName")} required>
-            <input
-              value={common.name}
-              onChange={(event) => {
-                setNameManuallyEdited(true)
-                setCommonField("name", event.target.value)
-              }}
-              required
-              maxLength={200}
-              className={inputClassName}
-            />
-            <p className="mt-1.5 text-xs text-muted-foreground">{t("assetNameHelp")}</p>
+          <div className="grid min-w-0 gap-2">
+            <Field label={t("assetName")} required hint={t("assetNameHelp")}>
+              <Input
+                value={common.name}
+                onChange={(event) => {
+                  setNameManuallyEdited(true)
+                  setCommonField("name", event.target.value)
+                }}
+                required
+                maxLength={200}
+              />
+            </Field>
             {suggestedAssetName && (
-              <div className="mt-2 flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-md bg-accent px-2.5 py-1 text-xs text-muted-foreground">
                   {t("suggestedAssetName")}: <span className="font-medium text-foreground">{suggestedAssetName}</span>
                 </span>
                 {common.name !== suggestedAssetName && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => {
                       setNameManuallyEdited(false)
                       setCommonField("name", suggestedAssetName)
                     }}
-                    className="inline-flex h-8 items-center rounded-md border border-border px-2.5 text-xs font-medium transition-colors hover:bg-accent"
                   >
                     {t("useSuggestedName")}
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
-          </Field>
+          </div>
           <SelectField label={t("category")} value={common.categoryId} required onChange={handleCategoryChange}>
             <option value="">{t("selectCategory")}</option>
             {categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
@@ -651,20 +660,14 @@ export function AssetBatchForm({
           <SelectField label={t("ownershipType")} value={ownershipType} required onChange={(value) => setCommonField("ownershipType", value)}>
             {assetOwnershipTypes.map((type) => <option key={type} value={type}>{t(`ownershipType_${type}`)}</option>)}
           </SelectField>
-          <div>
-            <SelectField label={t("assetOwnerCompany")} value={common.companyId} required onChange={handleCompanyChange}>
-              <option value="">{t("selectCompany")}</option>
-              {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
-            </SelectField>
-            <p className="mt-1.5 text-xs text-muted-foreground">{t("assetOwnerCompanyHelp")}</p>
-          </div>
-          <div>
-            <SelectField label={t("assetOwnerBranch")} value={common.branchId} required onChange={handleBranchChange}>
-              <option value="">{t("selectBranch")}</option>
-              {filteredBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
-            </SelectField>
-            <p className="mt-1.5 text-xs text-muted-foreground">{t("assetOwnerBranchHelp")}</p>
-          </div>
+          <SelectField label={t("assetOwnerCompany")} value={common.companyId} required hint={t("assetOwnerCompanyHelp")} onChange={handleCompanyChange}>
+            <option value="">{t("selectCompany")}</option>
+            {companies.map((company) => <option key={company.id} value={company.id}>{company.label}</option>)}
+          </SelectField>
+          <SelectField label={t("assetOwnerBranch")} value={common.branchId} required hint={t("assetOwnerBranchHelp")} onChange={handleBranchChange}>
+            <option value="">{t("selectBranch")}</option>
+            {filteredBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.label}</option>)}
+          </SelectField>
           <SelectField label={t("department")} value={common.departmentId} required={ownershipType !== "personal" && !isSoftwareLicense} onChange={(value) => setCommonField("departmentId", value)}>
             <option value="">{t("selectDepartment")}</option>
             {filteredDepartments.map((department) => <option key={department.id} value={department.id}>{department.label}</option>)}
@@ -679,12 +682,12 @@ export function AssetBatchForm({
               emptyLabel={tCommon("searchSelectNoResults")}
               onChange={(value) => setCommonField("custodianId", value)}
             />
-            <label className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
+            <label className="mt-2 flex min-h-11 items-start gap-2 py-2 text-xs text-muted-foreground">
               <input
                 type="checkbox"
                 checked={allowCrossCompanyCustodian}
                 onChange={(event) => handleCrossCompanyCustodianToggle(event.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-ring"
+                className={cn(checkboxVariants(), "mt-0.5")}
               />
               <span>
                 <span className="block font-medium text-foreground">{t("allowCrossCompanyCustodian")}</span>
@@ -696,12 +699,12 @@ export function AssetBatchForm({
             ) : null}
           </div>
           <div className="md:col-span-2">
-            <label className="flex items-start gap-2 text-xs text-muted-foreground">
+            <label className="flex min-h-11 items-start gap-2 py-2 text-xs text-muted-foreground">
               <input
                 type="checkbox"
                 checked={allowCrossBranchLocation}
                 onChange={(event) => handleCrossBranchLocationToggle(event.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-ring"
+                className={cn(checkboxVariants(), "mt-0.5")}
               />
               <span>
                 <span className="block font-medium text-foreground">{t("allowCrossBranchLocation")}</span>
@@ -732,29 +735,29 @@ export function AssetBatchForm({
 
         <Section title={t("purchaseWarranty")}>
           <Field label={t("purchaseDate")}>
-            <input type="date" value={common.purchaseDate} onChange={(event) => setCommonField("purchaseDate", event.target.value)} className={inputClassName} />
+            <Input type="date" value={common.purchaseDate} onChange={(event) => setCommonField("purchaseDate", event.target.value)} />
           </Field>
-          <Field label={t("purchasePrice")}>
-            <input type="number" min="0" step="0.01" value={common.purchasePrice} onChange={(event) => setCommonField("purchasePrice", event.target.value)} className={inputClassName} />
+          <Field label={t("purchasePriceBaht")}>
+            <Input type="number" min="0" step="0.01" inputMode="decimal" value={common.purchasePrice} onChange={(event) => setCommonField("purchasePrice", event.target.value)} />
           </Field>
           <SelectField label={t("supplier")} value={common.supplierId} onChange={(value) => setCommonField("supplierId", value)}>
             <option value="">{t("selectSupplier")}</option>
             {suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.label}</option>)}
           </SelectField>
           <Field label={t("warrantyStart")}>
-            <input type="date" value={common.warrantyStartDate} onChange={(event) => setCommonField("warrantyStartDate", event.target.value)} className={inputClassName} />
+            <Input type="date" value={common.warrantyStartDate} onChange={(event) => setCommonField("warrantyStartDate", event.target.value)} />
           </Field>
           <Field label={t("warrantyEnd")}>
-            <input type="date" value={common.warrantyEndDate} onChange={(event) => setCommonField("warrantyEndDate", event.target.value)} className={inputClassName} />
+            <Input type="date" value={common.warrantyEndDate} onChange={(event) => setCommonField("warrantyEndDate", event.target.value)} />
           </Field>
           <Field label={t("poNumber")}>
-            <input value={common.poNumber} onChange={(event) => setCommonField("poNumber", event.target.value)} maxLength={50} className={inputClassName} />
+            <Input value={common.poNumber} onChange={(event) => setCommonField("poNumber", event.target.value)} maxLength={50} />
           </Field>
           <Field label={t("invoiceNumber")}>
-            <input value={common.invoiceNumber} onChange={(event) => setCommonField("invoiceNumber", event.target.value)} maxLength={50} className={inputClassName} />
+            <Input value={common.invoiceNumber} onChange={(event) => setCommonField("invoiceNumber", event.target.value)} maxLength={50} />
           </Field>
           <Field label={t("remark")}>
-            <input value={common.remark} onChange={(event) => setCommonField("remark", event.target.value)} className={inputClassName} />
+            <Input value={common.remark} onChange={(event) => setCommonField("remark", event.target.value)} />
           </Field>
           <div className="md:col-span-2">
             <div className="text-sm font-medium text-foreground">{t("existingPurchaseDocuments")}</div>
@@ -765,7 +768,7 @@ export function AssetBatchForm({
               ) : (
                 purchaseDocuments.map((document) => (
                   <label key={document.id} className="flex items-start gap-2 rounded-md border border-border bg-background p-3 text-sm">
-                    <input type="checkbox" checked={selectedPurchaseDocumentIds.includes(document.id)} onChange={() => togglePurchaseDocument(document.id)} className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-ring" />
+                    <input type="checkbox" checked={selectedPurchaseDocumentIds.includes(document.id)} onChange={() => togglePurchaseDocument(document.id)} className={cn(checkboxVariants(), "mt-0.5")} />
                     <span className="min-w-0">
                       <span className="block truncate font-medium text-foreground">{document.documentNo}</span>
                       <span className="mt-1 block text-xs text-muted-foreground">{document.supplierName ?? document.documentType} · {t("linkedAssets", { count: document.assetCount })}</span>
@@ -783,44 +786,31 @@ export function AssetBatchForm({
               <div className="text-sm font-medium text-foreground">{t("batchCurrentCount", { count: rows.length })}</div>
               <p className="mt-1 text-xs text-muted-foreground">{t("batchRowHelp")}</p>
             </div>
-            <button
-              type="button"
-              onClick={handleAddRow}
-              disabled={rows.length >= 100}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-            >
-              <Plus className="h-4 w-4" />
+            <Button variant="outline" className="w-full sm:w-auto" onClick={handleAddRow} disabled={rows.length >= 100}>
+              <Plus aria-hidden="true" />
               {t("batchAddRow")}
-            </button>
-            <button
-              type="button"
-              onClick={handleCheckDuplicates}
-              disabled={checkingDuplicates || hasClientDuplicates}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-            >
-              {checkingDuplicates ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {checkingDuplicates ? t("batchCheckDuplicatesRunning") : t("batchCheckDuplicates")}
-            </button>
+            </Button>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={handleCheckDuplicates} busy={checkingDuplicates} disabled={hasClientDuplicates}>
+              {t("batchCheckDuplicates")}
+            </Button>
           </div>
 
           <div className="md:col-span-2 rounded-md border border-border bg-background p-3">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <div className="text-sm font-medium text-foreground">{t("batchOptionalColumns")}</div>
-                <p className="mt-1 text-xs text-muted-foreground">{t("batchOptionalColumnsHelp")}</p>
+            <fieldset className="min-w-0" aria-describedby={optionalColumnsHelpId}>
+              <legend className={fieldLabelClasses}>{t("batchOptionalColumns")}</legend>
+              <p id={optionalColumnsHelpId} className="mt-1 text-meta text-faint-foreground">{t("batchOptionalColumnsHelp")}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {batchOptionalColumnKeys.map((key) => (
+                  <BatchOptionalColumnToggle
+                    key={key}
+                    label={getOptionalColumnLabel(key)}
+                    active={visibleRowColumns[key] || rowOverrideCounts[key] > 0}
+                    count={rowOverrideCounts[key]}
+                    onClick={() => toggleRowColumn(key)}
+                  />
+                ))}
               </div>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {batchOptionalColumnKeys.map((key) => (
-                <BatchOptionalColumnToggle
-                  key={key}
-                  label={getOptionalColumnLabel(key)}
-                  active={visibleRowColumns[key] || rowOverrideCounts[key] > 0}
-                  count={rowOverrideCounts[key]}
-                  onClick={() => toggleRowColumn(key)}
-                />
-              ))}
-            </div>
+            </fieldset>
           </div>
 
           {hasClientDuplicates ? (
@@ -850,25 +840,24 @@ export function AssetBatchForm({
               <div key={row.clientId} className="rounded-md border border-border bg-background p-3">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div className="text-sm font-semibold text-foreground">{t("batchRowNo")} {index + 1}</div>
-                  <button
-                    type="button"
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0"
                     onClick={() => handleRemoveRow(row.clientId)}
                     disabled={rows.length <= 2}
                     title={t("batchRemoveRow")}
-                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 sm:h-10 sm:w-10"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 aria-hidden="true" />
                     <span className="sr-only">{t("batchRemoveRow")}</span>
-                  </button>
+                  </Button>
                 </div>
                 <div className="grid gap-3">
-                  <Field label={t("batchAssetTag")}>
-                    <input value={row.assetTag} onChange={(event) => setRowField(row.clientId, "assetTag", event.target.value)} placeholder={t("autoTagHint")} aria-label={t("batchAssetTagHelp")} className={inputClassName} />
-                    <p className="mt-1 text-xs text-muted-foreground">{t("batchAssetTagHelp")}</p>
+                  <Field label={t("batchAssetTag")} hint={t("batchAssetTagHelp")}>
+                    <Input value={row.assetTag} onChange={(event) => setRowField(row.clientId, "assetTag", event.target.value)} placeholder={t("autoTagHint")} />
                   </Field>
-                  <Field label={t("batchSerialNumber")}>
+                  <Field label={t("batchSerialNumber")} hint={t("batchPasteSerialHint")}>
                     <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
-                    <p className="mt-1 text-xs text-muted-foreground">{t("batchPasteSerialHint")}</p>
                   </Field>
                   {showRowCustodian ? (
                     <SearchableSelect label={t("batchCustodian")} value={row.custodianId} options={getRowEmployeeOptions(row)} placeholder={t("batchUseSharedCustodian")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setRowField(row.clientId, "custodianId", value)} />
@@ -884,7 +873,7 @@ export function AssetBatchForm({
                   ) : null}
                   {showRowRemark ? (
                     <Field label={t("batchRemark")}>
-                      <input value={row.remark} onChange={(event) => setRowField(row.clientId, "remark", event.target.value)} placeholder={t("batchUseSharedRemark")} className={inputClassName} />
+                      <Input value={row.remark} onChange={(event) => setRowField(row.clientId, "remark", event.target.value)} placeholder={t("batchUseSharedRemark")} />
                     </Field>
                   ) : null}
                 </div>
@@ -914,12 +903,14 @@ export function AssetBatchForm({
                   <tr key={row.clientId} className="border-t border-border align-top">
                     <td className="px-3 py-3 font-medium text-foreground">{index + 1}</td>
                     <td className="px-3 py-3">
-                      <input value={row.assetTag} onChange={(event) => setRowField(row.clientId, "assetTag", event.target.value)} placeholder={t("autoTagHint")} aria-label={t("batchAssetTagHelp")} className={inputClassName} />
-                      <p className="mt-1 text-xs text-muted-foreground">{t("batchAssetTagHelp")}</p>
+                      <Field label={t("batchAssetTag")} hideLabel hint={t("batchAssetTagHelp")}>
+                        <Input value={row.assetTag} onChange={(event) => setRowField(row.clientId, "assetTag", event.target.value)} placeholder={t("autoTagHint")} />
+                      </Field>
                     </td>
                     <td className="px-3 py-3">
-                      <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
-                      <p className="mt-1 text-xs text-muted-foreground">{t("batchPasteSerialHint")}</p>
+                      <Field label={t("batchSerialNumber")} hideLabel hint={t("batchPasteSerialHint")}>
+                        <ScannerTextInput value={row.serialNumber} onChange={(value) => setRowField(row.clientId, "serialNumber", value)} onPaste={(event) => handleSerialPaste(row.clientId, event)} labels={scannerLabels} maxLength={100} />
+                      </Field>
                     </td>
                     {showRowCustodian ? (
                       <td className="px-3 py-3">
@@ -943,20 +934,22 @@ export function AssetBatchForm({
                     ) : null}
                     {showRowRemark ? (
                       <td className="px-3 py-3">
-                        <input value={row.remark} onChange={(event) => setRowField(row.clientId, "remark", event.target.value)} placeholder={t("batchUseSharedRemark")} className={inputClassName} />
+                        <Field label={t("batchRemark")} hideLabel>
+                          <Input value={row.remark} onChange={(event) => setRowField(row.clientId, "remark", event.target.value)} placeholder={t("batchUseSharedRemark")} />
+                        </Field>
                       </td>
                     ) : null}
                     <td className="px-3 py-3 text-right">
-                      <button
-                        type="button"
+                      <Button
+                        variant="outline"
+                        size="icon"
                         onClick={() => handleRemoveRow(row.clientId)}
                         disabled={rows.length <= 2}
                         title={t("batchRemoveRow")}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 aria-hidden="true" />
                         <span className="sr-only">{t("batchRemoveRow")}</span>
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -972,9 +965,9 @@ export function AssetBatchForm({
                 <h2 className="text-lg font-semibold text-foreground">{t("batchReviewTitle")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{t("batchReviewDescription")}</p>
               </div>
-              <button type="button" onClick={() => setReviewing(false)} className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto" onClick={() => setReviewing(false)}>
                 {t("batchReviewBack")}
-              </button>
+              </Button>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               <SummaryItem label={t("batchReviewSharedLocation")} value={locations.find((location) => location.id === common.currentLocationId)?.label ?? "-"} />
@@ -1022,20 +1015,20 @@ export function AssetBatchForm({
             <h2 className="text-lg font-semibold text-foreground">{t("batchCreatedTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("batchCreatedDescription", { count: createdBatch.created })}</p>
             <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Link href={`/${locale}/assets`} className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border px-3 text-sm font-medium hover:bg-accent sm:w-auto">
+              <Link href={`/${locale}/assets`} className={cn(buttonVariants({ variant: "outline" }), "w-full sm:w-auto")}>
                 {t("batchGoToRegister")}
               </Link>
-              <Link href={`/${locale}/asset-management/labels?assetIds=${createdBatch.assetIds.join(",")}`} className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-white hover:bg-primary-hover sm:w-auto">
+              <Link href={`/${locale}/asset-management/labels?assetIds=${createdBatch.assetIds.join(",")}`} className={cn(buttonVariants({ variant: "default" }), "w-full sm:w-auto")}>
                 {t("batchPrintLabels")}
               </Link>
-              <button type="button" onClick={() => void handleCopyAssetTags()} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium hover:bg-accent sm:w-auto">
-                <Copy className="h-4 w-4" />
+              <Button variant="outline" className="w-full sm:w-auto" onClick={() => void handleCopyAssetTags()}>
+                <Copy aria-hidden="true" />
                 {t("batchCopyAssetTags")}
-              </button>
-              <button type="button" onClick={handleDownloadReceiptCsv} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium hover:bg-accent sm:w-auto">
-                <Download className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" className="w-full sm:w-auto" onClick={handleDownloadReceiptCsv}>
+                <Download aria-hidden="true" />
                 {t("batchDownloadReceiptCsv")}
-              </button>
+              </Button>
             </div>
             <div className="mt-4">
               <h3 className="text-sm font-semibold text-foreground">{t("batchReceiptAssets")}</h3>
@@ -1062,10 +1055,10 @@ export function AssetBatchForm({
         ) : null}
 
         <div className="flex justify-end">
-          <button type="submit" disabled={saving || hasClientDuplicates} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          <Button type="submit" className="w-full sm:w-auto" busy={saving} disabled={hasClientDuplicates}>
+            <Save aria-hidden="true" />
             {reviewing ? t("batchReviewConfirm") : t("batchSubmit")}
-          </button>
+          </Button>
         </div>
       </form>
     </div>
@@ -1103,6 +1096,8 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
   )
 }
 
+// A real checkbox chip (K16): Space toggles it and Enter does not submit the batch form. Still checked while rows
+// hold their own value, as before (spec 2C section 7.4.4).
 function BatchOptionalColumnToggle({
   label,
   active,
@@ -1114,59 +1109,31 @@ function BatchOptionalColumnToggle({
   count: number
   onClick: () => void
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-        active
-          ? "border-primary bg-primary-soft text-primary hover:bg-primary-soft"
-          : "border-border bg-background text-foreground hover:bg-accent"
-      }`}
-      aria-pressed={active}
-    >
-      <span>{label}</span>
-      {count > 0 ? (
-        <span className="rounded-full bg-background px-2 py-0.5 text-xs text-muted-foreground">
-          {count}
-        </span>
-      ) : null}
-    </button>
-  )
+  return <ChoiceChip type="checkbox" checked={active} onChange={onClick} label={label} detail={count > 0 ? <span className="num">{count}</span> : undefined} />
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
-      {children}
-    </label>
-  )
-}
-
+// Keeps the name and props it had before 2C, so its 12 call sites stay as they are. hint carries the help line
+// that used to sit in a <p> under 2 of them (spec 2C section 4.3 F6).
 function SelectField({
   label,
   value,
   required,
+  hint,
   onChange,
   children,
 }: {
   label: string
   value: string
   required?: boolean
+  hint?: React.ReactNode
   onChange: (value: string) => void
   children: React.ReactNode
 }) {
   return (
-    <Field label={label} required={required}>
-      <select value={value} required={required} onChange={(event) => onChange(event.target.value)} className={inputClassName}>
+    <Field label={label} required={required} hint={hint}>
+      <NativeSelect value={value} required={required} onChange={(event) => onChange(event.target.value)}>
         {children}
-      </select>
+      </NativeSelect>
     </Field>
   )
 }
-
-const inputClassName = "min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0"

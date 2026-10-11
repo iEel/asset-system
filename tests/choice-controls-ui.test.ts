@@ -110,3 +110,12 @@ test("the asset form's photo types are one radio group of chips with a legend an
   )
   assert.doesNotMatch(source, /onClick=\{\(\) => setPhotoLabel\(item\)\}/, "the chips are radio inputs now, not buttons whose state no screen reader hears")
 })
+
+test("the batch form's row-column toggles are checkbox chips (T4)", () => {
+  const source = readFileSync("src/components/assets/asset-batch-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(
+    source,
+    /<ChoiceChip type="checkbox" checked=\{active\} onChange=\{onClick\} label=\{label\} detail=\{count > 0 \? <span className="num">\{count\}<\/span> : undefined\} \/>/,
+  )
+  assert.doesNotMatch(source, /aria-pressed=\{active\}|rounded-full bg-background px-2 py-0\.5/)
+})
