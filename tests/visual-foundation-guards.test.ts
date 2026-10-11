@@ -226,3 +226,26 @@ test("R1 tone colors never fade with opacity", () => {
     "src/app/[locale]/(dashboard)/audit/rounds/page.tsx": 1,
   })
 })
+
+const NEUTRAL_FILL_OPACITY = /(?<![\w-])(?:[\w\-\[\]=&\/]+:)*(?:bg-(?:muted|accent)|border-border)\/\d+/g
+const TABLE_HEADER_LINE = /<th(?:ead)?\b/
+
+test("R7 neutral fills are opaque tokens outside table headers", () => {
+  const css = globals()
+  assert.match(css, /--row-hover: #[0-9A-F]{6};/)
+  assert.match(css, /--border-soft: #[0-9A-F]{6};/)
+  assert.match(css, /--color-row-hover: var\(--row-hover\);/, "without this line Tailwind drops bg-row-hover without an error")
+  assert.match(css, /--color-border-soft: var\(--border-soft\);/, "without this line Tailwind drops border-border-soft without an error")
+  const outsideTableHeaders = sources.map((file) => ({
+    path: file.path,
+    source: file.source.split("\n").filter((line) => !TABLE_HEADER_LINE.test(line)).join("\n"),
+  }))
+  assert.deepEqual(findMatches(outsideTableHeaders, NEUTRAL_FILL_OPACITY), [])
+})
+
+test("R7 interim: table-header fills wait for DataTable (2B)", () => {
+  // 2B lowers 44 as DataTable takes the header fills over, then drops the header filter above. Never raise it.
+  const fills = countMatchesByFile(sources, NEUTRAL_FILL_OPACITY)
+  const total = Object.values(fills).reduce((sum, count) => sum + count, 0)
+  assert.ok(total <= 44, `at most 44 table-header fills may remain, found ${total}: ${JSON.stringify(fills)}`)
+})

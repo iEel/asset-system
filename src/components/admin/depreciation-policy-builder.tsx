@@ -342,7 +342,7 @@ function ReadonlyFact({ label, value }: { label: string; value: string }) {
 
 function PreviewMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-h-[66px] rounded-md border border-border bg-muted/20 px-3 py-2">
+    <div className="min-h-[66px] rounded-md border border-border bg-background px-3 py-2">
       <div className="text-xs font-medium text-muted-foreground">{label}</div>
       <div className="mt-1 text-base font-semibold text-foreground">{value}</div>
     </div>

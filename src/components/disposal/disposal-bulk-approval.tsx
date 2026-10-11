@@ -414,7 +414,7 @@ export function DisposalBulkApprovalToolbar() {
   if (selected.size === 0) return null
 
   return (
-    <div className="mt-3 flex flex-col gap-3 border border-border bg-muted/40 p-3 sm:rounded-md md:flex-row md:items-center md:justify-between" aria-label={copy.toolbarLabel}>
+    <div className="mt-3 flex flex-col gap-3 border border-border bg-background p-3 sm:rounded-md md:flex-row md:items-center md:justify-between" aria-label={copy.toolbarLabel}>
       <span className="sr-only" aria-live="polite">{formatCopy(copy.selectedCount, { count: selected.size })}</span>
       <div className="flex items-center gap-2 text-sm font-medium text-foreground"><CheckSquare2 className="h-4 w-4 text-primary" />{formatCopy(copy.selectedCount, { count: selected.size })}</div>
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -547,7 +547,7 @@ function DisposalBulkApprovalDialog() {
           {dialogState === "committing" ? <div className="flex min-h-24 items-center gap-3 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" />{copy.committing}</div> : null}
           {response ? <>
             <BulkSummary selected={response.summary.selected} eligible={response.summary.eligible} blocked={response.summary.blocked} approved={response.summary.approved} failed={response.summary.failed} />
-            {groups.length ? <div className="space-y-2">{groups.map(([code, group]) => <details key={code} className="rounded-md border border-border bg-muted/30 p-3"><summary className="cursor-pointer text-sm font-medium text-foreground"><span className="inline-flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-warning" />{getErrorLabel(code)} ({group.length})</span></summary><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{group.map((item) => <li key={item.requestId}>{item.disposalNo} - {item.assetTag}</li>)}</ul></details>)}</div> : null}
+            {groups.length ? <div className="space-y-2">{groups.map(([code, group]) => <details key={code} className="rounded-md border border-border bg-background p-3"><summary className="cursor-pointer text-sm font-medium text-foreground"><span className="inline-flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-warning" />{getErrorLabel(code)} ({group.length})</span></summary><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{group.map((item) => <li key={item.requestId}>{item.disposalNo} - {item.assetTag}</li>)}</ul></details>)}</div> : null}
             {dialogState === "preview" && eligible.length === 0 ? <p role="alert" className="rounded-md border border-warning-border bg-warning-soft p-3 text-sm text-foreground">{copy.zeroEligible}</p> : null}
             {dialogState === "preview" ? <label className="block"><span className="mb-1.5 block text-sm font-medium text-foreground">{copy.sharedRemark}</span><textarea value={approvalRemark} maxLength={4000} rows={4} disabled={busy} onChange={(event) => setApprovalRemark(event.target.value)} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" /><span className="mt-1 block text-xs text-muted-foreground">{copy.sharedRemarkHelp}</span><span className="mt-1 block text-xs text-muted-foreground">{formatCopy(copy.remarkLimit, { count: approvalRemark.length })}</span></label> : null}
             {dialogState === "result" && (approved.length || failed.length || blocked.length) ? <ResultDetails approved={approved} blocked={blocked} failed={failed} getErrorLabel={getErrorLabel} /> : null}
@@ -570,7 +570,7 @@ function BulkSummary({ selected, eligible, blocked, approved, failed }: Disposal
 }
 
 function Metric({ label, value }: { label: string; value: number }) {
-  return <div className="border border-border bg-muted/30 p-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-semibold text-foreground">{value}</dd></div>
+  return <div className="border border-border bg-background p-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-semibold text-foreground">{value}</dd></div>
 }
 
 function ResultDetails({ approved, blocked, failed, getErrorLabel }: { approved: DisposalBulkApprovalItem[]; blocked: DisposalBulkApprovalItem[]; failed: DisposalBulkApprovalItem[]; getErrorLabel: (code: DisposalBulkApprovalCode | null) => string }) {

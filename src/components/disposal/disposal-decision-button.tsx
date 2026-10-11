@@ -178,7 +178,7 @@ function DecisionDialog({
             </select>
             <p className="mt-1 text-xs text-muted-foreground">{t("approveKeepsPendingDisposal")}</p>
           </Field> : (
-            <div className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+            <div className="rounded-md border border-border bg-background p-3 text-sm text-muted-foreground">
               {t("rejectRestoresPreviousStatus")}
             </div>
           )}

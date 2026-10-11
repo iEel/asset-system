@@ -199,7 +199,7 @@ export function GlobalSearch() {
                   onClick={() => openResult(result)}
                   className={[
                     "flex w-full min-w-0 cursor-pointer gap-3 px-4 py-3 text-left transition-colors",
-                    selected ? "bg-accent" : "hover:bg-accent/60",
+                    selected ? "bg-accent" : "hover:bg-row-hover",
                   ].join(" ")}
                 >
                   <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">

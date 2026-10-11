@@ -228,7 +228,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
             ) : (
               <div className="mt-4 divide-y divide-border">
                 {assets.map((asset) => (
-                  <Link key={asset.id} href={`/${locale}/assets/${asset.id}`} className="flex min-h-11 flex-col gap-2 py-3 transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:flex-row sm:items-center sm:justify-between">
+                  <Link key={asset.id} href={`/${locale}/assets/${asset.id}`} className="flex min-h-11 flex-col gap-2 py-3 transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:flex-row sm:items-center sm:justify-between">
                     <span className="min-w-0">
                       <span className="block font-medium text-primary">{asset.assetTag} - {asset.name}</span>
                       <span className="mt-1 block text-xs text-muted-foreground">
@@ -277,7 +277,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
             ) : (
               <div className="mt-4 space-y-3">
                 {maintenanceTickets.map((ticket) => (
-                  <Link key={ticket.id} href={`/${locale}/maintenance/${ticket.id}`} className="block min-h-11 rounded-md border border-border bg-background p-3 transition-colors hover:border-primary-border hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                  <Link key={ticket.id} href={`/${locale}/maintenance/${ticket.id}`} className="block min-h-11 rounded-md border border-border bg-background p-3 transition-colors hover:border-primary-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <div className="font-medium text-primary">{ticket.repairNo} - {ticket.asset.assetTag}</div>
@@ -322,7 +322,7 @@ function MetricCard({
     <div className={[
       "rounded-lg border bg-surface p-4 shadow-sm transition-colors",
       tone === "warning" ? "border-warning-border bg-warning-soft" : "border-border",
-      href ? "hover:border-primary-border hover:bg-accent/60" : "",
+      href ? "hover:border-primary-border hover:bg-accent" : "",
     ].join(" ")}>
       <div className="flex items-start justify-between gap-3">
         <div>

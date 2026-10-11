@@ -622,7 +622,7 @@ export function DisposalBulkExecutionToolbar() {
 
   return (
     <div
-      className="mt-3 flex flex-col gap-3 border-y border-border bg-muted/40 p-3 md:flex-row md:items-center md:justify-between"
+      className="mt-3 flex flex-col gap-3 border-y border-border bg-background p-3 md:flex-row md:items-center md:justify-between"
       aria-label={copy.toolbarLabel}
     >
       <span className="sr-only" aria-live="polite">
@@ -1101,7 +1101,7 @@ function ReviewedSharedValues({
       <h3 id="bulk-shared-values" className="text-sm font-semibold text-foreground">
         {copy.sharedValues}
       </h3>
-      <dl className="mt-2 grid gap-3 border border-border bg-muted/30 p-3 text-sm sm:grid-cols-3">
+      <dl className="mt-2 grid gap-3 border border-border bg-background p-3 text-sm sm:grid-cols-3">
         <ReviewValue label={copy.executionDate} value={payload.executionDate} />
         <ReviewValue label={copy.executor} value={employee ?? copy.notProvided} />
         <ReviewValue label={copy.finalStatus} value={status ?? copy.notProvided} />
@@ -1216,7 +1216,7 @@ function ResponseSummary({
 
 function SummaryValue({ label, value }: { label: string; value: number }) {
   return (
-    <div className="border border-border bg-muted/30 p-3 text-center">
+    <div className="border border-border bg-background p-3 text-center">
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd className="mt-1 text-lg font-semibold text-foreground">{value}</dd>
     </div>

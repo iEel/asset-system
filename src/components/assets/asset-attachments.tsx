@@ -179,7 +179,7 @@ export function AssetAttachments({
                     <button
                       type="button"
                       onClick={() => setPreviewPhoto({ title: item.label, attachment })}
-                      className="relative block aspect-video w-full bg-muted/40 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring"
+                      className="relative block aspect-video w-full bg-background text-left transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
                     >
                       <Image
                         src={`/api/attachments/${attachment.id}?inline=1`}
@@ -349,7 +349,7 @@ function PhotoPreview({
       <button
         type="button"
         onClick={() => onPreview({ title, attachment })}
-        className="relative block h-32 w-full bg-muted/40 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring"
+        className="relative block h-32 w-full bg-background text-left transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
       >
         <Image
           src={`/api/attachments/${attachment.id}?inline=1`}
@@ -388,7 +388,7 @@ function AttachmentCard({
         <button
           type="button"
           onClick={onPreview}
-          className="relative block h-28 w-full bg-muted/40 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring"
+          className="relative block h-28 w-full bg-background text-left transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <Image
             src={`/api/attachments/${attachment.id}?inline=1`}
@@ -399,7 +399,7 @@ function AttachmentCard({
           />
         </button>
       ) : (
-        <div className="flex h-28 items-center justify-center bg-muted/40 p-3 text-center text-xs font-medium text-muted-foreground">
+        <div className="flex h-28 items-center justify-center bg-background p-3 text-center text-xs font-medium text-muted-foreground">
           {attachment.fileType}
         </div>
       )}

@@ -803,7 +803,7 @@ export function AssetBatchForm({
             </button>
           </div>
 
-          <div className="md:col-span-2 rounded-md border border-border bg-muted/20 p-3">
+          <div className="md:col-span-2 rounded-md border border-border bg-background p-3">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <div className="text-sm font-medium text-foreground">{t("batchOptionalColumns")}</div>

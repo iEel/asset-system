@@ -1371,7 +1371,7 @@ export function AssetForm({
                       rel="noreferrer"
                       className="overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-input focus:outline-none focus:ring-2 focus:ring-ring"
                     >
-                      <div className="flex aspect-video items-center justify-center bg-muted/40 p-2">
+                      <div className="flex aspect-video items-center justify-center bg-background p-2">
                         {/* Authenticated attachment URLs render more reliably as browser-native images. */}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img

@@ -129,7 +129,7 @@ export default async function MyAssetsPage({ params }: MyAssetsPageProps) {
                   </thead>
                   <tbody className="divide-y divide-border bg-surface">
                     {assets.map((asset) => (
-                      <tr key={asset.id} className="hover:bg-accent/40">
+                      <tr key={asset.id} className="hover:bg-row-hover">
                         <td className="px-4 py-3">
                           <AssetIdentity asset={asset} href={buildMyAssetDetailHref(locale, asset.id)} />
                         </td>
@@ -174,7 +174,7 @@ function Metric({ label, value, tone }: { label: string; value: number; tone: "n
     neutral: "border-border bg-surface",
     success: "border-success-border bg-success-soft",
     warning: "border-warning-border bg-warning-soft",
-    muted: "border-border bg-muted/40",
+    muted: "border-border bg-background",
   }[tone]
 
   return (

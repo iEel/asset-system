@@ -151,7 +151,7 @@ export function TransactionCancelDialog({
             </>
           )}
         </div>
-        <div className="grid gap-2 border-t border-border bg-muted/20 px-5 py-4 sm:grid-cols-2">
+        <div className="grid gap-2 border-t border-border bg-background px-5 py-4 sm:grid-cols-2">
           <button type="button" onClick={() => setOpen(false)} disabled={saving} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50">{labels.cancel}</button>
           <button type="button" onClick={() => void submitCancellation()} disabled={loading || saving || blockers.length > 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-danger px-4 text-sm font-semibold text-white transition-colors hover:bg-danger-hover disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}{labels.confirm}</button>
         </div>

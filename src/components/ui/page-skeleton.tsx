@@ -42,7 +42,7 @@ function MetricGridSkeleton({ count = 4 }: { count?: number }) {
 function TableSkeleton({ rows = 6, columns = 5 }: TableSkeletonProps) {
   return (
     <div className="overflow-hidden rounded-md border border-border bg-surface">
-      <div className="grid gap-4 border-b border-border bg-muted/40 px-4 py-3" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+      <div className="grid gap-4 border-b border-border bg-background px-4 py-3" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
         {Array.from({ length: columns }, (_, index) => (
           <SkeletonBlock key={index} className="h-3 w-20" />
         ))}

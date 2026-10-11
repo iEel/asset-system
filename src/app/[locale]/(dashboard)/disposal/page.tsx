@@ -435,5 +435,5 @@ function getRequestValue(request: DisposalActionRequest) {
 }
 
 function MobileDisposalField({ label, value }: { label: string; value: string }) {
-  return <div className="min-w-0 rounded-md bg-muted/30 px-3 py-2"><div className="text-xs font-medium text-muted-foreground">{label}</div><div className="mt-1 break-words text-sm text-foreground">{value}</div></div>
+  return <div className="min-w-0 rounded-md bg-background px-3 py-2"><div className="text-xs font-medium text-muted-foreground">{label}</div><div className="mt-1 break-words text-sm text-foreground">{value}</div></div>
 }

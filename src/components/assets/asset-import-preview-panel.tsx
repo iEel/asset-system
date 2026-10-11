@@ -310,7 +310,7 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
 
       {preview && (
         <div className="mt-4 overflow-hidden rounded-md border border-border">
-          <div className="grid grid-cols-3 divide-x divide-border bg-muted/40 text-sm md:grid-cols-6">
+          <div className="grid grid-cols-3 divide-x divide-border bg-background text-sm md:grid-cols-6">
             <SummaryItem label={labels.previewRows} value={preview.summary.totalRows} />
             <SummaryItem label={labels.previewReady} value={preview.summary.readyRows} tone="ready" />
             <SummaryItem label={labels.previewErrors} value={preview.summary.errorRows} tone="error" />
@@ -356,7 +356,7 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
               </thead>
               <tbody className="divide-y divide-border">
                 {preview.rows.slice(0, 100).map((row) => (
-                  <tr key={row.rowNumber} className="hover:bg-accent/50">
+                  <tr key={row.rowNumber} className="hover:bg-row-hover">
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{row.rowNumber}</td>
                     <td className="whitespace-nowrap px-4 py-3">
                       <span

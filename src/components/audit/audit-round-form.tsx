@@ -152,7 +152,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
             <option value="open">{t("statusOpen")}</option>
           </Select>
           <div />
-          <div className="md:col-span-2 rounded-lg border border-border bg-muted/20 p-4">
+          <div className="md:col-span-2 rounded-lg border border-border bg-background p-4">
             <div className="mb-4">
               <h2 className="text-sm font-semibold text-foreground">{t("riskSampling")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{t("riskSamplingHelp")}</p>

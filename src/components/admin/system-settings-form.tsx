@@ -1057,7 +1057,7 @@ export function SystemSettingsForm({
               ))}
             </div>
           </div>
-          <div className="rounded-md border border-border bg-muted/30 px-3 py-2 font-mono text-xs text-muted-foreground">
+          <div className="rounded-md border border-border bg-background px-3 py-2 font-mono text-xs text-muted-foreground">
             {labels.exampleFormat}: {"{assetCompanyCode}{separator}{assetPrefix}{separator}{month}{separator}{running}"}
           </div>
         </div>
@@ -1102,7 +1102,7 @@ export function SystemSettingsForm({
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.labelPrintTemplate} description={labels.labelPrintTemplateDescription} />
         <div className="space-y-4 px-4 py-4">
-          <div className="grid gap-4 rounded-md border border-border bg-muted/20 p-3 xl:grid-cols-[minmax(0,1fr)_minmax(260px,360px)]">
+          <div className="grid gap-4 rounded-md border border-border bg-background p-3 xl:grid-cols-[minmax(0,1fr)_minmax(260px,360px)]">
             <div className="space-y-2">
               <Field label={labels.publicQrBaseUrl} htmlFor="asset-qr-public-base-url">
                 <input
@@ -1217,7 +1217,7 @@ export function SystemSettingsForm({
                 />
               </Field>
             </div>
-            <div className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+            <div className="rounded-md border border-border bg-background p-3 text-xs text-muted-foreground">
               <div className="font-medium text-foreground">{labels.exampleFormat}</div>
               <div className="mt-2 space-y-1 font-mono">
                 <div>{labels.checkoutDocumentExample}: {renderOperationDocumentTemplate(checkoutDocumentTemplate, operationDocumentExampleDate, 1, operationDocumentExampleDigits)}</div>
@@ -1268,7 +1268,7 @@ export function SystemSettingsForm({
           </div>
 
           {prefixGroups.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
+            <div className="rounded-md border border-dashed border-border bg-background px-4 py-6 text-sm text-muted-foreground">
               {labels.noCategoryPrefixes}
             </div>
           ) : (
@@ -1286,7 +1286,7 @@ export function SystemSettingsForm({
                 </thead>
                 <tbody className="divide-y divide-border bg-surface">
                   {prefixGroups.map((group) => (
-                    <tr key={group.prefix} className="hover:bg-accent/50">
+                    <tr key={group.prefix} className="hover:bg-row-hover">
                       <td className="px-4 py-3">
                         <span className="inline-flex min-h-8 items-center rounded-md border border-border bg-background px-3 font-mono text-sm font-semibold text-foreground">
                           {group.prefix}
@@ -1337,7 +1337,7 @@ export function SystemSettingsForm({
             </div>
           )}
 
-          <div className="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+          <div className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
             {formatTemplateText(labels.unassignedCategoryCount, { count: String(unassignedCategoryCount) })}
           </div>
           {hasDuplicateCategory ? <ValidationMessage message={labels.duplicateCategory} /> : null}
@@ -1369,7 +1369,7 @@ export function SystemSettingsForm({
                       className="h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm uppercase outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                     />
                   </Field>
-                  <div className="rounded-md border border-border bg-muted/20 px-3 py-2">
+                  <div className="rounded-md border border-border bg-background px-3 py-2">
                     <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
                       {labels.categoryPrefixPreview}
                     </div>
@@ -1579,7 +1579,7 @@ export function SystemSettingsForm({
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.workflowApprovalPolicy} description={labels.workflowApprovalPolicyDescription} />
         <div className="space-y-4 px-4 py-4">
-          <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+          <p className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
             {labels.workflowApprovalFoundationNote}
           </p>
           <div className="grid gap-4 lg:grid-cols-2">
@@ -1632,7 +1632,7 @@ export function SystemSettingsForm({
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.schedulerSettings} description={labels.schedulerSettingsDescription} />
         <div className="space-y-4 px-4 py-4">
-          <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+          <p className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
             {labels.schedulerHeartbeatNote}
           </p>
           {hasInvalidSchedulerSchedule ? <ValidationMessage message={labels.invalidSchedulerSchedule} /> : null}
@@ -1691,7 +1691,7 @@ export function SystemSettingsForm({
               />
             </Field>
           </div>
-          <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+          <p className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
             {labels.retentionDaysHelp}
           </p>
           {hasInvalidRetentionPolicy ? <ValidationMessage message={labels.invalidRetentionPolicy} /> : null}
@@ -1853,7 +1853,7 @@ export function SystemSettingsForm({
       <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <SectionHeader title={labels.ldapSyncStrategy} description={labels.ldapSyncStrategyDescription} />
         <div className="space-y-4 px-4 py-4">
-          <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+          <p className="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
             {labels.ldapSyncRecommendation}
           </p>
           <WizardStep number={1} title={labels.ldapStepSyncStrategy}>
@@ -1903,7 +1903,7 @@ export function SystemSettingsForm({
           </WizardStep>
 
           <WizardStep number={2} title={labels.ldapStepOrgMapping}>
-              <div className="rounded-md border border-border bg-muted/30 px-3 py-3">
+              <div className="rounded-md border border-border bg-background px-3 py-3">
                 <div className="text-sm font-medium text-foreground">{labels.ldapSyncDefaultMapping}</div>
                 <p className="mt-1 text-sm text-muted-foreground">{labels.ldapSyncDefaultMappingDescription}</p>
                 <div className="mt-3 grid gap-3 md:grid-cols-3">
@@ -2039,7 +2039,7 @@ export function SystemSettingsForm({
               </thead>
               <tbody className="divide-y divide-border">
                 {generalSettings.map((setting) => (
-                  <tr key={setting.key} className="hover:bg-accent/50">
+                  <tr key={setting.key} className="hover:bg-row-hover">
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{setting.key}</td>
                     <td className="min-w-80 px-4 py-3">
                       <input
@@ -2071,7 +2071,7 @@ export function SystemSettingsForm({
               </thead>
               <tbody className="divide-y divide-border">
                 {changedSettings.map((setting) => (
-                  <tr key={setting.key} className="hover:bg-accent/50">
+                  <tr key={setting.key} className="hover:bg-row-hover">
                     <td className="whitespace-nowrap px-4 py-3">
                       <button
                         type="button"
@@ -2147,7 +2147,7 @@ function LdapSyncHistoryPanel({
       </div>
 
       {history.length === 0 ? (
-        <p className="mt-4 rounded-md border border-dashed border-border bg-muted/20 px-3 py-4 text-sm text-muted-foreground">
+        <p className="mt-4 rounded-md border border-dashed border-border bg-background px-3 py-4 text-sm text-muted-foreground">
           {labels.ldapSyncHistoryEmpty}
         </p>
       ) : (
@@ -2346,7 +2346,7 @@ function ValidationMessage({ message }: { message: string }) {
 
 function WizardStep({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-md border border-border bg-muted/20 p-4">
+    <div className="rounded-md border border-border bg-background p-4">
       <div className="mb-4 flex items-center gap-3">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
           {number}
@@ -2460,12 +2460,12 @@ function SyncPreviewPanel({
                   {impact.assets.length > 0 ? (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {impact.assets.slice(0, 5).map((asset) => (
-                        <span key={asset.id} className="rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-foreground">
+                        <span key={asset.id} className="rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground">
                           {asset.assetTag} - {asset.name}
                         </span>
                       ))}
                       {impact.assets.length > 5 ? (
-                        <span className="rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
+                        <span className="rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground">
                           +{impact.assets.length - 5}
                         </span>
                       ) : null}
@@ -2540,7 +2540,7 @@ function LabelAssetNameModeField({
   return (
     <div className="space-y-2">
       <div className="text-sm font-medium text-foreground">{label}</div>
-      <div className="inline-flex rounded-md border border-border bg-muted/20 p-1" role="group" aria-label={label}>
+      <div className="inline-flex rounded-md border border-border bg-background p-1" role="group" aria-label={label}>
         {options.map((option) => {
           const isActive = compactEnabled === option.value
           return (
@@ -2583,7 +2583,7 @@ function LabelTemplatePanel({
   const preset = assetLabelPresets[tapeSize]
 
   return (
-    <div className="rounded-md border border-border bg-muted/20 p-3">
+    <div className="rounded-md border border-border bg-background p-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         <button
@@ -2750,7 +2750,7 @@ function LabelPreviewPanel({
   )
 
   return (
-    <div className="rounded-md border border-border bg-muted/20 p-3">
+    <div className="rounded-md border border-border bg-background p-3">
       <div className="text-sm font-semibold text-foreground">{labels.labelPreview}</div>
       <div className="mt-3 w-full max-w-full overflow-x-auto overscroll-x-contain">
         <div

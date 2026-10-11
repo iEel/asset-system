@@ -109,7 +109,7 @@ export default async function LogsPage({ params, searchParams }: LogsPageProps) 
             </thead>
             <tbody className="divide-y divide-border">
               {displayLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-accent/50">
+                <tr key={log.id} className="hover:bg-row-hover">
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(log.createdAt)}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-foreground">{log.userLabel}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{log.moduleLabel}</td>

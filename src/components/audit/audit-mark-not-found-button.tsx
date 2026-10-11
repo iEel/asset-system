@@ -126,7 +126,7 @@ export function AuditMarkNotFoundButton({ itemId, variant = "icon" }: { itemId: 
             />
           </div>
 
-          <div className="grid gap-2 border-t border-border bg-muted/20 px-4 py-4 sm:grid-cols-2">
+          <div className="grid gap-2 border-t border-border bg-background px-4 py-4 sm:grid-cols-2">
             <button
               type="button"
               onClick={closeDialog}

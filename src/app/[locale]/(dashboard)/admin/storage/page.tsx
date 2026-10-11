@@ -111,7 +111,7 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
                 </tr>
               ) : (
                 dryRun.actions.slice(0, 10).map((action, index) => (
-                  <tr key={`${action.action}-${index}`} className="hover:bg-accent/50">
+                  <tr key={`${action.action}-${index}`} className="hover:bg-row-hover">
                     <td className="px-4 py-3">
                       <StatusBadge
                         label={action.action === "archive_orphan_file" ? t("archiveOrphanFile") : t("reviewMissingDbFile")}
@@ -162,7 +162,7 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
               </thead>
               <tbody className="divide-y divide-border">
                 {summary.byModule.map((item) => (
-                  <tr key={item.module} className="hover:bg-accent/50">
+                  <tr key={item.module} className="hover:bg-row-hover">
                     <td className="px-4 py-3 font-medium text-foreground">{moduleLabel(item.module, t)}</td>
                     <td className="px-4 py-3 text-right text-muted-foreground">{item.count.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right text-muted-foreground">{formatStorageSize(item.totalBytes)}</td>
@@ -263,7 +263,7 @@ function StorageFileList({
               </tr>
             ) : (
               items.map((item) => (
-                <tr key={item.id} className="hover:bg-accent/50">
+                <tr key={item.id} className="hover:bg-row-hover">
                   <td className="max-w-sm truncate px-4 py-3 font-medium text-foreground">{item.originalName}</td>
                   <td className="px-4 py-3 text-muted-foreground">{moduleLabel(item.module, t)}</td>
                   <td className="px-4 py-3 text-right text-muted-foreground">{formatStorageSize(item.fileSize)}</td>

@@ -1793,7 +1793,7 @@ function QuickAction({
 }) {
   if (disabled) {
     return (
-      <span className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-muted/50 px-3 text-center text-sm font-medium leading-tight text-muted-foreground opacity-70 md:h-10 md:min-h-0">
+      <span className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-center text-sm font-medium leading-tight text-muted-foreground opacity-70 md:h-10 md:min-h-0">
         {icon}
         {label}
       </span>
@@ -2258,7 +2258,7 @@ function SidebarPhotoCard({
           href="#photos"
           className="group block overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-input focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          <div className="flex h-32 w-full items-center justify-center bg-muted/40 p-2">
+          <div className="flex h-32 w-full items-center justify-center bg-background p-2">
             {/* Authenticated attachment URLs render more reliably as browser-native images. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -2315,7 +2315,7 @@ function EvidenceLinks({
               title={attachment.originalName}
             >
               {attachment.fileType.startsWith("image/") ? (
-                <div className="flex aspect-video w-full items-center justify-center bg-muted/40 p-2">
+                <div className="flex aspect-video w-full items-center justify-center bg-background p-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`/api/attachments/${attachment.id}?inline=1`}
@@ -2325,7 +2325,7 @@ function EvidenceLinks({
                   />
                 </div>
               ) : (
-                <div className="flex aspect-video w-full items-center justify-center bg-muted/40 p-3 text-sm font-medium text-muted-foreground">
+                <div className="flex aspect-video w-full items-center justify-center bg-background p-3 text-sm font-medium text-muted-foreground">
                   {attachment.fileType}
                 </div>
               )}

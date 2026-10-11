@@ -51,7 +51,7 @@ export function OperationReviewDialog({
           </div>
         ))}
       </dl>
-      <div className="grid gap-2 border-t border-border bg-muted/20 px-4 py-4 sm:grid-cols-2">
+      <div className="grid gap-2 border-t border-border bg-background px-4 py-4 sm:grid-cols-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{cancelLabel}</Button>
         <Button ref={confirmButtonRef} type="button" onClick={onConfirm} disabled={busy}>{confirmLabel}</Button>
       </div>

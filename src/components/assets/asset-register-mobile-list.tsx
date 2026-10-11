@@ -46,7 +46,7 @@ export function AssetRegisterMobileList({
 
 function MobileAssetRow({ asset, permissions, detailHref, editHref, cloneHref, onNavigate }: RowProps & { asset: AssetRegisterRow }) {
   return (
-    <li data-asset-mobile-row className="relative flex min-h-20 items-center gap-3 px-3 py-2 transition-colors hover:bg-accent/50">
+    <li data-asset-mobile-row className="relative flex min-h-20 items-center gap-3 px-3 py-2 transition-colors hover:bg-row-hover">
       <AssetThumbnail photo={asset.photo} assetTag={asset.assetTag} assetName={asset.name} size={44} className="relative z-10" />
       <div className="min-w-0 flex-1">
         <Link

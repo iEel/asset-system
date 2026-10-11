@@ -222,7 +222,7 @@ function togglePermission(permissionId: string) {
               </thead>
               <tbody className="divide-y divide-border">
                 {groupedPermissions.map(([moduleName, modulePermissions]) => (
-                  <tr key={moduleName} className="hover:bg-accent/50">
+                  <tr key={moduleName} className="hover:bg-row-hover">
                     <td className="whitespace-nowrap px-4 py-3 align-top">
                       <div className="font-medium text-foreground">{t(`modules.${moduleName}`)}</div>
                       <div className="mt-1 font-mono text-xs text-muted-foreground">{moduleName}</div>

@@ -81,7 +81,7 @@ function ConfirmTextForm({
           className="mt-2 min-h-28 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-60"
         />
       </div>
-      <div className="grid gap-2 border-t border-border bg-muted/20 px-4 py-4 sm:grid-cols-2">
+      <div className="grid gap-2 border-t border-border bg-background px-4 py-4 sm:grid-cols-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{cancelLabel}</Button>
         <Button type="submit" variant={confirmVariantByTone[tone]} disabled={busy}>{confirmLabel}</Button>
       </div>

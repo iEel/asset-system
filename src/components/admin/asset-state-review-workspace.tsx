@@ -208,7 +208,7 @@ export function AssetStateReviewWorkspace({
 }
 
 function ReviewTableRow({ row, locale, labels, issueTypes, canEdit, onAction }: RowProps) {
-  return <tr className="align-top hover:bg-muted/30"><td className="px-4 py-3"><AssetIdentity row={row} locale={locale} labels={labels} /></td><td className="px-4 py-3"><StateSummary row={row} locale={locale} labels={labels} /></td><td className="max-w-sm px-4 py-3"><IssueSummary row={row} labels={labels} issueTypes={issueTypes} /></td><td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(row.lastDetectedAt, locale)}</td><td className="px-4 py-3"><ReviewActions row={row} canEdit={canEdit} labels={labels} onAction={onAction} /></td></tr>
+  return <tr className="align-top hover:bg-row-hover"><td className="px-4 py-3"><AssetIdentity row={row} locale={locale} labels={labels} /></td><td className="px-4 py-3"><StateSummary row={row} locale={locale} labels={labels} /></td><td className="max-w-sm px-4 py-3"><IssueSummary row={row} labels={labels} issueTypes={issueTypes} /></td><td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(row.lastDetectedAt, locale)}</td><td className="px-4 py-3"><ReviewActions row={row} canEdit={canEdit} labels={labels} onAction={onAction} /></td></tr>
 }
 
 function ReviewMobileCard({ row, locale, labels, issueTypes, canEdit, onAction }: RowProps) {

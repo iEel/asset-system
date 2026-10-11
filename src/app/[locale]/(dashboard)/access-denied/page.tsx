@@ -24,7 +24,7 @@ export default async function AccessDeniedPage({ params, searchParams }: AccessD
           title={t("title")}
           description={t("description")}
           details={permission ? (
-            <p className="rounded-md border border-border bg-muted/30 px-3 py-2 font-mono text-xs text-muted-foreground">
+            <p className="rounded-md border border-border bg-background px-3 py-2 font-mono text-xs text-muted-foreground">
               {t("requestedPermission", { permission })}
             </p>
           ) : null}

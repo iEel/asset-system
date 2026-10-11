@@ -678,7 +678,7 @@ function CoverageMetric({ label, value, tone = "neutral" }: { label: string; val
 
 function MobileAuditField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-md bg-muted/30 px-3 py-2">
+    <div className="min-w-0 rounded-md bg-background px-3 py-2">
       <div className="text-xs font-medium text-muted-foreground">{label}</div>
       <div className="mt-1 break-words text-sm text-foreground">{value}</div>
     </div>
@@ -740,7 +740,7 @@ function CoverageGapList({
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.id} className="border-b border-border/60 last:border-0">
+                  <tr key={row.id} className="border-b border-border-soft last:border-0">
                     <td className="min-w-44 px-2 py-2 font-medium text-foreground">
                       {row.href ? (
                         <Link href={row.href} className="text-primary hover:underline">

@@ -573,7 +573,7 @@ function ComponentRemovalDialog({
           </label>
           <FileDropzone file={removeEvidence} onFileChange={setRemoveEvidence} disabled={busy} accept="image/*" capture="environment" title={labels.removeEvidence} hint={labels.evidenceHint} browseLabel={labels.browseEvidence} />
         </div>
-        <div className="grid gap-2 border-t border-border bg-muted/20 px-4 py-4 sm:grid-cols-2">
+        <div className="grid gap-2 border-t border-border bg-background px-4 py-4 sm:grid-cols-2">
           <button type="button" disabled={busy} onClick={onClose} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50">{labels.cancel}</button>
           <button type="button" disabled={busy} onClick={() => onConfirm(reason.trim(), removeEvidence)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-danger px-4 text-sm font-semibold text-white hover:bg-danger-hover disabled:opacity-50">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
