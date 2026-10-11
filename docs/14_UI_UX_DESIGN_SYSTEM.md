@@ -47,6 +47,30 @@ Both presentations reuse the same URL, API, business records, workflow records, 
 
 Follow the canonical [`Colors`](../DESIGN.md#2-colors), [`Typography`](../DESIGN.md#3-typography), and [`Components`](../DESIGN.md#5-components) sections of [`DESIGN.md`](../DESIGN.md); do not copy mutable token values into route documentation. Use semantic statuses with readable text plus icons, shapes, or clear workflow context where useful. Reuse Lucide icons and existing component helpers, favor borders and tonal hierarchy, and avoid decorative gradients, glass effects, and heavy motion. Implement consistent loading, empty, error, and denied states.
 
+## Shared Components
+
+Build screens from the shared primitives in `src/components/ui/`. Their look and rules live in [`DESIGN.md` §5](../DESIGN.md#5-components); do not copy their class strings into pages.
+
+| Need | Use | Remember |
+| --- | --- | --- |
+| A button, or a link that looks like one | `Button`, or `buttonVariants({ variant, size })` on a `Link` | `danger` for a destructive action in a page, `destructive` only to confirm it in a dialog; `busy` while working, never together with `disabled` or `asChild` |
+| A text link | `linkVariants({ size })` | `meta` when it stands alone, `inherit` inside a sentence |
+| A text field, select or textarea | `Input`, `NativeSelect`, `Textarea` with `fieldSize` | `getFieldControlClasses()` for a control that cannot use them |
+| A label with hint and error | `Field` | sets `id`, `aria-describedby`, `aria-invalid` and `aria-required`; never around `SearchableSelect`, never inside a `<label>` |
+| A search box | `SearchField` | `onClear` and `clearLabel` only from a client component |
+| A searchable picker | `SearchableSelect` | has its own label, hint and error |
+| An action menu | `DropdownMenu` | an item that cannot run now uses `unavailable` with `DropdownMenuItemDescription` for the reason |
+| A keyboard hint | `Kbd` | Latin keys and symbols only |
+| A status | `StatusBadge` | one size; there is no `size` prop |
+| A breadcrumb trail | `Breadcrumbs` | `code: true` for an asset tag or document number |
+| An empty value | `Nil`, `orNil` | `0` is a value, not blank |
+| A count or an amount of money | `formatCount`, `formatMoney` (`src/lib/display-format.ts`) | always th-TH and 2 decimals for money; the unit (`common.baht`) goes after the number, or in the column header of a table |
+| A toast | `toast.*` or `useApiError().toast` | `AppToaster` styles every toast; do not pass `richColors` |
+| A message box | `Notice` with `tone` | write `role` or `aria-live` at the call site |
+| An empty state | `EmptyNote` for one line, `ActionEmptyState` for a title, description or action | |
+
+Phase 2A built these; phases 2B to 2D move the hand-written controls onto them. The ratchet guards in `tests/visual-foundation-guards.test.ts` let their per-file budgets go down, never up.
+
 ## Current-Surface Registry
 
 A focused design record is current and approved for repository work only when this registry lists it in the **Current design record** column. When no focused record is listed, [`DESIGN.md`](../DESIGN.md) and this guide govern; create and register a focused specification before making material route-behavior changes. Plans record implementation sequencing and verification only; they do not supersede a current design record.
@@ -64,6 +88,7 @@ When a focused specification is added, replaced, or retired, update this registr
 | Disposal | [`2026-07-13-disposal-production-readiness-design.md`](superpowers/specs/2026-07-13-disposal-production-readiness-design.md) | [`2026-07-13-disposal-production-readiness.md`](superpowers/plans/2026-07-13-disposal-production-readiness.md) sequences implementation and verification. |
 | Maintenance | [`2026-10-07-simple-repair-records-design.md`](superpowers/specs/2026-10-07-simple-repair-records-design.md) (one-form repair records; supersedes [`2026-07-14-maintenance-production-hardening-design.md`](superpowers/specs/2026-07-14-maintenance-production-hardening-design.md)) | [`2026-10-07-simple-repair-records.md`](superpowers/plans/2026-10-07-simple-repair-records.md) sequences implementation and verification. |
 | App shell and visual foundation | [`2026-10-10-ui-foundation-design.md`](superpowers/specs/2026-10-10-ui-foundation-design.md) (UI round 4 phase 1: light-shell color tokens, single focus ring, IBM Plex fonts and Thai line heights, flat panels, two-tier status badge, white sidebar with sections, topbar, mobile bottom bar, PWA theme color) | [`2026-10-10-ui-foundation.md`](superpowers/plans/2026-10-10-ui-foundation.md) sequences implementation and verification. |
+| Shared components | [`2026-10-11-ui-phase2a-design.md`](superpowers/specs/2026-10-11-ui-phase2a-design.md) (UI round 4 phase 2A: the tokens phase 2 needs, buttons, fields, menus and popovers, toasts, notices and empty states, one status badge size, breadcrumbs, empty-value and number helpers, four codemods with ratchet guards; its §10 overrides the section files in [`2026-10-11-ui-phase2a/`](superpowers/specs/2026-10-11-ui-phase2a/)) | [`2026-10-11-ui-phase2a.md`](superpowers/plans/2026-10-11-ui-phase2a.md) sequences implementation and verification. |
 | Cross-cutting UI hardening | [`2026-07-10-ui-ux-hardening-design.md`](superpowers/specs/2026-07-10-ui-ux-hardening-design.md) | [`2026-07-10-ui-ux-hardening.md`](superpowers/plans/2026-07-10-ui-ux-hardening.md) sequences implementation and verification; [`2026-07-10-module-ux-roadmap.md`](superpowers/plans/2026-07-10-module-ux-roadmap.md) provides module-level sequencing. |
 
 ## UI QA Checklist

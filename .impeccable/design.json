@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-10T00:00:00+07:00",
+  "generatedAt": "2026-10-11T00:00:00+07:00",
   "title": "Design System: Asset Management System",
   "extensions": {
     "colorMeta": {
@@ -124,6 +124,81 @@
           "oklch(96% 0.004 257)"
         ]
       },
+      "faint-foreground": {
+        "role": "neutral",
+        "displayName": "Faint Ink",
+        "canonical": "#56677F",
+        "tonalRamp": [
+          "oklch(21% 0.026 257)",
+          "oklch(28% 0.035 257)",
+          "oklch(37% 0.041 257)",
+          "oklch(47% 0.044 257)",
+          "oklch(60% 0.039 257)",
+          "oklch(73% 0.031 257)",
+          "oklch(86% 0.015 257)",
+          "oklch(96% 0.004 257)"
+        ]
+      },
+      "neutral-ink": {
+        "role": "neutral",
+        "displayName": "Neutral Ink",
+        "canonical": "#2A4468",
+        "tonalRamp": [
+          "oklch(21% 0.042 257)",
+          "oklch(28% 0.056 257)",
+          "oklch(37% 0.066 257)",
+          "oklch(47% 0.07 257)",
+          "oklch(60% 0.063 257)",
+          "oklch(73% 0.049 257)",
+          "oklch(86% 0.024 257)",
+          "oklch(96% 0.007 257)"
+        ]
+      },
+      "row-hover": {
+        "role": "neutral",
+        "displayName": "Row Hover",
+        "canonical": "#F3F6FB",
+        "tonalRamp": [
+          "oklch(21% 0.004 261)",
+          "oklch(28% 0.006 261)",
+          "oklch(37% 0.007 261)",
+          "oklch(47% 0.007 261)",
+          "oklch(60% 0.007 261)",
+          "oklch(73% 0.005 261)",
+          "oklch(86% 0.003 261)",
+          "oklch(96% 0.001 261)"
+        ]
+      },
+      "border-soft": {
+        "role": "neutral",
+        "displayName": "Border Soft",
+        "canonical": "#E7EBF1",
+        "tonalRamp": [
+          "oklch(21% 0.005 258)",
+          "oklch(28% 0.007 258)",
+          "oklch(37% 0.009 258)",
+          "oklch(47% 0.009 258)",
+          "oklch(60% 0.008 258)",
+          "oklch(73% 0.006 258)",
+          "oklch(86% 0.003 258)",
+          "oklch(96% 0.001 258)"
+        ]
+      },
+      "control-border": {
+        "role": "neutral",
+        "displayName": "Control Border",
+        "canonical": "#C3CDDA",
+        "tonalRamp": [
+          "oklch(21% 0.013 255)",
+          "oklch(28% 0.017 255)",
+          "oklch(37% 0.02 255)",
+          "oklch(47% 0.021 255)",
+          "oklch(60% 0.019 255)",
+          "oklch(73% 0.015 255)",
+          "oklch(86% 0.007 255)",
+          "oklch(96% 0.002 255)"
+        ]
+      },
       "success": {
         "role": "status",
         "displayName": "Success Green",
@@ -200,13 +275,38 @@
         "displayName": "Interface Label",
         "fontFamily": "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif",
         "purpose": "Controls, navigation, field labels, and filter labels."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "fontFamily": "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif",
+        "purpose": "text-meta 13/20: breadcrumbs, meta lines, table headers, hints and errors, status badge text, sm buttons, chips and menu trails."
+      },
+      "metric": {
+        "displayName": "Metric",
+        "fontFamily": "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif",
+        "purpose": "text-metric 28/32, weight 500, -0.02em: stat values. Numbers only, always with num."
+      },
+      "count": {
+        "displayName": "Count",
+        "fontFamily": "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif",
+        "purpose": "text-count 20/24, weight 600, -0.01em: counts in rows and compact stats. Numbers only, always with num."
       }
     },
     "shadows": [
       {
         "name": "overlay",
         "value": "0 12px 32px -8px rgb(8 49 97 / 0.18), 0 2px 6px -2px rgb(8 49 97 / 0.1)",
-        "purpose": "shadow-overlay: dialogs, sheets, popovers, and dropdown menus only. Panels, cards, and the topbar are flat."
+        "purpose": "shadow-overlay: dialogs, sheets, popovers, dropdown menus and toasts only. Panels, cards, and the topbar are flat."
+      },
+      {
+        "name": "field-focus",
+        "value": "0 0 0 4px rgb(16 133 141 / 0.16)",
+        "purpose": "shadow-field-focus: the halo around a focused field (with a 1px ring) and an open SearchableSelect. Not elevation."
+      },
+      {
+        "name": "field-error",
+        "value": "0 0 0 4px rgb(179 38 30 / 0.14)",
+        "purpose": "shadow-field-error: the halo around an unfocused field with aria-invalid. Not elevation."
       }
     ],
     "motion": [
@@ -214,6 +314,11 @@
         "name": "state-transition",
         "value": "150ms-250ms ease-out",
         "purpose": "Hover, focus, selection, and state feedback only."
+      },
+      {
+        "name": "menu-open",
+        "value": "160ms ease-out fade + 4px slide in; 100ms fade out; no zoom",
+        "purpose": "Dropdown menus, submenus and popovers. motion-reduce:animate-none! turns it off."
       },
       {
         "name": "reduced-motion",
@@ -245,25 +350,25 @@
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "Primary action button for save, create, submit, approve, or workflow-forward actions.",
+      "description": "Primary action button (Button variant default) for save, create, submit, approve, or workflow-forward actions. Disabled and busy buttons turn grey with faint text instead of fading.",
       "html": "<button class=\"ds-btn-primary\">Save changes</button>",
-      "css": ".ds-btn-primary { min-height: 44px; height: 40px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 8px; background: #1E4F94; color: #FFFFFF; font: 500 14px/1.5714 \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; transition: background-color 150ms ease-out; } .ds-btn-primary:hover { background: #173E76; } .ds-btn-primary:focus-visible { outline: 2px solid #10858D; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }"
+      "css": ".ds-btn-primary { min-height: 44px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid #1E4F94; background: #1E4F94; color: #FFFFFF; border-radius: 8px; font: 500 14px/1.5714 \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out; } @media (min-width: 768px) { .ds-btn-primary { min-height: 0; height: 40px; } } .ds-btn-primary:hover { background: #173E76; border-color: #173E76; } .ds-btn-primary:active { background: #083161; border-color: #083161; } .ds-btn-primary:focus-visible { outline: 2px solid #10858D; outline-offset: 2px; } .ds-btn-primary:disabled, .ds-btn-primary[aria-disabled=\"true\"] { background: #F6F8FB; border-color: #D7DEE8; color: #56677F; cursor: not-allowed; } .ds-btn-primary[aria-disabled=\"true\"] { pointer-events: none; }"
     },
     {
       "name": "Secondary Button",
       "kind": "button",
       "refersTo": "button-secondary",
-      "description": "Secondary action for filters, navigation-adjacent actions, and lower-priority commands.",
+      "description": "Secondary action (Button variant outline) for filters, navigation-adjacent actions, and lower-priority commands. Its #C3CDDA border is decorative; the label says it is a button.",
       "html": "<button class=\"ds-btn-secondary\">Export current result</button>",
-      "css": ".ds-btn-secondary { min-height: 44px; height: 40px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #D7DEE8; border-radius: 8px; background: #FFFFFF; color: #0B1D35; font: 500 14px/1.5714 \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; transition: background-color 150ms ease-out; } .ds-btn-secondary:hover { background: #EBF0F7; } .ds-btn-secondary:focus-visible { outline: 2px solid #10858D; outline-offset: 2px; } .ds-btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }"
+      "css": ".ds-btn-secondary { min-height: 44px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid #C3CDDA; background: #FFFFFF; color: #0B1D35; border-radius: 8px; font: 500 14px/1.5714 \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out; } @media (min-width: 768px) { .ds-btn-secondary { min-height: 0; height: 40px; } } .ds-btn-secondary:hover { background: #F6F8FB; border-color: #7C8BA0; } .ds-btn-secondary:active { background: #E9EEF5; border-color: #7C8BA0; } .ds-btn-secondary:focus-visible { outline: 2px solid #10858D; outline-offset: 2px; } .ds-btn-secondary:disabled, .ds-btn-secondary[aria-disabled=\"true\"] { background: #F6F8FB; border-color: #D7DEE8; color: #56677F; cursor: not-allowed; } .ds-btn-secondary[aria-disabled=\"true\"] { pointer-events: none; }"
     },
     {
       "name": "Text Field",
       "kind": "input",
       "refersTo": "input",
-      "description": "Standard form input for asset, employee, location, search, and settings fields.",
-      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Asset tag</span><input class=\"ds-input\" placeholder=\"Search asset tag\" /></label>",
-      "css": ".ds-field { display: grid; gap: 6px; font-family: \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; color: #0B1D35; } .ds-field-label { font-size: 14px; line-height: 1.5714; font-weight: 500; } .ds-input { min-height: 44px; height: 40px; width: 100%; border: 1px solid #7C8BA0; border-radius: 8px; background: #F6F8FB; color: #0B1D35; padding: 0 12px; font: 400 14px/1.5714 \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; outline: none; } .ds-input::placeholder { color: #3C4F6B; } .ds-input:focus { border-color: #10858D; box-shadow: 0 0 0 1px #10858D; } .ds-input:disabled { background: #E9EEF5; color: #3C4F6B; cursor: not-allowed; }"
+      "description": "Standard form field (Input, NativeSelect or Textarea inside Field) for asset, employee, location, search, and settings fields. White fill, 3:1 border, focus halo, error through aria-invalid.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-asset-tag\">Asset tag</label><input id=\"ds-asset-tag\" class=\"ds-input\" placeholder=\"Search asset tag\" aria-describedby=\"ds-asset-tag-hint\" /><p class=\"ds-field-hint\" id=\"ds-asset-tag-hint\">Letters, digits and dashes</p></div>",
+      "css": ".ds-field { display: grid; gap: 6px; font-family: \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; color: #0B1D35; } .ds-field-label { font-size: 13px; line-height: 1.5385; font-weight: 500; } .ds-field-hint { margin: 0; font-size: 13px; line-height: 1.5385; color: #56677F; } .ds-input { box-sizing: border-box; height: 44px; width: 100%; border: 1px solid #7C8BA0; border-radius: 8px; background: #FFFFFF; color: #0B1D35; padding: 0 12px; font: 400 16px/1.5 \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; outline: none; transition: border-color 150ms ease-out, box-shadow 150ms ease-out; } @media (min-width: 768px) { .ds-input { height: 40px; font-size: 14px; line-height: 1.5714; } } .ds-input::placeholder { color: #56677F; } .ds-input:focus { border-color: #10858D; box-shadow: 0 0 0 1px #10858D, 0 0 0 4px rgb(16 133 141 / 0.16); } .ds-input[aria-invalid=\"true\"] { border-color: #B3261E; box-shadow: 0 0 0 1px #B3261E, 0 0 0 4px rgb(179 38 30 / 0.14); } .ds-input[aria-invalid=\"true\"]:focus { border-color: #10858D; box-shadow: 0 0 0 1px #10858D, 0 0 0 4px rgb(16 133 141 / 0.16); } .ds-input:disabled { background: #F6F8FB; border-color: #D7DEE8; color: #56677F; cursor: not-allowed; }"
     },
     {
       "name": "Content Panel",
@@ -277,9 +382,9 @@
       "name": "Status Badge",
       "kind": "chip",
       "refersTo": "badge-status",
-      "description": "One StatusBadge in two tiers with shape-coded markers. Calm tier (info ring, success/primary dot, neutral bar): no fill or side padding, muted-foreground text. Attention tier (warning triangle, danger diamond): soft fill, border, and tone ink. Every badge carries a text label; database status colors are not shown. In high-contrast mode markers use the system text color.",
+      "description": "One StatusBadge in one size (22px, 13/20 text, 6px corners) and two tiers with shape-coded markers. Calm tier (info ring, success/primary dot, neutral-ink bar): no fill or side padding, muted-foreground text. Attention tier (warning triangle, danger diamond): soft fill, border, 8px side padding and tone ink. Every badge carries a text label; database status colors are not shown. In high-contrast mode markers use the system text color.",
       "html": "<span class=\"ds-status-badge ds-status-info\"><span class=\"ds-status-marker\" aria-hidden=\"true\"></span><span>เปิด</span></span> <span class=\"ds-status-badge ds-status-warning\"><span class=\"ds-status-marker\" aria-hidden=\"true\"></span><span>รอตรวจสอบ</span></span>",
-      "css": ".ds-status-badge { display: inline-flex; width: fit-content; max-width: 100%; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: 8px; padding: 4px 0; background: transparent; color: #3C4F6B; font: 500 14px/1.5714 \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; white-space: nowrap; } .ds-status-marker { flex: 0 0 auto; forced-color-adjust: none; } .ds-status-info .ds-status-marker { width: 7px; height: 7px; border: 1.5px solid #0A6E75; border-radius: 9999px; } .ds-status-success .ds-status-marker { width: 6px; height: 6px; border-radius: 9999px; background: #1D7A35; } .ds-status-primary .ds-status-marker { width: 6px; height: 6px; border-radius: 9999px; background: #1E4F94; } .ds-status-neutral .ds-status-marker { width: 7px; height: 2px; border-radius: 1px; background: #3C4F6B; } .ds-status-warning { padding: 4px 10px; background: #FDF4E4; border-color: #EDCB93; color: #A14A05; } .ds-status-warning .ds-status-marker { width: 8px; height: 7px; background: #A14A05; clip-path: polygon(50% 0, 100% 100%, 0 100%); } .ds-status-danger { padding: 4px 10px; background: #FCEFEE; border-color: #F1BEB9; color: #B3261E; } .ds-status-danger .ds-status-marker { width: 6px; height: 6px; border-radius: 1px; background: #B3261E; transform: rotate(45deg); } @media (forced-colors: active) { .ds-status-marker { background: CanvasText; } .ds-status-info .ds-status-marker { background: transparent; border-color: CanvasText; } }"
+      "css": ".ds-status-badge { box-sizing: border-box; display: inline-flex; height: 22px; width: fit-content; max-width: 100%; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: 6px; padding: 0; background: transparent; color: #3C4F6B; font: 500 13px/1.5385 \"IBM Plex Sans\", \"IBM Plex Sans Thai\", system-ui, sans-serif; white-space: nowrap; } .ds-status-marker { flex: 0 0 auto; forced-color-adjust: none; } .ds-status-info .ds-status-marker { width: 7px; height: 7px; border: 1.5px solid #0A6E75; border-radius: 9999px; } .ds-status-success .ds-status-marker { width: 6px; height: 6px; border-radius: 9999px; background: #1D7A35; } .ds-status-primary .ds-status-marker { width: 6px; height: 6px; border-radius: 9999px; background: #1E4F94; } .ds-status-neutral .ds-status-marker { width: 7px; height: 2px; border-radius: 1px; background: #2A4468; } .ds-status-warning { padding: 0 8px; background: #FDF4E4; border-color: #EDCB93; color: #A14A05; } .ds-status-warning .ds-status-marker { width: 8px; height: 7px; background: #A14A05; clip-path: polygon(50% 0, 100% 100%, 0 100%); } .ds-status-danger { padding: 0 8px; background: #FCEFEE; border-color: #F1BEB9; color: #B3261E; } .ds-status-danger .ds-status-marker { width: 6px; height: 6px; border-radius: 1px; background: #B3261E; transform: rotate(45deg); } @media (forced-colors: active) { .ds-status-marker { background: CanvasText; } .ds-status-info .ds-status-marker { background: transparent; border-color: CanvasText; } }"
     },
     {
       "name": "Sidebar Navigation Item",
@@ -303,7 +408,7 @@
     "rules": [
       {
         "name": "The Where Color Lives Rule",
-        "body": "Navy #083161 lives only in the logo and the selected menu row. Actions and links use Primary #1E4F94. Teal is for info status, the focus ring (#10858D) and the selected menu icon. Green, orange and red appear only inside status badges. Until phase 2, info notices, role chips and a few info icons also use the info tokens and so appear teal.",
+        "body": "Navy #083161 lives only in the logo and the selected menu row. Actions and links use Primary #1E4F94. Teal is for info status, the focus ring (#10858D) and the selected menu icon. Green, orange and red appear only inside status badges, as the icon of a toast, a Notice or an ActionEmptyState, and on destructive buttons and menu items; only warning and danger toasts and Notice boxes get a soft fill. Until phase 2D, info notices, role chips and a few info icons also use the info tokens and so appear teal (phase 2A changed only their borders).",
         "section": "colors"
       },
       {
@@ -318,7 +423,7 @@
       },
       {
         "name": "The Token Contrast Rule",
-        "body": "Status text uses the status ink (text-success, text-warning, text-danger, text-info) on white, the page background, muted, or its own soft surface (bg-{tone}-soft). Never tint with opacity (bg-warning/10, bg-primary/10) and never lighten solid fills on hover (/90): use bg-{tone}-soft and hover:bg-{tone}-hover. tests/design-tokens-contrast.test.ts enforces every pair at 4.5:1.",
+        "body": "Status text uses the status ink (text-success, text-warning, text-danger, text-info) on white, the page background, canvas, muted, accent, row-hover, or its own soft surface (bg-{tone}-soft). Never tint with opacity (bg-warning/10, bg-primary/10, border-warning/30, bg-muted/40) and never lighten solid fills on hover (/90): use the -soft, -border and -hover tokens and the solid neutrals (bg-background, bg-row-hover, border-border-soft). Faint text (#56677F) is AA on every neutral surface and on primary-soft, never on a status soft fill. tests/design-tokens-contrast.test.ts enforces every text pair at 4.5:1 and rings, field borders and meaningful icons at 3:1; button outlines are decorative.",
         "section": "colors"
       },
       {
@@ -328,7 +433,7 @@
       },
       {
         "name": "The Thai Line-Height Rule",
-        "body": "text-sm is 22/14 in every language; Thai pages raise text-xs, text-xl, text-2xl and text-3xl to 18/12, 30/20, 36/24 and 44/30. A4 operation documents keep text-sm at 20/14 so the signature row stays on page 1.",
+        "body": "text-sm is 22/14 in every language; Thai pages raise text-xs, text-xl, text-2xl and text-3xl to 18/12, 30/20, 36/24 and 44/30. text-meta (20/13) needs no Thai override; text-metric and text-count hold numbers only. A4 operation documents keep text-sm at 20/14 so the signature row stays on page 1.",
         "section": "typography"
       },
       {
@@ -338,7 +443,7 @@
       },
       {
         "name": "The Border First Rule",
-        "body": "Use a border and tonal surface for grouping. Panels, cards, and the topbar are flat; only dialogs, sheets, popovers, and menus use shadow-overlay, over a bg-scrim backdrop.",
+        "body": "Use a border and tonal surface for grouping. Panels, cards, sections, and the topbar are flat; only dialogs, sheets, popovers, menus, and toasts use shadow-overlay (dialogs and sheets over a bg-scrim backdrop). Six shadow-sm stay on controls over a camera image or photo and on paper previews; a per-file budget guard keeps the rest from coming back.",
         "section": "elevation"
       },
       {
@@ -348,7 +453,7 @@
       }
     ],
     "dos": [
-      "Do preserve existing tokens and design-system helpers such as panel, action button, field control, table shell, mobile card list, empty state, and touch icon button classes.",
+      "Do preserve existing tokens and shared primitives such as Button, the field primitives (Input, NativeSelect, Textarea, Field, SearchField), Notice, EmptyNote, ActionEmptyState, and the panel, table shell and mobile card list helpers.",
       "Do keep navy #083161 for the logo and the selected menu row, Primary #1E4F94 for actions and links, and teal for info status, focus and the selected menu icon.",
       "Do use borders and tonal layers as the grouping mechanism; use shadow-overlay only for dialogs, sheets, popovers and menus, and bg-scrim behind them.",
       "Do keep tables and forms dense enough for enterprise scanning, but not cramped.",

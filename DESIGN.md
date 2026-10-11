@@ -14,8 +14,13 @@ colors:
   surface: "#FFFFFF"
   muted-surface: "#E9EEF5"
   muted-slate: "#3C4F6B"
+  faint-foreground: "#56677F"
+  neutral-ink: "#2A4468"
   accent: "#EBF0F7"
+  row-hover: "#F3F6FB"
   border: "#D7DEE8"
+  border-soft: "#E7EBF1"
+  control-border: "#C3CDDA"
   input: "#7C8BA0"
   ring: "#10858D"
   success: "#1D7A35"
@@ -73,8 +78,27 @@ typography:
     fontWeight: 500
     lineHeight: 1.5714
     letterSpacing: "0"
+  meta:
+    fontFamily: "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif"
+    fontSize: "0.8125rem"
+    fontWeight: 400
+    lineHeight: 1.5385
+    letterSpacing: "0"
+  metric:
+    fontFamily: "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif"
+    fontSize: "1.75rem"
+    fontWeight: 500
+    lineHeight: 1.1429
+    letterSpacing: "-0.02em"
+  count:
+    fontFamily: "IBM Plex Sans, IBM Plex Sans Thai, system-ui, sans-serif"
+    fontSize: "1.25rem"
+    fontWeight: 600
+    lineHeight: 1.2
+    letterSpacing: "-0.01em"
 rounded:
   sm: "4px"
+  control: "6px"
   md: "8px"
   lg: "12px"
   full: "9999px"
@@ -98,8 +122,20 @@ components:
     rounded: "{rounded.md}"
     padding: "0 16px"
     height: "40px"
+  button-danger:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.danger}"
+    rounded: "{rounded.md}"
+    padding: "0 16px"
+    height: "40px"
+  button-small:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.primary-slate-ink}"
+    rounded: "{rounded.control}"
+    padding: "0 10px"
+    height: "32px"
   input:
-    backgroundColor: "{colors.soft-system-background}"
+    backgroundColor: "{colors.surface}"
     textColor: "{colors.primary-slate-ink}"
     rounded: "{rounded.md}"
     padding: "0 12px"
@@ -112,13 +148,15 @@ components:
   badge-status:
     backgroundColor: "transparent"
     textColor: "{colors.muted-slate}"
-    rounded: "{rounded.md}"
-    padding: "4px 0"
+    rounded: "{rounded.control}"
+    padding: "0"
+    height: "22px"
   badge-status-attention:
     backgroundColor: "{colors.warning-soft}"
     textColor: "{colors.warning}"
-    rounded: "{rounded.md}"
-    padding: "4px 10px"
+    rounded: "{rounded.control}"
+    padding: "0 8px"
+    height: "22px"
   nav-item-active:
     backgroundColor: "{colors.sidebar-active}"
     textColor: "{colors.sidebar-active-foreground}"
@@ -139,7 +177,7 @@ The secondary lens is "The Audit Console" for audit rounds, QR scanning, finding
 
 Use the existing design-system helpers, Tailwind tokens, RBAC-aware layouts, locale routing, and workflow conventions as the source of truth. Do not redesign business workflows to chase visual novelty. The UI should preserve dense tables, clear forms, readable Thai and English text, touch-safe field controls, and unambiguous status states.
 
-The current visual foundation is UI round 4 phase 1, the "light shell" (spec `docs/superpowers/specs/2026-10-10-ui-foundation-design.md`, 2026-10-10): colors taken from the app icon (navy `#083161` and teal `#18A0A8`), a white sidebar and topbar, flat panels on a blue-grey canvas, IBM Plex type, and two-tier status badges.
+The current visual foundation is UI round 4 phase 1, the "light shell" (spec `docs/superpowers/specs/2026-10-10-ui-foundation-design.md`, 2026-10-10): colors taken from the app icon (navy `#083161` and teal `#18A0A8`), a white sidebar and topbar, flat panels on a blue-grey canvas, IBM Plex type, and two-tier status badges. Phase 2A (spec `docs/superpowers/specs/2026-10-11-ui-phase2a-design.md`, 2026-10-11) adds the tokens phase 2 needs and restyles the shared components: buttons, fields, menus, toasts, notices, empty states, status badges and breadcrumbs.
 
 **Key Characteristics:**
 
@@ -161,7 +199,7 @@ The palette comes from the app icon. Most of the screen is neutral: a white side
 
 ### Secondary
 
-- **Secondary / Muted Surface** (#E9EEF5 + Ink): Secondary buttons, quiet chips and grouped backgrounds (shadcn `secondary` and `muted`).
+- **Secondary / Muted Surface** (#E9EEF5 + Ink): The pressed fill of outline and ghost buttons and of menu items, quiet chips and grouped backgrounds (shadcn `secondary` and `muted`). Do not place a field on it: the field border reaches only 2.97:1 there.
 - **Muted Slate** (`--muted-foreground` #3C4F6B): Readable support text, helper copy, table metadata and calm status labels. It is deliberately dark (8.32:1 on white) because thin Thai strokes need it.
 - **Accent** (`--accent` #EBF0F7): The shared hover surface. Never teal.
 
@@ -173,11 +211,16 @@ The palette comes from the app icon. Most of the screen is neutral: a white side
 ### Neutral
 
 - **Canvas** (`--canvas` #EEF1F6): The page background inside the app shell (`bg-canvas` on the `dashboard-shell.tsx` wrapper and on sticky mobile bars that blend with it). `<body>` stays `bg-background` so print pages and login are unaffected.
-- **Soft System Background** (`--background` #F6F8FB): Field fills, dialog bodies and empty boxes.
-- **Surface White** (`--card`, `--popover` #FFFFFF): Panels, forms, popovers, tables, topbar and sidebar.
+- **Soft System Background** (`--background` #F6F8FB): Dialog bodies and footers, quiet wells inside panels (the solid replacement for `bg-muted/20` to `/50`), the hover fill of outline and ghost buttons and of link cards, and the disabled and read-only look of buttons and fields.
+- **Surface White** (`--card`, `--popover` #FFFFFF): Panels, forms, fields, popovers, menus, toasts, tables, topbar and sidebar.
+- **Row Hover** (`--row-hover` #F3F6FB, `bg-row-hover`): The solid hover and focus fill of table and list rows. It is opaque, so sticky cells stay solid while a table scrolls sideways under them.
 - **Ink** (`--foreground` #0B1D35): Main text and data values.
+- **Faint** (`--faint-foreground` #56677F, `text-faint-foreground`): The third text level: placeholders, hints under fields, table headers, breadcrumbs, sub-lines, stat footers, tab counts, menu trails and reasons, units, the `Nil` dash, disabled text, field icons and the select arrow. AA on every neutral surface (4.95:1 on muted to 5.77:1 on white), and allowed on `primary-soft` for a hovered or selected row or menu item (4.99:1, spec ruling I14). Never on a status soft fill (`bg-{success,warning,danger,info}-soft`; use the tone ink or `muted-foreground`), never for a main data value, and never as the only text that says what a control is. `--sidebar-muted` #586A84 is nearly the same color but belongs to the sidebar; do not swap them.
+- **Neutral Ink** (`--neutral-ink` #2A4468, `bg-neutral-ink`): The bar marker of neutral and muted status badges. AA on every surface a badge sits on (8.48:1 on muted to 9.88:1 on white), so later phases may use it for text.
 - **Border** (`--border` #D7DEE8): Dividers, table shells and panel boundaries. A base rule sets it as the default border color.
-- **Input** (`--input` #7C8BA0): Field borders. It passes 3:1 (WCAG 1.4.11) on card, background and canvas.
+- **Border Soft** (`--border-soft` #E7EBF1, `border-border-soft`, or `bg-border-soft` for a 1px line): Inner dividers such as menu separators and row dividers. A line color, not a fill.
+- **Control Border** (`--control-border` #C3CDDA, `border-control-border`): The border of outline buttons. It is decorative (1.61:1 on white; the label or icon says it is a button), so it is never the only border of a field, checkbox, toggle or drop zone.
+- **Input** (`--input` #7C8BA0): Field, checkbox and drop-zone borders, and breadcrumb separators. It passes 3:1 (WCAG 1.4.11) on card, background and canvas. On white the lines go border-soft 1.20 < border 1.35 < control-border 1.61 < input 3.47:1 (`tests/design-tokens-contrast.test.ts`).
 - **Ring** (`--ring` #10858D): The only focus color.
 
 ### Sidebar
@@ -186,19 +229,26 @@ The palette comes from the app icon. Most of the screen is neutral: a white side
 
 ### Non-color values
 
-These live in the plain `@theme` block, not in `:root`: `--color-scrim: rgb(8 49 97 / 0.45)` (class `bg-scrim`) and `--shadow-overlay` (class `shadow-overlay`, see §4).
+These live in the plain `@theme` block, not in `:root`:
+
+- `--color-scrim: rgb(8 49 97 / 0.45)` (class `bg-scrim`) and `--shadow-overlay` (class `shadow-overlay`, see §4).
+- `--radius-control: 6px` (class `rounded-control`; §5 Cards / Containers lists which controls use it).
+- `--shadow-field-focus: 0 0 0 4px rgb(16 133 141 / 0.16)` and `--shadow-field-error: 0 0 0 4px rgb(179 38 30 / 0.14)`: the field halos, written as the rgb of `--ring` and `--danger`. Keep `rgb(… / α)`: with `color-mix()` Tailwind adds a solid 4px fallback ring for older browsers.
+- The type sizes `--text-meta`, `--text-metric` and `--text-count` (see §3).
+
+The `select-chevron` utility writes the faint ink #56677F into its SVG data URI, because a data URI cannot read `var()`. `tests/design-tokens-contrast.test.ts` checks that the chevron stroke and both halo colors still equal their tokens.
 
 ### Named Rules
 
-**The Where Color Lives Rule.** Navy #083161 lives only in the logo and the selected menu row. Actions and links use Primary #1E4F94. Teal is for info status, the focus ring and the selected menu icon. Green, orange and red appear only inside status badges. Everything else is neutral. Do not use these colors as decorative fill across inactive cards or marketing-style sections.
+**The Where Color Lives Rule.** Navy #083161 lives only in the logo and the selected menu row. Actions and links use Primary #1E4F94. Teal is for info status, the focus ring and the selected menu icon. Green, orange and red appear only inside status badges, as the icon of a toast, a `Notice` or an `ActionEmptyState` (error = danger, permission = warning), and on destructive buttons and menu items (danger). Of these, only warning and danger toasts and `Notice` boxes get a soft fill: tint only what the user must deal with. Everything else is neutral. Do not use these colors as decorative fill across inactive cards or marketing-style sections.
 
-Known exception: until phase 2, info notices, role chips and a few info icons also use the `info` tokens and so appear teal.
+Known exception: until phase 2D, info notices, role chips and a few info icons also use the `info` tokens and so appear teal. Phase 2A changed only their borders (`border-info/30` → `border-info-border`); the `Notice` sweep in 2D moves them to neutral.
 
 **The Status With Evidence Rule.** Status cues must never rely on color alone. Pair semantic color with readable labels, marker shapes, consistent tone mapping, and visible workflow context.
 
 **The No Decorative Gradient Rule.** Decorative gradients are prohibited. The product should feel like an enterprise operations system, not a landing page.
 
-**The Token Contrast Rule.** Status text uses the status ink (`text-success`, `text-warning`, `text-danger`, `text-info`) on white, the page background, canvas, muted, accent, or its own soft surface (`bg-{tone}-soft`). Never tint with opacity (`bg-warning/10`, `bg-primary/10`) and never lighten solid fills on hover (`/90`): use `bg-{tone}-soft` and `hover:bg-{tone}-hover`. `{tone}-foreground` means text on the solid fill. `tests/design-tokens-contrast.test.ts` enforces every text pair at 4.5:1 and the ring, input and selected-menu-icon pairs at 3:1.
+**The Token Contrast Rule.** Status text uses the status ink (`text-success`, `text-warning`, `text-danger`, `text-info`) on white, the page background, canvas, muted, accent, row hover, or its own soft surface (`bg-{tone}-soft`). Never tint with opacity (`bg-warning/10`, `bg-primary/10`) and never lighten solid fills on hover (`/90`): use `bg-{tone}-soft` and `hover:bg-{tone}-hover`. `{tone}-foreground` means text on the solid fill. Tone borders use `border-{tone}-border`, never `border-{tone}/NN`; neutral fills are solid tokens (`bg-background`, `bg-row-hover`, `border-border-soft`), never `bg-muted/NN` or `bg-accent/NN` outside table headers. Faint text is AA on every neutral surface and on `primary-soft`, never on a status soft fill. Button outlines (`control-border`, `danger-border`, `primary-border`) are decorative and need no 3:1; fields, checkboxes and drop zones keep `input` at 3:1. `tests/design-tokens-contrast.test.ts` enforces every text pair at 4.5:1 and the ring, input and selected-menu-icon pairs at 3:1; the ratchet guards `R1 tone colors never fade with opacity` and `R7 neutral fills are opaque tokens outside table headers` in `tests/visual-foundation-guards.test.ts` block new tints.
 
 **The Light Only Rule.** The app is light only: `:root { color-scheme: only light }` blocks Chrome Auto Dark and Samsung Internet dark mode. There is no `.dark` block, no `@custom-variant dark` and no `dark:` class (`tests/ui-overlay-guards.test.ts`, `tests/visual-foundation-guards.test.ts`).
 
@@ -214,26 +264,34 @@ Known exception: until phase 2, info notices, role chips and a few info icons al
 
 ### Hierarchy
 
-Font sizes are Tailwind's defaults. Line heights are ratios, so a child with an arbitrary size (`text-[11px]`) inherits a ratio, not a fixed pixel value.
+Font sizes are Tailwind's defaults plus three sizes from the mockup, `text-meta`, `text-metric` and `text-count` (plain `@theme` block). Line heights are ratios, so a child with an arbitrary size inherits a ratio, not a fixed pixel value. Nothing is smaller than 12px (`text-xs`) except the thermal asset label (guard `R3 no text smaller than 12px outside the thermal label`).
 
 - **Display** (700, 1.5rem / `text-2xl`, 32px; 36px on Thai pages): Page titles, dashboard headings, and high-level report titles. Keep fixed and compact.
 - **Headline** (700, 1.25rem / `text-xl`, 28px; 30px on Thai pages): Section-leading headings, modal titles, and important form groups.
 - **Title** (600, 1rem / `text-base`, 24px): Panel titles, table group labels, card titles, and dense workflow headings.
 - **Body** (400, 0.875rem / `text-sm`, 22px in every language): Primary interface copy, table cells, descriptions, form helper text, and workflow content. Long prose should stay around 65-75ch.
-- **Label** (500, 0.875rem, 22px, 0 letter spacing): Field labels, button text, filter labels, navigation labels, and compact UI controls. Avoid all-caps labels except very short badges where the existing system already uses them.
-- **Small** (`text-xs`, 16px; 18px on Thai pages): Badges, section headings in the sidebar, the mobile bottom bar labels.
+- **Label** (500, 0.875rem, 22px, 0 letter spacing): Button text, filter labels, navigation labels, and compact UI controls. Field labels from `FieldLabel` use Meta at weight 500 instead; hand-written field labels move to it in phase 2C. Avoid all-caps labels except very short badges where the existing system already uses them.
+- **Small** (`text-xs`, 16px; 18px on Thai pages): Section headings in the sidebar and in menus, the mobile bottom bar labels, `Kbd` keys.
+- **Meta** (inherits its weight, 0.8125rem / `text-meta`, 20px in every language): Secondary text: breadcrumbs, meta lines under page titles, table headers, sub-lines in rows, field labels, hints and errors under fields, status badge text, `sm` buttons, chips, tab counts, menu trails and reasons, stat labels and footers, one-line empty notes.
+- **Metric** (500, 1.75rem / `text-metric`, 32px, −0.02em): The value in a stat. Numbers only.
+- **Count** (600, 1.25rem / `text-count`, 24px, −0.01em): Counts in rows and compact stats. Numbers only.
+
+`text-metric` and `text-count` carry their own weight and tracking; `font-semibold` or `tracking-normal` on the same element still wins. A class string with either one must also contain `num` (guard), and a Thai unit beside the number goes in an inner `text-base` span, never on its own line in the metric size. Do not write `text-[13px]` or `text-[28px]`; use the tokens (guard).
+
+**Three text levels:** Ink (`text-foreground`) for data values, names, titles, button text and field labels · Secondary (`text-muted-foreground`) for meta lines under titles, stat labels, calm badge text and ghost buttons · Faint (`text-faint-foreground`) for the uses listed under Neutral in §2.
 
 ### Utilities
 
 - `num` (`font-variant-numeric: tabular-nums lining-nums`): numbers that must line up, such as MetricCard values. Every `table` gets `tabular-nums` from a base rule.
-- `tag` (Plex Mono, `calc(1em - 1px)`, `nowrap`): asset tags and document numbers. Defined now; the 119 asset-tag call sites move to it in phase 2.
-- Toasts use the app font through an unlayered `:root [data-sonner-toaster]` rule (Sonner's own CSS is unlayered).
+- `tag` (Plex Mono, `calc(1em - 1px)`, weight 400, `nowrap`, normal numerals, `user-select: all`): asset tags, document numbers and serials. One click or tap selects the whole code; inside `a`, `button`, `label` and `summary` selection is normal. Never bold (Plex Mono loads 400, 500 and 600 only, no 700; the row's own id is `tag font-medium text-foreground`) and never resized on the same element: put `tag` on an inner `<span>` and size the wrapper (guard). First user: breadcrumb codes (`code: true`); about 79 code call sites move to it in phase 2B.
+- `select-chevron`: the arrow of a native `<select>` (a 16px faint chevron 10px from the right edge; the select adds its own `pr-9`). Forced-colors mode shows the system arrow. Never put it in `getFieldControlClasses()`, which also styles inputs.
+- Toasts use the app font through an unlayered `:root [data-sonner-toaster]` rule (Sonner's own CSS is unlayered). The quiet toast look is a separate set of unlayered `:root [data-sonner-…]` rules (see §5 Feedback); keep them out of the font rule, which a test reads as is.
 
 ### Named Rules
 
 **The No Display Labels Rule.** Never use display fonts, fluid hero type, or oversized marketing typography for labels, buttons, data, navigation, or form controls.
 
-**The Thai Line-Height Rule.** Thai stacked vowels and tone marks need at least about 1.44 times the font size. `text-sm` is 22/14 in every language; on Thai pages (`html:lang(th)`, in `@layer base`) `text-xs`, `text-xl`, `text-2xl` and `text-3xl` get 18/12, 30/20, 36/24 and 44/30. An explicit `leading-*` still wins, so do not add `leading-tight` or `leading-none` to Thai text.
+**The Thai Line-Height Rule.** Thai stacked vowels and tone marks need at least about 1.44 times the font size. `text-sm` is 22/14 in every language; on Thai pages (`html:lang(th)`, in `@layer base`) `text-xs`, `text-xl`, `text-2xl` and `text-3xl` get 18/12, 30/20, 36/24 and 44/30. An explicit `leading-*` still wins, so do not add `leading-tight`, `leading-none` or `leading-4` to Thai text. `text-meta` (20/13 = 1.54) needs no Thai override. `text-metric` (1.14) and `text-count` (1.20) are below 1.44, so they hold numbers only (the `num` guard).
 
 **The A4 Print Exception.** A4 operation documents (check-out, check-in and transfer forms) keep `text-sm` at 20/14 through `[--text-sm--line-height:calc(20/14)]` on `.operation-print-page`, so the signature row stays on page 1. Print text is denser than screen text on purpose.
 
@@ -249,29 +307,57 @@ This system is flat. Panels, metric cards, the topbar, the register toolbar and 
 
 ### Shadow Vocabulary
 
-- **Overlay** (`shadow-overlay`: `0 12px 32px -8px rgb(8 49 97 / 0.18), 0 2px 6px -2px rgb(8 49 97 / 0.1)`): dialogs (`AccessibleDialog`, `Dialog`, `AlertDialog`), sheets, popovers and dropdown menus. Nothing else.
+- **Overlay** (`shadow-overlay`: `0 12px 32px -8px rgb(8 49 97 / 0.18), 0 2px 6px -2px rgb(8 49 97 / 0.1)`): dialogs (`AccessibleDialog`, `Dialog`, `AlertDialog`), sheets, popovers, dropdown menus and toasts. Nothing else.
+- **Field halos** (`shadow-field-focus`, `shadow-field-error`): the 4px rings around a focused or invalid field (§5 Inputs). They mark state, not elevation.
 - **Scrim** (`bg-scrim`: `rgb(8 49 97 / 0.45)`): the backdrop behind dialogs, alert dialogs and sheets. The camera scanner keeps its own darker backdrop.
 
 ### Motion
 
-Sheets open in 250ms and close in 200ms with ease-out. Scrims and dialog, alert-dialog and sheet content use `motion-reduce:animate-none!` (the `!` beats the `data-[state]:animate-*` classes), so reduced motion turns the animation off.
+Sheets open in 250ms and close in 200ms with ease-out. Dropdown menus, submenus and popovers fade in with a 4px slide over 160ms (ease-out) and fade out in 100ms, with no zoom. Scrims, dialog, alert-dialog and sheet content, menus and popovers use `motion-reduce:animate-none!` (the `!` beats the `data-[state]:animate-*` classes), so reduced motion turns the animation off. A menu item's highlight appears at once and fades out in 150ms. Toasts follow sonner's own reduced-motion rule. The spinners of `Button busy` and `SearchField` use `animate-spin motion-reduce:animate-none`.
 
 ### Named Rules
 
-**The Border First Rule.** Use a border and tonal surface for grouping. Do not add `shadow-sm` to panels or cards; only floating layers use `shadow-overlay`. (Some dashboard and admin page-level cards still carry `shadow-sm`; phase 2 and 3 remove them.)
+**The Border First Rule.** Use a border and tonal surface for grouping. Do not add `shadow-sm` to panels or cards; only floating layers use `shadow-overlay`. Phase 2A removed `shadow-sm` from every panel, card and section. Six stay on purpose: 3 controls that float over a camera image or a photo (`scanner-text-input.tsx` ×2, `audit-scan-check-form.tsx`) and 3 paper previews (`asset-label-print.tsx`, `operation-document-print.tsx`, the label sample in `system-settings-form.tsx`). Six larger shadows wait for their owners: the 2 sticky save bars (2C), the 2 floating add buttons (2D), the mobile bulk-action bar of the register (2B) and the round scan button (kept since phase 1). The guard `R2 only floating layers, camera controls and paper previews cast a shadow` (`tests/visual-foundation-guards.test.ts`) holds these 12 in a per-file budget that may only go down.
 
 **The No Floating Marketing Cards Rule.** Panels must not become decorative cards arranged for landing-page drama.
 
 ## 5. Components
 
-Components should feel consistent, restrained, and task-first. The system already uses shared helpers for panels, action buttons, fields, tables, mobile cards, empty states, and touch icon buttons; preserve those helpers when building new surfaces.
+Components should feel consistent, restrained, and task-first. Shared primitives and helpers live in `src/components/ui/` and `src/lib/design-system.ts`: buttons, fields, menus, toasts, notices, empty states, panels, tables and mobile cards. Build new surfaces from them; do not copy their class strings into pages.
 
 ### Buttons
 
-- **Shape:** Gently curved rectangles (8px radius).
-- **Primary:** Primary #1E4F94 background with white text, medium weight, 40px desktop height, and 44px minimum touch height on mobile.
-- **Hover / Focus:** Solid buttons darken on hover with the hover token (`hover:bg-primary-hover`, `hover:bg-danger-hover`) — never fade with opacity. Focus uses the teal ring `#10858D` (`ring-ring`) with offset. Disabled states reduce opacity and block pointer actions. Build buttons with `Button` / `buttonVariants` from `src/components/ui/` (shadcn); `getActionButtonClasses` maps legacy variants onto the same classes.
-- **Secondary / Ghost / Tertiary:** Secondary buttons use Surface White, Border, and Ink. Ghost buttons use no border at rest and an Accent hover. Danger buttons use Danger Red only for destructive actions.
+- **Build them with** `Button` / `buttonVariants` (`src/components/ui/button.tsx`, `button-variants.ts`). A `<Link>` or `<a>` takes `className={cn(buttonVariants({ variant, size }), …)}` (server or client) or `<Button asChild>` (client). Keep only layout classes (`w-full sm:w-auto`, `flex-1`, `self-end`, `min-w-0`) in `className`.
+- **Shape:** Gently curved rectangles: 8px (`rounded-md`) for `md`, `lg`, `default` and `icon`, the same as fields; 6px (`rounded-control`) for the small `sm` and `icon-sm`. Every variant has a 1px border, so all variants have the same box. Icon and label sit 6px apart (`gap-1.5`); the cursor is a pointer.
+- **Sizes** (height from `md` up; below `md` every size is at least 44px tall, `min-h-11`):
+
+| Size | Height | Side padding | Text |
+|---|---|---|---|
+| `sm` | 32px | 10px | `text-meta` 13/20 |
+| `md` | 36px | 14px | `text-sm` |
+| `lg` | 40px | 16px | `text-sm`; buttons in a row of 40px fields |
+| `default` | 40px, the same as `lg`, until phase 2D makes it 36px | 16px | `text-sm` |
+| `icon-sm` | 32 × 32px | — | — |
+| `icon` | 40 × 40px until phase 2D makes it 36 × 36px | — | — |
+
+- **Variants** (every text pair passes AA; `tests/design-system.test.ts` pins the classes):
+
+| Variant | At rest | Hover | Pressed | Use |
+|---|---|---|---|---|
+| `default` | Primary #1E4F94 fill, white text | `primary-hover` #173E76 | `brand-navy` #083161 | The main action |
+| `outline` | White, `control-border` #C3CDDA border, ink text | `background` fill, `input` border | `muted` fill | Secondary actions |
+| `ghost` | No fill or border, `muted-foreground` text | `background` fill, ink text | `muted` fill | Quiet and icon-only actions. Not on a `bg-background` footer, where its hover fill is invisible: use `outline` there |
+| `danger` | White, `danger-border` border, `danger` text | `danger-soft` fill | `danger` border | A destructive action placed in a page |
+| `destructive` | Solid danger fill, white text | `danger-hover` | — | Only the confirm button of a destructive dialog |
+| `warning` | Solid warning fill, white text | `warning-hover` | — | Saving an audit check that differs, and `ConfirmTextDialog` with tone warning |
+
+- There is no `secondary`, `link` or `success` variant: use `outline`, `linkVariants` and `default`.
+- **Disabled:** never faded with opacity. Every variant turns to the `background` fill, `border` border and faint text with a not-allowed cursor (`disabled:` and `aria-disabled:`); the disabled look wins over every hover and pressed state. `aria-disabled` also blocks pointer events, for `asChild` links and busy buttons.
+- **Busy:** pass `busy` while the action runs. The button gets `aria-busy` and `aria-disabled`, shows a spinner (`Loader2`, stopped under reduced motion) in place of its leading icon or in front of its label, and ignores clicks, Enter, Space and implicit form submission, but keeps keyboard focus. Do not pass `disabled` with `busy` (focus would drop to `<body>`). `busy` cannot be combined with `asChild` (type error), and it must come from client state: a server file cannot pass it. The caller still writes the label ("กำลังบันทึก…").
+- **Focus:** `focus-visible:ring-2 ring-ring ring-offset-2`, teal #10858D on every variant, danger included.
+- **Text links:** `linkVariants({ size })`: primary text whose underline appears on hover and keyboard focus. `size: "meta"` (13px, no wrap, the default) for a stand-alone command link such as "ล้างทั้งหมด"; `size: "inherit"` for a link inside a sentence. It has no 44px box; a stand-alone link on mobile adds `inline-flex min-h-11 items-center md:min-h-0`.
+- **Legacy:** `ActionButton` and `getActionButtonClasses` are deprecated; phase 2D moves their 10 call sites to `Button` and deletes them. `ActionButton variant="danger"` is the solid `destructive`, not `Button variant="danger"`. `getSafeActionLinkClasses()` builds on `buttonVariants` and lets long labels wrap. `getTouchIconButtonClasses` was removed: use `Button size="icon"`.
+- **Hand-written buttons** (about 410) keep their own classes until 2B, 2C and 2D move them. Moving one must not change its desktop height: `h-8` → `sm`, `h-9` → `md`, `h-10` beside 40px fields → `lg`, any other `h-10` → no size (`default`).
 
 ### Focus
 
@@ -279,12 +365,17 @@ Components should feel consistent, restrained, and task-first. The system alread
 - A base rule gives every `:focus-visible` element without its own ring a `2px solid var(--ring)` outline with a 2px offset. Elements focused by code (`tabIndex={-1}`) and the sheet, alert-dialog and dropdown containers use `outline-none`.
 - Windows high-contrast mode: an unlayered `@media (forced-colors: active)` rule draws a `CanvasText` outline, because box-shadow rings disappear there.
 - On the selected menu row the ring sits outside the row on white (`ring-offset-2 ring-offset-sidebar`, 4.41:1), because an inset ring on navy reaches only 2.94:1.
+- Dropdown menu items take the base outline inside the row (`focus-visible:-outline-offset-2`), because rows touch the panel edge (the ring reaches 3.82:1 on `primary-soft` and 3.93:1 on `danger-soft`).
+- Fields use `focus:border-ring focus:ring-1 focus:ring-ring` plus the 4px `shadow-field-focus` halo; a field with `aria-invalid` turns back to teal while focused. Never write `focus:border-danger`.
+- Toasts and their close button use `outline: 2px solid var(--ring)`, which stays visible in forced-colors mode.
+- `FileDropzone` hides its file input with `sr-only`, which clips an outline, so its label draws the outline instead (`has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring`).
 
 ### Status Badges
 
-- **Style:** One `StatusBadge` (`src/components/ui/status-badge.tsx`, variants in `badge-variants.ts`) in two tiers, each with a marker whose shape carries the meaning, so color-blind users can tell states apart.
-  - **Calm tier** (no fill, no side padding, so it lines up with other text in a column; muted-foreground text): `info` = hollow ring in info teal (open, planned, reported, and unknown asset states) · `success` = solid dot in success green (including Ready and In Use) · `primary` = solid dot in primary (approved, done, received) · `neutral` / `muted` = short bar in muted-foreground.
-  - **Attention tier** (soft fill, border and tone ink text): `warning` = triangle · `danger` = diamond.
+- **Style:** One `StatusBadge` (`src/components/ui/status-badge.tsx`, variants in `badge-variants.ts`) in one size and two tiers, each with a marker whose shape carries the meaning, so color-blind users can tell states apart.
+  - **Size:** 22px tall in every language (`h-5.5`, the table line), `text-meta` 13/20 at weight 500, 6px corners (`rounded-control`), no vertical padding. There is no `size` prop any more.
+  - **Calm tier** (no fill, no side padding, so it lines up with other text in a column; muted-foreground text): `info` = hollow ring in info teal (open, planned, reported, and unknown asset states) · `success` = solid dot in success green (including Ready and In Use) · `primary` = solid dot in primary (approved, done, received) · `neutral` / `muted` = short bar in `neutral-ink` #2A4468.
+  - **Attention tier** (soft fill, border, 8px side padding and tone ink text): `warning` = triangle · `danger` = diamond.
 - **Database colors are not shown.** Status colors stored in the database (`asset_statuses.colorCode`, `asset_conditions.colorCode`) are no longer used on badges; the `color` prop and `getStatusDotColor` were removed. The data itself is unchanged.
 - **State:** Every badge carries a text label. Tones follow workflow meaning (`getStatusTone`, `getAssetStateTone`). Markers use `forced-color-adjust-none` so they stay visible in high-contrast mode, and there they use the system text color (`forced-colors:bg-[CanvasText]`, the info ring `forced-colors:border-[CanvasText]`) so they also show on dark high-contrast themes.
 
@@ -294,21 +385,46 @@ Components should feel consistent, restrained, and task-first. The system alread
 - **Busy dialogs:** Pass `busy` while saving; the dialog then ignores Escape, outside clicks and the close button.
 - **Confirmation:** Never use `window.confirm`. Call `await confirm({ title, confirmLabel, tone })` from `useConfirm()`; destructive actions use `tone: "destructive"` and report the actual result ("ลบแล้ว", not "บันทึกสำเร็จ").
 - **Menus never contain dialogs.** A menu item only opens a dialog or drawer that is rendered outside the menu, and that dialog returns focus to the menu trigger.
+- **Menu panels** (`DropdownMenuContent`, `PopoverContent`, `Command`): 12px corners (`rounded-lg`), white, `border`, `shadow-overlay`. Dropdown panels are at least 240px wide (`min-w-60`, so callers do not set narrower widths), with `p-1.5` and 1px between items; the popover keeps `w-72 p-4`.
+- **Menu items:** 36px from `md` up and 44px below, 6px corners, `text-sm` ink, 16px icons in `muted-foreground`. Hover and arrow keys highlight with `primary-soft`; pressing shows `muted`; `variant="destructive"` is danger text with a `danger-soft` highlight. Group labels are 12px medium `muted-foreground`, separators are `border-soft` lines, and `DropdownMenuShortcut` is the faint 13px trail at the end.
+- **An item that cannot run now keeps its reason readable and reachable:** use `<DropdownMenuItem unavailable>` with `<DropdownMenuItemText>{title}<DropdownMenuItemDescription>{reason}</DropdownMenuItemDescription></DropdownMenuItemText>`. It sets `aria-disabled` without Radix `disabled`, so arrow keys and type-ahead still reach it and a screen reader reads the reason; Enter or a click neither closes the menu nor runs the action. Faint text, no fill, no opacity. `unavailable` cannot be combined with `asChild` (type error: the link would navigate first). Radix `disabled` stays for short states whose reason is on screen (while deleting, the last visible column).
+- **Checkbox and radio items:** a checkbox item draws a 16px box in front of its label (`input` border; checked = primary fill with a white check); a radio item shows a primary check at the end; the chosen item is `font-medium`. No leading dots.
+- **Command lists** (`SearchableSelect`): the search box is a box inside the panel (6px corners, `background` fill, focus halo, `text-base md:text-sm` so iOS does not zoom), the highlighted option is `primary-soft`, and only the chosen option shows a check, at the end. Global search rows use the same highlight and a footer of `Kbd` hints (↑↓ เลือก · Enter เปิด · Esc ปิด).
+- **`Kbd`** (`src/components/ui/kbd.tsx`): a 20px key cap with 4px corners, `font-sans` (preflight makes `kbd` monospace) and `text-xs` on a 16px line, which is safe because keys hold only Latin letters and symbols.
+- **Language menu:** a radio group; each language is written in its own language with a `lang` attribute ("ภาษาไทย", "English"); no flags. No emoji anywhere in `src` or `messages` (guard). Screen-reader names in the topbar come from messages (`nav.openMenu`, `nav.toggleSidebar`, `nav.languageMenu`, `nav.userMenu`, `nav.closeMenu`).
+
+### Feedback: Toasts, Notices and Empty States
+
+- **Toasts** (`AppToaster` in `src/components/ui/app-toaster.tsx`, mounted once in `src/app/[locale]/layout.tsx`; call sites keep `toast.*` and `useApiError().toast`): quiet. A white card with a `border`, 12px corners and `shadow-overlay`, 380px wide, below the 64px topbar (top 72px, right 16px; phones top 72px), shown for 6 seconds. The tone is the icon (`toneIcons`: success `CircleCheck`, info `Info`, warning `TriangleAlert`, error `OctagonAlert`); only warning and error toasts get a soft fill and a tone border. The title is 14/22 at weight 500 in ink, the description 13/20 `muted-foreground`. Every toast has a 24px close button ("ปิด", `common.close`), and the region is named "การแจ้งเตือน" (`notifications.title`); Alt+T then Tab reaches them. Toasts are hidden in print. No `richColors`. The CSS is a set of unlayered `:root [data-sonner-…]` rules in `src/app/globals.css` tied to sonner 2's data attributes; check them in the browser again after a sonner upgrade.
+- **`Notice`** (`src/components/ui/notice.tsx`, `tone` required): `warning` and `danger` are boxes (soft fill, tone border, 8px corners, 18px icon) for something the user must deal with now; `info`, `neutral` and `success` are inline lines with a 16px icon and no box. With a `title`, the body is 13/20 `muted-foreground`; without one, the body is 14/22 ink. `action` holds a `Button size="md"`. Never faint text, `/NN` tints or a tone-colored paragraph inside.
+- **`ActionEmptyState`** (`src/components/ui/action-empty-state.tsx`): empty, error and permission states of a page or table that have a title, a description or an action. No box, border or fill (centered, `py-10`); a 24px icon without a circle (empty faint, error danger, permission warning); a 16px semibold title; the default action is `buttonVariants({ size: "md" })`, and `actionVariant="secondary"` makes it an outline button (use it for "ล้างตัวกรอง").
+- **`EmptyNote`** (`src/components/ui/empty-note.tsx`): one quiet 13/20 faint line for lists, panel sections and empty table rows. `tone="clear"` adds a check in the text color (not green) for "nothing to do"; `padded` adds `px-5 py-4` when the container has no padding.
+- **Which one:** one line of text → `EmptyNote`; a title, a description or a button → `ActionEmptyState`.
+- **Live-region roles are written at the call site, never derived from the tone:** `role="alert"` for an error after the user acted (a save or a login failed); `role="status"` or `aria-live="polite"` for a result that appears by itself (saved, queued offline, copied); nothing for text that is there when the page loads.
 
 ### Cards / Containers
 
-- **Corner Style:** 12px for main content panels and metric cards, 8px for compact tables and nested control surfaces.
-- **Background:** Surface White on Canvas, with Soft System Background or Muted Surface used for quiet groupings or empty states.
+- **Corner Style:** 12px (`rounded-lg`) for main content panels, metric cards, dialogs, menus, popovers, the command panel and toasts; 8px (`rounded-md`) for compact tables, nested control surfaces, `Notice` boxes, `md`/`lg`/`default`/`icon` buttons and every field (inputs, selects, textareas, `SearchField`, the `SearchableSelect` trigger, `FileDropzone`); 6px (`rounded-control`) only for small controls: `sm` and `icon-sm` buttons, buttons inside a segmented control, chips, status badges, menu items and the search box inside a menu. `rounded-sm` stays 4px (checkbox boxes, `Kbd`). Never write `rounded-[6px]` (guard).
+- **Background:** Surface White on Canvas. Quiet groupings inside a panel use Soft System Background, a solid token (never `bg-muted/NN` or `bg-accent/NN` outside table headers). Empty states have no box of their own (see Feedback).
 - **Shadow Strategy:** None. Panels and metric cards are flat bordered surfaces (see §4).
-- **Border:** Border is the default structural line. MetricCard tones use `border-{tone}-border`. Avoid colored side stripes and decorative borders.
+- **Border:** Border is the default structural line; inner dividers use `border-soft`. MetricCard tones and tinted boxes use `border-{tone}-border`. Avoid colored side stripes and decorative borders.
 - **Internal Padding:** 16px on mobile and compact panels, 20px where dashboard or form grouping needs more breathing room.
 
 ### Inputs / Fields
 
-- **Style:** 8px radius, `border-input` (#7C8BA0, 3:1 on every surface), Soft System Background fill, 40px desktop height, and 44px mobile minimum touch height (`getFieldControlClasses()`). About 384 hand-written field class lists still use `border-border` and move to a shared Input in phase 2.
-- **Focus:** Border and a 1px ring switch to the teal ring color #10858D (`focus:border-ring focus:ring-ring`). Focus must be visible on keyboard navigation.
-- **Error / Disabled:** Errors use Danger Red with text explanation. Disabled fields use Muted Surface and Muted Slate, and must still communicate why interaction is unavailable when context matters.
-- Native checkboxes and radios use the primary color (`accent-color: var(--primary)`); text selection uses `primary-border` behind ink.
+- **Primitives** (`src/components/ui/`, no `"use client"`, so server pages can use them): `Input`, `NativeSelect` (a native `<select>`; the name `Select` is taken by local helpers and kept free for a Radix select), `Textarea`, `Field` (label, hint, error and their ids), `SearchField` (icon, clear button, spinner) and `checkboxVariants`. Their classes come from `fieldControlVariants({ fieldSize })` in `field-variants.ts`; `getFieldControlClasses(options?)` (`src/lib/design-system.ts`) returns the same classes for controls that cannot use a primitive, such as the `SearchableSelect` trigger. The size prop is `fieldSize`, never `size` (`size` is a numeric HTML attribute of `<input>` and `<select>`).
+- **Style:** 8px corners (`rounded-md`), `border-input` #7C8BA0, white fill (`bg-surface`), 12px side padding. The border reaches 3:1 on card, background and canvas; never place a field on `bg-muted`, where it reaches only 2.97:1. `control-border` is for buttons only.
+- **Sizes:** `fieldSize` `md` 36px, `lg` 40px (the default) and `xl` 48px from `md` up. Below `md` every size is 44px tall (`xl` 48px) with 16px text, so iOS does not zoom; from `md` up the text is 14px (`xl` keeps 16px).
+- **Focus:** `focus:border-ring focus:ring-1 focus:ring-ring` plus a 4px halo (`shadow-field-focus`, the ring at 16%). An open `SearchableSelect` (`aria-expanded`) looks focused.
+- **Error:** set `aria-invalid` (`Field` does it when `error` is set): a `danger` border, 1px ring and 4px halo (`shadow-field-error`, danger at 14%). While focused the field turns back to teal, and the error text under it stays. Never write `focus:border-danger` or `aria-invalid:focus:ring-danger` (one focus color).
+- **Disabled:** `background` fill, `border` border, faint text, not-allowed cursor, no opacity. **Read-only** (`Input` and `Textarea` only): `background` fill and `border` border with normal text, still focusable and copyable.
+- **Placeholder:** the faint ink from one base rule (`::placeholder`, 5.77:1 on white); never add `placeholder:text-*` (guard).
+- **`Field`:** the label (13/20, weight 500, ink) sits above the control; the hint (13/20 faint) and the error (13/20 `text-danger`, `role="alert"`, under the hint) sit below it, and `aria-describedby` reads the error first. `required` shows a warning-colored `*` with `aria-hidden` and sets `aria-required`, not the native `required` (that would start the browser's own form validation). Do not wrap `SearchableSelect` in `Field` (it has its own label), and never put `Field` inside a `<label>`.
+- **Native select arrow:** `select-chevron` (§3 Utilities); forced-colors mode shows the system arrow.
+- **Checkboxes and radios** stay native: the primary color comes from `accent-color: var(--primary)`, focus from the base outline, and `checkboxVariants` sets the size; the 44px target is the row's `<label>`.
+- **`FileDropzone`:** a dashed `border-input` box with 8px corners on white, `background` on hover, the focus outline on its label, and `border` + `background` when disabled (no opacity).
+- **Migration:** 316 fields in 70 files are still hand-written, and 282 of them use `border-border`; phase 2C moves them to the primitives. Until then some forms show both kinds, so 2A ships only with the first 2C batch.
+- Text selection uses `primary-border` behind ink.
 
 ### Navigation
 
@@ -318,12 +434,13 @@ The app uses a fixed dashboard shell with a white sidebar and a white topbar on 
 - **Three sections with headings:** งานประจำวัน / Daily work (dashboard, work center, my assets) · ทรัพย์สิน / Assets (asset management, audit, maintenance, disposal) · ภาพรวมและระบบ / Reports and system (reports, master data, settings). A section with no permitted item is hidden (`filterNavigationSectionsByPermission` in `src/lib/navigation-permissions.ts`); when the sidebar is collapsed, headings become divider lines. Each section is a `role="group"` labelled by its heading (`aria-labelledby`; drawer ids are prefixed `mobile-` because the body renders twice).
 - **Rows:** full width inside the nav's `px-2` gutter (`rounded-md px-3`), 36px on desktop and 44px in the mobile drawer, icons in `sidebar-muted`, hover `sidebar-hover`.
 - **Active row:** solid navy `sidebar-active` with white text (weight 500), a teal `sidebar-active-icon`, and an outline in Windows high-contrast mode (`forced-colors:outline`), where the fill is dropped. `aria-current="page"` is set only when the page is the entry itself (`isExactNavigationMatch`); on a detail page under an entry (for example `/th/assets/123`) that entry gets `aria-current="true"`. The parent group of the active row is semibold with no fill. The active row is the longest matching href (`getActiveNavigationHref` in `src/lib/navigation-active.ts`, so `/th/assets/new` selects "add asset", not the register), and its group opens by itself. No colored side stripe.
-- **Topbar:** white, `border-b`, no shadow.
+- **Topbar:** white, `border-b`, no shadow. Its icon buttons are named from messages (see Dialogs, Menus and Confirmation).
+- **Breadcrumbs** (`src/components/ui/breadcrumbs.tsx`, a server component): `items: { label, href?, code? }[]`. 13/20 faint text; links turn ink and underline on hover; the last item is `aria-current="page"`, weight 500 ink; `code: true` shows the item as `tag`. 12px chevron separators in `--input`, hidden from screen readers. Long trails wrap instead of truncating. The `<nav>` is named "เส้นทางหน้า" (`common.breadcrumb`). No outer margin: the page header owns the gap to the title.
 - **Mobile:** a slide-in sidebar `Sheet` with 44px targets and the scrim; the bottom field bar is solid `bg-surface` with `border-t`, no blur or bar shadow (the round scan button keeps its own), and `text-xs` labels. The PWA `themeColor` / manifest `theme_color` is #FFFFFF and `background_color` is #EEF1F6.
 
 ### Data Tables
 
-Tables are core product surfaces. Use bordered shells, readable row spacing, clear sortable/filterable headers, stable status badges, and responsive fallback cards below medium breakpoints where needed. Prioritize scanning, comparison, and bulk operations over decorative presentation.
+Tables are core product surfaces. Use bordered shells, readable row spacing, clear sortable/filterable headers, stable status badges, and responsive fallback cards below medium breakpoints where needed. Prioritize scanning, comparison, and bulk operations over decorative presentation. Hovered and focused rows use the solid `bg-row-hover`, sticky cells included. Table-header fills (`bg-muted/NN`, 44 sites) move to the shared DataTable in phase 2B.
 
 **List page pattern (asset register, 2026-10-07).** New list pages follow the register (`/[locale]/assets`):
 
@@ -336,6 +453,12 @@ Tables are core product surfaces. Use bordered shells, readable row spacing, cle
 - **Desktop table:** `table-fixed` with a `<colgroup>`, only the key column and the actions column pinned, one-line truncated cells with a `title`. The default column set must fit 1440px without horizontal scroll, and the scroll hint appears only when the table really overflows.
 - **Phone rows:** about 80px each — 44px thumbnail, tag, name, then location and a status badge on one line, and ⋯. A "เลือก" mode turns rows into checkboxes, and its bulk bar floats above the bottom navigation.
 - **Thumbnails:** list images come from `/api/attachments/{id}/thumbnail` (96px WebP, cached); never load original files in a list.
+
+### Empty Values and Numbers
+
+- **Empty values:** `Nil` / `orNil(value, label?)` (`src/components/ui/nil.tsx`) show a faint em dash (—) that screen readers skip, plus `sr-only` text: "ไม่มีข้อมูล" (`common.noValue`) or a label for the context, such as "ไม่มีผู้ถือครอง". Blank means `null`, `undefined` or an empty or whitespace-only string; `0` and `false` are values and must show (`|| "-"` hides a zero). Faint ink, so never on a status soft fill.
+- **Numbers:** `formatCount` and `formatMoney` (`src/lib/display-format.ts`) always format in `th-TH` (Arabic digits, comma groups), never in the machine's locale; `null` and `undefined` return `null`, so a caller writes `formatMoney(x) ?? <Nil />`. Money always has 2 decimals. Outside tables pass the unit, `formatMoney(x, { unit })` with `common.baht` ("บาท" / "THB"), to get "64,900.00 บาท" with a non-breaking space; in tables the unit sits in the column header ("มูลค่า (บาท)") and the cells hold only the number. Line digits up with `num`.
+- Phase 2A only adds these helpers; 2B uses them on screens (156 `"-"` fallbacks, 44 `toLocaleString()` calls without a locale). Print pages, PDFs and label data keep `"-"`, and `formatCurrency` (`฿` prefix) stays until 2D.
 
 ### Field Audit / QR Workflows
 
@@ -353,7 +476,7 @@ Field-work page pattern (audit scan, 2026-10-07): **room → list or typed searc
 
 ### Do:
 
-- **Do** preserve existing tokens and design-system helpers such as panel, action button, field control, table shell, mobile card list, empty state, and touch icon button classes.
+- **Do** preserve existing tokens and shared primitives such as `Button`, the field primitives (`Input`, `NativeSelect`, `Textarea`, `Field`, `SearchField`), `Notice`, `EmptyNote`, `ActionEmptyState`, and the panel, table shell and mobile card list helpers.
 - **Do** keep navy #083161 for the logo and the selected menu row, Primary #1E4F94 for actions and links, and teal for info status, focus and the selected menu icon.
 - **Do** use borders and tonal layers as the grouping mechanism; use `shadow-overlay` only for dialogs, sheets, popovers and menus, and `bg-scrim` behind them.
 - **Do** keep tables and forms dense enough for enterprise scanning, but not cramped.
@@ -373,6 +496,7 @@ Field-work page pattern (audit scan, 2026-10-07): **room → list or typed searc
 - **Don't** rely on color alone for status, permission, validation, audit, or lifecycle state.
 - **Don't** use display fonts, fluid hero typography, gradient text, oversized cards, or landing-page composition inside product workflows.
 - **Don't** use colored side-stripe borders as a decorative accent. Use full borders, status badges, text labels, and icons instead.
+- **Don't** fade a disabled control with opacity, put faint text on a status soft fill, or tint a fill or border with `/NN`; use the disabled look, the tone ink and the solid tokens.
 
 ## 7. Documentation Governance and Adaptive UI Contract
 
@@ -380,7 +504,7 @@ Field-work page pattern (audit scan, 2026-10-07): **room → list or typed searc
 
 Business workflow, RBAC, SOD, lifecycle, and security requirements always take precedence over visual guidance. Runtime components and CSS are the implemented behavior; drift between runtime and this document must be reviewed and reconciled explicitly.
 
-**Warning:** Do not run `npx shadcn add`: it writes oklch tokens and a `.dark` block into `src/app/globals.css`. Copy the component by hand and review the diff.
+**Warning:** Do not run `npx shadcn add`: it writes oklch tokens and a `.dark` block into `src/app/globals.css`, and `npx shadcn add input|textarea|native-select|field|button|dropdown-menu|command|popover` overwrites our own files of the same names, whose classes differ from shadcn's. Copy the component by hand and review the diff.
 
 ### Adaptive UI Contract
 
@@ -389,7 +513,8 @@ Business workflow, RBAC, SOD, lifecycle, and security requirements always take p
 - Desktop and Mobile may present different hierarchy and controls while reusing the same URL, API, workflow records, permissions, validation, audit trail, and data model.
 - Global Mobile Field Navigation and a page-owned contextual action bar must never render together.
 - Focus-task routes such as scanner, edit, and transaction flows hide global field navigation while their contextual action surface is active.
-- Mobile controls remain at least 44px, respect safe-area insets, avoid body-level horizontal overflow, and do not depend on hover.
+- Mobile controls remain at least 44px, respect safe-area insets, avoid body-level horizontal overflow, and do not depend on hover. Shared buttons, fields and menu items switch to their desktop height at `md` (768px), not `sm`.
+- Two smaller targets are accepted under WCAG 2.5.8 (at least 24px, or enough spacing): the 24px toast close button (a toast can also be swiped away) and the 20px-tall breadcrumb links (one link per trail, and the page keeps its back button). Links inside a sentence are exempt as well.
 
 ### Supporting Documents
 
