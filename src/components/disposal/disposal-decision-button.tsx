@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, type FormEvent } from "react"
+import { useImperativeHandle, useRef, useState, type FormEvent, type Ref, type RefObject } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { CheckCircle2, ClipboardCheck, Loader2 } from "lucide-react"
@@ -20,6 +20,10 @@ type DecisionValues = {
   approvalRemark: string
 }
 
+export type DisposalDecisionButtonHandle = { open: () => void }
+
+// An owner (for example a row ⋯ menu) can render this with hideTrigger, open it through ref.current?.open() and pass
+// its own button as returnFocusRef, so focus goes back there when the dialog closes.
 export function DisposalDecisionButton({
   requestId,
   disposalNo,
@@ -27,6 +31,9 @@ export function DisposalDecisionButton({
   statuses,
   defaultSaleValue,
   defaultSalvageValue,
+  ref,
+  hideTrigger = false,
+  returnFocusRef,
 }: {
   requestId: string
   disposalNo: string
@@ -34,6 +41,9 @@ export function DisposalDecisionButton({
   statuses: StatusOption[]
   defaultSaleValue?: string
   defaultSalvageValue?: string
+  ref?: Ref<DisposalDecisionButtonHandle>
+  hideTrigger?: boolean
+  returnFocusRef?: RefObject<HTMLElement | null>
 }) {
   const router = useRouter()
   const apiError = useApiError()
@@ -42,6 +52,7 @@ export function DisposalDecisionButton({
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  useImperativeHandle(ref, () => ({ open: () => setOpen(true) }))
   const pendingDisposalStatus = statuses.find((status) => status.name === "Pending Disposal")
   const defaultStatus = pendingDisposalStatus
   const [values, setValues] = useState<DecisionValues>({
@@ -93,15 +104,17 @@ export function DisposalDecisionButton({
 
   return (
     <>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-10 sm:min-h-0 sm:w-auto"
-      >
-        <ClipboardCheck className="h-3.5 w-3.5" />
-        {t("reviewRequest")}
-      </button>
+      {hideTrigger ? null : (
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-10 sm:min-h-0 sm:w-auto"
+        >
+          <ClipboardCheck className="h-3.5 w-3.5" />
+          {t("reviewRequest")}
+        </button>
+      )}
 
       {open ? (
         <DecisionDialog
@@ -110,7 +123,7 @@ export function DisposalDecisionButton({
           statuses={statuses}
           values={values}
           saving={saving}
-          triggerRef={triggerRef}
+          triggerRef={returnFocusRef ?? triggerRef}
           onClose={() => setOpen(false)}
           onSubmit={handleSubmit}
           onFieldChange={setField}
@@ -136,7 +149,7 @@ function DecisionDialog({
   statuses: StatusOption[]
   values: DecisionValues
   saving: boolean
-  triggerRef: React.RefObject<HTMLButtonElement | null>
+  triggerRef: React.RefObject<HTMLElement | null>
   onClose: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   onFieldChange: (field: keyof DecisionValues, value: string) => void

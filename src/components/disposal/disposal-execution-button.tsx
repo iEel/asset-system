@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useRef, useState, type FormEvent } from "react"
+import { useId, useImperativeHandle, useRef, useState, type FormEvent, type Ref, type RefObject } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { AlertTriangle, CheckCircle2, Loader2, Truck } from "lucide-react"
@@ -42,6 +42,10 @@ const evidencePolicyErrorCodes = new Set([
   "DISPOSAL_BATCH_SCHEMA_CHECK_FAILED",
 ])
 
+export type DisposalExecutionButtonHandle = { open: () => void }
+
+// An owner (for example a row ⋯ menu) can render this with hideTrigger, open it through ref.current?.open() and pass
+// its own button as returnFocusRef, so focus goes back there when the dialog closes.
 export function DisposalExecutionButton({
   requestId,
   disposalNo,
@@ -52,6 +56,9 @@ export function DisposalExecutionButton({
   defaultActualSalvageValue,
   effectiveEvidenceCount,
   canUseHistoricalEvidenceException = false,
+  ref,
+  hideTrigger = false,
+  returnFocusRef,
 }: {
   requestId: string
   disposalNo: string
@@ -62,6 +69,9 @@ export function DisposalExecutionButton({
   defaultActualSalvageValue?: string
   effectiveEvidenceCount?: number
   canUseHistoricalEvidenceException?: boolean
+  ref?: Ref<DisposalExecutionButtonHandle>
+  hideTrigger?: boolean
+  returnFocusRef?: RefObject<HTMLElement | null>
 }) {
   const router = useRouter()
   const apiError = useApiError()
@@ -70,6 +80,7 @@ export function DisposalExecutionButton({
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  useImperativeHandle(ref, () => ({ open: () => setOpen(true) }))
   const disposedStatus = statuses.find((status) => status.name === "Disposed")
   const defaultStatus = disposedStatus
   const [values, setValues] = useState<ExecutionValues>({
@@ -152,11 +163,13 @@ export function DisposalExecutionButton({
 
   return (
     <>
-      <button ref={triggerRef} type="button" onClick={() => setOpen(true)} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:h-10 sm:min-h-0 sm:w-auto">
-        <Truck className="h-4 w-4" />
-        {t("executeDisposal")}
-      </button>
-      {open ? <ExecutionDialog disposalNo={disposalNo} disposalType={disposalType} statuses={statuses} employees={employees} values={values} saving={saving} effectiveEvidenceCount={effectiveEvidenceCount} canUseHistoricalEvidenceException={canUseHistoricalEvidenceException} triggerRef={triggerRef} onClose={closeExecutionDialog} onSubmit={handleSubmit} onFieldChange={setField} /> : null}
+      {hideTrigger ? null : (
+        <button ref={triggerRef} type="button" onClick={() => setOpen(true)} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:h-10 sm:min-h-0 sm:w-auto">
+          <Truck className="h-4 w-4" />
+          {t("executeDisposal")}
+        </button>
+      )}
+      {open ? <ExecutionDialog disposalNo={disposalNo} disposalType={disposalType} statuses={statuses} employees={employees} values={values} saving={saving} effectiveEvidenceCount={effectiveEvidenceCount} canUseHistoricalEvidenceException={canUseHistoricalEvidenceException} triggerRef={returnFocusRef ?? triggerRef} onClose={closeExecutionDialog} onSubmit={handleSubmit} onFieldChange={setField} /> : null}
     </>
   )
 }
@@ -183,7 +196,7 @@ function ExecutionDialog({
   saving: boolean
   effectiveEvidenceCount?: number
   canUseHistoricalEvidenceException: boolean
-  triggerRef: React.RefObject<HTMLButtonElement | null>
+  triggerRef: React.RefObject<HTMLElement | null>
   onClose: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   onFieldChange: (field: keyof ExecutionValues, value: string | boolean) => void

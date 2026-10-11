@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useState, type FormEvent } from "react"
+import { useId, useImperativeHandle, useState, type FormEvent, type Ref, type RefObject } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { AlertTriangle, Loader2 } from "lucide-react"
@@ -11,7 +11,23 @@ import { useApiError } from "@/components/ui/use-api-error"
 
 type AuditMarkNotFoundButtonVariant = "icon" | "button"
 
-export function AuditMarkNotFoundButton({ itemId, variant = "icon" }: { itemId: string; variant?: AuditMarkNotFoundButtonVariant }) {
+export type AuditMarkNotFoundButtonHandle = { open: () => void }
+
+// An owner (for example a row ⋯ menu) can render this with hideTrigger, open it through ref.current?.open() and pass
+// its own button as returnFocusRef, so focus goes back there when the dialog closes.
+export function AuditMarkNotFoundButton({
+  itemId,
+  variant = "icon",
+  ref,
+  hideTrigger = false,
+  returnFocusRef,
+}: {
+  itemId: string
+  variant?: AuditMarkNotFoundButtonVariant
+  ref?: Ref<AuditMarkNotFoundButtonHandle>
+  hideTrigger?: boolean
+  returnFocusRef?: RefObject<HTMLElement | null>
+}) {
   const router = useRouter()
   const apiError = useApiError()
   const t = useTranslations("auditPending")
@@ -25,6 +41,8 @@ export function AuditMarkNotFoundButton({ itemId, variant = "icon" }: { itemId: 
   function openDialog() {
     if (!saving) setDialogOpen(true)
   }
+
+  useImperativeHandle(ref, () => ({ open: openDialog }))
 
   function resetDialog() {
     setDialogOpen(false)
@@ -88,13 +106,14 @@ export function AuditMarkNotFoundButton({ itemId, variant = "icon" }: { itemId: 
 
   return (
     <>
-      {trigger}
+      {hideTrigger ? null : trigger}
       <AccessibleDialog
         open={dialogOpen}
         title={t("notFoundDialogTitle")}
         description={t("notFoundDialogDescription")}
         busy={saving}
         size="sm"
+        returnFocusRef={returnFocusRef}
         onClose={closeDialog}
       >
         <form onSubmit={handleSubmit}>
