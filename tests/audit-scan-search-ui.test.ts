@@ -12,7 +12,7 @@ test("the search field sticks to the top on phones, avoids iOS zoom and holds th
   assert.match(source, /sticky -top-4 sm:-top-6/)
   assert.doesNotMatch(source, /sticky top-0/)
   assert.doesNotMatch(source, /md:static/)
-  assert.match(source, /text-base/)
+  assert.match(source, /getFieldControlClasses\(\{ fieldSize: "xl" \}\)/)
   assert.match(source, /inputMode="search"/)
   assert.match(source, /enterKeyHint="search"/)
   assert.match(source, /aria-label=\{cameraOpen \? t\("stopCamera"\) : t\("openCamera"\)\}/)

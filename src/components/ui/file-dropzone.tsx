@@ -96,9 +96,8 @@ export function FileDropzone({
       }}
       onDrop={handleDrop}
       className={[
-        "block cursor-pointer rounded-md border border-dashed p-4 text-center transition-colors",
-        dragging ? "border-primary bg-primary-soft" : "border-border bg-surface hover:bg-accent",
-        isDisabled ? "pointer-events-none opacity-60" : "",
+        "block cursor-pointer rounded-md border border-dashed p-4 text-center transition-colors motion-reduce:transition-none has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring",
+        isDisabled ? "pointer-events-none border-border bg-background" : dragging ? "border-primary bg-primary-soft" : "border-input bg-surface hover:bg-background",
       ].join(" ")}
     >
       <input
@@ -114,13 +113,11 @@ export function FileDropzone({
           event.currentTarget.value = ""
         }}
       />
-      <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-md bg-primary-soft text-primary">
-        <Upload className="h-5 w-5" />
-      </span>
-      <span className="mt-3 block text-sm font-medium text-foreground">{file ? file.name : title}</span>
-      <span className="mt-1 block text-xs text-muted-foreground">{optimizing ? tCommon("imageOptimizing") : file ? hint : browseLabel}</span>
+      <Upload className="mx-auto size-5 text-muted-foreground" aria-hidden="true" />
+      <span className={`mt-3 block text-sm font-medium ${isDisabled ? "text-faint-foreground" : "text-foreground"}`}>{file ? file.name : title}</span>
+      <span className="mt-1 block text-meta text-faint-foreground">{optimizing ? tCommon("imageOptimizing") : file ? hint : browseLabel}</span>
       {showImageOptimizationHint ? (
-        <span className="mt-1 block text-xs text-muted-foreground">{tCommon("imageOptimizationHint")}</span>
+        <span className="mt-1 block text-meta text-faint-foreground">{tCommon("imageOptimizationHint")}</span>
       ) : null}
     </label>
   )

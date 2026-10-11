@@ -70,7 +70,7 @@ export function AuditScanSearchField({
             if (composingRef.current || (event.nativeEvent as InputEvent).isComposing) return
             onTermChange(event.target.value)
           }}
-          className={cn(getFieldControlClasses(), "h-12 pl-9 pr-24 text-base sm:h-12")}
+          className={cn(getFieldControlClasses({ fieldSize: "xl" }), "pl-9 pr-24")}
         />
         <div className="absolute inset-y-0 right-0.5 flex items-center gap-0.5">
           {value ? (

@@ -3,6 +3,11 @@
 import { useEffect, useId, useRef, useState } from "react"
 import { Camera, Flashlight, FlashlightOff, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { Field } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
+import { cn } from "@/lib/utils"
 import {
   environmentCameraId,
   getFallbackCameraAfterEnvironmentFailure,
@@ -47,7 +52,10 @@ type ScannerTextInputProps = {
   disabled?: boolean
   maxLength?: number
   placeholder?: string
-  inputClassName?: string
+  // Passed on to the text field, so a Field (phase 2C) can wire its hint, error and required state.
+  "aria-describedby"?: string
+  "aria-invalid"?: React.AriaAttributes["aria-invalid"]
+  "aria-required"?: React.AriaAttributes["aria-required"]
   onPaste?: React.ClipboardEventHandler<HTMLInputElement>
   onScanSuccess?: (value: string) => void
 }
@@ -61,7 +69,9 @@ export function ScannerTextInput({
   disabled,
   maxLength,
   placeholder,
-  inputClassName,
+  "aria-describedby": ariaDescribedBy,
+  "aria-invalid": ariaInvalid,
+  "aria-required": ariaRequired,
   onPaste,
   onScanSuccess,
 }: ScannerTextInputProps) {
@@ -286,23 +296,23 @@ export function ScannerTextInput({
   return (
     <div className="min-w-0 max-w-full space-y-2">
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
-        <input
+        <Input
           id={id}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onPaste={onPaste}
           maxLength={maxLength}
           placeholder={placeholder}
-          className={
-            inputClassName ??
-            "min-h-11 min-w-0 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0 sm:flex-1"
-          }
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={ariaInvalid}
+          aria-required={ariaRequired}
+          className="sm:flex-1"
         />
         <button
           type="button"
           disabled={disabled}
           onClick={handleToggleScanner}
-          className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
+          className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full sm:w-auto")}
           title={scannerRunning || scannerLoading ? labels.stop : labels.start}
         >
           {scannerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
@@ -318,21 +328,16 @@ export function ScannerTextInput({
           </div>
 
           {cameras.length > 1 && (
-            <label className="mb-3 block text-xs font-medium text-muted-foreground">
-              {labels.cameraDevice}
-              <select
-                value={selectedCameraId}
-                onChange={(event) => void handleCameraChange(event.target.value)}
-                className="mt-1 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-9 sm:min-h-0"
-              >
+            <Field label={labels.cameraDevice} className="mb-3">
+              <NativeSelect fieldSize="md" value={selectedCameraId} onChange={(event) => void handleCameraChange(event.target.value)}>
                 <option value={environmentCameraId}>{labels.cameraRear}</option>
                 {cameras.map((camera, index) => (
                   <option key={camera.id} value={camera.id}>
                     {camera.label || `${labels.cameraDeviceFallback} ${index + 1}`}
                   </option>
                 ))}
-              </select>
-            </label>
+              </NativeSelect>
+            </Field>
           )}
 
           <div className={readerShellClassName}>

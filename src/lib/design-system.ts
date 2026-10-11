@@ -1,4 +1,5 @@
 import { buttonVariants } from "../components/ui/button-variants.ts"
+import { fieldControlVariants, type FieldSize } from "../components/ui/field-variants.ts"
 import { cn } from "./utils.ts"
 
 export const uiTones = ["neutral", "info", "success", "warning", "danger", "muted"] as const
@@ -71,8 +72,10 @@ export function getEmptyStateClasses() {
   return "rounded-md border border-border bg-background px-4 py-6 text-center text-sm text-muted-foreground"
 }
 
-export function getFieldControlClasses() {
-  return "min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0"
+// The field recipe as a class string, for elements that cannot use a primitive (a <button> trigger, a <select>
+// that keeps its own markup). Change the height with fieldSize, not a className. <select> callers get no chevron here.
+export function getFieldControlClasses(options?: { fieldSize?: FieldSize }) {
+  return fieldControlVariants(options)
 }
 
 const legacyButtonVariant = {

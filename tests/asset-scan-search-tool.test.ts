@@ -43,7 +43,7 @@ test("asset scan page labels only the native input and uses asset-specific searc
   assert.match(tool, /<label[^>]+htmlFor="asset-scan-query"/)
   assert.match(tool, /<ScannerTextInput[\s\S]+id="asset-scan-query"/)
   assert.doesNotMatch(tool, /<label className="block">[\s\S]+<ScannerTextInput/)
-  assert.match(tool, /inputClassName="min-h-11 w-full min-w-0[^"]*sm:flex-1/)
+  assert.doesNotMatch(tool, /inputClassName=/)
   assert.match(page, /placeholder: t\("scanPlaceholder"\)/)
   assert.doesNotMatch(page, /placeholder: tGlobalSearch\("placeholder"\)/)
   assert.equal(th.assetTools.scanPlaceholder, "ค้นหาด้วยรหัสทรัพย์สิน, Serial Number, ผู้ถือครอง หรือที่ตั้ง")
