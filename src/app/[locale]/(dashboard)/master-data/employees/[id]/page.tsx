@@ -258,7 +258,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
             <Breadcrumbs
               items={[
                 { label: t("title"), href: returnToHref },
-                { label: employee.code },
+                { label: employee.code, code: true },
               ]}
             />
           </div>

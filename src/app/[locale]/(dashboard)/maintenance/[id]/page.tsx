@@ -106,7 +106,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="mb-2">
-            <Breadcrumbs items={[{ label: t("title"), href: returnToHref }, { label: ticket.repairNo }]} />
+            <Breadcrumbs items={[{ label: t("title"), href: returnToHref }, { label: ticket.repairNo, code: true }]} />
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold text-foreground">{ticket.repairNo}</h1>

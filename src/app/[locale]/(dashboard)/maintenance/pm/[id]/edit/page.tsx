@@ -25,7 +25,7 @@ export default async function EditMaintenancePlanPage({ params }: Props) {
 
   return (
     <div className="space-y-5">
-      <Breadcrumbs items={[{ label: t("pmTitle"), href: returnTo }, { label: plan.planNo }]} />
+      <Breadcrumbs items={[{ label: t("pmTitle"), href: returnTo }, { label: plan.planNo, code: true }]} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{plan.planNo}</h1>

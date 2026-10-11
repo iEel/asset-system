@@ -174,7 +174,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
             <Breadcrumbs
               items={[
                 { label: t("title"), href: returnToHref },
-                { label: disposalRequest.disposalNo },
+                { label: disposalRequest.disposalNo, code: true },
               ]}
             />
           </div>

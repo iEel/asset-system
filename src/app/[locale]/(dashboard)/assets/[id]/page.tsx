@@ -886,7 +886,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             <Breadcrumbs
               items={[
                 { label: t("title"), href: returnToHref },
-                { label: asset.assetTag },
+                { label: asset.assetTag, code: true },
               ]}
             />
           </div>

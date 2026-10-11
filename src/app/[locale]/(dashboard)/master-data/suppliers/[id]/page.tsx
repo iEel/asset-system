@@ -154,7 +154,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
             <Breadcrumbs
               items={[
                 { label: t("title"), href: returnToHref },
-                { label: supplier.code },
+                { label: supplier.code, code: true },
               ]}
             />
           </div>

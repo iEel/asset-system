@@ -412,7 +412,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             <Breadcrumbs
               items={[
                 { label: t("title"), href: returnToHref },
-                { label: round.auditNo },
+                { label: round.auditNo, code: true },
               ]}
             />
           </div>

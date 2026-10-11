@@ -52,7 +52,7 @@ export default async function DisposalBatchDetailPage({ params }: { params: Prom
     <div className="space-y-6 pb-24 md:pb-0">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <Breadcrumbs items={[{ label: t("title"), href: `/${locale}/disposal` }, { label: batch.batchNo }]} />
+          <Breadcrumbs items={[{ label: t("title"), href: `/${locale}/disposal` }, { label: batch.batchNo, code: true }]} />
           <h1 className="mt-3 text-2xl font-bold text-foreground">{batch.batchNo}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("batchDetailHelp", { count: batch.disposalRequests.length })}</p>
         </div>
