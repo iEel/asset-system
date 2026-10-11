@@ -53,6 +53,7 @@ const MIGRATED_FILES: string[] = [
   `${C}disposal/disposal-batch-form.tsx`,
   `${C}disposal/disposal-execution-button.tsx`,
   `${C}disposal/disposal-asset-picker.tsx`,
+  `${C}disposal/disposal-decision-button.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -119,7 +120,6 @@ const LOCAL_FIELD: Record<string, number> = {
   // 1a
   // 1b
   // 1c
-  [`${C}disposal/disposal-decision-button.tsx`]: 1,
   // 1g
   [`${C}master-data/asset-model-form.tsx`]: 1,
   // 1e
@@ -147,7 +147,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 1a
   // 1b
   // 1c
-  [`${C}disposal/disposal-decision-button.tsx`]: 5,
   // 1d
   [`${C}audit/audit-scan-check-form.tsx`]: 2,
   [`${C}audit/audit-finding-review-actions.tsx`]: 5,
@@ -200,7 +199,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1a
   // 1b
   // 1c
-  [`${C}disposal/disposal-decision-button.tsx`]: 5,
   // 1d
   [`${C}audit/audit-scan-check-form.tsx`]: 2,
   [`${C}audit/audit-finding-review-actions.tsx`]: 5,
@@ -303,7 +301,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 1a
   // 1b
   // 1c
-  [`${C}disposal/disposal-decision-button.tsx`]: 2,
   // 1d
   [`${C}audit/audit-finding-review-actions.tsx`]: 5,
   // 1g
@@ -347,7 +344,6 @@ const LOADER2: Record<string, number> = {
   // 1b
   // 1c
   [`${C}disposal/disposal-asset-picker.tsx`]: 1, // → 1: the spinner in the search field :58
-  [`${C}disposal/disposal-decision-button.tsx`]: 1,
   // 1d
   [`${C}audit/audit-scan-check-form.tsx`]: 2, // → 1: the collapsible header :242 (§6.14)
   [`${C}audit/audit-finding-review-actions.tsx`]: 5, // → 2: the row triggers :102, :112 (2B, O21)
@@ -428,7 +424,6 @@ const PENDING_FOOTER_PARTS = new Set([
   `${C}maintenance/maintenance-attachments.tsx`, // the delete dialog :239 waits for batch 5 (K12)
   // 1b
   // 1c
-  `${C}disposal/disposal-decision-button.tsx`,
   // 1d
   `${C}audit/audit-finding-review-actions.tsx`,
   `${C}audit/audit-mark-not-found-button.tsx`,

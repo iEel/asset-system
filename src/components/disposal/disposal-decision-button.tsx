@@ -3,9 +3,20 @@
 import { useImperativeHandle, useRef, useState, type FormEvent, type Ref, type RefObject } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { CheckCircle2, ClipboardCheck, Loader2 } from "lucide-react"
+import { CheckCircle2, ClipboardCheck } from "lucide-react"
 import { toast } from "sonner"
-import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import {
+  AccessibleDialog,
+  AccessibleDialogBody,
+  AccessibleDialogCancel,
+  AccessibleDialogFooter,
+  accessibleDialogFormClasses,
+} from "@/components/ui/accessible-dialog"
+import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
+import { Textarea } from "@/components/ui/textarea"
 import { getDisposalApiErrorMessage } from "@/lib/disposal-error-message"
 import { showsEstimatedSaleValue, showsEstimatedSalvageValue, type DisposalType } from "@/lib/disposal-type-policy"
 import { useApiError } from "@/components/ui/use-api-error"
@@ -105,15 +116,10 @@ export function DisposalDecisionButton({
   return (
     <>
       {hideTrigger ? null : (
-        <button
-          ref={triggerRef}
-          type="button"
-          onClick={() => setOpen(true)}
-          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-10 sm:min-h-0 sm:w-auto"
-        >
-          <ClipboardCheck className="h-3.5 w-3.5" />
+        <Button ref={triggerRef} variant="outline" onClick={() => setOpen(true)} className="w-full sm:w-auto">
+          <ClipboardCheck aria-hidden="true" />
           {t("reviewRequest")}
-        </button>
+        </Button>
       )}
 
       {open ? (
@@ -155,7 +161,6 @@ function DecisionDialog({
   onFieldChange: (field: keyof DecisionValues, value: string) => void
 }) {
   const t = useTranslations("disposalPage")
-  const tCommon = useTranslations("common")
   const decisionRef = useRef<HTMLSelectElement | null>(null)
   const normalizedDisposalType = disposalType as DisposalType
   const showSaleValue = showsEstimatedSaleValue(normalizedDisposalType)
@@ -170,56 +175,56 @@ function DecisionDialog({
     <AccessibleDialog
       open
       title={t("decisionTitle")}
-      description={disposalNo}
+      description={<span className="tag">{disposalNo}</span>}
       busy={saving}
       size="md"
       initialFocusRef={decisionRef}
       returnFocusRef={triggerRef}
       onClose={closeDialog}
     >
-      <form onSubmit={onSubmit}>
-        <div className="grid grid-cols-1 gap-5 p-4 sm:p-5 md:grid-cols-2">
+      <form onSubmit={onSubmit} className={accessibleDialogFormClasses}>
+        <AccessibleDialogBody className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("decision")} required>
-            <select ref={decisionRef} value={values.decision} required disabled={saving} onChange={(event) => onFieldChange("decision", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0">
+            <NativeSelect ref={decisionRef} value={values.decision} required disabled={saving} onChange={(event) => onFieldChange("decision", event.target.value)}>
               <option value="approve">{t("approve")}</option>
               <option value="reject">{t("reject")}</option>
-            </select>
+            </NativeSelect>
           </Field>
-          {values.decision === "approve" ? <Field label={t("nextStatus")} required>
-            <select value={values.nextStatusId} required disabled={saving || values.decision === "approve"} onChange={(event) => onFieldChange("nextStatusId", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0">
-              {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
-            </select>
-            <p className="mt-1 text-xs text-muted-foreground">{t("approveKeepsPendingDisposal")}</p>
-          </Field> : (
+          {values.decision === "approve" ? (
+            <Field label={t("nextStatus")} required hint={t("approveKeepsPendingDisposal")}>
+              <NativeSelect value={values.nextStatusId} required disabled={saving || values.decision === "approve"} onChange={(event) => onFieldChange("nextStatusId", event.target.value)}>
+                {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
+              </NativeSelect>
+            </Field>
+          ) : (
             <div className="rounded-md border border-border bg-background p-3 text-sm text-muted-foreground">
               {t("rejectRestoresPreviousStatus")}
             </div>
           )}
-          {showSaleValue ? <Field label={t("saleValue")}>
-            <input type="number" min="0" step="0.01" value={values.saleValue} disabled={saving} onChange={(event) => onFieldChange("saleValue", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0" />
-          </Field> : null}
-          {showSalvageValue ? <Field label={t("salvageValue")}>
-            <input type="number" min="0" step="0.01" value={values.salvageValue} disabled={saving} onChange={(event) => onFieldChange("salvageValue", event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0" />
-          </Field> : null}
+          {showSaleValue ? (
+            <Field label={t("saleValueBaht")}>
+              <Input type="number" inputMode="decimal" min="0" step="0.01" value={values.saleValue} disabled={saving} onChange={(event) => onFieldChange("saleValue", event.target.value)} />
+            </Field>
+          ) : null}
+          {showSalvageValue ? (
+            <Field label={t("salvageValueBaht")}>
+              <Input type="number" inputMode="decimal" min="0" step="0.01" value={values.salvageValue} disabled={saving} onChange={(event) => onFieldChange("salvageValue", event.target.value)} />
+            </Field>
+          ) : null}
           <div className="md:col-span-2">
-            <Field label={t("approvalRemark")} required={rejectionReasonRequired}>
-              <textarea value={values.approvalRemark} rows={4} maxLength={4000} required={rejectionReasonRequired} disabled={saving} onChange={(event) => onFieldChange("approvalRemark", event.target.value)} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
-              {rejectionReasonRequired ? <p className="mt-1 text-xs text-muted-foreground">{t("rejectionReasonRequired")}</p> : null}
+            <Field label={t("approvalRemark")} required={rejectionReasonRequired} hint={rejectionReasonRequired ? t("rejectionReasonRequired") : undefined}>
+              <Textarea value={values.approvalRemark} rows={4} maxLength={4000} required={rejectionReasonRequired} disabled={saving} onChange={(event) => onFieldChange("approvalRemark", event.target.value)} className="min-h-28" />
             </Field>
           </div>
-          <div className="flex flex-col justify-end gap-2 sm:flex-row md:col-span-2">
-            <button type="button" onClick={closeDialog} disabled={saving} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50 sm:h-10 sm:min-h-0">{tCommon("cancel")}</button>
-            <button type="submit" disabled={saving || (rejectionReasonRequired && !values.approvalRemark.trim())} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:h-10 sm:min-h-0">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              {t("saveDecision")}
-            </button>
-          </div>
-        </div>
+        </AccessibleDialogBody>
+        <AccessibleDialogFooter>
+          <AccessibleDialogCancel />
+          <Button type="submit" busy={saving} disabled={rejectionReasonRequired && !values.approvalRemark.trim()}>
+            <CheckCircle2 aria-hidden="true" />
+            {t("saveDecision")}
+          </Button>
+        </AccessibleDialogFooter>
       </form>
     </AccessibleDialog>
   )
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return <label className="block"><span className="mb-1.5 block text-sm font-medium text-foreground">{label}{required && <span className="ml-1 text-danger">*</span>}</span>{children}</label>
 }
