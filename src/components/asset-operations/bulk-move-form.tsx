@@ -91,7 +91,7 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
                 value={assetQuery}
                 onChange={(event) => setAssetQuery(event.target.value)}
                 placeholder={tCommon("searchSelectPlaceholder")}
-                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none"
               />
             </div>
             <div className="max-h-72 overflow-y-auto rounded-md border border-border bg-background">

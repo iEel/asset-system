@@ -24,9 +24,14 @@
   --secondary-foreground: #0B1D35;
   --muted: #E9EEF5;
   --muted-foreground: #3C4F6B;
+  --faint-foreground: #56677F;
+  --neutral-ink: #2A4468;
   --accent: #EBF0F7;
   --accent-foreground: #0B1D35;
+  --row-hover: #F3F6FB;
   --border: #D7DEE8;
+  --border-soft: #E7EBF1;
+  --control-border: #C3CDDA;
   --input: #7C8BA0;
   --ring: #10858D;
   --success: #1D7A35;
@@ -84,9 +89,14 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-faint-foreground: var(--faint-foreground);
+  --color-neutral-ink: var(--neutral-ink);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-row-hover: var(--row-hover);
   --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-control-border: var(--control-border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-success: var(--success);
@@ -128,8 +138,23 @@
 @theme {
   --color-scrim: rgb(8 49 97 / 0.45);
   --shadow-overlay: 0 12px 32px -8px rgb(8 49 97 / 0.18), 0 2px 6px -2px rgb(8 49 97 / 0.1);
-  /* Only text-sm differs from Tailwind's defaults for every language (20px → 22px). Ratios, so children with an arbitrary font size inherit a ratio, not a fixed px value. */
+  /* Field halos: --ring (#10858D) at 16% and --danger (#B3261E) at 14%. rgb(), not color-mix(), so Tailwind adds no solid fallback ring. tests/design-tokens-contrast.test.ts checks the rgb values against the tokens. */
+  --shadow-field-focus: 0 0 0 4px rgb(16 133 141 / 0.16);
+  --shadow-field-error: 0 0 0 4px rgb(179 38 30 / 0.14);
+  /* 6px for small controls only: sm buttons, segmented buttons, chips and status badges. md/lg/icon buttons and every field keep rounded-md (8px); menus, popovers and toasts use rounded-lg (12px). */
+  --radius-control: 6px;
+  /* text-sm keeps Tailwind's size with a 22px line (20px → 22px) for every language. meta, metric and count are the mockup's extra sizes; metric and count carry their own weight and tracking. Line heights are ratios, so children with an arbitrary font size inherit a ratio, not a fixed px value. meta (20 / 13 = 1.54) is Thai-safe as is; metric and count are for numbers only (always with num), so Thai pages need no override. */
   --text-sm--line-height: calc(22 / 14);
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: calc(20 / 13);
+  --text-metric: 1.75rem;
+  --text-metric--line-height: calc(32 / 28);
+  --text-metric--font-weight: 500;
+  --text-metric--letter-spacing: -0.02em;
+  --text-count: 1.25rem;
+  --text-count--line-height: calc(24 / 20);
+  --text-count--font-weight: 600;
+  --text-count--letter-spacing: -0.01em;
 }
 
 /* Base Styles */
@@ -203,11 +228,32 @@ body {
   font-variant-numeric: tabular-nums lining-nums;
 }
 
-/* Asset tags and document numbers (adopted in phase 2). */
+/* Asset tags, document numbers and serials. Weight 400 only (font-medium 500 for the row's own id); Plex Mono loads no 700. One click selects the whole code, except inside links, buttons, labels and summaries. Never add a text size on the same element: wrap the code in an inner <span className="tag">. */
 @utility tag {
   font-family: var(--font-mono);
   font-size: calc(1em - 1px);
+  font-weight: 400;
   white-space: nowrap;
+  font-variant-numeric: normal;
+  -webkit-user-select: all;
+  user-select: all;
+  :where(a, button, label, summary) & {
+    -webkit-user-select: auto;
+    user-select: auto;
+  }
+}
+
+/* Chevron for native <select> only (never inside getFieldControlClasses, which also styles inputs). 16px, stroke 2.25, 10px from the right edge; the select sets its own pr-9. The stroke is --faint-foreground written out, because a data URI cannot read var(); tests/design-tokens-contrast.test.ts checks it. Forced-colors mode gets the system arrow back. */
+@utility select-chevron {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2356677F' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px 16px;
+  @media (forced-colors: active) {
+    appearance: auto;
+    background-image: none;
+  }
 }
 
 /* Sonner injects its own unlayered CSS; this selector is more specific, so toasts use the app font. */
@@ -232,5 +278,10 @@ body {
   ::selection {
     background-color: var(--primary-border);
     color: var(--foreground);
+  }
+
+  /* One placeholder color for every field: the faint ink (5.77:1 on white) instead of preflight's 50% currentColor (about 3.3:1). Same layer as preflight and later, so it wins; do not add placeholder:text-* classes. */
+  ::placeholder {
+    color: var(--faint-foreground);
   }
 }

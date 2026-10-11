@@ -405,7 +405,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
                   onChange={(event) => setEditDisplayName(event.target.value)}
                   required
                   maxLength={200}
-                  className="h-10 min-h-11 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring"
+                  className="h-10 min-h-11 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </label>
               <fieldset>
@@ -467,7 +467,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
               maxLength={100}
               pattern="[A-Za-z0-9._:-]+"
               placeholder={labels.clientIdPlaceholder}
-              className="h-10 min-h-11 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring"
+              className="h-10 min-h-11 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </label>
           <label className="grid gap-1.5 text-sm font-medium text-foreground">
@@ -478,7 +478,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
               required
               maxLength={200}
               placeholder={labels.displayNamePlaceholder}
-              className="h-10 min-h-11 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring"
+              className="h-10 min-h-11 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </label>
           <fieldset className="lg:col-span-2">

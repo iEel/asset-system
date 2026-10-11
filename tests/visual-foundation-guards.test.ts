@@ -46,8 +46,20 @@ test("line heights are ratios, and Thai pages get room for stacked marks", () =>
     /html:lang\(th\) \{[^}]*--text-xs--line-height: calc\(18 \/ 12\);[^}]*--text-xl--line-height: calc\(30 \/ 20\);[^}]*--text-2xl--line-height: calc\(36 \/ 24\);[^}]*--text-3xl--line-height: calc\(44 \/ 30\);/,
   )
   assert.doesNotMatch(css, /--text-[a-z0-9]+--line-height: \d+px/, "px line heights would be inherited by text-[11px] children")
+  assert.match(css, /--text-meta: 0\.8125rem;\s*--text-meta--line-height: calc\(20 \/ 13\);/)
+  assert.match(css, /--text-metric: 1\.75rem;\s*--text-metric--line-height: calc\(32 \/ 28\);\s*--text-metric--font-weight: 500;\s*--text-metric--letter-spacing: -0\.02em;/)
+  assert.match(css, /--text-count: 1\.25rem;\s*--text-count--line-height: calc\(24 \/ 20\);\s*--text-count--font-weight: 600;\s*--text-count--letter-spacing: -0\.01em;/)
+  const meta = css.match(/--text-meta--line-height: calc\((\d+) \/ (\d+)\);/)
+  assert.ok(meta, "text-meta line height not found")
+  assert.ok(Number(meta[1]) / Number(meta[2]) >= 1.44, "text-meta carries Thai text with no Thai override, so its line must be at least 1.44x the size")
+  const thai = css.match(/html:lang\(th\) \{[^}]*\}/)?.[0]
+  assert.ok(thai, "html:lang(th) block not found")
+  assert.doesNotMatch(thai, /--text-(meta|metric|count)-/, "meta is Thai-safe as is; metric and count hold numbers only")
   assert.match(css, /@utility num \{\s*font-variant-numeric: tabular-nums lining-nums;\s*\}/)
-  assert.match(css, /@utility tag \{/)
+  assert.match(
+    css,
+    /@utility tag \{\s*font-family: var\(--font-mono\);\s*font-size: calc\(1em - 1px\);\s*font-weight: 400;\s*white-space: nowrap;\s*font-variant-numeric: normal;\s*-webkit-user-select: all;\s*user-select: all;\s*:where\(a, button, label, summary\) & \{\s*-webkit-user-select: auto;\s*user-select: auto;\s*\}\s*\}/,
+  )
   assert.match(css, /:root \[data-sonner-toaster\] \{\s*font-family: var\(--font-sans\);\s*\}/)
   assert.match(read("src/components/ui/metric-card.tsx"), /cn\("num mt-2 font-bold"/)
 })
@@ -130,4 +142,55 @@ test("the selected register status tab keeps its underline on desktop and the ro
   assert.doesNotMatch(source, /md:overflow-visible|md:-mb-px/)
   assert.match(source, /data-asset-status-tabs className="[^"]*\boverflow-x-auto\b/)
   assert.match(source, /md:shadow-\[inset_0_-1px_0_var\(--border\)\]/)
+})
+
+test("every field gets one placeholder color, and native selects get a token-colored chevron", () => {
+  const css = globals()
+  assert.match(css, /::placeholder \{\s*color: var\(--faint-foreground\);\s*\}/)
+  const placeholderAt = css.indexOf("::placeholder {")
+  const layerOpen = css.lastIndexOf("@layer base", placeholderAt)
+  assert.ok(layerOpen !== -1 && css.indexOf("\n}", layerOpen) > placeholderAt, "the placeholder rule sits inside @layer base: the same layer as preflight's, later in the file")
+  assert.match(css, /--radius-control: 6px;/)
+  assert.match(
+    css,
+    /@utility select-chevron \{\s*appearance: none;[^}]*@media \(forced-colors: active\) \{\s*appearance: auto;\s*background-image: none;\s*\}\s*\}/,
+    "forced-colors mode gets the system arrow back",
+  )
+})
+
+test("placeholders take their color from the base rule only", () => {
+  assert.deepEqual(findMatches(sources, /placeholder:text-(?!faint-foreground\b)[\w-]+/g), [])
+})
+
+test("the mockup type sizes and the 6px radius are used through their tokens", () => {
+  assert.deepEqual(
+    findMatches(sources, /text-\[(?:13|28)px\]/g, (path) => path === "src/components/assets/asset-label-print.tsx"),
+    [],
+    "use text-meta (13px) or text-metric (28px); the thermal label keeps its own px sizes",
+  )
+  assert.deepEqual(findMatches(sources, /rounded-\[6px\]/g), [], "use rounded-control")
+})
+
+// "Class string" = one double-quoted string on one line, as findMatches reports it.
+const classStrings = findMatches(sources, /"[^"\n]*"/g).map((match) => ({ where: match, text: match.slice(match.indexOf(': "') + 2) }))
+const stringsWhere = (keep: (text: string) => boolean) => classStrings.filter(({ text }) => keep(text)).map(({ where }) => where)
+
+test("big numbers, codes and faint text follow their token rules", () => {
+  assert.deepEqual(
+    stringsWhere((text) => /\btext-(?:metric|count)\b/.test(text) && !/\bnum\b/.test(text)),
+    [],
+    "text-metric and text-count are for numbers only (their line height is not Thai-safe): put num in the same class string",
+  )
+  // The tag utility as its own class (also md:tag), not words like asset-tag-template.
+  const tagClass = /(?:^|[^\w-])tag(?![\w-])/
+  assert.deepEqual(
+    stringsWhere((text) => tagClass.test(text) && (/\bfont-(?:semibold|bold|extrabold|black)\b/.test(text) || /\btext-(?:xs|sm|base|meta|lg)\b/.test(text))),
+    [],
+    "tag is weight 400 or font-medium only (Plex Mono has no 700) and sizes itself 1px under its parent: set the size on a wrapper",
+  )
+  assert.deepEqual(
+    stringsWhere((text) => /\bbg-(?:success|warning|danger|info)-soft\b/.test(text) && /\btext-faint-foreground\b/.test(text)),
+    [],
+    "faint text never sits on a status fill: use the tone ink or text-muted-foreground",
+  )
 })

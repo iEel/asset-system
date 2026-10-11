@@ -1,5 +1,18 @@
 import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { extendTailwindMerge } from "tailwind-merge"
+
+// tailwind-merge only knows Tailwind's default theme. Register the sizes, radius and shadows that
+// src/app/globals.css adds; otherwise cn() reads text-meta as a color (and drops the real color next
+// to it) and keeps rounded-md beside rounded-control. tests/class-merge.test.ts pins this.
+const twMerge = extendTailwindMerge({
+  extend: {
+    theme: {
+      text: ["meta", "metric", "count"],
+      radius: ["control"],
+      shadow: ["overlay", "field-focus", "field-error"],
+    },
+  },
+})
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

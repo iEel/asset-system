@@ -228,7 +228,7 @@ export function AssetLabelPrint({
                 onChange={(event) => setPrintReason(event.target.value)}
                 placeholder={translations.printReasonPlaceholder}
                 maxLength={500}
-                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+                className="min-w-0 flex-1 bg-transparent outline-none"
               />
             </label>
             <label className="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm sm:h-10 sm:w-auto">

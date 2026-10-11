@@ -79,7 +79,7 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
             setUsername(event.target.value)
             setError("")
           }}
-          className="h-11 w-full rounded-md border border-border bg-surface px-3 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 sm:h-10 sm:text-sm"
+          className="h-11 w-full rounded-md border border-border bg-surface px-3 text-base text-foreground outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 sm:h-10 sm:text-sm"
           required
           autoFocus
         />
@@ -101,7 +101,7 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
               setPassword(event.target.value)
               setError("")
             }}
-            className="h-11 w-full rounded-md border border-border bg-surface px-3 pr-12 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 sm:h-10 sm:text-sm"
+            className="h-11 w-full rounded-md border border-border bg-surface px-3 pr-12 text-base text-foreground outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 sm:h-10 sm:text-sm"
             required
           />
           <button
