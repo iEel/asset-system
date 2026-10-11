@@ -1,9 +1,10 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
+import { z } from "zod"
 
 import { getApiErrorKey } from "../src/lib/api-error-catalog.ts"
-import { hideUnexpectedError, isExposableError, unexpectedErrorText } from "../src/lib/api-error-exposure.ts"
+import { hideUnexpectedError, isExposableError, unexpectedErrorText, validationFailedBody } from "../src/lib/api-error-exposure.ts"
 import {
   createComponentTransactionSnapshot,
   maxAssetTransactionSnapshotComponents,
@@ -65,6 +66,31 @@ test("the cancellation error response hides unexpected errors the same way", () 
   assert.match(source, /if \(!isExposableError\(error\)\)/)
   assert.match(source, /\{ error: hideUnexpectedError\(error\)\.text \}, \{ status: 500 \}/)
   assert.match(source, /\{ error: error\.message \}, \{ status: 400 \}/)
+})
+
+test("a ZodError reaches the browser as one fixed message, never the JSON of its issues (spec 2C §8.5)", () => {
+  const parsed = z.object({ name: z.string().min(1) }).safeParse({ name: "" })
+  assert.equal(parsed.success, false)
+  const body = validationFailedBody(parsed.error)
+  assert.deepEqual(body, { error: "Invalid request data", code: "VALIDATION_FAILED" })
+  assert.doesNotMatch(JSON.stringify(body), /too_small|"path"|"origin"/)
+})
+
+test("errors that are not a ZodError keep the existing rules", () => {
+  assert.equal(validationFailedBody(new Error("Asset not found")), null)
+  assert.equal(validationFailedBody(new TypeError("Cannot read properties of undefined (reading 'id')")), null)
+  assert.equal(validationFailedBody("boom"), null)
+  assert.equal(validationFailedBody(null), null)
+})
+
+test("both error responses answer a ZodError with the fixed body before any other rule", () => {
+  for (const path of ["src/lib/api-response.ts", "src/lib/asset-transaction-cancellation-route.ts"]) {
+    const source = readFileSync(path, "utf8")
+    const validation = source.indexOf("validationFailedBody(error)")
+    assert.ok(validation !== -1, `${path}: validationFailedBody(error) is missing`)
+    assert.ok(validation < source.indexOf("if (!isExposableError(error))"), `${path}: check the ZodError before isExposableError`)
+    assert.match(source, /if \(validation\) return NextResponse\.json\(validation, \{ status: 400 \}\)/, path)
+  }
 })
 
 test("asset transaction snapshot errors are deliberate and stay exposable", () => {

@@ -4281,6 +4281,7 @@
     "disposalEvidenceExceptionReasonRequired": "Enter a reason for the missing evidence",
     "unknown": "Something went wrong",
     "ldapSyncFailed": "LDAP sync failed",
-    "notificationDigestFailed": "Notification digest failed"
+    "notificationDigestFailed": "Notification digest failed",
+    "validationFailed": "Invalid request data"
   }
 }

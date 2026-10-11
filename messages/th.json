@@ -4281,6 +4281,7 @@
     "approvalToggleInvalid": "ค่าเปิด/ปิดของการอนุมัติไม่ถูกต้อง",
     "unknown": "เกิดข้อผิดพลาด",
     "ldapSyncFailed": "ซิงก์ LDAP ไม่สำเร็จ",
-    "notificationDigestFailed": "ส่งสรุปแจ้งเตือนไม่สำเร็จ"
+    "notificationDigestFailed": "ส่งสรุปแจ้งเตือนไม่สำเร็จ",
+    "validationFailed": "ข้อมูลที่กรอกไม่ครบหรือไม่ถูกต้อง ตรวจสอบแล้วลองอีกครั้ง"
   }
 }

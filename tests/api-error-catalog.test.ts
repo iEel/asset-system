@@ -28,6 +28,18 @@ test("on the English site the detail line disappears when it would repeat the me
   assert.deepEqual(describeApiError("Asset not found", english), { message: "Asset not found", detail: null })
 })
 
+test("the fixed validation message and its code read as one Thai line (spec 2C §8.5)", () => {
+  assert.equal(getApiErrorKey("Invalid request data"), "validationFailed")
+  assert.equal(getApiErrorKey("VALIDATION_FAILED"), "validationFailed")
+  assert.deepEqual(describeApiError("Invalid request data", thai), { message: "TH:validationFailed", detail: "Invalid request data" })
+  const text = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).apiErrors.validationFailed as string
+  assert.equal(text("th"), "ข้อมูลที่กรอกไม่ครบหรือไม่ถูกต้อง ตรวจสอบแล้วลองอีกครั้ง")
+  assert.equal(text("en"), "Invalid request data")
+  // The English text equals the server message, so the English site shows no second line.
+  const english = { lookup: () => text("en"), unknown: "Something went wrong", empty: "Something went wrong" }
+  assert.deepEqual(describeApiError("Invalid request data", english), { message: "Invalid request data", detail: null })
+})
+
 // Files whose errors never reach a browser as response text. Each entry needs a reason.
 const internalErrorFiles: Record<string, string> = {
   "src/lib/manual-migration-ledger.ts": "CLI migration tool output",

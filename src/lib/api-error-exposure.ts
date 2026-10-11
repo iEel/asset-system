@@ -1,6 +1,7 @@
 // Decides whether an error's message may be sent to the browser (review finding S9).
 // Messages the code throws on purpose are fine; database, filesystem and programming errors are not.
 import { randomUUID } from "node:crypto"
+import { ZodError } from "zod"
 
 const builtInProgrammingErrors = [TypeError, RangeError, ReferenceError, SyntaxError, EvalError, URIError]
 
@@ -23,4 +24,13 @@ export function hideUnexpectedError(error: unknown) {
   const reference = randomUUID().replaceAll("-", "").slice(0, 8)
   console.error(`[api error] ref ${reference}`, error)
   return { reference, text: unexpectedErrorText(reference) }
+}
+
+/**
+ * A ZodError's message is the JSON of every issue (zod 4), and forms showed it to users as raw text. Send one fixed
+ * message instead, with a code that forms can match (spec 2C §8.5). The V track adds fieldErrors to this body.
+ */
+export function validationFailedBody(error: unknown) {
+  if (!(error instanceof ZodError)) return null
+  return { error: "Invalid request data", code: "VALIDATION_FAILED" } as const
 }

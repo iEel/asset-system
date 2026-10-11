@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server"
-import { hideUnexpectedError, isExposableError } from "@/lib/api-error-exposure"
+import { hideUnexpectedError, isExposableError, validationFailedBody } from "@/lib/api-error-exposure"
 
 export function errorResponse(error: unknown, fallbackStatus = 500) {
+  const validation = validationFailedBody(error)
+  if (validation) return NextResponse.json(validation, { status: 400 })
   if (!isExposableError(error)) {
     return NextResponse.json({ error: hideUnexpectedError(error).text }, { status: 500 })
   }
