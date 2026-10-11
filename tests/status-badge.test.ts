@@ -81,9 +81,10 @@ test("each meaning has its own marker shape, kept in high-contrast mode", () => 
   }
 })
 
-test("StatusBadge takes no database color and gives the variants only its tone", () => {
+test("StatusBadge takes no database color and no size, and gives the variants only its tone", () => {
   const source = readFileSync("src/components/ui/status-badge.tsx", "utf8").replace(/\r\n/g, "\n")
   assert.doesNotMatch(source, /color\?:|getStatusDotColor|style=/)
+  assert.doesNotMatch(source, /\bsize\b/, "StatusBadge has one size, so it takes no size prop")
   assert.match(source, /className=\{statusMarkerVariants\(\{ tone: resolvedTone \}\)\}/)
   assert.match(source, /className=\{cn\(statusBadgeVariants\(\{ tone: resolvedTone \}\), className\)\}/)
 })

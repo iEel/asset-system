@@ -62,5 +62,5 @@ export default async function DisposalBatchHistoryPage({ params }: { params: Pro
 
 function BatchStatus({ status, label }: { status: string; label: string }) {
   const tone = status === "disposed" ? "success" : status === "rejected" ? "danger" : status === "approved" ? "info" : "warning"
-  return <StatusBadge label={label} tone={tone} size="xs" />
+  return <StatusBadge label={label} tone={tone} />
 }

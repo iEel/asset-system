@@ -211,7 +211,7 @@ export function GlobalSearch() {
                     <span className="flex min-w-0 flex-wrap items-center gap-2">
                       <span className="min-w-0 truncate font-medium text-foreground">{result.title}</span>
                       {result.badge.label !== result.typeLabel ? (
-                        <StatusBadge size="xs" tone="neutral" label={result.badge.label} />
+                        <StatusBadge tone="neutral" label={result.badge.label} />
                       ) : null}
                       <span className="ml-auto shrink-0 text-meta text-faint-foreground">{result.typeLabel}</span>
                     </span>

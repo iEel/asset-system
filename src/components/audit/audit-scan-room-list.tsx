@@ -111,7 +111,7 @@ export function AuditScanRoomList({
                     <span className="block truncate text-xs text-muted-foreground">{secondLine(item)}</span>
                   </span>
                   {badge ? (
-                    <StatusBadge size="xs" label={t(badgeLabelKey[badge])} tone={badgeTone[badge]} className="shrink-0" />
+                    <StatusBadge label={t(badgeLabelKey[badge])} tone={badgeTone[badge]} className="shrink-0" />
                   ) : (
                     <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                   )}

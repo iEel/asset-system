@@ -341,8 +341,8 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                         <td className="min-w-56 px-4 py-3 text-foreground">{asset.name}</td>
                         <td className="min-w-44 px-4 py-3 text-muted-foreground">{asset.category.code} - {asset.category.name}</td>
                         <td className="min-w-44 px-4 py-3 text-muted-foreground">{asset.currentLocation.code} - {asset.currentLocation.name}</td>
-                        <td className="whitespace-nowrap px-4 py-3"><StatusBadge label={asset.status.nameTh} tone="info" size="xs" /></td>
-                        <td className="whitespace-nowrap px-4 py-3"><StatusBadge label={asset.condition.nameTh} tone="muted" size="xs" /></td>
+                        <td className="whitespace-nowrap px-4 py-3"><StatusBadge label={asset.status.nameTh} tone="info" /></td>
+                        <td className="whitespace-nowrap px-4 py-3"><StatusBadge label={asset.condition.nameTh} tone="muted" /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -392,7 +392,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                         <td className="min-w-36 px-4 py-3 text-muted-foreground">{checkout.checkedOutBy || "-"}</td>
                         <td className="min-w-36 px-4 py-3 text-muted-foreground">{checkout.checkins[0]?.receiveBy || "-"}</td>
                         <td className="whitespace-nowrap px-4 py-3">
-                          <StatusBadge label={checkout.isReturned ? t("handoverReturned") : t("handoverOpen")} tone={checkout.isReturned ? "success" : "warning"} size="xs" />
+                          <StatusBadge label={checkout.isReturned ? t("handoverReturned") : t("handoverOpen")} tone={checkout.isReturned ? "success" : "warning"} />
                         </td>
                       </tr>
                     ))}
@@ -436,7 +436,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                         <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(ticket.reportedDate)}</td>
                         <td className="min-w-56 px-4 py-3 text-muted-foreground"><span className="line-clamp-2">{ticket.problem}</span></td>
                         <td className="whitespace-nowrap px-4 py-3">
-                          <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, maintenanceStatusLabels)} tone={getMaintenanceStatusTone(ticket.repairStatus)} size="xs" />
+                          <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, maintenanceStatusLabels)} tone={getMaintenanceStatusTone(ticket.repairStatus)} />
                         </td>
                       </tr>
                     ))}
@@ -638,7 +638,7 @@ function MiniList({
                   <div className="truncate text-sm font-semibold text-foreground">{item.title}</div>
                   <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.meta}</div>
                 </div>
-                {item.badge ? <StatusBadge label={item.badge} tone={item.tone} size="xs" /> : null}
+                {item.badge ? <StatusBadge label={item.badge} tone={item.tone} /> : null}
               </div>
             </Link>
           ))}

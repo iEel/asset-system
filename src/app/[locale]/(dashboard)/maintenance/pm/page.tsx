@@ -73,9 +73,9 @@ export default async function MaintenancePlansPage({ params }: Props) {
                     <div className="mt-1">{t("pmExternalProvider")}: {plan.vendor ? `${plan.vendor.code} - ${plan.vendor.name}` : t("pmNoExternalProvider")}</div>
                   </div>
                   <div className="flex min-w-0 flex-wrap items-center gap-2 md:justify-end">
-                    {isActivePlan ? <StatusBadge label={t(`pmDueState.${dueState}`)} tone={dueTone} size="xs" /> : null}
-                    <StatusBadge label={t(`pmFrequencies.${plan.frequency}`)} tone="muted" size="xs" />
-                    <StatusBadge label={t(`pmPlanStates.${plan.planState}`)} tone={isActivePlan ? "success" : plan.planState === "paused" ? "warning" : "muted"} size="xs" />
+                    {isActivePlan ? <StatusBadge label={t(`pmDueState.${dueState}`)} tone={dueTone} /> : null}
+                    <StatusBadge label={t(`pmFrequencies.${plan.frequency}`)} tone="muted" />
+                    <StatusBadge label={t(`pmPlanStates.${plan.planState}`)} tone={isActivePlan ? "success" : plan.planState === "paused" ? "warning" : "muted"} />
                     {canCreate && isActivePlan ? (
                       <Link href={`/${locale}/maintenance/new?planId=${plan.id}`} className="inline-flex min-h-11 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary-hover">
                         {tRecord("pmRecordDone")}

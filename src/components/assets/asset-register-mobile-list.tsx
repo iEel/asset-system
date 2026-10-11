@@ -59,12 +59,12 @@ function MobileAssetRow({ asset, permissions, detailHref, editHref, cloneHref, o
         <p className="truncate text-sm text-foreground">{asset.name}</p>
         <div className="mt-0.5 flex min-w-0 flex-nowrap items-center gap-2 text-xs leading-5">
           <span className="min-w-0 truncate text-muted-foreground">{asset.currentLocation}</span>
-          <StatusBadge size="xs" label={asset.status.label} tone={getAssetStateTone(asset.status.value)} className="shrink-0" />
+          <StatusBadge label={asset.status.label} tone={getAssetStateTone(asset.status.value)} className="shrink-0" />
           {needsFieldAttention(asset) ? (
             <>
-              <StatusBadge size="xs" label={asset.condition.label} tone={getAssetStateTone(asset.condition.value)} className="shrink-0" />
+              <StatusBadge label={asset.condition.label} tone={getAssetStateTone(asset.condition.value)} className="shrink-0" />
               {asset.ownershipType.value === "shared" ? (
-                <StatusBadge size="xs" label={asset.ownershipType.label} tone="success" className="shrink-0" />
+                <StatusBadge label={asset.ownershipType.label} tone="success" className="shrink-0" />
               ) : null}
             </>
           ) : null}

@@ -116,7 +116,6 @@ export default async function StorageGovernancePage({ params }: StoragePageProps
                       <StatusBadge
                         label={action.action === "archive_orphan_file" ? t("archiveOrphanFile") : t("reviewMissingDbFile")}
                         tone={action.action === "archive_orphan_file" ? "warning" : "danger"}
-                        size="xs"
                       />
                     </td>
                     <td className="break-all px-4 py-3 text-muted-foreground">
@@ -219,7 +218,7 @@ function StorageReviewList({
                     <div className="truncate text-sm font-semibold text-foreground">{item.originalName}</div>
                     <div className="mt-1 text-xs text-muted-foreground">{item.module} · {item.referenceId}</div>
                   </div>
-                  <StatusBadge label={duplicate ? t("duplicatePath") : t("missingPath")} tone={duplicate ? "warning" : "danger"} size="xs" />
+                  <StatusBadge label={duplicate ? t("duplicatePath") : t("missingPath")} tone={duplicate ? "warning" : "danger"} />
                 </div>
                 <div className="mt-2 break-all text-xs text-muted-foreground">{item.filePath || "-"}</div>
               </div>

@@ -156,7 +156,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge label={overdue ? t("pmOverdue") : t("pmDueOn", { date: formatDate(plan.nextDueDate) })} tone={overdue ? "danger" : "warning"} size="xs" />
+                    <StatusBadge label={overdue ? t("pmOverdue") : t("pmDueOn", { date: formatDate(plan.nextDueDate) })} tone={overdue ? "danger" : "warning"} />
                     {canCreate ? (
                       <Link href={appendOperationalReturnTo(`/${locale}/maintenance/new?planId=${plan.id}`, returnHref)} className="inline-flex min-h-11 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary-hover">
                         {t("pmRecordDone")}
@@ -229,7 +229,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                       <div className="text-sm font-semibold text-foreground">{record.asset.assetTag}</div>
                       <div className="truncate text-xs text-muted-foreground">{record.asset.name}</div>
                     </div>
-                    <StatusBadge label={t(`status.${toRepairRecordStatus(record.repairStatus)}`)} tone={getRepairRecordStatusTone(record.repairStatus)} size="xs" />
+                    <StatusBadge label={t(`status.${toRepairRecordStatus(record.repairStatus)}`)} tone={getRepairRecordStatusTone(record.repairStatus)} />
                   </div>
                   <p className="mt-2 line-clamp-2 text-sm text-foreground">{record.problem}</p>
                   <div className="mt-2 text-xs text-muted-foreground">
@@ -264,7 +264,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                       </td>
                       <td className="min-w-72 px-4 py-3 text-foreground">{record.problem}</td>
                       <td className="whitespace-nowrap px-4 py-3">
-                        <StatusBadge label={t(`status.${toRepairRecordStatus(record.repairStatus)}`)} tone={getRepairRecordStatusTone(record.repairStatus)} size="xs" />
+                        <StatusBadge label={t(`status.${toRepairRecordStatus(record.repairStatus)}`)} tone={getRepairRecordStatusTone(record.repairStatus)} />
                       </td>
                       <td className={`whitespace-nowrap px-4 py-3 ${record.outcome === "beyond_repair" ? "text-warning" : record.outcome === "usable" ? "text-success" : "text-muted-foreground"}`}>
                         {outcomeLabel(record.outcome, record.repairStatus)}

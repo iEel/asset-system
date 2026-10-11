@@ -349,7 +349,7 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
                   <div className="flex flex-wrap items-center gap-2"><Link href={detailHref} className="break-words text-sm font-semibold text-foreground hover:text-primary">{request.disposalNo}</Link>{request.batch ? <Link href={`/${locale}/disposal/batches/${request.batch.id}`} className="text-xs font-medium text-primary hover:underline">{request.batch.batchNo}</Link> : null}</div>
                   <div><div className="break-words text-sm font-medium text-foreground">{request.asset.assetTag}</div><div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{request.asset.name}</div></div>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2"><DisposalStageBadge stage={stage} label={stageLabels[stage]} /><StatusBadge label={t(`types.${request.disposalType}`)} tone="muted" size="xs" /></div>
+                <div className="mt-3 flex flex-wrap gap-2"><DisposalStageBadge stage={stage} label={stageLabels[stage]} /><StatusBadge label={t(`types.${request.disposalType}`)} tone="muted" /></div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-sm"><MobileDisposalField label={t("requestedBy")} value={request.requestedBy.fullNameTh} /><MobileDisposalField label={t("requestDate")} value={formatDateTime(request.requestDate)} /></div>
                 <details className="mt-3 rounded-md border border-border bg-surface px-3 py-2"><summary className="min-h-9 cursor-pointer text-sm font-medium text-primary">{t("moreDetails")}</summary><dl className="grid gap-3 border-t border-border pt-3 text-sm"><MobileDisposalField label={t("reason")} value={request.reason} /><MobileDisposalField label={t("approver")} value={request.approver ? `${request.approver.code} - ${request.approver.fullNameTh}` : "-"} /><MobileDisposalField label={t("value")} value={getRequestValue(request)} /></dl></details>
                 {bulkApprovalEnabled ? <div className="flex min-h-11 items-center justify-end" data-no-row-click><DisposalBulkApprovalCheckbox requestId={request.id} variant="mobile" /></div> : bulkExecutionEnabled ? <div className="flex min-h-11 items-center justify-end" data-no-row-click><DisposalBulkExecutionCheckbox requestId={request.id} variant="mobile" /></div> : null}
@@ -409,7 +409,7 @@ function DisposalEmptyState({ locale, t, hasActiveFilters, canCreate }: { locale
 
 function DisposalStageBadge({ stage, label }: { stage: DisposalStage; label: string }) {
   const tone = stage === "complete" ? "success" : stage === "rejected" ? "danger" : stage === "awaiting_execution" ? "info" : "warning"
-  return <StatusBadge label={label} tone={tone} size="xs" />
+  return <StatusBadge label={label} tone={tone} />
 }
 
 type DisposalActionRequest = { id: string; disposalNo: string; disposalType: string; requestStatus: string; requestedById: string; approverId: string | null; batchId: string | null; createdBy: string; saleValue: { toString(): string } | number | null; salvageValue: { toString(): string } | number | null; effectiveEvidenceCount: number }

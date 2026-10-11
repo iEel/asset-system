@@ -611,7 +611,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
             <p className="mt-1 text-sm text-muted-foreground">{resultListDescription}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge label={resultFilterLabels[resultListState.result]} status={resultListState.result} size="sm" />
+            <StatusBadge label={resultFilterLabels[resultListState.result]} status={resultListState.result} />
             <span className="rounded-md border border-border bg-background px-3 py-1 text-sm text-muted-foreground">
               {resultListTotal} {t("items")}
             </span>
@@ -678,8 +678,8 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                     />
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <StatusBadge label={item.auditStatusLabel} status={item.auditStatus} size="xs" />
-                    <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} size="xs" />
+                    <StatusBadge label={item.auditStatusLabel} status={item.auditStatus} />
+                    <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} />
                   </div>
                   {!isRoundReadOnly ? (
                     <div className="mt-3 flex justify-end">
@@ -753,10 +753,10 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                         {item.asset.custodian ? `${item.asset.custodian.code} - ${item.asset.custodian.fullNameTh}` : "-"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        <StatusBadge label={item.auditStatusLabel} status={item.auditStatus} size="xs" />
+                        <StatusBadge label={item.auditStatusLabel} status={item.auditStatus} />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} size="xs" />
+                        <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         {!isRoundReadOnly ? (

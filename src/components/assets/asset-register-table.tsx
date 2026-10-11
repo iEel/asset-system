@@ -644,17 +644,17 @@ export function AssetRegisterTable({
                   {visibleColumns.has("custodian") && <td className={`${cellClasses} truncate text-muted-foreground`} title={asset.custodian ?? undefined}>{asset.custodian || "-"}</td>}
                   {visibleColumns.has("ownershipType") && (
                     <td className={cellClasses}>
-                      <StatusBadge size="xs" label={asset.ownershipType.label} tone={ownershipTypeTone(asset.ownershipType.value)} />
+                      <StatusBadge label={asset.ownershipType.label} tone={ownershipTypeTone(asset.ownershipType.value)} />
                     </td>
                   )}
                   {visibleColumns.has("status") && (
                     <td className={cellClasses}>
-                      <StatusBadge size="xs" label={asset.status.label} tone={getAssetStateTone(asset.status.value)} />
+                      <StatusBadge label={asset.status.label} tone={getAssetStateTone(asset.status.value)} />
                     </td>
                   )}
                   {visibleColumns.has("condition") && (
                     <td className={cellClasses}>
-                      <StatusBadge size="xs" label={asset.condition.label} tone={getAssetStateTone(asset.condition.value)} />
+                      <StatusBadge label={asset.condition.label} tone={getAssetStateTone(asset.condition.value)} />
                     </td>
                   )}
                   {visibleColumns.has("purchasePrice") && <td className={`${cellClasses} truncate text-muted-foreground`}>{formatCurrency(asset.purchasePrice)}</td>}

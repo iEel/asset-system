@@ -15,8 +15,6 @@ export function StatusBadge({
   label: string
   status?: string | null
   tone?: StatusTone | string
-  /** @deprecated Has no effect: every StatusBadge is the same 22px size. The next commit removes it with its call-site attributes. */
-  size?: "xs" | "sm"
   className?: string
 }) {
   const resolvedTone: StatusTone =

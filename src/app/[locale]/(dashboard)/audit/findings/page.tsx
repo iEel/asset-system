@@ -218,7 +218,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
             <h2 className="text-base font-semibold text-foreground">{t("resolutionTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("resolutionHelp")}</p>
           </div>
-          <StatusBadge label={resolutionFilterLabels[status]} status={status} size="sm" />
+          <StatusBadge label={resolutionFilterLabels[status]} status={status} />
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {resolutionSummaryItems.map((item) => (
@@ -651,7 +651,7 @@ function ResolutionStateBadge({ state, labels }: { state: ResolutionState; label
     resolved: "primary",
   }
 
-  return <StatusBadge label={labels[state]} tone={toneByState[state]} size="xs" />
+  return <StatusBadge label={labels[state]} tone={toneByState[state]} />
 }
 
 function buildAuditFindingsHref(
@@ -678,9 +678,9 @@ function Info({ label, value }: { label: string; value?: string | null }) {
 }
 
 function ReviewStatusBadge({ status, label }: { status: string; label: string }) {
-  return <StatusBadge label={label} status={status} size="xs" />
+  return <StatusBadge label={label} status={status} />
 }
 
 function ActionStatusBadge({ status, label }: { status: string; label: string }) {
-  return <StatusBadge label={label} status={status} size="xs" />
+  return <StatusBadge label={label} status={status} />
 }

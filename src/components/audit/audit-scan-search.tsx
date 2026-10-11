@@ -167,13 +167,13 @@ export function AuditScanSearchResults({
                       </span>
                     </span>
                     {badge === "queued" ? (
-                      <StatusBadge size="xs" label={t("badgeQueued")} tone="muted" className="shrink-0" />
+                      <StatusBadge label={t("badgeQueued")} tone="muted" className="shrink-0" />
                     ) : badge ? (
-                      <StatusBadge size="xs" label={t(badge === "found" ? "badgeFound" : badge === "mismatch" ? "badgeMismatch" : badge === "not_found" ? "badgeNotFound" : "badgeOutOfScope")} tone={badge === "found" ? "success" : badge === "mismatch" ? "warning" : badge === "not_found" ? "danger" : "info"} className="shrink-0" />
+                      <StatusBadge label={t(badge === "found" ? "badgeFound" : badge === "mismatch" ? "badgeMismatch" : badge === "not_found" ? "badgeNotFound" : "badgeOutOfScope")} tone={badge === "found" ? "success" : badge === "mismatch" ? "warning" : badge === "not_found" ? "danger" : "info"} className="shrink-0" />
                     ) : elsewhere ? (
-                      <StatusBadge size="xs" label={t("inLocation", { location: locationLabels.get(match.item.expectedLocationId) ?? match.item.expectedLocationId })} tone="warning" className="max-w-40 shrink-0" />
+                      <StatusBadge label={t("inLocation", { location: locationLabels.get(match.item.expectedLocationId) ?? match.item.expectedLocationId })} tone="warning" className="max-w-40 shrink-0" />
                     ) : (
-                      <StatusBadge size="xs" label={t("badgePending")} tone="muted" className="shrink-0" />
+                      <StatusBadge label={t("badgePending")} tone="muted" className="shrink-0" />
                     )}
                   </button>
                 </li>

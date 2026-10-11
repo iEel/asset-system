@@ -212,7 +212,7 @@ function ReviewTableRow({ row, locale, labels, issueTypes, canEdit, onAction }: 
 }
 
 function ReviewMobileCard({ row, locale, labels, issueTypes, canEdit, onAction }: RowProps) {
-  return <article className="rounded-md border border-border bg-background p-4"><div className="flex items-start justify-between gap-3"><AssetIdentity row={row} locale={locale} labels={labels} /><StatusBadge label={severityLabel(row.severity, labels)} tone={severityTone(row.severity)} size="xs" /></div><div className="mt-3"><StateSummary row={row} locale={locale} labels={labels} /></div><div className="mt-3 border-t border-border pt-3"><IssueSummary row={row} labels={labels} issueTypes={issueTypes} /></div><p className="mt-3 text-xs text-muted-foreground">{labels.lastDetected}: {formatDate(row.lastDetectedAt, locale)}</p><div className="mt-3"><ReviewActions row={row} canEdit={canEdit} labels={labels} onAction={onAction} /></div></article>
+  return <article className="rounded-md border border-border bg-background p-4"><div className="flex items-start justify-between gap-3"><AssetIdentity row={row} locale={locale} labels={labels} /><StatusBadge label={severityLabel(row.severity, labels)} tone={severityTone(row.severity)} /></div><div className="mt-3"><StateSummary row={row} locale={locale} labels={labels} /></div><div className="mt-3 border-t border-border pt-3"><IssueSummary row={row} labels={labels} issueTypes={issueTypes} /></div><p className="mt-3 text-xs text-muted-foreground">{labels.lastDetected}: {formatDate(row.lastDetectedAt, locale)}</p><div className="mt-3"><ReviewActions row={row} canEdit={canEdit} labels={labels} onAction={onAction} /></div></article>
 }
 
 type RowProps = { row: ReviewRow; locale: string; labels: Labels; issueTypes: Record<string, string>; canEdit: boolean; onAction: (mode: "resolve" | "dismiss") => void }
@@ -226,7 +226,7 @@ function StateSummary({ row, locale, labels }: Pick<RowProps, "row" | "locale" |
 }
 
 function IssueSummary({ row, labels, issueTypes }: Pick<RowProps, "row" | "labels" | "issueTypes">) {
-  return <div className="flex items-start gap-2"><AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${row.severity === "critical" ? "text-danger" : row.severity === "warning" ? "text-warning" : "text-info"}`} /><div><p className="font-medium text-foreground">{issueTypes[row.issueType] ?? row.issueType}</p><StatusBadge label={severityLabel(row.severity, labels)} tone={severityTone(row.severity)} size="xs" /></div></div>
+  return <div className="flex items-start gap-2"><AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${row.severity === "critical" ? "text-danger" : row.severity === "warning" ? "text-warning" : "text-info"}`} /><div><p className="font-medium text-foreground">{issueTypes[row.issueType] ?? row.issueType}</p><StatusBadge label={severityLabel(row.severity, labels)} tone={severityTone(row.severity)} /></div></div>
 }
 
 function ReviewActions({ row, canEdit, labels, onAction }: Pick<RowProps, "row" | "canEdit" | "labels" | "onAction">) {

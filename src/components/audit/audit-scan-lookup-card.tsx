@@ -70,7 +70,7 @@ export function AuditScanLookupCard({
                     <span className="block truncate text-sm font-semibold">{match.assetTag}</span>
                     <span className="block truncate text-xs text-muted-foreground">{match.title}</span>
                   </span>
-                  <StatusBadge size="xs" label={match.inRound ? t("lookupInRound") : t("lookupNotInRound")} tone={match.inRound ? "info" : "muted"} className="shrink-0" />
+                  <StatusBadge label={match.inRound ? t("lookupInRound") : t("lookupNotInRound")} tone={match.inRound ? "info" : "muted"} className="shrink-0" />
                 </button>
               </li>
             ))}

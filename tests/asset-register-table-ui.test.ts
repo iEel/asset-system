@@ -112,8 +112,8 @@ test("desktop rows use small thumbnails, one-line cells and shared status badges
   assert.match(source, /<div className="truncate font-medium" title=\{asset\.name\}>/)
   assert.match(source, /title=\{asset\.currentLocation\}/)
   assert.match(source, /title=\{asset\.custodian \?\? undefined\}/)
-  assert.match(source, /<StatusBadge size="xs" label=\{asset\.status\.label\} tone=\{getAssetStateTone\(asset\.status\.value\)\}/)
-  assert.match(source, /<StatusBadge size="xs" label=\{asset\.condition\.label\} tone=\{getAssetStateTone\(asset\.condition\.value\)\}/)
+  assert.match(source, /<StatusBadge label=\{asset\.status\.label\} tone=\{getAssetStateTone\(asset\.status\.value\)\}/)
+  assert.match(source, /<StatusBadge label=\{asset\.condition\.label\} tone=\{getAssetStateTone\(asset\.condition\.value\)\}/)
   assert.doesNotMatch(source, /function StatusPill/)
 })
 
