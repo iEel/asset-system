@@ -124,3 +124,9 @@ test("the check-in photo picker explains itself before a pick and lists the queu
     assert.equal(checkin.removePhoto, undefined, `${locale}.checkin.removePhoto has no reader and is removed`)
   }
 })
+
+test("the checkout photo sits in Field directly, so no label is nested in another (2C batch 1b)", () => {
+  const source = readFileSync("src/components/asset-operations/checkout-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /<Field label=\{t\("photoBefore"\)\}>\s*<FileDropzone/)
+  assert.doesNotMatch(source, /<label/)
+})

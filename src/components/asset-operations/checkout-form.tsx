@@ -3,16 +3,24 @@
 import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Loader2, Save } from "lucide-react"
+import { Save } from "lucide-react"
 import { toast } from "sonner"
 import { SignaturePad } from "@/components/asset-operations/signature-pad"
+import { Button } from "@/components/ui/button"
+import { ChoiceCard } from "@/components/ui/choice-card"
+import { Field, FieldRequiredMark } from "@/components/ui/field"
+import { fieldLabelClasses } from "@/components/ui/field-variants"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
 import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { Textarea } from "@/components/ui/textarea"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
 import type { AssetHandoverMode } from "@/lib/asset-handover-mode"
+import { cn } from "@/lib/utils"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string; disabled?: boolean }
@@ -227,49 +235,38 @@ export function CheckoutForm({
         />
         <div className="md:col-span-2">
           {values.checkoutType === "user" ? (
-            <fieldset>
-              <legend className="mb-2 text-sm font-medium text-foreground">
+            <fieldset className="min-w-0">
+              <legend className={cn(fieldLabelClasses, "mb-1.5")}>
                 {t("handoverMode")}
-                <span className="ml-1 text-danger">*</span>
+                <FieldRequiredMark />
               </legend>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {([
                   ["permanent_assignment", t("permanentAssignment"), t("permanentAssignmentHelp")],
                   ["temporary_loan", t("temporaryLoan"), t("temporaryLoanHelp")],
-                ] as const).map(([mode, label, help]) => {
-                  const selected = values.handoverMode === mode
-                  return (
-                    <label
-                      key={mode}
-                      className={`flex min-h-16 cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${
-                        selected ? "border-primary bg-primary-soft" : "border-border bg-background hover:border-input"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="handoverModeChoice"
-                        value={mode}
-                        checked={selected}
-                        required
-                        className="mt-1 h-4 w-4 accent-primary"
-                        onChange={() => setValues((current) => ({
-                          ...current,
-                          handoverMode: mode,
-                          expectedReturnDate: mode === "permanent_assignment" ? "" : current.expectedReturnDate,
-                        }))}
-                      />
-                      <span className="min-w-0">
-                        <span className="block text-sm font-medium text-foreground">{label}</span>
-                        <span className="mt-1 block text-sm text-muted-foreground">{help}</span>
-                      </span>
-                    </label>
-                  )
-                })}
+                ] as const).map(([mode, label, help]) => (
+                  <ChoiceCard
+                    key={mode}
+                    type="radio"
+                    name="handoverModeChoice"
+                    value={mode}
+                    checked={values.handoverMode === mode}
+                    required
+                    label={label}
+                    description={help}
+                    onChange={() => setValues((current) => ({
+                      ...current,
+                      handoverMode: mode,
+                      expectedReturnDate: mode === "permanent_assignment" ? "" : current.expectedReturnDate,
+                    }))}
+                  />
+                ))}
               </div>
             </fieldset>
           ) : (
             <div>
-              <FormContextBanner label={t("handoverMode")} value={t("temporaryLoan")} />
+              <p className={fieldLabelClasses}>{t("handoverMode")}</p>
+              <p className="mt-1.5 text-sm text-foreground">{t("temporaryLoan")}</p>
               <p className="mt-2 text-sm text-muted-foreground">{t("nonUserTemporaryHelp")}</p>
             </div>
           )}
@@ -283,23 +280,22 @@ export function CheckoutForm({
           ))}
         </Select>
         <Field label={t("checkoutDate")} required>
-          <input type="date" value={values.checkoutDate} onChange={(event) => setField("checkoutDate", event.target.value)} required className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+          <Input type="date" value={values.checkoutDate} onChange={(event) => setField("checkoutDate", event.target.value)} required />
         </Field>
         {values.handoverMode === "temporary_loan" ? (
           <Field label={t("expectedReturn")} required>
-            <input
+            <Input
               type="date"
               value={values.expectedReturnDate}
               min={values.checkoutDate}
               onChange={(event) => setField("expectedReturnDate", event.target.value)}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
         ) : null}
         <div className="md:col-span-2">
           <Field label={t("remark")}>
-            <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+            <Textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28" />
           </Field>
         </div>
         <div className="md:col-span-2">
@@ -326,10 +322,10 @@ export function CheckoutForm({
           />
         </div>
         <div className="md:col-span-2 flex justify-end">
-          <button type="submit" disabled={saving} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:w-auto">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          <Button type="submit" busy={saving} className="w-full sm:w-auto">
+            <Save />
             {tCommon("save")}
-          </button>
+          </Button>
         </div>
       </form>
       <OperationReviewDialog
@@ -403,18 +399,6 @@ function OperationShell({ title, children }: { title: string; children: React.Re
   )
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
-      {children}
-    </label>
-  )
-}
-
 function Select({
   label,
   value,
@@ -430,9 +414,9 @@ function Select({
 }) {
   return (
     <Field label={label} required={required}>
-      <select value={value} required={required} onChange={(event) => onChange(event.target.value)} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring sm:h-10 sm:min-h-0">
+      <NativeSelect value={value} required={required} onChange={(event) => onChange(event.target.value)}>
         {children}
-      </select>
+      </NativeSelect>
     </Field>
   )
 }

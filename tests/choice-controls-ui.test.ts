@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
+import { readSourceFiles } from "./helpers/source-files.ts"
 import { cn } from "../src/lib/utils.ts"
 
 // Phase 2C K16 (spec 2C section 7.4, I20, I21). Call sites join this file in 1a, 1b, 1c, 1e, 1f and batch 4.
@@ -65,4 +66,12 @@ test("the finish-repair dialog picks the outcome with ChoiceCard radios (R3)", (
   assert.doesNotMatch(source, /accent-primary|<input\b|ml-1 text-danger/)
   assert.match(source, /<ChoiceCard key=\{outcome\} type="radio" name="outcome" checked=\{complete\.outcome === outcome\}/)
   assert.match(source, /<fieldset className="min-w-0">\n\s+<legend className=\{cn\(fieldLabelClasses, "mb-1\.5"\)\}>\{t\("outcomeQuestion"\)\}<FieldRequiredMark \/><\/legend>/)
+})
+
+test("checkout picks the handover mode with required ChoiceCard radios, and no file in src uses accent-primary (R1)", () => {
+  const source = readFileSync("src/components/asset-operations/checkout-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /<ChoiceCard\n\s+key=\{mode\}\n\s+type="radio"\n\s+name="handoverModeChoice"\n\s+value=\{mode\}\n\s+checked=\{values\.handoverMode === mode\}\n\s+required\n\s+label=\{label\}\n\s+description=\{help\}/)
+  assert.match(source, /<fieldset className="min-w-0">\n\s+<legend className=\{cn\(fieldLabelClasses, "mb-1\.5"\)\}>\n\s+\{t\("handoverMode"\)\}\n\s+<FieldRequiredMark \/>/)
+  assert.doesNotMatch(source, /<input\b|focus-within:ring|min-h-16|ml-1 text-danger/)
+  assert.deepEqual(readSourceFiles("src").filter((file) => /\baccent-primary\b/.test(file.source)).map((file) => file.path), [])
 })
