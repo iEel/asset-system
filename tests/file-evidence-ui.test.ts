@@ -130,3 +130,13 @@ test("the checkout photo sits in Field directly, so no label is nested in anothe
   assert.match(source, /<Field label=\{t\("photoBefore"\)\}>\s*<FileDropzone/)
   assert.doesNotMatch(source, /<label/)
 })
+
+test("SignaturePad names its group and puts a ghost clear button under the canvas (K25)", () => {
+  const source = readFileSync("src/components/asset-operations/signature-pad.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /<div role="group" aria-labelledby=\{labelId\} aria-describedby=\{helperId\} className="rounded-md border border-border bg-background p-3">/)
+  assert.match(source, /<p id=\{helperId\} className="mt-1 text-meta text-faint-foreground">\{helper\}<\/p>/)
+  assert.match(source, /className="block w-full touch-none rounded-md border border-dashed border-input bg-white"/)
+  assert.match(source, /<canvas[\s\S]*?<Button variant="ghost" size="sm" onClick=\{clearSignature\} disabled=\{disabled \|\| !hasSignature\}>/)
+  assert.match(source, /context\.strokeStyle = "#0f172a"/)
+  assert.doesNotMatch(source, /<button|disabled:opacity-50|\bh-8\b|justify-between/)
+})

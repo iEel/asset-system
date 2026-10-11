@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { RotateCcw } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export function SignaturePad({
   label,
@@ -19,6 +20,8 @@ export function SignaturePad({
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const drawingRef = useRef(false)
   const [hasSignature, setHasSignature] = useState(false)
+  const labelId = useId()
+  const helperId = useId()
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -106,21 +109,10 @@ export function SignaturePad({
   }
 
   return (
-    <div className="rounded-md border border-border bg-background p-3">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <div className="text-sm font-medium text-foreground">{label}</div>
-          <div className="mt-1 text-xs text-muted-foreground">{helper}</div>
-        </div>
-        <button
-          type="button"
-          onClick={clearSignature}
-          disabled={disabled || !hasSignature}
-          className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-50"
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-          {clearLabel}
-        </button>
+    <div role="group" aria-labelledby={labelId} aria-describedby={helperId} className="rounded-md border border-border bg-background p-3">
+      <div className="mb-3 min-w-0">
+        <div id={labelId} className="text-sm font-medium text-foreground">{label}</div>
+        <p id={helperId} className="mt-1 text-meta text-faint-foreground">{helper}</p>
       </div>
       <canvas
         ref={canvasRef}
@@ -128,8 +120,14 @@ export function SignaturePad({
         onPointerMove={draw}
         onPointerUp={stopDrawing}
         onPointerCancel={stopDrawing}
-        className="block w-full touch-none rounded-md border border-dashed border-border bg-white"
+        className="block w-full touch-none rounded-md border border-dashed border-input bg-white"
       />
+      <div className="mt-2 flex justify-end">
+        <Button variant="ghost" size="sm" onClick={clearSignature} disabled={disabled || !hasSignature}>
+          <RotateCcw aria-hidden="true" />
+          {clearLabel}
+        </Button>
+      </div>
     </div>
   )
 }

@@ -47,6 +47,7 @@ const MIGRATED_FILES: string[] = [
   `${C}asset-operations/checkout-form.tsx`,
   `${C}asset-operations/transfer-form.tsx`,
   `${C}asset-operations/bulk-move-form.tsx`,
+  `${C}asset-operations/signature-pad.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
