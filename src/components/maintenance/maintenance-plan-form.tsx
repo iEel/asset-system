@@ -3,9 +3,14 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { CalendarClock, Loader2, Save } from "lucide-react"
+import { CalendarClock, Save } from "lucide-react"
 import { toast } from "sonner"
 import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
+import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
+import { Textarea } from "@/components/ui/textarea"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import { toLocalDateInputValue } from "@/lib/local-date"
 import { useApiError } from "@/components/ui/use-api-error"
@@ -86,84 +91,64 @@ export function MaintenancePlanForm({
       <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <MaintenanceOptionSelect type="asset" label={t("asset")} value={values.assetId} required disabled={Boolean(planId)} initialOption={initialAsset} placeholder={t("selectAsset")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={tCommon("loading")} onChange={(value) => setField("assetId", value)} />
         <Field label={t("pmPlanTitle")} required>
-          <input
+          <Input
             value={values.title}
             required
             maxLength={200}
             onChange={(event) => setField("title", event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
         <Field label={t("pmFrequencyLabel")} required>
-          <select
+          <NativeSelect
             value={values.frequency}
             required
             onChange={(event) => setField("frequency", event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           >
             <option value="monthly">{t("pmFrequencyMonthly")}</option>
             <option value="quarterly">{t("pmFrequencyQuarterly")}</option>
             <option value="yearly">{t("pmFrequencyYearly")}</option>
             <option value="custom">{t("pmFrequencyCustom")}</option>
-          </select>
+          </NativeSelect>
         </Field>
         {values.frequency === "custom" ? (
           <Field label={t("pmIntervalDays")} required>
-            <input
+            <Input
               type="number"
               min="1"
               max="3650"
               value={values.intervalDays}
               required
               onChange={(event) => setField("intervalDays", event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
         ) : null}
         <Field label={t("pmNextDueDate")} required>
-          <input
+          <Input
             type="date"
             value={values.nextDueDate}
             required
             onChange={(event) => setField("nextDueDate", event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
         </Field>
         <MaintenanceOptionSelect type="supplier" label={t("pmExternalProvider")} value={values.vendorId} placeholder={t("pmNoExternalProvider")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={tCommon("loading")} onChange={(value) => setField("vendorId", value)} />
         <div className="md:col-span-2 xl:col-span-3">
           <Field label={t("pmNotes")}>
-            <textarea
+            <Textarea
               value={values.notes}
               rows={3}
               maxLength={4000}
               onChange={(event) => setField("notes", event.target.value)}
-              className="min-h-20 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+              className="min-h-20"
             />
           </Field>
         </div>
         <div className="flex justify-end md:col-span-2 xl:col-span-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          <Button type="submit" busy={saving} className="w-full sm:w-auto">
+            <Save />
             {tCommon("save")}
-          </button>
+          </Button>
         </div>
       </form>
     </section>
-  )
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
-      {children}
-    </label>
   )
 }

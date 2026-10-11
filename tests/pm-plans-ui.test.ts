@@ -16,3 +16,13 @@ test("PM plans no longer ask for an internal assignee", () => {
   for (const source of [form, route, service]) assert.doesNotMatch(source, /assignedToId|assignedTo:/)
   assert.match(form, /router\.push\(`\/\$\{locale\}\/maintenance\/pm`\)/)
 })
+
+test("the PM plan form uses the shared field primitives and a busy save button (2C batch 1a)", () => {
+  const form = readFileSync("src/components/maintenance/maintenance-plan-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(form, /import \{ Field \} from "@\/components\/ui\/field"/)
+  assert.doesNotMatch(form, /function Field\(|<input|<select|<textarea|Loader2|ml-1 text-danger/)
+  assert.equal(form.match(/<Field label=\{t\("pm\w+"\)\} required>/g)?.length, 4)
+  assert.equal(form.match(/^\s+required$/gm)?.length, 4, "each starred field keeps the browser's own required check")
+  assert.match(form, /<Textarea\n\s+value=\{values\.notes\}[\s\S]*?maxLength=\{4000\}[\s\S]*?className="min-h-20"/)
+  assert.match(form, /<Button type="submit" busy=\{saving\} className="w-full sm:w-auto">\n\s+<Save \/>/)
+})

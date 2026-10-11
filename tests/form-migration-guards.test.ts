@@ -39,6 +39,7 @@ const NEW_2C_FILES = ["ui/segmented.tsx", "ui/sticky-form-footer.tsx", "ui/form-
 // Files already migrated. The commit that migrates a file adds its line here; never remove one.
 const MIGRATED_FILES: string[] = [
   // one line per migrated file, in commit order
+  `${C}maintenance/maintenance-plan-form.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -103,7 +104,6 @@ const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
 // GF1 `function Field(` per file
 const LOCAL_FIELD: Record<string, number> = {
   // 1a
-  [`${C}maintenance/maintenance-plan-form.tsx`]: 1,
   [`${C}maintenance/repair-record-form.tsx`]: 1,
   [`${C}maintenance/repair-record-actions.tsx`]: 1,
   // 1b
@@ -141,7 +141,6 @@ const LOCAL_FIELD: Record<string, number> = {
 // GF2 hand-written <input> (not checkbox/radio/hidden/file), <select> and <textarea>
 const RAW_FIELDS: Record<string, number> = {
   // 1a
-  [`${C}maintenance/maintenance-plan-form.tsx`]: 5,
   [`${C}maintenance/repair-record-form.tsx`]: 5,
   [`${C}maintenance/repair-record-actions.tsx`]: 10,
   [`${C}maintenance/maintenance-attachments.tsx`]: 1,
@@ -206,7 +205,6 @@ const RAW_FIELDS: Record<string, number> = {
 // GF3 hand-written field class strings
 const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1a
-  [`${C}maintenance/maintenance-plan-form.tsx`]: 5,
   [`${C}maintenance/repair-record-form.tsx`]: 2,
   [`${C}maintenance/repair-record-actions.tsx`]: 2,
   [`${C}maintenance/maintenance-attachments.tsx`]: 1,
@@ -321,7 +319,6 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
 // GF7 old label span, red star, legend and checkbox markup
 const OLD_MARKUP: Record<string, number> = {
   // 1a
-  [`${C}maintenance/maintenance-plan-form.tsx`]: 2,
   [`${C}maintenance/repair-record-form.tsx`]: 7,
   [`${C}maintenance/repair-record-actions.tsx`]: 5,
   [`${C}maintenance/maintenance-attachments.tsx`]: 1,
@@ -375,7 +372,6 @@ const OLD_MARKUP: Record<string, number> = {
 // GB1 <Loader2 tags (every tag, also icons kept in a variable)
 const LOADER2: Record<string, number> = {
   // 1a
-  [`${C}maintenance/maintenance-plan-form.tsx`]: 1,
   [`${C}maintenance/repair-record-form.tsx`]: 1,
   [`${C}maintenance/repair-record-actions.tsx`]: 2,
   [`${C}maintenance/maintenance-attachments.tsx`]: 1, // → 1: the delete button :210 (2D)
