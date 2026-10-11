@@ -3082,7 +3082,12 @@
       "awaiting_execution": "อนุมัติแล้ว รอดำเนินการ",
       "complete": "ดำเนินการเสร็จสิ้น",
       "rejected": "คำขอถูกปฏิเสธ"
-    }
+    },
+    "saleValueBaht": "มูลค่าขาย (บาท)",
+    "salvageValueBaht": "มูลค่าซาก (บาท)",
+    "actualSaleValueBaht": "มูลค่าขายจริง (บาท)",
+    "actualSalvageValueBaht": "มูลค่าซากจริง (บาท)",
+    "requestEvidenceDescription": "แนบได้หลายไฟล์ ไฟล์จะอัปโหลดหลังบันทึกคำขอ"
   },
   "approvalInboxPage": {
     "title": "งานรออนุมัติ",

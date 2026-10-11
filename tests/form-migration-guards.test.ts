@@ -49,6 +49,7 @@ const MIGRATED_FILES: string[] = [
   `${C}asset-operations/bulk-move-form.tsx`,
   `${C}asset-operations/signature-pad.tsx`,
   `${C}ui/operation-review-dialog.tsx`,
+  `${C}disposal/disposal-request-form.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -115,7 +116,6 @@ const LOCAL_FIELD: Record<string, number> = {
   // 1a
   // 1b
   // 1c
-  [`${C}disposal/disposal-request-form.tsx`]: 1,
   [`${C}disposal/disposal-batch-form.tsx`]: 1,
   [`${C}disposal/disposal-execution-button.tsx`]: 1,
   [`${C}disposal/disposal-decision-button.tsx`]: 1,
@@ -146,7 +146,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 1a
   // 1b
   // 1c
-  [`${C}disposal/disposal-request-form.tsx`]: 4,
   [`${C}disposal/disposal-batch-form.tsx`]: 4,
   [`${C}disposal/disposal-execution-button.tsx`]: 8,
   [`${C}disposal/disposal-asset-picker.tsx`]: 1,
@@ -203,7 +202,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1a
   // 1b
   // 1c
-  [`${C}disposal/disposal-request-form.tsx`]: 4,
   [`${C}disposal/disposal-batch-form.tsx`]: 4,
   [`${C}disposal/disposal-execution-button.tsx`]: 8,
   [`${C}disposal/disposal-asset-picker.tsx`]: 1,
@@ -310,7 +308,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 1a
   // 1b
   // 1c
-  [`${C}disposal/disposal-request-form.tsx`]: 2,
   [`${C}disposal/disposal-batch-form.tsx`]: 1,
   [`${C}disposal/disposal-execution-button.tsx`]: 4,
   [`${C}disposal/disposal-asset-picker.tsx`]: 1,
@@ -357,7 +354,6 @@ const LOADER2: Record<string, number> = {
   [`${C}maintenance/maintenance-attachments.tsx`]: 1, // → 1: the delete button :210 (2D)
   // 1b
   // 1c
-  [`${C}disposal/disposal-request-form.tsx`]: 1,
   [`${C}disposal/disposal-batch-form.tsx`]: 1,
   [`${C}disposal/disposal-execution-button.tsx`]: 1,
   [`${C}disposal/disposal-asset-picker.tsx`]: 1, // → 1: the spinner in the search field :58
@@ -406,7 +402,6 @@ const LOADER2: Record<string, number> = {
 
 // GL3 old helpers: FormStep, WizardStep, Choice, AssetStateFieldLabel and the batch asset tag help label
 const OLD_HELPERS: Record<string, number> = {
-  [`${C}disposal/disposal-request-form.tsx`]: 1, // function FormStep (1c)
   [`${C}disposal/disposal-batch-form.tsx`]: 1, // function FormStep (1c)
   [`${C}assets/asset-form.tsx`]: 1, // function AssetStateFieldLabel (1e)
   [`${C}assets/asset-batch-form.tsx`]: 2, // aria-label={t("batchAssetTagHelp")} (1e)

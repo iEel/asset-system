@@ -140,3 +140,12 @@ test("SignaturePad names its group and puts a ghost clear button under the canva
   assert.match(source, /context\.strokeStyle = "#0f172a"/)
   assert.doesNotMatch(source, /<button|disabled:opacity-50|\bh-8\b|justify-between/)
 })
+
+test("the disposal request form describes its evidence box before a file is chosen and lists the queue (spec 7.6.3 #15)", () => {
+  const source = readFileSync("src/components/disposal/disposal-request-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /<Field label=\{t\("requestEvidence"\)\} hideLabel>\s*<FileDropzone/)
+  assert.match(source, /description=\{t\("requestEvidenceDescription"\)\}/)
+  assert.doesNotMatch(source, /hint=\{t\("dropEvidenceSelected"\)\}/, "the old hint said the file uploads now; it waits for the request")
+  assert.match(source, /<FileQueueList\s+items=\{evidenceFiles\.map\(/)
+  assert.doesNotMatch(source, /text-xs font-medium text-danger/, "the 18px text remove button is gone")
+})

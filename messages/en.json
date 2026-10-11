@@ -3082,7 +3082,12 @@
       "awaiting_execution": "Approved, awaiting execution",
       "complete": "Execution complete",
       "rejected": "Request rejected"
-    }
+    },
+    "saleValueBaht": "Sale Value (THB)",
+    "salvageValueBaht": "Salvage Value (THB)",
+    "actualSaleValueBaht": "Actual Sale Value (THB)",
+    "actualSalvageValueBaht": "Actual Salvage Value (THB)",
+    "requestEvidenceDescription": "You can attach several files. They upload after the request is saved."
   },
   "approvalInboxPage": {
     "title": "Approval Inbox",

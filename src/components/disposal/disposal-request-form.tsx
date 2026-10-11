@@ -3,10 +3,17 @@
 import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Loader2, Save } from "lucide-react"
+import { Save } from "lucide-react"
 import { toast } from "sonner"
-import { SearchableSelect } from "@/components/ui/searchable-select"
+import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { FileQueueList } from "@/components/ui/file-queue-list"
+import { FormSection } from "@/components/ui/form-section"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
+import { Textarea } from "@/components/ui/textarea"
 import { DisposalAssetPicker, type DisposalAssetOption } from "@/components/disposal/disposal-asset-picker"
 import { showsEstimatedSaleValue, showsEstimatedSalvageValue, type DisposalType } from "@/lib/disposal-type-policy"
 import { summarizeDisposalEvidenceUploads } from "@/lib/disposal-upload-outcome"
@@ -107,7 +114,7 @@ export function DisposalRequestForm({
   return (
     <section className="rounded-lg border border-border bg-surface p-4 sm:p-6">
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <FormStep number={1} title={t("formSteps.asset")} />
+        <FormSection number={1} title={t("formSteps.asset")} className="md:col-span-2" />
         <DisposalAssetPicker
           label={t("asset")}
           selected={selectedAssets}
@@ -125,7 +132,7 @@ export function DisposalRequestForm({
           <option value="destroy">{t("types.destroy")}</option>
           <option value="lost">{t("types.lost")}</option>
         </Select>
-        <FormStep number={2} title={t("formSteps.request")} />
+        <FormSection number={2} title={t("formSteps.request")} className="md:col-span-2" />
         <SearchableSelect
           label={t("requestedBy")}
           value={values.requestedById}
@@ -141,98 +148,75 @@ export function DisposalRequestForm({
           }))}
         />
         <SearchableSelect label={t("approver")} value={values.approverId} options={approverOptions} placeholder={t("noApprover")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("approverId", value)} />
-        {showsEstimatedSaleValue(values.disposalType as DisposalType) ? <Field label={t("saleValue")}>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={values.saleValue}
-            onChange={(event) => setField("saleValue", event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-          />
-        </Field> : null}
-        {showsEstimatedSalvageValue(values.disposalType as DisposalType) ? <Field label={t("salvageValue")}>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={values.salvageValue}
-            onChange={(event) => setField("salvageValue", event.target.value)}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-          />
-        </Field> : null}
+        {showsEstimatedSaleValue(values.disposalType as DisposalType) ? (
+          <Field label={t("saleValueBaht")}>
+            <Input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              value={values.saleValue}
+              onChange={(event) => setField("saleValue", event.target.value)}
+            />
+          </Field>
+        ) : null}
+        {showsEstimatedSalvageValue(values.disposalType as DisposalType) ? (
+          <Field label={t("salvageValueBaht")}>
+            <Input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              value={values.salvageValue}
+              onChange={(event) => setField("salvageValue", event.target.value)}
+            />
+          </Field>
+        ) : null}
         <div className="md:col-span-2">
-          <Field label={t("reason")} required>
-            <textarea
+          <Field
+            label={t("reason")}
+            required
+            hint={<span className="block text-right">{t("reasonCharacterCount", { count: values.reason.length, max: 4000 })}</span>}
+          >
+            <Textarea
               value={values.reason}
               required
               minLength={12}
               rows={4}
               maxLength={4000}
               onChange={(event) => setField("reason", event.target.value)}
-              className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+              className="min-h-28"
             />
-            <p className="mt-1 text-right text-xs text-muted-foreground">{t("reasonCharacterCount", { count: values.reason.length, max: 4000 })}</p>
           </Field>
         </div>
-        <FormStep number={3} title={t("formSteps.evidence")} />
-        <div className="md:col-span-2 rounded-md border border-border bg-background p-4">
-          <div className="mb-3 text-sm font-semibold text-foreground">{t("requestEvidence")}</div>
-          <FileDropzone
-            file={null}
-            onFileChange={addEvidenceFile}
+        <FormSection number={3} title={t("formSteps.evidence")} className="md:col-span-2" />
+        <div className="grid gap-3 md:col-span-2">
+          <Field label={t("requestEvidence")} hideLabel>
+            <FileDropzone
+              file={null}
+              onFileChange={addEvidenceFile}
+              disabled={saving}
+              accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif,application/pdf"
+              capture="environment"
+              title={t("dropEvidenceTitle")}
+              description={t("requestEvidenceDescription")}
+              browseLabel={t("dropEvidenceHint")}
+            />
+          </Field>
+          <FileQueueList
+            items={evidenceFiles.map((file, index) => ({ id: String(index), name: file.name }))}
             disabled={saving}
-            accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif,application/pdf"
-            capture="environment"
-            title={t("dropEvidenceTitle")}
-            hint={t("dropEvidenceSelected")}
-            browseLabel={t("dropEvidenceHint")}
+            onRemove={(id) => setEvidenceFiles((current) => current.filter((_, index) => String(index) !== id))}
           />
-          {evidenceFiles.length > 0 ? (
-            <div className="mt-3 space-y-2">
-              {evidenceFiles.map((file, index) => (
-                <div key={`${file.name}-${index}`} className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2 text-sm">
-                  <span className="min-w-0 truncate text-foreground">{file.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => setEvidenceFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                    className="text-xs font-medium text-danger"
-                  >
-                    {tCommon("delete")}
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : null}
         </div>
         <div className="flex justify-end md:col-span-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          <Button type="submit" busy={saving} className="w-full sm:w-auto">
+            <Save aria-hidden="true" />
             {tCommon("save")}
-          </button>
+          </Button>
         </div>
       </form>
     </section>
-  )
-}
-
-function FormStep({ number, title }: { number: number; title: string }) {
-  return <div className="flex items-center gap-3 border-b border-border pb-3 md:col-span-2"><span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">{number}</span><h2 className="text-sm font-semibold text-foreground">{title}</h2></div>
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
-      {children}
-    </label>
   )
 }
 
@@ -251,14 +235,9 @@ function Select({
 }) {
   return (
     <Field label={label} required={required}>
-      <select
-        value={value}
-        required={required}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-      >
+      <NativeSelect value={value} required={required} onChange={(event) => onChange(event.target.value)}>
         {children}
-      </select>
+      </NativeSelect>
     </Field>
   )
 }
