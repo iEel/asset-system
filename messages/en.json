@@ -48,7 +48,12 @@
     "noValue": "None",
     "baht": "THB",
     "removeFile": "Remove {name}",
-    "selectedFiles": "Selected files"
+    "selectedFiles": "Selected files",
+    "stepOf": "Step {current} of {total}",
+    "stepComplete": "Done",
+    "stepCurrent": "Current step",
+    "stepUpcoming": "Not started",
+    "stepRejected": "Rejected"
   },
   "globalSearch": {
     "label": "Search globally",

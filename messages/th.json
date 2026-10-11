@@ -48,7 +48,12 @@
     "noValue": "ไม่มีข้อมูล",
     "baht": "บาท",
     "removeFile": "นำ {name} ออก",
-    "selectedFiles": "ไฟล์ที่เลือก"
+    "selectedFiles": "ไฟล์ที่เลือก",
+    "stepOf": "ขั้นที่ {current} จาก {total}",
+    "stepComplete": "เสร็จแล้ว",
+    "stepCurrent": "ขั้นตอนปัจจุบัน",
+    "stepUpcoming": "ยังไม่ถึง",
+    "stepRejected": "ปฏิเสธแล้ว"
   },
   "globalSearch": {
     "label": "ค้นหาทั่วระบบ",

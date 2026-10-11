@@ -176,3 +176,16 @@ test("Field puts labelAction beside the label, outside the <label>", () => {
     /\{labelAction \? \(\s*<div data-slot="field-label-row" className="flex min-w-0 items-center gap-1\.5">\s*\{labelNode\}\s*<span data-slot="field-label-action" className="-my-0\.5 inline-flex shrink-0">\{labelAction\}<\/span>\s*<\/div>\s*\) : \(\s*labelNode\s*\)\}/,
   )
 })
+
+test("FormContextBanner is one quiet data row that renders on server pages", () => {
+  const source = read("src/components/ui/form-context-banner.tsx")
+  assert.doesNotMatch(source, /"use client"|\buse(?:State|Effect|LayoutEffect|Context)\b|\bcreateContext\b/)
+  assert.match(source, /value: ReactNode/)
+  assert.match(source, /code\?: string/)
+  assert.match(source, /<dl data-slot="form-context-banner" className=\{cn\("flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0\.5", className\)\}>/)
+  assert.match(source, /<dt className="text-meta text-faint-foreground">\{label\}<\/dt>/)
+  assert.match(source, /<dd className="min-w-0 break-words text-sm font-medium text-foreground">/)
+  assert.match(source, /<span className="tag">\{code\}<\/span>/)
+  // No tinted box, no capitals, and the value is never cut: a title tooltip does not work on touch screens (K24).
+  assert.doesNotMatch(source, /uppercase|bg-primary-soft|border-primary-border|truncate|title=/)
+})
