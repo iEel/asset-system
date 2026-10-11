@@ -48,6 +48,7 @@ const MIGRATED_FILES: string[] = [
   `${C}asset-operations/transfer-form.tsx`,
   `${C}asset-operations/bulk-move-form.tsx`,
   `${C}asset-operations/signature-pad.tsx`,
+  `${C}ui/operation-review-dialog.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -443,7 +444,6 @@ const PENDING_FOOTER_PARTS = new Set([
   // 1a
   `${C}maintenance/maintenance-attachments.tsx`, // the delete dialog :239 waits for batch 5 (K12)
   // 1b
-  `${C}ui/operation-review-dialog.tsx`,
   // 1c
   `${C}disposal/disposal-execution-button.tsx`,
   `${C}disposal/disposal-decision-button.tsx`,

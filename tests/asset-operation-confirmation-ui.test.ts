@@ -38,3 +38,13 @@ test("the transfer form uses the shared fields and a busy save button (2C batch 
   assert.match(source, /<Field label=\{t\("reason"\)\} required>\n\s+<Input value=\{values\.reason\} onChange=\{\(event\) => setField\("reason", event\.target\.value\)\} required maxLength=\{500\} \/>/)
   assert.match(source, /<Button type="submit" busy=\{saving\} className="w-full sm:w-auto">\n\s+<Save \/>/)
 })
+
+test("the review dialog uses the dialog parts, keeps focus on the busy confirm, and the X names itself (2C batch 1b)", () => {
+  const source = readFileSync("src/components/ui/operation-review-dialog.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /<AccessibleDialogBody className="py-2">\n\s+<dl className="divide-y divide-border">/)
+  assert.match(source, /<AccessibleDialogFooter>\n\s+<AccessibleDialogCancel>\{cancelLabel\}<\/AccessibleDialogCancel>\n\s+<Button ref=\{confirmButtonRef\} busy=\{busy\} onClick=\{onConfirm\}>\{confirmLabel\}<\/Button>/)
+  assert.doesNotMatch(source, /disabled=\{busy\}|sm:grid-cols-2|px-4 py-2/)
+  for (const host of ["checkout-form", "checkin-form", "transfer-form"]) {
+    assert.doesNotMatch(readFileSync(`src/components/asset-operations/${host}.tsx`, "utf8"), /closeLabel=/, host)
+  }
+})

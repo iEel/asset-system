@@ -564,7 +564,6 @@ export function CheckinForm({
           items={reviewItems}
           confirmLabel={t("reviewConfirm")}
           cancelLabel={tCommon("cancel")}
-          closeLabel={tCommon("close")}
           busy={saving}
           onClose={() => setReviewOpen(false)}
           onConfirm={() => void submitCheckin()}
