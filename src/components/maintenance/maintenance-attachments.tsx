@@ -7,7 +7,9 @@ import { Download, Eye, FileText, Image as ImageIcon, Loader2, Trash2 } from "lu
 import { toast } from "sonner"
 import { formatFileSize } from "@/lib/uploads"
 import { getMaintenanceAttachmentDisplayName, getMaintenanceAttachmentType, maintenanceAttachmentTypes, type MaintenanceAttachmentType } from "@/lib/maintenance-attachments"
+import { Field } from "@/components/ui/field"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { NativeSelect } from "@/components/ui/native-select"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { AttachmentPreviewDialog } from "@/components/ui/attachment-preview-dialog"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
@@ -103,20 +105,18 @@ export function MaintenanceAttachments({
       {canEdit ? (
       <div className="mb-4 rounded-md border border-border bg-background p-3">
         {!canDelete ? <p className="mb-3 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm text-warning">{t("closedEvidenceAppendOnlyHelp")}</p> : null}
-        <label className="mb-3 block">
-          <span className="mb-1.5 block text-sm font-medium text-foreground">{t("attachmentType")}</span>
-          <select
+        <Field label={t("attachmentType")} className="mb-3">
+          <NativeSelect
             value={attachmentType}
             onChange={(event) => setAttachmentType(event.target.value as MaintenanceAttachmentType)}
-            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           >
             {maintenanceAttachmentTypes.map((type) => (
               <option key={type} value={type}>
                 {t(`attachmentTypes.${type}`)}
               </option>
             ))}
-          </select>
-        </label>
+          </NativeSelect>
+        </Field>
         <FileDropzone
           file={selectedFile}
           onFileChange={handleUpload}

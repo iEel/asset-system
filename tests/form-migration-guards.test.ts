@@ -42,6 +42,7 @@ const MIGRATED_FILES: string[] = [
   `${C}maintenance/maintenance-plan-form.tsx`,
   `${C}maintenance/repair-record-form.tsx`,
   `${C}maintenance/repair-record-actions.tsx`,
+  `${C}maintenance/maintenance-attachments.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -141,7 +142,6 @@ const LOCAL_FIELD: Record<string, number> = {
 // GF2 hand-written <input> (not checkbox/radio/hidden/file), <select> and <textarea>
 const RAW_FIELDS: Record<string, number> = {
   // 1a
-  [`${C}maintenance/maintenance-attachments.tsx`]: 1,
   // 1b
   [`${C}asset-operations/checkin-form.tsx`]: 7,
   [`${C}asset-operations/checkout-form.tsx`]: 4,
@@ -203,7 +203,6 @@ const RAW_FIELDS: Record<string, number> = {
 // GF3 hand-written field class strings
 const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1a
-  [`${C}maintenance/maintenance-attachments.tsx`]: 1,
   // 1b
   [`${C}asset-operations/checkin-form.tsx`]: 7,
   [`${C}asset-operations/checkout-form.tsx`]: 4,
@@ -315,7 +314,6 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
 // GF7 old label span, red star, legend and checkbox markup
 const OLD_MARKUP: Record<string, number> = {
   // 1a
-  [`${C}maintenance/maintenance-attachments.tsx`]: 1,
   // 1b
   [`${C}asset-operations/checkin-form.tsx`]: 2,
   [`${C}asset-operations/checkout-form.tsx`]: 5,
