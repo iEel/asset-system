@@ -86,3 +86,13 @@ test("bulk move lists assets as real checkbox rows that Enter cannot submit (P1)
   assert.doesNotMatch(source, /rounded border \$\{checked|<button|import \{ Check|function Field\(|Loader2/)
   assert.match(source, /<Button type="submit" busy=\{saving\}>/)
 })
+
+test("the disposal asset picker marks options with the 16px box of the menu check item (spec 7.4.5 P2)", () => {
+  const source = readFileSync("src/components/disposal/disposal-asset-picker.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /"mt-0\.5 flex size-4 shrink-0 items-center justify-center rounded-sm border-\[1\.5px\]"/)
+  assert.match(source, /active \? "border-primary bg-primary" : option\.eligible \? "border-input bg-surface" : "border-border bg-background"/)
+  assert.match(source, /role="option" aria-selected=\{active\}/)
+  assert.doesNotMatch(source, /h-5 w-5 shrink-0 items-center justify-center rounded border/)
+  assert.match(source, /<FieldLabel htmlFor=\{showSearch \? inputId : undefined\} required>/)
+  assert.match(source, /<Input id=\{inputId\}[\s\S]*?role="combobox"/)
+})

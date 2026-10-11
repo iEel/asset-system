@@ -52,6 +52,7 @@ const MIGRATED_FILES: string[] = [
   `${C}disposal/disposal-request-form.tsx`,
   `${C}disposal/disposal-batch-form.tsx`,
   `${C}disposal/disposal-execution-button.tsx`,
+  `${C}disposal/disposal-asset-picker.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -146,7 +147,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 1a
   // 1b
   // 1c
-  [`${C}disposal/disposal-asset-picker.tsx`]: 1,
   [`${C}disposal/disposal-decision-button.tsx`]: 5,
   // 1d
   [`${C}audit/audit-scan-check-form.tsx`]: 2,
@@ -200,7 +200,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1a
   // 1b
   // 1c
-  [`${C}disposal/disposal-asset-picker.tsx`]: 1,
   [`${C}disposal/disposal-decision-button.tsx`]: 5,
   // 1d
   [`${C}audit/audit-scan-check-form.tsx`]: 2,
@@ -304,7 +303,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 1a
   // 1b
   // 1c
-  [`${C}disposal/disposal-asset-picker.tsx`]: 1,
   [`${C}disposal/disposal-decision-button.tsx`]: 2,
   // 1d
   [`${C}audit/audit-finding-review-actions.tsx`]: 5,
