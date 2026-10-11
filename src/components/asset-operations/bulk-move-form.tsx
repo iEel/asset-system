@@ -1,11 +1,18 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useId, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Check, Loader2, Save, Search } from "lucide-react"
+import { Save } from "lucide-react"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { preventEnterSubmit } from "@/components/ui/choice-card"
+import { Field, FieldLabel } from "@/components/ui/field"
+import { checkboxVariants } from "@/components/ui/field-variants"
+import { Input } from "@/components/ui/input"
+import { SearchField } from "@/components/ui/search-field"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string; disabled?: boolean }
@@ -19,6 +26,8 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
   const [saving, setSaving] = useState(false)
   const [assetQuery, setAssetQuery] = useState("")
   const [assetIds, setAssetIds] = useState<string[]>([])
+  const assetSearchId = useId()
+  const assetsLabelId = useId()
   const [values, setValues] = useState({
     toLocationId: "",
     reason: "",
@@ -81,37 +90,36 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
       <section className="rounded-lg border border-border bg-surface p-6">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div className="md:col-span-2">
-            <span className="mb-1.5 block text-sm font-medium text-foreground">
+            <FieldLabel id={assetsLabelId} htmlFor={assetSearchId} required className="mb-1.5 block">
               {t("assets")}
-              <span className="ml-1 text-danger">*</span>
-            </span>
-            <div className="mb-2 flex h-10 items-center gap-2 rounded-md border border-border bg-background px-3">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <input
-                value={assetQuery}
-                onChange={(event) => setAssetQuery(event.target.value)}
-                placeholder={tCommon("searchSelectPlaceholder")}
-                className="min-w-0 flex-1 bg-transparent text-sm outline-none"
-              />
-            </div>
-            <div className="max-h-72 overflow-y-auto rounded-md border border-border bg-background">
+            </FieldLabel>
+            <SearchField
+              id={assetSearchId}
+              className="mb-2"
+              value={assetQuery}
+              onChange={(event) => setAssetQuery(event.target.value)}
+              placeholder={tCommon("searchSelectPlaceholder")}
+            />
+            <div role="group" aria-labelledby={assetsLabelId} className="max-h-72 overflow-y-auto rounded-md border border-border bg-surface">
               {availableAssets.length === 0 ? (
                 <div className="px-3 py-6 text-center text-sm text-muted-foreground">{tCommon("noData")}</div>
               ) : (
                 availableAssets.map((asset) => {
                   const checked = assetIds.includes(asset.id)
                   return (
-                    <button
-                      type="button"
+                    <label
                       key={asset.id}
-                      onClick={() => toggleAsset(asset.id)}
-                      className="flex w-full items-center gap-3 border-b border-border px-3 py-2 text-left text-sm last:border-b-0 hover:bg-accent"
+                      className="flex min-h-11 cursor-pointer items-center gap-3 border-b border-border-soft px-3 text-sm last:border-b-0 hover:bg-row-hover has-checked:bg-primary-soft"
                     >
-                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${checked ? "border-primary bg-primary text-white" : "border-border bg-surface"}`}>
-                        {checked && <Check className="h-3.5 w-3.5" />}
-                      </span>
-                      <span className="truncate">{asset.label}</span>
-                    </button>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleAsset(asset.id)}
+                        onKeyDown={preventEnterSubmit}
+                        className={checkboxVariants()}
+                      />
+                      <span className="min-w-0 truncate">{asset.label}</span>
+                    </label>
                   )
                 })
               )}
@@ -119,33 +127,21 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
           </div>
           <SearchableSelect label={t("toLocation")} value={values.toLocationId} required options={locations} placeholder={t("selectLocation")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} onChange={(value) => setField("toLocationId", value)} />
           <Field label={t("reason")} required>
-            <input value={values.reason} onChange={(event) => setField("reason", event.target.value)} required maxLength={500} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+            <Input value={values.reason} onChange={(event) => setField("reason", event.target.value)} required maxLength={500} />
           </Field>
           <div className="md:col-span-2">
             <Field label={t("remark")}>
-              <textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+              <Textarea value={values.remark} onChange={(event) => setField("remark", event.target.value)} rows={4} className="min-h-28" />
             </Field>
           </div>
           <div className="md:col-span-2 flex justify-end">
-            <button type="submit" disabled={saving} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            <Button type="submit" busy={saving}>
+              <Save />
               {tCommon("save")}
-            </button>
+            </Button>
           </div>
         </form>
       </section>
     </div>
-  )
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
-      {children}
-    </label>
   )
 }

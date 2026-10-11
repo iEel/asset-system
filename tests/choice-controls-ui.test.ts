@@ -75,3 +75,14 @@ test("checkout picks the handover mode with required ChoiceCard radios, and no f
   assert.doesNotMatch(source, /<input\b|focus-within:ring|min-h-16|ml-1 text-danger/)
   assert.deepEqual(readSourceFiles("src").filter((file) => /\baccent-primary\b/.test(file.source)).map((file) => file.path), [])
 })
+
+test("bulk move lists assets as real checkbox rows that Enter cannot submit (P1)", () => {
+  const source = readFileSync("src/components/asset-operations/bulk-move-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /<FieldLabel id=\{assetsLabelId\} htmlFor=\{assetSearchId\} required className="mb-1\.5 block">/)
+  assert.match(source, /<SearchField\n\s+id=\{assetSearchId\}/)
+  assert.match(source, /<div role="group" aria-labelledby=\{assetsLabelId\} className="max-h-72 overflow-y-auto rounded-md border border-border bg-surface">/)
+  assert.match(source, /<input\n\s+type="checkbox"\n\s+checked=\{checked\}\n\s+onChange=\{\(\) => toggleAsset\(asset\.id\)\}\n\s+onKeyDown=\{preventEnterSubmit\}\n\s+className=\{checkboxVariants\(\)\}/)
+  assert.match(source, /className="flex min-h-11 cursor-pointer items-center gap-3 border-b border-border-soft px-3 text-sm last:border-b-0 hover:bg-row-hover has-checked:bg-primary-soft"/)
+  assert.doesNotMatch(source, /rounded border \$\{checked|<button|import \{ Check|function Field\(|Loader2/)
+  assert.match(source, /<Button type="submit" busy=\{saving\}>/)
+})

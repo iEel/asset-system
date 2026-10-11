@@ -46,6 +46,7 @@ const MIGRATED_FILES: string[] = [
   `${C}asset-operations/checkin-form.tsx`,
   `${C}asset-operations/checkout-form.tsx`,
   `${C}asset-operations/transfer-form.tsx`,
+  `${C}asset-operations/bulk-move-form.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -111,7 +112,6 @@ const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
 const LOCAL_FIELD: Record<string, number> = {
   // 1a
   // 1b
-  [`${C}asset-operations/bulk-move-form.tsx`]: 1,
   // 1c
   [`${C}disposal/disposal-request-form.tsx`]: 1,
   [`${C}disposal/disposal-batch-form.tsx`]: 1,
@@ -143,7 +143,6 @@ const LOCAL_FIELD: Record<string, number> = {
 const RAW_FIELDS: Record<string, number> = {
   // 1a
   // 1b
-  [`${C}asset-operations/bulk-move-form.tsx`]: 3,
   // 1c
   [`${C}disposal/disposal-request-form.tsx`]: 4,
   [`${C}disposal/disposal-batch-form.tsx`]: 4,
@@ -201,7 +200,6 @@ const RAW_FIELDS: Record<string, number> = {
 const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1a
   // 1b
-  [`${C}asset-operations/bulk-move-form.tsx`]: 2,
   // 1c
   [`${C}disposal/disposal-request-form.tsx`]: 4,
   [`${C}disposal/disposal-batch-form.tsx`]: 4,
@@ -309,7 +307,6 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
 const OLD_MARKUP: Record<string, number> = {
   // 1a
   // 1b
-  [`${C}asset-operations/bulk-move-form.tsx`]: 4,
   // 1c
   [`${C}disposal/disposal-request-form.tsx`]: 2,
   [`${C}disposal/disposal-batch-form.tsx`]: 1,
@@ -357,7 +354,6 @@ const LOADER2: Record<string, number> = {
   // 1a
   [`${C}maintenance/maintenance-attachments.tsx`]: 1, // → 1: the delete button :210 (2D)
   // 1b
-  [`${C}asset-operations/bulk-move-form.tsx`]: 1,
   // 1c
   [`${C}disposal/disposal-request-form.tsx`]: 1,
   [`${C}disposal/disposal-batch-form.tsx`]: 1,
