@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import { XIcon } from "lucide-react"
 import { Dialog as DialogPrimitive } from "radix-ui"
@@ -51,7 +52,7 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
-  closeLabel = "Close",
+  closeLabel: closeLabelProp,
   closeDisabled = false,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
@@ -59,6 +60,9 @@ function DialogContent({
   closeLabel?: string
   closeDisabled?: boolean
 }) {
+  const tCommon = useTranslations("common")
+  const closeLabel = closeLabelProp ?? tCommon("close")
+
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -72,14 +76,10 @@ function DialogContent({
       >
         {children}
         {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            disabled={closeDisabled}
-            aria-label={closeLabel}
-            title={closeLabel}
-            className="absolute top-3 right-3 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 sm:size-10 sm:min-h-0 sm:min-w-0"
-          >
-            <XIcon className="size-4" aria-hidden="true" />
+          <DialogPrimitive.Close data-slot="dialog-close" asChild>
+            <Button variant="ghost" size="icon" disabled={closeDisabled} aria-label={closeLabel} title={closeLabel} className="absolute top-3 right-3 disabled:border-transparent disabled:bg-transparent">
+              <XIcon aria-hidden="true" />
+            </Button>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>
@@ -97,30 +97,14 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function DialogFooter({
-  className,
-  showCloseButton = false,
-  children,
-  ...props
-}: React.ComponentProps<"div"> & {
-  showCloseButton?: boolean
-}) {
+// No caller today. Same order as AccessibleDialogFooter (K8): primary action last, cancel on top on phones.
+function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-footer"
-      className={cn(
-        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
-        className
-      )}
+      className={cn("flex flex-col gap-2 sm:flex-row sm:justify-end", className)}
       {...props}
-    >
-      {children}
-      {showCloseButton && (
-        <DialogPrimitive.Close asChild>
-          <Button variant="outline">Close</Button>
-        </DialogPrimitive.Close>
-      )}
-    </div>
+    />
   )
 }
 

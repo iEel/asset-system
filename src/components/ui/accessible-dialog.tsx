@@ -1,8 +1,9 @@
 "use client"
 
-import { useRef, type ReactNode, type RefObject } from "react"
+import { createContext, useContext, useRef, type ComponentProps, type ReactNode, type RefObject } from "react"
 import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 export type AccessibleDialogSize = "sm" | "md" | "lg" | "xl"
@@ -13,6 +14,13 @@ const sizeClasses: Record<AccessibleDialogSize, string> = {
   lg: "sm:max-w-4xl",
   xl: "sm:max-w-5xl",
 }
+
+// Goes on the <form> that wraps AccessibleDialogBody and AccessibleDialogFooter. The flex column lets the body
+// scroll on its own while the footer stays in view; without it the whole form scrolls and the footer can scroll away.
+export const accessibleDialogFormClasses = "flex min-h-0 flex-1 flex-col"
+
+// AccessibleDialogCancel reads busy and onClose from the dialog, so callers do not pass them twice.
+const AccessibleDialogContext = createContext<{ busy: boolean; onClose: () => void } | null>(null)
 
 export function AccessibleDialog({
   open,
@@ -29,7 +37,7 @@ export function AccessibleDialog({
 }: {
   open: boolean
   title: string
-  description?: string
+  description?: ReactNode
   busy?: boolean
   initialFocusRef?: RefObject<HTMLElement | null>
   returnFocusRef?: RefObject<HTMLElement | null>
@@ -39,7 +47,6 @@ export function AccessibleDialog({
   onClose: () => void
   children: ReactNode
 }) {
-  const tCommon = useTranslations("common")
   const restoreFocusRef = useRef<HTMLElement | null>(null)
 
   return (
@@ -50,7 +57,7 @@ export function AccessibleDialog({
       }}
     >
       <DialogContent
-        closeLabel={closeLabel ?? tCommon("close")}
+        closeLabel={closeLabel}
         closeDisabled={busy}
         aria-busy={busy || undefined}
         {...(description ? {} : { "aria-describedby": undefined })}
@@ -74,18 +81,58 @@ export function AccessibleDialog({
           target.focus()
         }}
         className={cn(
-          "top-auto bottom-3 flex max-h-[92dvh] w-[calc(100%-1.5rem)] max-w-none translate-y-0 flex-col gap-0 overflow-hidden rounded-lg border-border bg-surface p-0 shadow-overlay sm:top-[50%] sm:bottom-auto sm:translate-y-[-50%]",
+          "top-auto bottom-[max(0.75rem,env(safe-area-inset-bottom))] flex max-h-[92dvh] w-[calc(100%-1.5rem)] max-w-none translate-y-0 flex-col gap-0 overflow-hidden rounded-lg border-border bg-surface p-0 shadow-overlay sm:top-[50%] sm:bottom-auto sm:translate-y-[-50%]",
           sizeClasses[size],
         )}
       >
-        <DialogHeader className="shrink-0 border-b border-border px-5 py-4 pr-16 text-left">
+        <DialogHeader className="shrink-0 border-b border-border px-4 py-4 pr-16 text-left sm:pl-5">
           <DialogTitle className="text-base font-semibold text-foreground">{title}</DialogTitle>
           {description ? (
             <DialogDescription className="text-sm text-muted-foreground">{description}</DialogDescription>
           ) : null}
         </DialogHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+        <div data-slot="accessible-dialog-content" className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <AccessibleDialogContext.Provider value={{ busy, onClose }}>{children}</AccessibleDialogContext.Provider>
+        </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// The parts are optional. Children that do not use them keep their own height, so the content slot scrolls them as before.
+export function AccessibleDialogBody({ className, ...props }: ComponentProps<"div">) {
+  return <div data-slot="accessible-dialog-body" className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5", className)} {...props} />
+}
+
+// Buttons only (guard GD3), secondary first and primary last (K8): phones stack them full width with cancel on top,
+// and from sm they form a right-aligned row. With no body before it, first:border-t-0 leaves the header's line alone.
+export function AccessibleDialogFooter({ className, ...props }: ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="accessible-dialog-footer"
+      className={cn(
+        "flex shrink-0 flex-col gap-2 border-t border-border-soft bg-background px-4 py-3 first:border-t-0 sm:flex-row sm:flex-wrap sm:justify-end sm:px-5",
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+// A real disabled attribute while busy: focus stays on the busy primary button, and the X and Escape are off as well.
+export function AccessibleDialogCancel({
+  children,
+  disabled,
+  onClick,
+  ...props
+}: Omit<ComponentProps<"button">, "type" | "children"> & { children?: ReactNode }) {
+  const dialog = useContext(AccessibleDialogContext)
+  const tCommon = useTranslations("common")
+  if (!dialog) throw new Error("AccessibleDialogCancel must be used inside <AccessibleDialog>")
+
+  return (
+    <Button {...props} type="button" variant="outline" disabled={dialog.busy || disabled} onClick={onClick ?? dialog.onClose}>
+      {children ?? tCommon("cancel")}
+    </Button>
   )
 }

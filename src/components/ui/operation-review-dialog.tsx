@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, type ReactNode } from "react"
 import type { OperationReviewItem } from "@/lib/asset-operation-review"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { Button } from "@/components/ui/button"
@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button"
 type OperationReviewDialogProps = {
   open: boolean
   title: string
-  description: string
+  description: ReactNode
   items: OperationReviewItem[]
   confirmLabel: string
   cancelLabel: string
-  closeLabel: string
+  closeLabel?: string
   busy?: boolean
   onClose: () => void
   onConfirm: () => void

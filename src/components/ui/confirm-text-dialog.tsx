@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useRef, useState, type FormEvent, type RefObject } from "react"
+import { useId, useRef, useState, type FormEvent, type ReactNode, type RefObject } from "react"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
 import { Button } from "@/components/ui/button"
 
@@ -9,12 +9,12 @@ type ConfirmTextDialogTone = "default" | "danger" | "warning"
 type ConfirmTextDialogProps = {
   open: boolean
   title: string
-  description?: string
+  description?: ReactNode
   fieldLabel: string
   placeholder?: string
   confirmLabel: string
   cancelLabel: string
-  closeLabel: string
+  closeLabel?: string
   defaultValue?: string
   busy?: boolean
   tone?: ConfirmTextDialogTone
