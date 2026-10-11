@@ -140,11 +140,26 @@ components:
     rounded: "{rounded.md}"
     padding: "0 12px"
     height: "40px"
+  choice-card:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.primary-slate-ink}"
+    rounded: "{rounded.md}"
+    padding: "10px 12px"
+  choice-chip:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.primary-slate-ink}"
+    rounded: "{rounded.control}"
+    padding: "4px 12px"
+    height: "32px"
   panel:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.primary-slate-ink}"
     rounded: "{rounded.lg}"
     padding: "16px"
+  dialog-footer:
+    backgroundColor: "{colors.soft-system-background}"
+    textColor: "{colors.primary-slate-ink}"
+    padding: "12px 16px"
   badge-status:
     backgroundColor: "transparent"
     textColor: "{colors.muted-slate}"
@@ -177,7 +192,7 @@ The secondary lens is "The Audit Console" for audit rounds, QR scanning, finding
 
 Use the existing design-system helpers, Tailwind tokens, RBAC-aware layouts, locale routing, and workflow conventions as the source of truth. Do not redesign business workflows to chase visual novelty. The UI should preserve dense tables, clear forms, readable Thai and English text, touch-safe field controls, and unambiguous status states.
 
-The current visual foundation is UI round 4 phase 1, the "light shell" (spec `docs/superpowers/specs/2026-10-10-ui-foundation-design.md`, 2026-10-10): colors taken from the app icon (navy `#083161` and teal `#18A0A8`), a white sidebar and topbar, flat panels on a blue-grey canvas, IBM Plex type, and two-tier status badges. Phase 2A (spec `docs/superpowers/specs/2026-10-11-ui-phase2a-design.md`, 2026-10-11) adds the tokens phase 2 needs and restyles the shared components: buttons, fields, menus, toasts, notices, empty states, status badges and breadcrumbs.
+The current visual foundation is UI round 4 phase 1, the "light shell" (spec `docs/superpowers/specs/2026-10-10-ui-foundation-design.md`, 2026-10-10): colors taken from the app icon (navy `#083161` and teal `#18A0A8`), a white sidebar and topbar, flat panels on a blue-grey canvas, IBM Plex type, and two-tier status badges. Phase 2A (spec `docs/superpowers/specs/2026-10-11-ui-phase2a-design.md`, 2026-10-11) adds the tokens phase 2 needs and restyles the shared components: buttons, fields, menus, toasts, notices, empty states, status badges and breadcrumbs. Phase 2C (spec `docs/superpowers/specs/2026-10-11-ui-phase2c-design.md`) moves forms and dialogs onto those components in five batches. Phase 2C plan 1 adds `Segmented`, the dialog parts, `StickyFormFooter`, `Steps`, `FormSection`, `ChoiceCard`/`ChoiceChip` and `FileQueueList`, and moves the first 26 form and dialog files.
 
 **Key Characteristics:**
 
@@ -210,9 +225,9 @@ The palette comes from the app icon. Most of the screen is neutral: a white side
 
 ### Neutral
 
-- **Canvas** (`--canvas` #EEF1F6): The page background inside the app shell (`bg-canvas` on the `dashboard-shell.tsx` wrapper and on sticky mobile bars that blend with it). `<body>` stays `bg-background` so print pages and login are unaffected.
-- **Soft System Background** (`--background` #F6F8FB): Dialog bodies and footers, quiet wells inside panels (the solid replacement for `bg-muted/20` to `/50`), the hover fill of outline and ghost buttons and of link cards, and the disabled and read-only look of buttons and fields.
-- **Surface White** (`--card`, `--popover` #FFFFFF): Panels, forms, fields, popovers, menus, toasts, tables, topbar and sidebar.
+- **Canvas** (`--canvas` #EEF1F6): The page background inside the app shell (`bg-canvas` on the `dashboard-shell.tsx` wrapper and on the full-bleed sticky bars that blend with it: the sticky mobile bars and `StickyFormFooter`). `<body>` stays `bg-background` so print pages and login are unaffected.
+- **Soft System Background** (`--background` #F6F8FB): Dialog footers (`AccessibleDialogFooter`) and, until phase 2C batch 5 restyles it, the whole confirm dialog (`AlertDialog` behind `useConfirm`); quiet wells inside panels (the solid replacement for `bg-muted/20` to `/50`); the hover fill of outline and ghost buttons and of link cards; and the disabled and read-only look of buttons and fields. Dialog and sheet bodies are white.
+- **Surface White** (`--card`, `--popover` #FFFFFF): Panels, forms, fields, dialog and sheet bodies, popovers, menus, toasts, tables, topbar and sidebar.
 - **Row Hover** (`--row-hover` #F3F6FB, `bg-row-hover`): The solid hover and focus fill of table and list rows. It is opaque, so sticky cells stay solid while a table scrolls sideways under them.
 - **Ink** (`--foreground` #0B1D35): Main text and data values.
 - **Faint** (`--faint-foreground` #56677F, `text-faint-foreground`): The third text level: placeholders, hints under fields, table headers, breadcrumbs, sub-lines, stat footers, tab counts, menu trails and reasons, units, the `Nil` dash, disabled text, field icons and the select arrow. AA on every neutral surface (4.95:1 on muted to 5.77:1 on white), and allowed on `primary-soft` for a hovered or selected row or menu item (4.99:1, spec ruling I14). Never on a status soft fill (`bg-{success,warning,danger,info}-soft`; use the tone ink or `muted-foreground`), never for a main data value, and never as the only text that says what a control is. `--sidebar-muted` #586A84 is nearly the same color but belongs to the sidebar; do not swap them.
@@ -270,7 +285,7 @@ Font sizes are Tailwind's defaults plus three sizes from the mockup, `text-meta`
 - **Headline** (700, 1.25rem / `text-xl`, 28px; 30px on Thai pages): Section-leading headings, modal titles, and important form groups.
 - **Title** (600, 1rem / `text-base`, 24px): Panel titles, table group labels, card titles, and dense workflow headings.
 - **Body** (400, 0.875rem / `text-sm`, 22px in every language): Primary interface copy, table cells, descriptions, form helper text, and workflow content. Long prose should stay around 65-75ch.
-- **Label** (500, 0.875rem, 22px, 0 letter spacing): Button text, filter labels, navigation labels, and compact UI controls. Field labels from `FieldLabel` use Meta at weight 500 instead; hand-written field labels move to it in phase 2C. Avoid all-caps labels except very short badges where the existing system already uses them.
+- **Label** (500, 0.875rem, 22px, 0 letter spacing): Button text, filter labels, navigation labels, and compact UI controls. Field labels from `FieldLabel`, and group legends through `fieldLabelClasses`, use Meta at weight 500 instead; the hand-written labels of the 2C batch 2–5 forms move to it in plans 2–5. Avoid all-caps labels except very short badges where the existing system already uses them.
 - **Small** (`text-xs`, 16px; 18px on Thai pages): Section headings in the sidebar and in menus, the mobile bottom bar labels, `Kbd` keys.
 - **Meta** (inherits its weight, 0.8125rem / `text-meta`, 20px in every language): Secondary text: breadcrumbs, meta lines under page titles, table headers, sub-lines in rows, field labels, hints and errors under fields, status badge text, `sm` buttons, chips, tab counts, menu trails and reasons, stat labels and footers, one-line empty notes.
 - **Metric** (500, 1.75rem / `text-metric`, 32px, −0.02em): The value in a stat. Numbers only.
@@ -299,7 +314,7 @@ Font sizes are Tailwind's defaults plus three sizes from the mockup, `text-meta`
 
 **The Print Fonts Rule.** PDFs (`src/lib/pdf-font.ts`, `audit-pdf.tsx`) keep the embedded Noto Sans Thai. Thermal asset labels use the app font; Plex Sans Thai stops at 700, so labels render at 700 instead of 900. Test-print on the thermal printer before deploying; if labels are hard to read, load Noto Sans Thai 900 on the label print page only.
 
-**The Thai Copy Rule.** Thai is the primary language. Thai pages use the shared glossary in `docs/19_THAI_GLOSSARY.md` (ที่ตั้ง · รายการไม่ตรง · พิจารณา · ยืมใช้ชั่วคราว / ถูกยืม · รหัสทรัพย์สิน …) and Buddhist-era years (`src/lib/display-year.ts`). English stays only for kept terms (Serial, License, QR, LDAP, API …) and admin-only technical names. Status codes from the database always go through a label; an unknown code shows as-is rather than disappearing. Server errors show Thai first with the original text as a small muted second line (`useApiError` / `ApiErrorText`); unexpected errors show only "Unexpected error · ref xxxxxxxx", which matches the server log.
+**The Thai Copy Rule.** Thai is the primary language. Thai pages use the shared glossary in `docs/19_THAI_GLOSSARY.md` (ที่ตั้ง · รายการไม่ตรง · พิจารณา · ยืมใช้ชั่วคราว / ถูกยืม · รหัสทรัพย์สิน …) and Buddhist-era years (`src/lib/display-year.ts`). English stays only for kept terms (Serial, License, QR, LDAP, API …) and admin-only technical names. Status codes from the database always go through a label; an unknown code shows as-is rather than disappearing. Server errors show Thai first with the original text as a small muted second line (`useApiError` / `ApiErrorText`); unexpected errors show only "Unexpected error · ref xxxxxxxx", which matches the server log. A request that fails server validation (a `ZodError`) gets one fixed answer, status 400 with `{ error: "Invalid request data", code: "VALIDATION_FAILED" }`, shown as "ข้อมูลที่กรอกไม่ครบหรือไม่ถูกต้อง ตรวจสอบแล้วลองอีกครั้ง" (`apiErrors.validationFailed`), never the JSON of the zod issues (phase 2C, `validationFailedBody` in `src/lib/api-error-exposure.ts`).
 
 ## 4. Elevation
 
@@ -317,7 +332,7 @@ Sheets open in 250ms and close in 200ms with ease-out. Dropdown menus, submenus 
 
 ### Named Rules
 
-**The Border First Rule.** Use a border and tonal surface for grouping. Do not add `shadow-sm` to panels or cards; only floating layers use `shadow-overlay`. Phase 2A removed `shadow-sm` from every panel, card and section. Six stay on purpose: 3 controls that float over a camera image or a photo (`scanner-text-input.tsx` ×2, `audit-scan-check-form.tsx`) and 3 paper previews (`asset-label-print.tsx`, `operation-document-print.tsx`, the label sample in `system-settings-form.tsx`). Six larger shadows wait for their owners: the 2 sticky save bars (2C), the 2 floating add buttons (2D), the mobile bulk-action bar of the register (2B) and the round scan button (kept since phase 1). The guard `R2 only floating layers, camera controls and paper previews cast a shadow` (`tests/visual-foundation-guards.test.ts`) holds these 12 in a per-file budget that may only go down.
+**The Border First Rule.** Use a border and tonal surface for grouping. Do not add `shadow-sm` to panels or cards; only floating layers use `shadow-overlay`. Phase 2A removed `shadow-sm` from every panel, card and section. Six stay on purpose: 3 controls that float over a camera image or a photo (`scanner-text-input.tsx` ×2, `audit-scan-check-form.tsx`) and 3 paper previews (`asset-label-print.tsx`, `operation-document-print.tsx`, the label sample in `system-settings-form.tsx`). Four larger shadows wait for their owners: the 2 floating add buttons (2D), the mobile bulk-action bar of the register (2B) and the round scan button (kept since phase 1). Phase 2C replaced the 2 sticky save bars with the flat `StickyFormFooter`. The guard `R2 only floating layers, camera controls and paper previews cast a shadow` (`tests/visual-foundation-guards.test.ts`) holds these 10 in a per-file budget that may only go down.
 
 **The No Floating Marketing Cards Rule.** Panels must not become decorative cards arranged for landing-page drama.
 
@@ -349,15 +364,18 @@ Components should feel consistent, restrained, and task-first. Shared primitives
 | `ghost` | No fill or border, `muted-foreground` text | `background` fill, ink text | `muted` fill | Quiet and icon-only actions. Not on a `bg-background` footer, where its hover fill is invisible: use `outline` there |
 | `danger` | White, `danger-border` border, `danger` text | `danger-soft` fill | `danger` border | A destructive action placed in a page |
 | `destructive` | Solid danger fill, white text | `danger-hover` | — | Only the confirm button of a destructive dialog |
-| `warning` | Solid warning fill, white text | `warning-hover` | — | Saving an audit check that differs, and `ConfirmTextDialog` with tone warning |
+| `warning` | Solid warning fill, white text | `warning-hover` | — | Saving an audit check that differs, the 2 audit "not found" confirms (mark an asset not found, report a missing component), and `ConfirmTextDialog` with tone warning |
 
 - There is no `secondary`, `link` or `success` variant: use `outline`, `linkVariants` and `default`.
 - **Disabled:** never faded with opacity. Every variant turns to the `background` fill, `border` border and faint text with a not-allowed cursor (`disabled:` and `aria-disabled:`); the disabled look wins over every hover and pressed state. `aria-disabled` also blocks pointer events, for `asChild` links and busy buttons.
-- **Busy:** pass `busy` while the action runs. The button gets `aria-busy` and `aria-disabled`, shows a spinner (`Loader2`, stopped under reduced motion) in place of its leading icon or in front of its label, and ignores clicks, Enter, Space and implicit form submission, but keeps keyboard focus. Do not pass `disabled` with `busy` (focus would drop to `<body>`). `busy` cannot be combined with `asChild` (type error), and it must come from client state: a server file cannot pass it. The caller still writes the label ("กำลังบันทึก…").
+- **Busy:** pass `busy` while the action runs. The button gets `aria-busy` and `aria-disabled`, shows a spinner (`Loader2`, stopped under reduced motion) in place of its leading icon or in front of its label, and ignores clicks, Enter, Space and implicit form submission, but keeps keyboard focus. `disabled` may hold other conditions, such as a validation gate, but never the busy one: write `busy={saving} disabled={x}`, never `disabled={saving || x}`, or focus drops to `<body>` (guard GB4 in `tests/form-migration-guards.test.ts`). `busy` cannot be combined with `asChild` (type error), and it must come from client state: a server file cannot pass it. The label does not change while busy (no "กำลังบันทึก…", phase 2C ruling K13): the spinner, `aria-busy` and the disabled look say that it is working.
 - **Focus:** `focus-visible:ring-2 ring-ring ring-offset-2`, teal #10858D on every variant, danger included.
 - **Text links:** `linkVariants({ size })`: primary text whose underline appears on hover and keyboard focus. `size: "meta"` (13px, no wrap, the default) for a stand-alone command link such as "ล้างทั้งหมด"; `size: "inherit"` for a link inside a sentence. It has no 44px box; a stand-alone link on mobile adds `inline-flex min-h-11 items-center md:min-h-0`.
 - **Legacy:** `ActionButton` and `getActionButtonClasses` are deprecated; phase 2D moves their 10 call sites to `Button` and deletes them. `ActionButton variant="danger"` is the solid `destructive`, not `Button variant="danger"`. `getSafeActionLinkClasses()` builds on `buttonVariants` and lets long labels wrap. `getTouchIconButtonClasses` was removed: use `Button size="icon"`.
-- **Hand-written buttons** (about 410) keep their own classes until 2B, 2C and 2D move them. Moving one must not change its desktop height: `h-8` → `sm`, `h-9` → `md`, `h-10` beside 40px fields → `lg`, any other `h-10` → no size (`default`).
+- **Hand-written buttons** keep their own classes until 2B, the later 2C batches and 2D move them; phase 2C batch 1 moved the form and dialog buttons of its 26 files (all but the repair attachment delete dialog, which batch 5 turns into `useConfirm`). Pick the size from today's desktop height: `h-8` → `sm`, `h-9` → `md`, `h-10` beside 40px fields → `lg`, any other `h-10` → no size (`default`). A button that is 44px tall on desktop (`min-h-11` only, dialog footers included) also takes no size: it becomes 40px now and 36px after 2D (phase 2C ruling K7).
+- **Order (K8):** the primary action comes last in the DOM, so the visual order and the Tab order agree. In a form's button row, a dialog footer and `StickyFormFooter`, the secondary action (Cancel) comes first. Phones stack the buttons full width with Cancel on top and the primary action at the bottom (`flex-col`, never `flex-col-reverse`); from `sm` they form a right-aligned row. Guard GD4 holds the remaining `flex-col-reverse` lines in a per-file budget.
+- **Delete icons:** an icon button that removes a row and is neutral at rest uses `outline`, with no red on hover (phase 2C ruling K22); one that is red at rest stays `danger`. Taking a file out of an upload queue is the `outline` `icon-sm` button of `FileQueueList`.
+- **`Segmented`** (`src/components/ui/segmented.tsx`, server-safe): a row of toggle buttons where exactly one is on (`aria-pressed`), named by its required `aria-label`. A white frame with a `border` line, 8px corners and 2px padding and gap; options use `rounded-control` and `text-sm`. The chosen option is `primary-soft` with `primary-hover` text at weight 600; the others are weight 500 `muted-foreground` with a `background` hover. `size` `sm` is 32px from `md` (the default) and `md` 36px; below `md` both are 44px. `fill` stretches the frame and shares it equally, and `showCheck` puts a check before the chosen label so the choice does not rely on color. Values are strings, and every option is its own Tab stop. The focus ring has no offset, because the options are only 2px apart.
 
 ### Focus
 
@@ -369,6 +387,7 @@ Components should feel consistent, restrained, and task-first. Shared primitives
 - Fields use `focus:border-ring focus:ring-1 focus:ring-ring` plus the 4px `shadow-field-focus` halo; a field with `aria-invalid` turns back to teal while focused. Never write `focus:border-danger`.
 - Toasts and their close button use `outline: 2px solid var(--ring)`, which stays visible in forced-colors mode.
 - `FileDropzone` hides its file input with `sr-only`, which clips an outline, so its label draws the outline instead (`has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring`).
+- `ChoiceCard` and `ChoiceChip` show the outline of their own input, which stays visible (never `sr-only`).
 
 ### Status Badges
 
@@ -382,8 +401,14 @@ Components should feel consistent, restrained, and task-first. Shared primitives
 ### Dialogs, Menus and Confirmation
 
 - **Primitives:** Overlays use shadcn/ui on Radix (`src/components/ui/`): `AccessibleDialog` for forms and reviews, `Sheet` for side drawers and mobile navigation, `DropdownMenu` for action menus, `Popover` for help and pickers, `AttachmentPreviewDialog` for image/PDF preview. Every overlay closes with Escape, traps focus, returns focus to its trigger, locks page scroll, and renders in a portal. Dialogs opened without a Radix Trigger restore focus to their opener themselves (`returnFocusRef` / `fallbackFocusRef` on `AccessibleDialog`, `returnFocusRef` on `confirm()`).
-- **Busy dialogs:** Pass `busy` while saving; the dialog then ignores Escape, outside clicks and the close button.
-- **Confirmation:** Never use `window.confirm`. Call `await confirm({ title, confirmLabel, tone })` from `useConfirm()`; destructive actions use `tone: "destructive"` and report the actual result ("ลบแล้ว", not "บันทึกสำเร็จ").
+- **`AccessibleDialog` parts** (`src/components/ui/accessible-dialog.tsx`): the header holds the 16px semibold title and an optional `description` (a `ReactNode`: a record code in it is wrapped in `tag`, and a name after the code follows " · "). Below it the content slot scrolls. A dialog with fields or buttons uses `AccessibleDialogBody` (white, `px-4 py-4 sm:px-5`, scrolls on its own, no gap of its own) and `AccessibleDialogFooter` (outside the scroll area, so it is always visible; `background` fill, a `border-soft` top line, `px-4 py-3 sm:px-5`, buttons only). A `<form onSubmit>` wraps both and takes `className={accessibleDialogFormClasses}`; without it the whole form scrolls and the footer can scroll away (guard GD6). A dialog that has not moved to the parts yet scrolls as before.
+- **Footer buttons (K8):** `AccessibleDialogCancel` first (an `outline` button, "ยกเลิก" by default, that closes the dialog), any other secondary action next, the primary action last, so the visual order is the DOM and Tab order. Phones stack them full width with Cancel on top; from `sm` they form a right-aligned row that may wrap. The footer holds only `Button` and `AccessibleDialogCancel`, with no `className`, no `size=`, no hand-written `<button>`, no `Loader2` and no `flex-col-reverse` (guard GD3). The primary action is `default`; `destructive` only confirms a destructive action; `warning` is for the 2 audit "not found" confirms. Footer labels stay under 40 characters; a sentence goes into the body as a `Notice`.
+- **Busy dialogs:** Pass `busy` while saving; the dialog then ignores Escape, outside clicks and the close button, `AccessibleDialogCancel` is disabled, and the button that started the work stays where it is with `busy`, so focus stays on it.
+- **Close X:** a `ghost` `icon` `Button` in the top-right corner of every dialog and sheet, named "ปิด" (`common.close`). Pass `closeLabel` only when the name really differs. While the dialog is busy, the X is disabled and has no box.
+- **Phones:** the dialog box sits at least 12px above the bottom edge and clear of the iPhone home bar (`bottom-[max(0.75rem,env(safe-area-inset-bottom))]` on the box); the footer adds no padding for it. Bottom sheets pad the home bar (`pb-[env(safe-area-inset-bottom)]`).
+- **A dialog rendered inside another `<form>`** (the asset-number prefix dialog of the settings page) has no `<form>` of its own and no `type="submit"`. React sends `submit` up the component tree, through the portal, so a nested form would save the whole settings page (guard GD5). If Enter should ever act there, use an `onKeyDown` handler.
+- **Sheets:** white (`bg-surface`, like dialog bodies). `SheetHeader` has a bottom line and is 56px tall (`py-4 pr-16`, room for the X), and `SheetTitle` is 16px semibold.
+- **Confirmation:** Never use `window.confirm`. Call `await confirm({ title, confirmLabel, tone })` from `useConfirm()`; destructive actions use `tone: "destructive"` and report the actual result ("ลบแล้ว", not "บันทึกสำเร็จ"). `confirmLabel` names the action with a verb ("ลบ", "ละทิ้ง"), not "ยืนยัน"; 4 calls still lack one until phase 2C batch 5, which also gives the confirm dialog the `AccessibleDialog` look. On phones it already stacks Cancel above the action.
 - **Menus never contain dialogs.** A menu item only opens a dialog or drawer that is rendered outside the menu, and that dialog returns focus to the menu trigger.
 - **Menu panels** (`DropdownMenuContent`, `PopoverContent`, `Command`): 12px corners (`rounded-lg`), white, `border`, `shadow-overlay`. Dropdown panels are at least 240px wide (`min-w-60`, so callers do not set narrower widths), with `p-1.5` and 1px between items; the popover keeps `w-72 p-4`.
 - **Menu items:** 36px from `md` up and 44px below, 6px corners, `text-sm` ink, 16px icons in `muted-foreground`. Hover and arrow keys highlight with `primary-soft`; pressing shows `muted`; `variant="destructive"` is danger text with a `danger-soft` highlight. Group labels are 12px medium `muted-foreground`, separators are `border-soft` lines, and `DropdownMenuShortcut` is the faint 13px trail at the end.
@@ -404,7 +429,7 @@ Components should feel consistent, restrained, and task-first. Shared primitives
 
 ### Cards / Containers
 
-- **Corner Style:** 12px (`rounded-lg`) for main content panels, metric cards, dialogs, menus, popovers, the command panel and toasts; 8px (`rounded-md`) for compact tables, nested control surfaces, `Notice` boxes, `md`/`lg`/`default`/`icon` buttons and every field (inputs, selects, textareas, `SearchField`, the `SearchableSelect` trigger, `FileDropzone`); 6px (`rounded-control`) only for small controls: `sm` and `icon-sm` buttons, buttons inside a segmented control, chips, status badges, menu items and the search box inside a menu. `rounded-sm` stays 4px (checkbox boxes, `Kbd`). Never write `rounded-[6px]` (guard).
+- **Corner Style:** 12px (`rounded-lg`) for main content panels, metric cards, dialogs, menus, popovers, the command panel and toasts; 8px (`rounded-md`) for compact tables, nested control surfaces, `Notice` boxes, `ChoiceCard`, `md`/`lg`/`default`/`icon` buttons and every field (inputs, selects, textareas, `SearchField`, the `SearchableSelect` trigger, `FileDropzone`); 6px (`rounded-control`) only for small controls: `sm` and `icon-sm` buttons, the options of `Segmented`, chips (`ChoiceChip`), status badges, menu items and the search box inside a menu. `rounded-sm` stays 4px (checkbox boxes, `Kbd`). Never write `rounded-[6px]` (guard).
 - **Background:** Surface White on Canvas. Quiet groupings inside a panel use Soft System Background, a solid token (never `bg-muted/NN` or `bg-accent/NN` outside table headers). Empty states have no box of their own (see Feedback).
 - **Shadow Strategy:** None. Panels and metric cards are flat bordered surfaces (see §4).
 - **Border:** Border is the default structural line; inner dividers use `border-soft`. MetricCard tones and tinted boxes use `border-{tone}-border`. Avoid colored side stripes and decorative borders.
@@ -419,12 +444,42 @@ Components should feel consistent, restrained, and task-first. Shared primitives
 - **Error:** set `aria-invalid` (`Field` does it when `error` is set): a `danger` border, 1px ring and 4px halo (`shadow-field-error`, danger at 14%). While focused the field turns back to teal, and the error text under it stays. Never write `focus:border-danger` or `aria-invalid:focus:ring-danger` (one focus color).
 - **Disabled:** `background` fill, `border` border, faint text, not-allowed cursor, no opacity. **Read-only** (`Input` and `Textarea` only): `background` fill and `border` border with normal text, still focusable and copyable.
 - **Placeholder:** the faint ink from one base rule (`::placeholder`, 5.77:1 on white); never add `placeholder:text-*` (guard).
-- **`Field`:** the label (13/20, weight 500, ink) sits above the control; the hint (13/20 faint) and the error (13/20 `text-danger`, `role="alert"`, under the hint) sit below it, and `aria-describedby` reads the error first. `required` shows a warning-colored `*` with `aria-hidden` and sets `aria-required`, not the native `required` (that would start the browser's own form validation). Do not wrap `SearchableSelect` in `Field` (it has its own label), and never put `Field` inside a `<label>`.
+- **`Field`:** the label (13/20, weight 500, ink: `fieldLabelClasses`) sits above the control; the hint (13/20 faint) and the error (13/20 `text-danger`, `role="alert"`, under the hint) sit below it, and `aria-describedby` reads the error first. Write `label=` as its first prop. `required` shows the warning-colored `*` (`FieldRequiredMark`, `aria-hidden`) and sets `aria-required`; it does not add the native `required`. Keep the native `required`, `maxLength` and `minLength` on the control inside `Field` (phase 2C ruling K4): in many forms they are the only check, and guard GF5 keeps their count per file from dropping. `Field required` and the control's `required` go together (guard GF4); three server-enforced fields show the star without `required` until the V track. `labelAction` puts one icon button with its own name, such as the status help popover, beside the label and outside the `<label>`, so clicking it does not move focus to the field. Do not wrap `SearchableSelect` in `Field` (it has its own label), and never put `Field` inside a `<label>`. Errors under fields stay only where they existed before phase 2C (the supplier form, the duplicate asset tag and serial); the rest come with the V track.
+- **Groups of checkboxes or radios:** `<fieldset className="min-w-0">` with `<legend className={cn(fieldLabelClasses, "mb-1.5")}>` and `<FieldRequiredMark />` for a required group. `min-w-0` stops a fieldset (`min-inline-size: min-content` by default) from pushing a phone page sideways.
+- **Fields without a visible label** use `Field hideLabel` (the label is `sr-only`; id, hint and error still work), for example in table cells. Only a `SearchField` or `ScannerTextInput` with no hint takes `aria-label` instead; `ScannerTextInput` passes `aria-label` and `disabled` on to its text field.
+- **Money fields:** the unit is part of the label ("ราคาซื้อ (บาท)", the `…Baht` message keys), and the control has `inputMode="decimal"` next to `step="0.01"` (guard GF6). Read-only displays keep their own keys, whose values already show ฿.
 - **Native select arrow:** `select-chevron` (§3 Utilities); forced-colors mode shows the system arrow.
-- **Checkboxes and radios** stay native: the primary color comes from `accent-color: var(--primary)`, focus from the base outline, and `checkboxVariants` sets the size; the 44px target is the row's `<label>`.
-- **`FileDropzone`:** a dashed `border-input` box with 8px corners on white, `background` on hover, the focus outline on its label, and `border` + `background` when disabled (no opacity).
-- **Migration:** 316 fields in 70 files are still hand-written, and 282 of them use `border-border`; phase 2C moves them to the primitives. Until then some forms show both kinds, so 2A ships only with the first 2C batch.
+- **Checkboxes and radios** stay native: the primary color comes from `accent-color: var(--primary)`, focus from the base outline, and `checkboxVariants` sets the size; the 44px target is the row's `<label>`. Never `accent-primary` or a hand-drawn box (guard GF7). A hand-written checkbox row inside a form adds `onKeyDown={preventEnterSubmit}`.
+- **`ChoiceCard` / `ChoiceChip`** (`src/components/ui/choice-card.tsx`, a client component): radio and checkbox options drawn on the browser's own input inside a `<label>`. The input stays visible, so the choice never relies on color, browsers without `:has()` still show it, and focus is the input's own outline. Pass `type="radio"` or `"checkbox"` and the usual input props (`name`, `checked`, `onChange`, `required`, `disabled`).
+  - `ChoiceCard` is a full-width card: 8px corners, at least 44px tall, a `control-border` line, an optional `description`. The chosen card has a `primary` border on the `primary-soft` fill.
+  - `ChoiceChip` is a small inline option: 6px corners, 32px from `md` and 44px below, an optional faint `detail` such as a count. The chosen chip has a `primary-border` line, the `primary-soft` fill and `primary-hover` text.
+  - A disabled option keeps its fill when it is chosen. Enter on them never submits the form (`preventEnterSubmit`); Space picks.
+- **`FileDropzone`:** a dashed `border-input` box with 8px corners on white, `background` on hover, the focus outline on its label, `border` + `background` when disabled (no opacity) and a `danger` border with `aria-invalid`. `description` is always shown under the status line and says what to choose before anything is chosen; the field is named by its label and title, and the description is read after them. Inside `Field` it takes the `Field` label; help text goes in `description`, never in `Field`'s `hint`.
+- **`FileQueueList`** (`src/components/ui/file-queue-list.tsx`): the files chosen but not uploaded yet, under a `FileDropzone multiple`. Each row shows the file name and an optional detail, with an `outline` `icon-sm` button named "นำ {name} ออก" (`common.removeFile`). The list is named "ไฟล์ที่เลือก" (`common.selectedFiles`), and `emptyLabel` shows an `EmptyNote` while it is empty. Removing a row deletes nothing that is saved.
+- **Migration:** phase 2C batch 1 (plan 1) moved the 179 hand-written fields of 26 form and dialog files onto the primitives. These include the 16 forms that showed both kinds after 2A, so no form mixes them any more. The 94 hand-written fields in the other 40 files of 2C move in plans 2–5, and 3 stay on purpose: the 2 boxed fields of the label-print toolbar and the room search of the audit room picker. List-page filters belong to 2B. `tests/form-migration-guards.test.ts` keeps a per-file budget of every old pattern (GF2 counts hand-written fields) that may only go down.
 - Text selection uses `primary-border` behind ink.
+
+### Forms: Save Bar, Steps, Sections and Signature
+
+- **`StickyFormFooter`** (`src/components/ui/sticky-form-footer.tsx`, server-safe): the save bar of a long form (asset new and edit, settings).
+  - Placement: it is the last child of the `<form>`, so `type="submit"`, Enter in a field and the busy guard keep working. It sticks to the bottom of the dashboard scroll area (`sticky -bottom-4 sm:-bottom-6`, flush over `main`'s padding; `-mx-4 sm:-mx-6` for a full-width line) and rests at the end of the form once you scroll there. It never measures the sidebar.
+  - Look: flat, a `border-t` on `bg-canvas`, with no shadow, blur or see-through fill. It clears the iPhone home bar.
+  - Content: an optional `status` line (above the buttons on phones, on the left from `sm`), then the buttons in K8 order: a full-width column on phones, a right-aligned row from `sm`.
+  - Use it only on focus-task routes, where the mobile bottom navigation is hidden (guard GL1).
+- **`Steps`** (`src/components/ui/steps.tsx`, states from `getLinearStepStates(count, currentIndex, outcome)` in `src/lib/step-states.ts`): progress through a real multi-step flow.
+  - Markup: an `<ol>` named by `label`, with 22px markers joined by a line.
+  - The state shows by shape (number, check, X) and by a hidden word read before each label: "เสร็จแล้ว", "ขั้นตอนปัจจุบัน", "ยังไม่ถึง", "ปฏิเสธแล้ว". The current step has `aria-current="step"`.
+  - Below `md` the labels are hidden and one line reads "ขั้นที่ 2 จาก 3 · ระบุรายละเอียด".
+  - Users: the component install flow (batch 1); the import wizard and the disposal request follow in batches 4 and 5.
+  - Numbered sections that are not steps use `FormSection`.
+- **`FormSection`** (`src/components/ui/form-section.tsx`, server-safe): a numbered or plain section heading.
+  - The number sits in a quiet outlined 22px circle; it is decoration, never the "current step" look.
+  - The title is `h2` (16px) or `as="h3"` (14px), with a `border-soft` line under the row.
+  - Without children it returns the heading row alone. With children it wraps them in a plain `div`, so a long page does not get one landmark region per section.
+- **`FormContextBanner`** (`src/components/ui/form-context-banner.tsx`, server-safe): the record a form is about, as one quiet `<dl>` row. A faint 13px label, then the value in 14px medium ink that wraps. No tinted box, no capitals, no truncation. `code` shows a record code as `tag`.
+- **`SignaturePad`** (`src/components/asset-operations/signature-pad.tsx`): a named group, with the label and helper above at full width.
+  - The canvas is dashed `border-input` on white. The signature prints, so the canvas and stroke colors stay.
+  - A `ghost` `sm` "ล้างลายเซ็น" button sits under the canvas on the right.
 
 ### Navigation
 
@@ -476,7 +531,7 @@ Field-work page pattern (audit scan, 2026-10-07): **room → list or typed searc
 
 ### Do:
 
-- **Do** preserve existing tokens and shared primitives such as `Button`, the field primitives (`Input`, `NativeSelect`, `Textarea`, `Field`, `SearchField`), `Notice`, `EmptyNote`, `ActionEmptyState`, and the panel, table shell and mobile card list helpers.
+- **Do** preserve existing tokens and shared primitives such as `Button`, `Segmented`, the field primitives (`Input`, `NativeSelect`, `Textarea`, `Field`, `SearchField`), the dialog parts (`AccessibleDialogBody`, `AccessibleDialogFooter`, `AccessibleDialogCancel`), `StickyFormFooter`, `ChoiceCard` and `ChoiceChip`, `Steps`, `FormSection`, `FileQueueList`, `Notice`, `EmptyNote`, `ActionEmptyState`, and the panel, table shell and mobile card list helpers.
 - **Do** keep navy #083161 for the logo and the selected menu row, Primary #1E4F94 for actions and links, and teal for info status, focus and the selected menu icon.
 - **Do** use borders and tonal layers as the grouping mechanism; use `shadow-overlay` only for dialogs, sheets, popovers and menus, and `bg-scrim` behind them.
 - **Do** keep tables and forms dense enough for enterprise scanning, but not cramped.
@@ -497,6 +552,7 @@ Field-work page pattern (audit scan, 2026-10-07): **room → list or typed searc
 - **Don't** use display fonts, fluid hero typography, gradient text, oversized cards, or landing-page composition inside product workflows.
 - **Don't** use colored side-stripe borders as a decorative accent. Use full borders, status badges, text labels, and icons instead.
 - **Don't** fade a disabled control with opacity, put faint text on a status soft fill, or tint a fill or border with `/NN`; use the disabled look, the tone ink and the solid tokens.
+- **Don't** change a button's label while it is busy, put the primary action first in the DOM (`flex-col-reverse`), drop `required` or `maxLength` from a control when it moves into `Field`, or give a dialog its own `<form>` when it renders inside another form.
 
 ## 7. Documentation Governance and Adaptive UI Contract
 
@@ -504,7 +560,7 @@ Field-work page pattern (audit scan, 2026-10-07): **room → list or typed searc
 
 Business workflow, RBAC, SOD, lifecycle, and security requirements always take precedence over visual guidance. Runtime components and CSS are the implemented behavior; drift between runtime and this document must be reviewed and reconciled explicitly.
 
-**Warning:** Do not run `npx shadcn add`: it writes oklch tokens and a `.dark` block into `src/app/globals.css`, and `npx shadcn add input|textarea|native-select|field|button|dropdown-menu|command|popover` overwrites our own files of the same names, whose classes differ from shadcn's. Copy the component by hand and review the diff.
+**Warning:** Do not run `npx shadcn add`: it writes oklch tokens and a `.dark` block into `src/app/globals.css`, and `npx shadcn add input|textarea|native-select|field|button|dropdown-menu|command|popover|dialog|sheet|alert-dialog` overwrites our own files of the same names, whose classes differ from shadcn's. Copy the component by hand and review the diff.
 
 ### Adaptive UI Contract
 
@@ -512,7 +568,7 @@ Business workflow, RBAC, SOD, lifecycle, and security requirements always take p
 - Mobile is the field-operation workspace for scanning, evidence capture, quick lookup, custody actions, and walking audits.
 - Desktop and Mobile may present different hierarchy and controls while reusing the same URL, API, workflow records, permissions, validation, audit trail, and data model.
 - Global Mobile Field Navigation and a page-owned contextual action bar must never render together.
-- Focus-task routes such as scanner, edit, and transaction flows hide global field navigation while their contextual action surface is active.
+- Focus-task routes hide global field navigation while their contextual action surface is active: the scanner and transaction flows, the asset, audit, maintenance and disposal work pages, the settings page and every `new` and `[id]/edit` form (`focusTaskRoutes` in `src/lib/mobile-field-navigation.ts`). Phase 2C added the settings page and 24 form routes, and returned the PM and disposal-batch lists to navigation. List pages keep the bottom navigation. A page that shows `StickyFormFooter` must be a focus-task route (guard GL1).
 - Mobile controls remain at least 44px, respect safe-area insets, avoid body-level horizontal overflow, and do not depend on hover. Shared buttons, fields and menu items switch to their desktop height at `md` (768px), not `sm`.
 - Two smaller targets are accepted under WCAG 2.5.8 (at least 24px, or enough spacing): the 24px toast close button (a toast can also be swiped away) and the 20px-tall breadcrumb links (one link per trail, and the page keeps its back button). Links inside a sentence are exempt as well.
 

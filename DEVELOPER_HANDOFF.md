@@ -344,6 +344,107 @@ npm run build
   - 2C: 316 hand-written fields, 25 per-file `Field` helpers, 16 select wrappers and 49 checkboxes; `Loader2` → `busy`; errors under fields; `closeLabel = "Close"` in `dialog.tsx` and `sheet.tsx`; `FormContextBanner`; sticky save bars.
   - 2D: the remaining hand-written buttons and the 36px default; deleting `ActionButton`; about 80 notices and 55 empty boxes; about 35 hand-written pills and the 2 database-colored pills, which need `status.name` in the API; `Badge`; `formatCurrency` on print pages; the QuickAction disabled span; every budget to `{}`; dropping Plex Mono 600.
 
+## UI Round 4 Phase 2C Plan 1 Forms and Dialogs (2026-10-11)
+
+- Branch `feat/ui-phase2c` (from `master` `5ffee76` with the P0 commits; 2A is merged but not deployed). Spec `docs/superpowers/specs/2026-10-11-ui-phase2c-design.md` (its §10 rulings I1–I36 override the section files in `docs/superpowers/specs/2026-10-11-ui-phase2c/`) · plan `docs/superpowers/plans/2026-10-11-ui-phase2c-plan1.md` · canonical values in `DESIGN.md`.
+  - 2C moves forms and dialogs onto the 2A primitives in five batches (plans 1–5).
+  - Plan 1 is:
+    - P0: shared pieces that 2B needs too
+    - 2C-0: new primitives
+    - the ZodError fix
+    - batch 1: 26 files, 179 fields
+  - No workflow, page, schema, RBAC, migration, dependency or token change. The only server change is the validation message.
+- **Deploy:** plan 1 ships together with 2A and the other commits not deployed since `ab1b873` (56 at `5ffee76`), as one deploy that the user starts after the dev-app check and the manual checks below.
+  - No schema change, so `ab1b873` stays a clean rollback.
+  - The P0 commits are also on local `master` (fast-forward after Task 3, not pushed). `master` with P0 must not be deployed on its own (2A I22).
+- **P0** (in `src/components/` unless noted; 2B builds on these):
+  - `ui/segmented.tsx` (`Segmented`) on the label-name setting and the audit room-list tabs.
+  - `labelAction` on `Field`, plus `fieldLabelClasses` (`ui/field-variants.ts`) and `FieldRequiredMark` (`ui/field.tsx`) for `<legend>`.
+  - `open()`, `hideTrigger` and `returnFocusRef` on `DisposalDecisionButton`, `DisposalExecutionButton` and `AuditMarkNotFoundButton`, so 2B's row menus can open these dialogs (`tests/dialog-trigger-handles.test.ts`).
+- **2C-0 primitives** (in `src/components/ui/` unless noted):
+  - Dialogs:
+    - `AccessibleDialogBody`, `AccessibleDialogFooter`, `AccessibleDialogCancel` and `accessibleDialogFormClasses`
+    - the ghost X named "ปิด" in `dialog.tsx` and `sheet.tsx`
+    - white sheets with a header line and the bottom safe area
+    - the `AlertDialogFooter` order
+  - Files and scanning: `FileDropzone` `description`, `FileQueueList`, and `aria-label` and `disabled` on `ScannerTextInput`.
+  - Choices, steps and sections: `ChoiceCard` / `ChoiceChip` / `preventEnterSubmit`, `Steps` with `src/lib/step-states.ts`, `FormSection`, and a quiet `FormContextBanner`.
+  - Save bar: `StickyFormFooter`.
+- **Know these before you touch a form or dialog:**
+  - Keep `required`, `maxLength` and `minLength` on the control inside `Field` (K4). `Field required` adds only the star and `aria-required`. No form validates with zod on the client yet, so these attributes and the existing toasts are the only checks in many forms. Plan 1 changes no validation behavior.
+  - `busy={x}` on the button that runs, and `x` never in its `disabled` (focus would drop to `<body>`). The label stays the same while busy (K13). The busy-label message keys stay unused until 2D deletes them.
+  - Dialog footers: `AccessibleDialogCancel` first, the primary action last, no `className` and no `size=`. A `<form className={accessibleDialogFormClasses}>` wraps `AccessibleDialogBody` and `AccessibleDialogFooter`.
+  - A dialog that renders inside another `<form>` (the settings prefix dialog) has no `<form>` of its own and no `type="submit"`. React sends `submit` up the component tree through the portal (guard GD5).
+  - `StickyFormFooter` only on focus-task routes, as the last child of the `<form>`.
+  - `ChoiceCard`/`ChoiceChip` keep the input visible and stop Enter from submitting; a hand-written checkbox row uses `preventEnterSubmit`.
+  - **Guard file `tests/form-migration-guards.test.ts`** (GF fields, GB buttons and busy, GD dialogs, GL save bar and bottom navigation; JSX reader in `tests/helpers/source-files.ts`):
+    - It holds per-file budgets for the 66 files of 2C.
+    - The commit that migrates a file lowers that file's budgets and adds it to `MIGRATED_FILES`; never raise a number.
+    - `CONSTRAINT_FLOORS` (the `required`/`maxLength`/`minLength` counts) never go down.
+    - 2B does not edit this file.
+  - **Never run a formatter** on 2C files (spec §9.8). Several tests pin attribute order and line breaks, and some read CRLF files without converting them, so a regex with `\n` breaks silently.
+  - No new tokens (2A I21 still holds).
+- **ZodError fix (spec §8.5):**
+  - `errorResponse` (`src/lib/api-response.ts`) and the transaction-cancellation response answer every `ZodError` with status 400 and `{ error: "Invalid request data", code: "VALIDATION_FAILED" }` (`validationFailedBody` in `src/lib/api-error-exposure.ts`). They used to send the JSON of every zod issue.
+  - The catalog maps both strings to `apiErrors.validationFailed`: "ข้อมูลที่กรอกไม่ครบหรือไม่ถูกต้อง ตรวจสอบแล้วลองอีกครั้ง".
+  - Routes are unchanged. The V track adds `fieldErrors` to this body.
+- **Batch 1:**
+  - 1a: PM plan form, repair record form, the 3 repair dialogs, and the select and drop zone of repair attachments.
+  - 1b: check-out, check-in, transfer, bulk move, `SignaturePad`, `OperationReviewDialog`.
+  - 1c: disposal request and batch forms, the decision and execution dialogs, the asset picker.
+  - 1d: audit check sheet, the finding review dialogs, not found, missing component.
+  - 1g: asset model form.
+  - 1e:
+    - asset form: `StickyFormFooter`, `labelAction` on status and condition, photo-type chips
+    - batch form: column chips, labelled cells
+    - component install: `Steps`, and the back button reads "กลับ"
+    - asset attachments
+  - 1f:
+    - the bottom navigation hidden on 25 routes (K15)
+    - settings: `StickyFormFooter`, `FormSection`, the prefix dialog
+    - depreciation policy builder: group chips
+- **What users see in batch 1:**
+  - Fields are white with 3:1 borders. On desktop, 44px fields and buttons are now 40px (K7); phones stay at least 44px with 16px text.
+  - Disabled buttons are grey instead of faded. Busy buttons keep focus and their label.
+  - Dialog footers are always visible, with Cancel on top on phones. The X reads "ปิด".
+  - The asset save bar no longer shifts 192px when the sidebar collapses (G11).
+  - The bottom navigation is gone on the settings page and 24 new/edit form routes, and back on the PM and disposal-batch lists.
+  - A validation error reads in Thai instead of JSON.
+  - Sheets elsewhere (2B's register filter and row ⋯ sheets, the drawers) are white with a header line.
+- **Messages:**
+  - 26 new keys:
+    - `common`: `removeFile`, `selectedFiles`, `stepOf`, `stepComplete`, `stepCurrent`, `stepUpcoming`, `stepRejected`
+    - `apiErrors.validationFailed`
+    - `repairRecord`: `dropFilesTitle`, `dropFilesHint`
+    - `checkin.photoAfterDescription`
+    - `disposalPage`: `saleValueBaht`, `salvageValueBaht`, `actualSaleValueBaht`, `actualSalvageValueBaht`, `requestEvidenceDescription`
+    - `auditScan.dropAuditPhotoDescription`
+    - `asset`: `purchasePriceBaht`, `purchaseDocumentAmountBaht`, `purchaseDocumentDate`, `photoType`, `checklistPhotoDescription`, `componentInstallSteps`, `componentStepIdentify`, `componentStepDetails`, `componentStepReview`
+  - 3 keys removed: `checkin.photoQueued`, `checkin.removePhoto`, `auditScan.dropAuditPhotoSelected`.
+- **Tests:**
+  - New files: `tests/dialog-trigger-handles.test.ts`, `file-evidence-ui.test.ts`, `step-states.test.ts`, `steps-ui.test.ts`, `choice-controls-ui.test.ts`, `sticky-form-footer-ui.test.ts`, `asset-forms-ui.test.ts` and `form-migration-guards.test.ts`.
+  - Additions in `field-primitives`, `accessible-dialog`, `sheet-drawers-ui`, `scanner-text-input`, `api-error-exposure`, `api-error-catalog` and `mobile-field-navigation`, and call-site tests appended to `pm-plans-ui`, `repair-record-ui`, `repair-record-detail-ui`, `maintenance-attachments-ui`, `asset-handover-checkin`, `asset-handover-checkout`, `legacy-checkin-flow` and `asset-operation-confirmation-ui`.
+  - 12 existing test files were updated where batch 1 changed what they pin (spec §10.4 table A), and `feedback-states-ui` now lets a busy `Button` keep a `disabled` that does not repeat its busy condition (GB4, Task 10).
+- Dev-app check (Task 21): checked on `next start` of the production build at 1440 and 375px (all batch-1 forms), 1024px (G11, sidebar open and collapsed) and 375/768px (G11b), in Thai, with axe (color-contrast, label, aria and button-name rules), forced colors, reduced motion and the Enter key in the settings prefix dialog. Results: G11's asset-new save bar spans `main` at 1024px with the sidebar open (left 256px) and collapsed (left 64px), stays at the viewport bottom and no longer shifts 192px; G11b's settings save bar was covered by 49px at 375 and 41px at 768 before K15 and is now fully visible while scrolling. At 375, bottom navigation is hidden on settings and the asset-model form and remains on the PM, disposal-batch and asset lists. Axe found 0 violations on each of 10 pages (settings, asset new, checkout, check-in, PM new, repair new, disposal new, disposal batch new, asset-model form, audit scan), including the nested-interactive rule. The prefix dialog has no `<form>` or submit button, its X reads "ปิด", and Enter sent no settings request and showed no toast. Saving a branch with code "   " returned 400 with `{ error: "Invalid request data", code: "VALIDATION_FAILED" }`; the toast read "ข้อมูลที่กรอกไม่ครบหรือไม่ถูกต้อง ตรวจสอบแล้วลองอีกครั้ง" with detail "Invalid request data", with no JSON. Forced colors kept the native radio and solid card border visible; reduced motion opened dialogs without animation. Repair radio cards showed the chosen option in primary-soft, the phone asset save bar stacked Cancel above Save, and the signature clear button stayed on one line. The 9 dialogs awaiting batches 3–5 still have their title 4px left of their body on phones; forms outside batch 1 still use old fields and move in plans 2–4. Fixes: `d937777` added `content-start` to `Field` and `SearchableSelect` so stretched grid rows pack their contents at the top; the repair date control's label gap fell from 54px to 6px, and after the rebuild every batch-1 `Field` kept its control within 12px of its label. Open: NVDA (dialog X name, required fields, file box, Steps, choice cards, Segmented, duplicate-code error); busy-button focus on a real save (not exercised to avoid writing data; guard GB4 and the 2A busy test cover the code); real iPhone/iPad checks (dialog, sheet and save-bar home-indicator clearance, empty date-field height, repair PDF selection, `has-checked:`, iPad field zoom); an English pass of the new form strings.
+- Before/after screenshots: `.superpowers/sdd/screenshots/ui-phase2c/before/` and `after/` (git-ignored, on the development machine only).
+- **Tell 2B (I10):** from this deploy, the register's filter sheet and row ⋯ sheet come out of the `Sheet` primitive white, with a header line, the ghost X "ปิด" and the iPhone bottom inset. 2B's tests do not pin these classes.
+- Still open, for a person before the user approves the deploy:
+  - On a real iPhone (Safari):
+    - dialogs, bottom sheets and `StickyFormFooter` clear the home bar (`env()` is 0 on desktop and Android)
+    - `has-checked:` works on the choice cards
+    - an empty date field is as tall as the others
+    - the repair file field can pick a PDF
+  - On an iPad: whether 14px fields zoom.
+  - The thermal label test-print from phase 1.
+- Deferred:
+  - Plan 2 (batch 2, master data, 8 files) can run beside 2B.
+  - Plans 3–5 start after 2B merges:
+    - the bulk disposal dialogs, the audit round forms and `ConfirmTextDialog`
+    - login, the import wizard `Steps`, the two drawers and the label tools
+    - `ActionBar` with `actionBarPagePadding`, the `AlertDialog` restyle with verb labels, the repair attachment delete dialog as `useConfirm`, and the disposal request `Steps`
+  - The V track has its own spec, after batch 1 is in Production: errors under fields, `validate()` per form, focus on the first invalid field, `common.validation.*`, `fieldErrors` in the 400 body, and `min` on paired dates.
+  - 2D: deleting `ActionButton`, the 36px default button, the remaining notices, form panel frames (K28), and every budget to `{}`.
+
 ## Open Go-Live Decisions
 
 - Confirm production database user and least-privilege permissions.

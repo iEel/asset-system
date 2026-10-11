@@ -126,7 +126,7 @@ type ButtonProps = React.ComponentProps<"button"> & ButtonVariantProps &
   - ถ้า child ตัวแรกเป็นข้อความ ไอคอนหมุนจะถูกใส่ไว้หน้าข้อความ ปุ่มกว้างขึ้น 22px
 - ระหว่าง busy ปุ่มใช้หน้าตาเดียวกับตอนกดไม่ได้ (ผ่าน class `aria-disabled:`)
 - ใช้ `busy` คู่กับ `asChild` ไม่ได้ (type บังคับไว้) เพราะ Slot แทรกไอคอนหมุนเข้าไปไม่ได้
-- ข้อความอย่าง "กำลังบันทึก…" ยังเป็นหน้าที่ของผู้เรียก เพราะ Button ไม่มีคำแปลของตัวเอง
+- ป้ายคงเดิมตอน busy ไม่สลับเป็น "กำลัง…" (K13 ของ 2C) · `aria-busy` ไอคอนหมุน และหน้าตากดไม่ได้บอกว่ากำลังทำงาน
 - ไม่มี hook และไม่มี `"use client"` จึงยังใช้ใน server component ได้ (handler ถูกใส่เฉพาะตอน `busy` ซึ่งมาจาก state ฝั่ง client เท่านั้น)
 - คงค่าตั้งต้น `type="button"` และ attribute `data-slot` / `data-variant` / `data-size` ไว้เหมือนเดิม
 - 2A เพิ่มแค่ prop ไม่แก้ผู้เรียก ส่วน `Loader2` 149 บรรทัดย้ายมาใช้ `busy` ใน 2C/2D ตอนย้ายต้องเอา `disabled={busy}` ของปุ่มเดียวกันออกด้วย
@@ -200,7 +200,7 @@ cn(buttonVariants({ variant: legacyButtonVariant[variant] }),
 
 ### 4.8 กติกาแปลงปุ่มที่เขียน class เอง (ใช้ใน 2B, 2C และ 2D)
 
-ใช้ `<Button>` กับ `<button>` ส่วน `<Link>` / `<a>` ใช้ `className={cn(buttonVariants({ variant, size }), layoutExtras)}` (ใช้ได้ทั้งใน server component และ client component) หรือ `<Button asChild>` ใน client component · ใน `className` เก็บไว้แค่ class จัดวาง (`w-full sm:w-auto`, `flex-1`, `self-end`, `justify-start`, `min-w-0`) · การแปลงห้ามเปลี่ยนความสูงบนจอใหญ่ ความสูงจะรวมเป็นแบบเดียวกันตอนพลิกใน 2D
+ใช้ `<Button>` กับ `<button>` ส่วน `<Link>` / `<a>` ใช้ `className={cn(buttonVariants({ variant, size }), layoutExtras)}` (ใช้ได้ทั้งใน server component และ client component) หรือ `<Button asChild>` ใน client component · ใน `className` เก็บไว้แค่ class จัดวาง (`w-full sm:w-auto`, `flex-1`, `self-end`, `justify-start`, `min-w-0`) · ใช้ size ตามตารางนี้ · ปุ่มที่วันนี้สูง 44px บนจอใหญ่ (`min-h-11` อย่างเดียว) เหลือ 40px ใน 2C และ 36px หลังพลิกใน 2D (K7 ของ 2C)
 
 | เดิม (บนจอใหญ่) | size ใหม่ |
 |---|---|
@@ -208,7 +208,7 @@ cn(buttonVariants({ variant: legacyButtonVariant[variant] }),
 | `h-9` | `md` |
 | `h-10` อยู่แถวเดียวกับช่องกรอก 40px | `lg` |
 | `h-10` ที่อื่น (แถบเครื่องมือ หัวหน้า) | ไม่ระบุ (`default`) |
-| `min-h-11` อย่างเดียว (44px ทุกความกว้าง) | ไม่ระบุ · ถ้าเป็นส่วนท้าย dialog ใช้ตาม D17 |
+| `min-h-11` อย่างเดียว (44px ทุกความกว้าง) | ไม่ระบุ (`default`) รวมส่วนท้าย dialog (K7 ของ 2C) |
 | ไอคอน `size-8` / `h-8 w-8` | `icon-sm` |
 | ไอคอน `size-9` / `size-10` / 44px | `icon` |
 

@@ -37,7 +37,7 @@ Both presentations reuse the same URL, API, business records, workflow records, 
 ## Navigation and Action Surfaces
 
 - Navigation routes show Mobile Field Navigation.
-- Scanner, edit, transaction, and detail routes with page-owned bottom actions use Focus Task Mode.
+- Scanner, edit, transaction, and detail routes with page-owned bottom actions use Focus Task Mode, and so do the settings page and every `new` and `[id]/edit` form (phase 2C). List pages keep Mobile Field Navigation.
 - Only one fixed bottom region may exist at a time.
 - Reserve safe-area-aware content spacing only for the active bar.
 - `Mark Not Found` belongs to Audit Pending, not successful scan results.
@@ -53,10 +53,14 @@ Build screens from the shared primitives in `src/components/ui/`. Their look and
 
 | Need | Use | Remember |
 | --- | --- | --- |
-| A button, or a link that looks like one | `Button`, or `buttonVariants({ variant, size })` on a `Link` | `danger` for a destructive action in a page, `destructive` only to confirm it in a dialog; `busy` while working, never together with `disabled` or `asChild` |
+| A button, or a link that looks like one | `Button`, or `buttonVariants({ variant, size })` on a `Link` | `danger` for a destructive action in a page, `destructive` only to confirm it in a dialog; `busy={x}` while working, never with `x` in `disabled` and never with `asChild`; the label stays the same while busy; the primary action comes last |
+| A choice of 2 to 4 options shown as buttons | `Segmented` | `aria-label` names the group; values are strings |
 | A text link | `linkVariants({ size })` | `meta` when it stands alone, `inherit` inside a sentence |
 | A text field, select or textarea | `Input`, `NativeSelect`, `Textarea` with `fieldSize` | `getFieldControlClasses()` for a control that cannot use them |
-| A label with hint and error | `Field` | sets `id`, `aria-describedby`, `aria-invalid` and `aria-required`; never around `SearchableSelect`, never inside a `<label>` |
+| A label with hint and error | `Field` | sets `id`, `aria-describedby`, `aria-invalid` and `aria-required`; keep `required`, `maxLength` and `minLength` on the control; `labelAction` for one icon button beside the label; never around `SearchableSelect`, never inside a `<label>` |
+| A label for a group of checkboxes or radios | `<fieldset className="min-w-0">` with `<legend className={cn(fieldLabelClasses, "mb-1.5")}>` | `<FieldRequiredMark />` for a required group |
+| A radio or checkbox option | `ChoiceCard` (full-width card) or `ChoiceChip` (inline chip) | the input stays visible; Enter never submits the form |
+| A file picker | `FileDropzone`, plus `FileQueueList` for files that wait to upload | help text goes in `description`, not in `Field`'s `hint` |
 | A search box | `SearchField` | `onClear` and `clearLabel` only from a client component |
 | A searchable picker | `SearchableSelect` | has its own label, hint and error |
 | An action menu | `DropdownMenu` | an item that cannot run now uses `unavailable` with `DropdownMenuItemDescription` for the reason |
@@ -68,8 +72,14 @@ Build screens from the shared primitives in `src/components/ui/`. Their look and
 | A toast | `toast.*` or `useApiError().toast` | `AppToaster` styles every toast; do not pass `richColors` |
 | A message box | `Notice` with `tone` | write `role` or `aria-live` at the call site |
 | An empty state | `EmptyNote` for one line, `ActionEmptyState` for a title, description or action | |
+| A dialog | `AccessibleDialog` with `AccessibleDialogBody`, `AccessibleDialogFooter` and `AccessibleDialogCancel` | a `<form className={accessibleDialogFormClasses}>` wraps body and footer; secondary first, primary last; no `<form>` in a dialog that renders inside another form |
+| A confirmation | `useConfirm()` | `confirmLabel` is a verb |
+| A save bar for a long form | `StickyFormFooter` | the last child of the `<form>`; on focus-task routes only |
+| Progress through a multi-step flow | `Steps`, with `getLinearStepStates` (`src/lib/step-states.ts`) | numbered sections that are not steps use `FormSection` |
+| A numbered form section | `FormSection` | `as="h3"` under a page that already has an `h2` |
+| The record a form is about | `FormContextBanner` | `code` shows a record code as `tag` |
 
-Phase 2A built these; phases 2B to 2D move the hand-written controls onto them. The ratchet guards in `tests/visual-foundation-guards.test.ts` let their per-file budgets go down, never up.
+Phase 2A built the first set and phase 2C plan 1 added the form and dialog pieces; phases 2B to 2D move the hand-written controls onto them. The ratchet guards in `tests/visual-foundation-guards.test.ts` and, for forms and dialogs, `tests/form-migration-guards.test.ts` let their per-file budgets go down, never up.
 
 ## Current-Surface Registry
 
@@ -89,6 +99,7 @@ When a focused specification is added, replaced, or retired, update this registr
 | Maintenance | [`2026-10-07-simple-repair-records-design.md`](superpowers/specs/2026-10-07-simple-repair-records-design.md) (one-form repair records; supersedes [`2026-07-14-maintenance-production-hardening-design.md`](superpowers/specs/2026-07-14-maintenance-production-hardening-design.md)) | [`2026-10-07-simple-repair-records.md`](superpowers/plans/2026-10-07-simple-repair-records.md) sequences implementation and verification. |
 | App shell and visual foundation | [`2026-10-10-ui-foundation-design.md`](superpowers/specs/2026-10-10-ui-foundation-design.md) (UI round 4 phase 1: light-shell color tokens, single focus ring, IBM Plex fonts and Thai line heights, flat panels, two-tier status badge, white sidebar with sections, topbar, mobile bottom bar, PWA theme color) | [`2026-10-10-ui-foundation.md`](superpowers/plans/2026-10-10-ui-foundation.md) sequences implementation and verification. |
 | Shared components | [`2026-10-11-ui-phase2a-design.md`](superpowers/specs/2026-10-11-ui-phase2a-design.md) (UI round 4 phase 2A: the tokens phase 2 needs, buttons, fields, menus and popovers, toasts, notices and empty states, one status badge size, breadcrumbs, empty-value and number helpers, four codemods with ratchet guards; its §10 overrides the section files in [`2026-10-11-ui-phase2a/`](superpowers/specs/2026-10-11-ui-phase2a/)) | [`2026-10-11-ui-phase2a.md`](superpowers/plans/2026-10-11-ui-phase2a.md) sequences implementation and verification. |
+| Forms and dialogs | [`2026-10-11-ui-phase2c-design.md`](superpowers/specs/2026-10-11-ui-phase2c-design.md) (UI round 4 phase 2C: forms and dialogs on the 2A primitives in five batches; `Segmented`, `Field labelAction`, the dialog parts, `StickyFormFooter`, `Steps`, `FormSection`, `ChoiceCard`/`ChoiceChip`, `FileQueueList`; the bottom navigation hidden on form routes; one readable validation error; its §10 rulings I1–I36 override the section files in [`2026-10-11-ui-phase2c/`](superpowers/specs/2026-10-11-ui-phase2c/)) | [`2026-10-11-ui-phase2c-plan1.md`](superpowers/plans/2026-10-11-ui-phase2c-plan1.md) sequences plan 1 (P0, the 2C-0 primitives, the ZodError fix and batch 1); plans 2–5 follow, one per batch. |
 | Cross-cutting UI hardening | [`2026-07-10-ui-ux-hardening-design.md`](superpowers/specs/2026-07-10-ui-ux-hardening-design.md) | [`2026-07-10-ui-ux-hardening.md`](superpowers/plans/2026-07-10-ui-ux-hardening.md) sequences implementation and verification; [`2026-07-10-module-ux-roadmap.md`](superpowers/plans/2026-07-10-module-ux-roadmap.md) provides module-level sequencing. |
 
 ## UI QA Checklist
