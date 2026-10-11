@@ -157,3 +157,15 @@ test("the disposal batch form shows its evidence rule as the description and lis
   assert.match(source, /<FileQueueList\s+items=\{files\.map\(/)
   assert.doesNotMatch(source, /aria-label=\{tCommon\("delete"\)\}/, "removing a queued file deletes nothing, so the button is not named delete")
 })
+
+test("the audit check sheet says when its photos upload, before any is chosen (spec 7.6.3 #11, I14)", () => {
+  const source = readFileSync("src/components/audit/audit-scan-check-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /description=\{t\("dropAuditPhotoDescription"\)\}/)
+  assert.match(source, /\n\s+multiple\n/)
+  assert.doesNotMatch(source, /dropAuditPhotoSelected/)
+  for (const locale of ["th", "en"] as const) {
+    const auditScan = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).auditScan
+    assert.equal(typeof auditScan.dropAuditPhotoDescription, "string", `${locale}.dropAuditPhotoDescription`)
+    assert.equal(auditScan.dropAuditPhotoSelected, undefined, `${locale}.dropAuditPhotoSelected is deleted`)
+  }
+})

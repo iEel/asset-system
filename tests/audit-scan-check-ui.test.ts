@@ -19,7 +19,9 @@ test("one save button names the result, and a missing photo blocks it with a rea
   for (const key of ["saveAllMatch", "saveMismatch", "saveEditAllMatch", "saveEditMismatch", "saveOutOfScope"]) {
     assert.match(source, new RegExp(`t\\("${key}"`), key)
   }
-  assert.match(source, /disabled=\{saving \|\| disabled \|\| missingPhoto\}/)
+  assert.match(source, /busy=\{saving\}/)
+  assert.match(source, /disabled=\{disabled \|\| missingPhoto\}/)
+  assert.doesNotMatch(source, /disabled=\{saving \|\| disabled \|\| missingPhoto\}/)
   assert.match(source, /variant=\{diff\.length === 0 \? "default" : "warning"\}/)
   assert.doesNotMatch(source, /dataMatches|dataMismatch|quickMatched/)
 })

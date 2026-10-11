@@ -4,7 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { ChevronDown, ImagePlus, Loader2, X } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { checkboxVariants } from "@/components/ui/field-variants"
 import { FileDropzone } from "@/components/ui/file-dropzone"
+import { NativeSelect } from "@/components/ui/native-select"
+import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
 import { AuditComponentPanel } from "@/components/audit/audit-scan-panels"
 import { AuditScanCheckField } from "@/components/audit/audit-scan-check-field"
 import type { AuditInstalledInParent, AuditLookupAsset, AuditScanComponent, QueuedAuditPhoto } from "@/components/audit/audit-scan-types"
@@ -269,30 +274,24 @@ export function AuditScanCheckForm({
         </button>
         {extrasOpen ? (
           <div className="space-y-3 border-t border-border p-3">
-            <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("remark")}</span>
-              <textarea
+            <Field label={t("remark")}>
+              <Textarea
                 value={remark}
                 onChange={(event) => setRemark(event.target.value)}
                 rows={2}
                 disabled={saving || disabled}
-                className="min-h-16 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                className="min-h-16"
               />
-            </label>
+            </Field>
             {photoChecklist.length > 0 ? (
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("photoType")}</span>
-                <select
-                  value={photoLabel}
-                  onChange={(event) => setPhotoLabel(event.target.value)}
-                  className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm sm:h-10 sm:min-h-0"
-                >
+              <Field label={t("photoType")}>
+                <NativeSelect value={photoLabel} onChange={(event) => setPhotoLabel(event.target.value)}>
                   <option value="">{t("generalAuditPhotoLabel")}</option>
                   {photoChecklist.map((item) => (
                     <option key={item} value={item}>{item}</option>
                   ))}
-                </select>
-              </label>
+                </NativeSelect>
+              </Field>
             ) : null}
             <FileDropzone
               file={null}
@@ -303,7 +302,7 @@ export function AuditScanCheckForm({
               capture="environment"
               multiple
               title={t("dropAuditPhotoTitle")}
-              hint={t("dropAuditPhotoSelected")}
+              description={t("dropAuditPhotoDescription")}
               browseLabel={t("dropAuditPhotoHint")}
             />
             {photos.length > 0 ? (
@@ -316,14 +315,15 @@ export function AuditScanCheckForm({
                     ) : (
                       <span className="flex aspect-square items-center justify-center"><ImagePlus className="size-5" aria-hidden="true" /></span>
                     )}
-                    <button
-                      type="button"
+                    <Button
+                      variant="outline"
+                      size="icon"
                       onClick={() => removePhoto(photo.id)}
                       aria-label={t("removeQueuedPhoto")}
-                      className="absolute right-1 top-1 inline-flex size-11 items-center justify-center rounded-md bg-surface text-foreground shadow-sm"
+                      className="absolute right-1 top-1 shadow-sm"
                     >
-                      <X className="size-4" aria-hidden="true" />
-                    </button>
+                      <X aria-hidden="true" />
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -343,15 +343,15 @@ export function AuditScanCheckForm({
           type="button"
           variant={diff.length === 0 ? "default" : "warning"}
           className="min-h-12 w-full text-base"
-          disabled={saving || disabled || missingPhoto}
+          busy={saving}
+          disabled={disabled || missingPhoto}
           onClick={() => onSubmit({ values, remark, photos, applyCorrections, diff, mode })}
         >
-          {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
           {saveLabel}
         </Button>
         {canApplyCorrections && mode !== "out_of_scope" && diff.some((field) => field === "location" || field === "custodian") ? (
           <label className="flex min-h-11 items-start gap-2 rounded-md border border-border p-2.5 text-sm">
-            <input type="checkbox" checked={applyCorrections} onChange={(event) => setApplyCorrections(event.target.checked)} className="mt-0.5 size-5" />
+            <input type="checkbox" checked={applyCorrections} onChange={(event) => setApplyCorrections(event.target.checked)} className={cn(checkboxVariants({ size: "lg" }), "mt-0.5")} />
             <span>
               <span className="block font-medium">{t("applyAuditCorrections")}</span>
               <span className="block text-xs text-muted-foreground">{t("applyAuditCorrectionsHelp")}</span>

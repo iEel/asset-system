@@ -2062,7 +2062,6 @@
     "generalAuditPhotoLabel": "รูปหลักฐานทั่วไป",
     "dropAuditPhotoTitle": "ถ่ายรูปหรือแนบรูปหลักฐานได้หลายรูป",
     "dropAuditPhotoHint": "คลิกเพื่อถ่าย/เลือกทีละรูป หรือวางหลายรูปพร้อมกัน",
-    "dropAuditPhotoSelected": "เพิ่มเข้าเป็นหลักฐานแล้ว สามารถเพิ่มรูปต่อได้",
     "queuedPhotos": "รูปที่รออัปโหลด {count} รูป",
     "queuedPhotoPreviewAlt": "ตัวอย่างรูปหลักฐาน {name}",
     "offlineQueued": "เก็บผลสแกนไว้ในคิว Offline แล้ว",
@@ -2149,7 +2148,8 @@
     "removeFromQueue": "ลบออกจากคิว",
     "queueFailed": "{assetTag} ส่งไม่สำเร็จ: {error}",
     "roundClosedError": "รอบนี้ถูกปิดแล้ว บันทึกไม่ได้",
-    "backToRound": "กลับหน้ารอบ"
+    "backToRound": "กลับหน้ารอบ",
+    "dropAuditPhotoDescription": "รูปจะอัปโหลดหลังบันทึกผลตรวจ"
   },
   "auditFinding": {
     "title": "รายการไม่ตรงจากการตรวจนับ",

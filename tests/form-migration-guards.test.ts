@@ -54,6 +54,7 @@ const MIGRATED_FILES: string[] = [
   `${C}disposal/disposal-execution-button.tsx`,
   `${C}disposal/disposal-asset-picker.tsx`,
   `${C}disposal/disposal-decision-button.tsx`,
+  `${C}audit/audit-scan-check-form.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -148,7 +149,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 1b
   // 1c
   // 1d
-  [`${C}audit/audit-scan-check-form.tsx`]: 2,
   [`${C}audit/audit-finding-review-actions.tsx`]: 5,
   [`${C}audit/audit-mark-not-found-button.tsx`]: 1,
   [`${C}audit/audit-scan-component-missing-dialog.tsx`]: 1,
@@ -200,7 +200,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1b
   // 1c
   // 1d
-  [`${C}audit/audit-scan-check-form.tsx`]: 2,
   [`${C}audit/audit-finding-review-actions.tsx`]: 5,
   [`${C}audit/audit-mark-not-found-button.tsx`]: 1,
   [`${C}audit/audit-scan-component-missing-dialog.tsx`]: 1,
@@ -345,7 +344,7 @@ const LOADER2: Record<string, number> = {
   // 1c
   [`${C}disposal/disposal-asset-picker.tsx`]: 1, // → 1: the spinner in the search field :58
   // 1d
-  [`${C}audit/audit-scan-check-form.tsx`]: 2, // → 1: the collapsible header :242 (§6.14)
+  [`${C}audit/audit-scan-check-form.tsx`]: 1, // components header toggle :242 (§6.14)
   [`${C}audit/audit-finding-review-actions.tsx`]: 5, // → 2: the row triggers :102, :112 (2B, O21)
   [`${C}audit/audit-mark-not-found-button.tsx`]: 2,
   [`${C}audit/audit-scan-component-missing-dialog.tsx`]: 1,
