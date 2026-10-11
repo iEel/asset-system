@@ -59,3 +59,10 @@ test("the repair form asks its two questions with ChoiceCard radios under a fiel
   assert.equal(source.match(/<fieldset className="min-w-0">\n\s+<legend className=\{cn\(fieldLabelClasses, "mb-1\.5"\)\}>/g)?.length, 2)
   assert.equal(source.match(/<FieldRequiredMark \/>/g)?.length, 2)
 })
+
+test("the finish-repair dialog picks the outcome with ChoiceCard radios (R3)", () => {
+  const source = readFileSync("src/components/maintenance/repair-record-actions.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.doesNotMatch(source, /accent-primary|<input\b|ml-1 text-danger/)
+  assert.match(source, /<ChoiceCard key=\{outcome\} type="radio" name="outcome" checked=\{complete\.outcome === outcome\}/)
+  assert.match(source, /<fieldset className="min-w-0">\n\s+<legend className=\{cn\(fieldLabelClasses, "mb-1\.5"\)\}>\{t\("outcomeQuestion"\)\}<FieldRequiredMark \/><\/legend>/)
+})

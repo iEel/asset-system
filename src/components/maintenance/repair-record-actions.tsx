@@ -3,22 +3,27 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { CheckCircle2, Loader2, Pencil, XCircle } from "lucide-react"
+import { CheckCircle2, Pencil, XCircle } from "lucide-react"
 import { toast } from "sonner"
-import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import { AccessibleDialog, AccessibleDialogBody, AccessibleDialogCancel, AccessibleDialogFooter, accessibleDialogFormClasses } from "@/components/ui/accessible-dialog"
+import { Button } from "@/components/ui/button"
+import { ChoiceCard } from "@/components/ui/choice-card"
+import { Field, FieldRequiredMark } from "@/components/ui/field"
+import { fieldLabelClasses } from "@/components/ui/field-variants"
+import { FileDropzone } from "@/components/ui/file-dropzone"
+import { FileQueueList } from "@/components/ui/file-queue-list"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
 import { uploadRepairFiles } from "@/components/maintenance/repair-record-upload"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import { toLocalDateInputValue } from "@/lib/local-date"
+import { cn } from "@/lib/utils"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string }
 type Outcome = "usable" | "beyond_repair"
 type Dialog = "complete" | "cancel" | "edit" | null
-
-const inputClass = "h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-const textareaClass = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-const secondaryButton = "inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-accent disabled:opacity-50"
 
 export function RepairRecordActions({
   recordId,
@@ -65,6 +70,15 @@ export function RepairRecordActions({
     setFiles([])
   }
 
+  // New picks append to the list; each file can be taken out before saving.
+  function addFiles(next: File[]) {
+    setFiles((current) => [...current, ...next])
+  }
+
+  function removeFile(id: string) {
+    setFiles((current) => current.filter((_, index) => String(index) !== id))
+  }
+
   async function send(body: Record<string, unknown>, successKey: "completed" | "cancelled" | "updated") {
     setSaving(true)
     try {
@@ -92,21 +106,21 @@ export function RepairRecordActions({
     <>
       {isOpen ? (
         <>
-          <button type="button" onClick={() => setDialog("complete")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover">
-            <CheckCircle2 className="h-4 w-4" />{t("complete")}
-          </button>
-          <button type="button" onClick={() => setDialog("cancel")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-danger-border bg-surface px-4 text-sm font-medium text-danger hover:bg-danger-soft">
-            <XCircle className="h-4 w-4" />{t("cancel")}
-          </button>
+          <Button onClick={() => setDialog("complete")}>
+            <CheckCircle2 />{t("complete")}
+          </Button>
+          <Button variant="danger" onClick={() => setDialog("cancel")}>
+            <XCircle />{t("cancel")}
+          </Button>
         </>
       ) : null}
-      <button type="button" onClick={() => setDialog("edit")} className={secondaryButton}>
-        <Pencil className="h-4 w-4" />{t("edit")}
-      </button>
+      <Button variant="outline" onClick={() => setDialog("edit")}>
+        <Pencil />{t("edit")}
+      </Button>
 
-      <AccessibleDialog open={dialog === "complete"} title={t("completeTitle")} description={repairNo} busy={saving} onClose={close}>
+      <AccessibleDialog open={dialog === "complete"} title={t("completeTitle")} description={<span className="tag">{repairNo}</span>} busy={saving} onClose={close}>
         <form
-          className="space-y-4 p-4 sm:p-5"
+          className={accessibleDialogFormClasses}
           onSubmit={(event) => {
             event.preventDefault()
             void send({
@@ -120,64 +134,88 @@ export function RepairRecordActions({
             }, "completed")
           }}
         >
-          <p className="text-sm text-muted-foreground">{t("completeHelp")}</p>
-          <Field label={t("returnDate")} required>
-            <input type="date" required value={complete.returnDate} onChange={(event) => setComplete((v) => ({ ...v, returnDate: event.target.value }))} className={inputClass} />
-          </Field>
-          <fieldset>
-            <legend className="mb-2 text-sm font-medium text-foreground">{t("outcomeQuestion")}<span className="ml-1 text-danger">*</span></legend>
-            <div className="grid gap-2">
-              {(["usable", "beyond_repair"] as const).map((outcome) => (
-                <label key={outcome} className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 text-sm ${complete.outcome === outcome ? "border-primary bg-primary-soft font-medium" : "border-border text-muted-foreground"}`}>
-                  <input type="radio" name="outcome" checked={complete.outcome === outcome} onChange={() => setComplete((v) => ({ ...v, outcome }))} className="h-4 w-4 accent-primary" />
-                  {t(`outcome.${outcome}`)}
-                </label>
-              ))}
+          <AccessibleDialogBody className="space-y-4">
+            <p className="text-sm text-muted-foreground">{t("completeHelp")}</p>
+            <Field label={t("returnDate")} required>
+              <Input type="date" required value={complete.returnDate} onChange={(event) => setComplete((v) => ({ ...v, returnDate: event.target.value }))} />
+            </Field>
+            <fieldset className="min-w-0">
+              <legend className={cn(fieldLabelClasses, "mb-1.5")}>{t("outcomeQuestion")}<FieldRequiredMark /></legend>
+              <div className="grid gap-2">
+                {(["usable", "beyond_repair"] as const).map((outcome) => (
+                  <ChoiceCard key={outcome} type="radio" name="outcome" checked={complete.outcome === outcome} label={t(`outcome.${outcome}`)} onChange={() => setComplete((v) => ({ ...v, outcome }))} />
+                ))}
+              </div>
+            </fieldset>
+            <MaintenanceOptionSelect type="supplier" label={t("vendor")} value={complete.vendorId} initialOption={details.vendor ?? undefined} placeholder={t("vendorPlaceholder")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={tCommon("loading")} onChange={(value) => setComplete((v) => ({ ...v, vendorId: value }))} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={t("cost")}>
+                <Input type="number" min="0" step="0.01" inputMode="decimal" value={complete.repairCost} onChange={(event) => setComplete((v) => ({ ...v, repairCost: event.target.value }))} />
+              </Field>
+              <Field label={t("invoiceNo")}>
+                <Input maxLength={100} value={complete.invoiceNo} onChange={(event) => setComplete((v) => ({ ...v, invoiceNo: event.target.value }))} />
+              </Field>
             </div>
-          </fieldset>
-          <MaintenanceOptionSelect type="supplier" label={t("vendor")} value={complete.vendorId} initialOption={details.vendor ?? undefined} placeholder={t("vendorPlaceholder")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={tCommon("loading")} onChange={(value) => setComplete((v) => ({ ...v, vendorId: value }))} />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t("cost")}>
-              <input type="number" min="0" step="0.01" inputMode="decimal" value={complete.repairCost} onChange={(event) => setComplete((v) => ({ ...v, repairCost: event.target.value }))} className={inputClass} />
+            <Field label={t("files")}>
+              {(control) => (
+                <div className="grid gap-2">
+                  <FileDropzone
+                    {...control}
+                    file={null}
+                    onFileChange={(file) => {
+                      if (file) addFiles([file])
+                    }}
+                    onFilesChange={addFiles}
+                    disabled={saving}
+                    accept="image/*,application/pdf"
+                    multiple
+                    title={t("dropFilesTitle")}
+                    description={t("filesHelp")}
+                    browseLabel={t("dropFilesHint")}
+                  />
+                  <FileQueueList items={files.map((file, index) => ({ id: String(index), name: file.name }))} disabled={saving} onRemove={removeFile} />
+                </div>
+              )}
             </Field>
-            <Field label={t("invoiceNo")}>
-              <input maxLength={100} value={complete.invoiceNo} onChange={(event) => setComplete((v) => ({ ...v, invoiceNo: event.target.value }))} className={inputClass} />
+            <Field label={t("remark")}>
+              <Textarea rows={2} maxLength={4000} value={complete.remark} onChange={(event) => setComplete((v) => ({ ...v, remark: event.target.value }))} className="min-h-16" />
             </Field>
-          </div>
-          <Field label={t("files")}>
-            <input type="file" multiple accept="image/*,application/pdf" onChange={(event) => setFiles(Array.from(event.target.files ?? []))} className="block min-h-11 w-full text-sm file:mr-3 file:min-h-11 file:rounded-md file:border file:border-border file:bg-surface file:px-3 file:text-sm" />
-          </Field>
-          <Field label={t("remark")}>
-            <textarea rows={2} maxLength={4000} value={complete.remark} onChange={(event) => setComplete((v) => ({ ...v, remark: event.target.value }))} className={textareaClass} />
-          </Field>
-          <DialogButtons saving={saving} onBack={close} backLabel={tCommon("back")} submitLabel={t("complete")} />
+          </AccessibleDialogBody>
+          <AccessibleDialogFooter>
+            <AccessibleDialogCancel>{tCommon("back")}</AccessibleDialogCancel>
+            <Button type="submit" busy={saving}>
+              <CheckCircle2 />{t("complete")}
+            </Button>
+          </AccessibleDialogFooter>
         </form>
       </AccessibleDialog>
 
-      <AccessibleDialog open={dialog === "cancel"} title={t("cancelTitle")} description={repairNo} busy={saving} onClose={close}>
+      <AccessibleDialog open={dialog === "cancel"} title={t("cancelTitle")} description={<span className="tag">{repairNo}</span>} busy={saving} onClose={close}>
         <form
-          className="space-y-4 p-4 sm:p-5"
+          className={accessibleDialogFormClasses}
           onSubmit={(event) => {
             event.preventDefault()
             void send({ action: "cancel", reason: reason.trim() || null }, "cancelled")
           }}
         >
-          <p className="text-sm text-muted-foreground">{t("cancelHelp")}</p>
-          <Field label={t("cancelReason")}>
-            <textarea rows={3} maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} className={textareaClass} />
-          </Field>
-          <div className="flex flex-col justify-end gap-2 sm:flex-row">
-            <button type="button" onClick={close} disabled={saving} className={secondaryButton}>{t("keep")}</button>
-            <button type="submit" disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-danger px-4 text-sm font-medium text-white hover:bg-danger-hover disabled:opacity-50">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}{t("confirmCancel")}
-            </button>
-          </div>
+          <AccessibleDialogBody className="space-y-4">
+            <p className="text-sm text-muted-foreground">{t("cancelHelp")}</p>
+            <Field label={t("cancelReason")}>
+              <Textarea rows={3} maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} />
+            </Field>
+          </AccessibleDialogBody>
+          <AccessibleDialogFooter>
+            <AccessibleDialogCancel>{t("keep")}</AccessibleDialogCancel>
+            <Button type="submit" variant="destructive" busy={saving}>
+              <XCircle />{t("confirmCancel")}
+            </Button>
+          </AccessibleDialogFooter>
         </form>
       </AccessibleDialog>
 
-      <AccessibleDialog open={dialog === "edit"} title={t("editTitle")} description={repairNo} busy={saving} onClose={close}>
+      <AccessibleDialog open={dialog === "edit"} title={t("editTitle")} description={<span className="tag">{repairNo}</span>} busy={saving} onClose={close}>
         <form
-          className="space-y-4 p-4 sm:p-5"
+          className={accessibleDialogFormClasses}
           onSubmit={(event) => {
             event.preventDefault()
             void send({
@@ -191,51 +229,35 @@ export function RepairRecordActions({
             }, "updated")
           }}
         >
-          <p className="text-sm text-muted-foreground">{t("editHelp")}</p>
-          <Field label={t("date")} required>
-            <input type="date" required value={edit.reportedDate} onChange={(event) => setEdit((v) => ({ ...v, reportedDate: event.target.value }))} className={inputClass} />
-          </Field>
-          <Field label={t("problem")} required>
-            <textarea required rows={3} maxLength={4000} value={edit.problem} onChange={(event) => setEdit((v) => ({ ...v, problem: event.target.value }))} className={textareaClass} />
-          </Field>
-          <MaintenanceOptionSelect type="supplier" label={t("vendor")} value={edit.vendorId} initialOption={details.vendor ?? undefined} placeholder={t("vendorPlaceholder")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={tCommon("loading")} onChange={(value) => setEdit((v) => ({ ...v, vendorId: value }))} />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t("cost")}>
-              <input type="number" min="0" step="0.01" inputMode="decimal" value={edit.repairCost} onChange={(event) => setEdit((v) => ({ ...v, repairCost: event.target.value }))} className={inputClass} />
+          <AccessibleDialogBody className="space-y-4">
+            <p className="text-sm text-muted-foreground">{t("editHelp")}</p>
+            <Field label={t("date")} required>
+              <Input type="date" required value={edit.reportedDate} onChange={(event) => setEdit((v) => ({ ...v, reportedDate: event.target.value }))} />
             </Field>
-            <Field label={t("invoiceNo")}>
-              <input maxLength={100} value={edit.invoiceNo} onChange={(event) => setEdit((v) => ({ ...v, invoiceNo: event.target.value }))} className={inputClass} />
+            <Field label={t("problem")} required>
+              <Textarea required rows={3} maxLength={4000} value={edit.problem} onChange={(event) => setEdit((v) => ({ ...v, problem: event.target.value }))} />
             </Field>
-          </div>
-          <Field label={t("remark")}>
-            <textarea rows={2} maxLength={4000} value={edit.remark} onChange={(event) => setEdit((v) => ({ ...v, remark: event.target.value }))} className={textareaClass} />
-          </Field>
-          <DialogButtons saving={saving} onBack={close} backLabel={tCommon("back")} submitLabel={tCommon("save")} />
+            <MaintenanceOptionSelect type="supplier" label={t("vendor")} value={edit.vendorId} initialOption={details.vendor ?? undefined} placeholder={t("vendorPlaceholder")} searchPlaceholder={tCommon("searchSelectPlaceholder")} emptyLabel={tCommon("searchSelectNoResults")} loadingLabel={tCommon("loading")} onChange={(value) => setEdit((v) => ({ ...v, vendorId: value }))} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={t("cost")}>
+                <Input type="number" min="0" step="0.01" inputMode="decimal" value={edit.repairCost} onChange={(event) => setEdit((v) => ({ ...v, repairCost: event.target.value }))} />
+              </Field>
+              <Field label={t("invoiceNo")}>
+                <Input maxLength={100} value={edit.invoiceNo} onChange={(event) => setEdit((v) => ({ ...v, invoiceNo: event.target.value }))} />
+              </Field>
+            </div>
+            <Field label={t("remark")}>
+              <Textarea rows={2} maxLength={4000} value={edit.remark} onChange={(event) => setEdit((v) => ({ ...v, remark: event.target.value }))} className="min-h-16" />
+            </Field>
+          </AccessibleDialogBody>
+          <AccessibleDialogFooter>
+            <AccessibleDialogCancel>{tCommon("back")}</AccessibleDialogCancel>
+            <Button type="submit" busy={saving}>
+              <CheckCircle2 />{tCommon("save")}
+            </Button>
+          </AccessibleDialogFooter>
         </form>
       </AccessibleDialog>
     </>
-  )
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required ? <span className="ml-1 text-danger">*</span> : null}
-      </span>
-      {children}
-    </label>
-  )
-}
-
-function DialogButtons({ saving, onBack, backLabel, submitLabel }: { saving: boolean; onBack: () => void; backLabel: string; submitLabel: string }) {
-  return (
-    <div className="flex flex-col justify-end gap-2 sm:flex-row">
-      <button type="button" onClick={onBack} disabled={saving} className={secondaryButton}>{backLabel}</button>
-      <button type="submit" disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-50">
-        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}{submitLabel}
-      </button>
-    </div>
   )
 }

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
+import { readSourceFiles } from "./helpers/source-files.ts"
 
 // Phase 2C K19 (spec 2C sections 7.6.1, 7.6.2, I13-I15). Call sites join this file in batches 1a-1e.
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
@@ -92,4 +93,17 @@ test("the repair file picker copy exists in Thai and English (2C batch 1a)", () 
       assert.ok(repairRecord[key]?.trim(), `${locale}.repairRecord.${key}`)
     }
   }
+})
+
+test("the finish-repair dialog picks files the same way, and src has no raw file input left (2C batch 1a)", () => {
+  const source = readFileSync("src/components/maintenance/repair-record-actions.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /<Field label=\{t\("files"\)\}>\n\s+\{\(control\) => \(/)
+  assert.match(source, /<FileDropzone\n\s+\{\.\.\.control\}\n\s+file=\{null\}/)
+  assert.match(source, /\n\s+multiple\n/)
+  assert.match(source, /title=\{t\("dropFilesTitle"\)\}\n\s+description=\{t\("filesHelp"\)\}\n\s+browseLabel=\{t\("dropFilesHint"\)\}/)
+  assert.match(source, /<FileQueueList items=\{files\.map\(\(file, index\) => \(\{ id: String\(index\), name: file\.name \}\)\)\} disabled=\{saving\} onRemove=\{removeFile\} \/>/)
+  assert.match(source, /setFiles\(\(current\) => \[\.\.\.current, \.\.\.next\]\)/)
+  assert.match(source, /uploadRepairFiles\(recordId, files, "after_repair"\)/)
+  const rawFileInputs = readSourceFiles("src").filter((file) => /type="file"/.test(file.source)).map((file) => file.path)
+  assert.deepEqual(rawFileInputs.sort(), ["src/components/assets/asset-import-preview-panel.tsx", "src/components/ui/file-dropzone.tsx"])
 })

@@ -41,6 +41,7 @@ const MIGRATED_FILES: string[] = [
   // one line per migrated file, in commit order
   `${C}maintenance/maintenance-plan-form.tsx`,
   `${C}maintenance/repair-record-form.tsx`,
+  `${C}maintenance/repair-record-actions.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -105,7 +106,6 @@ const STICKY_FOOTER_ROUTES: Record<string, string[]> = {
 // GF1 `function Field(` per file
 const LOCAL_FIELD: Record<string, number> = {
   // 1a
-  [`${C}maintenance/repair-record-actions.tsx`]: 1,
   // 1b
   [`${C}asset-operations/checkin-form.tsx`]: 1,
   [`${C}asset-operations/checkout-form.tsx`]: 1,
@@ -141,7 +141,6 @@ const LOCAL_FIELD: Record<string, number> = {
 // GF2 hand-written <input> (not checkbox/radio/hidden/file), <select> and <textarea>
 const RAW_FIELDS: Record<string, number> = {
   // 1a
-  [`${C}maintenance/repair-record-actions.tsx`]: 10,
   [`${C}maintenance/maintenance-attachments.tsx`]: 1,
   // 1b
   [`${C}asset-operations/checkin-form.tsx`]: 7,
@@ -204,7 +203,6 @@ const RAW_FIELDS: Record<string, number> = {
 // GF3 hand-written field class strings
 const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1a
-  [`${C}maintenance/repair-record-actions.tsx`]: 2,
   [`${C}maintenance/maintenance-attachments.tsx`]: 1,
   // 1b
   [`${C}asset-operations/checkin-form.tsx`]: 7,
@@ -317,7 +315,6 @@ const CONSTRAINT_FLOORS: Record<string, readonly [number, number, number]> = {
 // GF7 old label span, red star, legend and checkbox markup
 const OLD_MARKUP: Record<string, number> = {
   // 1a
-  [`${C}maintenance/repair-record-actions.tsx`]: 5,
   [`${C}maintenance/maintenance-attachments.tsx`]: 1,
   // 1b
   [`${C}asset-operations/checkin-form.tsx`]: 2,
@@ -369,7 +366,6 @@ const OLD_MARKUP: Record<string, number> = {
 // GB1 <Loader2 tags (every tag, also icons kept in a variable)
 const LOADER2: Record<string, number> = {
   // 1a
-  [`${C}maintenance/repair-record-actions.tsx`]: 2,
   [`${C}maintenance/maintenance-attachments.tsx`]: 1, // → 1: the delete button :210 (2D)
   // 1b
   [`${C}asset-operations/checkin-form.tsx`]: 2,
@@ -462,7 +458,6 @@ const FIXED_BOTTOM_BARS: Record<string, number> = {
 // GD2 files whose AccessibleDialogs still wait for AccessibleDialogFooter. The commit that migrates a file's dialogs removes its line.
 const PENDING_FOOTER_PARTS = new Set([
   // 1a
-  `${C}maintenance/repair-record-actions.tsx`,
   `${C}maintenance/maintenance-attachments.tsx`, // the delete dialog :239 waits for batch 5 (K12)
   // 1b
   `${C}ui/operation-review-dialog.tsx`,

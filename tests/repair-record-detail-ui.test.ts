@@ -60,3 +60,16 @@ test("old workflow buttons are gone", () => {
     assert.equal(existsSync(`src/components/maintenance/${file}.tsx`), false, file)
   }
 })
+
+test("the three repair dialogs keep their buttons in a fixed footer and keep focus while saving (2C batch 1a)", () => {
+  const source = readFileSync(actionsPath, "utf8").replace(/\r\n/g, "\n")
+  assert.equal(source.match(/<form\n\s+className=\{accessibleDialogFormClasses\}/g)?.length, 3)
+  assert.equal(source.match(/<AccessibleDialogBody className="space-y-4">/g)?.length, 3)
+  assert.equal(source.match(/<AccessibleDialogFooter>/g)?.length, 3)
+  assert.equal(source.match(/description=\{<span className="tag">\{repairNo\}<\/span>\}/g)?.length, 3)
+  assert.equal(source.match(/<AccessibleDialogCancel>\{tCommon\("back"\)\}<\/AccessibleDialogCancel>\n\s+<Button type="submit" busy=\{saving\}>/g)?.length, 2)
+  assert.match(source, /<AccessibleDialogCancel>\{t\("keep"\)\}<\/AccessibleDialogCancel>\n\s+<Button type="submit" variant="destructive" busy=\{saving\}>/)
+  assert.match(source, /<Button variant="danger" onClick=\{\(\) => setDialog\("cancel"\)\}>/)
+  assert.match(source, /<Button variant="outline" onClick=\{\(\) => setDialog\("edit"\)\}>/)
+  assert.doesNotMatch(source, /function (?:Field|DialogButtons)\(|secondaryButton|const (?:inputClass|textareaClass)\b|<button|<input|<textarea|Loader2/)
+})
