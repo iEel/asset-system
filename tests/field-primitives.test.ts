@@ -189,3 +189,12 @@ test("FormContextBanner is one quiet data row that renders on server pages", () 
   // No tinted box, no capitals, and the value is never cut: a title tooltip does not work on touch screens (K24).
   assert.doesNotMatch(source, /uppercase|bg-primary-soft|border-primary-border|truncate|title=/)
 })
+
+test("Field and SearchableSelect pack their label, control and hint at the top when a grid row stretches them", () => {
+  // A row next to a taller control (a textarea) stretches the wrapper; without content-start its grid rows stretch
+  // too and the control drifts away from its label (found on /th/maintenance/new in the 2C plan 1 dev-app check).
+  const field = readFileSync("src/components/ui/field.tsx", "utf8").replace(/\r\n/g, "\n")
+  const searchableSelect = readFileSync("src/components/ui/searchable-select.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(field, /data-slot="field" className=\{cn\("grid min-w-0 content-start gap-1\.5", className\)\}/)
+  assert.match(searchableSelect, /<div className="grid min-w-0 max-w-full content-start gap-1\.5">/)
+})

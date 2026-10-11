@@ -73,7 +73,7 @@ export function SearchableSelect({
   }
 
   return (
-    <div className="grid min-w-0 max-w-full gap-1.5">
+    <div className="grid min-w-0 max-w-full content-start gap-1.5">
       {label ? (
         <FieldLabel id={labelId} htmlFor={triggerId} required={required}>
           {label}

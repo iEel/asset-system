@@ -54,7 +54,7 @@ function Field({ label, hideLabel, required, hint, error, id, className, labelAc
   // than the 20px label, so fields in neighbouring columns stay level. hideLabel still works: the label is sr-only
   // and the button stays visible. Without labelAction the label renders exactly as before.
   return (
-    <div data-slot="field" className={cn("grid min-w-0 gap-1.5", className)}>
+    <div data-slot="field" className={cn("grid min-w-0 content-start gap-1.5", className)}>
       {labelAction ? (
         <div data-slot="field-label-row" className="flex min-w-0 items-center gap-1.5">
           {labelNode}
