@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import { readRootTokens } from "../src/lib/color-contrast.ts"
+import { buttonVariants } from "../src/components/ui/button-variants.ts"
 
 const readSource = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
 
@@ -35,6 +36,7 @@ test("one shared status badge replaces the old status pill", () => {
 test("empty-state link actions remain thumb-friendly on mobile", () => {
   const source = readSource("src/components/ui/action-empty-state.tsx")
 
-  assert.match(source, /min-h-11/)
-  assert.match(source, /sm:h-9 sm:min-h-0/)
+  // The link takes the md Button classes: 44px below md, 36px from md up (the old sm:h-9, now on the md breakpoint).
+  assert.match(source, /buttonVariants\(\{[^}]*size: "md"/)
+  assert.match(buttonVariants({ size: "md" }), /min-h-11 px-3\.5 text-sm md:h-9 md:min-h-0/)
 })

@@ -1,6 +1,6 @@
 import { NextIntlClientProvider } from "next-intl"
 import { getMessages } from "next-intl/server"
-import { Toaster } from "sonner"
+import { AppToaster } from "@/components/ui/app-toaster"
 
 export default async function LocaleLayout({
   children,
@@ -13,7 +13,7 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider messages={messages}>
       {children}
-      <Toaster position="top-right" richColors />
+      <AppToaster />
     </NextIntlClientProvider>
   )
 }

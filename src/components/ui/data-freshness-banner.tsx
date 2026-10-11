@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react"
+import { CheckCircle2, RefreshCw } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Notice } from "@/components/ui/notice"
 
 type DataFreshnessLabels = {
   freshTitle: string
@@ -75,30 +77,21 @@ export function DataFreshnessBanner({
     )
   }
 
+  // Stale data is something to act on now, so it is a warning Notice. busy keeps focus on the button while the page
+  // refreshes, and its spinner (which takes the place of the refresh icon) stops under reduced motion.
   return (
-    <section className="mb-3 rounded-md border border-warning-border bg-warning-soft px-3 py-2">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-warning-border bg-surface text-warning">
-            <AlertTriangle className="h-4 w-4" />
-          </span>
-          <div className="min-w-0 text-sm">
-            <div className="flex min-w-0 flex-col gap-0.5 lg:flex-row lg:items-baseline lg:gap-2">
-              <span className="font-semibold text-foreground">{labels.staleTitle}</span>
-              <span className="truncate text-xs text-muted-foreground lg:text-sm">{staleHelpText}</span>
-            </div>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={refreshData}
-          disabled={refreshing}
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60 sm:h-8 sm:min-h-0"
-        >
-          <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+    <Notice
+      tone="warning"
+      title={labels.staleTitle}
+      action={(
+        <Button variant="outline" size="md" busy={refreshing} onClick={refreshData}>
+          <RefreshCw />
           {refreshing ? labels.refreshing : labels.refresh}
-        </button>
-      </div>
-    </section>
+        </Button>
+      )}
+      className="mb-3"
+    >
+      {staleHelpText}
+    </Notice>
   )
 }
