@@ -6,8 +6,14 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, CheckCircle2, Loader2, PackageCheck, PackagePlus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
-import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import { AccessibleDialog, AccessibleDialogBody, AccessibleDialogCancel, AccessibleDialogFooter } from "@/components/ui/accessible-dialog"
+import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
+import { Steps } from "@/components/ui/steps"
+import { Textarea } from "@/components/ui/textarea"
+import { getLinearStepStates } from "@/lib/step-states"
 import { formatDateTime } from "@/lib/utils"
 import { useApiError } from "@/components/ui/use-api-error"
 
@@ -33,6 +39,9 @@ type ComponentRecord = {
 }
 
 type InstallStep = "identify" | "details" | "review"
+
+// The order the install steps run in, for the step rail (K17).
+const installStepOrder: readonly InstallStep[] = ["identify", "details", "review"]
 
 type ScannerLabels = {
   start: string
@@ -97,6 +106,7 @@ type ManagerLabels = {
   evidence: string
   loadMore: string
   scanner: ScannerLabels
+  steps: { label: string; identify: string; details: string; review: string }
 }
 
 const componentRoles = ["RAM", "SSD", "HDD", "Power Supply", "Network Card", "Monitor", "Adapter", "Other"]
@@ -139,6 +149,8 @@ export function AssetComponentManager({
   const canSearchCandidates = componentSearch.trim().length >= 2
   const visibleHistory = componentHistory.slice(0, historyVisibleCount)
   const hasMoreHistory = historyVisibleCount < componentHistory.length
+  const installStepStates = getLinearStepStates(installStepOrder.length, installStepOrder.indexOf(installStep))
+  const installSteps = installStepOrder.map((step, index) => ({ id: step, label: labels.steps[step], state: installStepStates[index] }))
 
   useEffect(() => {
     if (!canSearchCandidates) return
@@ -272,6 +284,8 @@ export function AssetComponentManager({
             <p className="mt-1 text-sm text-muted-foreground">{labels.candidateHelp}</p>
           </div>
 
+          <Steps className="mb-4" label={labels.steps.label} steps={installSteps} />
+
           {installStep === "identify" ? (
             <div className="space-y-3">
               {lastInstalledAssetTag ? (
@@ -280,13 +294,9 @@ export function AssetComponentManager({
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
                     <span className="break-words">{labels.installSuccess}: {lastInstalledAssetTag}</span>
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setLastInstalledAssetTag(null)}
-                    className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-success-border bg-surface px-3 text-sm font-medium text-foreground hover:bg-success-soft sm:h-9 sm:min-h-0"
-                  >
+                  <Button variant="outline" size="md" className="shrink-0" onClick={() => setLastInstalledAssetTag(null)}>
                     {labels.addAnother}
-                  </button>
+                  </Button>
                 </div>
               ) : null}
               <ScannerTextInput
@@ -299,6 +309,7 @@ export function AssetComponentManager({
                 onScanSuccess={(value) => setComponentSearch(value)}
                 scanMode="asset-qr"
                 placeholder={labels.scanOrSearch}
+                aria-label={labels.scanOrSearch}
                 labels={labels.scanner}
               />
               {canSearchCandidates ? (
@@ -319,47 +330,21 @@ export function AssetComponentManager({
             <div className="space-y-4">
               <SelectedComponent component={selectedComponent} label={labels.selected} serialLabel={labels.serial} />
               <div className="grid gap-3 md:grid-cols-2">
-                <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.componentRole}</span>
-                  <input
-                    list="component-role-suggestions"
-                    value={componentRole}
-                    onChange={(event) => setComponentRole(event.target.value)}
-                    maxLength={100}
-                    className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                  />
-                  <datalist id="component-role-suggestions">
-                    {componentRoles.map((role) => <option key={role} value={role} />)}
-                  </datalist>
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.slot}</span>
-                  <input
-                    value={slotNo}
-                    onChange={(event) => setSlotNo(event.target.value)}
-                    maxLength={50}
-                    className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.installedAt}</span>
-                  <input
-                    type="datetime-local"
-                    value={installedAt}
-                    onChange={(event) => setInstalledAt(event.target.value)}
-                    className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                  />
-                </label>
-                <label className="block md:col-span-2">
-                  <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.reason}</span>
-                  <textarea
-                    value={reason}
-                    onChange={(event) => setReason(event.target.value)}
-                    maxLength={500}
-                    rows={3}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                  />
-                </label>
+                <Field label={labels.componentRole}>
+                  <Input list="component-role-suggestions" value={componentRole} onChange={(event) => setComponentRole(event.target.value)} maxLength={100} />
+                </Field>
+                <datalist id="component-role-suggestions">
+                  {componentRoles.map((role) => <option key={role} value={role} />)}
+                </datalist>
+                <Field label={labels.slot}>
+                  <Input value={slotNo} onChange={(event) => setSlotNo(event.target.value)} maxLength={50} />
+                </Field>
+                <Field label={labels.installedAt}>
+                  <Input type="datetime-local" value={installedAt} onChange={(event) => setInstalledAt(event.target.value)} />
+                </Field>
+                <Field label={labels.reason} className="md:col-span-2">
+                  <Textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} rows={3} />
+                </Field>
               </div>
               <FileDropzone
                 file={installEvidence}
@@ -370,14 +355,14 @@ export function AssetComponentManager({
                 hint={labels.evidenceHint}
                 browseLabel={labels.browseEvidence}
               />
-              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <button type="button" onClick={resetInstallFlow} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground hover:bg-accent">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button variant="outline" onClick={resetInstallFlow}>
                   {labels.cancel}
-                </button>
-                <button type="button" onClick={openReview} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover">
-                  <CheckCircle2 className="h-4 w-4" />
+                </Button>
+                <Button onClick={openReview}>
+                  <CheckCircle2 aria-hidden="true" />
                   {labels.continueReview}
-                </button>
+                </Button>
               </div>
             </div>
           ) : null}
@@ -396,14 +381,14 @@ export function AssetComponentManager({
                   <ReviewItem label={labels.reason} value={reason || "-"} />
                 </div>
               </div>
-              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <button type="button" disabled={saving} onClick={() => setInstallStep("details")} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50">
-                  {labels.cancel}
-                </button>
-                <button type="button" disabled={saving} onClick={() => void installComponent()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50">
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
-                  {saving ? labels.installing : labels.confirmInstall}
-                </button>
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button variant="outline" disabled={saving} onClick={() => setInstallStep("details")}>
+                  {labels.back}
+                </Button>
+                <Button busy={saving} onClick={() => void installComponent()}>
+                  <PackageCheck aria-hidden="true" />
+                  {labels.confirmInstall}
+                </Button>
               </div>
             </div>
           ) : null}
@@ -433,13 +418,9 @@ export function AssetComponentManager({
           </div>
         )}
         {hasMoreHistory ? (
-          <button
-            type="button"
-            onClick={() => setHistoryVisibleCount((current) => current + 10)}
-            className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground hover:bg-accent sm:h-10 sm:min-h-0"
-          >
+          <Button variant="outline" className="mt-3" onClick={() => setHistoryVisibleCount((current) => current + 10)}>
             {labels.loadMore}
-          </button>
+          </Button>
         ) : null}
       </section>
 
@@ -471,7 +452,7 @@ function CandidateList({
   onSelect: (candidate: AssetOption) => void
 }) {
   if (searching) {
-    return <p className="flex items-center gap-2 rounded-md border border-border px-3 py-4 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />{labels.searching}</p>
+    return <p className="flex items-center gap-2 rounded-md border border-border px-3 py-4 text-sm text-muted-foreground"><Loader2 aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" />{labels.searching}</p>
   }
 
   if (candidates.length === 0) {
@@ -485,6 +466,7 @@ function CandidateList({
           key={candidate.id}
           type="button"
           onClick={() => onSelect(candidate)}
+          aria-pressed={selectedId === candidate.id}
           className={`flex min-h-11 w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors hover:bg-accent ${selectedId === candidate.id ? "bg-primary-soft" : ""}`}
         >
           <span className="min-w-0">
@@ -523,10 +505,10 @@ function ComponentRow({ locale, component, labels, onRemove }: { locale: string;
         </div>
       </div>
       {onRemove ? (
-        <button type="button" onClick={onRemove} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-danger-border px-3 text-sm font-medium text-danger hover:bg-danger-soft sm:min-h-0 sm:h-9">
-          <Trash2 className="h-4 w-4" />
+        <Button variant="danger" size="md" className="shrink-0" onClick={onRemove}>
+          <Trash2 aria-hidden="true" />
           {labels.remove}
-        </button>
+        </Button>
       ) : null}
     </div>
   )
@@ -557,29 +539,33 @@ function ComponentRemovalDialog({
     <AccessibleDialog
       open={component !== null}
       title={labels.removeTitle}
-      description={component ? `${component.componentAsset.assetTag} - ${component.componentAsset.name}` : undefined}
+      description={
+        component ? (
+          <>
+            <span className="tag">{component.componentAsset.assetTag}</span> · {component.componentAsset.name}
+          </>
+        ) : undefined
+      }
       busy={busy}
       size="sm"
-      closeLabel={labels.close}
       initialFocusRef={reasonRef}
       onClose={onClose}
     >
       {component ? (
         <>
-        <div className="space-y-4 px-4 py-4">
-          <label className="block">
-            <span className="text-sm font-medium text-foreground">{labels.removeReason}</span>
-            <textarea ref={reasonRef} value={reason} onChange={(event) => setReason(event.target.value)} disabled={busy} rows={4} maxLength={500} className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-50" />
-          </label>
-          <FileDropzone file={removeEvidence} onFileChange={setRemoveEvidence} disabled={busy} accept="image/*" capture="environment" title={labels.removeEvidence} hint={labels.evidenceHint} browseLabel={labels.browseEvidence} />
-        </div>
-        <div className="grid gap-2 border-t border-border bg-background px-4 py-4 sm:grid-cols-2">
-          <button type="button" disabled={busy} onClick={onClose} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50">{labels.cancel}</button>
-          <button type="button" disabled={busy} onClick={() => onConfirm(reason.trim(), removeEvidence)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-danger px-4 text-sm font-semibold text-white hover:bg-danger-hover disabled:opacity-50">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-            {busy ? labels.removing : labels.confirmRemove}
-          </button>
-        </div>
+          <AccessibleDialogBody className="space-y-4">
+            <Field label={labels.removeReason}>
+              <Textarea ref={reasonRef} value={reason} onChange={(event) => setReason(event.target.value)} disabled={busy} rows={4} maxLength={500} />
+            </Field>
+            <FileDropzone file={removeEvidence} onFileChange={setRemoveEvidence} disabled={busy} accept="image/*" capture="environment" title={labels.removeEvidence} hint={labels.evidenceHint} browseLabel={labels.browseEvidence} />
+          </AccessibleDialogBody>
+          <AccessibleDialogFooter>
+            <AccessibleDialogCancel>{labels.cancel}</AccessibleDialogCancel>
+            <Button variant="destructive" busy={busy} onClick={() => onConfirm(reason.trim(), removeEvidence)}>
+              <Trash2 aria-hidden="true" />
+              {labels.confirmRemove}
+            </Button>
+          </AccessibleDialogFooter>
         </>
       ) : null}
     </AccessibleDialog>

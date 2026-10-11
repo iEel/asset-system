@@ -1170,7 +1170,11 @@
     },
     "purchasePriceBaht": "Purchase Price (THB)",
     "purchaseDocumentAmountBaht": "Total amount (THB)",
-    "purchaseDocumentDate": "Document Date"
+    "purchaseDocumentDate": "Document Date",
+    "componentInstallSteps": "Component installation steps",
+    "componentStepIdentify": "Choose component",
+    "componentStepDetails": "Enter details",
+    "componentStepReview": "Check and confirm"
   },
   "company": {
     "title": "Companies",

@@ -1170,7 +1170,11 @@
     },
     "purchasePriceBaht": "ราคาซื้อ (บาท)",
     "purchaseDocumentAmountBaht": "ยอดรวม (บาท)",
-    "purchaseDocumentDate": "วันที่เอกสาร"
+    "purchaseDocumentDate": "วันที่เอกสาร",
+    "componentInstallSteps": "ขั้นตอนติดตั้งส่วนควบ",
+    "componentStepIdentify": "เลือกส่วนควบ",
+    "componentStepDetails": "ระบุรายละเอียด",
+    "componentStepReview": "ตรวจสอบและยืนยัน"
   },
   "company": {
     "title": "บริษัท",

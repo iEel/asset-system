@@ -61,6 +61,7 @@ const MIGRATED_FILES: string[] = [
   `${C}master-data/asset-model-form.tsx`,
   `${C}assets/asset-form.tsx`,
   `${C}assets/asset-batch-form.tsx`,
+  `${C}assets/asset-component-manager.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -154,7 +155,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 1d
   // 1g
   // 1e
-  [`${C}assets/asset-component-manager.tsx`]: 5,
   [`${C}assets/asset-attachments.tsx`]: 1,
   // 1f
   [`${C}admin/system-settings-form.tsx`]: 50,
@@ -199,7 +199,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1d
   // 1g
   // 1e
-  [`${C}assets/asset-component-manager.tsx`]: 5,
   [`${C}assets/asset-attachments.tsx`]: 1,
   // 1f
   [`${C}admin/system-settings-form.tsx`]: 48,
@@ -294,7 +293,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 1d
   // 1g
   // 1e
-  [`${C}assets/asset-component-manager.tsx`]: 4,
   // 1f
   [`${C}admin/system-settings-form.tsx`]: 4,
   // 2
@@ -335,7 +333,7 @@ const LOADER2: Record<string, number> = {
   [`${C}audit/audit-finding-review-actions.tsx`]: 2, // → 2: the row triggers :102, :112 (2B, O21)
   // 1g
   // 1e
-  [`${C}assets/asset-component-manager.tsx`]: 3, // → 1: the status line :474
+  [`${C}assets/asset-component-manager.tsx`]: 1, // → 1: the status line :474
   [`${C}assets/asset-attachments.tsx`]: 2,
   // 1f
   [`${C}admin/system-settings-form.tsx`]: 4,
@@ -375,7 +373,6 @@ const OLD_HELPERS: Record<string, number> = {
 
 // GD4 flex-col-reverse in the 2C files and in ui/ (Task 4 already fixed ui/dialog.tsx DialogFooter and ui/alert-dialog.tsx:94)
 const REVERSE: Record<string, number> = {
-  [`${C}assets/asset-component-manager.tsx`]: 2, // 1e (I24)
   [`${C}admin/system-settings-form.tsx`]: 1, // 1f
   [`${C}disposal/disposal-bulk-execution.tsx`]: 1, // batch 3
   [`${C}maintenance/maintenance-plan-state-actions.tsx`]: 1, // batch 3
@@ -403,7 +400,6 @@ const PENDING_FOOTER_PARTS = new Set([
   // 1c
   // 1d
   // 1e
-  `${C}assets/asset-component-manager.tsx`,
   // 1f
   `${C}admin/system-settings-form.tsx`,
   // 3

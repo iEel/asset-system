@@ -78,3 +78,43 @@ test("asset batch form: the duplicate check and the save button are busy without
   assert.match(source, /<Button type="submit" className="w-full sm:w-auto" busy=\{saving\} disabled=\{hasClientDuplicates\}>/)
   assert.doesNotMatch(source, /batchCheckDuplicatesRunning|<button\b|inputClassName/)
 })
+
+test("component install: step rail labels, real buttons, primary last, and Back on the review step (K17, I24, I32)", () => {
+  const manager = read("src/components/assets/asset-component-manager.tsx")
+  const page = read("src/app/[locale]/(dashboard)/assets/[id]/components/page.tsx")
+  assert.match(manager, /const installStepOrder: readonly InstallStep\[\] = \["identify", "details", "review"\]/)
+  assert.match(manager, /getLinearStepStates\(installStepOrder\.length, installStepOrder\.indexOf\(installStep\)\)/)
+  assert.match(manager, /steps: \{ label: string; identify: string; details: string; review: string \}/)
+  assert.match(
+    page,
+    /steps: \{\n\s*label: t\("componentInstallSteps"\),\n\s*identify: t\("componentStepIdentify"\),\n\s*details: t\("componentStepDetails"\),\n\s*review: t\("componentStepReview"\),\n\s*\},/,
+  )
+  assert.doesNotMatch(manager, /flex-col-reverse/)
+  assert.equal(manager.match(/<div className="flex flex-col gap-2 sm:flex-row sm:justify-end">/g)?.length, 2)
+  assert.match(manager, /onClick=\{\(\) => setInstallStep\("details"\)\}>\n\s*\{labels\.back\}/)
+  assert.match(manager, /<Button busy=\{saving\} onClick=\{\(\) => void installComponent\(\)\}>/)
+  assert.doesNotMatch(manager, /labels\.(?:installing|removing)\b/)
+  assert.match(manager, /aria-label=\{labels\.scanOrSearch\}/)
+
+  const th = assetMessages("th")
+  const en = assetMessages("en")
+  assert.deepEqual(
+    [th.componentInstallSteps, th.componentStepIdentify, th.componentStepDetails, th.componentStepReview],
+    ["ขั้นตอนติดตั้งส่วนควบ", "เลือกส่วนควบ", "ระบุรายละเอียด", "ตรวจสอบและยืนยัน"],
+  )
+  assert.deepEqual(
+    [en.componentInstallSteps, en.componentStepIdentify, en.componentStepDetails, en.componentStepReview],
+    ["Component installation steps", "Choose component", "Enter details", "Check and confirm"],
+  )
+})
+
+test("component removal dialog uses the shared parts, a code tag in its description and a busy destructive confirm (K9, K11, K13)", () => {
+  const manager = read("src/components/assets/asset-component-manager.tsx")
+  assert.match(manager, /<AccessibleDialogBody className="space-y-4">\n\s*<Field label=\{labels\.removeReason\}>\n\s*<Textarea ref=\{reasonRef\}/)
+  assert.match(
+    manager,
+    /<AccessibleDialogFooter>\n\s*<AccessibleDialogCancel>\{labels\.cancel\}<\/AccessibleDialogCancel>\n\s*<Button variant="destructive" busy=\{busy\} onClick=/,
+  )
+  assert.match(manager, /<span className="tag">\{component\.componentAsset\.assetTag\}<\/span> · \{component\.componentAsset\.name\}/)
+  assert.doesNotMatch(manager, /closeLabel=/)
+})

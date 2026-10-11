@@ -149,6 +149,12 @@ export default async function AssetComponentManagerPage({ params, searchParams }
           zoomCamera: tAssetTools.raw("zoomCamera"),
           zoomUnsupported: tAssetTools("zoomUnsupported"),
         },
+        steps: {
+          label: t("componentInstallSteps"),
+          identify: t("componentStepIdentify"),
+          details: t("componentStepDetails"),
+          review: t("componentStepReview"),
+        },
       }}
     />
   )

@@ -78,3 +78,17 @@ test("step words exist in Thai and English", () => {
   assert.equal(th.stepRejected, "ปฏิเสธแล้ว")
   assert.equal(en.stepRejected, "Rejected")
 })
+
+test("the component install flow shows its three steps on the shared rail (K17)", () => {
+  const manager = readFileSync("src/components/assets/asset-component-manager.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(manager, /import \{ Steps \} from "@\/components\/ui\/steps"/)
+  assert.match(manager, /<Steps className="mb-4" label=\{labels\.steps\.label\} steps=\{installSteps\} \/>/)
+  assert.ok(manager.indexOf("<Steps ") < manager.indexOf('{installStep === "identify" ? ('), "the rail sits above the step content")
+  assert.match(manager, /type InstallStep = "identify" \| "details" \| "review"/)
+  for (const locale of ["th", "en"]) {
+    const asset = (JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { asset: Record<string, unknown> }).asset
+    for (const key of ["componentInstallSteps", "componentStepIdentify", "componentStepDetails", "componentStepReview"]) {
+      assert.equal(typeof asset[key], "string", `${locale}: asset.${key}`)
+    }
+  }
+})
