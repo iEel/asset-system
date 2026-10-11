@@ -143,3 +143,13 @@ test("asset detail avoids eager component inventory and bounds preview relations
   assert.match(source, /checkouts:\s*\{[\s\S]*?take: loadPolicy\.checkoutLimit/)
   assert.match(source, /attachments:\s*\{[\s\S]*?take: 20/)
 })
+
+test("asset detail header links share the Button look of the More menu trigger", () => {
+  const source = assetDetailSource()
+
+  assert.match(source, /import \{ buttonVariants \} from "@\/components\/ui\/button-variants"/)
+  assert.match(source, /className=\{cn\(buttonVariants\(\{ variant: "outline" \}\), "min-w-11 px-3"\)\}/)
+  assert.match(source, /className=\{cn\(buttonVariants\(\), "hidden md:inline-flex"\)\}/)
+  assert.doesNotMatch(source, /rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground/)
+  assert.doesNotMatch(source, /rounded-md bg-primary px-4 text-sm font-medium text-white/)
+})

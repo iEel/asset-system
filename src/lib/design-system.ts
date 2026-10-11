@@ -1,4 +1,5 @@
 import { buttonVariants } from "../components/ui/button-variants.ts"
+import { cn } from "./utils.ts"
 
 export const uiTones = ["neutral", "info", "success", "warning", "danger", "muted"] as const
 export const uiButtonVariants = ["primary", "secondary", "danger", "ghost"] as const
@@ -86,18 +87,19 @@ const legacyButtonSize = {
   sm: "sm",
 } as const
 
+/** @deprecated Use `buttonVariants` from `components/ui/button-variants.ts`. Phase 2D moves its one caller and deletes it. */
 export function getActionButtonClasses(variant: UiButtonVariant = "secondary", size: UiButtonSize = "md") {
   return buttonVariants({ variant: legacyButtonVariant[variant], size: legacyButtonSize[size] })
 }
 
+// A link that looks like a default-size Button but lets a long label wrap and grow taller. cn() is required:
+// Tailwind emits whitespace-normal before whitespace-nowrap, so appending the string would keep the nowrap.
+// Phase 2D changes md:min-h-10 to md:min-h-9 when the default button becomes 36px.
 export function getSafeActionLinkClasses(variant: Extract<UiButtonVariant, "primary" | "secondary" | "ghost"> = "secondary") {
-  const variantClass = {
-    primary: "bg-primary text-white hover:bg-primary-hover",
-    secondary: "border border-border bg-surface text-foreground hover:bg-accent",
-    ghost: "text-foreground hover:bg-accent",
-  }[variant]
-
-  return `inline-flex min-h-11 w-full min-w-0 max-w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-center text-sm font-medium leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-fit ${variantClass}`
+  return cn(
+    buttonVariants({ variant: legacyButtonVariant[variant] }),
+    "h-auto w-full min-w-0 max-w-full whitespace-normal py-2 text-center sm:w-fit md:h-auto md:min-h-10",
+  )
 }
 
 export function getResponsiveActionRowClasses() {
@@ -106,8 +108,4 @@ export function getResponsiveActionRowClasses() {
 
 export function getMobileSafeBottomPaddingClasses() {
   return "pb-[calc(6rem+max(0.75rem,env(safe-area-inset-bottom)))] sm:pb-0"
-}
-
-export function getTouchIconButtonClasses() {
-  return "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 }

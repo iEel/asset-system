@@ -28,7 +28,8 @@ import {
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
-import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
+import { cn, formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
+import { buttonVariants } from "@/components/ui/button-variants"
 import { AssetQrCode } from "@/components/assets/asset-qr-code"
 import { AssetAttachments } from "@/components/assets/asset-attachments"
 import { AssetStatusCorrectionButton } from "@/components/assets/asset-status-correction-button"
@@ -918,7 +919,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           <Link
             href={returnToHref}
             aria-label={isAssetScanReturn ? t("backToScan") : tCommon("back")}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:h-10"
+            className={cn(buttonVariants({ variant: "outline" }), "min-w-11 px-3")}
           >
             <ArrowLeft className="h-4 w-4" />
             <span className="hidden sm:inline">{isAssetScanReturn ? t("backToScan") : tCommon("back")}</span>
@@ -926,7 +927,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           {canEditAsset ? (
             <Link
               href={editHref}
-              className="hidden h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover md:inline-flex"
+              className={cn(buttonVariants(), "hidden md:inline-flex")}
             >
               <Edit className="h-4 w-4" />
               {tCommon("edit")}
