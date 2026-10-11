@@ -95,7 +95,7 @@ export function RepairRecordActions({
           <button type="button" onClick={() => setDialog("complete")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover">
             <CheckCircle2 className="h-4 w-4" />{t("complete")}
           </button>
-          <button type="button" onClick={() => setDialog("cancel")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-danger/40 bg-surface px-4 text-sm font-medium text-danger hover:bg-danger-soft">
+          <button type="button" onClick={() => setDialog("cancel")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-danger-border bg-surface px-4 text-sm font-medium text-danger hover:bg-danger-soft">
             <XCircle className="h-4 w-4" />{t("cancel")}
           </button>
         </>

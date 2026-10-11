@@ -56,13 +56,13 @@ export function AssetStatusCorrectionButton({ assetId, readyStatusId, labels }: 
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-sm font-medium text-warning transition-colors hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm font-medium text-warning transition-colors hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <RotateCcw className="h-4 w-4 shrink-0" aria-hidden="true" />
         {labels.button}
       </button>
       {open ? (
-        <div className="rounded-md border border-warning/30 bg-background p-4 shadow-sm">
+        <div className="rounded-md border border-warning-border bg-background p-4 shadow-sm">
           <h3 className="text-sm font-semibold text-foreground">{labels.title}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{labels.description}</p>
           <label className="mt-3 block text-sm font-medium text-foreground" htmlFor="asset-status-correction-reason">

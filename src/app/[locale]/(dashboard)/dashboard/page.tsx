@@ -50,9 +50,9 @@ type DashboardActionCard = {
 }
 
 const actionCardToneClass: Record<DashboardActionTone, string> = {
-  primary: "border-primary/30 bg-primary-soft",
-  warning: "border-warning/30 bg-warning-soft",
-  danger: "border-danger/30 bg-danger-soft",
+  primary: "border-primary-border bg-primary-soft",
+  warning: "border-warning-border bg-warning-soft",
+  danger: "border-danger-border bg-danger-soft",
 }
 
 const actionCardIconClass: Record<DashboardActionTone, string> = {
@@ -439,10 +439,10 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
           <h2 className="mb-4 text-lg font-semibold">{t("statusOverview")}</h2>
           <div className="grid gap-3">
             {[
-              { label: t("inUse"), value: inUse, href: `/${locale}/assets`, tone: "border-success/30 bg-success-soft" },
-              { label: t("readyToDeploy"), value: ready, href: `/${locale}/assets`, tone: "border-info/30 bg-info-soft" },
-              { label: t("pendingRepair"), value: pendingRepair, href: repairStatusMetrics.pendingRepair.href, tone: "border-warning/30 bg-warning-soft" },
-              { label: t("underMaintenance"), value: underMaintenance, href: repairStatusMetrics.underMaintenance.href, tone: "border-danger/30 bg-danger-soft" },
+              { label: t("inUse"), value: inUse, href: `/${locale}/assets`, tone: "border-success-border bg-success-soft" },
+              { label: t("readyToDeploy"), value: ready, href: `/${locale}/assets`, tone: "border-info-border bg-info-soft" },
+              { label: t("pendingRepair"), value: pendingRepair, href: repairStatusMetrics.pendingRepair.href, tone: "border-warning-border bg-warning-soft" },
+              { label: t("underMaintenance"), value: underMaintenance, href: repairStatusMetrics.underMaintenance.href, tone: "border-danger-border bg-danger-soft" },
             ].map((item) => (
               <Link key={item.label} href={item.href} className={`flex items-center justify-between rounded-md border p-3 transition-colors hover:bg-accent ${item.tone}`}>
                 <span className="text-sm font-medium text-foreground">{item.label}</span>
@@ -459,7 +459,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
             <div className="space-y-3">
               {readableLogs.map((log) =>
                 log.href ? (
-                  <Link key={log.id} href={log.href} className="block rounded-md border border-border bg-background p-3 text-sm transition-colors hover:border-primary/40 hover:bg-primary-soft">
+                  <Link key={log.id} href={log.href} className="block rounded-md border border-border bg-background p-3 text-sm transition-colors hover:border-primary-border hover:bg-primary-soft">
                     <ActivityLogContent log={log} />
                   </Link>
                 ) : (
@@ -511,12 +511,12 @@ function TrendCard({
   const trendClass = delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-foreground"
   const toneClass =
     tone === "danger"
-      ? "border-danger/30 bg-danger-soft"
+      ? "border-danger-border bg-danger-soft"
       : tone === "warning"
-        ? "border-warning/30 bg-warning-soft"
+        ? "border-warning-border bg-warning-soft"
         : tone === "info"
-          ? "border-info/30 bg-info-soft"
-          : "border-primary/30 bg-primary-soft"
+          ? "border-info-border bg-info-soft"
+          : "border-primary-border bg-primary-soft"
 
   return (
     <Link href={href} className={cn("rounded-md border p-4 transition-colors hover:bg-accent", toneClass)}>

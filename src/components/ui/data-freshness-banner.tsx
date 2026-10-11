@@ -76,10 +76,10 @@ export function DataFreshnessBanner({
   }
 
   return (
-    <section className="mb-3 rounded-md border border-warning/40 bg-warning-soft px-3 py-2">
+    <section className="mb-3 rounded-md border border-warning-border bg-warning-soft px-3 py-2">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-warning/30 bg-surface text-warning">
+          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-warning-border bg-surface text-warning">
             <AlertTriangle className="h-4 w-4" />
           </span>
           <div className="min-w-0 text-sm">

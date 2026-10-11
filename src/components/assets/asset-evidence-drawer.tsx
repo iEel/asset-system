@@ -110,7 +110,7 @@ export function AssetEvidenceDrawer({
                   href={item.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="group overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="group overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-input focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   {item.fileType.startsWith("image/") ? (
                     <div className="flex h-28 w-full items-center justify-center bg-muted/40 p-2">
@@ -175,7 +175,7 @@ function FilterButton({
       className={
         active
           ? "inline-flex h-8 shrink-0 items-center rounded-md bg-primary px-3 text-xs font-medium text-white"
-          : "inline-flex h-8 shrink-0 items-center rounded-md border border-border bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+          : "inline-flex h-8 shrink-0 items-center rounded-md border border-border bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-input hover:text-primary"
       }
     >
       {label}

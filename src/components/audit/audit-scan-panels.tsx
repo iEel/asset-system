@@ -93,7 +93,7 @@ export function AuditComponentPanel({
                     type="button"
                     onClick={() => onMarkMissing(component)}
                     disabled={isActionDisabled}
-                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 text-sm font-medium text-warning transition-colors hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-warning-border bg-surface px-3 text-sm font-medium text-warning transition-colors hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                   >
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
                     {t("componentMissing")}
@@ -119,27 +119,27 @@ function getAuditComponentStatusMeta(component: AuditScanComponent, t: AuditScan
   if (component.auditResult === "confirmed_with_parent") {
     return {
       label: t("componentStatusConfirmedWithParent"),
-      className: "border-info/30 bg-info-soft text-info",
+      className: "border-info-border bg-info-soft text-info",
     }
   }
 
   if (component.auditResult && component.auditResult !== "found") {
     return {
       label: t("componentStatusMismatch"),
-      className: "border-warning/30 bg-warning-soft text-warning",
+      className: "border-warning-border bg-warning-soft text-warning",
     }
   }
 
   if (component.auditStatus === "pending") {
     return {
       label: t("componentStatusPending"),
-      className: "border-warning/30 bg-warning-soft text-warning",
+      className: "border-warning-border bg-warning-soft text-warning",
     }
   }
 
   return {
     label: t("componentStatusScanned"),
-    className: "border-success/30 bg-success-soft text-success",
+    className: "border-success-border bg-success-soft text-success",
   }
 }
 

@@ -535,10 +535,10 @@ function ActionPanel({ title, help, actions }: { title: string; help: string; ac
         {actions.map((action) => {
           const toneClass =
             action.tone === "success"
-              ? "border-success/30 bg-success-soft text-success hover:bg-success-soft"
+              ? "border-success-border bg-success-soft text-success hover:bg-success-soft"
               : action.tone === "warning"
-                ? "border-warning/30 bg-warning-soft text-warning hover:bg-warning-soft"
-                : "border-primary/30 bg-primary-soft text-primary hover:bg-primary-soft"
+                ? "border-warning-border bg-warning-soft text-warning hover:bg-warning-soft"
+                : "border-primary-border bg-primary-soft text-primary hover:bg-primary-soft"
 
           return (
             <Link
@@ -613,10 +613,10 @@ function RoundWorkflowLinks({ links, compact = false }: { links: RoundWorkflowLi
       {links.map((link) => {
         const toneClass =
           link.tone === "danger"
-            ? "border-danger/30 bg-danger-soft text-danger hover:bg-danger-soft"
+            ? "border-danger-border bg-danger-soft text-danger hover:bg-danger-soft"
             : link.tone === "info"
-              ? "border-info/30 bg-info-soft text-info hover:bg-info-soft"
-              : "border-warning/30 bg-warning-soft text-warning hover:bg-warning-soft"
+              ? "border-info-border bg-info-soft text-info hover:bg-info-soft"
+              : "border-warning-border bg-warning-soft text-warning hover:bg-warning-soft"
 
         return (
           <Link
@@ -663,9 +663,9 @@ function ReadyToCloseBadge({
 function CoverageMetric({ label, value, tone = "neutral" }: { label: string; value: number; tone?: "neutral" | "warning" | "danger" }) {
   const toneClass =
     tone === "danger"
-      ? "border-danger/30 bg-danger-soft text-danger"
+      ? "border-danger-border bg-danger-soft text-danger"
       : tone === "warning"
-        ? "border-warning/30 bg-warning-soft text-warning"
+        ? "border-warning-border bg-warning-soft text-warning"
         : "border-border bg-background text-foreground"
 
   return (

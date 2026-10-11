@@ -824,7 +824,7 @@ export function AssetBatchForm({
           </div>
 
           {hasClientDuplicates ? (
-            <div className="md:col-span-2 rounded-md border border-warning/40 bg-warning-soft p-3 text-sm text-warning">
+            <div className="md:col-span-2 rounded-md border border-warning-border bg-warning-soft p-3 text-sm text-warning">
               {t("duplicateWarning")}
               {duplicateValues.serialNumbers.length > 0 ? ` Serial: ${duplicateValues.serialNumbers.join(", ")}` : ""}
               {duplicateValues.assetTags.length > 0 ? ` Asset Tag: ${duplicateValues.assetTags.join(", ")}` : ""}
@@ -835,10 +835,10 @@ export function AssetBatchForm({
             <div
               className={`md:col-span-2 rounded-md border p-3 text-sm ${
                 duplicateCheckStatus === "clean"
-                  ? "border-success/40 bg-success-soft text-success"
+                  ? "border-success-border bg-success-soft text-success"
                   : duplicateCheckStatus === "duplicate"
-                    ? "border-warning/40 bg-warning-soft text-warning"
-                    : "border-danger/40 bg-danger-soft text-danger"
+                    ? "border-warning-border bg-warning-soft text-warning"
+                    : "border-danger-border bg-danger-soft text-danger"
               }`}
             >
               {duplicateCheckStatus === "error" ? <ApiErrorText error={duplicateCheckMessage} /> : duplicateCheckMessage}
@@ -966,7 +966,7 @@ export function AssetBatchForm({
         </Section>
 
         {reviewing ? (
-          <section className="rounded-lg border border-primary/30 bg-primary-soft p-4 shadow-sm sm:p-5">
+          <section className="rounded-lg border border-primary-border bg-primary-soft p-4 shadow-sm sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <h2 className="text-lg font-semibold text-foreground">{t("batchReviewTitle")}</h2>
@@ -1018,7 +1018,7 @@ export function AssetBatchForm({
         ) : null}
 
         {createdBatch ? (
-          <div className="rounded-md border border-success/30 bg-success-soft p-4">
+          <div className="rounded-md border border-success-border bg-success-soft p-4">
             <h2 className="text-lg font-semibold text-foreground">{t("batchCreatedTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("batchCreatedDescription", { count: createdBatch.created })}</p>
             <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">

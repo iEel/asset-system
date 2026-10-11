@@ -204,13 +204,13 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
           <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
             <SectionTitle title={t("followUpTitle")} />
             {followUpItems.length === 0 ? (
-              <div className="mt-4 rounded-md border border-success/30 bg-success-soft p-3 text-sm text-success">
+              <div className="mt-4 rounded-md border border-success-border bg-success-soft p-3 text-sm text-success">
                 {t("noFollowUp")}
               </div>
             ) : (
               <div className="mt-4 space-y-2">
                 {followUpItems.map((item) => (
-                  <div key={item} className="flex gap-2 rounded-md border border-warning/30 bg-warning-soft p-3 text-sm text-warning">
+                  <div key={item} className="flex gap-2 rounded-md border border-warning-border bg-warning-soft p-3 text-sm text-warning">
                     <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>{followUpText(item, t)}</span>
                   </div>
@@ -277,7 +277,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
             ) : (
               <div className="mt-4 space-y-3">
                 {maintenanceTickets.map((ticket) => (
-                  <Link key={ticket.id} href={`/${locale}/maintenance/${ticket.id}`} className="block min-h-11 rounded-md border border-border bg-background p-3 transition-colors hover:border-primary/40 hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                  <Link key={ticket.id} href={`/${locale}/maintenance/${ticket.id}`} className="block min-h-11 rounded-md border border-border bg-background p-3 transition-colors hover:border-primary-border hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <div className="font-medium text-primary">{ticket.repairNo} - {ticket.asset.assetTag}</div>
@@ -321,8 +321,8 @@ function MetricCard({
   const content = (
     <div className={[
       "rounded-lg border bg-surface p-4 shadow-sm transition-colors",
-      tone === "warning" ? "border-warning/40 bg-warning-soft" : "border-border",
-      href ? "hover:border-primary/40 hover:bg-accent/60" : "",
+      tone === "warning" ? "border-warning-border bg-warning-soft" : "border-border",
+      href ? "hover:border-primary-border hover:bg-accent/60" : "",
     ].join(" ")}>
       <div className="flex items-start justify-between gap-3">
         <div>

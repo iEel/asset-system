@@ -142,7 +142,7 @@ function togglePermission(permissionId: string) {
               <p className="mt-1 text-sm text-muted-foreground">{t("metadataSubtitle")}</p>
             </div>
             {isSystemRole ? (
-              <div className="inline-flex max-w-md items-start gap-2 rounded-md border border-info/30 bg-info-soft px-3 py-2 text-sm text-info">
+              <div className="inline-flex max-w-md items-start gap-2 rounded-md border border-info-border bg-info-soft px-3 py-2 text-sm text-info">
                 <Info className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{permissionsLocked ? t("systemAdminGuard") : t("systemRoleGuard")}</span>
               </div>

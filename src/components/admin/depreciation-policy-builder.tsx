@@ -276,7 +276,7 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
               />
             </div>
 
-            <button type="button" onClick={() => removeGroup(activeGroup.id)} disabled={!isPolicyJsonValid} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-danger/40 px-3 text-sm font-medium text-danger transition-colors hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" onClick={() => removeGroup(activeGroup.id)} disabled={!isPolicyJsonValid} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-danger-border px-3 text-sm font-medium text-danger transition-colors hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-50">
               <Trash2 className="h-4 w-4" />
               {labels.depreciationRemoveGroup}
             </button>
@@ -302,7 +302,7 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
       </div>
 
       {state.legacyRules.length > 0 ? (
-        <div className="rounded-md border border-warning/30 bg-warning-soft p-3">
+        <div className="rounded-md border border-warning-border bg-warning-soft p-3">
           <h3 className="text-sm font-semibold text-foreground">{labels.depreciationLegacyRules}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{labels.depreciationLegacyRulesHelp}</p>
           <ul className="mt-2 list-inside list-disc text-sm text-muted-foreground">

@@ -242,7 +242,7 @@ export function CheckoutForm({
                     <label
                       key={mode}
                       className={`flex min-h-16 cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${
-                        selected ? "border-primary bg-primary-soft" : "border-border bg-background hover:border-primary/60"
+                        selected ? "border-primary bg-primary-soft" : "border-border bg-background hover:border-input"
                       }`}
                     >
                       <input

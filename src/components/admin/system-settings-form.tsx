@@ -1322,7 +1322,7 @@ export function SystemSettingsForm({
                           <button
                             type="button"
                             onClick={() => removePrefixGroup(group.prefix)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-danger-soft hover:text-destructive"
                             title={labels.removePrefix}
                             aria-label={labels.removePrefix}
                           >
@@ -1838,7 +1838,7 @@ export function SystemSettingsForm({
                 />
                 <p className="text-xs leading-relaxed text-muted-foreground">{labels.ldapDefaultRoleHelp}</p>
                 {getValue("ldap_default_role") && !defaultRoleOptions.some((option) => option.id === getValue("ldap_default_role")) ? (
-                  <p className="rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-xs font-medium text-warning">
+                  <p className="rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-xs font-medium text-warning">
                     {labels.ldapDefaultRoleMissing.replace("{role}", getValue("ldap_default_role"))}
                   </p>
                 ) : null}
@@ -2005,7 +2005,7 @@ export function SystemSettingsForm({
             </button>
           </div>
           {syncError ? (
-            <div className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
+            <div className="rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-sm text-danger">
               <ApiErrorText error={syncError} />
             </div>
           ) : null}
@@ -2017,8 +2017,8 @@ export function SystemSettingsForm({
       ) : null}
 
       {activeTab === "advanced" && generalSettings.length > 0 ? (
-        <details className="overflow-hidden rounded-lg border border-warning/30 bg-surface shadow-sm">
-          <summary className="cursor-pointer list-none border-b border-warning/20 bg-warning-soft px-4 py-4">
+        <details className="overflow-hidden rounded-lg border border-warning-border bg-surface shadow-sm">
+          <summary className="cursor-pointer list-none border-b border-warning-border bg-warning-soft px-4 py-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-base font-semibold text-foreground">{labels.advancedWarningTitle}</h2>
@@ -2313,7 +2313,7 @@ function CategoryTransferRow({
         <span className="block truncate text-xs text-muted-foreground">{category.code}</span>
       </span>
       {badge ? (
-        <span className="shrink-0 rounded-full border border-warning/30 bg-warning-soft px-2 py-1 text-xs font-medium text-warning">
+        <span className="shrink-0 rounded-full border border-warning-border bg-warning-soft px-2 py-1 text-xs font-medium text-warning">
           {badge}
         </span>
       ) : null}
@@ -2338,7 +2338,7 @@ function Field({ label, htmlFor, children }: { label: string; htmlFor: string; c
 
 function ValidationMessage({ message }: { message: string }) {
   return (
-    <p className="my-2 rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm font-medium text-danger">
+    <p className="my-2 rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-sm font-medium text-danger">
       {message}
     </p>
   )
@@ -2411,7 +2411,7 @@ function SyncPreviewPanel({
         <Metric label={labels.ldapSyncDeactivates} value={preview.deactivates.length} />
       </div>
       {preview.applied ? (
-        <div className="mt-3 rounded-md border border-primary/30 bg-primary-soft px-3 py-3">
+        <div className="mt-3 rounded-md border border-primary-border bg-primary-soft px-3 py-3">
           <div className="text-sm font-medium text-foreground">{labels.ldapSyncAppliedTitle}</div>
           <div className="mt-2 grid gap-2 md:grid-cols-4">
           <Metric label={labels.ldapSyncAppliedCreated} value={preview.applied.created} />
@@ -2422,7 +2422,7 @@ function SyncPreviewPanel({
       </div>
       ) : null}
       {preview.blockers.length > 0 ? (
-        <div className="mt-3 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-sm text-warning">
+        <div className="mt-3 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm text-warning">
           <div className="font-medium">{labels.ldapSyncBlockers}</div>
           <ul className="mt-1 list-disc space-y-1 pl-5">
             {preview.blockers.map((blocker) => (

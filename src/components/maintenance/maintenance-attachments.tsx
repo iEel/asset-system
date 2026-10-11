@@ -102,7 +102,7 @@ export function MaintenanceAttachments({
 
       {canEdit ? (
       <div className="mb-4 rounded-md border border-border bg-background p-3">
-        {!canDelete ? <p className="mb-3 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-sm text-warning">{t("closedEvidenceAppendOnlyHelp")}</p> : null}
+        {!canDelete ? <p className="mb-3 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm text-warning">{t("closedEvidenceAppendOnlyHelp")}</p> : null}
         <label className="mb-3 block">
           <span className="mb-1.5 block text-sm font-medium text-foreground">{t("attachmentType")}</span>
           <select

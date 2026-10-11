@@ -275,7 +275,7 @@ export function AssetComponentManager({
           {installStep === "identify" ? (
             <div className="space-y-3">
               {lastInstalledAssetTag ? (
-                <div className="flex flex-col gap-3 rounded-md border border-success/20 bg-success-soft p-3 text-sm text-success sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 rounded-md border border-success-border bg-success-soft p-3 text-sm text-success sm:flex-row sm:items-center sm:justify-between">
                   <span className="flex min-w-0 items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
                     <span className="break-words">{labels.installSuccess}: {lastInstalledAssetTag}</span>
@@ -283,7 +283,7 @@ export function AssetComponentManager({
                   <button
                     type="button"
                     onClick={() => setLastInstalledAssetTag(null)}
-                    className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-success/30 bg-surface px-3 text-sm font-medium text-foreground hover:bg-success-soft sm:h-9 sm:min-h-0"
+                    className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-success-border bg-surface px-3 text-sm font-medium text-foreground hover:bg-success-soft sm:h-9 sm:min-h-0"
                   >
                     {labels.addAnother}
                   </button>
@@ -384,7 +384,7 @@ export function AssetComponentManager({
 
           {installStep === "review" && selectedComponent ? (
             <div className="space-y-4">
-              <div className="rounded-md border border-primary/20 bg-primary-soft p-4">
+              <div className="rounded-md border border-primary-border bg-primary-soft p-4">
                 <h3 className="text-sm font-semibold text-foreground">{labels.reviewTitle}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{labels.reviewHelp}</p>
                 <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
@@ -500,7 +500,7 @@ function CandidateList({
 
 function SelectedComponent({ component, label, serialLabel }: { component: AssetOption; label: string; serialLabel: string }) {
   return (
-    <div className="rounded-md border border-success/30 bg-success-soft p-3">
+    <div className="rounded-md border border-success-border bg-success-soft p-3">
       <div className="text-xs font-semibold uppercase tracking-normal text-success">{label}</div>
       <div className="mt-1 font-mono text-sm font-semibold text-foreground">{component.assetTag}</div>
       <div className="mt-1 text-sm text-muted-foreground">{component.name}</div>
@@ -523,7 +523,7 @@ function ComponentRow({ locale, component, labels, onRemove }: { locale: string;
         </div>
       </div>
       {onRemove ? (
-        <button type="button" onClick={onRemove} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-danger/30 px-3 text-sm font-medium text-danger hover:bg-danger-soft sm:min-h-0 sm:h-9">
+        <button type="button" onClick={onRemove} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-danger-border px-3 text-sm font-medium text-danger hover:bg-danger-soft sm:min-h-0 sm:h-9">
           <Trash2 className="h-4 w-4" />
           {labels.remove}
         </button>

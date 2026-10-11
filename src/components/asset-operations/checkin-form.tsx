@@ -326,19 +326,19 @@ export function CheckinForm({
           )}
 
           {hasActiveCheckoutRecords && !hasActiveCheckouts ? (
-            <div className="md:col-span-2 rounded-md border border-warning/40 bg-warning-soft p-4 text-sm text-warning">
+            <div className="md:col-span-2 rounded-md border border-warning-border bg-warning-soft p-4 text-sm text-warning">
               <div className="font-medium">{t("handoverReviewRequired")}</div>
               <div className="mt-1">{t("handoverModeMissing")}</div>
             </div>
           ) : null}
 
           {hasLegacyReturnCandidates && (
-            <div className="md:col-span-2 rounded-md border border-warning/30 bg-warning-soft p-4">
+            <div className="md:col-span-2 rounded-md border border-warning-border bg-warning-soft p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="text-sm font-semibold text-foreground">{t("legacyReturnTitle")}</div>
-                    <span className="rounded-full border border-warning/30 bg-surface px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    <span className="rounded-full border border-warning-border bg-surface px-2 py-0.5 text-xs font-medium text-muted-foreground">
                       {t("legacyReturnFilteredCount", {
                         shown: filteredLegacyReturnCandidates.length,
                         total: legacyReturnCandidates.length,
@@ -360,7 +360,7 @@ export function CheckinForm({
               </div>
               <div className="mt-3 grid max-h-96 gap-2 overflow-y-auto pr-1">
                 {filteredLegacyReturnCandidates.length === 0 ? (
-                  <div className="rounded-md border border-dashed border-warning/30 bg-surface/80 p-5 text-center text-sm text-muted-foreground">
+                  <div className="rounded-md border border-dashed border-warning-border bg-surface/80 p-5 text-center text-sm text-muted-foreground">
                     {t("legacyReturnNoResults")}
                   </div>
                 ) : (
@@ -383,7 +383,7 @@ export function CheckinForm({
                         type="button"
                         disabled={saving || legacyBackfillSavingId === asset.id}
                         onClick={() => handleCreateLegacyCheckout(asset.id)}
-                        className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-md border border-warning/40 bg-warning-soft px-3 text-sm font-medium text-warning transition-colors hover:bg-warning-soft disabled:opacity-50 lg:w-auto"
+                        className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-md border border-warning-border bg-warning-soft px-3 text-sm font-medium text-warning transition-colors hover:bg-warning-soft disabled:opacity-50 lg:w-auto"
                       >
                         {legacyBackfillSavingId === asset.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
                         {legacyBackfillSavingId === asset.id ? t("legacyReturnCreating") : t("legacyReturnAction")}
@@ -545,7 +545,7 @@ export function CheckinForm({
           </div>
 
           {sendsToRepair ? (
-            <div className="md:col-span-2 rounded-md border border-warning/30 bg-warning-soft p-4">
+            <div className="md:col-span-2 rounded-md border border-warning-border bg-warning-soft p-4">
               <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <Wrench className="h-4 w-4" />
                 {t("sendToRepairTitle")}

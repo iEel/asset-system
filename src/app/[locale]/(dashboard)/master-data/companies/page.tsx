@@ -286,8 +286,8 @@ function SummaryTile({
   return (
     <Link
       href={href}
-      className={`rounded-lg border bg-surface p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary-soft ${
-        tone === "warning" ? "border-warning/40" : "border-border"
+      className={`rounded-lg border bg-surface p-4 shadow-sm transition-colors hover:border-primary-border hover:bg-primary-soft ${
+        tone === "warning" ? "border-warning-border" : "border-border"
       }`}
     >
       <div className="text-sm font-medium text-muted-foreground">{label}</div>

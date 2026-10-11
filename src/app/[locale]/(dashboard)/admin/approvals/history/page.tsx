@@ -344,10 +344,10 @@ function decisionIcon(decision: ApprovalDecision): React.ReactNode {
 }
 
 function decisionClass(decision: ApprovalDecision) {
-  if (decision === "approve") return "border-success/30 bg-success-soft text-success"
-  if (decision === "reject") return "border-danger/30 bg-danger-soft text-danger"
-  if (decision === "execute") return "border-primary/30 bg-primary-soft text-primary"
-  return "border-warning/30 bg-warning-soft text-warning"
+  if (decision === "approve") return "border-success-border bg-success-soft text-success"
+  if (decision === "reject") return "border-danger-border bg-danger-soft text-danger"
+  if (decision === "execute") return "border-primary-border bg-primary-soft text-primary"
+  return "border-warning-border bg-warning-soft text-warning"
 }
 
 function decisionPillClass(decision: ApprovalDecision) {
@@ -358,9 +358,9 @@ function decisionPillClass(decision: ApprovalDecision) {
 }
 
 function summaryClass(tone: "primary" | "success" | "danger" | "warning" | "muted") {
-  if (tone === "primary") return "border-primary/30 bg-primary-soft text-primary"
-  if (tone === "success") return "border-success/30 bg-success-soft text-success"
-  if (tone === "danger") return "border-danger/30 bg-danger-soft text-danger"
-  if (tone === "warning") return "border-warning/30 bg-warning-soft text-warning"
+  if (tone === "primary") return "border-primary-border bg-primary-soft text-primary"
+  if (tone === "success") return "border-success-border bg-success-soft text-success"
+  if (tone === "danger") return "border-danger-border bg-danger-soft text-danger"
+  if (tone === "warning") return "border-warning-border bg-warning-soft text-warning"
   return "border-border bg-surface text-muted-foreground"
 }

@@ -54,7 +54,7 @@ export function AssetMovementTimeline({
               className={
                 active
                   ? "inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-white"
-                  : "inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                  : "inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-input hover:text-primary"
               }
             >
               {filter === "all" ? labels.all : labels.filters[filter] ?? filter}

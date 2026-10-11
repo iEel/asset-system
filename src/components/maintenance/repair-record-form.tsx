@@ -117,7 +117,7 @@ export function RepairRecordForm({
           onChange={(value) => setField("assetId", value)}
         />
         {openRecordAssetId ? (
-          <p role="alert" className="rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-sm text-warning">
+          <p role="alert" className="rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm text-warning">
             {tMaintenance("errors.MAINTENANCE_OPEN_RECORD_EXISTS")}{" "}
             <Link
               href={`/${locale}/maintenance?assetId=${encodeURIComponent(openRecordAssetId)}&status=in_progress`}
@@ -164,7 +164,7 @@ export function RepairRecordForm({
           </fieldset>
         ) : null}
         {effectKey ? (
-          <p className="rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-sm text-warning">
+          <p className="rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm text-warning">
             {t(`assetStatusEffect.${effectKey}`)}
           </p>
         ) : null}

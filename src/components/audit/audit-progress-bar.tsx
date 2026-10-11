@@ -60,9 +60,9 @@ export function AuditProgressBar({
 }
 
 function getBreakdownClass(tone: AuditProgressTone = "muted") {
-  if (tone === "success") return "border-success/30 bg-success-soft text-success"
-  if (tone === "warning") return "border-warning/30 bg-warning-soft text-warning"
-  if (tone === "danger") return "border-danger/30 bg-danger-soft text-danger"
-  if (tone === "info") return "border-info/30 bg-info-soft text-info"
+  if (tone === "success") return "border-success-border bg-success-soft text-success"
+  if (tone === "warning") return "border-warning-border bg-warning-soft text-warning"
+  if (tone === "danger") return "border-danger-border bg-danger-soft text-danger"
+  if (tone === "info") return "border-info-border bg-info-soft text-info"
   return "border-border bg-background text-muted-foreground"
 }

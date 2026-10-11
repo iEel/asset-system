@@ -614,7 +614,7 @@ function MetricCard({ metric }: { metric: WorkCenterMetric }) {
 
 function SummaryPill({ label, value, tone }: { label: string; value: number; tone: "danger" | "primary" }) {
   return (
-    <div className={`rounded-lg border px-4 py-3 ${tone === "danger" ? "border-danger/30 bg-danger-soft" : "border-primary/30 bg-primary-soft"}`}>
+    <div className={`rounded-lg border px-4 py-3 ${tone === "danger" ? "border-danger-border bg-danger-soft" : "border-primary-border bg-primary-soft"}`}>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-bold text-foreground">{value.toLocaleString("th-TH")}</p>
     </div>
@@ -642,7 +642,7 @@ function WorkCenterFocusLink({ href, active, children }: { href: string; active:
       className={`inline-flex min-h-11 items-center justify-center rounded-md border px-3 text-center text-xs font-medium transition-colors sm:min-h-0 sm:h-9 ${
         active
           ? "border-primary bg-primary text-white"
-          : "border-border bg-surface text-muted-foreground hover:border-primary/40 hover:bg-accent hover:text-foreground"
+          : "border-border bg-surface text-muted-foreground hover:border-primary-border hover:bg-accent hover:text-foreground"
       }`}
     >
       {children}
@@ -675,7 +675,7 @@ function FollowUpPanel({
 }) {
   const isExpanded = currentParams.panel === panel
   return (
-    <section className={`min-w-0 rounded-lg border bg-surface p-4 shadow-sm ${isExpanded ? "border-primary/40 ring-1 ring-primary/20" : "border-border"}`}>
+    <section className={`min-w-0 rounded-lg border bg-surface p-4 shadow-sm ${isExpanded ? "border-primary-border" : "border-border"}`}>
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h2 className="font-semibold text-foreground">{title}</h2>
@@ -684,7 +684,7 @@ function FollowUpPanel({
         <div className="flex min-w-0 flex-col gap-2 sm:shrink-0 sm:flex-row sm:items-center">
           <Link
             href={buildWorkCenterHref(locale, currentParams, { panel: isExpanded ? "overview" : panel })}
-            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-primary/20 px-3 text-xs font-medium text-primary hover:bg-primary-soft sm:min-h-0 sm:border-0 sm:px-0 sm:hover:bg-transparent sm:hover:underline"
+            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-primary-border px-3 text-xs font-medium text-primary hover:bg-primary-soft sm:min-h-0 sm:border-0 sm:px-0 sm:hover:bg-transparent sm:hover:underline"
           >
             {isExpanded ? collapseLabel : showMoreLabel}
           </Link>
@@ -734,7 +734,7 @@ function DataQualityFixGroups({
               </span>
             </div>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Link href={group.assetsHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-primary/20 px-3 text-center text-xs font-medium text-primary hover:bg-primary-soft sm:min-h-0 sm:border-0 sm:px-0 sm:hover:bg-transparent sm:hover:underline">
+              <Link href={group.assetsHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-primary-border px-3 text-center text-xs font-medium text-primary hover:bg-primary-soft sm:min-h-0 sm:border-0 sm:px-0 sm:hover:bg-transparent sm:hover:underline">
                 {labels.openFilteredAssets}
               </Link>
               <Link href={group.workCenterHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-3 text-center text-xs font-medium text-muted-foreground hover:text-primary sm:min-h-0 sm:border-0 sm:px-0 sm:hover:underline">
@@ -761,7 +761,7 @@ function ApprovalFollowUpItem({ item }: { item: ApprovalInboxItem }) {
 
 function FollowUpItem({ href, title, meta, tone }: { href: string; title: string; meta: string; tone: "danger" | "warning" | "primary" }) {
   return (
-    <Link href={href} className="block rounded-md border border-border bg-background p-3 text-sm transition-colors hover:border-primary/40 hover:bg-accent">
+    <Link href={href} className="block rounded-md border border-border bg-background p-3 text-sm transition-colors hover:border-primary-border hover:bg-accent">
       <div className="flex items-start gap-2">
         <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${followUpDotClass(tone)}`} />
         <div className="min-w-0">
@@ -888,9 +888,9 @@ function applyWorkCenterScope<T>(where: T, active: boolean, scopeWhere: T): T {
 }
 
 function toneClass(tone: WorkCenterMetric["tone"]) {
-  if (tone === "danger") return "border-danger/30 bg-danger-soft text-danger"
-  if (tone === "warning") return "border-warning/30 bg-warning-soft text-warning"
-  if (tone === "primary") return "border-primary/30 bg-primary-soft text-primary"
-  if (tone === "success") return "border-success/30 bg-success-soft text-success"
+  if (tone === "danger") return "border-danger-border bg-danger-soft text-danger"
+  if (tone === "warning") return "border-warning-border bg-warning-soft text-warning"
+  if (tone === "primary") return "border-primary-border bg-primary-soft text-primary"
+  if (tone === "success") return "border-success-border bg-success-soft text-success"
   return "border-border bg-surface text-muted-foreground"
 }

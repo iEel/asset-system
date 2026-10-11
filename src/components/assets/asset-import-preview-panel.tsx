@@ -243,7 +243,7 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
       ) : null}
 
       {preview?.mapping ? (
-        <div className="mt-4 rounded-md border border-primary/20 bg-primary-soft px-3 py-3 text-sm">
+        <div className="mt-4 rounded-md border border-primary-border bg-primary-soft px-3 py-3 text-sm">
           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="font-semibold text-foreground">{labels.mappingTitle}</div>
@@ -257,7 +257,7 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
             {mappedColumns.slice(0, 12).map((column) => (
               <span
                 key={column.key}
-                className="rounded-full border border-primary/20 bg-surface px-2.5 py-1 text-xs text-foreground"
+                className="rounded-full border border-primary-border bg-surface px-2.5 py-1 text-xs text-foreground"
                 title={`${labels.fields[column.key] ?? column.label}: ${column.sourceHeader ?? `${labels.sourceColumn} ${column.sourceColumn}`}`}
               >
                 {labels.fields[column.key] ?? column.label}
@@ -270,7 +270,7 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
       ) : null}
 
       {preview?.batch ? (
-        <div className="mt-4 rounded-md border border-info/30 bg-info-soft px-3 py-3 text-sm">
+        <div className="mt-4 rounded-md border border-info-border bg-info-soft px-3 py-3 text-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="font-semibold text-foreground">{labels.importBatchTitle}</div>
@@ -295,14 +295,14 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
       ) : null}
 
       {error && (
-        <div className="mt-4 flex items-start gap-2 rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
+        <div className="mt-4 flex items-start gap-2 rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-sm text-danger">
           <AlertCircle className="mt-0.5 h-4 w-4 flex-none" />
           <ApiErrorText error={error} />
         </div>
       )}
 
       {success && (
-        <div className="mt-4 flex items-start gap-2 rounded-md border border-success/30 bg-success-soft px-3 py-2 text-sm text-success">
+        <div className="mt-4 flex items-start gap-2 rounded-md border border-success-border bg-success-soft px-3 py-2 text-sm text-success">
           <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none" />
           <span>{success}</span>
         </div>
@@ -421,7 +421,7 @@ function WizardStep({
     <div
       className={[
         "rounded-md border px-3 py-2 text-sm",
-        isCurrent ? "border-primary bg-primary-soft text-primary" : isDone ? "border-success/30 bg-success-soft text-success" : "border-border bg-background text-muted-foreground",
+        isCurrent ? "border-primary bg-primary-soft text-primary" : isDone ? "border-success-border bg-success-soft text-success" : "border-border bg-background text-muted-foreground",
       ].join(" ")}
     >
       <div className="flex items-center gap-2">

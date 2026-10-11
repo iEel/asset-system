@@ -365,7 +365,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     {canCreateDisposal && finding.asset ? (
                       <Link
                         href={appendOperationalReturnTo(`/${locale}/disposal/new?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref)}
-                        className="inline-flex min-h-11 items-center justify-center rounded-md border border-warning/40 bg-warning-soft px-3 text-sm font-medium text-warning"
+                        className="inline-flex min-h-11 items-center justify-center rounded-md border border-warning-border bg-warning-soft px-3 text-sm font-medium text-warning"
                       >
                         {t("openDisposalRequest")}
                       </Link>
@@ -488,7 +488,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                         {canCreateDisposal && finding.asset ? (
                           <Link
                             href={appendOperationalReturnTo(`/${locale}/disposal/new?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref)}
-                            className="ml-2 inline-flex h-8 items-center rounded-md border border-warning/40 bg-warning-soft px-2 text-xs font-medium text-warning"
+                            className="ml-2 inline-flex h-8 items-center rounded-md border border-warning-border bg-warning-soft px-2 text-xs font-medium text-warning"
                           >
                             {t("openDisposalRequest")}
                           </Link>
@@ -533,12 +533,12 @@ function ResolutionMetric({
 }) {
   const toneClass =
     tone === "danger"
-      ? "border-danger/30 bg-danger-soft text-danger"
+      ? "border-danger-border bg-danger-soft text-danger"
       : tone === "warning"
-        ? "border-warning/30 bg-warning-soft text-warning"
+        ? "border-warning-border bg-warning-soft text-warning"
         : tone === "success"
-          ? "border-success/30 bg-success-soft text-success"
-          : "border-info/30 bg-info-soft text-info"
+          ? "border-success-border bg-success-soft text-success"
+          : "border-info-border bg-info-soft text-info"
 
   return (
     <Link
@@ -596,7 +596,7 @@ function AuditFindingEvidenceList({
   if (attachments.length === 0) return null
 
   return (
-    <div className="mt-2 rounded-md border border-info/20 bg-info-soft p-3">
+    <div className="mt-2 rounded-md border border-info-border bg-info-soft p-3">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-xs font-semibold text-foreground">{labels.title}</div>
         <div className="text-xs text-muted-foreground">{labels.count}</div>
@@ -609,7 +609,7 @@ function AuditFindingEvidenceList({
             target="_blank"
             rel="noreferrer"
             aria-label={`${labels.open}: ${attachment.originalName}`}
-            className="flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground transition-colors hover:border-primary/40 hover:bg-accent"
+            className="flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground transition-colors hover:border-primary-border hover:bg-accent"
           >
             <FileText className="h-4 w-4 shrink-0 text-info" />
             <span className="min-w-0 flex-1">

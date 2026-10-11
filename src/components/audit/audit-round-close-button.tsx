@@ -73,7 +73,7 @@ export function AuditRoundCloseButton({
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         {checklist.map((item) => {
           const cardClassName = `rounded-md border px-3 py-3 ${
-            item.ok ? "border-success/30 bg-success-soft text-success" : "border-warning/30 bg-warning-soft text-warning"
+            item.ok ? "border-success-border bg-success-soft text-success" : "border-warning-border bg-warning-soft text-warning"
           }`
           const content = (
             <div className="flex items-start gap-2">

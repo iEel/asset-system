@@ -859,7 +859,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
           ) : null}
 
           {dialogState === "review" && historicalAvailable ? (
-            <section className="space-y-3 rounded-md border border-warning/50 bg-warning-soft p-3">
+            <section className="space-y-3 rounded-md border border-warning-border bg-warning-soft p-3">
               <p id={historicalWarningId} className="text-sm font-medium text-foreground">
                 {copy.historicalWarning}
               </p>

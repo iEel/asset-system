@@ -68,7 +68,7 @@ export function AssetDetailTabs({
               className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border px-3 text-sm font-medium transition-colors sm:h-9 sm:min-h-0 ${
                 view === item
                   ? "border-primary bg-primary text-white"
-                  : "border-border bg-surface text-muted-foreground hover:border-primary/40 hover:bg-accent hover:text-foreground"
+                  : "border-border bg-surface text-muted-foreground hover:border-primary-border hover:bg-accent hover:text-foreground"
               }`}
             >
               <span>{labels[item]}</span>

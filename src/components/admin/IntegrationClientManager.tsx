@@ -324,7 +324,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
       </section>
 
       {oneTimeToken ? (
-        <section className="rounded-lg border border-warning/40 bg-warning-soft p-4 shadow-sm">
+        <section className="rounded-lg border border-warning-border bg-warning-soft p-4 shadow-sm">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-warning">
@@ -358,7 +358,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
               ) : null}
             </div>
           </div>
-          <div className="mt-4 flex flex-col gap-3 border-t border-warning/20 pt-4 md:flex-row md:items-center md:justify-between">
+          <div className="mt-4 flex flex-col gap-3 border-t border-warning-border pt-4 md:flex-row md:items-center md:justify-between">
             <label className="flex items-start gap-3 text-sm text-foreground">
               <input
                 type="checkbox"
@@ -381,7 +381,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
       ) : null}
 
       {error ? (
-        <div className="rounded-md border border-danger/30 bg-danger-soft p-3 text-sm text-danger" role="alert">
+        <div className="rounded-md border border-danger-border bg-danger-soft p-3 text-sm text-danger" role="alert">
           {labels.error}: {error}
         </div>
       ) : null}
@@ -738,7 +738,7 @@ function OperationsPanel({
       )}
 
       {operations.latestError ? (
-        <div className="rounded-md border border-danger/20 bg-danger-soft px-2 py-1 text-xs text-danger">
+        <div className="rounded-md border border-danger-border bg-danger-soft px-2 py-1 text-xs text-danger">
           <span className="font-medium">{labels.latestError}: </span>
           <span className="font-mono">
             {operations.latestError.status} {operations.latestError.route}
@@ -868,7 +868,7 @@ function ActionButtons({
           type="button"
           onClick={onDisable}
           disabled={busy}
-          className="inline-flex h-10 min-h-11 items-center justify-center rounded-md border border-danger/30 bg-danger-soft px-3 text-sm font-medium text-danger transition-colors hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-10 min-h-11 items-center justify-center rounded-md border border-danger-border bg-danger-soft px-3 text-sm font-medium text-danger transition-colors hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-50"
         >
           {labels.disable}
         </button>

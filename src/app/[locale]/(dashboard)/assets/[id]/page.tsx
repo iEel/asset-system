@@ -1047,7 +1047,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               <p className="mt-1 text-sm text-muted-foreground">{lifecycle.help}</p>
             </div>
           </div>
-          <div className="mb-3 rounded-md border border-info/30 bg-info-soft px-3 py-2">
+          <div className="mb-3 rounded-md border border-info-border bg-info-soft px-3 py-2">
             <div className="text-sm font-semibold text-foreground">{lifecycle.title}</div>
             <p className="mt-1 text-xs text-muted-foreground">{lifecycle.description}</p>
           </div>
@@ -1420,7 +1420,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
               ]}
             />
             {maintenanceReplacementWarning ? (
-              <div className="mb-4 rounded-md border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-warning">
+              <div className="mb-4 rounded-md border border-warning-border bg-warning-soft px-4 py-3 text-sm text-warning">
                 {t("maintenanceReplacementWarning")}
               </div>
             ) : null}
@@ -1763,7 +1763,7 @@ function ActivitySummaryLink({
   return (
     <Link
       href={item.href}
-      className={`block rounded-md border px-3 py-2 transition-colors hover:border-primary/40 hover:bg-primary-soft ${getActivityToneClass(item.tone)}`}
+      className={`block rounded-md border px-3 py-2 transition-colors hover:border-primary-border hover:bg-primary-soft ${getActivityToneClass(item.tone)}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -1801,7 +1801,7 @@ function QuickAction({
   }
 
   return (
-    <Link href={href} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-center text-sm font-medium leading-tight text-foreground transition-colors hover:border-primary/40 hover:bg-primary-soft hover:text-primary md:h-10 md:min-h-0">
+    <Link href={href} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-center text-sm font-medium leading-tight text-foreground transition-colors hover:border-primary-border hover:bg-primary-soft hover:text-primary md:h-10 md:min-h-0">
       {icon}
       {label}
     </Link>
@@ -1979,7 +1979,7 @@ function AssetRelationshipMap({
         </div>
       ) : null}
 
-      <div className="mt-4 flex items-start gap-2 rounded-md border border-primary/15 bg-primary-soft px-3 py-2 text-xs text-muted-foreground">
+      <div className="mt-4 flex items-start gap-2 rounded-md border border-primary-border bg-primary-soft px-3 py-2 text-xs text-muted-foreground">
         <InfoIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <span>{noteLabel}</span>
       </div>
@@ -2019,14 +2019,14 @@ function RelationshipConnector({ direction }: { direction: "left" | "right" }) {
     <div className="flex items-center justify-center md:block">
       <div className="flex flex-col items-center text-primary md:hidden">
         <span className="h-3 border-l border-dashed border-border" />
-        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/25 bg-surface">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary-border bg-surface">
           <ArrowDown className="h-4 w-4" />
         </span>
         <span className="h-3 border-l border-dashed border-border" />
       </div>
       <div className="hidden items-center gap-1 text-primary md:flex">
         <span className="h-px w-5 border-t border-dashed border-border" />
-        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/25 bg-surface">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary-border bg-surface">
           <Icon className="h-4 w-4" />
         </span>
         <span className="h-px w-5 border-t border-dashed border-border" />
@@ -2153,7 +2153,7 @@ function RelationshipLinkList({
       ) : (
         <div className="space-y-2">
           {links.map((link) => (
-            <Link key={link.id} href={link.href} className="block rounded-md border border-border bg-surface px-3 py-2 transition-colors hover:border-primary/40 hover:bg-primary-soft">
+            <Link key={link.id} href={link.href} className="block rounded-md border border-border bg-surface px-3 py-2 transition-colors hover:border-primary-border hover:bg-primary-soft">
               <div className="text-sm font-medium text-primary">{link.label}</div>
               <div className="mt-1 text-xs text-muted-foreground">{link.role}</div>
             </Link>
@@ -2213,11 +2213,11 @@ function getRelationshipSummaryClass(state: RelationshipState) {
 
 function getRelationshipCardClass(variant: RelationshipCardVariant, current: boolean) {
   if (current && (variant === "component" || variant === "parentAndComponent")) return "border-amber-300 bg-amber-50/70 shadow-sm"
-  if (current && variant === "parent") return "border-primary/40 bg-primary-soft shadow-sm"
+  if (current && variant === "parent") return "border-primary-border bg-primary-soft shadow-sm"
   if (current) return "border-border bg-surface"
-  if (variant === "child") return "border-border bg-surface hover:border-primary/40 hover:bg-primary-soft"
-  if (variant === "parent") return "border-border bg-surface hover:border-primary/40 hover:bg-primary-soft"
-  return "border-border bg-surface hover:border-primary/40 hover:bg-primary-soft"
+  if (variant === "child") return "border-border bg-surface hover:border-primary-border hover:bg-primary-soft"
+  if (variant === "parent") return "border-border bg-surface hover:border-primary-border hover:bg-primary-soft"
+  return "border-border bg-surface hover:border-primary-border hover:bg-primary-soft"
 }
 
 function getRelationshipBadgeClass(variant: RelationshipCardVariant) {
@@ -2256,7 +2256,7 @@ function SidebarPhotoCard({
       {attachment ? (
         <a
           href="#photos"
-          className="group block overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring"
+          className="group block overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-input focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <div className="flex h-32 w-full items-center justify-center bg-muted/40 p-2">
             {/* Authenticated attachment URLs render more reliably as browser-native images. */}
@@ -2280,7 +2280,7 @@ function SidebarPhotoCard({
       ) : (
         <a
           href="#photos"
-          className="flex h-32 items-center justify-center rounded-md border border-dashed border-border bg-background text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+          className="flex h-32 items-center justify-center rounded-md border border-dashed border-border bg-background text-sm text-muted-foreground transition-colors hover:border-input hover:text-primary"
         >
           {emptyLabel}
         </a>
@@ -2311,7 +2311,7 @@ function EvidenceLinks({
               href={`/api/attachments/${attachment.id}?inline=1`}
               target="_blank"
               rel="noreferrer"
-              className="group block overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring"
+              className="group block overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-input focus:outline-none focus:ring-2 focus:ring-ring"
               title={attachment.originalName}
             >
               {attachment.fileType.startsWith("image/") ? (

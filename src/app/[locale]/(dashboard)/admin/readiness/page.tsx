@@ -88,7 +88,7 @@ export default async function ProductionReadinessPage({ params }: ProductionRead
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
         <div className="flex items-start gap-3">
-          <div className="rounded-md border border-primary/30 bg-primary-soft p-2 text-primary">
+          <div className="rounded-md border border-primary-border bg-primary-soft p-2 text-primary">
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
@@ -246,9 +246,9 @@ function statusIcon(status: ProductionReadinessCheck["status"]) {
 }
 
 function checkCardClass(status: ProductionReadinessCheck["status"]) {
-  if (status === "pass") return "border-success/30 bg-success-soft"
-  if (status === "warning") return "border-warning/30 bg-warning-soft"
-  return "border-danger/30 bg-danger-soft"
+  if (status === "pass") return "border-success-border bg-success-soft"
+  if (status === "warning") return "border-warning-border bg-warning-soft"
+  return "border-danger-border bg-danger-soft"
 }
 
 function statusPillClass(status: ProductionReadinessCheck["status"]) {
@@ -258,8 +258,8 @@ function statusPillClass(status: ProductionReadinessCheck["status"]) {
 }
 
 function summaryClass(tone: "primary" | "success" | "warning" | "danger") {
-  if (tone === "success") return "border-success/30 bg-success-soft text-success"
-  if (tone === "warning") return "border-warning/30 bg-warning-soft text-warning"
-  if (tone === "danger") return "border-danger/30 bg-danger-soft text-danger"
-  return "border-primary/30 bg-primary-soft text-primary"
+  if (tone === "success") return "border-success-border bg-success-soft text-success"
+  if (tone === "warning") return "border-warning-border bg-warning-soft text-warning"
+  if (tone === "danger") return "border-danger-border bg-danger-soft text-danger"
+  return "border-primary-border bg-primary-soft text-primary"
 }

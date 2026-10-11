@@ -356,12 +356,12 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
               </div>
             </div>
 
-            <div className="mt-4 rounded-md border border-primary/20 bg-primary-soft p-3">
+            <div className="mt-4 rounded-md border border-primary-border bg-primary-soft p-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <div className="text-xs font-semibold text-primary">{labels.queueScopeTitle}</div>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
-                    <span className="rounded-full bg-surface px-2 py-0.5 font-medium text-primary ring-1 ring-primary/20">
+                    <span className="rounded-full bg-surface px-2 py-0.5 font-medium text-primary ring-1 ring-primary-border">
                       {queueScopeSummary.label}
                     </span>
                     <span className="min-w-0 break-words text-foreground">{queueScopeSummary.detail}</span>

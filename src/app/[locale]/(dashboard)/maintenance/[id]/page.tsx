@@ -228,7 +228,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
           </section>
 
           {shouldReviewDisposal && canCreateDisposal ? (
-            <section className="rounded-lg border border-warning/40 bg-warning-soft p-6 shadow-sm">
+            <section className="rounded-lg border border-warning-border bg-warning-soft p-6 shadow-sm">
               <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
                 <AlertTriangle className="h-5 w-5 text-warning" />{t("disposalReviewTitle")}
               </h2>
@@ -237,7 +237,7 @@ export default async function RepairRecordPage({ params, searchParams }: RepairR
                 <div>{t("disposalReviewCost", { cost: formatCurrency(totalRepairCost) })}</div>
                 {purchasePrice > 0 ? <div>{t("disposalReviewRatio", { percent: Math.round(repairCostRatio * 100) })}</div> : null}
               </div>
-              <Link href={disposalRequestHref} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-warning/40 bg-surface px-3 text-sm font-medium text-warning hover:bg-warning-soft">
+              <Link href={disposalRequestHref} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-warning-border bg-surface px-3 text-sm font-medium text-warning hover:bg-warning-soft">
                 <Trash2 className="h-4 w-4" />{t("openDisposalRequest")}
               </Link>
             </section>

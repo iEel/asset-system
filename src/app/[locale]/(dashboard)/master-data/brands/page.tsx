@@ -400,7 +400,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
           </div>
 
           {totalDuplicateGroups > 0 ? (
-            <details className="rounded-lg border border-warning/30 bg-warning-soft p-4">
+            <details className="rounded-lg border border-warning-border bg-warning-soft p-4">
               <summary className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-foreground">
                 <AlertTriangle className="h-5 w-5 shrink-0 text-warning" />
                 {t("duplicateReviewCompact", { count: totalDuplicateGroups })}
@@ -556,7 +556,7 @@ function SummaryTile({
   tone?: "neutral" | "warning"
 }) {
   return (
-    <div className={`rounded-lg border bg-surface p-4 shadow-sm ${tone === "warning" ? "border-warning/40" : "border-border"}`}>
+    <div className={`rounded-lg border bg-surface p-4 shadow-sm ${tone === "warning" ? "border-warning-border" : "border-border"}`}>
       <div className="text-sm font-medium text-muted-foreground">{label}</div>
       <div className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString()}</div>
       <div className="mt-1 text-sm text-muted-foreground">{detail}</div>

@@ -87,7 +87,7 @@ export function AuditFindingReviewActions({
     <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
       {reviewStatus === "pending" ? (
         reviewBlocked ? (
-          <div className="max-w-56 rounded-md border border-warning/30 bg-warning-soft px-2 py-1 text-left text-xs font-medium text-warning">
+          <div className="max-w-56 rounded-md border border-warning-border bg-warning-soft px-2 py-1 text-left text-xs font-medium text-warning">
             {reviewBlockedReason ?? t("segregationReviewBlocked")}
           </div>
         ) : (
@@ -211,13 +211,13 @@ function ReviewDecisionModal({
             </div>
           </div>
 
-          <div className={`rounded-lg border p-4 text-sm ${action === "approve" ? "border-warning/30 bg-warning-soft text-warning" : "border-danger/30 bg-danger-soft text-danger"}`}>
+          <div className={`rounded-lg border p-4 text-sm ${action === "approve" ? "border-warning-border bg-warning-soft text-warning" : "border-danger-border bg-danger-soft text-danger"}`}>
             <div className="font-semibold">{t(`reviewDecisionImpactTitle_${action}`)}</div>
             <p className="mt-1 leading-relaxed">{t(`reviewDecisionHelp_${action}`)}</p>
           </div>
 
           {conflict ? (
-            <div className="rounded-lg border border-warning/40 bg-warning-soft p-4 text-sm text-warning">
+            <div className="rounded-lg border border-warning-border bg-warning-soft p-4 text-sm text-warning">
               <div className="flex items-start gap-2 font-semibold">
                 <AlertTriangle className="mt-0.5 h-4 w-4 flex-none" />
                 <span>{t("reviewConflictTitle")}</span>

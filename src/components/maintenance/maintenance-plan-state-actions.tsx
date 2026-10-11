@@ -51,7 +51,7 @@ export function MaintenancePlanStateActions({ planId, state }: { planId: string;
           key={action}
           type="button"
           onClick={() => setPendingAction(action)}
-          className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-8 ${action === "end" ? "border-danger/40 text-danger hover:bg-danger-soft" : "border-border bg-surface text-foreground hover:bg-accent"}`}
+          className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-8 ${action === "end" ? "border-danger-border text-danger hover:bg-danger-soft" : "border-border bg-surface text-foreground hover:bg-accent"}`}
         >
           {action === "pause" ? <Pause className="h-3.5 w-3.5" /> : action === "resume" ? <Play className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
           {t(`pmActions.${action}`)}

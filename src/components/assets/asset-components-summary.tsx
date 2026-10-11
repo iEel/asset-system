@@ -73,7 +73,7 @@ export function AssetComponentsSummary({
       </div>
 
       {installedInLinks.length > 0 ? (
-        <div className="mt-4 rounded-md border border-primary/20 bg-primary-soft p-3">
+        <div className="mt-4 rounded-md border border-primary-border bg-primary-soft p-3">
           <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{labels.installedIn}</div>
           <div className="mt-2 grid gap-2">
             {installedInLinks.map((link) => (

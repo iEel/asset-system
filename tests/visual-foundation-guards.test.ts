@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
-import { findMatches, readSourceFiles } from "./helpers/source-files.ts"
+import { countMatchesByFile, findMatches, readSourceFiles } from "./helpers/source-files.ts"
 
 const sources = readSourceFiles("src")
 const read = (path: string) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
@@ -193,4 +193,36 @@ test("big numbers, codes and faint text follow their token rules", () => {
     [],
     "faint text never sits on a status fill: use the tone ink or text-muted-foreground",
   )
+})
+
+// Ratchet guards (UI phase 2A). A file missing from the budget may have no match; a listed file may have at most its number.
+// Lower a number in the task that removes a site; never raise one. Phase 2D sets every budget to {}.
+function assertWithinBudget(pattern: RegExp, budget: Record<string, number>, allow?: (path: string) => boolean) {
+  const counts = countMatchesByFile(sources, pattern, allow)
+  const over = Object.entries(counts)
+    .filter(([path, count]) => count > (budget[path] ?? 0))
+    .map(([path, count]) => `${path}: ${count} > ${budget[path] ?? 0}`)
+  const total = Object.values(counts).reduce((sum, count) => sum + count, 0)
+  assert.equal(over.length, 0, `${total} matches in ${Object.keys(counts).length} files; over budget:\n${over.join("\n")}`)
+}
+
+test("countMatchesByFile counts matches per file and skips allowed paths", () => {
+  const files = [
+    { path: "src/a.tsx", source: "border-warning/30 bg-warning-soft border-danger/20" },
+    { path: "src/b.tsx", source: "border-border" },
+    { path: "src/c.tsx", source: "border-info/30" },
+  ]
+  assert.deepEqual(countMatchesByFile(files, /border-[a-z]+\/\d+/g), { "src/a.tsx": 2, "src/c.tsx": 1 })
+  assert.deepEqual(countMatchesByFile(files, /border-[a-z]+\/\d+/g, (path) => path === "src/a.tsx"), { "src/c.tsx": 1 })
+})
+
+// R1: a tone color with an opacity suffix (border-warning/30, ring-primary/20, bg-destructive/10). Use the -border / -soft tokens.
+const TONE_OPACITY =
+  /(?<![\w-])(?:[\w\-\[\]=&\/]+:)*(?:bg|border|ring|text|divide|outline|fill|stroke|from|via|to|decoration|shadow|accent|caret|placeholder)-(?:primary|success|warning|danger|info|destructive)(?:-[a-z]+)?\/\d+/g
+
+test("R1 tone colors never fade with opacity", () => {
+  assertWithinBudget(TONE_OPACITY, {
+    // bg-primary-foreground/20 on the selected tab's count chip; moves to TabNav in phase 2B.
+    "src/app/[locale]/(dashboard)/audit/rounds/page.tsx": 1,
+  })
 })

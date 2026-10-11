@@ -278,8 +278,8 @@ function RoleAuditCard({
 }
 
 function roleAuditToneClass(tone: "primary" | "warning" | "danger" | "muted") {
-  if (tone === "primary") return "border-primary/30 bg-primary-soft text-primary"
-  if (tone === "warning") return "border-warning/30 bg-warning-soft text-warning"
-  if (tone === "danger") return "border-danger/30 bg-danger-soft text-danger"
+  if (tone === "primary") return "border-primary-border bg-primary-soft text-primary"
+  if (tone === "warning") return "border-warning-border bg-warning-soft text-warning"
+  if (tone === "danger") return "border-danger-border bg-danger-soft text-danger"
   return "border-border bg-surface text-muted-foreground"
 }

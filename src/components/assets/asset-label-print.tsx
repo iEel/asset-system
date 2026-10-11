@@ -263,14 +263,14 @@ export function AssetLabelPrint({
           </div>
         </div>
         <div className="mx-auto flex max-w-5xl flex-col gap-2 px-3 pb-4 sm:px-6">
-          <p className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary-soft px-3 py-2 text-sm text-muted-foreground">
+          <p className="flex items-start gap-2 rounded-md border border-primary-border bg-primary-soft px-3 py-2 text-sm text-muted-foreground">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <span>{printerTapeGuidance}</span>
           </p>
           <div
             className={
               hasLocalQrTarget
-                ? "flex items-start gap-2 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-sm"
+                ? "flex items-start gap-2 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm"
                 : "flex items-start gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm"
             }
           >
@@ -289,9 +289,9 @@ export function AssetLabelPrint({
         {recordError || recordedBatchId ? (
           <div className="mx-auto max-w-5xl px-3 pb-4 text-sm sm:px-6">
             {recordError ? (
-              <p className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-danger">{recordError}</p>
+              <p className="rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-danger">{recordError}</p>
             ) : (
-              <p className="rounded-md border border-success/30 bg-success-soft px-3 py-2 text-success">{translations.printRecorded}</p>
+              <p className="rounded-md border border-success-border bg-success-soft px-3 py-2 text-success">{translations.printRecorded}</p>
             )}
           </div>
         ) : null}

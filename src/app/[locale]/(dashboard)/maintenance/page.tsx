@@ -106,7 +106,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
       </div>
 
       {stuckTotal > 0 ? (
-        <section id="stuck" className="rounded-lg border border-warning/40 bg-warning-soft p-4 shadow-sm">
+        <section id="stuck" className="rounded-lg border border-warning-border bg-warning-soft p-4 shadow-sm">
           <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
             <AlertTriangle className="h-5 w-5 text-warning" />{t("stuckTitle")} ({stuckTotal})
           </h2>
@@ -199,7 +199,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
         </form>
         {filters.assetId ? <p className="mt-3 text-xs text-muted-foreground">{t("assetFilter")} · <Link href={`/${locale}/maintenance`} className="text-primary hover:underline">{t("clearFilters")}</Link></p> : null}
         {getMaintenanceDateRangeError(filters) ? (
-          <p role="alert" className="mt-3 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-sm text-warning">{t("invalidDateRange")}</p>
+          <p role="alert" className="mt-3 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm text-warning">{t("invalidDateRange")}</p>
         ) : null}
       </section>
 

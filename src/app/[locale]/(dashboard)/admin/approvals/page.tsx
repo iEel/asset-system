@@ -287,7 +287,7 @@ function PolicyBadge({
   disabledLabel: string
 }) {
   return (
-    <div className={`rounded-md border px-3 py-2 ${enabled ? "border-success/30 bg-success-soft" : "border-border bg-background"}`}>
+    <div className={`rounded-md border px-3 py-2 ${enabled ? "border-success-border bg-success-soft" : "border-border bg-background"}`}>
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className={`font-semibold ${enabled ? "text-success" : "text-muted-foreground"}`}>
         {enabled ? enabledLabel : disabledLabel}
@@ -376,9 +376,9 @@ function moduleLabel(module: ApprovalInboxItem["module"], locale: string) {
 }
 
 function toneClass(tone: ApprovalInboxItem["tone"]) {
-  if (tone === "danger") return "border-danger/30 bg-danger-soft text-danger"
-  if (tone === "warning") return "border-warning/30 bg-warning-soft text-warning"
-  return "border-primary/30 bg-primary-soft text-primary"
+  if (tone === "danger") return "border-danger-border bg-danger-soft text-danger"
+  if (tone === "warning") return "border-warning-border bg-warning-soft text-warning"
+  return "border-primary-border bg-primary-soft text-primary"
 }
 
 function pillClass(tone: ApprovalInboxItem["tone"]) {
@@ -388,16 +388,16 @@ function pillClass(tone: ApprovalInboxItem["tone"]) {
 }
 
 function summaryClass(tone: "danger" | "warning" | "success" | "muted") {
-  if (tone === "danger") return "border-danger/30 bg-danger-soft text-danger"
-  if (tone === "warning") return "border-warning/30 bg-warning-soft text-warning"
-  if (tone === "success") return "border-success/30 bg-success-soft text-success"
+  if (tone === "danger") return "border-danger-border bg-danger-soft text-danger"
+  if (tone === "warning") return "border-warning-border bg-warning-soft text-warning"
+  if (tone === "success") return "border-success-border bg-success-soft text-success"
   return "border-border bg-surface text-muted-foreground"
 }
 
 function matrixCardClass(status: ApprovalPermissionMatrixItem["status"]) {
-  if (status === "missing") return "border-danger/30 bg-danger-soft"
-  if (status === "thin") return "border-warning/30 bg-warning-soft"
-  return "border-success/30 bg-success-soft"
+  if (status === "missing") return "border-danger-border bg-danger-soft"
+  if (status === "thin") return "border-warning-border bg-warning-soft"
+  return "border-success-border bg-success-soft"
 }
 
 function matrixStatusClass(status: ApprovalPermissionMatrixItem["status"]) {

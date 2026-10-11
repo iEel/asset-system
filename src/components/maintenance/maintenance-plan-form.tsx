@@ -78,7 +78,7 @@ export function MaintenancePlanForm({
   }
 
   return (
-    <section className="rounded-lg border border-primary/30 bg-primary-soft p-4 shadow-sm">
+    <section className="rounded-lg border border-primary-border bg-primary-soft p-4 shadow-sm">
       <div className="flex items-center gap-2 text-base font-semibold text-foreground">
         <CalendarClock className="h-5 w-5 text-primary" />
         {t("pmCreateTitle")}

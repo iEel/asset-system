@@ -68,7 +68,7 @@ export function AuditMarkNotFoundButton({ itemId, variant = "icon" }: { itemId: 
         type="button"
         onClick={openDialog}
         disabled={saving}
-        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-sm font-semibold text-warning transition-colors hover:bg-warning-soft disabled:opacity-50"
+        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm font-semibold text-warning transition-colors hover:bg-warning-soft disabled:opacity-50"
       >
         {icon}
         {t("markNotFound")}

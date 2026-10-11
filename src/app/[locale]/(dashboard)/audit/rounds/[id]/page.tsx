@@ -482,7 +482,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
       ) : null}
 
       {round.status === "cancelled" ? (
-        <section className="mb-6 rounded-lg border border-danger/30 bg-danger-soft p-4 text-sm text-danger shadow-sm">
+        <section className="mb-6 rounded-lg border border-danger-border bg-danger-soft p-4 text-sm text-danger shadow-sm">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
             <div className="min-w-0">
@@ -663,7 +663,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                     </div>
                   ) : null}
                   {item.latestCorrection ? (
-                    <div className="mt-2 rounded-md border border-info/30 bg-info-soft px-2 py-1 text-xs text-info">
+                    <div className="mt-2 rounded-md border border-info-border bg-info-soft px-2 py-1 text-xs text-info">
                       <div>{t("correctionHistoryLatest", { date: formatDateTime(item.latestCorrection.createdAt), user: item.latestCorrection.userLabel })}</div>
                       {item.latestCorrection.changedFields.length > 0 ? (
                         <div>{t("correctionHistoryFields", { fields: formatAuditCorrectionFields(item.latestCorrection, t) })}</div>
@@ -738,7 +738,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                           </div>
                         ) : null}
                         {item.latestCorrection ? (
-                          <div className="mt-2 rounded-md border border-info/30 bg-info-soft px-2 py-1 text-xs text-info">
+                          <div className="mt-2 rounded-md border border-info-border bg-info-soft px-2 py-1 text-xs text-info">
                             <div>{t("correctionHistoryLatest", { date: formatDateTime(item.latestCorrection.createdAt), user: item.latestCorrection.userLabel })}</div>
                             {item.latestCorrection.changedFields.length > 0 ? (
                               <div>{t("correctionHistoryFields", { fields: formatAuditCorrectionFields(item.latestCorrection, t) })}</div>
@@ -830,13 +830,13 @@ function DashboardCard({
     disabled
       ? "border-border bg-muted/40 text-muted-foreground"
       : tone === "success"
-      ? "border-success/30 bg-success-soft text-success"
+      ? "border-success-border bg-success-soft text-success"
       : tone === "warning"
-        ? "border-warning/30 bg-warning-soft text-warning"
+        ? "border-warning-border bg-warning-soft text-warning"
         : tone === "danger"
-          ? "border-danger/30 bg-danger-soft text-danger"
+          ? "border-danger-border bg-danger-soft text-danger"
           : tone === "info"
-            ? "border-info/30 bg-info-soft text-info"
+            ? "border-info-border bg-info-soft text-info"
             : "border-border bg-background text-muted-foreground"
   const activeClassName = active ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
   const content = (

@@ -194,7 +194,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
               </button>
             </div>
             {preview ? (
-              <div className="mt-4 rounded-md border border-primary/30 bg-primary-soft p-4">
+              <div className="mt-4 rounded-md border border-primary-border bg-primary-soft p-4">
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                   <PreviewMetric label={t("previewMatched")} value={String(preview.matchedAssets)} />
                   <PreviewMetric label={t("previewSampled")} value={String(preview.sampledAssets)} />
@@ -203,7 +203,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
                   <PreviewMetric label={t("previewRisk")} value={t(`riskPreset_${preview.riskPreset}`)} />
                 </div>
                 {componentItems > 0 ? (
-                  <p className="mt-3 rounded-md border border-info/30 bg-info-soft px-3 py-2 text-xs text-info">
+                  <p className="mt-3 rounded-md border border-info-border bg-info-soft px-3 py-2 text-xs text-info">
                     {t("previewComponentHelp", { count: componentItems })}
                   </p>
                 ) : null}
@@ -254,7 +254,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
           <Select label={t("scopeCondition")} value={values.scopeConditionId} onChange={(value) => setField("scopeConditionId", value)}>
             <OptionList emptyLabel={t("all")} options={options.conditions} />
           </Select>
-          <label className="md:col-span-2 flex items-start gap-3 rounded-md border border-warning/30 bg-warning-soft p-3">
+          <label className="md:col-span-2 flex items-start gap-3 rounded-md border border-warning-border bg-warning-soft p-3">
             <input
               type="checkbox"
               checked={values.includeClosedAssets}

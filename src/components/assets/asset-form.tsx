@@ -815,7 +815,7 @@ export function AssetForm({
       </div>
 
       {cloneSource ? (
-        <div className="mb-5 rounded-md border border-warning/30 bg-warning-soft px-4 py-3">
+        <div className="mb-5 rounded-md border border-warning-border bg-warning-soft px-4 py-3">
           <div className="flex gap-3">
             <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-warning-soft text-warning">
               <Copy className="h-4 w-4" aria-hidden="true" />
@@ -1014,7 +1014,7 @@ export function AssetForm({
                 <option key={parentAsset.id} value={parentAsset.id}>{parentAsset.label}</option>
               ))}
             </SelectField>
-            <div className="rounded-md border border-info/30 bg-info-soft px-3 py-2 text-sm text-muted-foreground">
+            <div className="rounded-md border border-info-border bg-info-soft px-3 py-2 text-sm text-muted-foreground">
               <div className="font-medium text-foreground">{t("licenseRemainingSeats")}: {getRemainingLicenseSeats(values.licenseTotalSeats, values.licenseUsedSeats)}</div>
               <p className="mt-1 text-xs">{t("licenseManagementHelp")}</p>
             </div>
@@ -1060,7 +1060,7 @@ export function AssetForm({
             </select>
             {selectedStatus?.description ? <p className="mt-1 text-xs text-muted-foreground">{selectedStatus.description}</p> : null}
             {isProtectedStatusChange && (
-              <div className="mt-2 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-xs text-warning">
+              <div className="mt-2 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-xs text-warning">
                 <div className="flex gap-2">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   <div className="min-w-0">
@@ -1369,7 +1369,7 @@ export function AssetForm({
                       href={`/api/attachments/${photo.id}?inline=1`}
                       target="_blank"
                       rel="noreferrer"
-                      className="overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring"
+                      className="overflow-hidden rounded-md border border-border bg-background transition-colors hover:border-input focus:outline-none focus:ring-2 focus:ring-ring"
                     >
                       <div className="flex aspect-video items-center justify-center bg-muted/40 p-2">
                         {/* Authenticated attachment URLs render more reliably as browser-native images. */}

@@ -240,7 +240,7 @@ export function ReportsOperationsView({
           <ReportTable title={labels.frequentRepairAssets} rows={insights.repairs} emptyLabel={insightsEmpty} />
           <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
             <h2 className="mb-4 text-base font-semibold text-foreground">{labels.idleAssets}</h2>
-            <Link href={idleAssetsHref} className="block min-h-11 rounded-md border border-warning/30 bg-warning-soft p-4 transition-colors hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+            <Link href={idleAssetsHref} className="block min-h-11 rounded-md border border-warning-border bg-warning-soft p-4 transition-colors hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
               <div className="text-sm text-muted-foreground">{labels.idleAssetsHelp}</div>
               <div className="mt-2 text-2xl font-bold text-foreground">{insights.idleAssetsCount.toLocaleString("th-TH")}</div>
             </Link>

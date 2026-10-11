@@ -455,7 +455,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
             ) : (
               <div className="space-y-3">
                 {followUpItems.map((item) => (
-                  <div key={item} className="rounded-md border border-warning/40 bg-warning-soft p-3">
+                  <div key={item} className="rounded-md border border-warning-border bg-warning-soft p-3">
                     <div className="text-sm font-semibold text-foreground">{t(`followUp.${item}.title`)}</div>
                     <div className="mt-1 text-sm text-muted-foreground">{t(`followUp.${item}.help`)}</div>
                   </div>
@@ -471,7 +471,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
             ) : (
               <div className="space-y-3">
                 {employee.subordinates.map((subordinate) => (
-                  <Link key={subordinate.id} href={`/${locale}/master-data/employees/${subordinate.id}`} className="block rounded-md border border-border bg-background p-3 transition-colors hover:border-primary/40 hover:bg-primary-soft">
+                  <Link key={subordinate.id} href={`/${locale}/master-data/employees/${subordinate.id}`} className="block rounded-md border border-border bg-background p-3 transition-colors hover:border-primary-border hover:bg-primary-soft">
                     <div className="text-sm font-semibold text-foreground">{subordinate.code} - {subordinate.fullNameTh}</div>
                     <div className="mt-1 text-xs text-muted-foreground">{subordinate.position || "-"}</div>
                   </Link>
@@ -588,8 +588,8 @@ function SummaryTile({
     </>
   )
   const className = `rounded-lg border bg-surface p-4 shadow-sm ${
-    tone === "warning" ? "border-warning/40" : "border-border"
-  } ${href ? "transition-colors hover:border-primary/40 hover:bg-primary-soft" : ""}`
+    tone === "warning" ? "border-warning-border" : "border-border"
+  } ${href ? "transition-colors hover:border-primary-border hover:bg-primary-soft" : ""}`
 
   if (href) return <Link href={href} className={className}>{content}</Link>
   return <div className={className}>{content}</div>
@@ -632,7 +632,7 @@ function MiniList({
       ) : (
         <div className="space-y-2">
           {items.map((item) => (
-            <Link key={item.id} href={item.href} className="block rounded-md border border-border bg-background p-3 transition-colors hover:border-primary/40 hover:bg-primary-soft">
+            <Link key={item.id} href={item.href} className="block rounded-md border border-border bg-background p-3 transition-colors hover:border-primary-border hover:bg-primary-soft">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-foreground">{item.title}</div>

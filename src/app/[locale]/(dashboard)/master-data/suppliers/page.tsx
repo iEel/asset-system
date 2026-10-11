@@ -190,7 +190,7 @@ function FilterSelect({ label, name, defaultValue, className, children }: { labe
 
 function SummaryTile({ label, value, detail, href, tone = "neutral" }: { label: string; value: number; detail: string; href: string; tone?: "neutral" | "warning" }) {
   return (
-    <Link href={href} className={`min-h-32 rounded-lg border bg-surface p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${tone === "warning" ? "border-warning/40" : "border-border"}`}>
+    <Link href={href} className={`min-h-32 rounded-lg border bg-surface p-4 shadow-sm transition-colors hover:border-primary-border hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${tone === "warning" ? "border-warning-border" : "border-border"}`}>
       <div className="text-sm font-medium text-muted-foreground">{label}</div>
       <div className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString()}</div>
       <div className="mt-1 text-sm text-muted-foreground">{detail}</div>

@@ -128,7 +128,7 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
       </section>
 
       {directAssetHref ? (
-        <section className="rounded-lg border border-primary/20 bg-primary-soft p-4">
+        <section className="rounded-lg border border-primary-border bg-primary-soft p-4">
           <button
             type="button"
             onClick={() => openAsset(directAssetHref)}
