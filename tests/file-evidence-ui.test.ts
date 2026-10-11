@@ -70,3 +70,26 @@ test("queue words exist in Thai and English with the same placeholder", () => {
   assert.equal(common("th").selectedFiles, "ไฟล์ที่เลือก")
   assert.equal(common("en").selectedFiles, "Selected files")
 })
+
+test("the repair form picks receipts with FileDropzone and lists them with FileQueueList (2C batch 1a)", () => {
+  const source = readFileSync("src/components/maintenance/repair-record-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.doesNotMatch(source, /type="file"/, "the raw file input is gone")
+  assert.doesNotMatch(source, /capture=/, "no capture attribute: a receipt can be a PDF")
+  assert.match(source, /<Field label=\{t\("files"\)\} className="md:col-span-2">\n\s+\{\(control\) => \(/)
+  assert.match(source, /<FileDropzone\n\s+\{\.\.\.control\}\n\s+file=\{null\}/)
+  assert.match(source, /\n\s+multiple\n/)
+  assert.match(source, /onFilesChange=\{addFiles\}/)
+  assert.match(source, /title=\{t\("dropFilesTitle"\)\}\n\s+description=\{t\("filesHelp"\)\}\n\s+browseLabel=\{t\("dropFilesHint"\)\}/)
+  assert.match(source, /<FileQueueList items=\{files\.map\(\(file, index\) => \(\{ id: String\(index\), name: file\.name \}\)\)\} disabled=\{saving\} onRemove=\{removeFile\} \/>/)
+  assert.match(source, /setFiles\(\(current\) => \[\.\.\.current, \.\.\.next\]\)/, "a second pick adds to the list instead of replacing it")
+  assert.match(source, /uploadRepairFiles\(payload\.id, files/)
+})
+
+test("the repair file picker copy exists in Thai and English (2C batch 1a)", () => {
+  for (const locale of ["th", "en"]) {
+    const repairRecord = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).repairRecord as Record<string, string>
+    for (const key of ["dropFilesTitle", "dropFilesHint", "files", "filesHelp"]) {
+      assert.ok(repairRecord[key]?.trim(), `${locale}.repairRecord.${key}`)
+    }
+  }
+})

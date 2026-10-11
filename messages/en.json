@@ -2749,7 +2749,9 @@
     "pmManage": "Manage PM plans",
     "stuckTitle": "Assets in a repair status without a record",
     "stuckHelp": "Record the repair for these assets so status and history match",
-    "stuckMore": "and {count} more"
+    "stuckMore": "and {count} more",
+    "dropFilesTitle": "Take a photo or attach a receipt",
+    "dropFilesHint": "or click to choose images or PDFs"
   },
   "disposalPage": {
     "title": "Disposal",

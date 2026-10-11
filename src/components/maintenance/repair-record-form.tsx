@@ -4,21 +4,28 @@ import Link from "next/link"
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ChevronDown, Loader2, Save } from "lucide-react"
+import { ChevronDown, Save } from "lucide-react"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { linkVariants } from "@/components/ui/button-variants"
+import { ChoiceCard } from "@/components/ui/choice-card"
+import { Field, FieldRequiredMark } from "@/components/ui/field"
+import { fieldLabelClasses } from "@/components/ui/field-variants"
+import { FileDropzone } from "@/components/ui/file-dropzone"
+import { FileQueueList } from "@/components/ui/file-queue-list"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { MaintenanceOptionSelect } from "@/components/maintenance/maintenance-option-select"
 import { uploadRepairFiles } from "@/components/maintenance/repair-record-upload"
 import { getMaintenanceErrorMessage } from "@/lib/maintenance-api-errors"
 import { toLocalDateInputValue } from "@/lib/local-date"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
+import { cn } from "@/lib/utils"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type Option = { id: string; label: string }
 type Outcome = "usable" | "beyond_repair"
-
-const inputClass = "h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-const textareaClass = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
 
 export function RepairRecordForm({
   locale,
@@ -58,6 +65,15 @@ export function RepairRecordForm({
 
   function setField<K extends keyof typeof values>(field: K, value: (typeof values)[K]) {
     setValues((current) => ({ ...current, [field]: value }))
+  }
+
+  // New picks append to the list; each file can be taken out before saving.
+  function addFiles(next: File[]) {
+    setFiles((current) => [...current, ...next])
+  }
+
+  function removeFile(id: string) {
+    setFiles((current) => current.filter((_, index) => String(index) !== id))
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -121,7 +137,7 @@ export function RepairRecordForm({
             {tMaintenance("errors.MAINTENANCE_OPEN_RECORD_EXISTS")}{" "}
             <Link
               href={`/${locale}/maintenance?assetId=${encodeURIComponent(openRecordAssetId)}&status=in_progress`}
-              className="font-medium underline underline-offset-2"
+              className={cn(linkVariants({ size: "inherit" }), "decoration-current")}
             >
               {t("openExistingRecord")}
             </Link>
@@ -129,37 +145,36 @@ export function RepairRecordForm({
         ) : null}
         <div className="grid gap-5 md:grid-cols-[minmax(0,220px)_1fr]">
           <Field label={t("date")} required>
-            <input type="date" required value={values.reportedDate} onChange={(event) => setField("reportedDate", event.target.value)} className={inputClass} />
+            <Input type="date" required value={values.reportedDate} onChange={(event) => setField("reportedDate", event.target.value)} />
           </Field>
           <Field label={t("problem")} required>
-            <textarea
+            <Textarea
               required
               rows={3}
               maxLength={4000}
               value={values.problem}
               placeholder={t("problemPlaceholder")}
               onChange={(event) => setField("problem", event.target.value)}
-              className={`min-h-24 ${textareaClass}`}
             />
           </Field>
         </div>
-        <fieldset>
-          <legend className="mb-2 text-sm font-medium text-foreground">
-            {t("doneQuestion")}<span className="ml-1 text-danger">*</span>
+        <fieldset className="min-w-0">
+          <legend className={cn(fieldLabelClasses, "mb-1.5")}>
+            {t("doneQuestion")}<FieldRequiredMark />
           </legend>
           <div className="grid gap-2 sm:grid-cols-2">
-            <Choice name="done" checked={values.done} label={t("doneYes")} onSelect={() => setField("done", true)} />
-            <Choice name="done" checked={!values.done} label={t("doneNo")} onSelect={() => setField("done", false)} />
+            <ChoiceCard type="radio" name="done" checked={values.done} label={t("doneYes")} onChange={() => setField("done", true)} />
+            <ChoiceCard type="radio" name="done" checked={!values.done} label={t("doneNo")} onChange={() => setField("done", false)} />
           </div>
         </fieldset>
         {values.done ? (
-          <fieldset>
-            <legend className="mb-2 text-sm font-medium text-foreground">
-              {t("outcomeQuestion")}<span className="ml-1 text-danger">*</span>
+          <fieldset className="min-w-0">
+            <legend className={cn(fieldLabelClasses, "mb-1.5")}>
+              {t("outcomeQuestion")}<FieldRequiredMark />
             </legend>
             <div className="grid gap-2 sm:grid-cols-2">
-              <Choice name="outcome" checked={values.outcome === "usable"} label={t("outcome.usable")} onSelect={() => setField("outcome", "usable")} />
-              <Choice name="outcome" checked={values.outcome === "beyond_repair"} label={t("outcome.beyond_repair")} onSelect={() => setField("outcome", "beyond_repair")} />
+              <ChoiceCard type="radio" name="outcome" checked={values.outcome === "usable"} label={t("outcome.usable")} onChange={() => setField("outcome", "usable")} />
+              <ChoiceCard type="radio" name="outcome" checked={values.outcome === "beyond_repair"} label={t("outcome.beyond_repair")} onChange={() => setField("outcome", "beyond_repair")} />
             </div>
           </fieldset>
         ) : null}
@@ -208,65 +223,47 @@ export function RepairRecordForm({
                 onChange={(value) => setField("vendorId", value)}
               />
               <Field label={t("cost")}>
-                <input type="number" min="0" step="0.01" inputMode="decimal" value={values.repairCost} onChange={(event) => setField("repairCost", event.target.value)} className={inputClass} />
+                <Input type="number" min="0" step="0.01" inputMode="decimal" value={values.repairCost} onChange={(event) => setField("repairCost", event.target.value)} />
               </Field>
               <Field label={t("invoiceNo")}>
-                <input maxLength={100} value={values.invoiceNo} onChange={(event) => setField("invoiceNo", event.target.value)} className={inputClass} />
+                <Input maxLength={100} value={values.invoiceNo} onChange={(event) => setField("invoiceNo", event.target.value)} />
               </Field>
-              <Field label={t("files")}>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*,application/pdf"
-                  onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
-                  className="block min-h-11 w-full text-sm file:mr-3 file:min-h-11 file:rounded-md file:border file:border-border file:bg-surface file:px-3 file:text-sm"
-                />
-                <span className="mt-1 block text-xs text-muted-foreground">{t("filesHelp")}</span>
+              <Field label={t("files")} className="md:col-span-2">
+                {(control) => (
+                  <div className="grid gap-2">
+                    <FileDropzone
+                      {...control}
+                      file={null}
+                      onFileChange={(file) => {
+                        if (file) addFiles([file])
+                      }}
+                      onFilesChange={addFiles}
+                      disabled={saving}
+                      accept="image/*,application/pdf"
+                      multiple
+                      title={t("dropFilesTitle")}
+                      description={t("filesHelp")}
+                      browseLabel={t("dropFilesHint")}
+                    />
+                    <FileQueueList items={files.map((file, index) => ({ id: String(index), name: file.name }))} disabled={saving} onRemove={removeFile} />
+                  </div>
+                )}
               </Field>
               <div className="md:col-span-2">
                 <Field label={t("remark")}>
-                  <textarea rows={2} maxLength={4000} value={values.remark} onChange={(event) => setField("remark", event.target.value)} className={textareaClass} />
+                  <Textarea rows={2} maxLength={4000} value={values.remark} onChange={(event) => setField("remark", event.target.value)} className="min-h-16" />
                 </Field>
               </div>
             </div>
           ) : null}
         </div>
         <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50 sm:w-auto"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          <Button type="submit" busy={saving} className="w-full sm:w-auto">
+            <Save />
             {t("save")}
-          </button>
+          </Button>
         </div>
       </form>
     </section>
-  )
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required ? <span className="ml-1 text-danger">*</span> : null}
-      </span>
-      {children}
-    </label>
-  )
-}
-
-function Choice({ name, checked, label, onSelect }: { name: string; checked: boolean; label: string; onSelect: () => void }) {
-  return (
-    <label
-      className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 py-2 text-sm transition-colors ${
-        checked ? "border-primary bg-primary-soft font-medium text-foreground" : "border-border text-muted-foreground hover:bg-accent"
-      }`}
-    >
-      <input type="radio" name={name} checked={checked} onChange={onSelect} className="h-4 w-4 accent-primary" />
-      {label}
-    </label>
   )
 }

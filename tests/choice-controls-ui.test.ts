@@ -50,3 +50,12 @@ test("a choice is named by its label and described by its description or detail"
   assert.match(source, /<span id=\{labelId\} className="font-medium">/)
   assert.match(source, /<span id=\{labelId\}>\{label\}<\/span>/)
 })
+
+test("the repair form asks its two questions with ChoiceCard radios under a field-style legend (R2)", () => {
+  const source = readFileSync("src/components/maintenance/repair-record-form.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.doesNotMatch(source, /function Choice\(|accent-primary|<input\b|ml-1 text-danger/)
+  assert.equal(source.match(/<ChoiceCard type="radio" name="done" /g)?.length, 2)
+  assert.equal(source.match(/<ChoiceCard type="radio" name="outcome" /g)?.length, 2)
+  assert.equal(source.match(/<fieldset className="min-w-0">\n\s+<legend className=\{cn\(fieldLabelClasses, "mb-1\.5"\)\}>/g)?.length, 2)
+  assert.equal(source.match(/<FieldRequiredMark \/>/g)?.length, 2)
+})
