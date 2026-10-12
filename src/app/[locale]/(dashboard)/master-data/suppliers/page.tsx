@@ -1,9 +1,20 @@
 import Link from "next/link"
-import { SlidersHorizontal } from "lucide-react"
+import { redirect } from "next/navigation"
+import { Plus, SlidersHorizontal } from "lucide-react"
 import { getTranslations } from "next-intl/server"
-import { MasterDataHeader } from "@/components/master-data/master-data-layout"
 import { SupplierListView } from "@/components/master-data/supplier-list-view"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { Field } from "@/components/ui/field"
+import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
+import { FilterSelect } from "@/components/ui/filter-select"
+import { PageHeader } from "@/components/ui/page-header"
+import { Pagination } from "@/components/ui/pagination"
+import { SearchField } from "@/components/ui/search-field"
+import { StatStrip } from "@/components/ui/stat-strip"
 import { prisma } from "@/lib/db"
+import { formatCount } from "@/lib/display-format"
+import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
+import { paginationRange } from "@/lib/master-data-query"
 import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import {
   buildSupplierOrderBy,
@@ -59,6 +70,13 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
   const hasActiveFilters = Boolean(
     listState.search || listState.assetUsage !== "all" || listState.purchaseDocumentUsage !== "all"
   )
+  const listHref = (next: Partial<SupplierListState>) => `${basePath}?${buildSupplierQueryString(listState, next)}`
+  // A page past the last one (an old link, or the last row of the last page deleted) shows the last page (spec 2B I21).
+  const lastPage = lastListPage(total, listState.pageSize)
+  if (suppliers.length === 0 && total > 0 && listState.page > lastPage) {
+    redirect(listHref({ page: lastPage }))
+  }
+  const { start, end, totalPages } = paginationRange(listState.page, listState.pageSize, total)
   const filterLabels = {
     search: tCommon("search"),
     searchPlaceholder: t("searchPlaceholder"),
@@ -74,43 +92,103 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
   }
 
   return (
-    <div className="space-y-4">
-      <MasterDataHeader
+    <div className="space-y-6">
+      <PageHeader
         title={t("title")}
-        subtitle={t("subtitle")}
-        createHref={createHref}
-        createLabel={tCommon("create")}
+        meta={t("subtitle")}
+        actions={
+          <Link href={createHref} className={buttonVariants({ size: "md" })}>
+            <Plus aria-hidden="true" />
+            {tCommon("create")}
+          </Link>
+        }
       />
 
-      <div aria-label={t("summaryLabel")} className="grid auto-cols-[minmax(240px,85%)] grid-flow-col gap-3 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-2 md:overflow-visible md:pb-0 xl:grid-cols-4">
-        <SummaryTile label={t("summaryTotal")} value={summaryTotal} detail={t("summaryWithAssets", { count: summaryWithAssets })} href={basePath} />
-        <SummaryTile label={t("summaryAssetLinked")} value={summaryWithAssets} detail={t("summaryAssetLinkedHelp")} href={`${basePath}?${buildSupplierQueryString(listState, { assetUsage: "withAssets", page: 1 })}`} />
-        <SummaryTile label={t("summaryWithoutAssets")} value={summaryWithoutAssets} detail={t("summaryWithoutAssetsHelp")} href={`${basePath}?${buildSupplierQueryString(listState, { assetUsage: "withoutAssets", page: 1 })}`} />
-        <SummaryTile label={t("summaryWithoutPurchaseDocuments")} value={summaryWithoutPurchaseDocuments} detail={t("summaryWithoutPurchaseDocumentsHelp")} href={`${basePath}?${buildSupplierQueryString(listState, { purchaseDocumentUsage: "withoutPurchaseDocuments", page: 1 })}`} tone={summaryWithoutPurchaseDocuments > 0 ? "warning" : "neutral"} />
-      </div>
+      <section aria-label={t("summaryLabel")}>
+        <StatStrip
+          items={[
+            {
+              key: "total",
+              label: t("summaryTotal"),
+              value: formatCount(summaryTotal),
+              foot: t("summaryWithAssets", { count: summaryWithAssets }),
+              footTitle: t("summaryWithAssets", { count: summaryWithAssets }),
+              href: basePath,
+            },
+            {
+              key: "withAssets",
+              label: t("summaryAssetLinked"),
+              value: formatCount(summaryWithAssets),
+              foot: t("summaryAssetLinkedHelp"),
+              footTitle: t("summaryAssetLinkedHelp"),
+              href: listHref({ assetUsage: "withAssets", page: 1 }),
+              current: listState.assetUsage === "withAssets",
+            },
+            {
+              key: "withoutAssets",
+              label: t("summaryWithoutAssets"),
+              value: formatCount(summaryWithoutAssets),
+              foot: t("summaryWithoutAssetsHelp"),
+              footTitle: t("summaryWithoutAssetsHelp"),
+              href: listHref({ assetUsage: "withoutAssets", page: 1 }),
+              current: listState.assetUsage === "withoutAssets",
+            },
+            {
+              key: "withoutPurchaseDocuments",
+              label: t("summaryWithoutPurchaseDocuments"),
+              value: formatCount(summaryWithoutPurchaseDocuments),
+              foot: t("summaryWithoutPurchaseDocumentsHelp"),
+              footTitle: t("summaryWithoutPurchaseDocumentsHelp"),
+              href: listHref({ purchaseDocumentUsage: "withoutPurchaseDocuments", page: 1 }),
+              current: listState.purchaseDocumentUsage === "withoutPurchaseDocuments",
+              attention: summaryWithoutPurchaseDocuments > 0,
+            },
+          ]}
+        />
+      </section>
 
       <details className="rounded-lg border border-border bg-surface md:hidden" open={hasActiveFilters}>
         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
           <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
           {t("filtersTitle")}
         </summary>
-        <SupplierFilterForm basePath={basePath} current={listState} labels={filterLabels} className="grid gap-3 border-t border-border p-4" />
+        <SupplierFilterForm basePath={basePath} current={listState} labels={filterLabels} hasActiveFilters={hasActiveFilters} className="grid gap-3 border-t border-border p-4" />
       </details>
 
-      <div className="hidden rounded-lg border border-border bg-surface p-4 md:block">
-        <SupplierFilterForm basePath={basePath} current={listState} labels={filterLabels} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1.5fr)_repeat(2,minmax(160px,1fr))_auto]" />
-      </div>
+      <FilterPanel className="hidden md:block">
+        <SupplierFilterForm basePath={basePath} current={listState} labels={filterLabels} hasActiveFilters={hasActiveFilters} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1.5fr)_repeat(2,minmax(160px,1fr))_auto]" />
+      </FilterPanel>
 
       <SupplierListView
         suppliers={suppliers}
         locale={locale}
         current={listState}
-        total={total}
         basePath={basePath}
         supplierReturnHref={supplierReturnHref}
         createHref={createHref}
         hasActiveFilters={hasActiveFilters}
+        pagination={
+          <Pagination
+            page={listState.page}
+            totalPages={totalPages}
+            previousHref={listHref({ page: listState.page - 1 })}
+            nextHref={listHref({ page: listState.page + 1 })}
+            pageSize={listState.pageSize}
+            pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ pageSize: value, page: 1 }) }))}
+            labels={{
+              navigation: tCommon("pagination"),
+              previous: tCommon("previous"),
+              next: tCommon("next"),
+              pageOf: tCommon("pageOf", { page: listState.page, total: totalPages }),
+              range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
+              pageSizeGroup: tCommon("pageSizeLabel"),
+              rowsPerPage: tCommon("rowsPerPage"),
+            }}
+          />
+        }
         labels={{
+          title: t("title"),
+          tableScrollHint: tCommon("tableScrollHint"),
           code: t("code"),
           name: t("name"),
           contactPerson: t("contactPerson"),
@@ -121,7 +199,6 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
           maintenanceTickets: t("maintenanceTickets"),
           actions: tCommon("actions"),
           edit: tCommon("edit"),
-          delete: tCommon("delete"),
           view: tCommon("view"),
           create: tCommon("create"),
           clearFilters: t("clearFilters"),
@@ -129,11 +206,7 @@ export default async function SuppliersPage({ params, searchParams }: SuppliersP
           emptyDescription: t("emptyDescription"),
           filteredEmptyTitle: t("filteredEmptyTitle"),
           filteredEmptyDescription: t("filteredEmptyDescription"),
-          rowsPerPage: tCommon("rowsPerPage"),
-          page: tCommon("page"),
-          of: tCommon("of"),
-          previous: tCommon("previous"),
-          next: tCommon("next"),
+          moreActionsFor: (code) => tCommon("moreActionsFor", { code }),
         }}
       />
     </div>
@@ -154,46 +227,41 @@ type FilterLabels = {
   clear: string
 }
 
-function SupplierFilterForm({ basePath, current, labels, className }: { basePath: string; current: SupplierListState; labels: FilterLabels; className: string }) {
-  const controlClassName = "min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+// Rendered twice: in the phone disclosure and in the desktop panel. Field gives each copy its own ids (useId), and
+// the copy that is display: none leaves the accessibility tree, so the page keeps one search landmark (spec 2B §6.2 6-ช).
+function SupplierFilterForm({
+  basePath,
+  current,
+  labels,
+  hasActiveFilters,
+  className,
+}: {
+  basePath: string
+  current: SupplierListState
+  labels: FilterLabels
+  hasActiveFilters: boolean
+  className: string
+}) {
   return (
-    <form className={className} action={basePath}>
+    <form role="search" className={className} action={basePath}>
       <input type="hidden" name="page" value="1" />
       <input type="hidden" name="pageSize" value={current.pageSize} />
       <input type="hidden" name="sort" value={current.sort} />
       <input type="hidden" name="direction" value={current.direction} />
-      <label className="space-y-1 text-sm font-medium text-foreground">
-        <span>{labels.search}</span>
-        <input type="search" name="search" defaultValue={current.search} placeholder={labels.searchPlaceholder} className={controlClassName} />
-      </label>
-      <FilterSelect label={labels.assetUsage} name="assetUsage" defaultValue={current.assetUsage} className={controlClassName}>
+      <Field label={labels.search}>
+        <SearchField name="search" defaultValue={current.search} placeholder={labels.searchPlaceholder} />
+      </Field>
+      <FilterSelect label={labels.assetUsage} name="assetUsage" defaultValue={current.assetUsage}>
         <option value="all">{labels.all}</option>
         <option value="withAssets">{labels.withAssets}</option>
         <option value="withoutAssets">{labels.withoutAssets}</option>
       </FilterSelect>
-      <FilterSelect label={labels.purchaseDocumentUsage} name="purchaseDocumentUsage" defaultValue={current.purchaseDocumentUsage} className={controlClassName}>
+      <FilterSelect label={labels.purchaseDocumentUsage} name="purchaseDocumentUsage" defaultValue={current.purchaseDocumentUsage}>
         <option value="all">{labels.all}</option>
         <option value="withPurchaseDocuments">{labels.withPurchaseDocuments}</option>
         <option value="withoutPurchaseDocuments">{labels.withoutPurchaseDocuments}</option>
       </FilterSelect>
-      <div className="grid grid-cols-2 items-end gap-2 md:flex">
-        <button type="submit" className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{labels.filter}</button>
-        <Link href={basePath} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{labels.clear}</Link>
-      </div>
+      <FilterFormActions submitLabel={labels.filter} clear={hasActiveFilters ? { href: basePath, label: labels.clear } : undefined} />
     </form>
-  )
-}
-
-function FilterSelect({ label, name, defaultValue, className, children }: { label: string; name: string; defaultValue: string; className: string; children: React.ReactNode }) {
-  return <label className="space-y-1 text-sm font-medium text-foreground"><span>{label}</span><select name={name} defaultValue={defaultValue} className={className}>{children}</select></label>
-}
-
-function SummaryTile({ label, value, detail, href, tone = "neutral" }: { label: string; value: number; detail: string; href: string; tone?: "neutral" | "warning" }) {
-  return (
-    <Link href={href} className={`min-h-32 rounded-lg border bg-surface p-4 transition-colors hover:border-primary-border hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${tone === "warning" ? "border-warning-border" : "border-border"}`}>
-      <div className="text-sm font-medium text-muted-foreground">{label}</div>
-      <div className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString()}</div>
-      <div className="mt-1 text-sm text-muted-foreground">{detail}</div>
-    </Link>
   )
 }

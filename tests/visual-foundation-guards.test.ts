@@ -255,7 +255,6 @@ const TABLE_HEADER_FILLS: Record<string, number> = {
   [`${D}admin/users/page.tsx`]: 1,
   "src/components/admin/system-settings-form.tsx": 3,
   "src/components/assets/asset-batch-form.tsx": 3,
-  "src/components/master-data/supplier-list-view.tsx": 1,
   // 2B-2
   [`${D}audit/findings/page.tsx`]: 1,
   [`${D}audit/rounds/[id]/page.tsx`]: 1,

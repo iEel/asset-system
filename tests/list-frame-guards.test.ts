@@ -36,6 +36,8 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}master-data/departments/page.tsx`,
   `${D}master-data/employees/page.tsx`,
   `${D}master-data/locations/page.tsx`,
+  `${D}master-data/suppliers/page.tsx`,
+  `${C}master-data/supplier-list-view.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -185,7 +187,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LH2: {
     // 2B-1
-    [`${D}master-data/suppliers/page.tsx`]: 2,
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes MasterDataHeader (R-h)
     // 2B-2
     [`${D}audit/findings/page.tsx`]: 2,
@@ -245,8 +246,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}my-assets/[id]/page.tsx`]: 1,
   },
   LF1: {
-    // 2B-1
-    [`${D}master-data/suppliers/page.tsx`]: 1,
     // 2B-2
     [`${C}admin/asset-state-review-workspace.tsx`]: 1,
     // 2B-3
@@ -259,7 +258,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}admin/role-permission-form.tsx`]: 2, // → 2 (KEEP): 2C batch 4 (R-e)
     [`${C}admin/system-settings-form.tsx`]: 1,
     [`${C}master-data/master-data-layout.tsx`]: 2, // 2B-5 deletes ColumnHeader and SortableColumnHeader (R-h)
-    [`${C}master-data/supplier-list-view.tsx`]: 1,
     // 2B-3
     [`${C}assets/asset-register-table.tsx`]: 2,
     // 2B-4
@@ -276,7 +274,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LT2: {
     // 2B-1
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes SortableColumnHeader (R-h)
-    [`${C}master-data/supplier-list-view.tsx`]: 1,
     // 2B-3
     [`${C}assets/asset-register-table.tsx`]: 1,
   },
@@ -297,7 +294,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LT4: {
     // 2B-1
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes MasterDataPagination (R-h)
-    [`${C}master-data/supplier-list-view.tsx`]: 1,
     // 2B-2
     [`${D}audit/rounds/[id]/page.tsx`]: 1,
     [`${C}disposal/disposal-pagination.tsx`]: 1,
@@ -306,7 +302,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LT5: {
     // 2B-1
     [`${C}master-data/master-data-layout.tsx`]: 2, // 2B-5 deletes MasterDataPagination (R-h)
-    [`${C}master-data/supplier-list-view.tsx`]: 2,
     // 2B-2
     [`${D}audit/rounds/[id]/page.tsx`]: 2,
     [`${C}disposal/disposal-pagination.tsx`]: 2,
@@ -316,9 +311,7 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LV1: {
     // 2B-1
-    [`${D}master-data/suppliers/page.tsx`]: 1,
     [`${C}admin/depreciation-policy-builder.tsx`]: 1,
-    [`${C}master-data/supplier-list-view.tsx`]: 4,
     // 2B-2
     [`${C}admin/asset-state-review-workspace.tsx`]: 1,
     // 2B-4
@@ -340,7 +333,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}assets/asset-batch-form.tsx`]: 8, // → 8 (KEEP): 2C form (2D)
     [`${C}assets/asset-component-manager.tsx`]: 3, // → 3 (KEEP): 2C form (2D)
     [`${C}assets/asset-form.tsx`]: 1, // → 1 (KEEP): 2C form (2D)
-    [`${C}master-data/supplier-list-view.tsx`]: 5,
     // 2B-2
     [`${D}audit/findings/page.tsx`]: 7,
     [`${D}audit/rounds/[id]/page.tsx`]: 5,
@@ -399,7 +391,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LS1: {
     // 2B-1
-    [`${D}master-data/suppliers/page.tsx`]: 1,
     [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): Metric :2413 (2D)
     // 2B-2
     [`${D}admin/data-quality/page.tsx`]: 1,
@@ -455,7 +446,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LN1: {
     // 2B-1
     [`${D}master-data/brands/page.tsx`]: 2, // → 2 (KEEP): the brand picker is a vertical list, where aria-current="page" is right (I11)
-    [`${C}master-data/supplier-list-view.tsx`]: 1,
     // 2B-2
     [`${D}audit/findings/page.tsx`]: 2,
     [`${D}audit/rounds/page.tsx`]: 1,
@@ -484,8 +474,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}admin/IntegrationClientManager.tsx`]: 1, // → 1 (KEEP): local StatusBadge :797 (2C plan 4)
   },
   LR1: {
-    // 2B-1
-    [`${C}master-data/supplier-list-view.tsx`]: 2,
   },
 }
 

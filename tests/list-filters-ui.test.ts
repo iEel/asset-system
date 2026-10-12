@@ -28,6 +28,7 @@ const MIGRATED_FILTER_FILES = [
   "src/app/[locale]/(dashboard)/master-data/companies/page.tsx",
   "src/app/[locale]/(dashboard)/master-data/employees/page.tsx",
   "src/app/[locale]/(dashboard)/master-data/locations/page.tsx",
+  "src/app/[locale]/(dashboard)/master-data/suppliers/page.tsx",
 ]
 
 test("migrated filter forms use Field, SearchField and FilterSelect only, and every form is a search landmark (item 5)", () => {
