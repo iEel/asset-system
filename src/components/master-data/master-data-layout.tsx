@@ -1,7 +1,8 @@
 import Link from "next/link"
-import { ArrowDown, ArrowUp, Plus, Search } from "lucide-react"
-import { buttonVariants } from "@/components/ui/button"
+import { ArrowDown, ArrowUp, Plus } from "lucide-react"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { PageHeader } from "@/components/ui/page-header"
+import { SearchField } from "@/components/ui/search-field"
 import { buildMasterDataQueryString, paginationRange, type MasterDataListState } from "@/lib/master-data-query"
 
 export function MasterDataHeader({
@@ -53,30 +54,17 @@ export function MasterDataSearch({
   submitLabel: string
   hiddenInputs?: Record<string, string | number>
 }) {
+  // A toolbar, not a card (B3(4)): no frame, 36px from md, stacked at 44px below sm. mb-4 beats the page root's
+  // space-y-6, so the search sits 16px above its table. The field is named by the button's word ("ค้นหา"), like
+  // the register search; the placeholder is read as its description. No clear button: a server page has no handler.
   return (
-    <div className="mb-4 rounded-lg border border-border bg-surface p-4">
-      <form className="flex flex-col gap-3 sm:flex-row" action={action}>
-        {Object.entries(hiddenInputs).map(([name, value]) => (
-          <input key={name} type="hidden" name={name} value={value} />
-        ))}
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="search"
-            name="search"
-            defaultValue={defaultValue}
-            placeholder={placeholder}
-            className="h-10 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-          />
-        </div>
-        <button
-          type="submit"
-          className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-        >
-          {submitLabel}
-        </button>
-      </form>
-    </div>
+    <form role="search" action={action} className="mb-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+      {Object.entries(hiddenInputs).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
+      <SearchField name="search" defaultValue={defaultValue} placeholder={placeholder} aria-label={submitLabel} fieldSize="md" className="sm:flex-[1_1_320px]" />
+      <Button type="submit" variant="outline" size="md">{submitLabel}</Button>
+    </form>
   )
 }
 

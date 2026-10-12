@@ -63,7 +63,7 @@ test("PageBackLink: outline md with a left arrow, a 44px icon button below md wh
 
 test("MasterDataHeader is a thin wrapper of PageHeader until its last callers move (I2)", () => {
   const layout = read("src/components/master-data/master-data-layout.tsx")
-  assert.match(layout, /import \{ buttonVariants \} from "@\/components\/ui\/button"/)
+  assert.match(layout, /import \{ Button, buttonVariants \} from "@\/components\/ui\/button"/)
   assert.match(layout, /import \{ PageHeader \} from "@\/components\/ui\/page-header"/)
   assert.match(layout, /<PageHeader\n\s+title=\{title\}\n\s+meta=\{subtitle\}\n\s+compactOnMobile=\{compactOnMobile\}\n/)
   assert.match(layout, /<Link href=\{createHref\} className=\{buttonVariants\(\{ size: "md" \}\)\}>\n\s+<Plus aria-hidden="true" \/>\n\s+\{createLabel\}\n\s+<\/Link>/)
@@ -302,4 +302,21 @@ test("ContentPanel divided has a 56px head over a line and a padded or flush bod
   // rows
   assert.match(source, /export function ContentPanelRows\(\{ className, \.\.\.props \}: React\.ComponentProps<"ul">\)/)
   assert.match(source, /<ul data-slot="content-panel-rows" className=\{cn\("divide-y divide-border-soft \[&>\*\]:px-4 \[&>\*\]:py-3 md:\[&>\*\]:px-5", className\)\} \{\.\.\.props\} \/>/)
+})
+
+test("MasterDataSearch is a frameless search toolbar on SearchField and Button, with its props unchanged (2B §6.3.5, I8)", () => {
+  const source = readFileSync("src/components/master-data/master-data-layout.tsx", "utf8").replace(/\r\n/g, "\n")
+  const search = source.match(/export function MasterDataSearch\([\s\S]*?\n\}\n/)?.[0] ?? ""
+  assert.ok(search, "function MasterDataSearch not found")
+  assert.match(search, /^export function MasterDataSearch\(\{\n  action,\n  defaultValue,\n  placeholder,\n  submitLabel,\n  hiddenInputs = \{\},\n\}: \{/)
+  assert.match(search, /<form role="search" action=\{action\} className="mb-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">/)
+  assert.match(search, /<input key=\{name\} type="hidden" name=\{name\} value=\{value\} \/>/)
+  assert.match(search, /<SearchField name="search" defaultValue=\{defaultValue\} placeholder=\{placeholder\} aria-label=\{submitLabel\} fieldSize="md" className="sm:flex-\[1_1_320px\]" \/>/)
+  assert.match(search, /<Button type="submit" variant="outline" size="md">\{submitLabel\}<\/Button>/)
+  assert.ok(search.indexOf('type="hidden"') < search.indexOf("<SearchField"), "hidden inputs come before the visible field")
+  assert.doesNotMatch(search, /<input\s+type="search"|<button\b|rounded-lg border|bg-surface p-4|onClear/)
+  assert.match(source, /import \{ Button, buttonVariants \} from "@\/components\/ui\/button"/)
+  assert.match(source, /import \{ SearchField \} from "@\/components\/ui\/search-field"/)
+  assert.doesNotMatch(source, /import \{[^}]*\bSearch\b[^}]*\} from "lucide-react"/, "the Search icon left with the raw field")
+  assert.doesNotMatch(source, /"use client"/)
 })
