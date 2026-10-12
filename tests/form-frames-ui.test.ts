@@ -83,3 +83,10 @@ test("the three maintenance create and edit pages: crumbs in PageHeader and ‡∏Å‡
     assert.doesNotMatch(source, /<h1\b|<Breadcrumbs\b|from "next\/link"|tCommon\("cancel"\)/, file)
   }
 })
+
+test("the check-in form draws its title with PageHeader (2B-1 task 23, I13)", () => {
+  const source = read(`${C}asset-operations/checkin-form.tsx`)
+  assert.ok(source.includes('import { PageHeader } from "@/components/ui/page-header"'), "checkin-form.tsx imports PageHeader")
+  assert.match(source, /<div className="mx-auto max-w-5xl">\n\s+<PageHeader title=\{t\("title"\)\} className="mb-6" \/>\n/)
+  assert.doesNotMatch(source, /<h1\b|PageBackLink/, "the operation forms keep having no back button (B2)")
+})
