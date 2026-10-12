@@ -33,6 +33,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}master-data/brands/page.tsx`,
   `${D}master-data/categories/page.tsx`,
   `${D}master-data/companies/page.tsx`,
+  `${D}master-data/departments/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -182,7 +183,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LH2: {
     // 2B-1
-    [`${D}master-data/departments/page.tsx`]: 2,
     [`${D}master-data/employees/page.tsx`]: 2,
     [`${D}master-data/locations/page.tsx`]: 2,
     [`${D}master-data/suppliers/page.tsx`]: 2,
@@ -289,7 +289,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LT3: {
     // 2B-1
     [`${D}admin/users/page.tsx`]: 1,
-    [`${D}master-data/departments/page.tsx`]: 1,
     [`${D}master-data/employees/page.tsx`]: 1,
     [`${D}master-data/locations/page.tsx`]: 1,
     // 2B-2
@@ -504,7 +503,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LR1: {
     // 2B-1
-    [`${D}master-data/departments/page.tsx`]: 1,
     [`${D}master-data/employees/page.tsx`]: 1,
     [`${D}master-data/locations/page.tsx`]: 1,
     [`${C}master-data/supplier-list-view.tsx`]: 2,
