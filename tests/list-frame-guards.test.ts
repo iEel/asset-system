@@ -34,6 +34,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}master-data/categories/page.tsx`,
   `${D}master-data/companies/page.tsx`,
   `${D}master-data/departments/page.tsx`,
+  `${D}master-data/employees/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -183,7 +184,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LH2: {
     // 2B-1
-    [`${D}master-data/employees/page.tsx`]: 2,
     [`${D}master-data/locations/page.tsx`]: 2,
     [`${D}master-data/suppliers/page.tsx`]: 2,
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes MasterDataHeader (R-h)
@@ -246,7 +246,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LF1: {
     // 2B-1
-    [`${D}master-data/employees/page.tsx`]: 1,
     [`${D}master-data/locations/page.tsx`]: 1,
     [`${D}master-data/suppliers/page.tsx`]: 1,
     // 2B-2
@@ -258,7 +257,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LT1: {
     // 2B-1
-    [`${D}master-data/employees/page.tsx`]: 1,
     [`${D}master-data/locations/page.tsx`]: 1,
     [`${C}admin/role-permission-form.tsx`]: 2, // → 2 (KEEP): 2C batch 4 (R-e)
     [`${C}admin/system-settings-form.tsx`]: 1,
@@ -279,7 +277,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LT2: {
     // 2B-1
-    [`${D}master-data/employees/page.tsx`]: 1,
     [`${D}master-data/locations/page.tsx`]: 1,
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes SortableColumnHeader (R-h)
     [`${C}master-data/supplier-list-view.tsx`]: 1,
@@ -289,7 +286,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LT3: {
     // 2B-1
     [`${D}admin/users/page.tsx`]: 1,
-    [`${D}master-data/employees/page.tsx`]: 1,
     [`${D}master-data/locations/page.tsx`]: 1,
     // 2B-2
     [`${D}audit/findings/page.tsx`]: 1,
@@ -304,7 +300,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LT4: {
     // 2B-1
-    [`${D}master-data/employees/page.tsx`]: 1,
     [`${D}master-data/locations/page.tsx`]: 1,
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes MasterDataPagination (R-h)
     [`${C}master-data/supplier-list-view.tsx`]: 1,
@@ -315,7 +310,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LT5: {
     // 2B-1
-    [`${D}master-data/employees/page.tsx`]: 2,
     [`${D}master-data/locations/page.tsx`]: 2,
     [`${C}master-data/master-data-layout.tsx`]: 2, // 2B-5 deletes MasterDataPagination (R-h)
     [`${C}master-data/supplier-list-view.tsx`]: 2,
@@ -328,7 +322,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LV1: {
     // 2B-1
-    [`${D}master-data/employees/page.tsx`]: 2,
     [`${D}master-data/locations/page.tsx`]: 3,
     [`${D}master-data/suppliers/page.tsx`]: 1,
     [`${C}admin/depreciation-policy-builder.tsx`]: 1,
@@ -349,7 +342,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LV2: {
     // 2B-1
     [`${D}admin/users/page.tsx`]: 2,
-    [`${D}master-data/employees/page.tsx`]: 2,
     [`${D}master-data/locations/page.tsx`]: 1,
     [`${C}admin/system-settings-form.tsx`]: 8, // → 8 (KEEP): 2C form (2D)
     [`${C}asset-operations/checkin-form.tsx`]: 9, // → 9 (KEEP): 2C form (2D)
@@ -415,7 +407,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LS1: {
     // 2B-1
-    [`${D}master-data/employees/page.tsx`]: 1,
     [`${D}master-data/locations/page.tsx`]: 1,
     [`${D}master-data/suppliers/page.tsx`]: 1,
     [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): Metric :2413 (2D)
@@ -503,7 +494,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LR1: {
     // 2B-1
-    [`${D}master-data/employees/page.tsx`]: 1,
     [`${D}master-data/locations/page.tsx`]: 1,
     [`${C}master-data/supplier-list-view.tsx`]: 2,
   },

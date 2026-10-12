@@ -1,15 +1,24 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ArrowDown, ArrowUp, Edit } from "lucide-react"
+import { Pencil, Plus } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
-import { EmployeeDeleteButton } from "@/components/master-data/employee-delete-button"
-import {
-  ActiveBadge,
-  ColumnHeader,
-  MasterDataHeader,
-} from "@/components/master-data/master-data-layout"
+import { ActiveBadge } from "@/components/master-data/master-data-layout"
+import { buttonVariants } from "@/components/ui/button-variants"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
+import { Field } from "@/components/ui/field"
+import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
+import { FilterSelect } from "@/components/ui/filter-select"
+import { Nil, orNil } from "@/components/ui/nil"
+import { PageHeader } from "@/components/ui/page-header"
+import { Pagination } from "@/components/ui/pagination"
+import { RowActions } from "@/components/ui/row-actions"
+import { SearchField } from "@/components/ui/search-field"
+import { StatStrip } from "@/components/ui/stat-strip"
+import { formatCount } from "@/lib/display-format"
+import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
 import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import {
@@ -88,6 +97,18 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
   const basePath = `/${locale}/master-data/employees`
   const employeeReturnHref = `${basePath}?${buildEmployeeQueryString(listState, {})}`
   const summary = buildEmployeeSummary(summaryEmployees)
+  const listHref = (next: Partial<EmployeeListState>) => `${basePath}?${buildEmployeeQueryString(listState, next)}`
+  // A page past the last one (an old link, or the last row of the last page deleted) shows the last page (spec 2B I21).
+  const lastPage = lastListPage(total, listState.pageSize)
+  if (employees.length === 0 && total > 0 && listState.page > lastPage) {
+    redirect(listHref({ page: lastPage }))
+  }
+  const { start, end, totalPages } = paginationRange(listState.page, listState.pageSize, total)
+  const hasActiveFilters = Boolean(listState.search || listState.companyId || listState.branchId || listState.departmentId || listState.employmentStatus !== "all" || listState.custodyUsage !== "all")
+  const sortBy = (field: EmployeeSort): DataTableSort => ({
+    href: listHref({ sort: field, direction: listState.sort === field && listState.direction === "asc" ? "desc" : "asc", page: 1 }),
+    direction: listState.sort === field ? listState.direction : null,
+  })
   const filteredBranches = listState.companyId
     ? branches.filter((branch) => branch.companyId === listState.companyId)
     : branches
@@ -96,58 +117,68 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
     : departments
 
   return (
-    <div className="space-y-4">
-      <MasterDataHeader
+    <div className="space-y-6">
+      <PageHeader
         title={t("title")}
-        subtitle={t("subtitle")}
-        createHref={appendMasterDataReturnTo(`/${locale}/master-data/employees/new`, employeeReturnHref)}
-        createLabel={tCommon("create")}
+        meta={t("subtitle")}
+        actions={
+          <Link href={appendMasterDataReturnTo(`/${locale}/master-data/employees/new`, employeeReturnHref)} className={buttonVariants({ size: "md" })}>
+            <Plus aria-hidden="true" />
+            {tCommon("create")}
+          </Link>
+        }
       />
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <SummaryTile
-          label={t("summaryTotal")}
-          value={summary.total}
-          detail={t("summaryActive", { count: summary.active })}
-          href={basePath}
-        />
-        <SummaryTile
-          label={t("summaryWithAssets")}
-          value={summary.withAssets}
-          detail={t("summaryWithAssetsHelp")}
-          href={`${basePath}?${buildEmployeeQueryString(listState, { custodyUsage: "withAssets", page: 1 })}`}
-        />
-        <SummaryTile
-          label={t("summaryWithoutAssets")}
-          value={summary.withoutAssets}
-          detail={t("summaryWithoutAssetsHelp")}
-          href={`${basePath}?${buildEmployeeQueryString(listState, { custodyUsage: "withoutAssets", page: 1 })}`}
-        />
-        <SummaryTile
-          label={t("summaryFormerWithAssets")}
-          value={summary.formerWithAssets}
-          detail={t("summaryFormerWithAssetsHelp")}
-          href={`${basePath}?${buildEmployeeQueryString(listState, { employmentStatus: "resigned", custodyUsage: "withAssets", page: 1 })}`}
-          tone={summary.formerWithAssets > 0 ? "warning" : "neutral"}
-        />
-      </div>
+      <StatStrip
+        items={[
+          {
+            key: "total",
+            label: t("summaryTotal"),
+            value: formatCount(summary.total),
+            foot: t("summaryActive", { count: summary.active }),
+            footTitle: t("summaryActive", { count: summary.active }),
+            href: basePath,
+          },
+          {
+            key: "withAssets",
+            label: t("summaryWithAssets"),
+            value: formatCount(summary.withAssets),
+            foot: t("summaryWithAssetsHelp"),
+            footTitle: t("summaryWithAssetsHelp"),
+            href: listHref({ custodyUsage: "withAssets", page: 1 }),
+            current: listState.custodyUsage === "withAssets",
+          },
+          {
+            key: "withoutAssets",
+            label: t("summaryWithoutAssets"),
+            value: formatCount(summary.withoutAssets),
+            foot: t("summaryWithoutAssetsHelp"),
+            footTitle: t("summaryWithoutAssetsHelp"),
+            href: listHref({ custodyUsage: "withoutAssets", page: 1 }),
+            current: listState.custodyUsage === "withoutAssets",
+          },
+          {
+            key: "formerWithAssets",
+            label: t("summaryFormerWithAssets"),
+            value: formatCount(summary.formerWithAssets),
+            foot: t("summaryFormerWithAssetsHelp"),
+            footTitle: t("summaryFormerWithAssetsHelp"),
+            href: listHref({ employmentStatus: "resigned", custodyUsage: "withAssets", page: 1 }),
+            current: listState.employmentStatus === "resigned" && listState.custodyUsage === "withAssets",
+            attention: summary.formerWithAssets > 0,
+          },
+        ]}
+      />
 
-      <div className="rounded-lg border border-border bg-surface p-4">
-        <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(5,minmax(150px,1fr))_auto]" action={basePath}>
+      <FilterPanel>
+        <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(5,minmax(150px,1fr))_auto]">
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="pageSize" value={listState.pageSize} />
           <input type="hidden" name="sort" value={listState.sort} />
           <input type="hidden" name="direction" value={listState.direction} />
-          <label className="space-y-1 text-sm font-medium text-foreground">
-            <span>{tCommon("search")}</span>
-            <input
-              type="search"
-              name="search"
-              defaultValue={listState.search}
-              placeholder={t("searchPlaceholder")}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-            />
-          </label>
+          <Field label={tCommon("search")}>
+            <SearchField name="search" defaultValue={listState.search} placeholder={t("searchPlaceholder")} />
+          </Field>
           <FilterSelect label={t("company")} name="companyId" defaultValue={listState.companyId}>
             <option value="">{t("allCompanies")}</option>
             {companies.map((company) => (
@@ -183,271 +214,128 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
             <option value="withAssets">{t("withAssets")}</option>
             <option value="withoutAssets">{t("withoutAssets")}</option>
           </FilterSelect>
-          <div className="flex items-end gap-2">
-            <button
-              type="submit"
-              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
-            >
-              {tCommon("filter")}
-            </button>
-            <Link
-              href={basePath}
-              className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-            >
-              {t("clearFilters")}
-            </Link>
-          </div>
+          <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
         </form>
-      </div>
+      </FilterPanel>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <EmployeeSortableColumnHeader field="code" current={listState} basePath={basePath}>{t("code")}</EmployeeSortableColumnHeader>
-                <EmployeeSortableColumnHeader field="fullNameTh" current={listState} basePath={basePath}>{t("fullNameTh")}</EmployeeSortableColumnHeader>
-                <EmployeeSortableColumnHeader field="company" current={listState} basePath={basePath}>{t("company")}</EmployeeSortableColumnHeader>
-                <EmployeeSortableColumnHeader field="branch" current={listState} basePath={basePath}>{t("branch")}</EmployeeSortableColumnHeader>
-                <EmployeeSortableColumnHeader field="department" current={listState} basePath={basePath}>{t("department")}</EmployeeSortableColumnHeader>
-                <ColumnHeader>{t("manager")}</ColumnHeader>
-                <EmployeeSortableColumnHeader field="employmentStatus" current={listState} basePath={basePath}>{t("employmentStatus")}</EmployeeSortableColumnHeader>
-                <EmployeeSortableColumnHeader field="assets" current={listState} basePath={basePath}>{t("assets")}</EmployeeSortableColumnHeader>
-                <ColumnHeader>{tCommon("status")}</ColumnHeader>
-                <ColumnHeader align="right">{tCommon("actions")}</ColumnHeader>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {employees.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="h-32 px-4 text-center text-muted-foreground">
-                    {tCommon("noData")}
-                  </td>
-                </tr>
-              ) : (
-                employees.map((employee) => {
-                  const drilldown = buildEmployeeDrilldownHrefs({ locale, employeeId: employee.id })
-                  const detailHref = appendMasterDataReturnTo(`/${locale}/master-data/employees/${employee.id}`, employeeReturnHref)
-                  const editHref = appendMasterDataReturnTo(`/${locale}/master-data/employees/${employee.id}/edit`, employeeReturnHref)
-                  return (
-                    <ClickableTableRow
-                      key={employee.id}
-                      href={detailHref}
-                      label={`${tCommon("view")}: ${employee.code}`}
-                    >
-                      <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{employee.code}</td>
-                      <td className="min-w-56 px-4 py-3 text-foreground">
-                        <div className="font-medium">{employee.fullNameTh}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {[employee.position, employee.email].filter(Boolean).join(" / ") || "-"}
-                        </div>
-                      </td>
-                      <td className="min-w-56 px-4 py-3 text-muted-foreground">
-                        {employee.company.code} - {employee.company.nameTh}
-                      </td>
-                      <td className="min-w-44 px-4 py-3 text-muted-foreground">
-                        {employee.branch.code} - {employee.branch.name}
-                      </td>
-                      <td className="min-w-44 px-4 py-3 text-muted-foreground">
-                        {employee.department.code} - {employee.department.name}
-                      </td>
-                      <td className="min-w-44 px-4 py-3 text-muted-foreground">
-                        {employee.manager ? `${employee.manager.code} - ${employee.manager.fullNameTh}` : "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {t(`status_${employee.employmentStatus}`)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {employee._count.custodianAssets > 0 ? (
-                          <Link
-                            href={drilldown.assets}
-                            className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft"
-                          >
-                            {employee._count.custodianAssets.toLocaleString()}
-                          </Link>
-                        ) : (
-                          "0"
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <ActiveBadge label={tCommon("active")} />
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right">
-                        <div className="inline-flex items-center gap-1">
-                          <Link
-                            href={editHref}
-                            title={tCommon("edit")}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary-soft"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Link>
-                          <EmployeeDeleteButton id={employee.id} />
-                        </div>
-                      </td>
-                    </ClickableTableRow>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-        <EmployeePagination
-          current={listState}
-          total={total}
-          basePath={basePath}
-          labels={{
-            rowsPerPage: tCommon("rowsPerPage"),
-            page: tCommon("page"),
-            of: tCommon("of"),
-            previous: tCommon("previous"),
-            next: tCommon("next"),
-          }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function SummaryTile({
-  label,
-  value,
-  detail,
-  href,
-  tone = "neutral",
-}: {
-  label: string
-  value: number
-  detail: string
-  href: string
-  tone?: "neutral" | "warning"
-}) {
-  return (
-    <Link
-      href={href}
-      className={`rounded-lg border bg-surface p-4 transition-colors hover:border-primary-border hover:bg-primary-soft ${
-        tone === "warning" ? "border-warning-border" : "border-border"
-      }`}
-    >
-      <div className="text-sm font-medium text-muted-foreground">{label}</div>
-      <div className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString()}</div>
-      <div className="mt-1 text-sm text-muted-foreground">{detail}</div>
-    </Link>
-  )
-}
-
-function FilterSelect({
-  label,
-  name,
-  defaultValue,
-  children,
-}: {
-  label: string
-  name: string
-  defaultValue: string
-  children: React.ReactNode
-}) {
-  return (
-    <label className="space-y-1 text-sm font-medium text-foreground">
-      <span>{label}</span>
-      <select
-        name={name}
-        defaultValue={defaultValue}
-        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+      <DataTable
+        caption={t("title")}
+        scrollHint={tCommon("tableScrollHint")}
+        footer={
+          total > 0 ? (
+            <Pagination
+              page={listState.page}
+              totalPages={totalPages}
+              previousHref={listHref({ page: listState.page - 1 })}
+              nextHref={listHref({ page: listState.page + 1 })}
+              pageSize={listState.pageSize}
+              pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ pageSize: value, page: 1 }) }))}
+              labels={{
+                navigation: tCommon("pagination"),
+                previous: tCommon("previous"),
+                next: tCommon("next"),
+                pageOf: tCommon("pageOf", { page: listState.page, total: totalPages }),
+                range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
+                pageSizeGroup: tCommon("pageSizeLabel"),
+                rowsPerPage: tCommon("rowsPerPage"),
+              }}
+            />
+          ) : undefined
+        }
       >
-        {children}
-      </select>
-    </label>
-  )
-}
-
-function EmployeeSortableColumnHeader({
-  children,
-  field,
-  current,
-  basePath,
-}: {
-  children: React.ReactNode
-  field: EmployeeSort
-  current: EmployeeListState
-  basePath: string
-}) {
-  const active = current.sort === field
-  const nextDirection = active && current.direction === "asc" ? "desc" : "asc"
-  const href = `${basePath}?${buildEmployeeQueryString(current, { sort: field, direction: nextDirection, page: 1 })}`
-
-  return (
-    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-      <Link href={href} className="inline-flex items-center gap-1 hover:text-primary">
-        {children}
-        {active ? (
-          current.direction === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
-        ) : null}
-      </Link>
-    </th>
-  )
-}
-
-function EmployeePagination({
-  current,
-  total,
-  basePath,
-  labels,
-}: {
-  current: EmployeeListState
-  total: number
-  basePath: string
-  labels: {
-    rowsPerPage: string
-    page: string
-    of: string
-    previous: string
-    next: string
-  }
-}) {
-  const { start, end, totalPages } = paginationRange(current.page, current.pageSize, total)
-  const previousPage = Math.max(1, current.page - 1)
-  const nextPage = Math.min(totalPages, current.page + 1)
-
-  return (
-    <div className="flex flex-col gap-3 border-t border-border px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        {start}-{end} {labels.of} {total}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span>{labels.rowsPerPage}</span>
-        {[25, 50, 100].map((pageSize) => (
-          <Link
-            key={pageSize}
-            href={`${basePath}?${buildEmployeeQueryString(current, { pageSize, page: 1 })}`}
-            className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md border px-2 transition-colors ${
-              current.pageSize === pageSize ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface hover:bg-accent"
-            }`}
-          >
-            {pageSize}
-          </Link>
-        ))}
-        <span className="px-2">
-          {labels.page} {current.page} {labels.of} {totalPages}
-        </span>
-        <Link
-          href={`${basePath}?${buildEmployeeQueryString(current, { page: previousPage })}`}
-          aria-disabled={current.page <= 1}
-          className={`inline-flex h-8 items-center rounded-md border border-border px-3 transition-colors ${
-            current.page <= 1 ? "pointer-events-none opacity-50" : "hover:bg-accent"
-          }`}
-        >
-          {labels.previous}
-        </Link>
-        <Link
-          href={`${basePath}?${buildEmployeeQueryString(current, { page: nextPage })}`}
-          aria-disabled={current.page >= totalPages}
-          className={`inline-flex h-8 items-center rounded-md border border-border px-3 transition-colors ${
-            current.page >= totalPages ? "pointer-events-none opacity-50" : "hover:bg-accent"
-          }`}
-        >
-          {labels.next}
-        </Link>
-      </div>
+        <DataTableHeader>
+          <tr>
+            <DataTableHead sort={sortBy("code")}>{t("code")}</DataTableHead>
+            <DataTableHead sort={sortBy("fullNameTh")}>{t("fullNameTh")}</DataTableHead>
+            <DataTableHead sort={sortBy("company")}>{t("company")}</DataTableHead>
+            <DataTableHead sort={sortBy("branch")}>{t("branch")}</DataTableHead>
+            <DataTableHead sort={sortBy("department")}>{t("department")}</DataTableHead>
+            <DataTableHead>{t("manager")}</DataTableHead>
+            <DataTableHead sort={sortBy("employmentStatus")}>{t("employmentStatus")}</DataTableHead>
+            <DataTableHead align="right" sort={sortBy("assets")}>{t("assets")}</DataTableHead>
+            <DataTableHead>{tCommon("status")}</DataTableHead>
+            <DataTableHead align="right" hideLabel>{tCommon("actions")}</DataTableHead>
+          </tr>
+        </DataTableHeader>
+        <DataTableBody>
+          {employees.length === 0 ? (
+            hasActiveFilters ? (
+              <TableEmptyRow colSpan={10} emptyState={{ title: tCommon("noData"), actionHref: basePath, actionLabel: t("clearFilters"), actionVariant: "secondary" }} />
+            ) : (
+              <TableEmptyRow colSpan={10}>{tCommon("noData")}</TableEmptyRow>
+            )
+          ) : (
+            employees.map((employee) => {
+              const drilldown = buildEmployeeDrilldownHrefs({ locale, employeeId: employee.id })
+              const detailHref = appendMasterDataReturnTo(`/${locale}/master-data/employees/${employee.id}`, employeeReturnHref)
+              const editHref = appendMasterDataReturnTo(`/${locale}/master-data/employees/${employee.id}/edit`, employeeReturnHref)
+              return (
+                <ClickableTableRow
+                  key={employee.id}
+                  href={detailHref}
+                  label={`${tCommon("view")}: ${employee.code}`}
+                >
+                  <DataTableCell className="whitespace-nowrap">
+                    <span className="tag font-medium text-foreground">{employee.code}</span>
+                  </DataTableCell>
+                  <DataTableCell className="min-w-56 text-foreground">
+                    <div className="font-medium">{employee.fullNameTh}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {orNil([employee.position, employee.email].filter(Boolean).join(" / "))}
+                    </div>
+                  </DataTableCell>
+                  <DataTableCell className="min-w-56 text-muted-foreground">
+                    <span className="tag">{employee.company.code}</span> - {employee.company.nameTh}
+                  </DataTableCell>
+                  <DataTableCell className="min-w-44 text-muted-foreground">
+                    <span className="tag">{employee.branch.code}</span> - {employee.branch.name}
+                  </DataTableCell>
+                  <DataTableCell className="min-w-44 text-muted-foreground">
+                    <span className="tag">{employee.department.code}</span> - {employee.department.name}
+                  </DataTableCell>
+                  <DataTableCell className="min-w-44 text-muted-foreground">
+                    {employee.manager ? (
+                      <>
+                        <span className="tag">{employee.manager.code}</span> - {employee.manager.fullNameTh}
+                      </>
+                    ) : (
+                      <Nil />
+                    )}
+                  </DataTableCell>
+                  <DataTableCell className="whitespace-nowrap text-muted-foreground">
+                    {t(`status_${employee.employmentStatus}`)}
+                  </DataTableCell>
+                  <DataTableCell numeric className="text-muted-foreground">
+                    {employee._count.custodianAssets > 0 ? (
+                      <Link
+                        href={drilldown.assets}
+                        className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft"
+                      >
+                        {formatCount(employee._count.custodianAssets)}
+                      </Link>
+                    ) : (
+                      <span className="px-2">{formatCount(0)}</span>
+                    )}
+                  </DataTableCell>
+                  <DataTableCell className="whitespace-nowrap">
+                    <ActiveBadge label={tCommon("active")} />
+                  </DataTableCell>
+                  <DataTableCell align="right">
+                    <RowActions
+                      code={employee.code}
+                      name={employee.fullNameTh}
+                      menuLabel={tCommon("moreActionsFor", { code: employee.code })}
+                      next={{ label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> }}
+                      groups={[]}
+                      deleteAction={{ endpoint: `/api/employees/${employee.id}` }}
+                    />
+                  </DataTableCell>
+                </ClickableTableRow>
+              )
+            })
+          )}
+        </DataTableBody>
+      </DataTable>
     </div>
   )
 }
