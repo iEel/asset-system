@@ -67,6 +67,7 @@ const MIGRATED_FILES: string[] = [
   `${C}assets/asset-attachments.tsx`,
   `${C}admin/system-settings-form.tsx`,
   `${C}admin/depreciation-policy-builder.tsx`,
+  `${C}master-data/branch-form.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -137,7 +138,6 @@ const LOCAL_FIELD: Record<string, number> = {
   // 1e
   // 1f
   // 2
-  [`${C}master-data/branch-form.tsx`]: 1,
   [`${C}master-data/category-form.tsx`]: 1,
   [`${C}master-data/company-form.tsx`]: 1,
   [`${C}master-data/department-form.tsx`]: 1,
@@ -161,7 +161,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 1e
   // 1f
   // 2
-  [`${C}master-data/branch-form.tsx`]: 5,
   [`${C}master-data/brand-form.tsx`]: 1,
   [`${C}master-data/category-form.tsx`]: 9,
   [`${C}master-data/company-form.tsx`]: 6,
@@ -202,7 +201,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1e
   // 1f
   // 2
-  [`${C}master-data/branch-form.tsx`]: 5,
   [`${C}master-data/brand-form.tsx`]: 1,
   [`${C}master-data/category-form.tsx`]: 9,
   [`${C}master-data/company-form.tsx`]: 6,
@@ -293,7 +291,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 1e
   // 1f
   // 2
-  [`${C}master-data/branch-form.tsx`]: 3,
   [`${C}master-data/brand-form.tsx`]: 3,
   [`${C}master-data/category-form.tsx`]: 4,
   [`${C}master-data/company-form.tsx`]: 3,
@@ -333,7 +330,6 @@ const LOADER2: Record<string, number> = {
   [`${C}assets/asset-component-manager.tsx`]: 1, // → 1: the status line :474
   // 1f
   // 2
-  [`${C}master-data/branch-form.tsx`]: 1,
   [`${C}master-data/brand-form.tsx`]: 1,
   [`${C}master-data/category-form.tsx`]: 1,
   [`${C}master-data/company-form.tsx`]: 1,
