@@ -354,7 +354,7 @@ npm run build
     - the ZodError fix
     - batch 1: 26 files, 179 fields
   - No workflow, page, schema, RBAC, migration, dependency or token change. The only server change is the validation message.
-- **Deploy:** plan 1 ships together with 2A and the other commits not deployed since `ab1b873` (56 at `5ffee76`), as one deploy that the user starts after the dev-app check and the manual checks below.
+- **Deploy:** plan 1 ships together with 2A and the other commits not deployed since `ab1b873` (56 at `5ffee76`), as one deploy that the user starts after the dev-app check and the manual checks below. On 2026-10-12 the user moved this deploy to the end of phase 2; see the plan 2 section.
   - No schema change, so `ab1b873` stays a clean rollback.
   - The P0 commits are also on local `master` (fast-forward after Task 3, not pushed). `master` with P0 must not be deployed on its own (2A I22).
 - **P0** (in `src/components/` unless noted; 2B builds on these):
@@ -445,6 +445,33 @@ npm run build
     - `ActionBar` with `actionBarPagePadding`, the `AlertDialog` restyle with verb labels, the repair attachment delete dialog as `useConfirm`, and the disposal request `Steps`
   - The V track has its own spec, after batch 1 is in Production: errors under fields, `validate()` per form, focus on the first invalid field, `common.validation.*`, `fieldErrors` in the 400 body, and `min` on paired dates.
   - 2D: deleting `ActionButton`, the 36px default button, the remaining notices, form panel frames (K28), and every budget to `{}`.
+
+## UI Round 4 Phase 2C Plan 2 Master-Data Forms (2026-10-12)
+
+- Branch `feat/ui-phase2c-plan2` (from `master` `4daf0b9`: 2A and 2C plan 1 merged and pushed, not deployed). Spec `docs/superpowers/specs/2026-10-11-ui-phase2c-design.md` §8.9 batch 2 (its §10 rulings override the section files) · plan `docs/superpowers/plans/2026-10-12-ui-phase2c-plan2.md` · canonical values in `DESIGN.md`.
+  - Batch 2 is the 8 master-data forms: branch, brand, category, company, department, employee, location and supplier (46 fields, 9 checkboxes, 26 buttons). One commit per form.
+  - No new primitive, rule, message key, workflow, page, schema, RBAC, migration, dependency or token. No server change.
+- **Deploy:** on 2026-10-12 the user decided to deploy once, after all of phase 2 is done (2C plans 2–5, 2B, 2D and the V track), instead of once per batch as spec §8.9 planned. Until then `master` holds 2A, 2C plan 1 and this plan undeployed, and `ab1b873` stays the rollback point (no schema change).
+- **What changed in each form** (`src/components/master-data/`):
+  - Every field is the shared `Field` with `Input`, `NativeSelect` or `Textarea`. Each form's local `Field` helper is gone. `required`, `maxLength`, `type`, `inputMode` and `autoComplete` stay on the controls (K4), and textareas resize vertically (`resize-y` from `Textarea`).
+  - The "active" checkbox (and the category "required field" checkbox) use `checkboxVariants()`. The category "required field" row and the supplier "active" row are 44px tap targets (`min-h-11`).
+  - Save is a `Button` with `busy={saving}`: the spinner replaces the save icon, the label stays, and focus stays on the button. The branch and location forms still keep Save disabled while there is no company or no branch to choose. Cancel is a link styled `buttonVariants({ variant: "outline" })`; the supplier Cancel still asks before dropping unsaved changes.
+  - Category template editors: the add, move and duplicate buttons are `outline` `md`, remove custom field is `danger` `md`, and the 4 photo-item buttons are `outline` `icon` with a neutral remove icon (K22). The photo-row grid sizes its icon columns to the button (`repeat(4,auto)`), and each photo item field has a hidden label.
+  - Company: the help lines under the code and asset tag code fields are `Field hint=`, so screen readers read each with its field.
+  - Supplier: the 6 errors under fields come from `Field error=` with `id="supplier-<field>"`, so the error ids stay `supplier-<field>-error`. `Field` sets `aria-invalid` and `aria-describedby`, and `FieldError` has `role="alert"`.
+  - The header back links stay as they were (2B, O16), as do the form panels (K28, 2D) and the footer rows.
+- **Tests:**
+  - New: `tests/branch-form-ui.test.ts`, `brand-form-ui`, `category-form-ui`, `company-form-ui`, `department-form-ui`, `employee-form-ui` and `location-form-ui`.
+  - `tests/supplier-form-ui.test.ts`: the inline-error test now checks the 6 `Field error=` sites and the 6 field ids (spec §4.16), and one test pins the busy save and the outline cancel.
+  - `tests/form-migration-guards.test.ts`: the 8 forms are in `MIGRATED_FILES` (34 files), their budgets are gone, and `CONSTRAINT_FLOORS` is unchanged.
+- Dev-app check (Task 9): checked all 8 forms on `next start` of the production build at 1440, 768, 720px (200% zoom) and 375px, in Thai plus an English pass. Results: fields and Save/Cancel were 40px on desktop and 44px on phones; labels and required states matched, textareas resized vertically, and no horizontal overflow or visual regression was found. Supplier duplicate-code retries sent one POST, kept Save's label and focus during busy and after the rejection, and showed the linked inline alert; the branch whitespace-code rejection showed a Thai toast without JSON. Keyboard order, return navigation, forced colors and reduced motion passed; axe found 0 violations on all 8 forms and the supplier error state. No test data was written. Fixes: none. Open: NVDA, real iPhone/iPad checks and a successful save.
+- Before/after screenshots: `.superpowers/sdd/screenshots/ui-phase2c-plan2/before/` and `after/` (git-ignored, on the development machine only).
+- Still open, for a person before the one phase-2 deploy:
+  - NVDA: required fields read "จำเป็น" without the star; supplier errors read at once; photo checklist icon buttons read their names.
+  - On a real iPhone (Safari): fields do not zoom and the "active" row is easy to tap; on a real iPad (768px): 14px fields do not zoom.
+  - A real successful save: busy focus was checked on a rejected save only; a valid save was not tried.
+  - Complete these, together with the open checks of phase 1, 2A and 2C plan 1 above.
+- Next: 2B (list pages and page frames, its own spec and plans), then 2C plans 3–5 after 2B merges, 2D and the V track.
 
 ## Open Go-Live Decisions
 
