@@ -28,7 +28,9 @@ const NAV_PRIMITIVES = ["ui/tab-nav.tsx", "ui/breadcrumbs.tsx", "ui/pagination.t
 const tagsWhere = (names: string[], keep: (text: string) => boolean) => (file: SourceFile) => findJsxTags(file.source, names).filter((tag) => keep(tag.text)).length
 
 // Files 2B is done with, in commit order. The commit that finishes a file adds its line and lowers its rows; never remove one.
-const MIGRATED_LIST_FILES: string[] = []
+const MIGRATED_LIST_FILES: string[] = [
+  `${D}master-data/branches/page.tsx`,
+]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
 function handPaginations(file: SourceFile): number {
@@ -177,7 +179,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LH2: {
     // 2B-1
-    [`${D}master-data/branches/page.tsx`]: 2,
     [`${D}master-data/brands/page.tsx`]: 2,
     [`${D}master-data/categories/page.tsx`]: 2,
     [`${D}master-data/companies/page.tsx`]: 2,
@@ -245,7 +246,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LF1: {
     // 2B-1
-    [`${D}master-data/branches/page.tsx`]: 1,
     [`${D}master-data/brands/page.tsx`]: 1,
     [`${D}master-data/categories/page.tsx`]: 1,
     [`${D}master-data/companies/page.tsx`]: 1,
@@ -261,7 +261,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LT1: {
     // 2B-1
-    [`${D}master-data/branches/page.tsx`]: 1,
     [`${D}master-data/categories/page.tsx`]: 1,
     [`${D}master-data/companies/page.tsx`]: 1,
     [`${D}master-data/employees/page.tsx`]: 1,
@@ -285,7 +284,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LT2: {
     // 2B-1
-    [`${D}master-data/branches/page.tsx`]: 1,
     [`${D}master-data/categories/page.tsx`]: 1,
     [`${D}master-data/companies/page.tsx`]: 1,
     [`${D}master-data/employees/page.tsx`]: 1,
@@ -298,7 +296,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LT3: {
     // 2B-1
     [`${D}admin/users/page.tsx`]: 1,
-    [`${D}master-data/branches/page.tsx`]: 1,
     [`${D}master-data/brands/page.tsx`]: 1,
     [`${D}master-data/categories/page.tsx`]: 1,
     [`${D}master-data/companies/page.tsx`]: 1,
@@ -318,7 +315,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LT4: {
     // 2B-1
-    [`${D}master-data/branches/page.tsx`]: 1,
     [`${D}master-data/brands/page.tsx`]: 1,
     [`${D}master-data/categories/page.tsx`]: 1,
     [`${D}master-data/companies/page.tsx`]: 1,
@@ -333,7 +329,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LT5: {
     // 2B-1
-    [`${D}master-data/branches/page.tsx`]: 2,
     [`${D}master-data/brands/page.tsx`]: 2,
     [`${D}master-data/categories/page.tsx`]: 2,
     [`${D}master-data/companies/page.tsx`]: 2,
@@ -350,7 +345,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LV1: {
     // 2B-1
-    [`${D}master-data/branches/page.tsx`]: 4,
     [`${D}master-data/brands/page.tsx`]: 2,
     [`${D}master-data/categories/page.tsx`]: 3,
     [`${D}master-data/companies/page.tsx`]: 4,
@@ -375,7 +369,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LV2: {
     // 2B-1
     [`${D}admin/users/page.tsx`]: 2,
-    [`${D}master-data/branches/page.tsx`]: 1,
     [`${D}master-data/brands/page.tsx`]: 1,
     [`${D}master-data/categories/page.tsx`]: 1,
     [`${D}master-data/companies/page.tsx`]: 2,
@@ -445,7 +438,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LS1: {
     // 2B-1
-    [`${D}master-data/branches/page.tsx`]: 1,
     [`${D}master-data/brands/page.tsx`]: 1,
     [`${D}master-data/categories/page.tsx`]: 1,
     [`${D}master-data/companies/page.tsx`]: 1,
@@ -537,7 +529,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LR1: {
     // 2B-1
-    [`${D}master-data/branches/page.tsx`]: 1,
     [`${D}master-data/brands/page.tsx`]: 2,
     [`${D}master-data/categories/page.tsx`]: 1,
     [`${D}master-data/companies/page.tsx`]: 1,

@@ -17,3 +17,30 @@ test("FilterFormActions submits at 40px and offers clear filters as an outline l
   assert.doesNotMatch(panel, /"use client"|\bbusy\b/, "a GET form changes the page itself, so the panel stays server-safe and has no busy state")
   assert.match(panel, /export function FilterPanel\(\{ title, description, children, className \}: FilterPanelProps\)/, "FilterPanel keeps its API")
 })
+
+// Items 5 and 6 (spec 2B §6.13 table B, I34): the filter forms of the migrated list files. Each page commit adds its
+// file; plan 2B-5 completes the list. A raw field in a file outside the list has no guard until 2D (I34).
+const MIGRATED_FILTER_FILES = [
+  "src/components/master-data/master-data-layout.tsx",
+  "src/app/[locale]/(dashboard)/master-data/branches/page.tsx",
+]
+
+test("migrated filter forms use Field, SearchField and FilterSelect only, and every form is a search landmark (item 5)", () => {
+  for (const path of MIGRATED_FILTER_FILES) {
+    const source = read(path)
+    assert.doesNotMatch(source, /<select\b|<textarea\b/, `${path}: a raw select or textarea`)
+    const rawInputs = (source.match(/<input\b[^>]*>/g) ?? []).filter((tag) => !/\btype="hidden"/.test(tag))
+    assert.deepEqual(rawInputs, [], `${path}: only hidden inputs may stay raw`)
+    assert.doesNotMatch(source, /space-y-1 text-sm font-medium text-foreground|mb-1\.5 block text-xs font-medium text-muted-foreground/, `${path}: an old filter label`)
+    assert.doesNotMatch(source, /\bfunction (?:FilterSelect|ReportSelect)\b|\bfunction Filter\(/, `${path}: a local filter helper`)
+    for (const form of source.match(/<form\b[^>]*>/g) ?? []) assert.match(form, /\brole="search"/, `${path}: ${form}`)
+  }
+})
+
+test("clear filters shows only while a filter is on (item 6)", () => {
+  for (const path of MIGRATED_FILTER_FILES) {
+    for (const actions of read(path).match(/<FilterFormActions\b[\s\S]*?\/>/g) ?? []) {
+      if (/\bclear=/.test(actions)) assert.match(actions, /\bclear=\{hasActiveFilters \?/, `${path}: ${actions}`)
+    }
+  }
+})
