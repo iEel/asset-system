@@ -296,7 +296,7 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
             <DataTableHead align="right" sort={sortBy("currentAssets")}>{t("currentAssets")}</DataTableHead>
             <DataTableHead align="right" sort={sortBy("children")}>{t("childCount")}</DataTableHead>
             <DataTableHead>{tCommon("status")}</DataTableHead>
-            <DataTableHead align="right" hideLabel>{tCommon("actions")}</DataTableHead>
+            <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
           </tr>
         </DataTableHeader>
         <DataTableBody>
@@ -352,7 +352,7 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
                   <DataTableCell className="whitespace-nowrap">
                     <ActiveBadge label={tCommon("active")} />
                   </DataTableCell>
-                  <DataTableCell align="right">
+                  <DataTableCell align="right" sticky="right">
                     <RowActions
                       code={location.code}
                       name={location.name}

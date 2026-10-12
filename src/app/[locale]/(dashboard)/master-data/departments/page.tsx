@@ -132,7 +132,7 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
             <DataTableHead>{t("name")}</DataTableHead>
             <DataTableHead>{t("company")}</DataTableHead>
             <DataTableHead>{tCommon("status")}</DataTableHead>
-            <DataTableHead align="right" hideLabel>{tCommon("actions")}</DataTableHead>
+            <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
           </tr>
         </DataTableHeader>
         <DataTableBody>
@@ -163,7 +163,7 @@ export default async function DepartmentsPage({ params, searchParams }: Departme
                   <DataTableCell className="whitespace-nowrap">
                     <ActiveBadge label={tCommon("active")} />
                   </DataTableCell>
-                  <DataTableCell align="right">
+                  <DataTableCell align="right" sticky="right">
                     <RowActions
                       code={department.code}
                       name={department.name}

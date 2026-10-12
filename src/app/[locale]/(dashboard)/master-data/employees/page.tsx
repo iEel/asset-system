@@ -254,7 +254,7 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
             <DataTableHead sort={sortBy("employmentStatus")}>{t("employmentStatus")}</DataTableHead>
             <DataTableHead align="right" sort={sortBy("assets")}>{t("assets")}</DataTableHead>
             <DataTableHead>{tCommon("status")}</DataTableHead>
-            <DataTableHead align="right" hideLabel>{tCommon("actions")}</DataTableHead>
+            <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
           </tr>
         </DataTableHeader>
         <DataTableBody>
@@ -320,7 +320,7 @@ export default async function EmployeesPage({ params, searchParams }: EmployeesP
                   <DataTableCell className="whitespace-nowrap">
                     <ActiveBadge label={tCommon("active")} />
                   </DataTableCell>
-                  <DataTableCell align="right">
+                  <DataTableCell align="right" sticky="right">
                     <RowActions
                       code={employee.code}
                       name={employee.fullNameTh}

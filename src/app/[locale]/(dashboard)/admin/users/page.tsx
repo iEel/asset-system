@@ -133,7 +133,7 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
             <DataTableHead>{t("roles")}</DataTableHead>
             <DataTableHead>{tCommon("status")}</DataTableHead>
             <DataTableHead sort={sortBy("lastLoginAt")}>{t("lastLoginAt")}</DataTableHead>
-            <DataTableHead align="right" hideLabel>{tCommon("actions")}</DataTableHead>
+            <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
           </tr>
         </DataTableHeader>
         <DataTableBody>
@@ -187,7 +187,7 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
                   <DataTableCell className="whitespace-nowrap text-muted-foreground">
                     {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : <Nil />}
                   </DataTableCell>
-                  <DataTableCell align="right">
+                  <DataTableCell align="right" sticky="right">
                     <RowActions
                       code={user.username}
                       name={user.displayName}

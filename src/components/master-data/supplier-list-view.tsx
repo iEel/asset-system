@@ -107,7 +107,7 @@ export function SupplierListView({
             <DataTableHead align="right" sort={sortBy("assets")}>{labels.assets}</DataTableHead>
             <DataTableHead align="right" sort={sortBy("purchaseDocuments")}>{labels.purchaseDocuments}</DataTableHead>
             <DataTableHead align="right">{labels.maintenanceTickets}</DataTableHead>
-            <DataTableHead align="right" hideLabel>{labels.actions}</DataTableHead>
+            <DataTableHead align="right" sticky="right" hideLabel>{labels.actions}</DataTableHead>
           </tr>
         </DataTableHeader>
         <DataTableBody>
@@ -134,7 +134,7 @@ export function SupplierListView({
                 </DataTableCell>
                 <DataTableCell numeric className="text-muted-foreground">{formatCount(supplier._count.purchaseDocuments)}</DataTableCell>
                 <DataTableCell numeric className="text-muted-foreground">{formatCount(supplier._count.maintenanceTickets)}</DataTableCell>
-                <DataTableCell align="right">
+                <DataTableCell align="right" sticky="right">
                   <RowActions
                     code={supplier.code}
                     name={supplier.name}

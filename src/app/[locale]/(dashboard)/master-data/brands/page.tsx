@@ -462,7 +462,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                   <DataTableHead>{t("specs")}</DataTableHead>
                   <DataTableHead align="right">{t("assets")}</DataTableHead>
                   <DataTableHead>{tCommon("status")}</DataTableHead>
-                  <DataTableHead align="right" hideLabel>{tCommon("actions")}</DataTableHead>
+                  <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
                 </tr>
               </DataTableHeader>
               <DataTableBody>
@@ -529,7 +529,7 @@ export default async function BrandsPage({ params, searchParams }: BrandsPagePro
                         <DataTableCell className="whitespace-nowrap">
                           <ActiveBadge label={tCommon("active")} />
                         </DataTableCell>
-                        <DataTableCell align="right">
+                        <DataTableCell align="right" sticky="right">
                           <RowActions
                             code={model.name}
                             menuLabel={tCommon("moreActionsFor", { code: model.name })}

@@ -127,3 +127,24 @@ test("users: edit is the row's only command, so RowActions draws no ⋯, and the
   assert.match(source, /className="fixed bottom-6 right-6 [^"]*shadow-lg/, "R-q: phase 2D moves the floating button")
   assert.match(source, /hiddenInputs=\{\{ pageSize: listState\.pageSize, sort: listState\.sort, direction: listState\.direction \}\}/)
 })
+
+test("wide lists pin the actions column to the right, so edit and ⋯ stay visible while the table scrolls (2B-1 Task 25 fix 1)", () => {
+  const D = "src/app/[locale]/(dashboard)/"
+  const files = [
+    `${D}master-data/branches/page.tsx`,
+    `${D}master-data/brands/page.tsx`,
+    `${D}master-data/categories/page.tsx`,
+    `${D}master-data/companies/page.tsx`,
+    `${D}master-data/departments/page.tsx`,
+    `${D}master-data/employees/page.tsx`,
+    `${D}master-data/locations/page.tsx`,
+    "src/components/master-data/supplier-list-view.tsx",
+    `${D}admin/users/page.tsx`,
+  ]
+  for (const file of files) {
+    const source = read(file)
+    assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>/, `${file}: the actions header is pinned`)
+    assert.match(source, /<DataTableCell align="right" sticky="right">\s*<RowActions/, `${file}: the actions cell is pinned`)
+    assert.doesNotMatch(source, /<DataTableCell align="right">\s*<RowActions/, `${file}: no unpinned actions cell is left`)
+  }
+})
