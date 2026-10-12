@@ -67,6 +67,19 @@ Build screens from the shared primitives in `src/components/ui/`. Their look and
 | A keyboard hint | `Kbd` | Latin keys and symbols only |
 | A status | `StatusBadge` | one size; there is no `size` prop |
 | A breadcrumb trail | `Breadcrumbs` | `code: true` for an asset tag or document number |
+| A page title, its facts and its buttons | `PageHeader` | the only `h1`; a status badge only in `meta`; `md` buttons, back first and primary last; no outer margin (a `space-y-6` root, or `className="mb-6"` in a form) |
+| A back button in a header | `PageBackLink` through `PageHeader back` | `href` is the page's own expression, `returnTo` included; `label` is the page's own words; an icon button below `md` |
+| Tabs that change the URL | `TabNav` | `aria-label` names the row; counts through `formatCount`; state that does not change the URL uses `Segmented` |
+| A list table | `DataTable` with `DataTableHeader`, `DataTableHead`, `DataTableBody`, `DataTableRow` (or `ClickableTableRow`) and `DataTableCell` | one density; the first and last columns keep 16/20px; `sort` on `DataTableHead` sets `aria-sort`; `scrollHint` when the table can overflow on phones |
+| An empty table | `TableEmptyRow` | one line through `children`, or `emptyState` for a title, a description or a button |
+| Page links under a table | `Pagination` in `DataTable footer`, with `parseListPage`, `listPageWindow`, `lastListPage` and `appendListPage` (`src/lib/list-pagination.ts`) | 25/50/100; a page past the end redirects to `lastListPage`; links keep `page` and `pageSize` |
+| A filter select | `FilterSelect` | `fieldSize="lg"` in a filter panel, `md` with `hideLabel` in a toolbar; `allLabel` for the "all" option |
+| The buttons of a filter form | `FilterFormActions` | pass `clear` only while a filter is active |
+| The active filters | `FilterChipList` | chips only for filters that are not visible on screen; `removeLabel` starts each chip's name |
+| A next step and more actions in a table row | `RowActions` | data-only props; delete through `deleteAction`, never a delete button in the row; `menuLabel={tCommon("moreActionsFor", { code })}` |
+| Counts above a list | `StatStrip` | values already formatted; no tone fill; `current` on the cell of the filter in use |
+| Label and value pairs | `KeyValueList` | empty values become `Nil` by themselves |
+| A panel with a head row | `ContentPanel divided`, with `flush` for a table or a `ContentPanelRows` list | without `divided` it is the plain panel |
 | An empty value | `Nil`, `orNil` | `0` is a value, not blank |
 | A count or an amount of money | `formatCount`, `formatMoney` (`src/lib/display-format.ts`) | always th-TH and 2 decimals for money; the unit (`common.baht`) goes after the number, or in the column header of a table |
 | A toast | `toast.*` or `useApiError().toast` | `AppToaster` styles every toast; do not pass `richColors` |
@@ -79,7 +92,7 @@ Build screens from the shared primitives in `src/components/ui/`. Their look and
 | A numbered form section | `FormSection` | `as="h3"` under a page that already has an `h2` |
 | The record a form is about | `FormContextBanner` | `code` shows a record code as `tag` |
 
-Phase 2A built the first set and phase 2C plan 1 added the form and dialog pieces; phases 2B to 2D move the hand-written controls onto them. The ratchet guards in `tests/visual-foundation-guards.test.ts` and, for forms and dialogs, `tests/form-migration-guards.test.ts` let their per-file budgets go down, never up.
+Phase 2A built the first set, phase 2C plan 1 added the form and dialog pieces, and phase 2B plan 1 added the list and page-frame pieces; phases 2B to 2D move the hand-written controls onto them. The ratchet guards in `tests/visual-foundation-guards.test.ts`, for forms and dialogs `tests/form-migration-guards.test.ts`, and for list pages and page frames `tests/list-frame-guards.test.ts` let their per-file budgets go down, never up.
 
 ## Current-Surface Registry
 
@@ -100,6 +113,7 @@ When a focused specification is added, replaced, or retired, update this registr
 | App shell and visual foundation | [`2026-10-10-ui-foundation-design.md`](superpowers/specs/2026-10-10-ui-foundation-design.md) (UI round 4 phase 1: light-shell color tokens, single focus ring, IBM Plex fonts and Thai line heights, flat panels, two-tier status badge, white sidebar with sections, topbar, mobile bottom bar, PWA theme color) | [`2026-10-10-ui-foundation.md`](superpowers/plans/2026-10-10-ui-foundation.md) sequences implementation and verification. |
 | Shared components | [`2026-10-11-ui-phase2a-design.md`](superpowers/specs/2026-10-11-ui-phase2a-design.md) (UI round 4 phase 2A: the tokens phase 2 needs, buttons, fields, menus and popovers, toasts, notices and empty states, one status badge size, breadcrumbs, empty-value and number helpers, four codemods with ratchet guards; its §10 overrides the section files in [`2026-10-11-ui-phase2a/`](superpowers/specs/2026-10-11-ui-phase2a/)) | [`2026-10-11-ui-phase2a.md`](superpowers/plans/2026-10-11-ui-phase2a.md) sequences implementation and verification. |
 | Forms and dialogs | [`2026-10-11-ui-phase2c-design.md`](superpowers/specs/2026-10-11-ui-phase2c-design.md) (UI round 4 phase 2C: forms and dialogs on the 2A primitives in five batches; `Segmented`, `Field labelAction`, the dialog parts, `StickyFormFooter`, `Steps`, `FormSection`, `ChoiceCard`/`ChoiceChip`, `FileQueueList`; the bottom navigation hidden on form routes; one readable validation error; its §10 rulings I1–I36 override the section files in [`2026-10-11-ui-phase2c/`](superpowers/specs/2026-10-11-ui-phase2c/)) | [`2026-10-11-ui-phase2c-plan1.md`](superpowers/plans/2026-10-11-ui-phase2c-plan1.md) sequences plan 1 (P0, the 2C-0 primitives, the ZodError fix and batch 1); [`2026-10-12-ui-phase2c-plan2.md`](superpowers/plans/2026-10-12-ui-phase2c-plan2.md) sequences plan 2 (batch 2, the master-data forms); plans 3–5 follow, one per batch. |
+| List pages and page frames | [`2026-10-12-ui-phase2b-design.md`](superpowers/specs/2026-10-12-ui-phase2b-design.md) (UI round 4 phase 2B: `PageHeader` and `PageBackLink`, `DataTable` with `TableEmptyRow` and `Pagination`, the filter parts, `RowActions`, `TabNav`, `StatStrip`, `KeyValueList`, `ContentPanel divided`; the sidebar with the asset register first; server pagination of 9 lists; its §10 rulings I1–I34 override the section files in [`2026-10-12-ui-phase2b/`](superpowers/specs/2026-10-12-ui-phase2b/)) | [`2026-10-12-ui-phase2b-plan1.md`](superpowers/plans/2026-10-12-ui-phase2b-plan1.md) sequences plan 2B-1 (the primitives, the master-data lists and users, the sidebar and the form headers); plans 2B-2 to 2B-5 follow (spec §10.3). |
 | Cross-cutting UI hardening | [`2026-07-10-ui-ux-hardening-design.md`](superpowers/specs/2026-07-10-ui-ux-hardening-design.md) | [`2026-07-10-ui-ux-hardening.md`](superpowers/plans/2026-07-10-ui-ux-hardening.md) sequences implementation and verification; [`2026-07-10-module-ux-roadmap.md`](superpowers/plans/2026-07-10-module-ux-roadmap.md) provides module-level sequencing. |
 
 ## UI QA Checklist
