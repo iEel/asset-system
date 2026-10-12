@@ -56,7 +56,8 @@
     "stepRejected": "Rejected",
     "tableScrollHint": "Scroll left/right to see more columns.",
     "showingRange": "{from}–{to} of {total}",
-    "pageSizeLabel": "Rows per page"
+    "pageSizeLabel": "Rows per page",
+    "moreActionsFor": "Actions for {code}"
   },
   "globalSearch": {
     "label": "Search globally",

@@ -56,7 +56,8 @@
     "stepRejected": "ปฏิเสธแล้ว",
     "tableScrollHint": "เลื่อนตารางซ้าย/ขวาเพื่อดูคอลัมน์เพิ่มเติม",
     "showingRange": "{from}–{to} จาก {total} รายการ",
-    "pageSizeLabel": "จำนวนต่อหน้า"
+    "pageSizeLabel": "จำนวนต่อหน้า",
+    "moreActionsFor": "การดำเนินการของ {code}"
   },
   "globalSearch": {
     "label": "ค้นหาทั่วระบบ",

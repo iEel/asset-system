@@ -13,13 +13,13 @@ const menuPanelClasses =
 // One row (mockup .menu-item): 36px from md up, 44px below. The highlight shows at once and fades out in 150ms.
 // Keyboard focus draws the base outline inside the row. An item that cannot be used (aria-disabled, set by Radix for
 // disabled items and by `unavailable`) is faint with no fill; no opacity, so its reason line stays readable.
-const menuItemClasses =
+export const menuItemClasses =
   "relative flex min-h-11 cursor-pointer select-none items-center gap-2.5 rounded-control px-2.5 py-1.5 text-sm text-foreground transition-colors md:min-h-9 focus:bg-primary-soft focus:duration-0 focus-visible:-outline-offset-2 active:bg-muted data-[disabled]:pointer-events-none aria-disabled:cursor-not-allowed aria-disabled:bg-transparent aria-disabled:text-faint-foreground aria-disabled:*:[svg]:text-faint-foreground! data-[inset]:pl-9 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground"
 
 // Delete and sign-out rows. Kept in their own string: data-[…] rules come after aria-disabled: in the CSS, so each rule
 // needs not-aria-disabled: or a disabled delete row would stay red; and the guard that keeps faint text off status fills
 // reads one class string at a time.
-const menuItemDestructiveClasses =
+export const menuItemDestructiveClasses =
   "data-[variant=destructive]:not-aria-disabled:text-danger data-[variant=destructive]:not-aria-disabled:focus:bg-danger-soft data-[variant=destructive]:not-aria-disabled:*:[svg]:text-danger!"
 
 // Radix skips a disabled item for arrow keys and typeahead. An unavailable item stays focusable and is announced with
