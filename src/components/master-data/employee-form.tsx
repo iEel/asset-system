@@ -3,9 +3,14 @@
 import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, Save } from "lucide-react"
+import { ArrowLeft, Save } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { checkboxVariants } from "@/components/ui/field-variants"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type EmployeeFormValues = {
@@ -163,50 +168,45 @@ export function EmployeeForm({
       <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-6">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("code")} required>
-            <input
+            <Input
               value={values.code}
               onChange={(event) => setField("code", event.target.value)}
               maxLength={20}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
           <Field label={t("fullNameTh")} required>
-            <input
+            <Input
               value={values.fullNameTh}
               onChange={(event) => setField("fullNameTh", event.target.value)}
               maxLength={200}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
           <Field label={t("fullNameEn")}>
-            <input
+            <Input
               value={values.fullNameEn ?? ""}
               onChange={(event) => setField("fullNameEn", event.target.value)}
               maxLength={200}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
           <Field label={t("email")}>
-            <input
+            <Input
               type="email"
               value={values.email ?? ""}
               onChange={(event) => setField("email", event.target.value)}
               maxLength={200}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
           <Field label={t("company")} required>
-            <select
+            <NativeSelect
               value={values.companyId}
               onChange={(event) => handleCompanyChange(event.target.value)}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="">{t("selectCompany")}</option>
               {companies.map((company) => (
@@ -214,15 +214,14 @@ export function EmployeeForm({
                   {company.code} - {company.nameTh}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </Field>
 
           <Field label={t("branch")} required>
-            <select
+            <NativeSelect
               value={values.branchId}
               onChange={(event) => setField("branchId", event.target.value)}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="">{t("selectBranch")}</option>
               {filteredBranches.map((branch) => (
@@ -230,15 +229,14 @@ export function EmployeeForm({
                   {branch.code} - {branch.name}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </Field>
 
           <Field label={t("department")} required>
-            <select
+            <NativeSelect
               value={values.departmentId}
               onChange={(event) => setField("departmentId", event.target.value)}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="">{t("selectDepartment")}</option>
               {filteredDepartments.map((department) => (
@@ -246,38 +244,35 @@ export function EmployeeForm({
                   {department.code} - {department.name}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </Field>
 
           <Field label={t("position")}>
-            <input
+            <Input
               value={values.position ?? ""}
               onChange={(event) => setField("position", event.target.value)}
               maxLength={200}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
           <Field label={t("employmentStatus")} required>
-            <select
+            <NativeSelect
               value={values.employmentStatus}
               onChange={(event) =>
                 setField("employmentStatus", event.target.value as EmployeeFormValues["employmentStatus"])
               }
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="active">{t("statusActive")}</option>
               <option value="resigned">{t("statusResigned")}</option>
               <option value="suspended">{t("statusSuspended")}</option>
-            </select>
+            </NativeSelect>
           </Field>
 
           <Field label={t("manager")}>
-            <select
+            <NativeSelect
               value={values.managerId ?? ""}
               onChange={(event) => setField("managerId", event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             >
               <option value="">{t("noManager")}</option>
               {managers.map((manager) => (
@@ -285,7 +280,7 @@ export function EmployeeForm({
                   {manager.code} - {manager.fullNameTh}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </Field>
 
           <label className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm md:self-end">
@@ -293,49 +288,22 @@ export function EmployeeForm({
               type="checkbox"
               checked={values.isActive}
               onChange={(event) => setField("isActive", event.target.checked)}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
+              className={checkboxVariants()}
             />
             {tCommon("active")}
           </label>
         </div>
 
         <div className="mt-6 flex justify-end gap-3 border-t border-border pt-5">
-          <Link
-            href={backHref}
-            className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-          >
+          <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
             {tCommon("cancel")}
           </Link>
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          <Button type="submit" busy={saving}>
+            <Save aria-hidden="true" />
             {tCommon("save")}
-          </button>
+          </Button>
         </div>
       </form>
     </div>
-  )
-}
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string
-  required?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
-      {children}
-    </label>
   )
 }
