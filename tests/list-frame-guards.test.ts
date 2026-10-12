@@ -38,6 +38,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}master-data/locations/page.tsx`,
   `${D}master-data/suppliers/page.tsx`,
   `${C}master-data/supplier-list-view.tsx`,
+  `${D}admin/users/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -120,7 +121,6 @@ const TITLES: Record<string, string> = {
 const BUDGETS: Record<string, Record<string, number>> = {
   LH1: {
     // 2B-1
-    [`${D}admin/users/page.tsx`]: 1,
     [`${D}disposal/batch/new/page.tsx`]: 1,
     [`${D}disposal/new/page.tsx`]: 1,
     [`${D}maintenance/new/page.tsx`]: 1,
@@ -278,8 +278,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}assets/asset-register-table.tsx`]: 1,
   },
   LT3: {
-    // 2B-1
-    [`${D}admin/users/page.tsx`]: 1,
     // 2B-2
     [`${D}audit/findings/page.tsx`]: 1,
     [`${D}audit/rounds/[id]/page.tsx`]: 1,
@@ -327,7 +325,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LV2: {
     // 2B-1
-    [`${D}admin/users/page.tsx`]: 2,
     [`${C}admin/system-settings-form.tsx`]: 8, // → 8 (KEEP): 2C form (2D)
     [`${C}asset-operations/checkin-form.tsx`]: 9, // → 9 (KEEP): 2C form (2D)
     [`${C}assets/asset-batch-form.tsx`]: 8, // → 8 (KEEP): 2C form (2D)

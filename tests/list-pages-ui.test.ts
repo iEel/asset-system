@@ -28,6 +28,7 @@ const MASTER_DATA_LISTS: readonly MasterDataList[] = [
   { path: `${D}master-data/departments/page.tsx`, deleteEndpoints: ["/api/departments/${department.id}"], removedWrappers: [`${C}master-data/department-delete-button.tsx`], stats: false },
   { path: `${D}master-data/employees/page.tsx`, deleteEndpoints: ["/api/employees/${employee.id}"], removedWrappers: [`${C}master-data/employee-delete-button.tsx`], stats: true },
   { path: `${D}master-data/locations/page.tsx`, deleteEndpoints: ["/api/locations/${location.id}"], removedWrappers: [`${C}master-data/location-delete-button.tsx`], stats: true },
+  { path: `${D}admin/users/page.tsx`, deleteEndpoints: [], removedWrappers: [], stats: false },
 ]
 
 test("master-data lists build on PageHeader, DataTable, TableEmptyRow, RowActions and the shared Pagination (spec 2B §5.3, B5, B6)", () => {
@@ -116,4 +117,13 @@ test("suppliers: the page and its list view build on PageHeader, StatStrip, Data
   assert.match(list, /scrollHint=\{labels\.tableScrollHint\}/)
   assert.match(list, /actionVariant=\{hasActiveFilters \? "secondary" : "primary"\}/)
   assert.equal(existsSync(`${C}master-data/supplier-delete-button.tsx`), false, "the wrapper has no caller left (I5)")
+})
+
+test("users: edit is the row's only command, so RowActions draws no ⋯, and the floating create button stays (spec 2B §5.3, R-q)", () => {
+  const source = read(`${D}admin/users/page.tsx`)
+  assert.match(source, /next=\{\{ label: tCommon\("edit"\), href: editHref, icon: <Pencil aria-hidden="true" \/> \}\}\n\s+groups=\{\[\]\}\n\s+\/>/)
+  assert.doesNotMatch(source, /deleteAction=/)
+  assert.match(source, /<PageHeader title=\{t\("title"\)\} meta=\{t\("subtitle"\)\} \/>/)
+  assert.match(source, /className="fixed bottom-6 right-6 [^"]*shadow-lg/, "R-q: phase 2D moves the floating button")
+  assert.match(source, /hiddenInputs=\{\{ pageSize: listState\.pageSize, sort: listState\.sort, direction: listState\.direction \}\}/)
 })

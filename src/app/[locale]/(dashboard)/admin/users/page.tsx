@@ -1,18 +1,23 @@
 import Link from "next/link"
-import { Edit, Plus } from "lucide-react"
+import { redirect } from "next/navigation"
+import { Pencil, Plus } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import {
   ActiveBadge,
-  ColumnHeader,
-  MasterDataPagination,
   MasterDataSearch,
-  SortableColumnHeader,
 } from "@/components/master-data/master-data-layout"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
+import { Nil, orNil } from "@/components/ui/nil"
+import { PageHeader } from "@/components/ui/page-header"
+import { Pagination } from "@/components/ui/pagination"
+import { RowActions } from "@/components/ui/row-actions"
+import { formatCount } from "@/lib/display-format"
+import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { formatDateTime } from "@/lib/utils"
-import { parseMasterDataListParams } from "@/lib/master-data-query"
+import { buildMasterDataQueryString, paginationRange, parseMasterDataListParams, type MasterDataListState } from "@/lib/master-data-query"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 
 type UsersPageProps = {
@@ -69,13 +74,22 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
     prisma.user.count({ where }),
   ])
   const basePath = `/${locale}/admin/users`
+  const listHref = (next: Partial<MasterDataListState<UserSort>>) => `${basePath}?${buildMasterDataQueryString(listState, next)}`
+  // A page past the last one (an old link, or a search that now finds fewer users) shows the last page (spec 2B I21).
+  const lastPage = lastListPage(total, listState.pageSize)
+  if (users.length === 0 && total > 0 && listState.page > lastPage) {
+    redirect(listHref({ page: lastPage }))
+  }
+  const { start, end, totalPages } = paginationRange(listState.page, listState.pageSize, total)
+
+  const sortBy = (field: UserSort): DataTableSort => ({
+    href: listHref({ sort: field, direction: listState.sort === field && listState.direction === "asc" ? "desc" : "asc", page: 1 }),
+    direction: listState.sort === field ? listState.direction : null,
+  })
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-      </div>
+      <PageHeader title={t("title")} meta={t("subtitle")} />
 
       <MasterDataSearch
         action={basePath}
@@ -85,92 +99,109 @@ export default async function UsersPage({ params, searchParams }: UsersPageProps
         hiddenInputs={{ pageSize: listState.pageSize, sort: listState.sort, direction: listState.direction }}
       />
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <SortableColumnHeader field="username" current={listState} basePath={basePath}>{t("username")}</SortableColumnHeader>
-                <SortableColumnHeader field="displayName" current={listState} basePath={basePath}>{t("displayName")}</SortableColumnHeader>
-                <SortableColumnHeader field="email" current={listState} basePath={basePath}>{t("email")}</SortableColumnHeader>
-                <ColumnHeader>{t("employee")}</ColumnHeader>
-                <ColumnHeader>{t("roles")}</ColumnHeader>
-                <ColumnHeader>{tCommon("status")}</ColumnHeader>
-                <SortableColumnHeader field="lastLoginAt" current={listState} basePath={basePath}>{t("lastLoginAt")}</SortableColumnHeader>
-                <ColumnHeader>{tCommon("actions")}</ColumnHeader>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {users.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="h-32 px-4 text-center text-muted-foreground">
-                    {tCommon("noData")}
-                  </td>
-                </tr>
-              ) : (
-                users.map((user) => (
-                  <ClickableTableRow
-                    key={user.id}
-                    href={`${basePath}/${user.id}/edit`}
-                    label={`${tCommon("edit")}: ${user.username}`}
-                  >
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{user.username}</td>
-                    <td className="min-w-56 px-4 py-3 text-foreground">{user.displayName}</td>
-                    <td className="min-w-56 px-4 py-3 text-muted-foreground">{user.email ?? "-"}</td>
-                    <td className="min-w-52 px-4 py-3 text-muted-foreground">
-                      {user.employee ? `${user.employee.code} - ${user.employee.fullNameTh}` : "-"}
-                    </td>
-                    <td className="min-w-72 px-4 py-3">
-                      <div className="flex flex-wrap gap-1.5">
-                        {user.userRoles.length === 0 ? (
-                          <span className="text-muted-foreground">-</span>
-                        ) : (
-                          user.userRoles.map((userRole) => (
-                            <span key={userRole.role.name} className="inline-flex rounded-full bg-info-soft px-2 py-1 text-xs font-medium text-info">
-                              {userRole.role.displayNameTh || userRole.role.displayName}
-                            </span>
-                          ))
-                        )}
-                      </div>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      {user.isActive ? (
-                        <ActiveBadge label={tCommon("active")} />
+      <DataTable
+        caption={t("title")}
+        scrollHint={tCommon("tableScrollHint")}
+        footer={
+          total > 0 ? (
+            <Pagination
+              page={listState.page}
+              totalPages={totalPages}
+              previousHref={listHref({ page: listState.page - 1 })}
+              nextHref={listHref({ page: listState.page + 1 })}
+              pageSize={listState.pageSize}
+              pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ pageSize: value, page: 1 }) }))}
+              labels={{
+                navigation: tCommon("pagination"),
+                previous: tCommon("previous"),
+                next: tCommon("next"),
+                pageOf: tCommon("pageOf", { page: listState.page, total: totalPages }),
+                range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
+                pageSizeGroup: tCommon("pageSizeLabel"),
+                rowsPerPage: tCommon("rowsPerPage"),
+              }}
+            />
+          ) : undefined
+        }
+      >
+        <DataTableHeader>
+          <tr>
+            <DataTableHead sort={sortBy("username")}>{t("username")}</DataTableHead>
+            <DataTableHead sort={sortBy("displayName")}>{t("displayName")}</DataTableHead>
+            <DataTableHead sort={sortBy("email")}>{t("email")}</DataTableHead>
+            <DataTableHead>{t("employee")}</DataTableHead>
+            <DataTableHead>{t("roles")}</DataTableHead>
+            <DataTableHead>{tCommon("status")}</DataTableHead>
+            <DataTableHead sort={sortBy("lastLoginAt")}>{t("lastLoginAt")}</DataTableHead>
+            <DataTableHead align="right" hideLabel>{tCommon("actions")}</DataTableHead>
+          </tr>
+        </DataTableHeader>
+        <DataTableBody>
+          {users.length === 0 ? (
+            <TableEmptyRow colSpan={8}>{tCommon("noData")}</TableEmptyRow>
+          ) : (
+            users.map((user) => {
+              const editHref = `${basePath}/${user.id}/edit`
+              return (
+                <ClickableTableRow
+                  key={user.id}
+                  href={editHref}
+                  label={`${tCommon("edit")}: ${user.username}`}
+                >
+                  <DataTableCell className="whitespace-nowrap">
+                    <span className="tag font-medium text-foreground">{user.username}</span>
+                  </DataTableCell>
+                  <DataTableCell className="min-w-56 text-foreground">{user.displayName}</DataTableCell>
+                  <DataTableCell className="min-w-56 text-muted-foreground">{orNil(user.email)}</DataTableCell>
+                  <DataTableCell className="min-w-52 text-muted-foreground">
+                    {user.employee ? (
+                      <>
+                        <span className="tag">{user.employee.code}</span> - {user.employee.fullNameTh}
+                      </>
+                    ) : (
+                      <Nil />
+                    )}
+                  </DataTableCell>
+                  <DataTableCell className="min-w-72">
+                    <div className="flex flex-wrap gap-1.5">
+                      {user.userRoles.length === 0 ? (
+                        <Nil />
                       ) : (
-                        <span className="inline-flex rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-                          {tCommon("inactive")}
-                        </span>
+                        user.userRoles.map((userRole) => (
+                          <span key={userRole.role.name} className="inline-flex rounded-full bg-info-soft px-2 py-1 text-xs font-medium text-info">
+                            {userRole.role.displayNameTh || userRole.role.displayName}
+                          </span>
+                        ))
                       )}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(user.lastLoginAt)}</td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <Link
-                        href={`${basePath}/${user.id}/edit`}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent"
-                      >
-                        <Edit className="h-3.5 w-3.5" />
-                        {tCommon("edit")}
-                      </Link>
-                    </td>
-                  </ClickableTableRow>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        <MasterDataPagination
-          current={listState}
-          total={total}
-          basePath={basePath}
-          labels={{
-            rowsPerPage: tCommon("rowsPerPage"),
-            page: tCommon("page"),
-            of: tCommon("of"),
-            previous: tCommon("previous"),
-            next: tCommon("next"),
-          }}
-        />
-      </section>
+                    </div>
+                  </DataTableCell>
+                  <DataTableCell className="whitespace-nowrap">
+                    {user.isActive ? (
+                      <ActiveBadge label={tCommon("active")} />
+                    ) : (
+                      <span className="inline-flex rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+                        {tCommon("inactive")}
+                      </span>
+                    )}
+                  </DataTableCell>
+                  <DataTableCell className="whitespace-nowrap text-muted-foreground">
+                    {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : <Nil />}
+                  </DataTableCell>
+                  <DataTableCell align="right">
+                    <RowActions
+                      code={user.username}
+                      name={user.displayName}
+                      menuLabel={tCommon("moreActionsFor", { code: user.username })}
+                      next={{ label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> }}
+                      groups={[]}
+                    />
+                  </DataTableCell>
+                </ClickableTableRow>
+              )
+            })
+          )}
+        </DataTableBody>
+      </DataTable>
 
       <Link
         href={`${basePath}/new`}
