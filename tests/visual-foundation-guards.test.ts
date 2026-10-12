@@ -253,7 +253,6 @@ const D = "src/app/[locale]/(dashboard)/"
 const TABLE_HEADER_FILLS: Record<string, number> = {
   // 2B-1
   [`${D}admin/users/page.tsx`]: 1,
-  [`${D}master-data/companies/page.tsx`]: 1,
   [`${D}master-data/departments/page.tsx`]: 1,
   [`${D}master-data/employees/page.tsx`]: 1,
   [`${D}master-data/locations/page.tsx`]: 1,
