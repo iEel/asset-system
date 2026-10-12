@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { ClipboardList, Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 import { filterAuditStatusOptions } from "@/lib/audit-round-scope"
+import { PageHeader } from "@/components/ui/page-header"
 import { useApiError } from "@/components/ui/use-api-error"
 import { displayYearRange, fromDisplayYear, toDisplayYear } from "@/lib/display-year"
 
@@ -130,9 +131,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">{t("createTitle")}</h1>
-      </div>
+      <PageHeader title={t("createTitle")} className="mb-6" />
       <section className="rounded-lg border border-border bg-surface p-6">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("name")} required>
