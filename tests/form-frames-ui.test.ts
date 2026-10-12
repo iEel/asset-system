@@ -100,3 +100,10 @@ test("the check-out form's OperationShell draws its title with PageHeader and st
   )
   assert.doesNotMatch(source, /<h1\b|PageBackLink/)
 })
+
+test("the transfer form draws its title with PageHeader (2B-1 task 23, I13)", () => {
+  const source = read(`${C}asset-operations/transfer-form.tsx`)
+  assert.ok(source.includes('import { PageHeader } from "@/components/ui/page-header"'), "transfer-form.tsx imports PageHeader")
+  assert.match(source, /<div className="mx-auto max-w-5xl">\n\s+<PageHeader title=\{t\("title"\)\} className="mb-6" \/>\n/)
+  assert.doesNotMatch(source, /<h1\b|PageBackLink/)
+})

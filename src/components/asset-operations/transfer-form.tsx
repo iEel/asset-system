@@ -10,6 +10,7 @@ import { Field } from "@/components/ui/field"
 import { FormContextBanner } from "@/components/ui/form-context-banner"
 import { Input } from "@/components/ui/input"
 import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
+import { PageHeader } from "@/components/ui/page-header"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
@@ -121,9 +122,7 @@ export function TransferForm({
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="mb-6">
-        <h1 className="break-words text-2xl font-bold text-foreground">{t("title")}</h1>
-      </div>
+      <PageHeader title={t("title")} className="mb-6" />
       <section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-6">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
           {initialAsset ? (
