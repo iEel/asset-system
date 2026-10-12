@@ -221,3 +221,25 @@ test("FilterChipList makes each chip one remove link named by what it removes, 3
   assert.match(source, /<Link href=\{clearAll\.href\} className=\{cn\(linkVariants\(\), "inline-flex min-h-11 items-center md:min-h-0"\)\}>/)
   assert.doesNotMatch(source, /rounded-full/)
 })
+
+test("TabNav is a named nav of links with aria-current and one underline at every width (2B §3.12, I9)", () => {
+  const path = "src/components/ui/tab-nav.tsx"
+  const source = readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+  assertListPrimitiveRules(path, source)
+  assert.match(source, /type TabNavProps = Omit<React\.ComponentProps<"nav">, "children" \| "aria-label" \| "onSelect"> & \{/)
+  assert.match(source, /export function TabNav\(\{ "aria-label": ariaLabel, items, current, scroll, onSelect, linkClassName, className, \.\.\.navProps \}: TabNavProps\)/)
+  assert.match(source, /<nav aria-label=\{ariaLabel\} data-slot="tab-nav" \{\.\.\.navProps\} className=\{cn\("overflow-x-auto overscroll-x-contain", className\)\}>/)
+  assert.match(source, /<ul className="flex w-max min-w-full gap-5\.5 shadow-\[inset_0_-1px_0_var\(--border\)\]">/)
+  assert.match(source, /aria-current=\{selected \? "page" : undefined\}/)
+  assert.match(source, /scroll=\{scroll\}/)
+  assert.match(source, /onNavigate=\{onSelect \? \(event\) => onSelect\(item\.key, event\) : undefined\}/)
+  assert.match(source, /className=\{cn\(tabNavLinkClasses, selected \? tabNavSelectedClasses : tabNavIdleClasses, linkClassName\)\}/)
+  assert.equal(
+    source.match(/const tabNavLinkClasses = "([^"]+)"/)?.[1],
+    "flex min-h-11 items-center gap-1.5 pt-2 pb-2.5 text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-0",
+  )
+  assert.equal(source.match(/const tabNavSelectedClasses = "([^"]+)"/)?.[1], "font-semibold text-foreground shadow-[inset_0_-2px_0_var(--primary)]")
+  assert.equal(source.match(/const tabNavIdleClasses = "([^"]+)"/)?.[1], "text-muted-foreground hover:text-foreground hover:shadow-[inset_0_-2px_0_var(--border)]")
+  assert.match(source, /cn\("ms-1\.5 text-meta num", selected \? "font-semibold text-primary" : "text-faint-foreground"\)/)
+  assert.doesNotMatch(source, /fullBleed|role="tablist"|aria-pressed|scrollbar-none|border-b-2/)
+})
