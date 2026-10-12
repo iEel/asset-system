@@ -107,3 +107,10 @@ test("the transfer form draws its title with PageHeader (2B-1 task 23, I13)", ()
   assert.match(source, /<div className="mx-auto max-w-5xl">\n\s+<PageHeader title=\{t\("title"\)\} className="mb-6" \/>\n/)
   assert.doesNotMatch(source, /<h1\b|PageBackLink/)
 })
+
+test("the bulk move form shows the selected count as the header's meta (2B-1 task 23, I13)", () => {
+  const source = read(`${C}asset-operations/bulk-move-form.tsx`)
+  assert.ok(source.includes('import { PageHeader } from "@/components/ui/page-header"'), "bulk-move-form.tsx imports PageHeader")
+  assert.match(source, /<PageHeader title=\{t\("title"\)\} meta=\{t\("selectedCount", \{ count: assetIds\.length \}\)\} className="mb-6" \/>/)
+  assert.doesNotMatch(source, /<h1\b|PageBackLink/)
+})

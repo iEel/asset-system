@@ -10,6 +10,7 @@ import { preventEnterSubmit } from "@/components/ui/choice-card"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
+import { PageHeader } from "@/components/ui/page-header"
 import { SearchField } from "@/components/ui/search-field"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
@@ -81,12 +82,7 @@ export function BulkMoveForm({ assets, locations }: { assets: Option[]; location
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-        <div className="text-sm text-muted-foreground">
-          {t("selectedCount", { count: assetIds.length })}
-        </div>
-      </div>
+      <PageHeader title={t("title")} meta={t("selectedCount", { count: assetIds.length })} className="mb-6" />
       <section className="rounded-lg border border-border bg-surface p-6">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div className="md:col-span-2">
