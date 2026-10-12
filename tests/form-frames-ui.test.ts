@@ -54,3 +54,15 @@ test("the asset form and the component manager: PageHeader, and the component he
   assert.doesNotMatch(manager, /sticky top-0/, "the header of the component page scrolls with the page, like every other header")
   for (const source of [form, manager]) assert.doesNotMatch(source, /<h1\b|\bArrowLeft\b/)
 })
+
+test("the two disposal create pages: PageHeader with the back link they had, on a space-y-6 root (2B-1 task 22, I19)", () => {
+  const D = "src/app/[locale]/(dashboard)/"
+  const request = read(`${D}disposal/new/page.tsx`)
+  assert.ok(request.includes(HEADER_IMPORT), "disposal/new imports PageHeader and PageBackLink")
+  assert.match(request, /<div className="space-y-6">\n\s+<PageHeader\n\s+title=\{t\("createTitle"\)\}\n\s+meta=\{t\("createSubtitle"\)\}\n\s+back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/)
+  const batch = read(`${D}disposal/batch/new/page.tsx`)
+  assert.ok(batch.includes(HEADER_IMPORT), "disposal/batch/new imports PageHeader and PageBackLink")
+  // The icon-only link with an aria-label becomes the words "กลับคิวตัดจำหน่าย" from md and a 44px icon below md.
+  assert.match(batch, /<div className="space-y-6">\n\s+<PageHeader\n\s+title=\{t\("batchCreateTitle"\)\}\n\s+meta=\{t\("batchCreateHelp"\)\}\n\s+back=\{<PageBackLink href=\{`\/\$\{locale\}\/disposal`\} label=\{t\("backToQueue"\)\} \/>\}\n\s+\/>/)
+  for (const source of [request, batch]) assert.doesNotMatch(source, /<h1\b|\bArrowLeft\b|from "next\/link"|aria-label=/)
+})

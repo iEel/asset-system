@@ -1,7 +1,6 @@
-import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { DisposalBatchForm } from "@/components/disposal/disposal-batch-form"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { requirePagePermission } from "@/lib/page-auth"
 import { prisma } from "@/lib/db"
 import { isDisposalBatchSchemaReady } from "@/lib/disposal-schema-readiness"
@@ -21,11 +20,12 @@ export default async function NewDisposalBatchPage({ params }: { params: Promise
     }) : []
   const employeeOptions = employees.map((employee) => ({ id: employee.id, label: `${employee.code} - ${employee.fullNameTh}` }))
 
-  return <div className="space-y-5">
-    <div className="flex items-start gap-3">
-      <Link href={`/${locale}/disposal`} aria-label={t("backToQueue")} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border bg-surface hover:bg-accent"><ArrowLeft className="h-4 w-4" /></Link>
-      <div><h1 className="text-2xl font-bold text-foreground">{t("batchCreateTitle")}</h1><p className="mt-1 text-sm text-muted-foreground">{t("batchCreateHelp")}</p></div>
-    </div>
+  return <div className="space-y-6">
+    <PageHeader
+      title={t("batchCreateTitle")}
+      meta={t("batchCreateHelp")}
+      back={<PageBackLink href={`/${locale}/disposal`} label={t("backToQueue")} />}
+    />
     {schemaReady ? <DisposalBatchForm employees={employeeOptions} /> : (
       <ActionEmptyState
         tone="error"

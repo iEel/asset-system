@@ -30,7 +30,7 @@ test("keeps the disposal list queue-first and puts request creation on its own r
   assert.match(newSource, /prisma\.asset\.findFirst/)
   assert.match(newSource, /<DisposalRequestForm/)
   assert.match(newSource, /normalizeOperationalReturnTo\(locale, "disposal", rawSearchParams\.returnTo\)/)
-  assert.match(newSource, /ArrowLeft/)
+  assert.match(newSource, /<PageBackLink href=\{returnToHref\}/)
   assert.match(newSource, /initialAsset=\{eligibleInitialAsset\}/)
   assert.match(newSource, /initialReason=\{getSingleSearchParam\(rawSearchParams\.reason\)\}/)
   assert.match(newSource, /initialSourceType=\{getSingleSearchParam\(rawSearchParams\.sourceType\)\}/)
