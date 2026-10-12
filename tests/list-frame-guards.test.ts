@@ -49,6 +49,8 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}master-data/location-form.tsx`,
   `${C}master-data/supplier-form.tsx`,
   `${C}admin/admin-user-form.tsx`,
+  `${C}assets/asset-form.tsx`,
+  `${C}assets/asset-component-manager.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -141,8 +143,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}asset-operations/checkout-form.tsx`]: 1,
     [`${C}asset-operations/transfer-form.tsx`]: 1,
     [`${C}assets/asset-batch-form.tsx`]: 1,
-    [`${C}assets/asset-component-manager.tsx`]: 1,
-    [`${C}assets/asset-form.tsx`]: 1,
     [`${C}audit/audit-round-form.tsx`]: 1,
     // 2B-2
     [`${D}admin/data-quality/page.tsx`]: 1,
@@ -202,8 +202,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}disposal/batch/new/page.tsx`]: 1,
     [`${D}disposal/new/page.tsx`]: 1,
     [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): the move-out button :1412, not a page back
-    [`${C}assets/asset-component-manager.tsx`]: 1,
-    [`${C}assets/asset-form.tsx`]: 1,
     // 2B-2
     [`${D}audit/rounds/[id]/page.tsx`]: 1, // 0 → 1: 2B-2 swaps the Download icon of the bar's back item :479 for ArrowLeft
     [`${D}disposal/batches/[id]/page.tsx`]: 1,

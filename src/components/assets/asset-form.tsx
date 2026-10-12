@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, ArrowLeft, Code2, Copy, Plus, Save, Trash2 } from "lucide-react"
+import { AlertTriangle, Code2, Copy, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import { checkboxVariants, fieldLabelClasses } from "@/components/ui/field-varia
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { StickyFormFooter } from "@/components/ui/sticky-form-footer"
@@ -813,19 +814,12 @@ export function AssetForm({
 
   return (
     <div className="mx-auto max-w-6xl">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="min-w-0">
-          <h1 className="break-words text-2xl font-bold text-foreground">{title}</h1>
-          <p className="mt-1 break-words text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <Link
-          href={backHref}
-          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:w-auto"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {tCommon("back")}
-        </Link>
-      </div>
+      <PageHeader
+        title={title}
+        meta={t("subtitle")}
+        className="mb-6"
+        back={<PageBackLink href={backHref} label={tCommon("back")} />}
+      />
 
       {cloneSource ? (
         <div className="mb-5 rounded-md border border-warning-border bg-warning-soft px-4 py-3">

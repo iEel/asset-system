@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, CheckCircle2, Loader2, PackageCheck, PackagePlus, Trash2 } from "lucide-react"
+import { CheckCircle2, Loader2, PackageCheck, PackagePlus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { AccessibleDialog, AccessibleDialogBody, AccessibleDialogCancel, AccessibleDialogFooter } from "@/components/ui/accessible-dialog"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { Steps } from "@/components/ui/steps"
 import { Textarea } from "@/components/ui/textarea"
@@ -257,22 +258,17 @@ export function AssetComponentManager({
 
   return (
     <div className="space-y-5 pb-6">
-      <section className="sticky top-0 z-20 rounded-lg border border-border bg-surface p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{labels.title}</p>
-            <h1 className="mt-1 break-words text-xl font-bold text-foreground">{parentAsset.assetTag}</h1>
-            <p className="mt-1 break-words text-sm text-muted-foreground">{parentAsset.name}</p>
-          </div>
-          <Link
-            href={returnToHref}
-            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent sm:h-10 sm:min-h-0"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {labels.back}
-          </Link>
-        </div>
-      </section>
+      <PageHeader
+        title={labels.title}
+        meta={
+          <>
+            <span className="tag">{parentAsset.assetTag}</span>
+            <span className="min-w-0 break-words">{parentAsset.name}</span>
+          </>
+        }
+        className="mb-6"
+        back={<PageBackLink href={returnToHref} label={labels.back} />}
+      />
 
       {canEdit ? (
         <section className="rounded-lg border border-border bg-surface p-4">
