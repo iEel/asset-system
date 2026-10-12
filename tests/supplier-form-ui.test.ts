@@ -15,9 +15,15 @@ test("supplier form exposes mobile-friendly field metadata", () => {
 
 test("supplier form presents associated inline errors", () => {
   assert.match(source, /parseSupplierFormError/)
-  assert.match(source, /aria-invalid=/)
-  assert.match(source, /aria-describedby=/)
-  assert.match(source, /role="alert"/)
+  // The shared Field ties each error to its control: aria-invalid, aria-describedby and role="alert" (FieldError,
+  // pinned in field-primitives.test.ts). Field id="supplier-<field>" keeps the old error ids: Field names the error `${id}-error`.
+  assert.match(source, /import \{ Field \} from "@\/components\/ui\/field"/)
+  for (const id of ["code", "name", "contact", "phone", "email", "address"]) {
+    assert.match(source, new RegExp(`<Field label=\\{t\\("\\w+"\\)\\} id="supplier-${id}"`), `supplier-${id}`)
+  }
+  assert.equal(source.match(/error=\{fieldErrors\.\w+ \? getErrorMessage\(fieldErrors\.\w+\) : undefined\}/g)?.length, 6)
+  assert.doesNotMatch(source, /errorId=|function Field\(/)
+  assert.doesNotMatch(source, /aria-invalid=|aria-describedby=/, "Field sets both; a hand-set pair would name the error twice")
   assert.match(source, /fieldErrors/)
 })
 
@@ -37,4 +43,13 @@ test("supplier form localization keys stay aligned", () => {
     assert.equal(typeof th.supplier[key], "string", `missing Thai supplier.${key}`)
     assert.equal(typeof en.supplier[key], "string", `missing English supplier.${key}`)
   }
+})
+
+test("supplier form uses the shared fields and a busy save button (2C batch 2)", () => {
+  assert.doesNotMatch(source, /<textarea|<button|Loader2|controlClassName|ml-1 text-danger/)
+  assert.equal(source.match(/<input\b/g)?.length, 1, "only the active checkbox stays a plain input")
+  assert.match(source, /className=\{checkboxVariants\(\)\}/)
+  assert.equal(source.match(/<Field label=/g)?.length, 6)
+  assert.match(source, /<Link href=\{backHref\} onClick=\{confirmNavigation\} className=\{buttonVariants\(\{ variant: "outline" \}\)\}>/)
+  assert.match(source, /<Button type="submit" busy=\{saving\}>/)
 })

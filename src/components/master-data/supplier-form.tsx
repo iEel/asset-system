@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, Save } from "lucide-react"
+import { ArrowLeft, Save } from "lucide-react"
 import { toast } from "sonner"
 import {
   parseSupplierFormError,
@@ -12,7 +12,12 @@ import {
   type SupplierFormErrors,
   type SupplierFormField,
 } from "@/lib/supplier-form-errors"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { Field } from "@/components/ui/field"
+import { checkboxVariants } from "@/components/ui/field-variants"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 import { useApiError } from "@/components/ui/use-api-error"
 
@@ -36,8 +41,6 @@ const emptySupplier: SupplierFormValues = {
   address: "",
   isActive: true,
 }
-
-const controlClassName = "min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
 
 export function SupplierForm({
   supplier,
@@ -161,68 +164,53 @@ export function SupplierForm({
 
       <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-4 sm:p-6">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label={t("code")} required error={fieldErrors.code ? getErrorMessage(fieldErrors.code) : undefined} errorId="supplier-code-error">
-            <input
+          <Field label={t("code")} id="supplier-code" required error={fieldErrors.code ? getErrorMessage(fieldErrors.code) : undefined}>
+            <Input
               value={values.code}
               onChange={(event) => setField("code", event.target.value)}
               maxLength={20}
               required
               autoComplete="off"
-              aria-invalid={Boolean(fieldErrors.code)}
-              aria-describedby={fieldErrors.code ? "supplier-code-error" : undefined}
-              className={controlClassName}
             />
           </Field>
 
-          <Field label={t("name")} required error={fieldErrors.name ? getErrorMessage(fieldErrors.name) : undefined} errorId="supplier-name-error">
-            <input
+          <Field label={t("name")} id="supplier-name" required error={fieldErrors.name ? getErrorMessage(fieldErrors.name) : undefined}>
+            <Input
               value={values.name}
               onChange={(event) => setField("name", event.target.value)}
               maxLength={200}
               required
               autoComplete="organization"
-              aria-invalid={Boolean(fieldErrors.name)}
-              aria-describedby={fieldErrors.name ? "supplier-name-error" : undefined}
-              className={controlClassName}
             />
           </Field>
 
-          <Field label={t("contactPerson")} error={fieldErrors.contactPerson ? getErrorMessage(fieldErrors.contactPerson) : undefined} errorId="supplier-contact-error">
-            <input
+          <Field label={t("contactPerson")} id="supplier-contact" error={fieldErrors.contactPerson ? getErrorMessage(fieldErrors.contactPerson) : undefined}>
+            <Input
               value={values.contactPerson ?? ""}
               onChange={(event) => setField("contactPerson", event.target.value)}
               maxLength={200}
               autoComplete="name"
-              aria-invalid={Boolean(fieldErrors.contactPerson)}
-              aria-describedby={fieldErrors.contactPerson ? "supplier-contact-error" : undefined}
-              className={controlClassName}
             />
           </Field>
 
-          <Field label={t("phone")} error={fieldErrors.phone ? getErrorMessage(fieldErrors.phone) : undefined} errorId="supplier-phone-error">
-            <input
+          <Field label={t("phone")} id="supplier-phone" error={fieldErrors.phone ? getErrorMessage(fieldErrors.phone) : undefined}>
+            <Input
               type="tel"
               inputMode="tel"
               value={values.phone ?? ""}
               onChange={(event) => setField("phone", event.target.value)}
               maxLength={50}
               autoComplete="tel"
-              aria-invalid={Boolean(fieldErrors.phone)}
-              aria-describedby={fieldErrors.phone ? "supplier-phone-error" : undefined}
-              className={controlClassName}
             />
           </Field>
 
-          <Field label={t("email")} error={fieldErrors.email ? getErrorMessage(fieldErrors.email) : undefined} errorId="supplier-email-error">
-            <input
+          <Field label={t("email")} id="supplier-email" error={fieldErrors.email ? getErrorMessage(fieldErrors.email) : undefined}>
+            <Input
               type="email"
               value={values.email ?? ""}
               onChange={(event) => setField("email", event.target.value)}
               maxLength={200}
               autoComplete="email"
-              aria-invalid={Boolean(fieldErrors.email)}
-              aria-describedby={fieldErrors.email ? "supplier-email-error" : undefined}
-              className={controlClassName}
             />
           </Field>
 
@@ -231,70 +219,35 @@ export function SupplierForm({
               type="checkbox"
               checked={values.isActive}
               onChange={(event) => setField("isActive", event.target.checked)}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
+              className={checkboxVariants()}
             />
             {tCommon("active")}
           </label>
 
           <div className="md:col-span-2">
-            <Field label={t("address")} error={fieldErrors.address ? getErrorMessage(fieldErrors.address) : undefined} errorId="supplier-address-error">
-              <textarea
+            <Field label={t("address")} id="supplier-address" error={fieldErrors.address ? getErrorMessage(fieldErrors.address) : undefined}>
+              <Textarea
                 value={values.address ?? ""}
                 onChange={(event) => setField("address", event.target.value)}
                 maxLength={500}
                 rows={4}
                 autoComplete="street-address"
-                aria-invalid={Boolean(fieldErrors.address)}
-                aria-describedby={fieldErrors.address ? "supplier-address-error" : undefined}
-                className={`${controlClassName} min-h-28 py-2`}
+                className="min-h-28"
               />
             </Field>
           </div>
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3 border-t border-border pt-5 sm:flex sm:justify-end">
-          <Link
-            href={backHref}
-            onClick={confirmNavigation}
-            className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
+          <Link href={backHref} onClick={confirmNavigation} className={buttonVariants({ variant: "outline" })}>
             {tCommon("cancel")}
           </Link>
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
+          <Button type="submit" busy={saving}>
+            <Save aria-hidden="true" />
             {tCommon("save")}
-          </button>
+          </Button>
         </div>
       </form>
     </div>
-  )
-}
-
-function Field({
-  label,
-  required,
-  error,
-  errorId,
-  children,
-}: {
-  label: string
-  required?: boolean
-  error?: string
-  errorId: string
-  children: React.ReactNode
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required ? <span className="ml-1 text-danger">*</span> : null}
-      </span>
-      {children}
-      {error ? <span id={errorId} role="alert" className="mt-1.5 block text-xs font-medium text-danger">{error}</span> : null}
-    </label>
   )
 }

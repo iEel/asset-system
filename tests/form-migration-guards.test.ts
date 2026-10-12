@@ -74,6 +74,7 @@ const MIGRATED_FILES: string[] = [
   `${C}master-data/department-form.tsx`,
   `${C}master-data/employee-form.tsx`,
   `${C}master-data/location-form.tsx`,
+  `${C}master-data/supplier-form.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -144,7 +145,6 @@ const LOCAL_FIELD: Record<string, number> = {
   // 1e
   // 1f
   // 2
-  [`${C}master-data/supplier-form.tsx`]: 1,
   // 3
   [`${C}audit/audit-round-form.tsx`]: 1,
   // 4
@@ -162,7 +162,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 1e
   // 1f
   // 2
-  [`${C}master-data/supplier-form.tsx`]: 6,
   // 3
   [`${C}disposal/disposal-bulk-approval.tsx`]: 1,
   [`${C}disposal/disposal-bulk-execution.tsx`]: 5,
@@ -196,7 +195,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1e
   // 1f
   // 2
-  [`${C}master-data/supplier-form.tsx`]: 1,
   // 3
   [`${C}disposal/disposal-bulk-approval.tsx`]: 1,
   [`${C}disposal/disposal-bulk-execution.tsx`]: 5,
@@ -280,7 +278,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 1e
   // 1f
   // 2
-  [`${C}master-data/supplier-form.tsx`]: 3,
   // 3
   [`${C}disposal/disposal-bulk-approval.tsx`]: 3, // → 2: list checkboxes :456, :499 (2B)
   [`${C}disposal/disposal-bulk-execution.tsx`]: 5, // → 2: list checkboxes :689, :738 (2B)
@@ -313,7 +310,6 @@ const LOADER2: Record<string, number> = {
   [`${C}assets/asset-component-manager.tsx`]: 1, // → 1: the status line :474
   // 1f
   // 2
-  [`${C}master-data/supplier-form.tsx`]: 1,
   // 3
   [`${C}disposal/disposal-bulk-approval.tsx`]: 4, // → 3: :424 (2B) and the status lines :546, :547
   [`${C}disposal/disposal-bulk-execution.tsx`]: 2, // → 1: BusyLabel :993 (:971 goes with the footer, GD3)
