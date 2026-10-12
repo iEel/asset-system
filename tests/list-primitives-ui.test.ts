@@ -266,3 +266,17 @@ test("StatStrip is one flat frame of dt/dd cells; a filter cell is primary-soft,
   assert.doesNotMatch(source, /<dl\b[^>]*aria-label/, "a dl takes no aria-label")
   for (const tag of ["<dl ", "<dt ", "<dd "]) assert.ok(source.includes(tag), `uses ${tag.trim()}`)
 })
+
+test("KeyValueList pairs dt and dd in a 120px label column and shows Nil for an empty value (2B §3.14)", () => {
+  const path = "src/components/ui/key-value-list.tsx"
+  const source = readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+  assertListPrimitiveRules(path, source)
+  assert.match(source, /export type KeyValueItem = \{ key\?: string; label: ReactNode; value: ReactNode; nilLabel\?: string \}/)
+  assert.match(source, /export function KeyValueList\(\{ items, className \}: \{ items: readonly KeyValueItem\[\]; className\?: string \}\)/)
+  assert.match(source, /<dl data-slot="key-value-list" className=\{cn\("grid grid-cols-\[120px_minmax\(0,1fr\)\] gap-x-4 gap-y-2 max-sm:grid-cols-1 max-sm:gap-y-0\.5 max-sm:\[&>dd\+dt\]:mt-2", className\)\}>/)
+  assert.match(source, /<Fragment key=\{item\.key \?\? index\}>/)
+  assert.match(source, /<dt className="text-meta text-faint-foreground">\{item\.label\}<\/dt>/)
+  assert.match(source, /<dd className="m-0 min-w-0 break-words text-sm text-foreground">\{orNil\(item\.value, item\.nilLabel\)\}<\/dd>/)
+  assert.match(source, /import \{ orNil \} from "@\/components\/ui\/nil"/)
+  assert.doesNotMatch(source, /"-"|<div\b/, "an empty value is Nil, never a written dash; pairs are dt and dd, not divs")
+})
