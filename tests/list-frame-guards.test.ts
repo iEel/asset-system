@@ -134,7 +134,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}master-data/department-form.tsx`]: 1,
     [`${C}master-data/employee-form.tsx`]: 1,
     [`${C}master-data/location-form.tsx`]: 1,
-    [`${C}master-data/master-data-layout.tsx`]: 1,
     [`${C}master-data/supplier-form.tsx`]: 1,
     // 2B-2
     [`${D}admin/data-quality/page.tsx`]: 1,

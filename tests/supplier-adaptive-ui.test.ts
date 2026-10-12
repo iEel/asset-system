@@ -55,5 +55,6 @@ test("mobile filters use a disclosure while desktop filters remain visible", () 
 })
 
 test("shared master-data create action meets the mobile touch target", () => {
-  assert.match(masterDataLayout, /href=\{createHref\}\s+className="[^"]*min-h-11/)
+  // buttonVariants size "md" is 44px tall below md and 36px from md (spec 2B I2).
+  assert.match(masterDataLayout, /href=\{createHref\} className=\{buttonVariants\(\{ size: "md" \}\)\}/)
 })

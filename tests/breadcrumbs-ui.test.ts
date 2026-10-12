@@ -35,9 +35,13 @@ test("breadcrumbs use the meta size, faint ink, the tag style for codes and a th
 })
 
 test("every record page ends its breadcrumb trail on a code; the create and list pages do not", () => {
-  const sites = readSourceFiles("src").flatMap((file) =>
-    [...file.source.matchAll(/<Breadcrumbs\b[\s\S]*?\/>/g)].map((match) => ({ path: file.path, element: match[0].replace(/\s+/g, " ") })),
-  )
+  // A trail is a <Breadcrumbs /> element or the breadcrumbs={[…]} prop of PageHeader, which renders the one
+  // <Breadcrumbs /> inside src/components/ui/page-header.tsx (spec 2B R-i). Both forms end in "]}".
+  const sites = readSourceFiles("src")
+    .filter((file) => file.path !== "src/components/ui/page-header.tsx")
+    .flatMap((file) =>
+      [...file.source.matchAll(/<Breadcrumbs\b[\s\S]*?\/>|\bbreadcrumbs=\{\[[\s\S]*?\]\}/g)].map((match) => ({ path: file.path, element: match[0].replace(/\s+/g, " ") })),
+    )
   assert.equal(sites.length, 11, "Breadcrumbs call sites")
   assert.equal(sites.filter((site) => /code: true/.test(site.element)).length, 8, "call sites that mark a code")
 

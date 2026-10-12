@@ -1,5 +1,7 @@
 import Link from "next/link"
 import { ArrowDown, ArrowUp, Plus, Search } from "lucide-react"
+import { buttonVariants } from "@/components/ui/button"
+import { PageHeader } from "@/components/ui/page-header"
 import { buildMasterDataQueryString, paginationRange, type MasterDataListState } from "@/lib/master-data-query"
 
 export function MasterDataHeader({
@@ -17,25 +19,24 @@ export function MasterDataHeader({
   actions?: React.ReactNode
   compactOnMobile?: boolean
 }) {
+  // A thin wrapper of PageHeader (spec 2B I2, R-h): the 11 callers get the new header now, and each page plan
+  // replaces its call with PageHeader. Plan 2B-5 deletes this function after the asset register (2B-3) moves.
   return (
-    <div className={compactOnMobile ? "mb-4 space-y-4 md:mb-6" : "mb-6 space-y-4"}>
-      <div className={compactOnMobile ? "flex flex-row items-center justify-between gap-3" : "flex flex-col gap-4 md:flex-row md:items-center md:justify-between"}>
-        <div className={compactOnMobile ? "min-w-0" : undefined}>
-          <h1 className={compactOnMobile ? "text-xl font-bold text-foreground md:text-2xl" : "text-2xl font-bold text-foreground"}>{title}</h1>
-          <p className={compactOnMobile ? "hidden text-sm text-muted-foreground md:mt-1 md:block" : "mt-1 text-sm text-muted-foreground"}>{subtitle}</p>
-        </div>
-        <div className={compactOnMobile ? "flex shrink-0 flex-wrap gap-2" : "flex flex-wrap gap-2"}>
+    <PageHeader
+      title={title}
+      meta={subtitle}
+      compactOnMobile={compactOnMobile}
+      className={compactOnMobile ? "mb-4 md:mb-6" : "mb-6"}
+      actions={
+        <>
           {actions}
-          <Link
-            href={createHref}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            <Plus aria-hidden="true" className="h-4 w-4" />
+          <Link href={createHref} className={buttonVariants({ size: "md" })}>
+            <Plus aria-hidden="true" />
             {createLabel}
           </Link>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    />
   )
 }
 
