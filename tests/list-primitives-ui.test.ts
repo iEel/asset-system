@@ -280,3 +280,26 @@ test("KeyValueList pairs dt and dd in a 120px label column and shows Nil for an 
   assert.match(source, /import \{ orNil \} from "@\/components\/ui\/nil"/)
   assert.doesNotMatch(source, /"-"|<div\b/, "an empty value is Nil, never a written dash; pairs are dt and dd, not divs")
 })
+
+test("ContentPanel divided has a 56px head over a line and a padded or flush body; the default panel is unchanged (2B §3.15)", () => {
+  const path = "src/components/ui/content-panel.tsx"
+  const source = readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+  assertListPrimitiveRules(path, source)
+  assert.match(source, /\| \{ divided\?: false; flush\?: never \}/)
+  assert.match(source, /\| \{ divided: true; flush\?: boolean \}/)
+  assert.match(source, /export function ContentPanel\(\{ title, description, actions, children, className, divided = false, flush = false \}: ContentPanelProps\)/)
+  // The default path renders exactly as before 2B.
+  assert.match(source, /<section className=\{cn\(getPanelClasses\(\), "p-4 sm:p-5", className\)\}>/)
+  assert.match(source, /<div className="mb-4 flex min-w-0 flex-col gap-3 md:flex-row md:items-start md:justify-between">/)
+  assert.match(source, /\{actions \? <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">\{actions\}<\/div> : null\}/)
+  // divided
+  assert.match(source, /<section className=\{cn\(getPanelClasses\(\), className\)\}>/)
+  assert.match(source, /<div data-slot="content-panel-head" className="flex min-h-14 min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2\.5 md:px-5">/)
+  assert.match(source, /<h2 className="text-base font-semibold text-foreground text-balance">\{title\}<\/h2>/)
+  assert.match(source, /<p className="text-meta text-muted-foreground text-pretty">\{description\}<\/p>/)
+  assert.match(source, /\{actions \? <div className="flex flex-wrap items-center gap-2">\{actions\}<\/div> : null\}/)
+  assert.match(source, /<div className=\{cn\("min-w-0 max-w-full", !flush && "px-4 py-4 md:px-5"\)\}>\{children\}<\/div>/)
+  // rows
+  assert.match(source, /export function ContentPanelRows\(\{ className, \.\.\.props \}: React\.ComponentProps<"ul">\)/)
+  assert.match(source, /<ul data-slot="content-panel-rows" className=\{cn\("divide-y divide-border-soft \[&>\*\]:px-4 \[&>\*\]:py-3 md:\[&>\*\]:px-5", className\)\} \{\.\.\.props\} \/>/)
+})
