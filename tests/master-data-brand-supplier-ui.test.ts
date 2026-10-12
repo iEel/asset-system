@@ -6,8 +6,8 @@ test("brand model page exposes create model action in the top header", () => {
   const source = readFileSync("src/app/[locale]/(dashboard)/master-data/brands/page.tsx", "utf8")
 
   assert.match(source, /const createModelHref = appendBrandModelReturnTo/)
-  assert.match(source, /<MasterDataHeader[\s\S]*createHref=\{createModelHref\}/)
-  assert.match(source, /createLabel=\{t\("createModel"\)\}/)
+  assert.match(source, /<PageHeader[\s\S]*href=\{createModelHref\}/)
+  assert.match(source, /\{t\("createModel"\)\}/)
   assert.match(source, /actions=\{[\s\S]*master-data\/brands\/new/)
 })
 

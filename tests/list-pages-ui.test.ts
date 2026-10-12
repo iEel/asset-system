@@ -22,6 +22,7 @@ type MasterDataList = {
 // The master-data lists of plan 2B-1. The commit that moves a page adds its line.
 const MASTER_DATA_LISTS: readonly MasterDataList[] = [
   { path: `${D}master-data/branches/page.tsx`, deleteEndpoints: ["/api/branches/${branch.id}"], removedWrappers: [`${C}master-data/branch-delete-button.tsx`], stats: true },
+  { path: `${D}master-data/brands/page.tsx`, deleteEndpoints: ["/api/models/${model.id}", "/api/brands/${selectedBrand.id}"], removedWrappers: [`${C}master-data/brand-delete-button.tsx`, `${C}master-data/asset-model-delete-button.tsx`], stats: true },
 ]
 
 test("master-data lists build on PageHeader, DataTable, TableEmptyRow, RowActions and the shared Pagination (spec 2B §5.3, B5, B6)", () => {
@@ -49,4 +50,17 @@ test("a master-data list past its last page sends the user to the last page (spe
     assert.match(source, /^import \{ redirect \} from "next\/navigation"$/m, path)
     assert.match(source, /const lastPage = lastListPage\(\w+, [\w.]+\)\n\s+if \(\w+\.length === 0 && \w+ > 0 && [\w.]+ > lastPage\) \{\n\s+redirect\(/, path)
   }
+})
+
+test("the selected brand keeps the vertical brand picker and gets RowActions: edit brand, delete in ⋯ (spec 2B I5, I11)", () => {
+  const source = read(`${D}master-data/brands/page.tsx`)
+  const start = source.indexOf("{selectedBrand ? (")
+  assert.ok(start !== -1, "the selected brand panel")
+  const panel = source.slice(start, source.indexOf("</aside>", start))
+  assert.match(panel, /<RowActions\n\s+code=\{selectedBrand\.name\}/)
+  assert.match(panel, /next=\{\{ label: t\("editSelectedBrand"\), href: selectedBrandEditHref, icon: <Pencil aria-hidden="true" \/> \}\}/)
+  assert.match(panel, /deleteAction=\{\{ endpoint: `\/api\/brands\/\$\{selectedBrand\.id\}` \}\}/)
+  assert.equal(source.match(/aria-current=\{/g)?.length, 2, "the picker keeps aria-current=\"page\" on its two links (I11, LFG KEEP.LN1)")
+  assert.match(source, /<ContentPanel\n\s+divided\n\s+flush\n/, "the model table sits flush in a divided panel: no frame in a frame")
+  assert.match(source, /<DataTable\n\s+framed=\{false\}/)
 })
