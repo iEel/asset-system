@@ -66,3 +66,20 @@ test("the two disposal create pages: PageHeader with the back link they had, on 
   assert.match(batch, /<div className="space-y-6">\n\s+<PageHeader\n\s+title=\{t\("batchCreateTitle"\)\}\n\s+meta=\{t\("batchCreateHelp"\)\}\n\s+back=\{<PageBackLink href=\{`\/\$\{locale\}\/disposal`\} label=\{t\("backToQueue"\)\} \/>\}\n\s+\/>/)
   for (const source of [request, batch]) assert.doesNotMatch(source, /<h1\b|\bArrowLeft\b|from "next\/link"|aria-label=/)
 })
+
+test("the three maintenance create and edit pages: crumbs in PageHeader and กลับ instead of ยกเลิก (2B-1 task 22, B2)", () => {
+  const D = "src/app/[locale]/(dashboard)/"
+  const pages = {
+    "maintenance/new/page.tsx": /<div className="space-y-6">\n\s+<PageHeader\n\s+breadcrumbs=\{\[\{ label: t\("title"\), href: returnTo \}, \{ label: t\("createTitle"\) \}\]\}\n\s+title=\{t\("createTitle"\)\}\n\s+meta=\{plan \? t\("pmCreateSubtitle"\) : t\("createSubtitle"\)\}\n/,
+    "maintenance/pm/new/page.tsx": /<div className="space-y-6">\n\s+<PageHeader\n\s+breadcrumbs=\{\[\{ label: t\("pmTitle"\), href: returnTo \}, \{ label: t\("pmCreateTitle"\) \}\]\}\n\s+title=\{t\("pmCreateTitle"\)\}\n\s+meta=\{t\("pmSubtitle"\)\}\n/,
+    // The trail ends on the plan code, so the title is the plan's own name and the code is the first fact (spec §4.3.3 rule 6).
+    "maintenance/pm/[id]/edit/page.tsx": /<div className="space-y-6">\n\s+<PageHeader\n\s+breadcrumbs=\{\[\{ label: t\("pmTitle"\), href: returnTo \}, \{ label: plan\.planNo, code: true \}\]\}\n\s+title=\{plan\.title\}\n\s+meta=\{<span className="tag">\{plan\.planNo\}<\/span>\}\n/,
+  }
+  for (const [file, header] of Object.entries(pages)) {
+    const source = read(D + file)
+    assert.ok(source.includes(HEADER_IMPORT), `${file} imports PageHeader and PageBackLink`)
+    assert.match(source, header, file)
+    assert.match(source, /\n\s+back=\{<PageBackLink href=\{returnTo\} label=\{tCommon\("back"\)\} \/>\}\n\s+\/>/, file)
+    assert.doesNotMatch(source, /<h1\b|<Breadcrumbs\b|from "next\/link"|tCommon\("cancel"\)/, file)
+  }
+})

@@ -53,6 +53,9 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}assets/asset-component-manager.tsx`,
   `${D}disposal/new/page.tsx`,
   `${D}disposal/batch/new/page.tsx`,
+  `${D}maintenance/new/page.tsx`,
+  `${D}maintenance/pm/new/page.tsx`,
+  `${D}maintenance/pm/[id]/edit/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -135,9 +138,6 @@ const TITLES: Record<string, string> = {
 const BUDGETS: Record<string, Record<string, number>> = {
   LH1: {
     // 2B-1
-    [`${D}maintenance/new/page.tsx`]: 1,
-    [`${D}maintenance/pm/[id]/edit/page.tsx`]: 1,
-    [`${D}maintenance/pm/new/page.tsx`]: 1,
     [`${C}asset-operations/bulk-move-form.tsx`]: 1,
     [`${C}asset-operations/checkin-form.tsx`]: 1,
     [`${C}asset-operations/checkout-form.tsx`]: 1,

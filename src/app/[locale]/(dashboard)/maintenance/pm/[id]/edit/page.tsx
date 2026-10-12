@@ -1,8 +1,7 @@
-import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { MaintenancePlanForm } from "@/components/maintenance/maintenance-plan-form"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { toLocalDateInputValue } from "@/lib/local-date"
@@ -24,17 +23,13 @@ export default async function EditMaintenancePlanPage({ params }: Props) {
   if (!plan) notFound()
 
   return (
-    <div className="space-y-5">
-      <Breadcrumbs items={[{ label: t("pmTitle"), href: returnTo }, { label: plan.planNo, code: true }]} />
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{plan.planNo}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{plan.title}</p>
-        </div>
-        <Link href={returnTo} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-accent">
-          {tCommon("cancel")}
-        </Link>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumbs={[{ label: t("pmTitle"), href: returnTo }, { label: plan.planNo, code: true }]}
+        title={plan.title}
+        meta={<span className="tag">{plan.planNo}</span>}
+        back={<PageBackLink href={returnTo} label={tCommon("back")} />}
+      />
       <MaintenancePlanForm
         locale={locale}
         planId={plan.id}
