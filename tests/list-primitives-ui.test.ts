@@ -175,3 +175,49 @@ test("the pagination range and page-size group read the register's words (I33)",
     assert.equal(messages(locale).common.pageSizeLabel, messages(locale).asset.pageSizeLabel, locale)
   }
 })
+
+// Spec 2B §3.2 and §3.21 table C row 1, for the primitive files the blocks below read: server-safe (no client
+// directive, no state or context hook) and none of the classes the 2A guards retire. Declared once (Task 6).
+function assertListPrimitiveRules(path: string, source: string) {
+  for (const pattern of [/"use client"/, /\buseState\b/, /\buseEffect\b/, /\bcreateContext\b/, /\buseContext\b/]) {
+    assert.doesNotMatch(source, pattern, `${path} must stay server-safe`)
+  }
+  for (const pattern of [/\bshadow-(?:sm|md|lg|xl|2xl)\b/, /opacity-/, /\bleading-tight\b/, /\bleading-4\b/, /rounded-\[/, /\bflex-col-reverse\b/, /\buppercase\b/, /bg-muted\//]) {
+    assert.doesNotMatch(source, pattern, `${path} uses a retired class`)
+  }
+}
+
+test("FilterSelect is a Field around NativeSelect, 40px by default, with an optional all option (2B §6.3.1, I6)", () => {
+  const path = "src/components/ui/filter-select.tsx"
+  const source = readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+  assertListPrimitiveRules(path, source)
+  assert.match(source, /import \{ Field \} from "@\/components\/ui\/field"/)
+  assert.match(source, /import \{ NativeSelect \} from "@\/components\/ui\/native-select"/)
+  assert.match(source, /export type FilterSelectOption = \{ value: string; label: string \}/)
+  assert.match(source, /type FilterSelectProps = Omit<React\.ComponentProps<"select">, "size" \| "multiple" \| "className"> & \{/)
+  assert.match(source, /export function FilterSelect\(\{ label, options, allLabel, fieldSize = "lg", hideLabel, labelAction, className, children, \.\.\.selectProps \}: FilterSelectProps\)/)
+  assert.match(source, /<Field label=\{label\} hideLabel=\{hideLabel\} labelAction=\{labelAction\} className=\{className\}>/)
+  assert.match(source, /<NativeSelect fieldSize=\{fieldSize\} \{\.\.\.selectProps\}>/)
+  assert.match(source, /\{allLabel \? <option value="">\{allLabel\}<\/option> : null\}/)
+  const order = ["{allLabel ?", "{options?.map(", "{children}"].map((text) => source.indexOf(text))
+  assert.ok(order[0] !== -1 && order[0] < order[1] && order[1] < order[2], "options render as allLabel, then options, then children")
+  assert.doesNotMatch(source, /<select\b|<label\b|data-slot=/, "no raw select or label, and no data-slot of its own: Field and NativeSelect bring theirs")
+})
+
+test("FilterChipList makes each chip one remove link named by what it removes, 36px from md (2B §6.3.3, I7)", () => {
+  const path = "src/components/ui/filter-chips.tsx"
+  const source = readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+  assertListPrimitiveRules(path, source)
+  assert.match(source, /export type FilterChipItem = \{ key: string; label: string; href: string; mobileOnly\?: boolean \}/)
+  assert.match(source, /export function FilterChipList\(\{ chips, label, removeLabel, clearAll, className \}: FilterChipListProps\)/)
+  assert.match(source, /if \(chips\.length === 0\) return null/)
+  assert.match(source, /<div role="group" aria-label=\{label\} data-slot="filter-chips" className=\{cn\("flex min-w-0 flex-wrap items-center gap-2", chips\.every\(\(chip\) => chip\.mobileOnly\) && "md:hidden", className\)\}>/)
+  assert.match(source, /aria-label=\{`\$\{removeLabel\}: \$\{chip\.label\}`\}/)
+  assert.equal(
+    source.match(/className=\{cn\("(group\/chip [^"]+)", chip\.mobileOnly && "md:hidden"\)\}/)?.[1],
+    "group/chip inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-md border border-primary-border bg-primary-soft pl-3 pr-1 text-meta text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-9 md:min-h-0",
+  )
+  assert.match(source, /<span aria-hidden="true" className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm transition-colors motion-reduce:transition-none group-hover\/chip:bg-primary-border">/)
+  assert.match(source, /<Link href=\{clearAll\.href\} className=\{cn\(linkVariants\(\), "inline-flex min-h-11 items-center md:min-h-0"\)\}>/)
+  assert.doesNotMatch(source, /rounded-full/)
+})
