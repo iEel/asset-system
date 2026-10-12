@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ArrowDown, ArrowLeft, ArrowUp, Copy, Loader2, Plus, Save, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowLeft, ArrowUp, Copy, Plus, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import {
@@ -11,6 +11,12 @@ import {
   moveArrayItem,
   type CategoryCustomFieldDraft,
 } from "@/lib/category-form-arrays"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { checkboxVariants } from "@/components/ui/field-variants"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
+import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type CustomFieldDefinitionValue = CategoryCustomFieldDraft
@@ -117,32 +123,30 @@ export function CategoryForm({
         <section className="rounded-lg border border-border bg-surface p-6">
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("code")} required>
-            <input
+            <Input
               value={values.code}
               onChange={(event) => setField("code", event.target.value)}
               maxLength={20}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
           <Field label={t("name")} required>
-            <input
+            <Input
               value={values.name}
               onChange={(event) => setField("name", event.target.value)}
               maxLength={200}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
           <Field label={t("description")}>
-            <textarea
+            <Textarea
               value={values.description ?? ""}
               onChange={(event) => setField("description", event.target.value)}
               maxLength={500}
               rows={4}
-              className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+              className="min-h-28"
             />
           </Field>
 
@@ -151,7 +155,7 @@ export function CategoryForm({
               type="checkbox"
               checked={values.isActive}
               onChange={(event) => setField("isActive", event.target.checked)}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
+              className={checkboxVariants()}
             />
             {tCommon("active")}
           </label>
@@ -164,14 +168,14 @@ export function CategoryForm({
               <h2 className="text-lg font-semibold text-foreground">{t("customFieldTemplate")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{t("customFieldTemplateHelp")}</p>
             </div>
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="md"
               onClick={() => setCustomFields([...values.customFieldDefs, createCustomFieldDefinition(values.customFieldDefs.length)])}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent"
             >
-              <Plus className="h-4 w-4" />
+              <Plus aria-hidden="true" />
               {t("addCustomField")}
-            </button>
+            </Button>
           </div>
 
           <CustomFieldTemplateEditor
@@ -204,14 +208,10 @@ export function CategoryForm({
               <h2 className="text-lg font-semibold text-foreground">{t("photoChecklistTemplate")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{t("photoChecklistTemplateHelp")}</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setPhotoChecklist([...values.photoChecklist, ""])}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent"
-            >
-              <Plus className="h-4 w-4" />
+            <Button variant="outline" size="md" onClick={() => setPhotoChecklist([...values.photoChecklist, ""])}>
+              <Plus aria-hidden="true" />
               {t("addPhotoChecklist")}
-            </button>
+            </Button>
           </div>
 
           <PhotoChecklistEditor
@@ -229,43 +229,16 @@ export function CategoryForm({
         </section>
 
         <div className="flex justify-end gap-3 border-t border-border pt-5">
-          <Link
-            href={backHref}
-            className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-          >
+          <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
             {tCommon("cancel")}
           </Link>
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          <Button type="submit" busy={saving}>
+            <Save aria-hidden="true" />
             {tCommon("save")}
-          </button>
+          </Button>
         </div>
       </form>
     </div>
-  )
-}
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string
-  required?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
-      {children}
-    </label>
   )
 }
 
@@ -327,59 +300,54 @@ function CustomFieldTemplateEditor({
         <div key={`${field.id ?? "new"}-${index}`} className="rounded-md border border-border bg-background p-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Field label={labels.fieldName} required>
-              <input
+              <Input
                 value={field.fieldName}
                 onChange={(event) => updateField(index, "fieldName", toFieldName(event.target.value))}
                 maxLength={100}
                 required
                 placeholder="cpu"
-                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
 
             <Field label={labels.fieldLabel} required>
-              <input
+              <Input
                 value={field.fieldLabel}
                 onChange={(event) => updateField(index, "fieldLabel", event.target.value)}
                 maxLength={200}
                 required
                 placeholder="CPU"
-                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
 
             <Field label={labels.fieldLabelTh}>
-              <input
+              <Input
                 value={field.fieldLabelTh ?? ""}
                 onChange={(event) => updateField(index, "fieldLabelTh", event.target.value)}
                 maxLength={200}
-                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
 
             <Field label={labels.fieldType}>
-              <select
+              <NativeSelect
                 value={field.fieldType}
                 onChange={(event) => updateField(index, "fieldType", event.target.value)}
-                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               >
                 <option value="text">{labels.text}</option>
                 <option value="number">{labels.number}</option>
                 <option value="date">{labels.date}</option>
                 <option value="select">{labels.select}</option>
                 <option value="boolean">{labels.boolean}</option>
-              </select>
+              </NativeSelect>
             </Field>
 
             {field.fieldType === "select" && (
               <div className="md:col-span-2">
                 <Field label={labels.options}>
-                  <textarea
+                  <Textarea
                     value={field.options ?? ""}
                     onChange={(event) => updateField(index, "options", event.target.value)}
                     rows={3}
                     placeholder="Windows 11&#10;Windows 10&#10;macOS"
-                    className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
                 </Field>
               </div>
@@ -387,51 +355,33 @@ function CustomFieldTemplateEditor({
           </div>
 
           <div className="mt-4 flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
-            <label className="inline-flex items-center gap-2 text-sm">
+            <label className="inline-flex min-h-11 items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={field.isRequired}
                 onChange={(event) => updateField(index, "isRequired", event.target.checked)}
-                className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
+                className={checkboxVariants()}
               />
               {labels.required}
             </label>
 
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => moveField(index, -1)}
-                disabled={index === 0}
-                className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <ArrowUp className="h-4 w-4" />
+              <Button variant="outline" size="md" onClick={() => moveField(index, -1)} disabled={index === 0}>
+                <ArrowUp aria-hidden="true" />
                 {labels.moveUp}
-              </button>
-              <button
-                type="button"
-                onClick={() => moveField(index, 1)}
-                disabled={index === fields.length - 1}
-                className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <ArrowDown className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="md" onClick={() => moveField(index, 1)} disabled={index === fields.length - 1}>
+                <ArrowDown aria-hidden="true" />
                 {labels.moveDown}
-              </button>
-              <button
-                type="button"
-                onClick={() => duplicateField(index)}
-                className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent"
-              >
-                <Copy className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="md" onClick={() => duplicateField(index)}>
+                <Copy aria-hidden="true" />
                 {labels.duplicate}
-              </button>
-              <button
-                type="button"
-                onClick={() => removeField(index)}
-                className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-danger transition-colors hover:bg-danger-soft"
-              >
-                <Trash2 className="h-4 w-4" />
+              </Button>
+              <Button variant="danger" size="md" onClick={() => removeField(index)}>
+                <Trash2 aria-hidden="true" />
                 {labels.remove}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -505,52 +455,57 @@ function PhotoChecklistEditor({
   return (
     <div className="space-y-2">
       {items.map((item, index) => (
-        <div key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_repeat(4,2.5rem)]">
-          <input
-            value={item}
-            onChange={(event) => updateItem(index, event.target.value)}
-            maxLength={100}
-            placeholder={labels.item}
-            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-          />
-          <button
-            type="button"
+        <div key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_repeat(4,auto)]">
+          <Field label={labels.item} hideLabel>
+            <Input
+              value={item}
+              onChange={(event) => updateItem(index, event.target.value)}
+              maxLength={100}
+              placeholder={labels.item}
+            />
+          </Field>
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => moveItem(index, -1)}
             disabled={index === 0}
             aria-label={labels.moveUp}
             title={labels.moveUp}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            className="justify-self-start"
           >
-            <ArrowUp className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
+            <ArrowUp aria-hidden="true" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => moveItem(index, 1)}
             disabled={index === items.length - 1}
             aria-label={labels.moveDown}
             title={labels.moveDown}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            className="justify-self-start"
           >
-            <ArrowDown className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
+            <ArrowDown aria-hidden="true" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => duplicateItem(index)}
             aria-label={labels.duplicate}
             title={labels.duplicate}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent"
+            className="justify-self-start"
           >
-            <Copy className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
+            <Copy aria-hidden="true" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => removeItem(index)}
             aria-label={labels.remove}
             title={labels.remove}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-danger-soft hover:text-danger"
+            className="justify-self-start"
           >
-            <Trash2 className="h-4 w-4" />
-          </button>
+            <Trash2 aria-hidden="true" />
+          </Button>
         </div>
       ))}
     </div>
