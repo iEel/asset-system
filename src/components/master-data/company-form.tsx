@@ -3,9 +3,14 @@
 import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, Save } from "lucide-react"
+import { ArrowLeft, Save } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { checkboxVariants } from "@/components/ui/field-variants"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type CompanyFormValues = {
@@ -99,64 +104,56 @@ export function CompanyForm({
 
       <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-6">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label={t("code")} required>
-            <input
+          <Field label={t("code")} required hint={t("codeHelp")}>
+            <Input
               value={values.code}
               onChange={(event) => setField("code", event.target.value.toUpperCase())}
               maxLength={20}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
-            <p className="mt-1.5 text-xs text-muted-foreground">{t("codeHelp")}</p>
           </Field>
 
-          <Field label={t("assetTagCode")}>
-            <input
+          <Field label={t("assetTagCode")} hint={t("assetTagCodeHelp")}>
+            <Input
               value={values.assetTagCode ?? ""}
               onChange={(event) => setField("assetTagCode", event.target.value.toUpperCase())}
               maxLength={20}
               placeholder={values.code || t("code")}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
-            <p className="mt-1.5 text-xs text-muted-foreground">{t("assetTagCodeHelp")}</p>
           </Field>
 
           <Field label={t("nameTh")} required>
-            <input
+            <Input
               value={values.nameTh}
               onChange={(event) => setField("nameTh", event.target.value)}
               maxLength={200}
               required
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
           <Field label={t("nameEn")}>
-            <input
+            <Input
               value={values.nameEn ?? ""}
               onChange={(event) => setField("nameEn", event.target.value)}
               maxLength={200}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
           <Field label={t("taxId")}>
-            <input
+            <Input
               value={values.taxId ?? ""}
               onChange={(event) => setField("taxId", event.target.value)}
               maxLength={20}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </Field>
 
           <div className="md:col-span-2">
             <Field label={t("address")}>
-              <textarea
+              <Textarea
                 value={values.address ?? ""}
                 onChange={(event) => setField("address", event.target.value)}
                 rows={4}
                 maxLength={500}
-                className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
           </div>
@@ -166,49 +163,22 @@ export function CompanyForm({
               type="checkbox"
               checked={values.isActive}
               onChange={(event) => setField("isActive", event.target.checked)}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
+              className={checkboxVariants()}
             />
             {tCommon("active")}
           </label>
         </div>
 
         <div className="mt-6 flex justify-end gap-3 border-t border-border pt-5">
-          <Link
-            href={backHref}
-            className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-          >
+          <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
             {tCommon("cancel")}
           </Link>
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          <Button type="submit" busy={saving}>
+            <Save aria-hidden="true" />
             {tCommon("save")}
-          </button>
+          </Button>
         </div>
       </form>
     </div>
-  )
-}
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string
-  required?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
-      {children}
-    </label>
   )
 }
