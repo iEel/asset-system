@@ -139,3 +139,11 @@ test("the asset batch form: PageHeader and the white table header on its three t
   assert.equal(source.match(/<thead className="bg-surface text-left text-meta font-medium text-faint-foreground">/g)?.length, 3)
   assert.doesNotMatch(source, /<h1\b|\bbg-muted\/|text-xs font-semibold text-muted-foreground/)
 })
+
+test("the depreciation builder formats its preview with the shared th-TH helpers (2B-1 task 24, R-f)", () => {
+  const source = read(`${C}admin/depreciation-policy-builder.tsx`)
+  assert.ok(source.includes('import { formatCount, formatMoney } from "@/lib/display-format"'), "depreciation-policy-builder.tsx imports the shared helpers")
+  assert.match(source, /value=\{formatCount\(preview\.ageMonths\)\}/)
+  assert.equal(source.match(/value=\{formatMoney\(preview\.\w+\)\}/g)?.length, 3)
+  assert.doesNotMatch(source, /function formatMoney\b|toLocaleString/, "no local formatter is left")
+})

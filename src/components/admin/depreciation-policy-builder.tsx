@@ -23,6 +23,7 @@ import {
   type DepreciationPolicyEditorGroup,
   type DepreciationPolicyEditorState,
 } from "@/lib/depreciation-policy-editor"
+import { formatCount, formatMoney } from "@/lib/display-format"
 
 type DepreciationPolicyBuilderLabels = {
   depreciationPolicyBuilderTitle: string
@@ -299,7 +300,7 @@ export function DepreciationPolicyBuilder({ categories, policyJson, labels, onPo
           <PreviewMetric label={labels.depreciationPreviewMonthly} value={formatMoney(preview.monthlyDepreciation)} />
           <PreviewMetric label={labels.depreciationPreviewNetBook} value={formatMoney(preview.netBookValue)} />
           <PreviewMetric label={labels.depreciationPreviewAccumulated} value={formatMoney(preview.accumulatedDepreciation)} />
-          <PreviewMetric label={labels.depreciationPreviewAgeMonths} value={preview.ageMonths.toLocaleString()} />
+          <PreviewMetric label={labels.depreciationPreviewAgeMonths} value={formatCount(preview.ageMonths)} />
         </div>
       </div>
 
@@ -432,8 +433,4 @@ function parsePolicyForEditor(policyJson: string): DepreciationPolicy {
   } catch {
     return parsed.policy
   }
-}
-
-function formatMoney(value: number) {
-  return value.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }

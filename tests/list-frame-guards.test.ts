@@ -63,6 +63,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}audit/audit-round-form.tsx`,
   `${C}admin/system-settings-form.tsx`,
   `${C}assets/asset-batch-form.tsx`,
+  `${C}admin/depreciation-policy-builder.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -291,8 +292,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}assets/[id]/page.tsx`]: 1,
   },
   LV1: {
-    // 2B-1
-    [`${C}admin/depreciation-policy-builder.tsx`]: 1,
     // 2B-2
     [`${C}admin/asset-state-review-workspace.tsx`]: 1,
     // 2B-4
