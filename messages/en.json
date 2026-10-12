@@ -54,7 +54,9 @@
     "stepCurrent": "Current step",
     "stepUpcoming": "Not started",
     "stepRejected": "Rejected",
-    "tableScrollHint": "Scroll left/right to see more columns."
+    "tableScrollHint": "Scroll left/right to see more columns.",
+    "showingRange": "{from}–{to} of {total}",
+    "pageSizeLabel": "Rows per page"
   },
   "globalSearch": {
     "label": "Search globally",

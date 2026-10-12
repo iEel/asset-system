@@ -54,7 +54,9 @@
     "stepCurrent": "ขั้นตอนปัจจุบัน",
     "stepUpcoming": "ยังไม่ถึง",
     "stepRejected": "ปฏิเสธแล้ว",
-    "tableScrollHint": "เลื่อนตารางซ้าย/ขวาเพื่อดูคอลัมน์เพิ่มเติม"
+    "tableScrollHint": "เลื่อนตารางซ้าย/ขวาเพื่อดูคอลัมน์เพิ่มเติม",
+    "showingRange": "{from}–{to} จาก {total} รายการ",
+    "pageSizeLabel": "จำนวนต่อหน้า"
   },
   "globalSearch": {
     "label": "ค้นหาทั่วระบบ",

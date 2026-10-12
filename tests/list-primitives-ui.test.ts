@@ -136,3 +136,42 @@ test("the shared table scroll hint reads the first sentence of the register's hi
     assert.ok(messages(locale).asset.tableScrollHint.startsWith(messages(locale).common.tableScrollHint), locale)
   }
 })
+
+// Task 5 (spec 2B §3.8, I33): Pagination in the table foot, with the range and the page sizes.
+test("Pagination puts the range left, page sizes as Segmented-look links, and words-only outline sm buttons (§3.8)", () => {
+  const source = readFileSync("src/components/ui/pagination.tsx", "utf8").replace(/\r\n/g, "\n")
+  const constant = (name: string) => source.match(new RegExp(`const ${name} = "([^"]+)"`))?.[1]
+
+  assert.doesNotMatch(source, /"use client"|\buse(?:State|Effect|Context)\b|\bcreateContext\b/, "server-safe, no hooks")
+  assert.doesNotMatch(source, /\bshadow-(?:sm|md|lg|xl|2xl)\b|opacity-|leading-tight|leading-4|rounded-\[|flex-col-reverse|uppercase|bg-muted/)
+  assert.doesNotMatch(source, /ChevronLeft|ChevronRight/, "words only, like the mockup's table foot")
+  assert.match(source, /const controlClasses = buttonVariants\(\{ variant: "outline", size: "sm" \}\)/)
+  assert.match(source, /<nav aria-label=\{labels\.navigation\} className=\{cn\("flex flex-wrap items-center justify-between gap-x-3 gap-y-2", className\)\}>/)
+  assert.match(source, /<p aria-live="polite" className="text-meta text-muted-foreground num">/)
+  assert.match(source, /\{labels\.range \? <>\{labels\.range\}<span aria-hidden="true"> · <\/span><\/> : null\}/)
+  assert.match(source, /<div role="group" aria-label=\{labels\.pageSizeGroup\} className="flex items-center gap-2">/)
+  assert.match(source, /<span aria-hidden="true" className="text-meta text-muted-foreground">\{labels\.rowsPerPage\}<\/span>/)
+  assert.match(source, /aria-current=\{size\.value === pageSize \? "true" : undefined\}/)
+  assert.equal(constant("pageSizeFrameClasses"), "inline-flex gap-0.5 rounded-md border border-border bg-surface p-0.5")
+  assert.equal(constant("pageSizeOptionClasses"), "inline-flex min-h-11 min-w-11 items-center justify-center rounded-control px-2 text-meta transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-6.5 md:min-w-8")
+  assert.equal(constant("pageSizeCurrentClasses"), "bg-primary-soft font-semibold text-primary-hover")
+  assert.equal(constant("pageSizeIdleClasses"), "font-medium text-muted-foreground hover:bg-background hover:text-foreground")
+  assert.match(source, /<PaginationControl href=\{previousHref\} enabled=\{page > 1\} rel="prev" label=\{labels\.previous\} \/>/)
+  assert.match(source, /<PaginationControl href=\{nextHref\} enabled=\{page < totalPages\} rel="next" label=\{labels\.next\} \/>/)
+  assert.match(source, /<span aria-disabled="true" className=\{controlClasses\}>/, "a disabled button takes no focus and keeps the shared disabled look")
+  assert.match(source, /<Link href=\{href\} rel=\{rel\} className=\{controlClasses\}>/)
+  assert.match(source, /pageSizes\?: readonly PaginationPageSize\[\]/)
+})
+
+test("the pagination range and page-size group read the register's words (I33)", () => {
+  const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
+
+  assert.equal(messages("th").common.showingRange, "{from}–{to} จาก {total} รายการ")
+  assert.equal(messages("en").common.showingRange, "{from}–{to} of {total}")
+  assert.equal(messages("th").common.pageSizeLabel, "จำนวนต่อหน้า")
+  assert.equal(messages("en").common.pageSizeLabel, "Rows per page")
+  for (const locale of ["th", "en"] as const) {
+    assert.equal(messages(locale).common.showingRange, messages(locale).asset.registerRange, locale)
+    assert.equal(messages(locale).common.pageSizeLabel, messages(locale).asset.pageSizeLabel, locale)
+  }
+})
