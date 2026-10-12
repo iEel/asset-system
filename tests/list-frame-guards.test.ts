@@ -62,6 +62,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}asset-operations/bulk-move-form.tsx`,
   `${C}audit/audit-round-form.tsx`,
   `${C}admin/system-settings-form.tsx`,
+  `${C}assets/asset-batch-form.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -143,8 +144,6 @@ const TITLES: Record<string, string> = {
 // only two rows above the d38a0ee count (spec §9.4.1 note "LB1 0→1").
 const BUDGETS: Record<string, Record<string, number>> = {
   LH1: {
-    // 2B-1
-    [`${C}assets/asset-batch-form.tsx`]: 1,
     // 2B-2
     [`${D}admin/data-quality/page.tsx`]: 1,
     [`${D}admin/integrations/page.tsx`]: 1,

@@ -12,6 +12,7 @@ import { Field } from "@/components/ui/field"
 import { checkboxVariants, fieldLabelClasses } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
+import { PageHeader } from "@/components/ui/page-header"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { cn } from "@/lib/utils"
@@ -606,10 +607,7 @@ export function AssetBatchForm({
 
   return (
     <div className="mx-auto max-w-6xl">
-      <div className="mb-6 min-w-0">
-        <h1 className="break-words text-2xl font-bold text-foreground">{t("batchCreateTitle")}</h1>
-        <p className="mt-1 break-words text-sm text-muted-foreground">{t("batchCreateSubtitle")}</p>
-      </div>
+      <PageHeader title={t("batchCreateTitle")} meta={t("batchCreateSubtitle")} className="mb-6" />
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <Section title={t("batchCommonData")}>
@@ -883,7 +881,7 @@ export function AssetBatchForm({
 
           <div className="hidden overflow-x-auto rounded-md border border-border md:col-span-2 md:block">
             <table className="min-w-[760px] w-full text-sm">
-              <thead className="bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
+              <thead className="bg-surface text-left text-meta font-medium text-faint-foreground">
                 <tr>
                   <th className="w-16 px-3 py-2">{t("batchRowNo")}</th>
                   <th className="w-56 px-3 py-2">{t("batchAssetTag")}</th>
@@ -976,7 +974,7 @@ export function AssetBatchForm({
             </div>
             <div className="mt-4 max-h-80 max-w-full overflow-auto rounded-md border border-border bg-background">
               <table className="w-full min-w-[1100px] text-sm">
-                <thead className="bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
+                <thead className="bg-surface text-left text-meta font-medium text-faint-foreground">
                   <tr>
                     <th className="px-3 py-2">{t("batchRowNo")}</th>
                     <th className="px-3 py-2">{t("batchAssetTag")}</th>
@@ -1034,7 +1032,7 @@ export function AssetBatchForm({
               <h3 className="text-sm font-semibold text-foreground">{t("batchReceiptAssets")}</h3>
               <div className="mt-2 overflow-auto rounded-md border border-border bg-background">
                 <table className="w-full min-w-[640px] text-sm">
-                  <thead className="bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
+                  <thead className="bg-surface text-left text-meta font-medium text-faint-foreground">
                     <tr>
                       <th className="px-3 py-2">{t("assetTag")}</th>
                       <th className="px-3 py-2">{t("assetName")}</th>

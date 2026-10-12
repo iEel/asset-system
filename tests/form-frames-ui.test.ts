@@ -131,3 +131,11 @@ test("the three settings tables have the white 13/500 header in sentence case (2
   )
   assert.doesNotMatch(source, /<thead className=|\bbg-muted\//)
 })
+
+test("the asset batch form: PageHeader and the white table header on its three tables (2B-1 task 24, I13, R-e)", () => {
+  const source = read(`${C}assets/asset-batch-form.tsx`)
+  assert.ok(source.includes('import { PageHeader } from "@/components/ui/page-header"'), "asset-batch-form.tsx imports PageHeader")
+  assert.match(source, /<div className="mx-auto max-w-6xl">\n\s+<PageHeader title=\{t\("batchCreateTitle"\)\} meta=\{t\("batchCreateSubtitle"\)\} className="mb-6" \/>\n/)
+  assert.equal(source.match(/<thead className="bg-surface text-left text-meta font-medium text-faint-foreground">/g)?.length, 3)
+  assert.doesNotMatch(source, /<h1\b|\bbg-muted\/|text-xs font-semibold text-muted-foreground/)
+})
