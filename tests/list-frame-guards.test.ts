@@ -39,6 +39,15 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}master-data/suppliers/page.tsx`,
   `${C}master-data/supplier-list-view.tsx`,
   `${D}admin/users/page.tsx`,
+  `${C}master-data/asset-model-form.tsx`,
+  `${C}master-data/branch-form.tsx`,
+  `${C}master-data/brand-form.tsx`,
+  `${C}master-data/category-form.tsx`,
+  `${C}master-data/company-form.tsx`,
+  `${C}master-data/department-form.tsx`,
+  `${C}master-data/employee-form.tsx`,
+  `${C}master-data/location-form.tsx`,
+  `${C}master-data/supplier-form.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -136,15 +145,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}assets/asset-component-manager.tsx`]: 1,
     [`${C}assets/asset-form.tsx`]: 1,
     [`${C}audit/audit-round-form.tsx`]: 1,
-    [`${C}master-data/asset-model-form.tsx`]: 1,
-    [`${C}master-data/branch-form.tsx`]: 1,
-    [`${C}master-data/brand-form.tsx`]: 1,
-    [`${C}master-data/category-form.tsx`]: 1,
-    [`${C}master-data/company-form.tsx`]: 1,
-    [`${C}master-data/department-form.tsx`]: 1,
-    [`${C}master-data/employee-form.tsx`]: 1,
-    [`${C}master-data/location-form.tsx`]: 1,
-    [`${C}master-data/supplier-form.tsx`]: 1,
     // 2B-2
     [`${D}admin/data-quality/page.tsx`]: 1,
     [`${D}admin/integrations/page.tsx`]: 1,
@@ -207,15 +207,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): the move-out button :1412, not a page back
     [`${C}assets/asset-component-manager.tsx`]: 1,
     [`${C}assets/asset-form.tsx`]: 1,
-    [`${C}master-data/asset-model-form.tsx`]: 1,
-    [`${C}master-data/branch-form.tsx`]: 1,
-    [`${C}master-data/brand-form.tsx`]: 1,
-    [`${C}master-data/category-form.tsx`]: 1,
-    [`${C}master-data/company-form.tsx`]: 1,
-    [`${C}master-data/department-form.tsx`]: 1,
-    [`${C}master-data/employee-form.tsx`]: 1,
-    [`${C}master-data/location-form.tsx`]: 1,
-    [`${C}master-data/supplier-form.tsx`]: 1,
     // 2B-2
     [`${D}audit/rounds/[id]/page.tsx`]: 1, // 0 → 1: 2B-2 swaps the Download icon of the bar's back item :479 for ArrowLeft
     [`${D}disposal/batches/[id]/page.tsx`]: 1,

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Save } from "lucide-react"
+import { Save } from "lucide-react"
 import { toast } from "sonner"
 import {
   parseSupplierFormError,
@@ -17,6 +17,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog"
 import { Field } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
 import { Input } from "@/components/ui/input"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Textarea } from "@/components/ui/textarea"
 import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 import { useApiError } from "@/components/ui/use-api-error"
@@ -147,20 +148,12 @@ export function SupplierForm({
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <Link
-          href={backHref}
-          onClick={confirmNavigation}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          {tCommon("back")}
-        </Link>
-      </div>
+      <PageHeader
+        title={title}
+        meta={t("subtitle")}
+        className="mb-6"
+        back={<PageBackLink href={backHref} onClick={confirmNavigation} label={tCommon("back")} />}
+      />
 
       <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-4 sm:p-6">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">

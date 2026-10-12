@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { ArrowLeft, ImageIcon, Plus, Save, Sparkles, Trash2 } from "lucide-react"
+import { ImageIcon, Plus, Save, Sparkles, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import Link from "next/link"
@@ -15,6 +15,7 @@ import { checkboxVariants } from "@/components/ui/field-variants"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { Textarea } from "@/components/ui/textarea"
 import {
   chooseSpecPreset,
@@ -218,19 +219,12 @@ export function AssetModelForm({
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <Link
-          href={backHref}
-          className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {tCommon("back")}
-        </Link>
-      </div>
+      <PageHeader
+        title={title}
+        meta={t("subtitle")}
+        className="mb-6"
+        back={<PageBackLink href={backHref} label={tCommon("back")} />}
+      />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
         <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-6">
