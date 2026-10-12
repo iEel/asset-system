@@ -246,11 +246,52 @@ test("R7 neutral fills are opaque tokens outside table headers", () => {
   assert.deepEqual(findMatches(outsideTableHeaders, NEUTRAL_FILL_OPACITY), [])
 })
 
-test("R7 interim: table-header fills wait for DataTable (2B)", () => {
-  // 2B lowers 44 as DataTable takes the header fills over, then drops the header filter above. Never raise it.
-  const fills = countMatchesByFile(sources, NEUTRAL_FILL_OPACITY)
-  const total = Object.values(fills).reduce((sum, count) => sum + count, 0)
-  assert.ok(total <= 44, `at most 44 table-header fills may remain, found ${total}: ${JSON.stringify(fills)}`)
+// R7 per file: the table-header fills (bg-muted/NN, bg-accent/NN, border-border/NN) at d38a0ee, all on <thead lines.
+// The commit that moves a table onto DataTable deletes its row; never raise one. Phase 2B plan 5 drops the <th line
+// filter above and keeps one test with the rows of the 2C batch 4 files; 2C plan 4 or 2D empties those.
+const D = "src/app/[locale]/(dashboard)/"
+const TABLE_HEADER_FILLS: Record<string, number> = {
+  // 2B-1
+  [`${D}admin/users/page.tsx`]: 1,
+  [`${D}master-data/branches/page.tsx`]: 1,
+  [`${D}master-data/brands/page.tsx`]: 1,
+  [`${D}master-data/categories/page.tsx`]: 1,
+  [`${D}master-data/companies/page.tsx`]: 1,
+  [`${D}master-data/departments/page.tsx`]: 1,
+  [`${D}master-data/employees/page.tsx`]: 1,
+  [`${D}master-data/locations/page.tsx`]: 1,
+  "src/components/admin/system-settings-form.tsx": 3,
+  "src/components/assets/asset-batch-form.tsx": 3,
+  "src/components/master-data/supplier-list-view.tsx": 1,
+  // 2B-2
+  [`${D}audit/findings/page.tsx`]: 1,
+  [`${D}audit/rounds/[id]/page.tsx`]: 1,
+  [`${D}audit/rounds/[id]/pending/page.tsx`]: 1,
+  [`${D}audit/rounds/page.tsx`]: 1,
+  [`${D}disposal/batches/[id]/page.tsx`]: 2,
+  [`${D}disposal/batches/page.tsx`]: 2,
+  [`${D}disposal/page.tsx`]: 2,
+  [`${D}maintenance/page.tsx`]: 1,
+  "src/components/admin/asset-state-review-workspace.tsx": 1,
+  // 2B-4
+  [`${D}assets/[id]/page.tsx`]: 2,
+  [`${D}master-data/employees/[id]/page.tsx`]: 3,
+  "src/components/master-data/supplier-purchase-documents.tsx": 1,
+  // 2B-5
+  [`${D}admin/logs/page.tsx`]: 1,
+  [`${D}admin/roles/page.tsx`]: 2,
+  [`${D}admin/storage/page.tsx`]: 3,
+  [`${D}my-assets/page.tsx`]: 1,
+  "src/components/reports/responsive-report-list.tsx": 1,
+  // 2C plan 4 or 2D (2C batch 4 files, R-e)
+  "src/components/admin/IntegrationClientManager.tsx": 1,
+  "src/components/admin/role-permission-form.tsx": 1,
+  "src/components/assets/asset-import-preview-panel.tsx": 1,
+}
+
+test("R7 interim: table-header fills wait for DataTable (2B), file by file", () => {
+  // A file missing from TABLE_HEADER_FILLS may have none. The commit that moves a table onto DataTable deletes its row.
+  assertWithinBudget(NEUTRAL_FILL_OPACITY, TABLE_HEADER_FILLS)
 })
 
 // R2: panels and cards are flat. A shadow belongs only to floating layers (shadow-overlay, not matched here),
