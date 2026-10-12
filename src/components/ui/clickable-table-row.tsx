@@ -2,15 +2,17 @@
 
 import { useRef } from "react"
 import { useRouter } from "next/navigation"
+import { dataTableRowClasses } from "@/components/ui/data-table"
 import {
   CLICKABLE_ROW_BEFORE_NAVIGATE_EVENT,
   shouldCancelClickableRowNavigation,
 } from "@/lib/clickable-row-navigation"
+import { cn } from "@/lib/utils"
 
 export function ClickableTableRow({
   href,
   label,
-  className = "",
+  className,
   onNavigate,
   children,
 }: {
@@ -53,7 +55,7 @@ export function ClickableTableRow({
         event.preventDefault()
         openDetail()
       }}
-      className={`cursor-pointer hover:bg-row-hover focus:bg-row-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${className}`}
+      className={cn(dataTableRowClasses, "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", className)}
     >
       {children}
     </tr>

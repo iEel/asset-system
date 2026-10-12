@@ -69,3 +69,70 @@ test("MasterDataHeader is a thin wrapper of PageHeader until its last callers mo
   assert.match(layout, /<Link href=\{createHref\} className=\{buttonVariants\(\{ size: "md" \}\)\}>\n\s+<Plus aria-hidden="true" \/>\n\s+\{createLabel\}\n\s+<\/Link>/)
   assert.doesNotMatch(layout, /<h1\b|\bfont-bold\b/)
 })
+
+// Task 4 (spec 2B §3.4–3.7, I3, I4): DataTable with TableEmptyRow, the client scroll hint, and the shared row classes.
+// Each test reads its files itself, so this block needs only the three imports at the top of the file.
+test("DataTable keeps one density, the B3 header and cell look, and real table semantics (I3)", () => {
+  const source = readFileSync("src/components/ui/data-table.tsx", "utf8").replace(/\r\n/g, "\n")
+  const constant = (name: string) => source.match(new RegExp(`export const ${name} = "([^"]+)"`))?.[1]
+
+  assert.equal(constant("dataTableHeadClasses"), "border-b border-border bg-surface px-3 py-2.5 text-left align-bottom text-meta font-medium whitespace-nowrap text-faint-foreground first:pl-4 last:pr-4 md:first:pl-5 md:last:pr-5")
+  assert.equal(constant("dataTableCellClasses"), "border-b border-border-soft p-3 align-top first:pl-4 last:pr-4 md:first:pl-5 md:last:pr-5")
+  assert.equal(constant("dataTableRowClasses"), "group/row transition-colors hover:bg-row-hover hover:duration-0 focus-within:bg-row-hover focus-within:duration-0 has-[[aria-expanded=true]]:bg-row-hover")
+  assert.doesNotMatch(source, /group-data-\[density|data-density|group\/table/, "one density only: the register keeps its compact rows in its own file (I3)")
+  assert.doesNotMatch(source, /"use client"|\buse(?:State|Effect|Context)\b|\bcreateContext\b/, "server-safe, no hooks (R-j)")
+  assert.doesNotMatch(source, /\bshadow-(?:sm|md|lg|xl|2xl)\b|opacity-|leading-tight|leading-4|rounded-\[|flex-col-reverse|uppercase|bg-muted\//)
+  assert.match(source, /const dataTableFrameClasses = "min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-surface"/)
+  assert.match(source, /<table className=\{cn\("w-full text-sm", layout === "fixed" && "table-fixed"\)\} style=\{minWidth \? \{ minWidth \} : undefined\}>/)
+  assert.match(source, /<caption className="sr-only">\{caption\}<\/caption>/)
+  assert.match(source, /<DataTableScrollArea hint=\{scrollHint\} label=\{caption\}>/)
+  assert.match(source, /<div data-slot="data-table-scroll" className="overflow-x-auto overscroll-x-contain">/)
+  assert.match(source, /scope="col"/)
+  assert.match(source, /aria-sort=\{direction === "asc" \? "ascending" : direction === "desc" \? "descending" : undefined\}/)
+  assert.match(source, /<ArrowUp className="size-3\.5 shrink-0" aria-hidden="true" \/>/)
+  assert.match(source, /<ArrowDown className="size-3\.5 shrink-0" aria-hidden="true" \/>/)
+  assert.match(source, /<span className="sr-only">\{children\}<\/span>/, "hideLabel keeps the column name for screen readers")
+  assert.match(source, /className=\{cn\("\[&>tr:last-child>td\]:border-b-0", className\)\}/)
+  assert.match(source, /numeric && "text-right whitespace-nowrap num"/)
+  assert.match(source, /"border-t border-border bg-surface px-4 py-2\.5 text-meta text-muted-foreground num md:px-5"/)
+  assert.match(source, /<td colSpan=\{colSpan\} className="p-0">/)
+  assert.match(source, /<ActionEmptyState \{\.\.\.content\.emptyState\} \/> : <EmptyNote padded tone=\{content\.tone\}>/)
+  assert.doesNotMatch(source, /<tr data-slot="table-empty-row" className/, "the empty row has no hover fill")
+})
+
+test("DataTableScrollArea shows the hint and a focusable region only while the table overflows (B6, I4)", () => {
+  const source = readFileSync("src/components/ui/data-table-scroll.tsx", "utf8").replace(/\r\n/g, "\n")
+
+  assert.ok(source.startsWith('"use client"'), "the one client leaf of DataTable")
+  assert.match(source, /const observer = new ResizeObserver\(measure\)/)
+  assert.match(source, /setOverflowing\(element\.scrollWidth > element\.clientWidth \+ 1\)/)
+  assert.match(source, /if \(element\.firstElementChild\) observer\.observe\(element\.firstElementChild\)/)
+  assert.match(source, /return \(\) => observer\.disconnect\(\)/)
+  assert.match(source, /const region = overflowing && Boolean\(label\)/)
+  assert.match(source, /role=\{[^}]*"region"/)
+  assert.match(source, /aria-label=\{region \? label : undefined\}/)
+  assert.match(source, /tabIndex=\{region \? 0 : undefined\}/)
+  assert.match(source, /\{overflowing \? \(\s*<p data-slot="data-table-scroll-hint" className="flex items-center gap-1\.5 border-b border-border-soft px-4 py-1\.5 text-meta text-faint-foreground md:px-5 \[&>svg\]:size-4 \[&>svg\]:shrink-0">/)
+  assert.match(source, /<MoveHorizontal aria-hidden="true" \/>/)
+  assert.match(source, /className="overflow-x-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"/)
+  assert.doesNotMatch(source, /\bshadow-(?:sm|md|lg|xl|2xl)\b|opacity-|leading-tight|leading-4|rounded-\[|flex-col-reverse|uppercase|bg-muted\//)
+})
+
+test("ClickableTableRow takes the shared row classes: lit while focus is inside, and while its menu is open (§3.7)", () => {
+  const source = readFileSync("src/components/ui/clickable-table-row.tsx", "utf8").replace(/\r\n/g, "\n")
+
+  assert.match(source, /import \{ dataTableRowClasses \} from "@\/components\/ui\/data-table"/)
+  assert.match(source, /className=\{cn\(dataTableRowClasses, "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", className\)\}/)
+  assert.doesNotMatch(source, /focus:bg-row-hover|className = ""/, "focus-within covers focus on the row itself")
+  assert.match(source, /target\.closest\("a,button,input,select,textarea,\[data-no-row-click\]"\)/, "clicks on controls inside the row still do not open it")
+})
+
+test("the shared table scroll hint reads the first sentence of the register's hint (I33)", () => {
+  const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
+
+  assert.equal(messages("th").common.tableScrollHint, "เลื่อนตารางซ้าย/ขวาเพื่อดูคอลัมน์เพิ่มเติม")
+  assert.equal(messages("en").common.tableScrollHint, "Scroll left/right to see more columns.")
+  for (const locale of ["th", "en"] as const) {
+    assert.ok(messages(locale).asset.tableScrollHint.startsWith(messages(locale).common.tableScrollHint), locale)
+  }
+})

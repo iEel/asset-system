@@ -53,7 +53,8 @@
     "stepComplete": "เสร็จแล้ว",
     "stepCurrent": "ขั้นตอนปัจจุบัน",
     "stepUpcoming": "ยังไม่ถึง",
-    "stepRejected": "ปฏิเสธแล้ว"
+    "stepRejected": "ปฏิเสธแล้ว",
+    "tableScrollHint": "เลื่อนตารางซ้าย/ขวาเพื่อดูคอลัมน์เพิ่มเติม"
   },
   "globalSearch": {
     "label": "ค้นหาทั่วระบบ",

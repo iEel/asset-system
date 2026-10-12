@@ -53,7 +53,8 @@
     "stepComplete": "Done",
     "stepCurrent": "Current step",
     "stepUpcoming": "Not started",
-    "stepRejected": "Rejected"
+    "stepRejected": "Rejected",
+    "tableScrollHint": "Scroll left/right to see more columns."
   },
   "globalSearch": {
     "label": "Search globally",
