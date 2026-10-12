@@ -36,6 +36,16 @@ import {
   Inbox,
   KeyRound,
   Rocket,
+  Boxes,
+  Handshake,
+  Move,
+  ClipboardList,
+  ListX,
+  Network,
+  UserCog,
+  LockKeyhole,
+  HardDrive,
+  SlidersHorizontal,
   X,
 } from "lucide-react"
 import { useRef, useState } from "react"
@@ -116,38 +126,37 @@ export function Sidebar({
       labelKey: "sectionAssets",
       items: [
         {
-          labelKey: "assetManagement",
+          labelKey: "assetRegister",
+          href: `/${locale}/assets`,
+          permission: { module: "asset", action: "view" },
           icon: <Package size={20} />,
+        },
+        {
+          labelKey: "assetManagement",
+          icon: <Boxes size={20} />,
           children: [
-            {
-              labelKey: "assetRegistryGroup",
-              icon: <Package size={18} />,
-              children: [
-                { labelKey: "assetRegister", href: `/${locale}/assets`, permission: { module: "asset", action: "view" }, icon: <Package size={18} /> },
-                { labelKey: "addAsset", href: `/${locale}/assets/new`, permission: { module: "asset", action: "create" }, icon: <PackagePlus size={18} /> },
-                { labelKey: "scanSearchAsset", href: `/${locale}/asset-management/scan`, permission: { module: "asset", action: "view" }, icon: <ScanLine size={18} /> },
-                { labelKey: "printLabels", href: `/${locale}/asset-management/labels`, permission: { module: "asset", action: "view" }, icon: <Printer size={18} /> },
-                { labelKey: "importExport", href: `/${locale}/asset-management/import-export`, permission: { module: "asset", action: "view" }, icon: <FileSpreadsheet size={18} /> },
-              ],
-            },
-            {
-              labelKey: "assetTransactionsGroup",
-              icon: <ArrowRightLeft size={18} />,
-              children: [
-                { labelKey: "checkout", href: `/${locale}/asset-management/checkout`, permission: { module: "asset", action: "edit" }, icon: <LogOut size={18} /> },
-                { labelKey: "checkin", href: `/${locale}/asset-management/checkin`, permission: { module: "asset", action: "edit" }, icon: <LogIn size={18} /> },
-                { labelKey: "transfer", href: `/${locale}/asset-management/transfer`, permission: { module: "asset", action: "edit" }, icon: <ArrowRightLeft size={18} /> },
-                { labelKey: "bulkMove", href: `/${locale}/asset-management/bulk-move`, permission: { module: "asset", action: "edit" }, icon: <MapPin size={18} /> },
-              ],
-            },
+            { labelKey: "addAsset", href: `/${locale}/assets/new`, permission: { module: "asset", action: "create" }, icon: <PackagePlus size={18} /> },
+            { labelKey: "scanSearchAsset", href: `/${locale}/asset-management/scan`, permission: { module: "asset", action: "view" }, icon: <ScanLine size={18} /> },
+            { labelKey: "printLabels", href: `/${locale}/asset-management/labels`, permission: { module: "asset", action: "view" }, icon: <Printer size={18} /> },
+            { labelKey: "importExport", href: `/${locale}/asset-management/import-export`, permission: { module: "asset", action: "view" }, icon: <FileSpreadsheet size={18} /> },
+          ],
+        },
+        {
+          labelKey: "assetTransactionsGroup",
+          icon: <Handshake size={20} />,
+          children: [
+            { labelKey: "checkout", href: `/${locale}/asset-management/checkout`, permission: { module: "asset", action: "edit" }, icon: <LogOut size={18} /> },
+            { labelKey: "checkin", href: `/${locale}/asset-management/checkin`, permission: { module: "asset", action: "edit" }, icon: <LogIn size={18} /> },
+            { labelKey: "transfer", href: `/${locale}/asset-management/transfer`, permission: { module: "asset", action: "edit" }, icon: <ArrowRightLeft size={18} /> },
+            { labelKey: "bulkMove", href: `/${locale}/asset-management/bulk-move`, permission: { module: "asset", action: "edit" }, icon: <Move size={18} /> },
           ],
         },
         {
           labelKey: "audit",
           icon: <ClipboardCheck size={20} />,
           children: [
-            { labelKey: "auditRound", href: `/${locale}/audit/rounds`, permission: { module: "audit", action: "view" }, icon: <ClipboardCheck size={18} /> },
-            { labelKey: "auditFinding", href: `/${locale}/audit/findings`, permission: { module: "audit", action: "view" }, icon: <History size={18} /> },
+            { labelKey: "auditRound", href: `/${locale}/audit/rounds`, permission: { module: "audit", action: "view" }, icon: <ClipboardList size={18} /> },
+            { labelKey: "auditFinding", href: `/${locale}/audit/findings`, permission: { module: "audit", action: "view" }, icon: <ListX size={18} /> },
           ],
         },
         {
@@ -179,7 +188,7 @@ export function Sidebar({
           children: [
             { labelKey: "company", href: `/${locale}/master-data/companies`, permission: { module: "company", action: "view" }, icon: <Building2 size={18} /> },
             { labelKey: "branch", href: `/${locale}/master-data/branches`, permission: { module: "branch", action: "view" }, icon: <GitBranch size={18} /> },
-            { labelKey: "department", href: `/${locale}/master-data/departments`, permission: { module: "department", action: "view" }, icon: <Users size={18} /> },
+            { labelKey: "department", href: `/${locale}/master-data/departments`, permission: { module: "department", action: "view" }, icon: <Network size={18} /> },
             { labelKey: "employee", href: `/${locale}/master-data/employees`, permission: { module: "employee", action: "view" }, icon: <Users size={18} /> },
             { labelKey: "location", href: `/${locale}/master-data/locations`, permission: { module: "location", action: "view" }, icon: <MapPin size={18} /> },
             { labelKey: "category", href: `/${locale}/master-data/categories`, permission: { module: "category", action: "view" }, icon: <Tag size={18} /> },
@@ -191,8 +200,8 @@ export function Sidebar({
           labelKey: "administration",
           icon: <Settings size={20} />,
           children: [
-            { labelKey: "userManagement", href: `/${locale}/admin/users`, permission: { module: "user", action: "view" }, icon: <Users size={18} /> },
-            { labelKey: "rolePermission", href: `/${locale}/admin/roles`, permission: { module: "role", action: "view" }, icon: <Settings size={18} /> },
+            { labelKey: "userManagement", href: `/${locale}/admin/users`, permission: { module: "user", action: "view" }, icon: <UserCog size={18} /> },
+            { labelKey: "rolePermission", href: `/${locale}/admin/roles`, permission: { module: "role", action: "view" }, icon: <LockKeyhole size={18} /> },
             {
               labelKey: "approvalInbox",
               href: `/${locale}/admin/approvals`,
@@ -204,10 +213,10 @@ export function Sidebar({
             },
             { labelKey: "dataQuality", href: `/${locale}/admin/data-quality`, permission: { module: "setting", action: "view" }, icon: <ShieldAlert size={18} /> },
             { labelKey: "integrationApi", href: `/${locale}/admin/integrations`, permission: { module: "setting", action: "view" }, icon: <KeyRound size={18} /> },
-            { labelKey: "fileStorage", href: `/${locale}/admin/storage`, permission: { module: "setting", action: "view" }, icon: <Database size={18} /> },
+            { labelKey: "fileStorage", href: `/${locale}/admin/storage`, permission: { module: "setting", action: "view" }, icon: <HardDrive size={18} /> },
             { labelKey: "productionReadiness", href: `/${locale}/admin/readiness`, permission: { module: "setting", action: "view" }, icon: <Rocket size={18} /> },
             { labelKey: "systemLog", href: `/${locale}/admin/logs`, permission: { module: "system", action: "view" }, icon: <History size={18} /> },
-            { labelKey: "systemSetting", href: `/${locale}/admin/settings`, permission: { module: "setting", action: "view" }, icon: <Settings size={18} /> },
+            { labelKey: "systemSetting", href: `/${locale}/admin/settings`, permission: { module: "setting", action: "view" }, icon: <SlidersHorizontal size={18} /> },
           ],
         },
       ],
@@ -337,14 +346,14 @@ type SidebarItemProps = {
   pathname: string
   t: (key: string) => string
   onNavigate: () => void
-  depth?: number
 }
 
 function SidebarItem(props: SidebarItemProps) {
   return props.item.children ? <SidebarGroup {...props} /> : <SidebarLink {...props} />
 }
 
-function SidebarGroup({ item, collapsed, activeHref, pathname, t, onNavigate, depth = 0 }: SidebarItemProps) {
+// The menu is at most two levels deep (spec 2B B1), so a group's rows always sit 20px in.
+function SidebarGroup({ item, collapsed, activeHref, pathname, t, onNavigate }: SidebarItemProps) {
   const containsActive = containsNavigationHref(item, activeHref)
   const [open, setOpen] = useState(containsActive)
   const [seenActiveHref, setSeenActiveHref] = useState(activeHref)
@@ -370,13 +379,7 @@ function SidebarGroup({ item, collapsed, activeHref, pathname, t, onNavigate, de
         </span>
       </button>
       {open && (
-        <div
-          className={cn(
-            "mt-0.5 space-y-0.5 border-l border-sidebar-border pl-1",
-            depth === 0 ? "ml-5" : "ml-4",
-            collapsed && "lg:ml-0 lg:border-l-0 lg:pl-0"
-          )}
-        >
+        <div className={cn("mt-0.5 ml-5 space-y-0.5 border-l border-sidebar-border pl-1", collapsed && "lg:ml-0 lg:border-l-0 lg:pl-0")}>
           {item.children?.map((child) => (
             <SidebarItem
               key={child.labelKey}
@@ -386,7 +389,6 @@ function SidebarGroup({ item, collapsed, activeHref, pathname, t, onNavigate, de
               pathname={pathname}
               t={t}
               onNavigate={onNavigate}
-              depth={depth + 1}
             />
           ))}
         </div>
