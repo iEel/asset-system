@@ -1,16 +1,25 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ArrowDown, ArrowUp, Edit } from "lucide-react"
+import { Pencil, Plus } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
-import { LocationDeleteButton } from "@/components/master-data/location-delete-button"
-import {
-  ActiveBadge,
-  ColumnHeader,
-  MasterDataHeader,
-} from "@/components/master-data/master-data-layout"
-import { paginationRange } from "@/lib/master-data-query"
+import { ActiveBadge } from "@/components/master-data/master-data-layout"
+import { buttonVariants } from "@/components/ui/button-variants"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
+import { Field } from "@/components/ui/field"
+import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
+import { FilterSelect } from "@/components/ui/filter-select"
+import { Nil } from "@/components/ui/nil"
+import { PageHeader } from "@/components/ui/page-header"
+import { Pagination } from "@/components/ui/pagination"
+import { RowActions } from "@/components/ui/row-actions"
+import { SearchField } from "@/components/ui/search-field"
+import { StatStrip } from "@/components/ui/stat-strip"
+import { formatCount } from "@/lib/display-format"
+import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
+import { paginationRange } from "@/lib/master-data-query"
 import { appendMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 import { locationTypes } from "@/lib/validations/location"
 import {
@@ -120,69 +129,91 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
   const locationReturnHref = `${basePath}?${buildLocationQueryString(listState, {})}`
   const summary = buildLocationSummary(summaryLocations)
   const locationPaths = buildLocationPathMap(pathLocations)
+  const listHref = (next: Partial<LocationListState>) => `${basePath}?${buildLocationQueryString(listState, next)}`
+  // A page past the last one (an old link, or the last row of the last page deleted) shows the last page (spec 2B I21).
+  const lastPage = lastListPage(total, listState.pageSize)
+  if (locations.length === 0 && total > 0 && listState.page > lastPage) {
+    redirect(listHref({ page: lastPage }))
+  }
+  const { start, end, totalPages } = paginationRange(listState.page, listState.pageSize, total)
+  const hasActiveFilters = Boolean(listState.search || listState.branchId || listState.locationType || listState.assetUsage !== "all" || listState.hierarchy !== "all")
+  const sortBy = (field: LocationSort): DataTableSort => ({
+    href: listHref({ sort: field, direction: listState.sort === field && listState.direction === "asc" ? "desc" : "asc", page: 1 }),
+    direction: listState.sort === field ? listState.direction : null,
+  })
 
   return (
-    <div className="space-y-4">
-      <MasterDataHeader
+    <div className="space-y-6">
+      <PageHeader
         title={t("title")}
-        subtitle={t("subtitle")}
-        createHref={appendMasterDataReturnTo(`/${locale}/master-data/locations/new`, locationReturnHref)}
-        createLabel={tCommon("create")}
+        meta={t("subtitle")}
+        actions={
+          <Link href={appendMasterDataReturnTo(`/${locale}/master-data/locations/new`, locationReturnHref)} className={buttonVariants({ size: "md" })}>
+            <Plus aria-hidden="true" />
+            {tCommon("create")}
+          </Link>
+        }
       />
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <SummaryTile
-          label={t("summaryTotal")}
-          value={summary.total}
-          detail={t("summaryRoot", { count: summary.rootLocations })}
-          href={basePath}
-        />
-        <SummaryTile
-          label={t("summaryWithAssets")}
-          value={summary.withAssets}
-          detail={t("summaryWithAssetsHelp")}
-          href={`${basePath}?${buildLocationQueryString(listState, { assetUsage: "withAssets", page: 1 })}`}
-        />
-        <SummaryTile
-          label={t("summaryWithoutAssets")}
-          value={summary.withoutAssets}
-          detail={t("summaryWithoutAssetsHelp")}
-          href={`${basePath}?${buildLocationQueryString(listState, { assetUsage: "withoutAssets", page: 1 })}`}
-          tone={summary.withoutAssets > 0 ? "warning" : "neutral"}
-        />
-        <SummaryTile
-          label={t("summaryLeaf")}
-          value={summary.leafLocations}
-          detail={t("summaryLeafHelp")}
-          href={`${basePath}?${buildLocationQueryString(listState, { hierarchy: "leaf", page: 1 })}`}
-        />
-        <SummaryTile
-          label={t("summaryRootCard")}
-          value={summary.rootLocations}
-          detail={t("summaryRootHelp")}
-          href={`${basePath}?${buildLocationQueryString(listState, { hierarchy: "root", page: 1 })}`}
-        />
-      </div>
+      <StatStrip
+        items={[
+          {
+            key: "total",
+            label: t("summaryTotal"),
+            value: formatCount(summary.total),
+            foot: t("summaryRoot", { count: summary.rootLocations }),
+            footTitle: t("summaryRoot", { count: summary.rootLocations }),
+            href: basePath,
+          },
+          {
+            key: "withAssets",
+            label: t("summaryWithAssets"),
+            value: formatCount(summary.withAssets),
+            foot: t("summaryWithAssetsHelp"),
+            footTitle: t("summaryWithAssetsHelp"),
+            href: listHref({ assetUsage: "withAssets", page: 1 }),
+            current: listState.assetUsage === "withAssets",
+          },
+          {
+            key: "withoutAssets",
+            label: t("summaryWithoutAssets"),
+            value: formatCount(summary.withoutAssets),
+            foot: t("summaryWithoutAssetsHelp"),
+            footTitle: t("summaryWithoutAssetsHelp"),
+            href: listHref({ assetUsage: "withoutAssets", page: 1 }),
+            current: listState.assetUsage === "withoutAssets",
+            attention: summary.withoutAssets > 0,
+          },
+          {
+            key: "leaf",
+            label: t("summaryLeaf"),
+            value: formatCount(summary.leafLocations),
+            foot: t("summaryLeafHelp"),
+            footTitle: t("summaryLeafHelp"),
+            href: listHref({ hierarchy: "leaf", page: 1 }),
+            current: listState.hierarchy === "leaf",
+          },
+          {
+            key: "root",
+            label: t("summaryRootCard"),
+            value: formatCount(summary.rootLocations),
+            foot: t("summaryRootHelp"),
+            footTitle: t("summaryRootHelp"),
+            href: listHref({ hierarchy: "root", page: 1 }),
+            current: listState.hierarchy === "root",
+          },
+        ]}
+      />
 
-      <div className="rounded-lg border border-border bg-surface p-4">
-        <form
-          className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(4,minmax(150px,1fr))_auto]"
-          action={basePath}
-        >
+      <FilterPanel>
+        <form role="search" action={basePath} className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(4,minmax(150px,1fr))_auto]">
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="pageSize" value={listState.pageSize} />
           <input type="hidden" name="sort" value={listState.sort} />
           <input type="hidden" name="direction" value={listState.direction} />
-          <label className="space-y-1 text-sm font-medium text-foreground">
-            <span>{tCommon("search")}</span>
-            <input
-              type="search"
-              name="search"
-              defaultValue={searchText}
-              placeholder={t("searchPlaceholder")}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-            />
-          </label>
+          <Field label={tCommon("search")}>
+            <SearchField name="search" defaultValue={searchText} placeholder={t("searchPlaceholder")} />
+          </Field>
           <FilterSelect
             label={t("branch")}
             name="branchId"
@@ -225,275 +256,118 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
               { value: "leaf", label: t("leafLocations") },
             ]}
           />
-          <div className="flex items-end gap-2">
-            <button
-              type="submit"
-              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
-            >
-              {tCommon("filter")}
-            </button>
-            <Link
-              href={basePath}
-              className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-            >
-              {t("clearFilters")}
-            </Link>
-          </div>
+          <FilterFormActions submitLabel={tCommon("filter")} clear={hasActiveFilters ? { href: basePath, label: t("clearFilters") } : undefined} />
         </form>
-      </div>
+      </FilterPanel>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <LocationSortableColumnHeader field="code" current={listState} basePath={basePath}>{t("code")}</LocationSortableColumnHeader>
-                <LocationSortableColumnHeader field="name" current={listState} basePath={basePath}>{t("name")}</LocationSortableColumnHeader>
-                <ColumnHeader>{t("fullPath")}</ColumnHeader>
-                <LocationSortableColumnHeader field="branch" current={listState} basePath={basePath}>{t("branch")}</LocationSortableColumnHeader>
-                <LocationSortableColumnHeader field="locationType" current={listState} basePath={basePath}>{t("locationType")}</LocationSortableColumnHeader>
-                <LocationSortableColumnHeader field="parent" current={listState} basePath={basePath}>{t("parentLocation")}</LocationSortableColumnHeader>
-                <LocationSortableColumnHeader field="currentAssets" current={listState} basePath={basePath}>{t("currentAssets")}</LocationSortableColumnHeader>
-                <LocationSortableColumnHeader field="children" current={listState} basePath={basePath}>{t("childCount")}</LocationSortableColumnHeader>
-                <ColumnHeader>{tCommon("status")}</ColumnHeader>
-                <ColumnHeader align="right">{tCommon("actions")}</ColumnHeader>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {locations.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="h-32 px-4 text-center text-muted-foreground">
-                    {tCommon("noData")}
-                  </td>
-                </tr>
-              ) : (
-                locations.map((location) => {
-                  const drilldown = buildLocationDrilldownHrefs({ locale, locationCode: location.code })
-                  const editHref = appendMasterDataReturnTo(`/${locale}/master-data/locations/${location.id}/edit`, locationReturnHref)
-                  return (
-                    <ClickableTableRow
-                      key={location.id}
-                      href={editHref}
-                      label={`${tCommon("edit")}: ${location.code}`}
-                    >
-                      <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{location.code}</td>
-                      <td className="min-w-48 px-4 py-3 text-foreground">{location.name}</td>
-                      <td className="min-w-64 px-4 py-3 text-muted-foreground">
-                        {locationPaths.get(location.id) ?? location.code}
-                      </td>
-                      <td className="min-w-56 px-4 py-3 text-muted-foreground">
-                        {location.branch.company.code} / {location.branch.code} - {location.branch.name}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{location.locationType}</td>
-                      <td className="min-w-44 px-4 py-3 text-muted-foreground">
-                        {location.parent ? `${location.parent.code} - ${location.parent.name}` : "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {location._count.currentAssets > 0 ? (
-                          <Link
-                            href={drilldown.assets}
-                            className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft"
-                          >
-                            {location._count.currentAssets.toLocaleString()}
-                          </Link>
-                        ) : (
-                          "0"
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {location._count.children.toLocaleString()}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <ActiveBadge label={tCommon("active")} />
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right">
-                        <div className="inline-flex items-center gap-1">
-                          <Link
-                            href={editHref}
-                            title={tCommon("edit")}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary-soft"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Link>
-                          <LocationDeleteButton id={location.id} />
-                        </div>
-                      </td>
-                    </ClickableTableRow>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-        <LocationPagination
-          current={listState}
-          total={total}
-          basePath={basePath}
-          labels={{
-            rowsPerPage: tCommon("rowsPerPage"),
-            page: tCommon("page"),
-            of: tCommon("of"),
-            previous: tCommon("previous"),
-            next: tCommon("next"),
-          }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function SummaryTile({
-  label,
-  value,
-  detail,
-  href,
-  tone = "neutral",
-}: {
-  label: string
-  value: number
-  detail: string
-  href: string
-  tone?: "neutral" | "warning"
-}) {
-  return (
-    <Link
-      href={href}
-      className={`rounded-lg border bg-surface p-4 transition-colors hover:border-primary-border hover:bg-primary-soft ${
-        tone === "warning" ? "border-warning-border" : "border-border"
-      }`}
-    >
-      <div className="text-sm font-medium text-muted-foreground">{label}</div>
-      <div className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString()}</div>
-      <div className="mt-1 text-sm text-muted-foreground">{detail}</div>
-    </Link>
-  )
-}
-
-function LocationSortableColumnHeader({
-  children,
-  field,
-  current,
-  basePath,
-  align = "left",
-}: {
-  children: React.ReactNode
-  field: LocationSort
-  current: LocationListState
-  basePath: string
-  align?: "left" | "right"
-}) {
-  const active = current.sort === field
-  const nextDirection = active && current.direction === "asc" ? "desc" : "asc"
-  const href = `${basePath}?${buildLocationQueryString(current, { sort: field, direction: nextDirection, page: 1 })}`
-
-  return (
-    <th
-      scope="col"
-      className={`px-4 py-3 text-xs font-semibold uppercase tracking-normal text-muted-foreground ${
-        align === "right" ? "text-right" : "text-left"
-      }`}
-    >
-      <Link href={href} className={`inline-flex items-center gap-1 hover:text-primary ${align === "right" ? "justify-end" : ""}`}>
-        {children}
-        {active ? (
-          current.direction === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
-        ) : null}
-      </Link>
-    </th>
-  )
-}
-
-function LocationPagination({
-  current,
-  total,
-  basePath,
-  labels,
-}: {
-  current: LocationListState
-  total: number
-  basePath: string
-  labels: {
-    rowsPerPage: string
-    page: string
-    of: string
-    previous: string
-    next: string
-  }
-}) {
-  const { start, end, totalPages } = paginationRange(current.page, current.pageSize, total)
-  const safePage = Math.min(current.page, totalPages)
-  const previousPage = Math.max(1, safePage - 1)
-  const nextPage = Math.min(totalPages, safePage + 1)
-
-  return (
-    <div className="flex flex-col gap-3 border-t border-border px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        {start}-{end} {labels.of} {total}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span>{labels.rowsPerPage}</span>
-        {[25, 50, 100].map((pageSize) => (
-          <Link
-            key={pageSize}
-            href={`${basePath}?${buildLocationQueryString(current, { pageSize, page: 1 })}`}
-            className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md border px-2 transition-colors ${
-              current.pageSize === pageSize ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface hover:bg-accent"
-            }`}
-          >
-            {pageSize}
-          </Link>
-        ))}
-        <span className="px-2">
-          {labels.page} {safePage} {labels.of} {totalPages}
-        </span>
-        <Link
-          href={`${basePath}?${buildLocationQueryString(current, { page: previousPage })}`}
-          aria-disabled={safePage <= 1}
-          className={`inline-flex h-8 items-center rounded-md border border-border px-3 transition-colors ${
-            safePage <= 1 ? "pointer-events-none opacity-50" : "hover:bg-accent"
-          }`}
-        >
-          {labels.previous}
-        </Link>
-        <Link
-          href={`${basePath}?${buildLocationQueryString(current, { page: nextPage })}`}
-          aria-disabled={safePage >= totalPages}
-          className={`inline-flex h-8 items-center rounded-md border border-border px-3 transition-colors ${
-            safePage >= totalPages ? "pointer-events-none opacity-50" : "hover:bg-accent"
-          }`}
-        >
-          {labels.next}
-        </Link>
-      </div>
-    </div>
-  )
-}
-
-function FilterSelect({
-  label,
-  name,
-  defaultValue,
-  options,
-}: {
-  label: string
-  name: string
-  defaultValue: string
-  options: Array<{ value: string; label: string }>
-}) {
-  return (
-    <label className="space-y-1 text-sm font-medium text-foreground">
-      <span>{label}</span>
-      <select
-        name={name}
-        defaultValue={defaultValue}
-        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+      <DataTable
+        caption={t("title")}
+        scrollHint={tCommon("tableScrollHint")}
+        footer={
+          total > 0 ? (
+            <Pagination
+              page={listState.page}
+              totalPages={totalPages}
+              previousHref={listHref({ page: listState.page - 1 })}
+              nextHref={listHref({ page: listState.page + 1 })}
+              pageSize={listState.pageSize}
+              pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: listHref({ pageSize: value, page: 1 }) }))}
+              labels={{
+                navigation: tCommon("pagination"),
+                previous: tCommon("previous"),
+                next: tCommon("next"),
+                pageOf: tCommon("pageOf", { page: listState.page, total: totalPages }),
+                range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
+                pageSizeGroup: tCommon("pageSizeLabel"),
+                rowsPerPage: tCommon("rowsPerPage"),
+              }}
+            />
+          ) : undefined
+        }
       >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
+        <DataTableHeader>
+          <tr>
+            <DataTableHead sort={sortBy("code")}>{t("code")}</DataTableHead>
+            <DataTableHead sort={sortBy("name")}>{t("name")}</DataTableHead>
+            <DataTableHead>{t("fullPath")}</DataTableHead>
+            <DataTableHead sort={sortBy("branch")}>{t("branch")}</DataTableHead>
+            <DataTableHead sort={sortBy("locationType")}>{t("locationType")}</DataTableHead>
+            <DataTableHead sort={sortBy("parent")}>{t("parentLocation")}</DataTableHead>
+            <DataTableHead align="right" sort={sortBy("currentAssets")}>{t("currentAssets")}</DataTableHead>
+            <DataTableHead align="right" sort={sortBy("children")}>{t("childCount")}</DataTableHead>
+            <DataTableHead>{tCommon("status")}</DataTableHead>
+            <DataTableHead align="right" hideLabel>{tCommon("actions")}</DataTableHead>
+          </tr>
+        </DataTableHeader>
+        <DataTableBody>
+          {locations.length === 0 ? (
+            hasActiveFilters ? (
+              <TableEmptyRow colSpan={10} emptyState={{ title: tCommon("noData"), actionHref: basePath, actionLabel: t("clearFilters"), actionVariant: "secondary" }} />
+            ) : (
+              <TableEmptyRow colSpan={10}>{tCommon("noData")}</TableEmptyRow>
+            )
+          ) : (
+            locations.map((location) => {
+              const drilldown = buildLocationDrilldownHrefs({ locale, locationCode: location.code })
+              const editHref = appendMasterDataReturnTo(`/${locale}/master-data/locations/${location.id}/edit`, locationReturnHref)
+              return (
+                <ClickableTableRow
+                  key={location.id}
+                  href={editHref}
+                  label={`${tCommon("edit")}: ${location.code}`}
+                >
+                  <DataTableCell className="whitespace-nowrap">
+                    <span className="tag font-medium text-foreground">{location.code}</span>
+                  </DataTableCell>
+                  <DataTableCell className="min-w-48 text-foreground">{location.name}</DataTableCell>
+                  <DataTableCell className="min-w-64 text-muted-foreground">
+                    {locationPaths.get(location.id) ?? location.code}
+                  </DataTableCell>
+                  <DataTableCell className="min-w-56 text-muted-foreground">
+                    <span className="tag">{location.branch.company.code}</span> / <span className="tag">{location.branch.code}</span> - {location.branch.name}
+                  </DataTableCell>
+                  <DataTableCell className="whitespace-nowrap text-muted-foreground">{location.locationType}</DataTableCell>
+                  <DataTableCell className="min-w-44 text-muted-foreground">
+                    {location.parent ? (
+                      <>
+                        <span className="tag">{location.parent.code}</span> - {location.parent.name}
+                      </>
+                    ) : (
+                      <Nil />
+                    )}
+                  </DataTableCell>
+                  <DataTableCell numeric className="text-muted-foreground">
+                    {location._count.currentAssets > 0 ? (
+                      <Link
+                        href={drilldown.assets}
+                        className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft"
+                      >
+                        {formatCount(location._count.currentAssets)}
+                      </Link>
+                    ) : (
+                      <span className="px-2">{formatCount(0)}</span>
+                    )}
+                  </DataTableCell>
+                  <DataTableCell numeric className="text-muted-foreground">{formatCount(location._count.children)}</DataTableCell>
+                  <DataTableCell className="whitespace-nowrap">
+                    <ActiveBadge label={tCommon("active")} />
+                  </DataTableCell>
+                  <DataTableCell align="right">
+                    <RowActions
+                      code={location.code}
+                      name={location.name}
+                      menuLabel={tCommon("moreActionsFor", { code: location.code })}
+                      next={{ label: tCommon("edit"), href: editHref, icon: <Pencil aria-hidden="true" /> }}
+                      groups={[]}
+                      deleteAction={{ endpoint: `/api/locations/${location.id}` }}
+                    />
+                  </DataTableCell>
+                </ClickableTableRow>
+              )
+            })
+          )}
+        </DataTableBody>
+      </DataTable>
+    </div>
   )
 }
