@@ -15,6 +15,7 @@ import { FormContextBanner } from "@/components/ui/form-context-banner"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { OperationReviewDialog } from "@/components/ui/operation-review-dialog"
+import { PageHeader } from "@/components/ui/page-header"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { buildOperationReviewSummary } from "@/lib/asset-operation-review"
@@ -390,9 +391,7 @@ function destinationValue(values: {
 function OperationShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="mb-6">
-        <h1 className="break-words text-2xl font-bold text-foreground">{title}</h1>
-      </div>
+      <PageHeader title={title} className="mb-6" />
       <section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-6">{children}</section>
     </div>
   )

@@ -90,3 +90,13 @@ test("the check-in form draws its title with PageHeader (2B-1 task 23, I13)", ()
   assert.match(source, /<div className="mx-auto max-w-5xl">\n\s+<PageHeader title=\{t\("title"\)\} className="mb-6" \/>\n/)
   assert.doesNotMatch(source, /<h1\b|PageBackLink/, "the operation forms keep having no back button (B2)")
 })
+
+test("the check-out form's OperationShell draws its title with PageHeader and stays a card (2B-1 task 23, I13)", () => {
+  const source = read(`${C}asset-operations/checkout-form.tsx`)
+  assert.ok(source.includes('import { PageHeader } from "@/components/ui/page-header"'), "checkout-form.tsx imports PageHeader")
+  assert.match(
+    source,
+    /function OperationShell\(\{ title, children \}: \{ title: string; children: React\.ReactNode \}\) \{\n\s+return \(\n\s+<div className="mx-auto max-w-5xl">\n\s+<PageHeader title=\{title\} className="mb-6" \/>\n\s+<section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-6">\{children\}<\/section>/,
+  )
+  assert.doesNotMatch(source, /<h1\b|PageBackLink/)
+})
