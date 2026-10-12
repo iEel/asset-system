@@ -4,8 +4,9 @@ import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, Save } from "lucide-react"
+import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type RoleOption = {
@@ -107,19 +108,12 @@ export function AdminUserForm({
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("formSubtitle")}</p>
-        </div>
-        <Link
-          href={backHref}
-          className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {tCommon("back")}
-        </Link>
-      </div>
+      <PageHeader
+        title={title}
+        meta={t("formSubtitle")}
+        className="mb-6"
+        back={<PageBackLink href={backHref} label={tCommon("back")} />}
+      />
 
       <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-surface p-6">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">

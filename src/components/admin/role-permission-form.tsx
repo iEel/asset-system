@@ -4,8 +4,9 @@ import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Info, Loader2, Save } from "lucide-react"
+import { Info, Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type RoleFormValue = {
@@ -120,19 +121,12 @@ function togglePermission(permissionId: string) {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("editTitle")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{isCreate ? t("createSubtitle") : `${role.displayNameTh || role.displayName} · ${role.name}`}</p>
-        </div>
-        <Link
-          href={backHref}
-          className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {tCommon("back")}
-        </Link>
-      </div>
+      <PageHeader
+        title={isCreate ? t("createTitle") : t("editTitle")}
+        meta={isCreate ? t("createSubtitle") : `${role.displayNameTh || role.displayName} · ${role.name}`}
+        className="mb-6"
+        back={<PageBackLink href={backHref} label={tCommon("back")} />}
+      />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <section className="rounded-lg border border-border bg-surface p-6">

@@ -48,6 +48,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}master-data/employee-form.tsx`,
   `${C}master-data/location-form.tsx`,
   `${C}master-data/supplier-form.tsx`,
+  `${C}admin/admin-user-form.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -135,8 +136,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}maintenance/new/page.tsx`]: 1,
     [`${D}maintenance/pm/[id]/edit/page.tsx`]: 1,
     [`${D}maintenance/pm/new/page.tsx`]: 1,
-    [`${C}admin/admin-user-form.tsx`]: 1,
-    [`${C}admin/role-permission-form.tsx`]: 1,
     [`${C}asset-operations/bulk-move-form.tsx`]: 1,
     [`${C}asset-operations/checkin-form.tsx`]: 1,
     [`${C}asset-operations/checkout-form.tsx`]: 1,
@@ -202,8 +201,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-1
     [`${D}disposal/batch/new/page.tsx`]: 1,
     [`${D}disposal/new/page.tsx`]: 1,
-    [`${C}admin/admin-user-form.tsx`]: 1,
-    [`${C}admin/role-permission-form.tsx`]: 1,
     [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): the move-out button :1412, not a page back
     [`${C}assets/asset-component-manager.tsx`]: 1,
     [`${C}assets/asset-form.tsx`]: 1,
