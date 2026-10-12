@@ -61,6 +61,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}asset-operations/transfer-form.tsx`,
   `${C}asset-operations/bulk-move-form.tsx`,
   `${C}audit/audit-round-form.tsx`,
+  `${C}admin/system-settings-form.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -240,7 +241,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LT1: {
     // 2B-1
     [`${C}admin/role-permission-form.tsx`]: 2, // → 2 (KEEP): 2C batch 4 (R-e)
-    [`${C}admin/system-settings-form.tsx`]: 1,
     [`${C}master-data/master-data-layout.tsx`]: 2, // 2B-5 deletes ColumnHeader and SortableColumnHeader (R-h)
     // 2B-3
     [`${C}assets/asset-register-table.tsx`]: 2,

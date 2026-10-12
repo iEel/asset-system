@@ -121,3 +121,13 @@ test("the new audit round form draws its title with PageHeader (2B-1 task 23, I1
   assert.match(source, /<div className="mx-auto max-w-5xl">\n\s+<PageHeader title=\{t\("createTitle"\)\} className="mb-6" \/>\n/)
   assert.doesNotMatch(source, /<h1\b|PageBackLink/)
 })
+
+test("the three settings tables have the white 13/500 header in sentence case (2B-1 task 24, R-e)", () => {
+  const source = read(`${C}admin/system-settings-form.tsx`)
+  assert.equal(source.match(/<thead>/g)?.length, 3, "the prefix, advanced and change-review tables")
+  assert.match(
+    source,
+    /function Head\(\{ children \}: \{ children: React\.ReactNode \}\) \{\n  return <th className="bg-surface px-4 py-2\.5 text-left align-bottom text-meta font-medium text-faint-foreground">\{children\}<\/th>\n\}/,
+  )
+  assert.doesNotMatch(source, /<thead className=|\bbg-muted\//)
+})

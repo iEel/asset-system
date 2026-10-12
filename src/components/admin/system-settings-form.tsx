@@ -1266,7 +1266,7 @@ export function SystemSettingsForm({
           ) : (
             <div className="w-full max-w-full overflow-x-auto overscroll-x-contain rounded-md border border-border">
               <table className="min-w-full divide-y divide-border text-sm">
-                <thead className="bg-muted/40">
+                <thead>
                   <tr>
                     <Head>{labels.prefix}</Head>
                     <Head>{labels.category}</Head>
@@ -1970,7 +1970,7 @@ export function SystemSettingsForm({
           <SectionHeader title={labels.advancedSettings} description={labels.advancedSettingsDescription} />
           <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
             <table className="min-w-full divide-y divide-border text-sm">
-              <thead className="bg-muted/40">
+              <thead>
                 <tr>
                   <Head>{labels.key}</Head>
                   <Head>{labels.value}</Head>
@@ -2003,7 +2003,7 @@ export function SystemSettingsForm({
           <SectionHeader title={labels.changeReview} description={labels.changeReviewDescription} />
           <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
             <table className="min-w-full divide-y divide-border text-sm">
-              <thead className="bg-muted/40">
+              <thead>
                 <tr>
                   <Head>{labels.key}</Head>
                   <Head>{labels.beforeValue}</Head>
@@ -2666,6 +2666,7 @@ function SectionHeader({ title, description }: { title: string; description?: st
   )
 }
 
+// The white 13/500 header of the shared DataTable (spec 2B §3.4, R-e), on this file's own px-4 cells.
 function Head({ children }: { children: React.ReactNode }) {
-  return <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{children}</th>
+  return <th className="bg-surface px-4 py-2.5 text-left align-bottom text-meta font-medium text-faint-foreground">{children}</th>
 }
