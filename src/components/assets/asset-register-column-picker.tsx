@@ -2,6 +2,7 @@
 
 import { Columns3 } from "lucide-react"
 import { useTranslations } from "next-intl"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -55,13 +56,10 @@ export function AssetRegisterColumnPicker({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <Columns3 className="size-4" aria-hidden="true" />
+        <Button variant="outline" size="md">
+          <Columns3 aria-hidden="true" />
           {t("columns")}
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>{t("columnPresets")}</DropdownMenuLabel>

@@ -289,3 +289,13 @@ test("phone rows show the asset tag as a mono tag on the soft row line, and sele
   assert.match(selectable, /<span className="block truncate text-sm text-foreground"><span className="tag font-medium">\{asset\.assetTag\}<\/span><\/span>/)
   assert.doesNotMatch(source, /rounded border-border|text-primary|font-semibold text-foreground">\{asset\.assetTag\}/)
 })
+
+// Plan 2B-3 Task 11 (spec 2B §7.8.6, N5): the column picker opens from the shared outline Button, 36px from md. The
+// table shows it from md only, so its 44px phone height never shows.
+test("the column picker opens from the shared outline Button (spec 2B §7.8.6)", () => {
+  const source = columnPicker()
+
+  assert.match(source, /^import \{ Button \} from "@\/components\/ui\/button"$/m)
+  assert.match(source, /<DropdownMenuTrigger asChild>\n\s+<Button variant="outline" size="md">\n\s+<Columns3 aria-hidden="true" \/>\n\s+\{t\("columns"\)\}\n\s+<\/Button>\n\s+<\/DropdownMenuTrigger>/)
+  assert.doesNotMatch(source, /<button\b|hover:bg-accent|focus-visible:ring/, "no hand-written trigger (N5)")
+})
