@@ -1,21 +1,38 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { ArrowLeft, FileText, PackageCheck } from "lucide-react"
+import { FileText, PackageCheck } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
-import { formatCurrency, formatDateTime } from "@/lib/utils"
+import { formatCount, formatMoney } from "@/lib/display-format"
+import { formatDateTime } from "@/lib/utils"
 import { deriveDisposalBatchStatus } from "@/lib/disposal-batch"
+import { appendOperationalReturnTo, normalizeDisposalBatchReturnTo } from "@/lib/operational-return-navigation"
 import { DisposalAttachments } from "@/components/disposal/disposal-attachments"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
+import { EmptyNote } from "@/components/ui/empty-note"
+import { KeyValueList } from "@/components/ui/key-value-list"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
+import { RowActions } from "@/components/ui/row-actions"
+import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
 
-export default async function DisposalBatchDetailPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
+type DisposalBatchDetailPageProps = {
+  params: Promise<{ locale: string; id: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
+}
+
+export default async function DisposalBatchDetailPage({ params, searchParams }: DisposalBatchDetailPageProps) {
   const { locale, id } = await params
+  const rawSearchParams = await searchParams
   const user = await requirePagePermission(locale, "disposal", "view")
   const canManage = hasPermission(user, "disposal", "create") || hasPermission(user, "disposal", "edit") || hasPermission(user, "disposal", "approve")
   const [t, tCommon] = await Promise.all([getTranslations("disposalPage"), getTranslations("common")])
+  // Back to the batch history list and its page when the user came from there, else to the disposal queue (spec 2B §5.9.2 row 5).
+  const returnToHref = normalizeDisposalBatchReturnTo(locale, rawSearchParams.returnTo)
   const batch = await prisma.disposalBatch.findFirst({
     where: { id, isActive: true },
     include: {
@@ -49,53 +66,89 @@ export default async function DisposalBatchDetailPage({ params }: { params: Prom
   const batchHref = `/${locale}/disposal/batches/${batch.id}`
 
   return (
-    <div className="space-y-6 pb-24 md:pb-0">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <Breadcrumbs items={[{ label: t("title"), href: `/${locale}/disposal` }, { label: batch.batchNo, code: true }]} />
-          <h1 className="mt-3 text-2xl font-bold text-foreground">{batch.batchNo}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("batchDetailHelp", { count: batch.disposalRequests.length })}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href={`/${locale}/disposal`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-accent"><ArrowLeft className="h-4 w-4" />{tCommon("back")}</Link>
-          <StatusBadge label={statusLabel} status={status} />
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumbs={[{ label: t("title"), href: `/${locale}/disposal` }, { label: batch.batchNo, code: true }]}
+        title={<span className="tag font-medium">{batch.batchNo}</span>}
+        meta={
+          <>
+            <StatusBadge label={statusLabel} status={status} />
+            <span>{t("batchDetailHelp", { count: batch.disposalRequests.length })}</span>
+          </>
+        }
+        back={<PageBackLink href={returnToHref} label={tCommon("back")} />}
+      />
 
-      <section className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 xl:grid-cols-5">
-        <BatchMetric label={t("batchTotal")} value={batch.disposalRequests.length} />
-        <BatchMetric label={t("statuses.pending")} value={counts.pending} />
-        <BatchMetric label={t("statuses.approved")} value={counts.approved} />
-        <BatchMetric label={t("statuses.disposed")} value={counts.disposed} />
-        <BatchMetric label={t("statuses.rejected")} value={counts.rejected} />
-      </section>
+      <StatStrip
+        items={[
+          { key: "total", label: t("batchTotal"), value: formatCount(batch.disposalRequests.length) },
+          { key: "pending", label: t("statuses.pending"), value: formatCount(counts.pending) },
+          { key: "approved", label: t("statuses.approved"), value: formatCount(counts.approved) },
+          { key: "disposed", label: t("statuses.disposed"), value: formatCount(counts.disposed) },
+          { key: "rejected", label: t("statuses.rejected"), value: formatCount(counts.rejected) },
+        ]}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-6">
           <section className="rounded-lg border border-border bg-surface p-4 sm:p-6">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground"><PackageCheck className="h-5 w-5 text-primary" />{t("batchSharedDetail")}</h2>
-            <dl className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <BatchInfo label={t("disposalType")} value={t(`types.${batch.disposalType}`)} />
-              <BatchInfo label={t("requestedBy")} value={`${batch.requestedBy.code} - ${batch.requestedBy.fullNameTh}`} />
-              <BatchInfo label={t("approver")} value={batch.approver ? `${batch.approver.code} - ${batch.approver.fullNameTh}` : t("centralApprovalQueue")} />
-              <BatchInfo label={t("requestDate")} value={formatDateTime(batch.requestDate)} />
-              {batch.saleValue != null ? <BatchInfo label={t("saleValue")} value={formatCurrency(Number(batch.saleValue))} /> : null}
-              {batch.salvageValue != null ? <BatchInfo label={t("salvageValue")} value={formatCurrency(Number(batch.salvageValue))} /> : null}
-            </dl>
-            <div className="mt-5 border-t border-border pt-4"><BatchInfo label={t("reason")} value={batch.reason} /></div>
+            <KeyValueList
+              className="mt-5"
+              items={[
+                { key: "disposalType", label: t("disposalType"), value: t(`types.${batch.disposalType}`) },
+                { key: "requestedBy", label: t("requestedBy"), value: <><span className="tag">{batch.requestedBy.code}</span> - {batch.requestedBy.fullNameTh}</> },
+                { key: "approver", label: t("approver"), value: batch.approver ? <><span className="tag">{batch.approver.code}</span> - {batch.approver.fullNameTh}</> : t("centralApprovalQueue") },
+                { key: "requestDate", label: t("requestDate"), value: formatDateTime(batch.requestDate) },
+                ...(batch.saleValue != null ? [{ key: "saleValue", label: t("saleValue"), value: <span className="num">{formatMoney(Number(batch.saleValue), { unit: tCommon("baht") })}</span> }] : []),
+                ...(batch.salvageValue != null ? [{ key: "salvageValue", label: t("salvageValue"), value: <span className="num">{formatMoney(Number(batch.salvageValue), { unit: tCommon("baht") })}</span> }] : []),
+                { key: "reason", label: t("reason"), value: <span className="whitespace-pre-wrap">{batch.reason}</span> },
+              ]}
+            />
           </section>
 
           <section className="overflow-hidden rounded-lg border border-border bg-surface">
             <div className="border-b border-border px-4 py-3"><h2 className="text-base font-semibold text-foreground">{t("batchChildren")}</h2></div>
             <div className="divide-y divide-border md:hidden">
-              {batch.disposalRequests.map((request) => <BatchRequestCard key={request.id} locale={locale} batchHref={batchHref} request={request} statusLabel={t(`statuses.${request.requestStatus}`)} openLabel={t("openRequest")} />)}
+              {batch.disposalRequests.length === 0 ? <EmptyNote padded>{tCommon("noData")}</EmptyNote> : batch.disposalRequests.map((request) => <BatchRequestCard key={request.id} href={appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, batchHref)} request={request} statusLabel={t(`statuses.${request.requestStatus}`)} openLabel={t("openRequest")} />)}
             </div>
-            <div className="hidden overflow-x-auto md:block">
-              <table className="min-w-full text-sm">
-                <thead className="bg-muted/50 text-left text-xs text-muted-foreground"><tr><th className="px-4 py-3">{t("disposalNo")}</th><th className="px-4 py-3">{t("asset")}</th><th className="px-4 py-3">{t("currentLocation")}</th><th className="px-4 py-3">{tCommon("status")}</th><th className="sticky right-0 bg-muted/50 px-4 py-3 text-right">{t("nextAction")}</th></tr></thead>
-                <tbody className="divide-y divide-border">{batch.disposalRequests.map((request) => <tr key={request.id}><td className="px-4 py-3 font-medium">{request.disposalNo}</td><td className="px-4 py-3"><div>{request.asset.assetTag}</div><div className="text-xs text-muted-foreground">{request.asset.name}</div></td><td className="px-4 py-3">{request.asset.currentLocation.name}</td><td className="px-4 py-3"><StatusBadge label={t(`statuses.${request.requestStatus}`)} status={request.requestStatus} /></td><td className="sticky right-0 bg-surface px-4 py-3 text-right"><RequestLink locale={locale} requestId={request.id} returnTo={batchHref} label={t("openRequest")} /></td></tr>)}</tbody>
-              </table>
-            </div>
+            <DataTable framed={false} className="hidden md:block" caption={t("batchChildren")} scrollHint={tCommon("tableScrollHint")}>
+              <DataTableHeader>
+                <tr>
+                  <DataTableHead>{t("disposalNo")}</DataTableHead>
+                  <DataTableHead>{t("asset")}</DataTableHead>
+                  <DataTableHead>{t("currentLocation")}</DataTableHead>
+                  <DataTableHead>{tCommon("status")}</DataTableHead>
+                  <DataTableHead align="right" sticky="right" hideLabel>{t("nextAction")}</DataTableHead>
+                </tr>
+              </DataTableHeader>
+              <DataTableBody>
+                {batch.disposalRequests.length === 0 ? (
+                  <TableEmptyRow colSpan={5}>{tCommon("noData")}</TableEmptyRow>
+                ) : batch.disposalRequests.map((request) => {
+                  const requestHref = appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, batchHref)
+                  return (
+                    <ClickableTableRow key={request.id} href={requestHref} label={`${t("openRequest")}: ${request.disposalNo}`}>
+                      <DataTableCell className="whitespace-nowrap"><span className="tag font-medium text-foreground">{request.disposalNo}</span></DataTableCell>
+                      <DataTableCell>
+                        <div className="text-foreground"><span className="tag">{request.asset.assetTag}</span></div>
+                        <div className="text-xs text-muted-foreground">{request.asset.name}</div>
+                      </DataTableCell>
+                      <DataTableCell className="text-muted-foreground">{request.asset.currentLocation.name}</DataTableCell>
+                      <DataTableCell><StatusBadge label={t(`statuses.${request.requestStatus}`)} status={request.requestStatus} /></DataTableCell>
+                      <DataTableCell align="right" sticky="right">
+                        <RowActions
+                          code={request.disposalNo}
+                          menuLabel={tCommon("moreActionsFor", { code: request.disposalNo })}
+                          next={{ label: t("openRequest"), href: requestHref, icon: <FileText aria-hidden="true" /> }}
+                          groups={[]}
+                        />
+                      </DataTableCell>
+                    </ClickableTableRow>
+                  )
+                })}
+              </DataTableBody>
+            </DataTable>
           </section>
         </div>
 
@@ -105,7 +158,23 @@ export default async function DisposalBatchDetailPage({ params }: { params: Prom
   )
 }
 
-function BatchMetric({ label, value }: { label: string; value: number }) { return <div className="bg-surface px-4 py-4"><div className="text-xs font-medium text-muted-foreground">{label}</div><div className="mt-1 text-2xl font-semibold text-foreground">{value}</div></div> }
-function BatchInfo({ label, value }: { label: string; value: string }) { return <div><dt className="text-xs font-medium text-muted-foreground">{label}</dt><dd className="mt-1 whitespace-pre-wrap text-sm font-medium text-foreground">{value}</dd></div> }
-function RequestLink({ locale, requestId, returnTo, label }: { locale: string; requestId: string; returnTo: string; label: string }) { return <Link href={`/${locale}/disposal/${requestId}?returnTo=${encodeURIComponent(returnTo)}`} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-border px-3 font-medium hover:bg-accent"><FileText className="h-4 w-4" />{label}</Link> }
-function BatchRequestCard({ locale, batchHref, request, statusLabel, openLabel }: { locale: string; batchHref: string; request: { id: string; disposalNo: string; requestStatus: string; asset: { assetTag: string; name: string; currentLocation: { name: string }; custodian: { fullNameTh: string } | null } }; statusLabel: string; openLabel: string }) { return <article className="p-4"><div className="flex items-start justify-between gap-3"><div><div className="text-sm font-semibold text-foreground">{request.disposalNo}</div><div className="mt-1 text-sm text-foreground">{request.asset.assetTag} · {request.asset.name}</div></div><StatusBadge label={statusLabel} status={request.requestStatus} /></div><div className="mt-2 text-xs text-muted-foreground">{request.asset.currentLocation.name}{request.asset.custodian ? ` · ${request.asset.custodian.fullNameTh}` : ""}</div><div className="mt-3"><RequestLink locale={locale} requestId={request.id} returnTo={batchHref} label={openLabel} /></div></article> }
+function BatchRequestCard({ href, request, statusLabel, openLabel }: { href: string; request: { id: string; disposalNo: string; requestStatus: string; asset: { assetTag: string; name: string; currentLocation: { name: string }; custodian: { fullNameTh: string } | null } }; statusLabel: string; openLabel: string }) {
+  return (
+    <article className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm text-foreground"><span className="tag font-medium">{request.disposalNo}</span></div>
+          <div className="mt-1 text-sm text-foreground"><span className="tag">{request.asset.assetTag}</span> · {request.asset.name}</div>
+        </div>
+        <StatusBadge label={statusLabel} status={request.requestStatus} />
+      </div>
+      <div className="mt-2 text-xs text-muted-foreground">{request.asset.currentLocation.name}{request.asset.custodian ? ` · ${request.asset.custodian.fullNameTh}` : ""}</div>
+      <div className="mt-3">
+        <Link href={href} className={buttonVariants({ variant: "outline", size: "sm" })}>
+          <FileText aria-hidden="true" />
+          {openLabel}
+        </Link>
+      </div>
+    </article>
+  )
+}

@@ -2,6 +2,8 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
+import { normalizeDisposalBatchReturnTo } from "../src/lib/operational-return-navigation.ts"
+
 test("operational return navigation helper only accepts internal workflow targets", () => {
   const source = readFileSync("src/lib/operational-return-navigation.ts", "utf8")
 
@@ -95,4 +97,26 @@ test("the pending list can be narrowed to one room from the scan screen", () => 
     assert.equal(typeof messages.auditPending.roomFilter, "string")
     assert.equal(typeof messages.auditPending.roomFilterClear, "string")
   }
+})
+
+// Plan 2B-2 Task 5 (spec 2B §5.9.2 row 5, §5.14): a disposal batch page goes back to the batch history list it came
+// from, on the same page and page size, and to the disposal queue otherwise, as before.
+test("normalizeDisposalBatchReturnTo accepts the batch history list and falls back to the disposal queue", () => {
+  assert.equal(normalizeDisposalBatchReturnTo("th", "/th/disposal/batches?page=2&pageSize=50"), "/th/disposal/batches?page=2&pageSize=50")
+  assert.equal(normalizeDisposalBatchReturnTo("th", "/th/disposal/batches"), "/th/disposal/batches")
+  assert.equal(normalizeDisposalBatchReturnTo("th", ["/th/disposal/batches?page=3", "/th/admin"]), "/th/disposal/batches?page=3")
+  assert.equal(normalizeDisposalBatchReturnTo("th", "/th/disposal?status=approved&page=1&pageSize=25"), "/th/disposal?status=approved&page=1&pageSize=25", "the queue stays a valid target")
+  assert.equal(normalizeDisposalBatchReturnTo("th", undefined), "/th/disposal")
+  assert.equal(normalizeDisposalBatchReturnTo("th", ""), "/th/disposal")
+  assert.equal(normalizeDisposalBatchReturnTo("th", "/th/disposal/batches/batch-1"), "/th/disposal", "another batch page is not the list")
+  assert.equal(normalizeDisposalBatchReturnTo("th", "/en/disposal/batches"), "/th/disposal", "another locale")
+  assert.equal(normalizeDisposalBatchReturnTo("th", "https://evil.example/th/disposal/batches"), "/th/disposal")
+  assert.equal(normalizeDisposalBatchReturnTo("th", "//evil.example/th/disposal/batches"), "/th/disposal")
+})
+
+test("the disposal batch page reads returnTo for its back button", () => {
+  const source = readFileSync("src/app/[locale]/(dashboard)/disposal/batches/[id]/page.tsx", "utf8")
+  assert.match(source, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
+  assert.match(source, /const returnToHref = normalizeDisposalBatchReturnTo\(locale, rawSearchParams\.returnTo\)/)
+  assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}/)
 })

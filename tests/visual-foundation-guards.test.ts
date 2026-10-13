@@ -256,7 +256,6 @@ const TABLE_HEADER_FILLS: Record<string, number> = {
   [`${D}audit/rounds/[id]/page.tsx`]: 1,
   [`${D}audit/rounds/[id]/pending/page.tsx`]: 1,
   [`${D}audit/rounds/page.tsx`]: 1,
-  [`${D}disposal/batches/[id]/page.tsx`]: 2,
   [`${D}maintenance/page.tsx`]: 1,
   "src/components/admin/asset-state-review-workspace.tsx": 1,
   // 2B-4

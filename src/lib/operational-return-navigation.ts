@@ -29,6 +29,14 @@ export function normalizeAuditRoundWorkflowReturnTo(locale: string, roundId: str
   return normalizeInternalReturnTo(fallback, value, [scanPath])
 }
 
+// The back button of a disposal batch page (spec 2B §5.9.2 row 5): the batch history list, with its page and page size,
+// when the user came from there; otherwise the disposal queue, as before (a queue URL with its filters stays valid too).
+export function normalizeDisposalBatchReturnTo(locale: string, value: ReturnToParam) {
+  const fallback = `/${locale}/disposal`
+  const batchesPath = `/${locale}/disposal/batches`
+  return normalizeInternalReturnTo(fallback, value, [batchesPath])
+}
+
 export function appendOperationalReturnTo(href: string, returnTo: string) {
   const separator = href.includes("?") ? "&" : "?"
   return `${href}${separator}returnTo=${encodeURIComponent(returnTo)}`

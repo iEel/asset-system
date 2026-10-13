@@ -68,6 +68,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}disposal/disposal-bulk-execution.tsx`,
   `${D}disposal/page.tsx`,
   `${D}disposal/batches/page.tsx`,
+  `${D}disposal/batches/[id]/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -154,7 +155,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}admin/integrations/page.tsx`]: 1,
     [`${D}audit/rounds/[id]/page.tsx`]: 1,
     [`${D}audit/rounds/[id]/pending/page.tsx`]: 1,
-    [`${D}disposal/batches/[id]/page.tsx`]: 1,
     [`${D}maintenance/page.tsx`]: 1,
     [`${D}maintenance/pm/page.tsx`]: 1,
     // 2B-3
@@ -205,7 +205,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): the move-out button :1412, not a page back
     // 2B-2
     [`${D}audit/rounds/[id]/page.tsx`]: 1, // 0 → 1: 2B-2 swaps the Download icon of the bar's back item :479 for ArrowLeft
-    [`${D}disposal/batches/[id]/page.tsx`]: 1,
     // 2B-4
     [`${D}assets/[id]/page.tsx`]: 1,
     [`${D}disposal/[id]/page.tsx`]: 1,
@@ -222,7 +221,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LP1: {
     // 2B-2
     [`${D}audit/rounds/[id]/page.tsx`]: 1, // → 1 (KEEP): O11, 2C plan 5
-    [`${D}disposal/batches/[id]/page.tsx`]: 1,
     // 2B-4
     [`${D}assets/[id]/page.tsx`]: 1, // → 1 (KEEP): O11, 2C plan 5
     [`${D}disposal/[id]/page.tsx`]: 1, // → 1 (KEEP): O11, 2C plan 5
@@ -347,7 +345,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LV3: {
     // 2B-2
-    [`${D}disposal/batches/[id]/page.tsx`]: 2,
     [`${D}maintenance/page.tsx`]: 2,
     // 2B-3
     [`${C}assets/asset-register-table.tsx`]: 1,
@@ -372,7 +369,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}audit/findings/page.tsx`]: 1,
     [`${D}audit/rounds/[id]/page.tsx`]: 2,
     [`${D}audit/rounds/page.tsx`]: 1,
-    [`${D}disposal/batches/[id]/page.tsx`]: 1,
     [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // → 1 (KEEP): Metric :572 in the dialog (2C plan 3)
     // 2B-4
     [`${D}assets/[id]/page.tsx`]: 1,
@@ -405,7 +401,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-2
     [`${D}audit/findings/page.tsx`]: 1,
     [`${D}audit/rounds/[id]/page.tsx`]: 1,
-    [`${D}disposal/batches/[id]/page.tsx`]: 1,
     // 2B-3
     [`${D}asset-management/import-export/page.tsx`]: 1,
     // 2B-4

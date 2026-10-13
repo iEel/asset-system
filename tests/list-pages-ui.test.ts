@@ -220,3 +220,19 @@ test("disposal batches: real pages, the list page in returnTo, and RowActions wi
   assert.match(source, /const lastPage = lastListPage\(total, listPage\.pageSize\)\n\s+if \(batches\.length === 0 && total > 0 && listPage\.page > lastPage\) \{\n\s+redirect\(/)
   assert.match(source, /canCreate && total > 0 \?/, "the create button in the header shows once a batch exists, counted over all pages")
 })
+
+// Plan 2B-2 Task 5 (spec 2B §5.4 row "disposal/batches/[id]", §4.4.3, §4.6.3): the batch page on the list primitives.
+test("the disposal batch page builds on PageHeader, StatStrip, KeyValueList, DataTable and RowActions, with no pb-24 of its own (spec 2B §5.4)", () => {
+  const source = read(`${D}disposal/batches/[id]/page.tsx`)
+  for (const part of ["<PageHeader", "<PageBackLink", "<StatStrip", "<KeyValueList", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow", "<ClickableTableRow", "<RowActions"]) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.match(source, /<div className="space-y-6">/, "the shell already leaves room for the bottom bar (spec 2B §4.6.3)")
+  assert.doesNotMatch(source, /\bpb-24\b/)
+  assert.match(source, /title=\{<span className="tag font-medium">\{batch\.batchNo\}<\/span>\}/, "a batch has no name of its own, so the h1 is its code (spec 2B §4.3.3 rule 6)")
+  assert.match(source, /breadcrumbs=\{\[\{ label: t\("title"\), href: `\/\$\{locale\}\/disposal` \}, \{ label: batch\.batchNo, code: true \}\]\}/)
+  assert.match(source, /formatMoney\(Number\(batch\.saleValue\), \{ unit: tCommon\("baht"\) \}\)/)
+  assert.match(source, /next=\{\{ label: t\("openRequest"\), href: requestHref, icon: <FileText aria-hidden="true" \/> \}\}\n\s+groups=\{\[\]\}\n\s+\/>/, "one next step and no ⋯")
+  assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>\{t\("nextAction"\)\}<\/DataTableHead>/)
+  assert.doesNotMatch(source, /function (?:BatchMetric|BatchInfo|RequestLink)\b/)
+})
