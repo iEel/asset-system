@@ -332,6 +332,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                 missing: t("coverageMissing"),
                 total: t("coverageTotal"),
                 rate: t("coverageRate"),
+                scrollHint: tCommon("tableScrollHint"),
               }}
             />
             <CoverageGapList
@@ -344,6 +345,7 @@ export default async function AuditRoundsPage({ params, searchParams }: AuditRou
                 missing: t("coverageMissing"),
                 total: t("coverageTotal"),
                 rate: t("coverageRate"),
+                scrollHint: tCommon("tableScrollHint"),
               }}
             />
           </div>
@@ -705,7 +707,7 @@ function CoverageGapList({
   help: string
   rows: CoverageGap[]
   emptyLabel: string
-  labels: { group: string; missing: string; total: string; rate: string }
+  labels: { group: string; missing: string; total: string; rate: string; scrollHint: string }
 }) {
   return (
     <div className="rounded-lg border border-border bg-surface p-3">
@@ -738,13 +740,13 @@ function CoverageGapList({
             ))}
           </div>
           {/* No frame of its own: the gap box is the frame (no frame in a frame). */}
-          <DataTable framed={false} className="hidden sm:block" caption={title}>
+          <DataTable framed={false} className="hidden sm:block" caption={title} scrollHint={labels.scrollHint}>
             <DataTableHeader>
               <tr>
                 <DataTableHead>{labels.group}</DataTableHead>
-                <DataTableHead align="right">{labels.missing}</DataTableHead>
-                <DataTableHead align="right">{labels.total}</DataTableHead>
-                <DataTableHead align="right">{labels.rate}</DataTableHead>
+                <DataTableHead align="right" className="whitespace-normal">{labels.missing}</DataTableHead>
+                <DataTableHead align="right" className="whitespace-normal">{labels.total}</DataTableHead>
+                <DataTableHead align="right" className="whitespace-normal">{labels.rate}</DataTableHead>
               </tr>
             </DataTableHeader>
             <DataTableBody>

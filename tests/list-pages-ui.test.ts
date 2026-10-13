@@ -315,7 +315,7 @@ test("audit rounds: PageHeader, StatStrip, the quick filters on TabNav, and the 
   assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
   assert.match(source, /<DataTableCell align="right" sticky="right">\s*<RowActions/)
   assert.match(source, /menuLabel=\{tCommon\("moreActionsFor", \{ code: round\.auditNo \}\)\}/, "⋯ is named after its round (I33)")
-  assert.match(source, /<DataTable framed=\{false\} className="hidden sm:block" caption=\{title\}>/, "the coverage gap tables sit in their box with no second frame")
+  assert.match(source, /<DataTable framed=\{false\} className="hidden sm:block" caption=\{title\} scrollHint=\{labels\.scrollHint\}>/, "the coverage gap tables sit in their box with no second frame")
 })
 
 test("audit rounds page in memory: page and pageSize from the URL, a slice of the filtered rounds, a clamp past the last page (spec 2B §5.9.2 row 7, I21)", () => {
@@ -480,4 +480,15 @@ test("integrations: the header is PageHeader and the client manager follows it (
   const source = read(`${D}admin/integrations/page.tsx`)
   assert.match(source, /<div className="space-y-6">\n\s+<PageHeader title=\{t\("title"\)\} meta=\{t\("subtitle"\)\} \/>\n\n\s+<IntegrationClientManager\n\s+labels=\{\{/)
   assert.doesNotMatch(source, /<h1\b/)
+})
+
+// Plan 2B-2 Task 18 fix 1: the coverage-gap boxes on the rounds page are about 260px wide. Their number headers wrap
+// (as before 2B-2), so the "missing" column shows whole numbers, and the table says when it scrolls.
+test("the rounds page coverage-gap tables wrap their number headers and carry the scroll hint (2B-2 Task 18 fix 1)", () => {
+  const source = read(`${D}audit/rounds/page.tsx`)
+  for (const key of ["missing", "total", "rate"]) {
+    assert.match(source, new RegExp(`<DataTableHead align="right" className="whitespace-normal">\\{labels\\.${key}\\}</DataTableHead>`), `${key} header wraps`)
+  }
+  assert.match(source, /<DataTable framed=\{false\} className="hidden sm:block" caption=\{title\} scrollHint=\{labels\.scrollHint\}>/)
+  assert.equal(source.match(/scrollHint: tCommon\("tableScrollHint"\)/g)?.length ?? 0, 2, "both gap lists pass the hint")
 })
