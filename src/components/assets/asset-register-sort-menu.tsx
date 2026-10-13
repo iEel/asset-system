@@ -3,6 +3,7 @@
 import { ArrowUpDown } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useAssetRegisterNavigation } from "@/components/assets/asset-register-navigation"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,18 +30,21 @@ export function AssetRegisterSortMenu() {
   const activeKey = getActiveSortKey(filters.sort, filters.direction)
   const activeLabel = activeKey ? t(sortLabelKeys[activeKey]) : t("sortMenu")
 
+  // Ghost below md: the summary bar is 44px tall and a frame would touch its lines. From md the md: classes are the
+  // outline variant's colors, so the button matches the column and export buttons beside it (spec 2B §7.8.6, I26).
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="md"
           aria-label={`${t("sortMenu")}: ${activeLabel}`}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-9 md:min-h-0 md:border md:border-border md:bg-surface md:px-3"
+          className="md:border-control-border md:bg-surface md:text-foreground md:hover:border-input md:hover:bg-background md:active:border-input md:active:bg-muted"
         >
-          <ArrowUpDown className="size-4 text-muted-foreground" aria-hidden="true" />
+          <ArrowUpDown className="text-muted-foreground" aria-hidden="true" />
           <span className="hidden text-muted-foreground md:inline">{t("sortMenu")}:</span>
           <span>{activeLabel}</span>
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>{t("sortMenu")}</DropdownMenuLabel>

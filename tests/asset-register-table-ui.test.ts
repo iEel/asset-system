@@ -58,7 +58,12 @@ test("sorting is a radio menu that applies through the shared navigation", () =>
 
   assert.match(source, /<DropdownMenuRadioGroup value=\{activeKey \?\? ""\}/)
   assert.match(source, /navigate\(\{ sort: option\.sort, direction: option\.direction \}\)/)
-  assert.match(source, /min-h-11/)
+  // Spec 2B §7.8.6, I26: ghost below md (no frame in the 44px summary bar), the outline variant's colors from md.
+  assert.match(source, /<Button\b[\s\S]*?variant="ghost"[\s\S]*?size="md"[\s\S]*?md:border-control-border/)
+  assert.match(source, /className="md:border-control-border md:bg-surface md:text-foreground md:hover:border-input md:hover:bg-background md:active:border-input md:active:bg-muted"/)
+  assert.match(source, /aria-label=\{`\$\{t\("sortMenu"\)\}: \$\{activeLabel\}`\}/)
+  assert.match(source, /<span className="hidden text-muted-foreground md:inline">\{t\("sortMenu"\)\}:<\/span>/)
+  assert.doesNotMatch(source, /<button\b|min-h-11|hover:bg-accent/, "the trigger is the shared Button, not a hand-written button (N5)")
 })
 
 test("the column picker keeps presets and at least one column, and stays open while toggling", () => {
