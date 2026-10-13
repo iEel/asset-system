@@ -6,6 +6,8 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { buildAssetImportHistory, type AssetImportHistoryItem } from "@/lib/asset-import-history"
 import { AssetImportPreviewPanel } from "@/components/assets/asset-import-preview-panel"
+import { KeyValueList } from "@/components/ui/key-value-list"
+import { PageHeader } from "@/components/ui/page-header"
 import { getResponsiveActionRowClasses, getSafeActionLinkClasses } from "@/lib/design-system"
 import { formatDateTime } from "@/lib/utils"
 
@@ -28,11 +30,8 @@ export default async function AssetImportExportPage({ params }: AssetImportExpor
   const importHistory = buildAssetImportHistory(importLogs)
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{tTools("importExportTitle")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{tTools("importExportSubtitle")}</p>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <PageHeader title={tTools("importExportTitle")} meta={tTools("importExportSubtitle")} />
 
       <section className="grid gap-3 md:grid-cols-3">
         <ActionLink
@@ -174,12 +173,15 @@ function ImportHistoryPanel({
                       {labels.status}: {batch.status}
                     </span>
                   </div>
-                  <dl className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
-                    <Info label={labels.sourceFile} value={`${batch.fileName} (${formatFileSize(batch.fileSize)})`} />
-                    <Info label={labels.imported} value={`${batch.imported}/${batch.totalRows}`} />
-                    <Info label={labels.skipped} value={`${batch.skipped}`} />
-                    <Info label={labels.approvedBy} value={`${batch.approvedByLabel} · ${formatDateTime(batch.createdAt)}`} />
-                  </dl>
+                  <KeyValueList
+                    className="mt-3"
+                    items={[
+                      { key: "sourceFile", label: labels.sourceFile, value: `${batch.fileName} (${formatFileSize(batch.fileSize)})` },
+                      { key: "imported", label: labels.imported, value: `${batch.imported}/${batch.totalRows}` },
+                      { key: "skipped", label: labels.skipped, value: `${batch.skipped}` },
+                      { key: "approvedBy", label: labels.approvedBy, value: `${batch.approvedByLabel} · ${formatDateTime(batch.createdAt)}` },
+                    ]}
+                  />
                 </div>
 
                 <div className={batch.rollbackSummary.reversible ? "rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900" : "rounded-lg border border-border bg-surface p-3 text-muted-foreground"}>
@@ -213,15 +215,6 @@ function ImportHistoryPanel({
         </div>
       )}
     </section>
-  )
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 truncate font-medium text-foreground">{value}</dd>
-    </div>
   )
 }
 

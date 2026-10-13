@@ -226,3 +226,15 @@ test("asset activity filter messages are equivalent in Thai and English", () => 
   assert.equal(assetMessages("th").activityIdle180d, "ไม่มีความเคลื่อนไหวใน 180 วันล่าสุด")
   assert.equal(assetMessages("en").activityIdle180d, "No movement in the latest 180 days")
 })
+
+// Plan 2B-3 Task 14 (spec 2B §7.11, §10.4 table C row LK1, N7): the import-export page header is PageHeader and the import
+// history facts are one KeyValueList. This file reads the page raw (CRLF), so these regexes hold no line break.
+test("the import-export page header is PageHeader and the import history facts are a KeyValueList (spec 2B §7.11)", () => {
+  const source = importExportPageSource()
+
+  assert.match(source, /<div className="mx-auto max-w-6xl space-y-6">\s*<PageHeader title=\{tTools\("importExportTitle"\)\} meta=\{tTools\("importExportSubtitle"\)\} \/>/)
+  assert.doesNotMatch(source, /<h1\b|font-bold/)
+  assert.match(source, /<KeyValueList\s+className="mt-3"\s+items=\{\[/)
+  assert.match(source, /\{ key: "sourceFile", label: labels\.sourceFile, value: `\$\{batch\.fileName\} \(\$\{formatFileSize\(batch\.fileSize\)\}\)` \}/)
+  assert.doesNotMatch(source, /function Info\b|<Info\b/)
+})

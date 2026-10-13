@@ -92,6 +92,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}assets/asset-register-column-picker.tsx`,
   `${C}assets/asset-register-export-menu.tsx`,
   `${D}assets/page.tsx`,
+  `${D}asset-management/import-export/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -173,8 +174,6 @@ const TITLES: Record<string, string> = {
 // only two rows above the d38a0ee count (spec §9.4.1 note "LB1 0→1").
 const BUDGETS: Record<string, Record<string, number>> = {
   LH1: {
-    // 2B-3
-    [`${D}asset-management/import-export/page.tsx`]: 1,
     // 2B-4
     [`${D}assets/[id]/page.tsx`]: 1,
     [`${D}disposal/[id]/page.tsx`]: 1,
@@ -372,8 +371,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}reports/reports-operations-view.tsx`]: 1,
   },
   LK1: {
-    // 2B-3
-    [`${D}asset-management/import-export/page.tsx`]: 1,
     // 2B-4
     [`${D}assets/[id]/page.tsx`]: 1,
     [`${D}disposal/[id]/page.tsx`]: 1,
