@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { planStatePageSlices } from "../src/lib/preventive-maintenance.ts"
 import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "../src/lib/list-pagination.ts"
 
 // Phase 2B B4 (spec 2B §5.9.1, §5.14): the page helpers every server list shares. Plan 2B-2 adds planStatePageSlices here.
@@ -53,4 +54,40 @@ test("appendListPage writes only the values that differ from the defaults, so de
   const params = new URLSearchParams("search=a")
   assert.equal(appendListPage(params, { page: 3 }), params, "returns the same params, for chaining")
   assert.equal(params.toString(), "search=a&page=3")
+})
+
+// Plan 2B-2 Task 13 (spec 2B §5.9.2 row 6, §5.14): the PM list pages over its plan states in their order, so the
+// page reads one findMany window per state instead of sorting a capped list in JS.
+test("planStatePageSlices: a page that spans active, paused and ended reads each state from where the last one ended", () => {
+  const counts = [
+    { planState: "ended", count: 4 },
+    { planState: "paused", count: 10 },
+    { planState: "active", count: 30 },
+  ]
+  assert.deepEqual(planStatePageSlices(counts, { skip: 0, take: 25 }), [{ planState: "active", skip: 0, take: 25 }])
+  assert.deepEqual(planStatePageSlices(counts, listPageWindow({ page: 2, pageSize: 25 })), [
+    { planState: "active", skip: 25, take: 5 },
+    { planState: "paused", skip: 0, take: 10 },
+    { planState: "ended", skip: 0, take: 4 },
+  ])
+  assert.deepEqual(planStatePageSlices(counts, { skip: 32, take: 5 }), [{ planState: "paused", skip: 2, take: 5 }], "a page inside one state")
+  assert.deepEqual(counts.map((row) => row.planState), ["ended", "paused", "active"], "the counts are not reordered in place")
+})
+
+test("planStatePageSlices: the last page is short, and a page past the end or an empty list reads nothing", () => {
+  const counts = [{ planState: "active", count: 26 }, { planState: "paused", count: 0 }]
+  assert.deepEqual(planStatePageSlices(counts, listPageWindow({ page: 2, pageSize: 25 })), [{ planState: "active", skip: 25, take: 1 }])
+  assert.deepEqual(planStatePageSlices(counts, listPageWindow({ page: 3, pageSize: 25 })), [], "past the end: the page redirects to the last page")
+  assert.deepEqual(planStatePageSlices([], { skip: 0, take: 25 }), [])
+})
+
+test("planStatePageSlices puts a state it does not know after ended, by name", () => {
+  const counts = [
+    { planState: "zz", count: 1 },
+    { planState: "archived", count: 2 },
+    { planState: "ended", count: 1 },
+    { planState: "active", count: 1 },
+  ]
+  assert.deepEqual(planStatePageSlices(counts, { skip: 0, take: 25 }).map((slice) => slice.planState), ["active", "ended", "archived", "zz"])
+  assert.deepEqual(planStatePageSlices(counts, { skip: 2, take: 2 }), [{ planState: "archived", skip: 0, take: 2 }])
 })

@@ -92,6 +92,43 @@ export function summarizeMaintenancePlans(plans: MaintenancePlanSummaryInput[], 
   return summary
 }
 
+// The order of the PM plan list: active plans first, then paused, then ended, then any other state by name. The
+// database allows only these three (the planState CHECK of 2026-07-14), so "any other" is a guard, not a case.
+const maintenancePlanStateOrder = ["active", "paused", "ended"] as const
+
+export type MaintenancePlanStateCount = { planState: string; count: number }
+export type MaintenancePlanStatePageSlice = { planState: string; skip: number; take: number }
+
+// One page of the PM list (skip and take over the whole list in state order) as one findMany window per state, so
+// every state is read with its own where and the list keeps its order across pages (spec 2B §5.9.2 row 6). States
+// without plans give no slice, and a page past the end gives none at all. Pure, so tests import it.
+export function planStatePageSlices(
+  counts: readonly MaintenancePlanStateCount[],
+  pageWindow: { skip: number; take: number },
+): MaintenancePlanStatePageSlice[] {
+  const order: readonly string[] = maintenancePlanStateOrder
+  const rank = (state: string) => (order.includes(state) ? order.indexOf(state) : order.length)
+  const byName = (left: string, right: string) => (left < right ? -1 : left > right ? 1 : 0)
+  const states = counts
+    .filter((row) => row.count > 0)
+    .sort((left, right) => rank(left.planState) - rank(right.planState) || byName(left.planState, right.planState))
+  const slices: MaintenancePlanStatePageSlice[] = []
+  let skip = Math.max(0, pageWindow.skip)
+  let take = Math.max(0, pageWindow.take)
+  for (const { planState, count } of states) {
+    if (take === 0) break
+    if (skip >= count) {
+      skip -= count
+      continue
+    }
+    const rows = Math.min(count - skip, take)
+    slices.push({ planState, skip, take: rows })
+    take -= rows
+    skip = 0
+  }
+  return slices
+}
+
 function startOfDay(value: Date | string) {
   const date = new Date(value)
   date.setHours(0, 0, 0, 0)

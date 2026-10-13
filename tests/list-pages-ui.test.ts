@@ -413,3 +413,31 @@ test("the repair-record list sends a page past the end to the last page and spli
   assert.match(source, /title=\{t\("emptyFilteredTitle"\)\} description=\{t\("emptyFilteredHelp"\)\} actionHref=\{clearHref\} actionLabel=\{t\("clearFilters"\)\} actionVariant="secondary"/)
   assert.match(source, /title=\{t\("emptyTitle"\)\} description=\{canCreate \? t\("emptyHelp"\) : undefined\} actionHref=\{canCreate \? createHref : undefined\} actionLabel=\{canCreate \? t\("createTitle"\) : undefined\}/)
 })
+
+// Plan 2B-2 Task 13 (spec 2B §5.4 row "maintenance/pm", §5.9.2 row 6, I21, I25): the PM plans page by state, as the
+// rows of a divided panel, and the page gets the back link it lacked. Row buttons stay in the row (I21).
+test("PM plans page on the server by state, as panel rows with one Pagination at the end of the panel (spec 2B §5.9.2 row 6)", () => {
+  const source = read(`${D}maintenance/pm/page.tsx`)
+  assert.match(source, /const listPage = parseListPage\(\{ page, pageSize \}\)/)
+  assert.match(source, /prisma\.maintenancePlan\.groupBy\(\{ by: \["planState"\], _count: \{ _all: true \} \}\)/)
+  assert.match(source, /planStatePageSlices\(\n\s+stateCounts\.map\(\(row\) => \(\{ planState: row\.planState, count: row\._count\._all \}\)\),\n\s+listPageWindow\(listPage\),\n\s+\)/)
+  assert.match(source, /where: \{ planState: slice\.planState \},/)
+  assert.match(source, /orderBy: \[\{ nextDueDate: "asc" \}, \{ id: "asc" \}\],\n\s+skip: slice\.skip,\n\s+take: slice\.take,/)
+  assert.doesNotMatch(source, /\btake: \d+|\.sort\(/, "no fixed number of rows, and no sort of a capped list in JS")
+  assert.match(source, /<ContentPanel divided flush className="overflow-hidden">/)
+  assert.match(source, /<ContentPanelRows>/)
+  assert.match(source, /<DataTableFoot>\n\s+<Pagination\n/)
+  assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: listHref\(\{ pageSize: value \}\) \}\)\)\}/)
+  assert.match(source, /^import \{ redirect \} from "next\/navigation"$/m)
+  assert.match(source, /const lastPage = lastListPage\(total, listPage\.pageSize\)\n\s+if \(plans\.length === 0 && total > 0 && listPage\.page > lastPage\) \{\n\s+redirect\(listHref\(\{ page: lastPage, pageSize: listPage\.pageSize \}\)\)/)
+})
+
+test("the PM page goes back to maintenance, has no icon in its title, and its edit link keeps the page (spec 2B I25, B4)", () => {
+  const source = read(`${D}maintenance/pm/page.tsx`)
+  assert.match(source, /<PageHeader\n\s+breadcrumbs=\{\[\{ label: tRecord\("title"\), href: `\/\$\{locale\}\/maintenance` \}, \{ label: t\("pmTitle"\) \}\]\}\n\s+title=\{t\("pmTitle"\)\}\n\s+meta=\{t\("pmSubtitle"\)\}\n\s+back=\{<PageBackLink href=\{`\/\$\{locale\}\/maintenance`\} label=\{tCommon\("back"\)\} \/>\}/)
+  assert.match(source, /^import \{ Plus \} from "lucide-react"$/m, "the title icon (CalendarClock) is gone")
+  assert.match(source, /const planListReturnHref = listHref\(listPage\)/)
+  assert.match(source, /href=\{appendOperationalReturnTo\(`\/\$\{locale\}\/maintenance\/pm\/\$\{plan\.id\}\/edit`, planListReturnHref\)\} className=\{buttonVariants\(\{ variant: "outline", size: "sm" \}\)\}/)
+  assert.match(source, /href=\{`\/\$\{locale\}\/maintenance\/new\?planId=\$\{plan\.id\}`\} className=\{buttonVariants\(\{ size: "sm" \}\)\}/)
+  assert.match(source, /\{canEdit \? <MaintenancePlanStateActions planId=\{plan\.id\} state=\{plan\.planState as MaintenancePlanState\} \/> : null\}/)
+})
