@@ -501,3 +501,25 @@ test("the findings actions cell keeps its buttons on one line (2B-2 Task 18 fix 
   assert.match(source, /\n\s+<div className="flex items-center justify-end gap-2">\n\s+\{canEdit \|\| canApprove \? \(\n\s+<AuditFindingReviewActions\n/)
   assert.doesNotMatch(source, /<div className="flex flex-col items-end gap-2">/)
 })
+
+// Plan 2B-4 Task 5 (spec 2B §4.4.5, §5.5, §4.6.3, bug §5.10 #7): the employee page on the page primitives. The shell
+// already leaves room for the bottom navigation, so the page adds no pb-24 of its own.
+test("the employee page builds on PageHeader, StatStrip, KeyValueList and three DataTables, with no pb-24 of its own (spec 2B §5.5)", () => {
+  const source = read(`${D}master-data/employees/[id]/page.tsx`)
+  for (const part of ["<PageHeader", "<PageBackLink", "<StatStrip", "<KeyValueList", "<DataTableHeader>", "<DataTableBody>", "<DataTableRow"]) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.equal(source.match(/<DataTable\b/g)?.length, 3, "the current assets, the handover history and the related repairs")
+  assert.match(source, /return \(\n {4}<div className="space-y-6">\n {6}<PageHeader\n/)
+  assert.doesNotMatch(source, /\bpb-24\b/)
+  assert.match(source, /breadcrumbs=\{\[\n\s+\{ label: t\("title"\), href: returnToHref \},\n\s+\{ label: employee\.code, code: true \},\n\s+\]\}\n\s+title=\{employee\.fullNameTh\}/, "a record with a name: the h1 is the name, the code ends the trail (spec 2B §4.3.3 rule 6)")
+  assert.match(source, /<span className="tag">\{employee\.code\}<\/span>/, "the code leads the meta row")
+  assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}/)
+  assert.match(source, /<Link href=\{editHref\} className=\{buttonVariants\(\{ size: "md" \}\)\}>/)
+  assert.match(source, /status: \{ select: \{ name: true, nameTh: true, colorCode: true \} \}/)
+  assert.match(source, /tone=\{getAssetStateTone\(asset\.status\.name\)\}/, "bug §5.10 #7: the status badge takes the tone of the status")
+  assert.match(source, /tone=\{getAssetStateTone\(asset\.condition\.name\)\}/)
+  assert.doesNotMatch(source, /tone="(?:info|muted)"/)
+  assert.match(source, /<Link href=\{hrefs\.assets\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
+  assert.doesNotMatch(source, /function (?:SummaryTile|Info|ColumnHeader)\b|<table\b|<th\b|toLocaleString\(|"-"/)
+})

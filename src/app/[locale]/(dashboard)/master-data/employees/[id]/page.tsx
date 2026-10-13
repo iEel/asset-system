@@ -4,7 +4,6 @@ import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import {
   AlertTriangle,
-  ArrowLeft,
   Boxes,
   ClipboardCheck,
   Edit,
@@ -19,12 +18,19 @@ import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { buildEmployeeDetailHrefs, buildEmployeeDetailSummary, buildEmployeeFollowUpItems, dedupeEmployeeMaintenanceLinks } from "@/lib/employee-detail"
 import { formatDate, formatDateTime } from "@/lib/utils"
+import { getAssetStateTone } from "@/lib/design-system"
+import { formatCount } from "@/lib/display-format"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, maintenanceStatuses } from "@/lib/maintenance-status"
 import { openRepairRecordWhere } from "@/lib/repair-record-policy"
 import { getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 import { getAuditRoundItemResultLabelKey } from "@/lib/audit-round-result-filters"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader, DataTableRow } from "@/components/ui/data-table"
+import { KeyValueList } from "@/components/ui/key-value-list"
+import { Nil, orNil } from "@/components/ui/nil"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
+import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { appendMasterDataReturnTo, normalizeMasterDataReturnTo } from "@/lib/master-data-return-navigation"
 
@@ -117,8 +123,8 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
         ownershipType: true,
         category: { select: { code: true, name: true } },
         currentLocation: { select: { code: true, name: true } },
-        status: { select: { nameTh: true, colorCode: true } },
-        condition: { select: { nameTh: true, colorCode: true } },
+        status: { select: { name: true, nameTh: true, colorCode: true } },
+        condition: { select: { name: true, nameTh: true, colorCode: true } },
       },
       orderBy: { assetTag: "asc" },
       take: 10,
@@ -251,66 +257,55 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
   const maintenanceStatusLabels = Object.fromEntries(maintenanceStatuses.map((status) => [status, tMaintenance(`statuses.${status}`)]))
 
   return (
-    <div className="space-y-6 pb-24 md:pb-0">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <div className="mb-2">
-            <Breadcrumbs
-              items={[
-                { label: t("title"), href: returnToHref },
-                { label: employee.code, code: true },
-              ]}
-            />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">{employee.fullNameTh}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {employee.code} / {[employee.position, employee.email].filter(Boolean).join(" / ") || t("noContactDetail")}
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Link
-            href={returnToHref}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {tCommon("back")}
-          </Link>
-          <Link
-            href={editHref}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
-          >
-            <Edit className="h-4 w-4" />
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumbs={[
+          { label: t("title"), href: returnToHref },
+          { label: employee.code, code: true },
+        ]}
+        title={employee.fullNameTh}
+        meta={
+          <>
+            <span className="tag">{employee.code}</span>
+            {employee.position ? <span>{employee.position}</span> : null}
+            {employee.email ? <span>{employee.email}</span> : null}
+            {employee.position || employee.email ? null : <span>{t("noContactDetail")}</span>}
+          </>
+        }
+        back={<PageBackLink href={returnToHref} label={tCommon("back")} />}
+        actions={
+          <Link href={editHref} className={buttonVariants({ size: "md" })}>
+            <Edit aria-hidden="true" />
             {tCommon("edit")}
           </Link>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <SummaryTile icon={<Boxes className="h-5 w-5" />} label={t("detailCurrentAssets")} value={summary.currentAssetCount} detail={t("detailCurrentAssetsHelp")} href={hrefs.assets} />
-        <SummaryTile icon={<History className="h-5 w-5" />} label={t("detailOpenCheckouts")} value={summary.openCheckoutCount} detail={t("detailOpenCheckoutsHelp")} tone={summary.openCheckoutCount > 0 ? "warning" : "neutral"} />
-        <SummaryTile icon={<Wrench className="h-5 w-5" />} label={t("detailOpenMaintenance")} value={summary.openMaintenanceCount} detail={t("detailOpenMaintenanceHelp")} tone={summary.openMaintenanceCount > 0 ? "warning" : "neutral"} />
-        <SummaryTile icon={<ClipboardCheck className="h-5 w-5" />} label={t("detailPendingAudit")} value={summary.pendingAuditFindingCount} detail={t("detailPendingAuditHelp")} tone={summary.pendingAuditFindingCount > 0 ? "warning" : "neutral"} />
-        <SummaryTile icon={<AlertTriangle className="h-5 w-5" />} label={t("detailAttention")} value={summary.attentionCount} detail={t("detailAttentionHelp")} tone={summary.attentionCount > 0 ? "warning" : "neutral"} />
-      </div>
+      <StatStrip
+        items={[
+          { key: "currentAssets", label: t("detailCurrentAssets"), value: formatCount(summary.currentAssetCount), foot: t("detailCurrentAssetsHelp"), footTitle: t("detailCurrentAssetsHelp"), href: hrefs.assets },
+          { key: "openCheckouts", label: t("detailOpenCheckouts"), value: formatCount(summary.openCheckoutCount), foot: t("detailOpenCheckoutsHelp"), footTitle: t("detailOpenCheckoutsHelp"), attention: summary.openCheckoutCount > 0 },
+          { key: "openMaintenance", label: t("detailOpenMaintenance"), value: formatCount(summary.openMaintenanceCount), foot: t("detailOpenMaintenanceHelp"), footTitle: t("detailOpenMaintenanceHelp"), attention: summary.openMaintenanceCount > 0 },
+          { key: "pendingAudit", label: t("detailPendingAudit"), value: formatCount(summary.pendingAuditFindingCount), foot: t("detailPendingAuditHelp"), footTitle: t("detailPendingAuditHelp"), attention: summary.pendingAuditFindingCount > 0 },
+          { key: "attention", label: t("detailAttention"), value: formatCount(summary.attentionCount), foot: t("detailAttentionHelp"), footTitle: t("detailAttentionHelp"), attention: summary.attentionCount > 0 },
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
           <section className="rounded-lg border border-border bg-surface p-6">
             <SectionHeading icon={<UserRound className="h-5 w-5 text-primary" />} title={t("detailProfileTitle")} subtitle={t("detailProfileHelp")} />
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <Info label={t("company")} value={`${employee.company.code} - ${employee.company.nameTh}`} />
-              <Info label={t("branch")} value={`${employee.branch.code} - ${employee.branch.name}`} />
-              <Info label={t("department")} value={`${employee.department.code} - ${employee.department.name}`} />
-              <Info label={t("position")} value={employee.position} />
-              <Info label={t("email")} value={employee.email} />
-              <Info label={t("manager")} value={employee.manager ? `${employee.manager.code} - ${employee.manager.fullNameTh}` : null} />
-              <div>
-                <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{t("employmentStatus")}</div>
-                <div className="mt-1">
-                  <StatusBadge label={t(`status_${employee.employmentStatus}`)} tone={employee.employmentStatus === "active" ? "success" : "warning"} />
-                </div>
-              </div>
-            </div>
+            <KeyValueList
+              items={[
+                { key: "company", label: t("company"), value: <><span className="tag">{employee.company.code}</span> - {employee.company.nameTh}</> },
+                { key: "branch", label: t("branch"), value: <><span className="tag">{employee.branch.code}</span> - {employee.branch.name}</> },
+                { key: "department", label: t("department"), value: <><span className="tag">{employee.department.code}</span> - {employee.department.name}</> },
+                { key: "position", label: t("position"), value: employee.position },
+                { key: "email", label: t("email"), value: employee.email },
+                { key: "manager", label: t("manager"), value: employee.manager ? <><span className="tag">{employee.manager.code}</span> - {employee.manager.fullNameTh}</> : null },
+                { key: "employmentStatus", label: t("employmentStatus"), value: <StatusBadge label={t(`status_${employee.employmentStatus}`)} tone={employee.employmentStatus === "active" ? "success" : "warning"} /> },
+              ]}
+            />
           </section>
 
           <section className="rounded-lg border border-border bg-surface p-6">
@@ -318,40 +313,38 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
             {currentAssets.length === 0 ? (
               <ActionEmptyState icon={<Boxes className="h-6 w-6" />} title={t("emptyCurrentAssetsTitle")} description={t("emptyCurrentAssetsHelp")} />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-border text-sm">
-                  <thead className="bg-muted/40">
-                    <tr>
-                      <ColumnHeader>{t("assetTag")}</ColumnHeader>
-                      <ColumnHeader>{t("assetName")}</ColumnHeader>
-                      <ColumnHeader>{t("assetCategory")}</ColumnHeader>
-                      <ColumnHeader>{t("assetLocation")}</ColumnHeader>
-                      <ColumnHeader>{t("assetStatus")}</ColumnHeader>
-                      <ColumnHeader>{t("assetCondition")}</ColumnHeader>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {currentAssets.map((asset) => (
-                      <tr key={asset.id}>
-                        <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">
-                          <Link href={`/${locale}/assets/${asset.id}`} className="text-primary hover:underline">
-                            {asset.assetTag}
-                          </Link>
-                        </td>
-                        <td className="min-w-56 px-4 py-3 text-foreground">{asset.name}</td>
-                        <td className="min-w-44 px-4 py-3 text-muted-foreground">{asset.category.code} - {asset.category.name}</td>
-                        <td className="min-w-44 px-4 py-3 text-muted-foreground">{asset.currentLocation.code} - {asset.currentLocation.name}</td>
-                        <td className="whitespace-nowrap px-4 py-3"><StatusBadge label={asset.status.nameTh} tone="info" /></td>
-                        <td className="whitespace-nowrap px-4 py-3"><StatusBadge label={asset.condition.nameTh} tone="muted" /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable framed={false} caption={t("detailCurrentAssets")} scrollHint={tCommon("tableScrollHint")}>
+                <DataTableHeader>
+                  <tr>
+                    <DataTableHead>{t("assetTag")}</DataTableHead>
+                    <DataTableHead>{t("assetName")}</DataTableHead>
+                    <DataTableHead>{t("assetCategory")}</DataTableHead>
+                    <DataTableHead>{t("assetLocation")}</DataTableHead>
+                    <DataTableHead>{t("assetStatus")}</DataTableHead>
+                    <DataTableHead>{t("assetCondition")}</DataTableHead>
+                  </tr>
+                </DataTableHeader>
+                <DataTableBody>
+                  {currentAssets.map((asset) => (
+                    <DataTableRow key={asset.id}>
+                      <DataTableCell className="whitespace-nowrap font-medium">
+                        <Link href={`/${locale}/assets/${asset.id}`} className="text-primary hover:underline">
+                          <span className="tag">{asset.assetTag}</span>
+                        </Link>
+                      </DataTableCell>
+                      <DataTableCell className="min-w-56 text-foreground">{asset.name}</DataTableCell>
+                      <DataTableCell className="min-w-44 text-muted-foreground"><span className="tag">{asset.category.code}</span> - {asset.category.name}</DataTableCell>
+                      <DataTableCell className="min-w-44 text-muted-foreground"><span className="tag">{asset.currentLocation.code}</span> - {asset.currentLocation.name}</DataTableCell>
+                      <DataTableCell className="whitespace-nowrap"><StatusBadge label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} /></DataTableCell>
+                      <DataTableCell className="whitespace-nowrap"><StatusBadge label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} /></DataTableCell>
+                    </DataTableRow>
+                  ))}
+                </DataTableBody>
+              </DataTable>
             )}
             {currentAssetCount > 0 ? (
               <div className="mt-4">
-                <Link href={hrefs.assets} className="inline-flex h-9 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent">
+                <Link href={hrefs.assets} className={buttonVariants({ variant: "outline", size: "md" })}>
                   {t("viewAllAssets")}
                 </Link>
               </div>
@@ -363,42 +356,40 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
             {checkoutHistory.length === 0 ? (
               <ActionEmptyState icon={<History className="h-6 w-6" />} title={t("emptyHandoverTitle")} description={t("emptyHandoverHelp")} />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-border text-sm">
-                  <thead className="bg-muted/40">
-                    <tr>
-                      <ColumnHeader>{t("documentNo")}</ColumnHeader>
-                      <ColumnHeader>{t("asset")}</ColumnHeader>
-                      <ColumnHeader>{t("checkoutDate")}</ColumnHeader>
-                      <ColumnHeader>{t("expectedReturnDate")}</ColumnHeader>
-                      <ColumnHeader>{t("returnDate")}</ColumnHeader>
-                      <ColumnHeader>{t("handoverBy")}</ColumnHeader>
-                      <ColumnHeader>{t("receiveBy")}</ColumnHeader>
-                      <ColumnHeader>{tCommon("status")}</ColumnHeader>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {checkoutHistory.map((checkout) => (
-                      <tr key={checkout.id}>
-                        <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{checkout.documentNo || "-"}</td>
-                        <td className="min-w-56 px-4 py-3">
-                          <Link href={`/${locale}/assets/${checkout.asset.id}`} className="text-primary hover:underline">
-                            {checkout.asset.assetTag} - {checkout.asset.name}
-                          </Link>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(checkout.checkoutDate)}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(checkout.expectedReturnDate)}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(checkout.checkins[0]?.returnDate)}</td>
-                        <td className="min-w-36 px-4 py-3 text-muted-foreground">{checkout.checkedOutBy || "-"}</td>
-                        <td className="min-w-36 px-4 py-3 text-muted-foreground">{checkout.checkins[0]?.receiveBy || "-"}</td>
-                        <td className="whitespace-nowrap px-4 py-3">
-                          <StatusBadge label={checkout.isReturned ? t("handoverReturned") : t("handoverOpen")} tone={checkout.isReturned ? "success" : "warning"} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable framed={false} caption={t("handoverHistoryTitle")} scrollHint={tCommon("tableScrollHint")}>
+                <DataTableHeader>
+                  <tr>
+                    <DataTableHead>{t("documentNo")}</DataTableHead>
+                    <DataTableHead>{t("asset")}</DataTableHead>
+                    <DataTableHead>{t("checkoutDate")}</DataTableHead>
+                    <DataTableHead>{t("expectedReturnDate")}</DataTableHead>
+                    <DataTableHead>{t("returnDate")}</DataTableHead>
+                    <DataTableHead>{t("handoverBy")}</DataTableHead>
+                    <DataTableHead>{t("receiveBy")}</DataTableHead>
+                    <DataTableHead>{tCommon("status")}</DataTableHead>
+                  </tr>
+                </DataTableHeader>
+                <DataTableBody>
+                  {checkoutHistory.map((checkout) => (
+                    <DataTableRow key={checkout.id}>
+                      <DataTableCell className="whitespace-nowrap font-medium text-foreground">{checkout.documentNo ? <span className="tag">{checkout.documentNo}</span> : <Nil />}</DataTableCell>
+                      <DataTableCell className="min-w-56">
+                        <Link href={`/${locale}/assets/${checkout.asset.id}`} className="text-primary hover:underline">
+                          <span className="tag">{checkout.asset.assetTag}</span> - {checkout.asset.name}
+                        </Link>
+                      </DataTableCell>
+                      <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDate(checkout.checkoutDate)}</DataTableCell>
+                      <DataTableCell className="whitespace-nowrap text-muted-foreground">{checkout.expectedReturnDate ? formatDate(checkout.expectedReturnDate) : <Nil />}</DataTableCell>
+                      <DataTableCell className="whitespace-nowrap text-muted-foreground">{checkout.checkins[0]?.returnDate ? formatDate(checkout.checkins[0]?.returnDate) : <Nil />}</DataTableCell>
+                      <DataTableCell className="min-w-36 text-muted-foreground">{orNil(checkout.checkedOutBy)}</DataTableCell>
+                      <DataTableCell className="min-w-36 text-muted-foreground">{orNil(checkout.checkins[0]?.receiveBy)}</DataTableCell>
+                      <DataTableCell className="whitespace-nowrap">
+                        <StatusBadge label={checkout.isReturned ? t("handoverReturned") : t("handoverOpen")} tone={checkout.isReturned ? "success" : "warning"} />
+                      </DataTableCell>
+                    </DataTableRow>
+                  ))}
+                </DataTableBody>
+              </DataTable>
             )}
           </section>
 
@@ -407,42 +398,40 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
             {maintenanceTickets.length === 0 ? (
               <ActionEmptyState icon={<Wrench className="h-6 w-6" />} title={t("emptyMaintenanceTitle")} description={t("emptyMaintenanceHelp")} />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-border text-sm">
-                  <thead className="bg-muted/40">
-                    <tr>
-                      <ColumnHeader>{tMaintenance("repairNo")}</ColumnHeader>
-                      <ColumnHeader>{tMaintenance("asset")}</ColumnHeader>
-                      <ColumnHeader>{t("employeeRole")}</ColumnHeader>
-                      <ColumnHeader>{tMaintenance("reportedDate")}</ColumnHeader>
-                      <ColumnHeader>{tMaintenance("problem")}</ColumnHeader>
-                      <ColumnHeader>{tCommon("status")}</ColumnHeader>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {maintenanceTickets.map((ticket) => (
-                      <tr key={ticket.id}>
-                        <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">
-                          <Link href={`/${locale}/maintenance/${ticket.id}`} className="text-primary hover:underline">
-                            {ticket.repairNo}
-                          </Link>
-                        </td>
-                        <td className="min-w-56 px-4 py-3">
-                          <Link href={`/${locale}/assets/${ticket.asset.id}`} className="text-primary hover:underline">
-                            {ticket.asset.assetTag} - {ticket.asset.name}
-                          </Link>
-                        </td>
-                        <td className="min-w-44 px-4 py-3 text-muted-foreground">{formatRoleLabels(maintenanceRoleMap.get(ticket.id) ?? [], t)}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(ticket.reportedDate)}</td>
-                        <td className="min-w-56 px-4 py-3 text-muted-foreground"><span className="line-clamp-2">{ticket.problem}</span></td>
-                        <td className="whitespace-nowrap px-4 py-3">
-                          <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, maintenanceStatusLabels)} tone={getMaintenanceStatusTone(ticket.repairStatus)} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable framed={false} caption={t("maintenanceRelatedTitle")} scrollHint={tCommon("tableScrollHint")}>
+                <DataTableHeader>
+                  <tr>
+                    <DataTableHead>{tMaintenance("repairNo")}</DataTableHead>
+                    <DataTableHead>{tMaintenance("asset")}</DataTableHead>
+                    <DataTableHead>{t("employeeRole")}</DataTableHead>
+                    <DataTableHead>{tMaintenance("reportedDate")}</DataTableHead>
+                    <DataTableHead>{tMaintenance("problem")}</DataTableHead>
+                    <DataTableHead>{tCommon("status")}</DataTableHead>
+                  </tr>
+                </DataTableHeader>
+                <DataTableBody>
+                  {maintenanceTickets.map((ticket) => (
+                    <DataTableRow key={ticket.id}>
+                      <DataTableCell className="whitespace-nowrap font-medium">
+                        <Link href={`/${locale}/maintenance/${ticket.id}`} className="text-primary hover:underline">
+                          <span className="tag">{ticket.repairNo}</span>
+                        </Link>
+                      </DataTableCell>
+                      <DataTableCell className="min-w-56">
+                        <Link href={`/${locale}/assets/${ticket.asset.id}`} className="text-primary hover:underline">
+                          <span className="tag">{ticket.asset.assetTag}</span> - {ticket.asset.name}
+                        </Link>
+                      </DataTableCell>
+                      <DataTableCell className="min-w-44 text-muted-foreground">{orNil(formatRoleLabels(maintenanceRoleMap.get(ticket.id) ?? [], t))}</DataTableCell>
+                      <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDate(ticket.reportedDate)}</DataTableCell>
+                      <DataTableCell className="min-w-56 text-muted-foreground"><span className="line-clamp-2">{ticket.problem}</span></DataTableCell>
+                      <DataTableCell className="whitespace-nowrap">
+                        <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, maintenanceStatusLabels)} tone={getMaintenanceStatusTone(ticket.repairStatus)} />
+                      </DataTableCell>
+                    </DataTableRow>
+                  ))}
+                </DataTableBody>
+              </DataTable>
             )}
           </section>
         </div>
@@ -473,7 +462,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Emplo
                 {employee.subordinates.map((subordinate) => (
                   <Link key={subordinate.id} href={`/${locale}/master-data/employees/${subordinate.id}`} className="block rounded-md border border-border bg-background p-3 transition-colors hover:border-primary-border hover:bg-primary-soft">
                     <div className="text-sm font-semibold text-foreground">{subordinate.code} - {subordinate.fullNameTh}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{subordinate.position || "-"}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{orNil(subordinate.position)}</div>
                   </Link>
                 ))}
               </div>
@@ -562,52 +551,6 @@ function SectionHeading({
   )
 }
 
-function SummaryTile({
-  icon,
-  label,
-  value,
-  detail,
-  href,
-  tone = "neutral",
-}: {
-  icon: React.ReactNode
-  label: string
-  value: number
-  detail: string
-  href?: string
-  tone?: "neutral" | "warning"
-}) {
-  const content = (
-    <>
-      <div className="flex items-start justify-between gap-3">
-        <div className="text-sm font-medium text-muted-foreground">{label}</div>
-        <div className={tone === "warning" ? "text-warning" : "text-primary"}>{icon}</div>
-      </div>
-      <div className="mt-3 text-3xl font-bold text-foreground">{value.toLocaleString()}</div>
-      <div className="mt-1 text-sm text-muted-foreground">{detail}</div>
-    </>
-  )
-  const className = `rounded-lg border bg-surface p-4 ${
-    tone === "warning" ? "border-warning-border" : "border-border"
-  } ${href ? "transition-colors hover:border-primary-border hover:bg-primary-soft" : ""}`
-
-  if (href) return <Link href={href} className={className}>{content}</Link>
-  return <div className={className}>{content}</div>
-}
-
-function Info({ label, value }: { label: string; value?: string | number | null }) {
-  return (
-    <div>
-      <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{label}</div>
-      <div className="mt-1 text-sm font-medium text-foreground">{value || "-"}</div>
-    </div>
-  )
-}
-
-function ColumnHeader({ children }: { children: React.ReactNode }) {
-  return <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{children}</th>
-}
-
 function MiniList({
   title,
   emptyLabel,
@@ -648,8 +591,9 @@ function MiniList({
   )
 }
 
+// null when the person has no role on the ticket: the cell shows Nil.
 function formatRoleLabels(roles: string[], t: (key: string) => string) {
-  if (roles.length === 0) return "-"
+  if (roles.length === 0) return null
   return roles.map((role) => t(`maintenanceRole_${role}`)).join(" / ")
 }
 
