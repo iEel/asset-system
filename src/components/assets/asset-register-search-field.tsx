@@ -1,12 +1,11 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Loader2, Search, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useAssetRegisterNavigation } from "@/components/assets/asset-register-navigation"
+import { SearchField } from "@/components/ui/search-field"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
 import { assetRegisterSearchDebounceMs, shouldAutoSearch } from "@/lib/asset-register-filters"
-import { getFieldControlClasses } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 
 export function AssetRegisterSearchField({ locale, className }: { locale: string; className?: string }) {
@@ -55,6 +54,12 @@ export function AssetRegisterSearchField({ locale, className }: { locale: string
     }, assetRegisterSearchDebounceMs)
   }
 
+  function clearSearch() {
+    setDraft("")
+    search("")
+    inputRef.current?.focus()
+  }
+
   // Without JavaScript the form still submits as a GET that keeps every other filter.
   const preservedParams = Array.from(new URLSearchParams(buildAssetQueryString(filters, { search: "", page: 1 })))
 
@@ -66,15 +71,12 @@ export function AssetRegisterSearchField({ locale, className }: { locale: string
         event.preventDefault()
         search(draft)
       }}
-      className={cn("relative min-w-0", className)}
+      className={cn("min-w-0", className)}
     >
       {preservedParams.map(([name, value]) => (
         <input key={name} type="hidden" name={name} value={value} />
       ))}
-      <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground" aria-hidden="true">
-        {isPending ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-      </span>
-      <input
+      <SearchField
         ref={inputRef}
         name="search"
         type="text"
@@ -82,9 +84,13 @@ export function AssetRegisterSearchField({ locale, className }: { locale: string
         enterKeyHint="search"
         autoComplete="off"
         spellCheck={false}
+        fieldSize="md"
+        loading={isPending}
         aria-label={tCommon("search")}
         placeholder={t("searchPlaceholder")}
         value={draft}
+        onClear={clearSearch}
+        clearLabel={t("searchClear")}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         onCompositionStart={() => {
@@ -101,22 +107,7 @@ export function AssetRegisterSearchField({ locale, className }: { locale: string
           if (composingRef.current || (event.nativeEvent as InputEvent).isComposing) return
           scheduleSearch(value)
         }}
-        className={cn(getFieldControlClasses(), "pl-9", draft ? "pr-11" : "")}
       />
-      {draft ? (
-        <button
-          type="button"
-          aria-label={t("searchClear")}
-          onClick={() => {
-            setDraft("")
-            search("")
-            inputRef.current?.focus()
-          }}
-          className="absolute inset-y-0 right-0 inline-flex min-w-11 items-center justify-center rounded-r-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <X className="size-4" aria-hidden="true" />
-        </button>
-      ) : null}
     </form>
   )
 }

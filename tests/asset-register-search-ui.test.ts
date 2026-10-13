@@ -22,9 +22,9 @@ test("Enter searches at once and the clear button refocuses the field", () => {
 
   assert.match(source, /<form[\s\S]*?role="search"[\s\S]*?action=\{`\/\$\{locale\}\/assets`\}/)
   assert.match(source, /onSubmit=\{\(event\) => \{\s*event\.preventDefault\(\)\s*search\(draft\)/)
-  assert.match(source, /aria-label=\{t\("searchClear"\)\}/)
+  assert.match(source, /clearLabel=\{t\("searchClear"\)\}/)
   assert.match(source, /inputRef\.current\?\.focus\(\)/)
-  assert.match(source, /isPending \? <Loader2/)
+  assert.match(source, /<SearchField\b[\s\S]*?loading=\{isPending\}/)
 })
 
 test("a late response never overwrites what the person is typing", () => {
@@ -54,4 +54,18 @@ test("search copy exists in Thai and English", () => {
   assert.equal(messages("th").searchClear, "ล้างคำค้นหา")
   assert.equal(typeof messages("en").searchPlaceholder, "string")
   assert.equal(typeof messages("en").searchClear, "string")
+})
+
+// Plan 2B-3 Task 6 (spec 2B §7.5, §6.7, R-l): the register search is the shared SearchField at 36px from md (44 below)
+// inside the same search form, so the pause, IME, Enter and the hidden GET fields stay exactly as they were.
+test("the register search is the shared SearchField with its clear button, inside the old search form (2B §7.5)", () => {
+  const source = field()
+
+  assert.match(source, /^import \{ SearchField \} from "@\/components\/ui\/search-field"$/m)
+  assert.match(source, /<SearchField\n\s+ref=\{inputRef\}\n\s+name="search"\n\s+type="text"\n\s+inputMode="search"\n\s+enterKeyHint="search"\n\s+autoComplete="off"\n\s+spellCheck=\{false\}\n\s+fieldSize="md"\n\s+loading=\{isPending\}\n\s+aria-label=\{tCommon\("search"\)\}/)
+  assert.match(source, /onClear=\{clearSearch\}/)
+  assert.match(source, /function clearSearch\(\) \{\n\s+setDraft\(""\)\n\s+search\(""\)\n\s+inputRef\.current\?\.focus\(\)\n\s+\}/)
+  assert.match(source, /className=\{cn\("min-w-0", className\)\}/)
+  assert.equal(source.match(/<input\b/g)?.length, 1, "only the hidden inputs that keep the other filters stay raw")
+  assert.doesNotMatch(source, /getFieldControlClasses|lucide-react|<button\b/)
 })
