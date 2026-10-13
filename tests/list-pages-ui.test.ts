@@ -561,3 +561,15 @@ test("supplier purchase documents: DataTable with right-aligned count and money 
   assert.equal(source.match(/<span className="tag">\{document\.documentNo\}<\/span>/g)?.length, 2)
   assert.doesNotMatch(source, /<table\b|formatCurrency|toLocaleString\(|"-"/)
 })
+
+// Plan 2B-4 Task 8 (spec 2B §4.4.5, §4.6.3): the My Assets detail page: PageHeader with its back link to the list, the
+// facts as one KeyValueList, and no pb-24 of its own. The page is in navigation mode, so the shell already leaves room
+// for the bottom bar (tests/mobile-field-navigation.test.ts pins the mode).
+test("my asset page: PageHeader with the back link to My Assets, the facts as a KeyValueList, no pb-24 of its own (spec 2B §4.4.5, §4.6.3)", () => {
+  const source = read(`${D}my-assets/[id]/page.tsx`)
+  assert.match(source, /return \(\n {4}<div className="space-y-6">\n {6}<PageHeader\n\s+title=\{t\("detailTitle"\)\}\n\s+meta=\{t\("detailHelp"\)\}\n\s+back=\{<PageBackLink href=\{`\/\$\{locale\}\/my-assets`\} label=\{t\("backToList"\)\} \/>\}\n\s+\/>/)
+  assert.doesNotMatch(source, /\bpb-24\b/)
+  assert.match(source, /<KeyValueList\n\s+items=\{\[/)
+  assert.match(source, /\{ key: "serialNumber", label: t\("serialNumber"\), value: asset\.serialNumber \? <span className="tag">\{asset\.serialNumber\}<\/span> : null \}/, "an empty serial number shows Nil through KeyValueList")
+  assert.doesNotMatch(source, /function DetailItem\b|<h1\b|getSafeActionLinkClasses|"-"/)
+})

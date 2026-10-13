@@ -30,6 +30,7 @@ test("mobile shell keeps browsing and pending queues in navigation mode", () => 
     "/th/master-data/brands",
     "/th/master-data/employees/employee-1",
     "/th/master-data/suppliers/supplier-1",
+    "/th/my-assets/asset-1",
   ]) {
     assert.equal(getMobileShellMode(pathname), "navigation", pathname)
   }

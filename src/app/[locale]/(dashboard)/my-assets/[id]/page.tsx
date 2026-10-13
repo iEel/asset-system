@@ -1,12 +1,13 @@
 import Image from "next/image"
-import Link from "next/link"
 import type { Prisma } from "@prisma/client"
 import { notFound } from "next/navigation"
-import { ArrowLeft, Building2, CalendarClock, MapPin, PackageCheck, Tags } from "lucide-react"
+import { PackageCheck } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { ContentPanel } from "@/components/ui/content-panel"
+import { KeyValueList } from "@/components/ui/key-value-list"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { getAssetStateTone, getSafeActionLinkClasses } from "@/lib/design-system"
+import { getAssetStateTone } from "@/lib/design-system"
 import { getSessionUser } from "@/lib/auth-utils"
 import { prisma } from "@/lib/db"
 import { buildMyAssetDetailWhere } from "@/lib/my-assets"
@@ -53,17 +54,12 @@ export default async function MyAssetDetailPage({ params }: MyAssetDetailPagePro
   const companyBranch = `${asset.company.code} / ${asset.branch.code}`
 
   return (
-    <div className="space-y-6 pb-24 md:pb-0">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">{t("detailTitle")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("detailHelp")}</p>
-        </div>
-        <Link href={`/${locale}/my-assets`} className={getSafeActionLinkClasses("secondary")}>
-          <ArrowLeft className="h-4 w-4" />
-          {t("backToList")}
-        </Link>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={t("detailTitle")}
+        meta={t("detailHelp")}
+        back={<PageBackLink href={`/${locale}/my-assets`} label={t("backToList")} />}
+      />
 
       <ContentPanel>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
@@ -94,26 +90,16 @@ export default async function MyAssetDetailPage({ params }: MyAssetDetailPagePro
       </ContentPanel>
 
       <ContentPanel title={t("detailTitle")}>
-        <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <DetailItem icon={<Tags className="h-4 w-4" />} label={t("category")} value={`${asset.category.code} - ${asset.category.name}`} />
-          <DetailItem icon={<PackageCheck className="h-4 w-4" />} label={t("serialNumber")} value={asset.serialNumber || "-"} />
-          <DetailItem icon={<MapPin className="h-4 w-4" />} label={t("location")} value={location} />
-          <DetailItem icon={<Building2 className="h-4 w-4" />} label={t("companyBranch")} value={companyBranch} />
-          <DetailItem icon={<CalendarClock className="h-4 w-4" />} label={t("updatedAt")} value={formatDateTime(asset.updatedAt)} />
-        </dl>
+        <KeyValueList
+          items={[
+            { key: "category", label: t("category"), value: <><span className="tag">{asset.category.code}</span> - {asset.category.name}</> },
+            { key: "serialNumber", label: t("serialNumber"), value: asset.serialNumber ? <span className="tag">{asset.serialNumber}</span> : null },
+            { key: "location", label: t("location"), value: location },
+            { key: "companyBranch", label: t("companyBranch"), value: companyBranch },
+            { key: "updatedAt", label: t("updatedAt"), value: formatDateTime(asset.updatedAt) },
+          ]}
+        />
       </ContentPanel>
-    </div>
-  )
-}
-
-function DetailItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-border bg-background p-3">
-      <dt className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        <span className="text-primary" aria-hidden="true">{icon}</span>
-        {label}
-      </dt>
-      <dd className="mt-2 break-words text-sm font-semibold text-foreground">{value}</dd>
     </div>
   )
 }
