@@ -9,20 +9,25 @@ const messages = (locale: "th" | "en") => JSON.parse(readFileSync(`messages/${lo
 
 test("row actions show one next-step button and keep every action in the ⋯ menu", () => {
   const source = rowActions()
+  // Plan 2B-3 Task 2 (spec 2B I5): the menu, the phone sheet and the delete confirm moved into the shared RowActions,
+  // so their pins read ui/row-actions.tsx. The wrapper keeps the register's rules: next step, order, permissions, reasons.
+  const shared = read("src/components/ui/row-actions.tsx")
 
   assert.match(source, /const nextAction = getRowNextAction\(transactions\)/)
   assert.match(source, /next \? \[next, \.\.\.transactions\.filter\(\(transaction\) => transaction !== next\)\] : transactions/)
-  assert.match(source, /<DropdownMenuTrigger asChild>/)
-  assert.match(source, /<DropdownMenuContent data-no-row-click/)
-  assert.match(source, /<SheetTrigger asChild>/)
-  assert.match(source, /<SheetContent\s+side="bottom"/)
-  assert.match(source, /useDeleteAction\(`\/api\/assets\/\$\{assetId\}`, \{ returnFocusRef: triggerRef \}\)/)
-  assert.match(source, /variant="destructive"/)
+  assert.match(source, /<RowActions\b/)
+  assert.match(shared, /<DropdownMenuTrigger asChild>/)
+  assert.match(shared, /<DropdownMenuContent data-no-row-click/)
+  assert.match(shared, /<SheetTrigger asChild>/)
+  assert.match(shared, /<SheetContent\s+side="bottom"/)
+  assert.match(source, /deleteAction=\{permissions\.canDelete \? \{ endpoint: `\/api\/assets\/\$\{assetId\}` \} : undefined\}/)
+  assert.match(shared, /useDeleteAction\([\s\S]*?\{ returnFocusRef: triggerRef \}\)/)
+  assert.match(shared, /variant="destructive"/)
   assert.match(source, /permissions\.canEdit \?/)
   assert.match(source, /permissions\.canCreate \?/)
   assert.match(source, /permissions\.canDelete \?/)
   assert.match(source, /reasonLabelKeys\[transaction\.reason\]/)
-  assert.match(source, /size-11/)
+  assert.match(shared, /size="icon-sm"/, "⋯ is 32px from md and 44px below")
   assert.doesNotMatch(source, /createPortal|getBoundingClientRect|addEventListener/)
 })
 
@@ -199,4 +204,17 @@ test("the floating bulk bar hides its heading on phones and the list reserves at
 
   assert.match(source, /<div className="hidden text-sm font-semibold text-foreground md:block">\{labels\.bulkActions\}<\/div>/)
   assert.match(mobileList(), /reserveBulkBarSpace && "pb-44"/)
+})
+
+// Plan 2B-3 Task 2 (spec 2B I5, §7.9, N1): the register's row actions are the shared RowActions, pattern ช1. The wrapper
+// passes data only: the next step on desktop rows (phones get none), the transaction group, edit and clone, and delete
+// only for users who may delete.
+test("the register row actions are a thin wrapper of RowActions: next step on desktop only, dropdown or sheet, delete by permission (spec 2B I5)", () => {
+  const source = rowActions()
+  assert.match(source, /<RowActions\b[\s\S]*?menuLabel=\{t\("rowActionsMenu", \{ assetTag \}\)\}[\s\S]*?menu=\{variant === "desktop" \? "dropdown" : "sheet"\}/)
+  assert.match(source, /next=\{variant === "desktop" \? \(next \? \{ label: t\(transactionLabelKeys\[next\.action\]\), href: next\.href, icon: icon\(next\.action\), onNavigate \} : null\) : undefined\}/, "a desktop row without a next step keeps the empty 120px slot, so ⋯ lines up")
+  assert.match(source, /groups=\{\[/)
+  assert.match(source, /label: t\("transactionMenu"\)/)
+  assert.match(source, /code=\{assetTag\}\n\s+name=\{assetName\}/, "the phone sheet is headed by the tag and the name")
+  assert.doesNotMatch(source, /function NextActionLink|sheetItemClasses|<DropdownMenu|<Sheet|triggerRef|contentClassName|size-8|closeLabel=|pr-14|pb-\[env/)
 })

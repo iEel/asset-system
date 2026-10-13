@@ -80,6 +80,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}admin/data-quality/page.tsx`,
   `${C}admin/asset-state-review-workspace.tsx`,
   `${D}admin/integrations/page.tsx`,
+  `${C}assets/asset-register-row-actions.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.

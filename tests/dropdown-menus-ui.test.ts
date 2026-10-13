@@ -25,17 +25,21 @@ test("transaction cancel dialog can be opened by its owner without its own trigg
 })
 
 test("register row menus are Radix overlays and delete through the shared action", () => {
-  const source = read("src/components/assets/asset-register-row-actions.tsx")
+  // Plan 2B-3 Task 2 (spec 2B I5): the register's ⋯ menu, phone sheet and delete live in the shared RowActions now.
+  const source = read("src/components/ui/row-actions.tsx")
   assert.match(source, /<DropdownMenuContent data-no-row-click/)
   assert.match(source, /<SheetContent\s+side="bottom"/)
-  assert.match(source, /useDeleteAction\(`\/api\/assets\/\$\{assetId\}`, \{ returnFocusRef: triggerRef \}\)/)
-  assert.equal(source.match(/ref=\{triggerRef\}/g)?.length, 2)
+  assert.match(source, /useDeleteAction\([\s\S]*?\{ returnFocusRef: triggerRef \}\)/)
+  assert.match(source, /ref=\{triggerRef\}/)
   assert.match(source, /variant="destructive"/)
   assert.doesNotMatch(source, /createPortal|getBoundingClientRect|addEventListener|AssetDeleteButton/)
   // A blocked transaction stays reachable by arrow keys and reads its reason (spec 5.4).
-  assert.match(source, /<DropdownMenuItem key=\{transaction\.action\} unavailable>/)
-  assert.match(source, /<DropdownMenuItemDescription>\{reasonOf\(transaction\)\}<\/DropdownMenuItemDescription>/)
+  assert.match(source, /<DropdownMenuItem\b[^>]*\bunavailable>/)
+  assert.match(source, /<DropdownMenuItemDescription>\{[\w.]*reason\}<\/DropdownMenuItemDescription>/)
   assert.doesNotMatch(source, /disabled className="items-start"|<DropdownMenuLabel className=/)
+  const wrapper = read("src/components/assets/asset-register-row-actions.tsx")
+  assert.match(wrapper, /kind: "unavailable"[\s\S]*?reason: reasonOf\(transaction\)/)
+  assert.doesNotMatch(wrapper, /<DropdownMenu|<Sheet|triggerRef|AssetDeleteButton/, "the wrapper renders no menu of its own")
 })
 
 test("topbar language and user menus are Radix dropdowns", () => {
