@@ -156,6 +156,7 @@ export default async function DataQualityPage({ params }: DataQualityPageProps) 
           enabled: t("enabledRules"),
           warning: t("warning"),
           danger: t("danger"),
+          severity: t("assetStateReviews.severity"),
           ruleLabels: Object.fromEntries(rules.map((rule) => [rule.key, t(`rules.${rule.key}.label`)])),
           ruleDescriptions: Object.fromEntries(rules.map((rule) => [rule.key, t(`rules.${rule.key}.description`)])),
         }}
