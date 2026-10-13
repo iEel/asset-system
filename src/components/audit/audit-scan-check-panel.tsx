@@ -25,7 +25,6 @@ export function AuditScanCheckPanel({
   children: ReactNode
 }) {
   const t = useTranslations("auditScan")
-  const tCommon = useTranslations("common")
   const headingRef = useRef<HTMLHeadingElement | null>(null)
 
   // The inline panel sits beside the list; jump focus to it so keyboard users need not tab through every row.
@@ -51,7 +50,6 @@ export function AuditScanCheckPanel({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        closeLabel={tCommon("close")}
         className="max-h-[92dvh] gap-0 rounded-t-xl"
         onCloseAutoFocus={(event) => {
           // Opened from a row or the search box, not a Radix trigger: send focus back there ourselves.
@@ -61,7 +59,7 @@ export function AuditScanCheckPanel({
           else onReturnFocusMissing?.()
         }}
       >
-        <SheetHeader className="border-b border-border pr-14">
+        <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
           <SheetDescription className="truncate">{description}</SheetDescription>
         </SheetHeader>

@@ -82,6 +82,7 @@ const MIGRATED_FILES: string[] = [
   `${C}audit/audit-round-cancel-button.tsx`,
   `${C}audit/audit-findings-batch-actions.tsx`,
   `${C}audit/audit-scan-room-picker.tsx`,
+  `${C}audit/audit-scan-check-panel.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])

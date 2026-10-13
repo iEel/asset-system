@@ -94,3 +94,10 @@ test("check sheet copy exists in Thai and English", () => {
   }
   assert.equal(messages("th").saveMismatch, "บันทึก · ไม่ตรง {count} ข้อ ({fields})")
 })
+
+test("the phone check sheet takes its X name and header from Sheet (2C batch 3)", () => {
+  const source = read("src/components/audit/audit-scan-check-panel.tsx")
+  assert.doesNotMatch(source, /closeLabel=|<SheetHeader className=|tCommon/)
+  assert.match(source, /<SheetContent\n\s+side="bottom"\n\s+className="max-h-\[92dvh\] gap-0 rounded-t-xl"\n\s+onCloseAutoFocus=/)
+  assert.match(source, /<SheetHeader>\n\s+<SheetTitle>\{title\}<\/SheetTitle>\n\s+<SheetDescription className="truncate">\{description\}<\/SheetDescription>\n\s+<\/SheetHeader>/)
+})
