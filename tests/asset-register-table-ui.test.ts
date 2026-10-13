@@ -309,3 +309,21 @@ test("the export menu opens from the shared outline Button (spec 2B §7.8.6)", (
   assert.match(source, /<DropdownMenuTrigger asChild>\n\s+<Button variant="outline" size="md">\n\s+<Download aria-hidden="true" \/>\n\s+\{t\("exportMenu"\)\}\n\s+<\/Button>\n\s+<\/DropdownMenuTrigger>/)
   assert.doesNotMatch(source, /<button\b|hover:bg-accent|focus-visible:ring/, "no hand-written trigger (N5)")
 })
+
+// Phase 2C batch 4 (spec 2C §5.5 row 6, §5.3, §6.3 #71-#72, §4.3 F1-F5, O1): the bulk update dialog only; the list part
+// above is 2B's. Layout A: the form wraps the body and footer parts. The four fields are shared fields, and the reason
+// keeps required and maxLength and now shows the star. Cancel is off while saving (it was not), the submit button is
+// busy in place, and the X reads "ปิด" from the dialog itself.
+test("the bulk update dialog uses the dialog parts, shared fields and a busy submit (2C batch 4, O1)", () => {
+  const source = table()
+  const dialog = source.slice(source.indexOf("<AccessibleDialog\n"), source.indexOf("</AccessibleDialog>"))
+  assert.doesNotMatch(dialog, /closeLabel=/)
+  assert.match(dialog, /<form onSubmit=\{submitBulkUpdate\} className=\{accessibleDialogFormClasses\}>\n\s+<AccessibleDialogBody className="space-y-4">/)
+  assert.equal(dialog.match(/<Field label=\{labels\.(?:currentLocation|custodian|remark)\}>/g)?.length, 3)
+  assert.match(dialog, /<Field label=\{labels\.reason\} required>\n\s+<Input\n[\s\S]*?\n\s+required\n\s+maxLength=\{500\}\n\s+\/>/)
+  assert.equal(dialog.match(/<NativeSelect\n/g)?.length, 2)
+  assert.match(dialog, /<Textarea\n[\s\S]*?rows=\{3\}\n\s+className="min-h-24"/)
+  assert.match(dialog, /<AccessibleDialogFooter>\n\s+<AccessibleDialogCancel>\{labels\.cancel\}<\/AccessibleDialogCancel>\n\s+<Button type="submit" busy=\{bulkSaving\} disabled=\{!bulkForm\.toLocationId && !bulkForm\.toCustodianId\}>\n\s+\{labels\.applyBulkUpdate\}\n\s+<\/Button>\n\s+<\/AccessibleDialogFooter>\n\s+<\/form>/)
+  assert.doesNotMatch(dialog, /<button\b|<select\b|<input\b|<textarea\b|<label\b|h-10|disabled:opacity/)
+  assert.doesNotMatch(source, /\bLoader2\b/, "the spinner comes from Button busy")
+})

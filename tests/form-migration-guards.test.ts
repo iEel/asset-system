@@ -100,6 +100,7 @@ const MIGRATED_FILES: string[] = [
   `${C}ui/activity-drawer.tsx`,
   `${C}asset-operations/transaction-cancel-dialog.tsx`,
   `${C}assets/asset-create-workspace.tsx`,
+  `${C}assets/asset-register-table.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -188,7 +189,6 @@ const RAW_FIELDS: Record<string, number> = {
   [`${C}audit/audit-scan-room-picker.tsx`]: 1, // → 1: the room search :75 stays (O20)
   // 4
   [`${C}assets/asset-label-print.tsx`]: 2, // the print toolbar's boxed fields :226, :237 (K21)
-  [`${C}assets/asset-register-table.tsx`]: 4,
 }
 
 // GF3 hand-written field class strings
@@ -203,7 +203,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 2
   // 3
   // 4
-  [`${C}assets/asset-register-table.tsx`]: 4,
 }
 
 // GF5 floors per file: [required, maxLength, minLength] on CONSTRAINT_TAGS. A floor never drops.
@@ -270,7 +269,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 2
   // 3
   // 4
-  [`${C}assets/asset-register-table.tsx`]: 6, // → 2: list checkboxes :549, :620 (2B, O1)
 }
 
 // GB1 <Loader2 tags (every tag, also icons kept in a variable)
@@ -294,7 +292,6 @@ const LOADER2: Record<string, number> = {
   [`${C}admin/IntegrationClientManager.tsx`]: 2, // the status line :523 and the rotate button of the row :853 (2D, I27)
   [`${C}assets/asset-label-batch-tool.tsx`]: 2, // the status lines :311, :446 (I27)
   [`${C}assets/asset-scan-search-tool.tsx`]: 1, // the status line :141 (I27)
-  [`${C}assets/asset-register-table.tsx`]: 1,
   [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 1, // the loading line :134 in the dialog body (I27)
 }
 
@@ -313,7 +310,7 @@ const CLOSE_LABEL_IS_CANCEL: Record<string, number> = {
 
 // GL1 class strings with both fixed and bottom-
 const FIXED_BOTTOM_BARS: Record<string, number> = {
-  [`${C}assets/asset-register-table.tsx`]: 1, // :455 the mobile multi-select bar (2B / phase 3)
+  [`${C}assets/asset-register-table.tsx`]: 1, // :473 the phone bulk-action bar (phase 3, R-q)
   [`${C}ui/mobile-action-bar.tsx`]: 1, // batch 5 deletes both files
   [`${C}disposal/disposal-mobile-action-bar.tsx`]: 1, // and adds "ui/action-bar.tsx": 1
 }
@@ -329,7 +326,6 @@ const PENDING_FOOTER_PARTS = new Set([
   // 1f
   // 3
   // 4
-  `${C}assets/asset-register-table.tsx`,
 ])
 
 test("the JSX reader skips arrows, selectors, braces, quoted text and comments", () => {

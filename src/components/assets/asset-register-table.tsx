@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Download, Edit, Loader2, Printer, X } from "lucide-react"
+import { Download, Edit, Printer, X } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { formatCount, formatMoney } from "@/lib/display-format"
@@ -29,7 +29,17 @@ import { AssetRegisterColumnPicker } from "@/components/assets/asset-register-co
 import { AssetRegisterExportMenu } from "@/components/assets/asset-register-export-menu"
 import { Pagination } from "@/components/ui/pagination"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
-import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import {
+  AccessibleDialog,
+  AccessibleDialogBody,
+  AccessibleDialogCancel,
+  AccessibleDialogFooter,
+  accessibleDialogFormClasses,
+} from "@/components/ui/accessible-dialog"
+import { Field } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
+import { Textarea } from "@/components/ui/textarea"
 import type { AssetRegisterTransaction } from "@/lib/asset-operation-policy"
 import { getAssetStateTone, getDesktopTableOnlyClasses } from "@/lib/design-system"
 import {
@@ -684,77 +694,60 @@ export function AssetRegisterTable({
         description={`${labels.bulkUpdateDescription} (${selectedAssets.length} ${labels.selectedCount})`}
         busy={bulkSaving}
         size="md"
-        closeLabel={labels.close}
         onClose={() => setBulkUpdateOpen(false)}
       >
-            <form onSubmit={submitBulkUpdate} className="space-y-4 px-5 py-4">
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.currentLocation}</span>
-                <select
-                  value={bulkForm.toLocationId}
-                  onChange={(event) => setBulkForm((current) => ({ ...current, toLocationId: event.target.value }))}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                >
-                  <option value="">{labels.noChange}</option>
-                  {bulkOptions.locations.map((location) => (
-                    <option key={location.id} value={location.id}>
-                      {location.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.custodian}</span>
-                <select
-                  value={bulkForm.toCustodianId}
-                  onChange={(event) => setBulkForm((current) => ({ ...current, toCustodianId: event.target.value }))}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                >
-                  <option value="">{labels.noChange}</option>
-                  {bulkOptions.employees.map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.reason}</span>
-                <input
-                  value={bulkForm.reason}
-                  onChange={(event) => setBulkForm((current) => ({ ...current, reason: event.target.value }))}
-                  required
-                  maxLength={500}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.remark}</span>
-                <textarea
-                  value={bulkForm.remark}
-                  onChange={(event) => setBulkForm((current) => ({ ...current, remark: event.target.value }))}
-                  rows={3}
-                  className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                />
-              </label>
-              <div className="flex justify-end gap-2 border-t border-border pt-4">
-                <button
-                  type="button"
-                  onClick={() => setBulkUpdateOpen(false)}
-                  className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-                >
-                  {labels.cancel}
-                </button>
-                <button
-                  type="submit"
-                  disabled={bulkSaving || (!bulkForm.toLocationId && !bulkForm.toCustodianId)}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {bulkSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  {labels.applyBulkUpdate}
-                </button>
-              </div>
-            </form>
+        <form onSubmit={submitBulkUpdate} className={accessibleDialogFormClasses}>
+          <AccessibleDialogBody className="space-y-4">
+            <Field label={labels.currentLocation}>
+              <NativeSelect
+                value={bulkForm.toLocationId}
+                onChange={(event) => setBulkForm((current) => ({ ...current, toLocationId: event.target.value }))}
+              >
+                <option value="">{labels.noChange}</option>
+                {bulkOptions.locations.map((location) => (
+                  <option key={location.id} value={location.id}>
+                    {location.label}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+            <Field label={labels.custodian}>
+              <NativeSelect
+                value={bulkForm.toCustodianId}
+                onChange={(event) => setBulkForm((current) => ({ ...current, toCustodianId: event.target.value }))}
+              >
+                <option value="">{labels.noChange}</option>
+                {bulkOptions.employees.map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.label}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+            <Field label={labels.reason} required>
+              <Input
+                value={bulkForm.reason}
+                onChange={(event) => setBulkForm((current) => ({ ...current, reason: event.target.value }))}
+                required
+                maxLength={500}
+              />
+            </Field>
+            <Field label={labels.remark}>
+              <Textarea
+                value={bulkForm.remark}
+                onChange={(event) => setBulkForm((current) => ({ ...current, remark: event.target.value }))}
+                rows={3}
+                className="min-h-24"
+              />
+            </Field>
+          </AccessibleDialogBody>
+          <AccessibleDialogFooter>
+            <AccessibleDialogCancel>{labels.cancel}</AccessibleDialogCancel>
+            <Button type="submit" busy={bulkSaving} disabled={!bulkForm.toLocationId && !bulkForm.toCustodianId}>
+              {labels.applyBulkUpdate}
+            </Button>
+          </AccessibleDialogFooter>
+        </form>
       </AccessibleDialog>
     </div>
   )
