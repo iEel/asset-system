@@ -2,6 +2,7 @@
 
 import { Download, FileDown, FileSpreadsheet } from "lucide-react"
 import { useTranslations } from "next-intl"
+import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 export function AssetRegisterExportMenu({ exportHref, templateHref }: { exportHref: string; templateHref: string }) {
@@ -10,13 +11,10 @@ export function AssetRegisterExportMenu({ exportHref, templateHref }: { exportHr
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <Download className="size-4" aria-hidden="true" />
+        <Button variant="outline" size="md">
+          <Download aria-hidden="true" />
           {t("exportMenu")}
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem asChild>

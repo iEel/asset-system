@@ -299,3 +299,13 @@ test("the column picker opens from the shared outline Button (spec 2B §7.8.6)",
   assert.match(source, /<DropdownMenuTrigger asChild>\n\s+<Button variant="outline" size="md">\n\s+<Columns3 aria-hidden="true" \/>\n\s+\{t\("columns"\)\}\n\s+<\/Button>\n\s+<\/DropdownMenuTrigger>/)
   assert.doesNotMatch(source, /<button\b|hover:bg-accent|focus-visible:ring/, "no hand-written trigger (N5)")
 })
+
+// Plan 2B-3 Task 12 (spec 2B §7.8.6, N5): the export menu opens from the shared outline Button, 36px from md, beside
+// the column picker; its two items stay plain download links.
+test("the export menu opens from the shared outline Button (spec 2B §7.8.6)", () => {
+  const source = exportMenu()
+
+  assert.match(source, /^import \{ Button \} from "@\/components\/ui\/button"$/m)
+  assert.match(source, /<DropdownMenuTrigger asChild>\n\s+<Button variant="outline" size="md">\n\s+<Download aria-hidden="true" \/>\n\s+\{t\("exportMenu"\)\}\n\s+<\/Button>\n\s+<\/DropdownMenuTrigger>/)
+  assert.doesNotMatch(source, /<button\b|hover:bg-accent|focus-visible:ring/, "no hand-written trigger (N5)")
+})
