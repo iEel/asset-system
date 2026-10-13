@@ -40,7 +40,7 @@ test("asset scan page labels only the native input and uses asset-specific searc
   const th = JSON.parse(readFileSync("messages/th.json", "utf8"))
   const en = JSON.parse(readFileSync("messages/en.json", "utf8"))
 
-  assert.match(tool, /<label[^>]+htmlFor="asset-scan-query"/)
+  assert.match(tool, /<Field label=\{labels\.queryLabel\}>\s*<ScannerTextInput\s+id="asset-scan-query"/)
   assert.match(tool, /<ScannerTextInput[\s\S]+id="asset-scan-query"/)
   assert.doesNotMatch(tool, /<label className="block">[\s\S]+<ScannerTextInput/)
   assert.doesNotMatch(tool, /inputClassName=/)
@@ -48,4 +48,16 @@ test("asset scan page labels only the native input and uses asset-specific searc
   assert.doesNotMatch(page, /placeholder: tGlobalSearch\("placeholder"\)/)
   assert.equal(th.assetTools.scanPlaceholder, "ค้นหาด้วยรหัสทรัพย์สิน, Serial Number, ผู้ถือครอง หรือที่ตั้ง")
   assert.equal(en.assetTools.scanPlaceholder, "Search by Asset Tag, Serial Number, custodian, or location")
+})
+
+// Phase 2C batch 4 (spec 2C §8.9 O19, §6.4.2; 2B spec I13): the scan tool's header is PageHeader, the open button is
+// Button, the result rows stay list buttons (2D) and the status-line spinner stops for users who reduce motion (I27).
+test("the asset scan tool uses PageHeader, Field and Button (2C batch 4)", () => {
+  const tool = readFileSync("src/components/assets/asset-scan-search-tool.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(tool, /<PageHeader title=\{labels\.title\} meta=\{labels\.subtitle\} \/>/)
+  assert.match(tool, /<Field label=\{labels\.queryLabel\}>\n\s+<ScannerTextInput\n\s+id="asset-scan-query"[\s\S]*?onScanSuccess=\{handleScannedValue\}\n\s+\/>\n\s+<\/Field>/)
+  assert.match(tool, /<Button onClick=\{\(\) => openAsset\(directAssetHref\)\} className="w-full sm:w-auto">\n\s+<PackageSearch aria-hidden="true" \/>\n\s+\{labels\.openAsset\}\n\s+<\/Button>/)
+  assert.match(tool, /<Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" \/>/)
+  assert.equal(tool.match(/<button\b/g)?.length, 1, "only the result rows stay list buttons (2D)")
+  assert.doesNotMatch(tool, /<h1\b|<label\b|mb-1\.5 block text-sm font-medium/)
 })

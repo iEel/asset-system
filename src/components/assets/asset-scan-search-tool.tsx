@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, MapPin, PackageSearch, Search } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { PageHeader } from "@/components/ui/page-header"
 import { ScannerTextInput } from "@/components/ui/scanner-text-input"
 import { buildDirectAssetHrefFromScanValue } from "@/lib/asset-scan-routing"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
@@ -106,36 +109,28 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <div className="min-w-0">
-        <h1 className="break-words text-2xl font-bold text-foreground">{labels.title}</h1>
-        <p className="mt-1 break-words text-sm text-muted-foreground">{labels.subtitle}</p>
-      </div>
+      <PageHeader title={labels.title} meta={labels.subtitle} />
 
       <section className="min-w-0 rounded-lg border border-border bg-surface p-4 sm:p-5">
-        <label htmlFor="asset-scan-query" className="mb-1.5 block text-sm font-medium text-foreground">
-          {labels.queryLabel}
-        </label>
-        <ScannerTextInput
-          id="asset-scan-query"
-          value={query}
-          onChange={setQuery}
-          labels={labels.scanner}
-          placeholder={labels.placeholder}
-          scanMode="asset-qr"
-          onScanSuccess={handleScannedValue}
-        />
+        <Field label={labels.queryLabel}>
+          <ScannerTextInput
+            id="asset-scan-query"
+            value={query}
+            onChange={setQuery}
+            labels={labels.scanner}
+            placeholder={labels.placeholder}
+            scanMode="asset-qr"
+            onScanSuccess={handleScannedValue}
+          />
+        </Field>
       </section>
 
       {directAssetHref ? (
         <section className="rounded-lg border border-primary-border bg-primary-soft p-4">
-          <button
-            type="button"
-            onClick={() => openAsset(directAssetHref)}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:w-auto"
-          >
-            <PackageSearch className="h-4 w-4" />
+          <Button onClick={() => openAsset(directAssetHref)} className="w-full sm:w-auto">
+            <PackageSearch aria-hidden="true" />
             {labels.openAsset}
-          </button>
+          </Button>
         </section>
       ) : trimmedQuery.length < 2 ? (
         <section className="rounded-lg border border-dashed border-border bg-surface p-6 text-center text-sm text-muted-foreground">
@@ -143,7 +138,7 @@ export function AssetScanSearchTool({ locale, labels }: AssetScanSearchToolProps
         </section>
       ) : loading ? (
         <section className="flex items-center gap-2 rounded-lg border border-border bg-surface p-5 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
           {labels.loading}
         </section>
       ) : visibleResults.length === 0 ? (
