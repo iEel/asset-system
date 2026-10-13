@@ -3,9 +3,18 @@
 import { useId, useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { AlertTriangle, Loader2 } from "lucide-react"
+import { AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
-import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import {
+  AccessibleDialog,
+  AccessibleDialogBody,
+  AccessibleDialogCancel,
+  AccessibleDialogFooter,
+  accessibleDialogFormClasses,
+} from "@/components/ui/accessible-dialog"
+import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type AuditRoundCancellationImpact = {
@@ -63,15 +72,10 @@ export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; i
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setDialogOpen(true)}
-        disabled={saving}
-        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-danger-border bg-danger-soft px-4 text-sm font-semibold text-danger transition-colors hover:bg-danger-soft disabled:opacity-50 sm:h-10 sm:min-h-0 sm:w-auto"
-      >
-        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
+      <Button variant="danger" busy={saving} onClick={() => setDialogOpen(true)} className="w-full sm:w-auto">
+        <AlertTriangle aria-hidden="true" />
         {t("cancelRound")}
-      </button>
+      </Button>
 
       <AccessibleDialog
         open={dialogOpen}
@@ -81,8 +85,8 @@ export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; i
         size="sm"
         onClose={closeDialog}
       >
-        <form onSubmit={handleSubmit}>
-          <div className="max-h-[calc(92dvh-10rem)] space-y-4 overflow-y-auto px-4 py-4">
+        <form onSubmit={handleSubmit} className={accessibleDialogFormClasses}>
+          <AccessibleDialogBody className="space-y-4">
             <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
               <ImpactItem label={t("cancelImpactProcessed")} value={impact.processedItems} />
               <ImpactItem label={t("cancelImpactPending")} value={impact.pendingItems} />
@@ -94,11 +98,8 @@ export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; i
             <div className="rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm text-warning">
               {t("cancelNoRollbackWarning")}
             </div>
-            <div>
-              <label htmlFor={reasonId} className="text-sm font-medium text-foreground">
-                {t("cancelReason")}
-              </label>
-              <textarea
+            <Field label={t("cancelReason")} required>
+              <Textarea
                 id={reasonId}
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
@@ -106,29 +107,18 @@ export function AuditRoundCancelButton({ roundId, impact }: { roundId: string; i
                 rows={4}
                 required
                 placeholder={t("cancelReasonPlaceholder")}
-                className="mt-2 min-h-28 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-60"
+                className="min-h-28"
               />
-            </div>
-          </div>
+            </Field>
+          </AccessibleDialogBody>
 
-          <div className="grid gap-2 border-t border-border bg-background px-4 py-4 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={closeDialog}
-              disabled={saving}
-              className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
-            >
-              {tCommon("cancel")}
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-danger px-4 text-sm font-semibold text-white transition-colors hover:bg-danger-hover disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
+          <AccessibleDialogFooter>
+            <AccessibleDialogCancel />
+            <Button type="submit" variant="destructive" busy={saving}>
+              <AlertTriangle aria-hidden="true" />
               {t("cancelConfirm")}
-            </button>
-          </div>
+            </Button>
+          </AccessibleDialogFooter>
         </form>
       </AccessibleDialog>
     </>
