@@ -236,3 +236,17 @@ test("the disposal batch page builds on PageHeader, StatStrip, KeyValueList, Dat
   assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>\{t\("nextAction"\)\}<\/DataTableHead>/)
   assert.doesNotMatch(source, /function (?:BatchMetric|BatchInfo|RequestLink)\b/)
 })
+
+// Plan 2B-2 Tasks 6–8 (spec 2B §5.4 row "audit/findings", §8.6 rows 7–9): the findings list, its batch panel and its
+// row triggers. The panel and the triggers are 2C files, so only their list part is checked; their dialogs stay with 2C.
+const FINDINGS_BATCH = `${C}audit/audit-findings-batch-actions.tsx`
+
+test("the findings batch panel: shared checkboxes, Button with busy, approve in the primary color and reject as danger (spec 2B R-c, §8.6 row 8)", () => {
+  const source = read(FINDINGS_BATCH)
+  assert.match(source, /className=\{cn\(checkboxVariants\(\), "mt-0\.5"\)\}/)
+  assert.match(source, /<div className="flex min-w-0 flex-col gap-2 md:flex-row md:flex-wrap">\n\s+<Button variant="outline" size="md" onClick=\{toggleAll\}>/)
+  assert.match(source, /<Button\n\s+size="md"\n\s+onClick=\{\(\) => openReviewDialog\("approve"\)\}\n\s+busy=\{reviewing === "approve"\}\n\s+disabled=\{selectedCount === 0 \|\| reviewing === "reject" \|\| reviewDialogAction !== null\}\n\s+>/)
+  assert.match(source, /<Button\n\s+variant="danger"\n\s+size="md"\n\s+onClick=\{\(\) => openReviewDialog\("reject"\)\}\n\s+busy=\{reviewing === "reject"\}\n\s+disabled=\{selectedCount === 0 \|\| reviewing === "approve" \|\| reviewDialogAction !== null\}\n\s+>/)
+  assert.doesNotMatch(source, /<button\b|<Loader2\b|\bbg-success\b|\bbg-danger\b|opacity-50|h-4 w-4 rounded/, "no hand-written button, spinner, green fill or old checkbox is left")
+  assert.match(source, /<ConfirmTextDialog\n/, "the confirm dialog stays as it is (2C plan 3)")
+})
