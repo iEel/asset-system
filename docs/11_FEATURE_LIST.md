@@ -42,7 +42,7 @@ The system is an enterprise asset management web application for registering ass
 | Exports | Excel and PDF exports, including Thai font support |
 | Scanning | QR and barcode scanning helpers for asset labels and serial numbers |
 | Mobile support | Mobile responsive QA documented across core field workflows |
-| Loading UX | Shared page skeletons plus App Router `loading.tsx` fallbacks for authenticated dashboard pages, with route-specific skeletons for Dashboard and Asset Register |
+| Loading UX | Shared page skeletons in the shape of their pages, at full width (the header rows, one number strip, the white table header, underline tabs), plus App Router `loading.tsx` fallbacks for authenticated dashboard pages: route-specific skeletons for Dashboard, Asset Register, Asset Detail and Reports, and a header over a table for every other route |
 | PWA | App manifest and install icons for mobile Add to Home Screen |
 
 ## Main Navigation And Pages
