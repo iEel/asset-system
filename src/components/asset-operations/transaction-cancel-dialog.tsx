@@ -3,8 +3,11 @@
 import { useImperativeHandle, useRef, useState, type Ref, type RefObject } from "react"
 import { useRouter } from "next/navigation"
 import { AlertTriangle, Loader2, Undo2 } from "lucide-react"
-import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import { AccessibleDialog, AccessibleDialogBody, AccessibleDialogCancel, AccessibleDialogFooter } from "@/components/ui/accessible-dialog"
 import { ApiErrorText } from "@/components/ui/api-error-text"
+import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { Textarea } from "@/components/ui/textarea"
 
 type TransactionType = "checkout" | "checkin" | "transfer"
 
@@ -120,15 +123,15 @@ export function TransactionCancelDialog({
   return (
     <>
       {hideTrigger ? null : (
-        <button type="button" onClick={() => void openPreview()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-danger-border bg-surface px-3 text-sm font-medium text-danger transition-colors hover:bg-danger-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <Undo2 className="h-4 w-4" aria-hidden="true" />
+        <Button variant="danger" onClick={() => void openPreview()}>
+          <Undo2 aria-hidden="true" />
           {labels.action}
-        </button>
+        </Button>
       )}
       <AccessibleDialog open={open} title={labels.title} description={labels.description} busy={saving} initialFocusRef={reasonRef} returnFocusRef={returnFocusRef} onClose={() => setOpen(false)}>
-        <div className="max-h-[calc(100dvh-12rem)] overflow-y-auto px-5 py-4">
+        <AccessibleDialogBody>
           {loading ? (
-            <div className="flex min-h-28 items-center justify-center gap-2 text-sm text-muted-foreground" aria-live="polite"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />{labels.loading}</div>
+            <div className="flex min-h-28 items-center justify-center gap-2 text-sm text-muted-foreground" aria-live="polite"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />{labels.loading}</div>
           ) : (
             <>
               <dl className="divide-y divide-border rounded-md border border-border bg-background px-3">
@@ -143,18 +146,19 @@ export function TransactionCancelDialog({
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-foreground">{blockers.map((blocker) => <li key={blocker}>{labels.blockers[blocker] ?? blocker}</li>)}</ul>
                 </div>
               ) : null}
-              <label className="mt-4 block text-sm font-medium text-foreground">
-                {labels.reasonLabel}
-                <textarea ref={reasonRef} value={reason} onChange={(event) => setReason(event.target.value)} disabled={saving || blockers.length > 0} rows={4} maxLength={2000} placeholder={labels.reasonPlaceholder} className="mt-2 min-h-28 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-60" />
-              </label>
+              <Field label={labels.reasonLabel} className="mt-4">
+                <Textarea ref={reasonRef} value={reason} onChange={(event) => setReason(event.target.value)} disabled={saving || blockers.length > 0} rows={4} maxLength={2000} placeholder={labels.reasonPlaceholder} className="min-h-28" />
+              </Field>
               <p className="mt-2 min-h-5 text-sm text-danger" aria-live="polite">{error ? <ApiErrorText error={error} /> : null}</p>
             </>
           )}
-        </div>
-        <div className="grid gap-2 border-t border-border bg-background px-5 py-4 sm:grid-cols-2">
-          <button type="button" onClick={() => setOpen(false)} disabled={saving} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50">{labels.cancel}</button>
-          <button type="button" onClick={() => void submitCancellation()} disabled={loading || saving || blockers.length > 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-danger px-4 text-sm font-semibold text-white transition-colors hover:bg-danger-hover disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}{labels.confirm}</button>
-        </div>
+        </AccessibleDialogBody>
+        <AccessibleDialogFooter>
+          <AccessibleDialogCancel>{labels.cancel}</AccessibleDialogCancel>
+          <Button variant="destructive" busy={saving} disabled={loading || blockers.length > 0} onClick={() => void submitCancellation()}>
+            {labels.confirm}
+          </Button>
+        </AccessibleDialogFooter>
       </AccessibleDialog>
     </>
   )

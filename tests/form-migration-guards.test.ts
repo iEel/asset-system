@@ -98,6 +98,7 @@ const MIGRATED_FILES: string[] = [
   `${C}assets/asset-status-correction-button.tsx`,
   `${C}assets/asset-evidence-drawer.tsx`,
   `${C}ui/activity-drawer.tsx`,
+  `${C}asset-operations/transaction-cancel-dialog.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -187,7 +188,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 4
   [`${C}assets/asset-label-print.tsx`]: 2, // the print toolbar's boxed fields :226, :237 (K21)
   [`${C}assets/asset-register-table.tsx`]: 4,
-  [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 1,
 }
 
 // GF3 hand-written field class strings
@@ -203,7 +203,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 3
   // 4
   [`${C}assets/asset-register-table.tsx`]: 4,
-  [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 1,
 }
 
 // GF5 floors per file: [required, maxLength, minLength] on CONSTRAINT_TAGS. A floor never drops.
@@ -295,7 +294,7 @@ const LOADER2: Record<string, number> = {
   [`${C}assets/asset-label-batch-tool.tsx`]: 2, // the status lines :311, :446 (I27)
   [`${C}assets/asset-scan-search-tool.tsx`]: 1, // the status line :141 (I27)
   [`${C}assets/asset-register-table.tsx`]: 1,
-  [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 2, // → 1: the status line :131
+  [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 1, // the loading line :134 in the dialog body (I27)
 }
 
 // GL3 old helpers: FormStep, WizardStep, Choice, AssetStateFieldLabel and the batch asset tag help label
@@ -330,7 +329,6 @@ const PENDING_FOOTER_PARTS = new Set([
   // 3
   // 4
   `${C}assets/asset-register-table.tsx`,
-  `${C}asset-operations/transaction-cancel-dialog.tsx`,
 ])
 
 test("the JSX reader skips arrows, selectors, braces, quoted text and comments", () => {
