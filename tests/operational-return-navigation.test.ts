@@ -65,10 +65,10 @@ test("audit rounds preserve list context across round detail, scan, and pending 
   assert.match(detailSource, /appendOperationalReturnTo\(`\/\$\{locale\}\/audit\/rounds\/\$\{round\.id\}\/scan`, roundDetailReturnHref\)/)
   assert.match(detailSource, /buildAuditRoundResultListHref\(\{ locale, roundId: round\.id, result: "found", returnTo: returnToHref/)
 
-  assert.match(pendingSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\]; search\?: string \| string\[\]; locationId\?: string \| string\[\] \}>/)
+  assert.match(pendingSource, /searchParams: Promise<\{ returnTo\?: string \| string\[\]; search\?: string \| string\[\]; locationId\?: string \| string\[\]; page\?: string \| string\[\]; pageSize\?: string \| string\[\] \}>/)
   assert.match(pendingSource, /normalizeAuditRoundWorkflowReturnTo\(locale, round\.id, rawSearchParams\.returnTo\)/)
   assert.match(pendingSource, /href=\{returnToHref\}/)
-  assert.match(pendingSource, /hiddenInputs=\{\{ returnTo: returnToHref, \.\.\.\(locationFilter \? \{ locationId: locationFilter \} : \{\}\) \}\}/)
+  assert.match(pendingSource, /hiddenInputs=\{\{ returnTo: returnToHref, \.\.\.\(locationFilter \? \{ locationId: locationFilter \} : \{\}\), \.\.\.pageSizeInput \}\}/)
   assert.match(pendingSource, /resolveAuditPendingScanReturnTo/)
   assert.match(pendingSource, /normalizeAuditRoundDetailReturnTo/)
 
