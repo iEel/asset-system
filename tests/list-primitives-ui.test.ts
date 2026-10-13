@@ -238,10 +238,10 @@ test("TabNav is a named nav of links with aria-current and one underline at ever
     source.match(/const tabNavLinkClasses = "([^"]+)"/)?.[1],
     "flex min-h-11 items-center gap-1.5 pt-2 pb-2.5 text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-0",
   )
-  assert.equal(source.match(/const tabNavSelectedClasses = "([^"]+)"/)?.[1], "font-semibold text-foreground shadow-[inset_0_-2px_0_var(--primary)]")
+  assert.equal(source.match(/const tabNavSelectedClasses = "([^"]+)"/)?.[1], "font-semibold text-foreground shadow-[inset_0_-2px_0_var(--primary)] forced-colors:border-b-2 forced-colors:border-[CanvasText] forced-colors:pb-2")
   assert.equal(source.match(/const tabNavIdleClasses = "([^"]+)"/)?.[1], "text-muted-foreground hover:text-foreground hover:shadow-[inset_0_-2px_0_var(--border)]")
   assert.match(source, /cn\("ms-1\.5 text-meta num", selected \? "font-semibold text-primary" : "text-faint-foreground"\)/)
-  assert.doesNotMatch(source, /fullBleed|role="tablist"|aria-pressed|scrollbar-none|border-b-2/)
+  assert.doesNotMatch(source, /fullBleed|role="tablist"|aria-pressed|scrollbar-none|(?<!forced-colors:)border-b-2/)
 })
 
 test("StatStrip is one flat frame of dt/dd cells; a filter cell is primary-soft, never a status fill (2B §3.13)", () => {
@@ -319,4 +319,12 @@ test("MasterDataSearch is a frameless search toolbar on SearchField and Button, 
   assert.match(source, /import \{ SearchField \} from "@\/components\/ui\/search-field"/)
   assert.doesNotMatch(source, /import \{[^}]*\bSearch\b[^}]*\} from "lucide-react"/, "the Search icon left with the raw field")
   assert.doesNotMatch(source, /"use client"/)
+})
+
+test("TabNav: the selected tab keeps a 2px underline in forced-colors mode (2B-3 Task 15)", () => {
+  const source = readFileSync("src/components/ui/tab-nav.tsx", "utf8").replace(/\r\n/g, "\n")
+  const selected = source.match(/const tabNavSelectedClasses = "([^"]+)"/)?.[1] ?? ""
+  for (const name of ["shadow-[inset_0_-2px_0_var(--primary)]", "forced-colors:border-b-2", "forced-colors:border-[CanvasText]", "forced-colors:pb-2"]) {
+    assert.ok(selected.split(" ").includes(name), `tabNavSelectedClasses has ${name}`)
+  }
 })

@@ -34,7 +34,7 @@ type TabNavProps = Omit<React.ComponentProps<"nav">, "children" | "aria-label" |
 // Both lines are inset shadows, so the current tab is no taller than the others, and the 2px line sits in a li that
 // fills the row height: it covers the base line and scrolls with its tab. Focus ring inside, so the scroller cannot cut it.
 const tabNavLinkClasses = "flex min-h-11 items-center gap-1.5 pt-2 pb-2.5 text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-0"
-const tabNavSelectedClasses = "font-semibold text-foreground shadow-[inset_0_-2px_0_var(--primary)]"
+const tabNavSelectedClasses = "font-semibold text-foreground shadow-[inset_0_-2px_0_var(--primary)] forced-colors:border-b-2 forced-colors:border-[CanvasText] forced-colors:pb-2"
 const tabNavIdleClasses = "text-muted-foreground hover:text-foreground hover:shadow-[inset_0_-2px_0_var(--border)]"
 
 // Links that change the URL, named by the <nav> and marked with aria-current, not an ARIA tab list (R-g). State that
