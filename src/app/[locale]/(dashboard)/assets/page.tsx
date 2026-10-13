@@ -456,7 +456,6 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           wizardStepReview: t("importWizardStepReview"),
           wizardStepImport: t("importWizardStepImport"),
           wizardStepComplete: t("importWizardStepComplete"),
-          currentStep: t("importWizardCurrentStep"),
           selectedFile: t("selectedImportFile"),
           issueSummaryTitle: t("importIssueSummaryTitle"),
           issueSummaryHelp: t("importIssueSummaryHelp"),

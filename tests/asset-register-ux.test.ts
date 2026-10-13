@@ -132,6 +132,19 @@ test("asset register import wizard starts collapsed and expands on demand", () =
   assert.match(source, /if \(!isOpen\)/)
 })
 
+// Phase 2C batch 4 (spec 2C §8.9 row asset-import-preview-panel.tsx, O13, §6.4.2, §6.5.2, I35): the panel's three
+// buttons are Button; choose-file and import stay in place with busy and keep their labels (K13), and the error box is
+// a danger Notice that is announced (role="alert"). The hidden .xlsx input stays (tests/file-evidence-ui.test.ts).
+test("the import panel uses Button with busy for choose and import, and a danger Notice for errors (2C batch 4, O13)", () => {
+  const source = importPanelSource().replace(/\r\n/g, "\n")
+  assert.match(source, /<Button variant="outline" onClick=\{\(\) => setIsOpen\(\(current\) => !current\)\} aria-expanded=\{isOpen\}>\n\s+\{isOpen \? <ChevronUp aria-hidden="true" \/> : <ChevronDown aria-hidden="true" \/>\}/)
+  assert.match(source, /<Button variant="outline" busy=\{isLoading\} disabled=\{isImporting\} onClick=\{\(\) => inputRef\.current\?\.click\(\)\}>\n\s+<Upload aria-hidden="true" \/>\n\s+\{labels\.chooseFile\}\n\s+<\/Button>/)
+  assert.match(source, /<Button busy=\{isImporting\} disabled=\{preview\.summary\.readyRows === 0\} onClick=\{\(\) => void confirmImport\(\)\}>\n\s+\{labels\.confirmImport\}\n\s+<\/Button>/)
+  assert.match(source, /<Notice tone="danger" role="alert" className="mt-4">\n\s+<ApiErrorText error=\{error\} \/>\n\s+<\/Notice>/)
+  assert.match(source, /type="file"\n\s+accept="\.xlsx"\n\s+className="hidden"/)
+  assert.doesNotMatch(source, /<button\b|labels\.importing|\$\{labels\.chooseFile\}\.\.\.|disabled:opacity|border-danger-border bg-danger-soft/)
+})
+
 test("asset import wizard labels are passed on every import surface", () => {
   const source = importExportPageSource()
 

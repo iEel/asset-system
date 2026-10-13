@@ -102,3 +102,23 @@ test("the LDAP settings steps are quiet numbered sections, not a third layer of 
   // Without the step cards, 24px separates the sections on both LDAP tabs (spec 2C section 7.3).
   assert.equal(source.match(/<div className="space-y-6 px-4 py-4">/g)?.length, 2)
 })
+
+test("the import panel shows its five steps on the shared rail, and the current-step label is gone (S5, batch 4)", () => {
+  const panel = read("src/components/assets/asset-import-preview-panel.tsx")
+  assert.match(panel, /import \{ Steps \} from "@\/components\/ui\/steps"/)
+  assert.match(panel, /import \{ getLinearStepStates \} from "@\/lib\/step-states"/)
+  assert.match(panel, /const importStates = getLinearStepStates\(\n\s+assetImportWizardSteps\.length,\n\s+assetImportWizardSteps\.indexOf\(wizardStep\),\n\s+wizardStep === "complete" \? "complete" : "in_progress",\n\s+\)/)
+  assert.match(panel, /const importSteps = assetImportWizardSteps\.map\(\(step, index\) => \(\{ id: step, label: wizardStepLabel\(step, labels\), state: importStates\[index\] \}\)\)/)
+  assert.match(panel, /<Steps className="mt-4" label=\{labels\.wizardTitle\} steps=\{importSteps\} \/>/)
+  assert.doesNotMatch(panel, /function WizardStep|currentStep|md:grid-cols-5/)
+  for (const page of ["src/app/[locale]/(dashboard)/assets/page.tsx", "src/app/[locale]/(dashboard)/asset-management/import-export/page.tsx"]) {
+    const source = read(page)
+    assert.doesNotMatch(source, /importWizardCurrentStep|currentStep:/, page)
+    assert.match(source, /wizardStepComplete: t\("importWizardStepComplete"\),\n\s+selectedFile: t\("selectedImportFile"\),/, page)
+  }
+  for (const locale of ["th", "en"]) {
+    const asset = (JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { asset: Record<string, unknown> }).asset
+    assert.equal(asset.importWizardCurrentStep, undefined, `${locale}: the word comes from common.stepCurrent now`)
+    assert.equal(typeof asset.importWizardStepComplete, "string", locale)
+  }
+})

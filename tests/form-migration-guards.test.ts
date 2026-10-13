@@ -101,6 +101,7 @@ const MIGRATED_FILES: string[] = [
   `${C}asset-operations/transaction-cancel-dialog.tsx`,
   `${C}assets/asset-create-workspace.tsx`,
   `${C}assets/asset-register-table.tsx`,
+  `${C}assets/asset-import-preview-panel.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -297,7 +298,6 @@ const LOADER2: Record<string, number> = {
 
 // GL3 old helpers: FormStep, WizardStep, Choice, AssetStateFieldLabel and the batch asset tag help label
 const OLD_HELPERS: Record<string, number> = {
-  [`${C}assets/asset-import-preview-panel.tsx`]: 1, // function WizardStep (batch 4)
 }
 
 // GD4 flex-col-reverse in the 2C files and in ui/ (Task 4 already fixed ui/dialog.tsx DialogFooter and ui/alert-dialog.tsx:94)

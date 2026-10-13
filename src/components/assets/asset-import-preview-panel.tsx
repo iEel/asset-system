@@ -9,7 +9,11 @@ import {
   summarizeAssetImportPreviewIssues,
   type AssetImportWizardStep,
 } from "@/lib/asset-import-wizard"
+import { getLinearStepStates } from "@/lib/step-states"
 import { ApiErrorText } from "@/components/ui/api-error-text"
+import { Button } from "@/components/ui/button"
+import { Notice } from "@/components/ui/notice"
+import { Steps } from "@/components/ui/steps"
 import type { AssetImportBatchStatus, AssetImportBatchSummary } from "@/lib/asset-import-batch"
 import type { AssetImportColumnMapping } from "@/lib/asset-import-mapping"
 
@@ -55,7 +59,6 @@ type AssetImportPreviewPanelProps = {
     wizardStepReview: string
     wizardStepImport: string
     wizardStepComplete: string
-    currentStep: string
     selectedFile: string
     issueSummaryTitle: string
     issueSummaryHelp: string
@@ -94,6 +97,13 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
     isImporting,
     hasSuccess: Boolean(success),
   })
+  // Steps before the current one are done; once the import succeeds every step is done (spec 2C section 7.2.4, S5).
+  const importStates = getLinearStepStates(
+    assetImportWizardSteps.length,
+    assetImportWizardSteps.indexOf(wizardStep),
+    wizardStep === "complete" ? "complete" : "in_progress",
+  )
+  const importSteps = assetImportWizardSteps.map((step, index) => ({ id: step, label: wizardStepLabel(step, labels), state: importStates[index] }))
   const issueSummary = preview ? summarizeAssetImportPreviewIssues(preview.rows) : []
   const mappedColumns = preview?.mapping?.filter((column) => column.sourceColumn != null) ?? []
   const missingColumns = preview?.mapping?.filter((column) => column.sourceColumn == null) ?? []
@@ -109,15 +119,10 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
           </p>
         )}
       </div>
-      <button
-        type="button"
-        onClick={() => setIsOpen((current) => !current)}
-        aria-expanded={isOpen}
-        className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-      >
-        {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      <Button variant="outline" onClick={() => setIsOpen((current) => !current)} aria-expanded={isOpen}>
+        {isOpen ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
         {isOpen ? labels.collapseImportWizard : labels.openImportWizard}
-      </button>
+      </Button>
     </div>
   )
 
@@ -206,29 +211,13 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
           className="hidden"
           onChange={(event) => void handleFile(event.target.files?.[0])}
         />
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={isLoading || isImporting}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Upload className="h-4 w-4" />
-          {isLoading ? `${labels.chooseFile}...` : labels.chooseFile}
-        </button>
+        <Button variant="outline" busy={isLoading} disabled={isImporting} onClick={() => inputRef.current?.click()}>
+          <Upload aria-hidden="true" />
+          {labels.chooseFile}
+        </Button>
       </div>
 
-      <div className="mt-4 grid gap-2 md:grid-cols-5">
-        {assetImportWizardSteps.map((step, index) => (
-          <WizardStep
-            key={step}
-            step={step}
-            currentStep={wizardStep}
-            index={index}
-            label={wizardStepLabel(step, labels)}
-            currentLabel={labels.currentStep}
-          />
-        ))}
-      </div>
+      <Steps className="mt-4" label={labels.wizardTitle} steps={importSteps} />
 
       {selectedFile ? (
         <div className="mt-4 flex items-start gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
@@ -295,10 +284,9 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
       ) : null}
 
       {error && (
-        <div className="mt-4 flex items-start gap-2 rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-sm text-danger">
-          <AlertCircle className="mt-0.5 h-4 w-4 flex-none" />
+        <Notice tone="danger" role="alert" className="mt-4">
           <ApiErrorText error={error} />
-        </div>
+        </Notice>
       )}
 
       {success && (
@@ -384,54 +372,13 @@ export function AssetImportPreviewPanel({ labels }: AssetImportPreviewPanelProps
             <p className="text-sm text-muted-foreground">
               {preview.summary.readyRows} {labels.previewReady} · {preview.summary.errorRows} {labels.previewErrors}
             </p>
-            <button
-              type="button"
-              onClick={() => void confirmImport()}
-              disabled={isImporting || preview.summary.readyRows === 0}
-              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isImporting ? labels.importing : labels.confirmImport}
-            </button>
+            <Button busy={isImporting} disabled={preview.summary.readyRows === 0} onClick={() => void confirmImport()}>
+              {labels.confirmImport}
+            </Button>
           </div>
         </div>
       )}
     </section>
-  )
-}
-
-function WizardStep({
-  step,
-  currentStep,
-  index,
-  label,
-  currentLabel,
-}: {
-  step: AssetImportWizardStep
-  currentStep: AssetImportWizardStep
-  index: number
-  label: string
-  currentLabel: string
-}) {
-  const currentIndex = assetImportWizardSteps.indexOf(currentStep)
-  const stepIndex = assetImportWizardSteps.indexOf(step)
-  const isDone = stepIndex < currentIndex
-  const isCurrent = step === currentStep
-
-  return (
-    <div
-      className={[
-        "rounded-md border px-3 py-2 text-sm",
-        isCurrent ? "border-primary bg-primary-soft text-primary" : isDone ? "border-success-border bg-success-soft text-success" : "border-border bg-background text-muted-foreground",
-      ].join(" ")}
-    >
-      <div className="flex items-center gap-2">
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-current text-xs font-semibold">
-          {isDone ? <CheckCircle2 className="h-3.5 w-3.5" /> : index + 1}
-        </span>
-        <span className="font-medium">{label}</span>
-      </div>
-      {isCurrent ? <div className="mt-1 text-xs">{currentLabel}</div> : null}
-    </div>
   )
 }
 

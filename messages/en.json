@@ -720,7 +720,6 @@
     "importWizardStepReview": "Review",
     "importWizardStepImport": "Import",
     "importWizardStepComplete": "Complete",
-    "importWizardCurrentStep": "Current step",
     "selectedImportFile": "Selected file",
     "importIssueSummaryTitle": "Repeated Issue Summary",
     "importIssueSummaryHelp": "Fix the most common issues first to get the file ready faster.",
