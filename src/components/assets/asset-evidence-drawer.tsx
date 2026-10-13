@@ -2,9 +2,9 @@
 
 import { useMemo, useState, type RefObject } from "react"
 import { FileText, ImageIcon, Paperclip } from "lucide-react"
-import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { EmptyNote } from "@/components/ui/empty-note"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
 export type AssetEvidenceDrawerItem = {
   id: string
@@ -43,7 +43,6 @@ export function AssetEvidenceDrawer({
   hideTrigger?: boolean
   returnFocusRef?: RefObject<HTMLElement | null>
 }) {
-  const tCommon = useTranslations("common")
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const open = controlledOpen ?? uncontrolledOpen
   const [activeGroup, setActiveGroup] = useState("__all")
@@ -69,19 +68,17 @@ export function AssetEvidenceDrawer({
       )}
       <SheetContent
         side="right"
-        closeLabel={tCommon("close")}
-        aria-describedby={undefined}
         onCloseAutoFocus={(event) => {
           const target = returnFocusRef?.current
           if (!target?.isConnected) return
           event.preventDefault()
           target.focus()
         }}
-        className="w-full gap-0 bg-surface p-0 sm:max-w-2xl"
+        className="w-full gap-0 p-0 sm:max-w-2xl"
       >
-        <SheetHeader className="border-b border-border px-4 py-3 pr-16">
-          <SheetTitle className="text-base font-semibold text-foreground">{labels.title}</SheetTitle>
-          <p className="text-xs text-muted-foreground">{labels.triggerLabel}</p>
+        <SheetHeader>
+          <SheetTitle>{labels.title}</SheetTitle>
+          <SheetDescription>{labels.triggerLabel}</SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto p-4">
@@ -99,9 +96,7 @@ export function AssetEvidenceDrawer({
           </div>
 
           {filteredItems.length === 0 ? (
-            <div className="mt-4 rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              {labels.emptyLabel}
-            </div>
+            <EmptyNote className="mt-4">{labels.emptyLabel}</EmptyNote>
           ) : (
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {filteredItems.map((item) => (
