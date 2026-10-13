@@ -18,11 +18,19 @@ import type {
   DisposalBulkApprovalItem,
   DisposalBulkApprovalSummary,
 } from "@/lib/disposal-bulk-approval"
-import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import {
+  AccessibleDialog,
+  AccessibleDialogBody,
+  AccessibleDialogCancel,
+  AccessibleDialogFooter,
+  accessibleDialogFormClasses,
+} from "@/components/ui/accessible-dialog"
 import { Button } from "@/components/ui/button"
 import { linkVariants } from "@/components/ui/button-variants"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { Field } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
+import { Textarea } from "@/components/ui/textarea"
 import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 import { cn } from "@/lib/utils"
 
@@ -542,29 +550,40 @@ function DisposalBulkApprovalDialog() {
       description={description}
       busy={busy}
       size="xl"
-      closeLabel={copy.close}
       returnFocusRef={triggerRef}
       fallbackFocusRef={restoreTargetRef}
       onClose={closeDialog}
     >
-      <form data-disposal-bulk-dialog="true" onSubmit={handleSubmit}>
-        <div className="space-y-5 p-4 sm:p-5">
-          {dialogState === "previewing" ? <div className="flex min-h-24 items-center gap-3 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" />{copy.previewLoading}</div> : null}
-          {dialogState === "committing" ? <div className="flex min-h-24 items-center gap-3 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary" />{copy.committing}</div> : null}
+      <form data-disposal-bulk-dialog="true" onSubmit={handleSubmit} className={accessibleDialogFormClasses}>
+        <AccessibleDialogBody className="space-y-5">
+          {dialogState === "previewing" ? <div className="flex min-h-24 items-center gap-3 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary motion-reduce:animate-none" />{copy.previewLoading}</div> : null}
+          {dialogState === "committing" ? <div className="flex min-h-24 items-center gap-3 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin text-primary motion-reduce:animate-none" />{copy.committing}</div> : null}
           {response ? <>
             <BulkSummary selected={response.summary.selected} eligible={response.summary.eligible} blocked={response.summary.blocked} approved={response.summary.approved} failed={response.summary.failed} />
             {groups.length ? <div className="space-y-2">{groups.map(([code, group]) => <details key={code} className="rounded-md border border-border bg-background p-3"><summary className="cursor-pointer text-sm font-medium text-foreground"><span className="inline-flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-warning" />{getErrorLabel(code)} ({group.length})</span></summary><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{group.map((item) => <li key={item.requestId}>{item.disposalNo} - {item.assetTag}</li>)}</ul></details>)}</div> : null}
             {dialogState === "preview" && eligible.length === 0 ? <p role="alert" className="rounded-md border border-warning-border bg-warning-soft p-3 text-sm text-foreground">{copy.zeroEligible}</p> : null}
-            {dialogState === "preview" ? <label className="block"><span className="mb-1.5 block text-sm font-medium text-foreground">{copy.sharedRemark}</span><textarea value={approvalRemark} maxLength={4000} rows={4} disabled={busy} onChange={(event) => setApprovalRemark(event.target.value)} className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" /><span className="mt-1 block text-xs text-muted-foreground">{copy.sharedRemarkHelp}</span><span className="mt-1 block text-xs text-muted-foreground">{formatCopy(copy.remarkLimit, { count: approvalRemark.length })}</span></label> : null}
+            {dialogState === "preview" ? (
+              <Field
+                label={copy.sharedRemark}
+                hint={<><span className="block">{copy.sharedRemarkHelp}</span><span className="block">{formatCopy(copy.remarkLimit, { count: approvalRemark.length })}</span></>}
+              >
+                <Textarea value={approvalRemark} maxLength={4000} rows={4} disabled={busy} onChange={(event) => setApprovalRemark(event.target.value)} className="min-h-28" />
+              </Field>
+            ) : null}
             {dialogState === "result" && (approved.length || failed.length || blocked.length) ? <ResultDetails approved={approved} blocked={blocked} failed={failed} getErrorLabel={getErrorLabel} /> : null}
           </> : null}
           {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
-          <div className="flex flex-col justify-end gap-2 sm:flex-row">
-            <button type="button" onClick={closeDialog} disabled={busy} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">{dialogState === "result" ? copy.close : copy.cancel}</button>
-            {dialogState === "preview" && error ? <button type="button" onClick={() => void commit()} disabled={busy || eligible.length === 0} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">{copy.retry}</button> : null}
-            {dialogState === "preview" ? <button type="submit" disabled={busy || eligible.length === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckSquare2 className="h-4 w-4" />}{formatCopy(copy.confirmApproval, { count: eligible.length })}</button> : null}
-          </div>
-        </div>
+        </AccessibleDialogBody>
+        <AccessibleDialogFooter>
+          <AccessibleDialogCancel>{dialogState === "result" ? copy.close : copy.cancel}</AccessibleDialogCancel>
+          {dialogState === "preview" && error ? <Button variant="outline" onClick={() => void commit()} disabled={eligible.length === 0}>{copy.retry}</Button> : null}
+          {dialogState === "preview" || dialogState === "committing" ? (
+            <Button type="submit" busy={dialogState === "committing"} disabled={eligible.length === 0}>
+              <CheckSquare2 aria-hidden="true" />
+              {formatCopy(copy.confirmApproval, { count: eligible.length })}
+            </Button>
+          ) : null}
+        </AccessibleDialogFooter>
       </form>
     </AccessibleDialog>
   )

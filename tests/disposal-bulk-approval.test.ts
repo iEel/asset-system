@@ -157,7 +157,7 @@ test("bulk approval has localized copy ready for the queue integration", () => {
 })
 
 // Plan 2B-2 Task 1 (spec 2B §8.6 row 3, §8.11 row 3): 2B owns only the list part of this 2C batch 3 file. The dialog
-// (DisposalBulkApprovalDialog and the helpers below it) stays as it is for 2C plan 3.
+// (DisposalBulkApprovalDialog and the helpers below it) belongs to 2C plan 3, which checks it in the next test.
 test("bulk approval list controls use Button, busy and checkboxVariants, and leave the dialog to 2C (spec 2B §8.6 row 3)", () => {
   const source = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8").replace(/\r\n/g, "\n")
   const list = source.slice(source.indexOf("export function DisposalBulkSelectionToggle"), source.indexOf("function DisposalBulkApprovalDialog"))
@@ -173,7 +173,21 @@ test("bulk approval list controls use Button, busy and checkboxVariants, and lea
   assert.match(list, /<label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center">\n\s+<input\n\s+ref=\{inputRef\}/, "the select-page box gets a 44px target")
   assert.equal(list.match(/className=\{checkboxVariants\(/g)?.length, 2, "the select-page box and the row box")
   assert.doesNotMatch(list, /<Loader2\b|disabled:opacity-50|rounded border-border|focus-within:ring/)
-  // The dialog keeps its buttons and status lines for 2C plan 3 (FMG GF7 and GB1 of this file drop to 1 and 3, as spec §8.6 says).
-  assert.equal(dialog.match(/<Loader2\b/g)?.length, 3)
-  assert.match(dialog, /<span className="mb-1\.5 block text-sm font-medium text-foreground">\{copy\.sharedRemark\}<\/span>/)
+  // 2C plan 3 moved the dialog onto the dialog parts: its two status-line spinners stay (FMG GB1 2) and its old label went (GF7 0).
+  assert.equal(dialog.match(/<Loader2\b/g)?.length, 2)
+  assert.doesNotMatch(dialog, /mb-1\.5 block text-sm font-medium text-foreground/)
+})
+
+// Phase 2C batch 3 (spec 2C §5.5 row 13, §5.3, I25, I27, §4.3 F6): the dialog on the dialog parts. The approve button
+// stays in place with busy while the commit runs, so focus stays on it; cancel and the X are off while busy.
+test("bulk approval dialog uses the dialog parts, a shared remark field and a busy approve button (2C batch 3)", () => {
+  const source = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8").replace(/\r\n/g, "\n")
+  const dialog = source.slice(source.indexOf("function DisposalBulkApprovalDialog"), source.indexOf("function BulkSummary"))
+
+  assert.doesNotMatch(dialog, /closeLabel=/, "the X takes its name from the dialog itself (spec §5.3)")
+  assert.match(dialog, /<form data-disposal-bulk-dialog="true" onSubmit=\{handleSubmit\} className=\{accessibleDialogFormClasses\}>\n\s+<AccessibleDialogBody className="space-y-5">/)
+  assert.equal(dialog.match(/<Loader2 className="h-5 w-5 animate-spin text-primary motion-reduce:animate-none" \/>/g)?.length, 2, "the preview and commit status lines")
+  assert.match(dialog, /<Field\n\s+label=\{copy\.sharedRemark\}\n\s+hint=\{<><span className="block">\{copy\.sharedRemarkHelp\}<\/span><span className="block">\{formatCopy\(copy\.remarkLimit, \{ count: approvalRemark\.length \}\)\}<\/span><\/>\}\n\s+>\n\s+<Textarea value=\{approvalRemark\} maxLength=\{4000\} rows=\{4\} disabled=\{busy\}/)
+  assert.match(dialog, /<AccessibleDialogFooter>\n\s+<AccessibleDialogCancel>\{dialogState === "result" \? copy\.close : copy\.cancel\}<\/AccessibleDialogCancel>\n\s+\{dialogState === "preview" && error \? <Button variant="outline" onClick=\{\(\) => void commit\(\)\} disabled=\{eligible\.length === 0\}>\{copy\.retry\}<\/Button> : null\}\n\s+\{dialogState === "preview" \|\| dialogState === "committing" \? \(\n\s+<Button type="submit" busy=\{dialogState === "committing"\} disabled=\{eligible\.length === 0\}>\n\s+<CheckSquare2 aria-hidden="true" \/>/)
+  assert.doesNotMatch(dialog, /<button\b|<textarea|<label|disabled:opacity-50|min-h-11/)
 })

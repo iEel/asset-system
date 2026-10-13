@@ -76,6 +76,7 @@ const MIGRATED_FILES: string[] = [
   `${C}master-data/location-form.tsx`,
   `${C}master-data/supplier-form.tsx`,
   `${C}ui/confirm-text-dialog.tsx`,
+  `${C}disposal/disposal-bulk-approval.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -164,7 +165,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 1f
   // 2
   // 3
-  [`${C}disposal/disposal-bulk-approval.tsx`]: 1,
   [`${C}disposal/disposal-bulk-execution.tsx`]: 5,
   [`${C}audit/audit-round-form.tsx`]: 6,
   [`${C}audit/audit-round-cancel-button.tsx`]: 1,
@@ -196,7 +196,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1f
   // 2
   // 3
-  [`${C}disposal/disposal-bulk-approval.tsx`]: 1,
   [`${C}disposal/disposal-bulk-execution.tsx`]: 5,
   [`${C}audit/audit-round-form.tsx`]: 6,
   [`${C}audit/audit-round-cancel-button.tsx`]: 1,
@@ -278,7 +277,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 1f
   // 2
   // 3
-  [`${C}disposal/disposal-bulk-approval.tsx`]: 3, // → 2: list checkboxes :456, :499 (2B)
   [`${C}disposal/disposal-bulk-execution.tsx`]: 5, // → 2: list checkboxes :689, :738 (2B)
   [`${C}audit/audit-round-form.tsx`]: 3,
   [`${C}audit/audit-findings-batch-actions.tsx`]: 1, // → 1: list checkbox :113 (2B, O5)
@@ -310,7 +308,7 @@ const LOADER2: Record<string, number> = {
   // 1f
   // 2
   // 3
-  [`${C}disposal/disposal-bulk-approval.tsx`]: 4, // → 3: :424 (2B) and the status lines :546, :547
+  [`${C}disposal/disposal-bulk-approval.tsx`]: 2, // the status lines :559, :560 in the dialog body (I27)
   [`${C}disposal/disposal-bulk-execution.tsx`]: 2, // → 1: BusyLabel :993 (:971 goes with the footer, GD3)
   [`${C}audit/audit-round-form.tsx`]: 2,
   [`${C}audit/audit-round-cancel-button.tsx`]: 2,
@@ -362,7 +360,6 @@ const PENDING_FOOTER_PARTS = new Set([
   // 1e
   // 1f
   // 3
-  `${C}disposal/disposal-bulk-approval.tsx`,
   `${C}disposal/disposal-bulk-execution.tsx`,
   `${C}audit/audit-round-cancel-button.tsx`,
   `${C}maintenance/maintenance-plan-state-actions.tsx`,
