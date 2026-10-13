@@ -78,6 +78,7 @@ const MIGRATED_FILES: string[] = [
   `${C}ui/confirm-text-dialog.tsx`,
   `${C}disposal/disposal-bulk-approval.tsx`,
   `${C}disposal/disposal-bulk-execution.tsx`,
+  `${C}audit/audit-round-form.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -149,7 +150,6 @@ const LOCAL_FIELD: Record<string, number> = {
   // 1f
   // 2
   // 3
-  [`${C}audit/audit-round-form.tsx`]: 1,
   // 4
   [`${C}admin/admin-user-form.tsx`]: 1,
   [`${C}admin/role-permission-form.tsx`]: 1,
@@ -166,7 +166,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 1f
   // 2
   // 3
-  [`${C}audit/audit-round-form.tsx`]: 6,
   [`${C}audit/audit-round-cancel-button.tsx`]: 1,
   [`${C}audit/audit-scan-room-picker.tsx`]: 2, // → 1: the room search :75 stays (O20)
   // 4
@@ -196,7 +195,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 1f
   // 2
   // 3
-  [`${C}audit/audit-round-form.tsx`]: 6,
   [`${C}audit/audit-round-cancel-button.tsx`]: 1,
   // 4
   [`${C}admin/admin-user-form.tsx`]: 5,
@@ -276,7 +274,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 1f
   // 2
   // 3
-  [`${C}audit/audit-round-form.tsx`]: 3,
   [`${C}audit/audit-findings-batch-actions.tsx`]: 1, // → 1: list checkbox :113 (2B, O5)
   // 4
   [`${C}admin/admin-user-form.tsx`]: 4,
@@ -308,7 +305,6 @@ const LOADER2: Record<string, number> = {
   // 3
   [`${C}disposal/disposal-bulk-approval.tsx`]: 2, // the status lines :559, :560 in the dialog body (I27)
   [`${C}disposal/disposal-bulk-execution.tsx`]: 1, // BusyLabel :969, the status line in the dialog body (I27)
-  [`${C}audit/audit-round-form.tsx`]: 2,
   [`${C}audit/audit-round-cancel-button.tsx`]: 2,
   [`${C}audit/audit-findings-batch-actions.tsx`]: 2, // → 2: the buttons :88, :97 (2B, O5)
   [`${C}maintenance/maintenance-plan-state-actions.tsx`]: 1,

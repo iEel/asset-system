@@ -3,12 +3,18 @@
 import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { ClipboardList, Loader2, Save } from "lucide-react"
+import { ClipboardList, Save } from "lucide-react"
 import { toast } from "sonner"
 import { filterAuditStatusOptions } from "@/lib/audit-round-scope"
+import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { checkboxVariants } from "@/components/ui/field-variants"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
 import { PageHeader } from "@/components/ui/page-header"
 import { useApiError } from "@/components/ui/use-api-error"
 import { displayYearRange, fromDisplayYear, toDisplayYear } from "@/lib/display-year"
+import { cn } from "@/lib/utils"
 
 type Option = { id: string; label: string; isClosed?: boolean }
 
@@ -135,16 +141,16 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
       <section className="rounded-lg border border-border bg-surface p-6">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label={t("name")} required>
-            <input value={values.name} onChange={(event) => setField("name", event.target.value)} required maxLength={200} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+            <Input value={values.name} onChange={(event) => setField("name", event.target.value)} required maxLength={200} />
           </Field>
           <Field label={t("auditYear")} required>
-            <input type="number" value={values.auditYear} onChange={(event) => setField("auditYear", event.target.value)} required min={yearRange.min} max={yearRange.max} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+            <Input type="number" value={values.auditYear} onChange={(event) => setField("auditYear", event.target.value)} required min={yearRange.min} max={yearRange.max} />
           </Field>
           <Field label={t("startDate")} required>
-            <input type="date" value={values.startDate} onChange={(event) => setField("startDate", event.target.value)} required className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+            <Input type="date" value={values.startDate} onChange={(event) => setField("startDate", event.target.value)} required />
           </Field>
           <Field label={t("endDate")} required>
-            <input type="date" value={values.endDate} onChange={(event) => setField("endDate", event.target.value)} required className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
+            <Input type="date" value={values.endDate} onChange={(event) => setField("endDate", event.target.value)} required />
           </Field>
           <Select label={t("status")} value={values.status} required onChange={(value) => setField("status", value)}>
             <option value="draft">{t("statusDraft")}</option>
@@ -164,17 +170,15 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
                   </option>
                 ))}
               </Select>
-              <Field label={t("sampleRate")} required>
-                <input
+              <Field label={t("sampleRate")} required hint={t("sampleRateHelp")}>
+                <Input
                   type="number"
                   value={values.sampleRate}
                   onChange={(event) => setField("sampleRate", event.target.value)}
                   required
                   min={1}
                   max={100}
-                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
-                <p className="mt-1.5 text-xs text-muted-foreground">{t("sampleRateHelp")}</p>
               </Field>
             </div>
             <div className="mt-4 flex flex-col gap-3 rounded-md border border-border bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -182,15 +186,10 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
                 <div className="text-sm font-semibold text-foreground">{t("previewTitle")}</div>
                 <div className="mt-1 text-xs text-muted-foreground">{t("previewHelp")}</div>
               </div>
-              <button
-                type="button"
-                onClick={handlePreview}
-                disabled={previewing}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
-              >
-                {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
+              <Button variant="outline" busy={previewing} onClick={handlePreview}>
+                <ClipboardList aria-hidden="true" />
                 {t("preview")}
-              </button>
+              </Button>
             </div>
             {preview ? (
               <div className="mt-4 rounded-md border border-primary-border bg-primary-soft p-4">
@@ -258,7 +257,7 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
               type="checkbox"
               checked={values.includeClosedAssets}
               onChange={(event) => setIncludeClosedAssets(event.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-ring"
+              className={cn(checkboxVariants(), "mt-0.5")}
             />
             <span>
               <span className="block text-sm font-medium text-foreground">{t("includeClosedAssets")}</span>
@@ -266,10 +265,10 @@ export function AuditRoundForm({ options }: { options: AuditRoundOptions }) {
             </span>
           </label>
           <div className="md:col-span-2 flex justify-end">
-            <button type="submit" disabled={saving || previewing} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            <Button type="submit" busy={saving} disabled={previewing}>
+              <Save aria-hidden="true" />
               {tCommon("save")}
-            </button>
+            </Button>
           </div>
         </form>
       </section>
@@ -309,24 +308,12 @@ function OptionList({ emptyLabel, options }: { emptyLabel: string; options: Opti
   )
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
-      {children}
-    </label>
-  )
-}
-
 function Select({ label, value, required, onChange, children }: { label: string; value: string; required?: boolean; onChange: (value: string) => void; children: React.ReactNode }) {
   return (
     <Field label={label} required={required}>
-      <select value={value} required={required} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring">
+      <NativeSelect value={value} required={required} onChange={(event) => onChange(event.target.value)}>
         {children}
-      </select>
+      </NativeSelect>
     </Field>
   )
 }
