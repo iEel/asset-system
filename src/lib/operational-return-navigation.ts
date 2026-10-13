@@ -5,6 +5,8 @@ const operationalReturnPaths = {
   disposal: (locale: string) => `/${locale}/disposal`,
   "audit-rounds": (locale: string) => `/${locale}/audit/rounds`,
   "audit-findings": (locale: string) => `/${locale}/audit/findings`,
+  // The PM plan list, whose page and page size the edit page carries back (spec 2B B4, §5.9.2 row 6).
+  "maintenance-pm": (locale: string) => `/${locale}/maintenance/pm`,
 } as const
 
 export type OperationalReturnSection = keyof typeof operationalReturnPaths

@@ -5,17 +5,21 @@ import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { toLocalDateInputValue } from "@/lib/local-date"
+import { normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 
 type Props = {
   params: Promise<{ locale: string; id: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
 }
 
-export default async function EditMaintenancePlanPage({ params }: Props) {
+export default async function EditMaintenancePlanPage({ params, searchParams }: Props) {
   const { locale, id } = await params
+  const rawSearchParams = await searchParams
   await requirePagePermission(locale, "maintenance", "edit")
   const t = await getTranslations("maintenancePage")
   const tCommon = await getTranslations("common")
-  const returnTo = `/${locale}/maintenance/pm`
+  // The PM list page and page size the user came from (spec 2B B4, §5.9.2 row 6); any other target is the PM list.
+  const returnTo = normalizeOperationalReturnTo(locale, "maintenance-pm", rawSearchParams.returnTo)
   const plan = await prisma.maintenancePlan.findFirst({
     where: { id, planState: { not: "ended" } },
     include: { asset: { select: { id: true, assetTag: true, name: true, status: { select: { nameTh: true } } } } },
@@ -33,6 +37,7 @@ export default async function EditMaintenancePlanPage({ params }: Props) {
       <MaintenancePlanForm
         locale={locale}
         planId={plan.id}
+        returnHref={returnTo}
         initialAsset={{ id: plan.asset.id, label: `${plan.asset.assetTag} - ${plan.asset.name} (${plan.asset.status.nameTh})` }}
         initialValues={{
           title: plan.title,

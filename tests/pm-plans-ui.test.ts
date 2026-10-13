@@ -14,7 +14,9 @@ test("PM plans no longer ask for an internal assignee", () => {
   const route = readFileSync("src/app/api/maintenance-plans/route.ts", "utf8")
   const service = readFileSync("src/lib/maintenance-plan-service.ts", "utf8")
   for (const source of [form, route, service]) assert.doesNotMatch(source, /assignedToId|assignedTo:/)
-  assert.match(form, /router\.push\(`\/\$\{locale\}\/maintenance\/pm`\)/)
+  // After a save the form goes to returnHref: the PM list page the edit page came from, else the PM list (2B-2 Task 14).
+  assert.match(form, /returnHref = `\/\$\{locale\}\/maintenance\/pm`,/)
+  assert.match(form, /router\.push\(returnHref\)/)
 })
 
 test("the PM plan form uses the shared field primitives and a busy save button (2C batch 1a)", () => {

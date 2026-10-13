@@ -22,6 +22,7 @@ export function MaintenancePlanForm({
   initialAsset,
   planId,
   initialValues,
+  returnHref = `/${locale}/maintenance/pm`,
 }: {
   locale: string
   initialAsset?: Option
@@ -34,6 +35,8 @@ export function MaintenancePlanForm({
     vendorId: string
     notes: string
   }>
+  // Where a save goes: the edit page passes the PM list page it was opened from (its returnTo, spec 2B B4).
+  returnHref?: string
 }) {
   const router = useRouter()
   const apiError = useApiError()
@@ -74,7 +77,7 @@ export function MaintenancePlanForm({
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(getMaintenanceErrorMessage(payload?.code, t, tCommon("error")))
       toast.success(t("pmCreateSuccess"))
-      router.push(`/${locale}/maintenance/pm`)
+      router.push(returnHref)
     } catch (error) {
       apiError.toast(error)
     } finally {

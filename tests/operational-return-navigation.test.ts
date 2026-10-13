@@ -120,3 +120,26 @@ test("the disposal batch page reads returnTo for its back button", () => {
   assert.match(source, /const returnToHref = normalizeDisposalBatchReturnTo\(locale, rawSearchParams\.returnTo\)/)
   assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}/)
 })
+
+// Plan 2B-2 Task 14 (spec 2B B4, §5.9.2 row 6, §5.14): the PM edit page goes back to the PM list page and page size
+// it was opened from. The helper is pure, so it is imported here; the page and form are read as text (with \r, so no
+// regex below holds \n).
+test("maintenance-pm returnTo keeps the PM list's page and page size and falls back to the PM list", async () => {
+  const { normalizeOperationalReturnTo } = await import("../src/lib/operational-return-navigation.ts")
+  assert.equal(normalizeOperationalReturnTo("th", "maintenance-pm", "/th/maintenance/pm?page=2&pageSize=50"), "/th/maintenance/pm?page=2&pageSize=50")
+  assert.equal(normalizeOperationalReturnTo("th", "maintenance-pm", ["/th/maintenance/pm?page=3", "/th/maintenance"]), "/th/maintenance/pm?page=3")
+  assert.equal(normalizeOperationalReturnTo("th", "maintenance-pm", undefined), "/th/maintenance/pm")
+  assert.equal(normalizeOperationalReturnTo("th", "maintenance-pm", "/th/maintenance?page=2"), "/th/maintenance/pm", "the repair-record list is another page")
+  assert.equal(normalizeOperationalReturnTo("th", "maintenance-pm", "https://example.com/th/maintenance/pm"), "/th/maintenance/pm", "never another site")
+  assert.equal(normalizeOperationalReturnTo("en", "maintenance-pm", "/th/maintenance/pm?page=2"), "/en/maintenance/pm", "the locale is part of the path")
+})
+
+test("the PM edit page reads returnTo and the plan form goes there after a save (spec 2B §5.9.2 row 6)", () => {
+  const edit = readFileSync("src/app/[locale]/(dashboard)/maintenance/pm/[id]/edit/page.tsx", "utf8")
+  const form = readFileSync("src/components/maintenance/maintenance-plan-form.tsx", "utf8")
+  assert.match(edit, /searchParams: Promise<\{ returnTo\?: string \| string\[\] \}>/)
+  assert.match(edit, /const returnTo = normalizeOperationalReturnTo\(locale, "maintenance-pm", rawSearchParams\.returnTo\)/)
+  assert.match(edit, /returnHref=\{returnTo\}/)
+  assert.match(form, /returnHref = `\/\$\{locale\}\/maintenance\/pm`,/, "the create page passes nothing and keeps going to the PM list")
+  assert.match(form, /router\.push\(returnHref\)/)
+})
