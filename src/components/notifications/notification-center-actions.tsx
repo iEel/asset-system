@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Check, Clock3, ExternalLink, RotateCcw, UserRound } from "lucide-react"
 import { toast } from "sonner"
+import { NativeSelect } from "@/components/ui/native-select"
 import {
   isPlainPrimaryClick,
   markNotificationRead,
@@ -116,7 +117,8 @@ export function NotificationCenterActions({ item, assignees, labels }: Notificat
       <label className="flex min-w-0 items-center gap-2 text-sm">
         <UserRound className="h-4 w-4 shrink-0 text-muted-foreground" />
         <span className="shrink-0 text-muted-foreground">{labels.assignTo}</span>
-        <select
+        <NativeSelect
+          fieldSize="md"
           value={assignedToUserId}
           disabled={isPending}
           onChange={(event) => {
@@ -124,7 +126,7 @@ export function NotificationCenterActions({ item, assignees, labels }: Notificat
             setAssignedToUserId(value)
             mutate({ action: "assign", assignedToUserId: value || null })
           }}
-          className="h-9 min-w-44 rounded-md border border-input bg-surface px-3 text-sm outline-none focus:border-ring"
+          className="min-w-44"
         >
           <option value="">{labels.unassigned}</option>
           {assignees.map((assignee) => (
@@ -132,7 +134,7 @@ export function NotificationCenterActions({ item, assignees, labels }: Notificat
               {assignee.label}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </label>
     </div>
   )

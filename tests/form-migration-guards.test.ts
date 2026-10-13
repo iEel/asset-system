@@ -89,6 +89,7 @@ const MIGRATED_FILES: string[] = [
   `${C}admin/IntegrationClientManager.tsx`,
   `${C}admin/asset-state-review-dialog.tsx`,
   `${C}admin/data-quality-rule-form.tsx`,
+  `${C}notifications/notification-center-actions.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -183,7 +184,6 @@ const RAW_FIELDS: Record<string, number> = {
   [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 1,
   [`${C}auth/login-form.tsx`]: 2,
   [`${C}reports/report-preset-controls.tsx`]: 1,
-  [`${C}notifications/notification-center-actions.tsx`]: 1,
 }
 
 // GF3 hand-written field class strings
@@ -204,7 +204,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 1,
   [`${C}auth/login-form.tsx`]: 2,
   [`${C}reports/report-preset-controls.tsx`]: 1,
-  [`${C}notifications/notification-center-actions.tsx`]: 1,
 }
 
 // GF5 floors per file: [required, maxLength, minLength] on CONSTRAINT_TAGS. A floor never drops.
