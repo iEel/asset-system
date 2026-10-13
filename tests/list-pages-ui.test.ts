@@ -441,3 +441,17 @@ test("the PM page goes back to maintenance, has no icon in its title, and its ed
   assert.match(source, /href=\{`\/\$\{locale\}\/maintenance\/new\?planId=\$\{plan\.id\}`\} className=\{buttonVariants\(\{ size: "sm" \}\)\}/)
   assert.match(source, /\{canEdit \? <MaintenancePlanStateActions planId=\{plan\.id\} state=\{plan\.planState as MaintenancePlanState\} \/> : null\}/)
 })
+
+// Plan 2B-2 Task 15 (spec 2B §4.4.3, §5.4 row admin/data-quality, I12): the data-quality header and number strip. The
+// rule cards stay as they are, and the labels of DataQualityRuleForm belong to 2C plan 4 (it adds severity there).
+test("data quality: PageHeader with the reports link, one StatStrip for the three tinted SummaryCards, and the common words the review queue reads (spec 2B §5.4, I12)", () => {
+  const source = read(`${D}admin/data-quality/page.tsx`)
+  assert.match(source, /<div className="space-y-6">\n\s+<PageHeader\n\s+title=\{t\("title"\)\}\n\s+meta=\{t\("subtitle"\)\}\n\s+actions=\{\n\s+<Link href=\{`\/\$\{locale\}\/reports`\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
+  assert.ok(source.includes("<StatStrip"), "no <StatStrip")
+  for (const [key, count] of [["enabledRules", "enabledRules.length"], ["totalIssues", "totalIssues"], ["rulesConfigured", "rules.length"]]) {
+    assert.ok(source.includes(`{ key: "${key}", label: t("${key}"), value: formatCount(${count}) },`), `no StatStrip cell for ${key}`)
+  }
+  assert.match(source, /pagination: tCommon\("pagination"\),\n\s+pageOf: tCommon\.raw\("pageOf"\),\n\s+tableScrollHint: tCommon\("tableScrollHint"\),/, "the review queue's page bar and scroll hint use the common words")
+  assert.doesNotMatch(source, /toLocaleString\(/, "counts go through formatCount")
+  assert.ok(source.includes("<AssetStateReviewWorkspace") && source.includes("<DataQualityRuleForm"), "the review queue and the rule form stay on the page")
+})

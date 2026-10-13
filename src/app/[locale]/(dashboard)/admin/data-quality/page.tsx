@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { AlertTriangle, CheckCircle2, FileWarning } from "lucide-react"
+import { CheckCircle2, FileWarning } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
@@ -8,8 +8,12 @@ import { listAssetStateReviews } from "@/lib/asset-state-review-service"
 import { assetMissingResponsibilityWhere } from "@/lib/asset-ownership"
 import { assetDataQualityRulesKey, parseAssetDataQualityRules, type AssetDataQualityRule } from "@/lib/data-quality-rules"
 import { buildDataQualityRuleHref } from "@/lib/data-quality-drilldown"
+import { formatCount } from "@/lib/display-format"
 import { DataQualityRuleForm } from "@/components/admin/data-quality-rule-form"
 import { AssetStateReviewWorkspace, type AssetStateReviewResponse } from "@/components/admin/asset-state-review-workspace"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { PageHeader } from "@/components/ui/page-header"
+import { StatStrip } from "@/components/ui/stat-strip"
 
 type DataQualityPageProps = {
   params: Promise<{ locale: string }>
@@ -34,24 +38,23 @@ export default async function DataQualityPage({ params }: DataQualityPageProps) 
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <Link
-          href={`/${locale}/reports`}
-          className="inline-flex h-10 w-fit items-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-        >
-          {t("openReports")}
-        </Link>
-      </div>
+      <PageHeader
+        title={t("title")}
+        meta={t("subtitle")}
+        actions={
+          <Link href={`/${locale}/reports`} className={buttonVariants({ variant: "outline", size: "md" })}>
+            {t("openReports")}
+          </Link>
+        }
+      />
 
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <SummaryCard label={t("enabledRules")} value={enabledRules.length} tone="primary" />
-        <SummaryCard label={t("totalIssues")} value={totalIssues} tone={totalIssues > 0 ? "danger" : "success"} />
-        <SummaryCard label={t("rulesConfigured")} value={rules.length} tone="muted" />
-      </section>
+      <StatStrip
+        items={[
+          { key: "enabledRules", label: t("enabledRules"), value: formatCount(enabledRules.length) },
+          { key: "totalIssues", label: t("totalIssues"), value: formatCount(totalIssues) },
+          { key: "rulesConfigured", label: t("rulesConfigured"), value: formatCount(rules.length) },
+        ]}
+      />
 
       <section className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {rules.map((rule) => (
@@ -112,6 +115,9 @@ export default async function DataQualityPage({ params }: DataQualityPageProps) 
           total: t.raw("assetStateReviews.total"),
           previous: t("assetStateReviews.previous"),
           next: t("assetStateReviews.next"),
+          pagination: tCommon("pagination"),
+          pageOf: tCommon.raw("pageOf"),
+          tableScrollHint: tCommon("tableScrollHint"),
           resolveTitle: t("assetStateReviews.resolveTitle"),
           resolveDescription: t("assetStateReviews.resolveDescription"),
           dismissTitle: t("assetStateReviews.dismissTitle"),
@@ -215,7 +221,7 @@ function RuleStatusCard({
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-bold text-foreground">{count.toLocaleString("th-TH")}</div>
+          <div className="text-2xl font-bold text-foreground">{formatCount(count)}</div>
           <Link href={href} className="mt-1 inline-flex text-xs font-medium text-primary hover:underline">
             {viewLabel}
           </Link>
@@ -225,27 +231,6 @@ function RuleStatusCard({
   )
 }
 
-function SummaryCard({ label, value, tone }: { label: string; value: number; tone: "primary" | "danger" | "success" | "muted" }) {
-  return (
-    <div className={`rounded-lg border p-4 ${summaryClass(tone)}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString("th-TH")}</p>
-        </div>
-        <AlertTriangle className="h-5 w-5 text-current" />
-      </div>
-    </div>
-  )
-}
-
 function severityClass(severity: AssetDataQualityRule["severity"]) {
   return severity === "danger" ? "border-danger-border bg-danger-soft text-danger" : "border-warning-border bg-warning-soft text-warning"
-}
-
-function summaryClass(tone: "primary" | "danger" | "success" | "muted") {
-  if (tone === "primary") return "border-primary-border bg-primary-soft text-primary"
-  if (tone === "danger") return "border-danger-border bg-danger-soft text-danger"
-  if (tone === "success") return "border-success-border bg-success-soft text-success"
-  return "border-border bg-surface text-muted-foreground"
 }
