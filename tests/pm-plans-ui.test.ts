@@ -28,3 +28,11 @@ test("the PM plan form uses the shared field primitives and a busy save button (
   assert.match(form, /<Textarea\n\s+value=\{values\.notes\}[\s\S]*?maxLength=\{4000\}[\s\S]*?className="min-h-20"/)
   assert.match(form, /<Button type="submit" busy=\{saving\} className="w-full sm:w-auto">\n\s+<Save \/>/)
 })
+
+test("PM plan state buttons are Button sm, and their dialog keeps a busy verb confirm in a fixed footer (2C batch 3, K12)", () => {
+  const source = readFileSync("src/components/maintenance/maintenance-plan-state-actions.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /<Button key=\{action\} variant=\{action === "end" \? "danger" : "outline"\} size="sm" onClick=\{\(\) => setPendingAction\(action\)\}>/)
+  assert.match(source, /<AccessibleDialogFooter>\n\s+<AccessibleDialogCancel \/>\n\s+<Button variant=\{pendingAction === "end" \? "destructive" : "default"\} busy=\{saving\} onClick=\{submitAction\}>\n\s+\{pendingAction \? t\(`pmActions\.\$\{pendingAction\}`\) : null\}\n\s+<\/Button>\n\s+<\/AccessibleDialogFooter>/)
+  assert.match(source, /<AccessibleDialog\n/, "the dialog stays: it waits with busy while the plan saves, which useConfirm cannot (K12)")
+  assert.doesNotMatch(source, /<button\b|Loader2|flex-col-reverse|tCommon\("confirm"\)|useConfirm/)
+})

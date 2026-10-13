@@ -83,6 +83,7 @@ const MIGRATED_FILES: string[] = [
   `${C}audit/audit-findings-batch-actions.tsx`,
   `${C}audit/audit-scan-room-picker.tsx`,
   `${C}audit/audit-scan-check-panel.tsx`,
+  `${C}maintenance/maintenance-plan-state-actions.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -305,7 +306,6 @@ const LOADER2: Record<string, number> = {
   // 3
   [`${C}disposal/disposal-bulk-approval.tsx`]: 2, // the status lines :559, :560 in the dialog body (I27)
   [`${C}disposal/disposal-bulk-execution.tsx`]: 1, // BusyLabel :969, the status line in the dialog body (I27)
-  [`${C}maintenance/maintenance-plan-state-actions.tsx`]: 1,
   // 4
   [`${C}admin/admin-user-form.tsx`]: 1,
   [`${C}admin/role-permission-form.tsx`]: 1,
@@ -325,7 +325,6 @@ const OLD_HELPERS: Record<string, number> = {
 
 // GD4 flex-col-reverse in the 2C files and in ui/ (Task 4 already fixed ui/dialog.tsx DialogFooter and ui/alert-dialog.tsx:94)
 const REVERSE: Record<string, number> = {
-  [`${C}maintenance/maintenance-plan-state-actions.tsx`]: 1, // batch 3
   [`${C}admin/IntegrationClientManager.tsx`]: 1, // batch 4
 }
 
@@ -351,7 +350,6 @@ const PENDING_FOOTER_PARTS = new Set([
   // 1e
   // 1f
   // 3
-  `${C}maintenance/maintenance-plan-state-actions.tsx`,
   // 4
   `${C}admin/IntegrationClientManager.tsx`,
   `${C}admin/asset-state-review-dialog.tsx`,
