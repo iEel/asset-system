@@ -120,3 +120,14 @@ test("the page header hides the meta below md only when compactOnMobile is set",
   assert.match(header, /compactOnMobile && "shrink-0"/)
   assert.match(layout, /compactOnMobile \? "mb-4 md:mb-6" : "mb-6"/)
 })
+
+// Plan 2B-3 Task 5 (spec 2B §7.5, B3(4), I6): from md the register toolbar has no card and its controls are 36px:
+// FilterSelect with a screen-reader label for the three scope selects, and an outline Button for the filter sheet.
+test("the toolbar has no card from md, its scope selects are FilterSelect hideLabel at 36px and the sheet trigger is a Button (2B §7.5)", () => {
+  const source = toolbar()
+
+  assert.equal(source.match(/<FilterSelect\s+label=\{t\("(?:company|branch|category)"\)\}\s+hideLabel\s+fieldSize="md"\s+className="w-44 shrink-0 lg:w-48"/g)?.length, 3)
+  assert.match(source, /className="sticky top-0 z-20 -mx-4 mb-3 bg-canvas px-4 py-2 sm:-mx-6 sm:px-6 md:static md:mx-0 md:px-0 md:py-0"/)
+  assert.match(source, /trigger=\{\n\s+<Button variant="outline" size="md">\n\s+<SlidersHorizontal className="size-4" aria-hidden="true" \/>/)
+  assert.doesNotMatch(source, /md:rounded-lg md:border|md:bg-surface|getFieldControlClasses|<select\b|<NativeSelect\b|<button\b|aria-label=/)
+})

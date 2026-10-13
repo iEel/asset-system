@@ -5,8 +5,9 @@ import { useTranslations } from "next-intl"
 import { AssetRegisterFilterSheet, type AssetRegisterFilterOptions } from "@/components/assets/asset-register-filter-sheet"
 import { useAssetRegisterNavigation } from "@/components/assets/asset-register-navigation"
 import { AssetRegisterSearchField } from "@/components/assets/asset-register-search-field"
+import { Button } from "@/components/ui/button"
+import { FilterSelect } from "@/components/ui/filter-select"
 import { getActiveSheetFilterKeys, getCompanyChangeOverrides } from "@/lib/asset-register-filters"
-import { getFieldControlClasses } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 
 export function AssetRegisterToolbar({
@@ -28,67 +29,71 @@ export function AssetRegisterToolbar({
   const branches = filters.companyId
     ? options.branches.filter((branch) => branch.companyId === filters.companyId)
     : options.branches
-  const selectClassName = cn(getFieldControlClasses(), "w-44 shrink-0 truncate lg:w-48")
 
   return (
     <div
       data-asset-register-toolbar
-      className="sticky top-0 z-20 -mx-4 mb-3 bg-canvas px-4 py-2 sm:-mx-6 sm:px-6 md:static md:mx-0 md:rounded-lg md:border md:border-border md:bg-surface md:p-3"
+      className="sticky top-0 z-20 -mx-4 mb-3 bg-canvas px-4 py-2 sm:-mx-6 sm:px-6 md:static md:mx-0 md:px-0 md:py-0"
     >
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <AssetRegisterSearchField locale={locale} className="min-w-0 flex-1 basis-56" />
         <div className="hidden md:contents">
-          <select
+          {/* Uncontrolled + key: each select remounts on the optimistic value, so it never bounces back. The label is
+              sr-only (a field without a visible label uses hideLabel); the first option names the filter. */}
+          <FilterSelect
+            label={t("company")}
+            hideLabel
+            fieldSize="md"
+            className="w-44 shrink-0 lg:w-48"
             key={`company-${filters.companyId}`}
-            aria-label={t("company")}
             defaultValue={filters.companyId}
             onChange={(event) => navigate(getCompanyChangeOverrides(event.target.value, filters.branchId, options.branches))}
-            className={selectClassName}
           >
             <option value="">{t("company")}: {tCommon("all")}</option>
             {options.companies.map((company) => (
               <option key={company.id} value={company.id}>{company.code} - {company.nameTh}</option>
             ))}
-          </select>
-          <select
+          </FilterSelect>
+          <FilterSelect
+            label={t("branch")}
+            hideLabel
+            fieldSize="md"
+            className="w-44 shrink-0 lg:w-48"
             key={`branch-${filters.companyId}-${filters.branchId}`}
-            aria-label={t("branch")}
             defaultValue={filters.branchId}
             onChange={(event) => navigate({ branchId: event.target.value })}
-            className={selectClassName}
           >
             <option value="">{t("branch")}: {tCommon("all")}</option>
             {branches.map((branch) => (
               <option key={branch.id} value={branch.id}>{branch.company.code} / {branch.code} - {branch.name}</option>
             ))}
-          </select>
-          <select
+          </FilterSelect>
+          <FilterSelect
+            label={t("category")}
+            hideLabel
+            fieldSize="md"
+            className="w-44 shrink-0 lg:w-48"
             key={`category-${filters.categoryId}`}
-            aria-label={t("category")}
             defaultValue={filters.categoryId}
             onChange={(event) => navigate({ categoryId: event.target.value })}
-            className={selectClassName}
           >
             <option value="">{t("category")}: {tCommon("all")}</option>
             {options.categories.map((category) => (
               <option key={category.id} value={category.id}>{category.code} - {category.name}</option>
             ))}
-          </select>
+          </FilterSelect>
         </div>
         <AssetRegisterFilterSheet
           options={options}
           tabStatusIds={tabStatusIds}
           total={total}
           trigger={
-            <button
-              type="button"
-              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-10 md:min-h-0"
-            >
+            <Button variant="outline" size="md">
               <SlidersHorizontal className="size-4" aria-hidden="true" />
               <span className="sr-only md:not-sr-only">{t("advancedFilters")}</span>
               <FilterCount count={mobileCount} className="md:hidden" />
               <FilterCount count={desktopCount} className="hidden md:inline-flex" />
-            </button>
+            </Button>
           }
         />
       </div>
