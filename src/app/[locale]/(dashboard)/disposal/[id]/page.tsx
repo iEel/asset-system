@@ -1,20 +1,24 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, ArrowLeft, ClipboardCheck, FileText, History, Package, Printer } from "lucide-react"
+import { AlertTriangle, ClipboardCheck, FileText, History, Package, Printer } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
 import { getDisposalOptions } from "@/lib/disposal-options"
-import { formatCurrency, formatDateTime } from "@/lib/utils"
+import { formatMoney } from "@/lib/display-format"
+import { formatDateTime } from "@/lib/utils"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
 import { DisposalAttachments } from "@/components/disposal/disposal-attachments"
 import { DisposalDecisionButton } from "@/components/disposal/disposal-decision-button"
 import { DisposalExecutionButton } from "@/components/disposal/disposal-execution-button"
 import { DisposalMobileActionBar } from "@/components/disposal/disposal-mobile-action-bar"
 import { DisposalWorkflowStepper } from "@/components/disposal/disposal-workflow-stepper"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { KeyValueList } from "@/components/ui/key-value-list"
+import { Nil } from "@/components/ui/nil"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { filterDisposalExecutorOptions, getDisposalDecisionStatusOptions, getDisposalExecutionStatusOptions, getDisposalSegregationError } from "@/lib/disposal-policy"
@@ -168,40 +172,30 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
 
   return (
     <div className="space-y-6 pb-36 md:pb-0">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="mb-2">
-            <Breadcrumbs
-              items={[
-                { label: t("title"), href: returnToHref },
-                { label: disposalRequest.disposalNo, code: true },
-              ]}
-            />
+      <PageHeader
+        breadcrumbs={[
+          { label: t("title"), href: returnToHref },
+          { label: disposalRequest.disposalNo, code: true },
+        ]}
+        title={disposalRequest.asset.name}
+        meta={
+          <>
+            <span className="tag">{disposalRequest.disposalNo}</span>
+            <StatusBadge label={statusLabels[disposalRequest.requestStatus as keyof typeof statusLabels] ?? disposalRequest.requestStatus} status={disposalRequest.requestStatus} />
+            <span className="tag">{disposalRequest.asset.assetTag}</span>
+          </>
+        }
+        back={<PageBackLink href={returnToHref} label={tCommon("back")} />}
+        actions={
+          <div className="hidden items-center gap-2 md:flex">
+            <Link href={printHref} className={buttonVariants({ variant: "outline", size: "md" })}>
+              <Printer aria-hidden="true" />
+              {printLabel}
+            </Link>
+            {nextActionControl}
           </div>
-          <h1 className="text-2xl font-bold text-foreground">{disposalRequest.disposalNo}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {disposalRequest.asset.assetTag} - {disposalRequest.asset.name}
-          </p>
-        </div>
-        <div className="hidden min-w-0 flex-col gap-2 md:flex md:flex-row md:flex-wrap md:items-center md:justify-end">
-          <Link
-            href={returnToHref}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {tCommon("back")}
-          </Link>
-          <Link
-            href={printHref}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
-          >
-            <Printer className="h-4 w-4" />
-            {printLabel}
-          </Link>
-          {nextActionControl}
-          <StatusBadge label={statusLabels[disposalRequest.requestStatus as keyof typeof statusLabels] ?? disposalRequest.requestStatus} status={disposalRequest.requestStatus} />
-        </div>
-      </div>
+        }
+      />
       <DisposalWorkflowStepper
         stage={workflowStage}
         currentStageLabel={statusLabels[disposalRequest.requestStatus as keyof typeof statusLabels] ?? disposalRequest.requestStatus}
@@ -235,18 +229,32 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
               <FileText className="h-5 w-5 text-primary" />
               {t("requestDetail")}
             </h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <Info label={t("disposalNo")} value={disposalRequest.disposalNo} />
-              <Info label={t("disposalType")} value={t(`types.${disposalRequest.disposalType}`)} />
-              <Info label={t("requestDate")} value={formatDateTime(disposalRequest.requestDate)} />
-              <Info label={t("requestedBy")} value={`${disposalRequest.requestedBy.code} - ${disposalRequest.requestedBy.fullNameTh}`} />
-              <Info label={t("approver")} value={disposalRequest.approver ? `${disposalRequest.approver.code} - ${disposalRequest.approver.fullNameTh}` : null} />
-              <Info label={tCommon("status")} value={statusLabels[disposalRequest.requestStatus as keyof typeof statusLabels] ?? disposalRequest.requestStatus} />
-              <Info label={t("saleValue")} value={disposalRequest.saleValue == null ? null : formatCurrency(Number(disposalRequest.saleValue))} />
-              <Info label={t("salvageValue")} value={disposalRequest.salvageValue == null ? null : formatCurrency(Number(disposalRequest.salvageValue))} />
-              <Info label={t("approvedAt")} value={formatDateTime(disposalRequest.approvedAt)} />
-              <Info label={t("source")} value={formatSource(disposalRequest.sourceType, disposalRequest.sourceId)} />
-            </div>
+            <KeyValueList
+              items={[
+                { key: "disposalNo", label: t("disposalNo"), value: <span className="tag">{disposalRequest.disposalNo}</span> },
+                { key: "disposalType", label: t("disposalType"), value: t(`types.${disposalRequest.disposalType}`) },
+                { key: "requestDate", label: t("requestDate"), value: formatDateTime(disposalRequest.requestDate) },
+                { key: "requestedBy", label: t("requestedBy"), value: <><span className="tag">{disposalRequest.requestedBy.code}</span> - {disposalRequest.requestedBy.fullNameTh}</> },
+                {
+                  key: "approver",
+                  label: t("approver"),
+                  value: disposalRequest.approver ? <><span className="tag">{disposalRequest.approver.code}</span> - {disposalRequest.approver.fullNameTh}</> : null,
+                },
+                { key: "status", label: tCommon("status"), value: statusLabels[disposalRequest.requestStatus as keyof typeof statusLabels] ?? disposalRequest.requestStatus },
+                {
+                  key: "saleValue",
+                  label: t("saleValue"),
+                  value: disposalRequest.saleValue == null ? null : <span className="num">{formatMoney(Number(disposalRequest.saleValue), { unit: tCommon("baht") })}</span>,
+                },
+                {
+                  key: "salvageValue",
+                  label: t("salvageValue"),
+                  value: disposalRequest.salvageValue == null ? null : <span className="num">{formatMoney(Number(disposalRequest.salvageValue), { unit: tCommon("baht") })}</span>,
+                },
+                { key: "approvedAt", label: t("approvedAt"), value: disposalRequest.approvedAt ? formatDateTime(disposalRequest.approvedAt) : null },
+                { key: "source", label: t("source"), value: formatSource(disposalRequest.sourceType, disposalRequest.sourceId) },
+              ]}
+            />
           </section>
 
           <section className="rounded-lg border border-border bg-surface p-6">
@@ -270,15 +278,29 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
                 <ClipboardCheck className="h-5 w-5 text-primary" />
                 {t("executionDetail")}
               </h2>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <Info label={t("executionDate")} value={formatDateTime(disposalRequest.executionDate)} />
-                <Info label={t("executedBy")} value={disposalRequest.executedBy ? `${disposalRequest.executedBy.code} - ${disposalRequest.executedBy.fullNameTh}` : null} />
-                <Info label={t("recipientName")} value={disposalRequest.recipientName} />
-                <Info label={t("documentNo")} value={disposalRequest.documentNo} />
-                <Info label={t("actualSaleValue")} value={disposalRequest.actualSaleValue == null ? null : formatCurrency(Number(disposalRequest.actualSaleValue))} />
-                <Info label={t("actualSalvageValue")} value={disposalRequest.actualSalvageValue == null ? null : formatCurrency(Number(disposalRequest.actualSalvageValue))} />
-                <Info label={t("completedAt")} value={formatDateTime(disposalRequest.completedAt)} />
-              </div>
+              <KeyValueList
+                items={[
+                  { key: "executionDate", label: t("executionDate"), value: disposalRequest.executionDate ? formatDateTime(disposalRequest.executionDate) : null },
+                  {
+                    key: "executedBy",
+                    label: t("executedBy"),
+                    value: disposalRequest.executedBy ? <><span className="tag">{disposalRequest.executedBy.code}</span> - {disposalRequest.executedBy.fullNameTh}</> : null,
+                  },
+                  { key: "recipientName", label: t("recipientName"), value: disposalRequest.recipientName },
+                  { key: "documentNo", label: t("documentNo"), value: disposalRequest.documentNo },
+                  {
+                    key: "actualSaleValue",
+                    label: t("actualSaleValue"),
+                    value: disposalRequest.actualSaleValue == null ? null : <span className="num">{formatMoney(Number(disposalRequest.actualSaleValue), { unit: tCommon("baht") })}</span>,
+                  },
+                  {
+                    key: "actualSalvageValue",
+                    label: t("actualSalvageValue"),
+                    value: disposalRequest.actualSalvageValue == null ? null : <span className="num">{formatMoney(Number(disposalRequest.actualSalvageValue), { unit: tCommon("baht") })}</span>,
+                  },
+                  { key: "completedAt", label: t("completedAt"), value: disposalRequest.completedAt ? formatDateTime(disposalRequest.completedAt) : null },
+                ]}
+              />
               <div className="mt-5">
                 <TextBlock label={t("executionRemark")} value={disposalRequest.executionRemark} />
               </div>
@@ -291,10 +313,17 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
                       <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{disposalRequest.evidenceExceptionReason}</p>
                     </div>
                   </div>
-                  <div className="mt-4 grid grid-cols-1 gap-4 border-t border-warning-border pt-4 md:grid-cols-2">
-                    <Info label={t("historicalEvidenceGrantedBy")} value={evidenceExceptionGrantorLabel} />
-                    <Info label={t("historicalEvidenceGrantedAt")} value={formatDateTime(disposalRequest.evidenceExceptionGrantedAt)} />
-                  </div>
+                  <KeyValueList
+                    className="mt-4 border-t border-warning-border pt-4"
+                    items={[
+                      { key: "grantedBy", label: t("historicalEvidenceGrantedBy"), value: evidenceExceptionGrantorLabel },
+                      {
+                        key: "grantedAt",
+                        label: t("historicalEvidenceGrantedAt"),
+                        value: disposalRequest.evidenceExceptionGrantedAt ? formatDateTime(disposalRequest.evidenceExceptionGrantedAt) : null,
+                      },
+                    ]}
+                  />
                 </section>
               ) : null}
             </section>
@@ -326,10 +355,13 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
                         </div>
                         <div className="text-xs text-muted-foreground">{formatDateTime(movement.performedAt)}</div>
                       </div>
-                      <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-muted-foreground md:grid-cols-2">
-                        <Info label={tAsset("fromValue")} value={movementLabels.get(movement.id)?.from} />
-                        <Info label={tAsset("toValue")} value={movementLabels.get(movement.id)?.to} />
-                      </div>
+                      <KeyValueList
+                        className="mt-2"
+                        items={[
+                          { key: "from", label: tAsset("fromValue"), value: movementLabels.get(movement.id)?.from },
+                          { key: "to", label: tAsset("toValue"), value: movementLabels.get(movement.id)?.to },
+                        ]}
+                      />
                       {movement.reason ? <p className="mt-2 text-sm text-muted-foreground">{movement.reason}</p> : null}
                     </div>
                   </li>
@@ -346,19 +378,36 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
               {t("asset")}
             </h2>
             <div className="space-y-4">
-              <Info label={t("asset")} value={`${disposalRequest.asset.assetTag} - ${disposalRequest.asset.name}`} />
-              <Info label={tAsset("serialNumber")} value={disposalRequest.asset.serialNumber} />
-              <Info label={tAsset("fixedAssetCode")} value={disposalRequest.asset.fixedAssetCode} />
-              <Info label={tAsset("category")} value={`${disposalRequest.asset.category.code} - ${disposalRequest.asset.category.name}`} />
-              <Info label={tAsset("brand")} value={disposalRequest.asset.brand?.name} />
-              <Info label={tAsset("model")} value={disposalRequest.asset.model?.name} />
-              <Info label={tAsset("company")} value={`${disposalRequest.asset.company.code} - ${disposalRequest.asset.company.nameTh}`} />
-              <Info label={tAsset("branch")} value={`${disposalRequest.asset.branch.code} - ${disposalRequest.asset.branch.name}`} />
-              <Info label={t("currentLocation")} value={`${disposalRequest.asset.currentLocation.code} - ${disposalRequest.asset.currentLocation.name}`} />
-              <Info label={t("custodian")} value={disposalRequest.asset.custodian ? `${disposalRequest.asset.custodian.code} - ${disposalRequest.asset.custodian.fullNameTh}` : null} />
-              <Info label={t("currentStatus")} value={disposalRequest.asset.status.nameTh} />
-              <Info label={t("currentCondition")} value={disposalRequest.asset.condition.nameTh} />
-              <Info label={tAsset("purchasePrice")} value={disposalRequest.asset.purchasePrice == null ? null : formatCurrency(Number(disposalRequest.asset.purchasePrice))} />
+              <KeyValueList
+                items={[
+                  { key: "asset", label: t("asset"), value: <><span className="tag">{disposalRequest.asset.assetTag}</span> - {disposalRequest.asset.name}</> },
+                  { key: "serialNumber", label: tAsset("serialNumber"), value: disposalRequest.asset.serialNumber },
+                  { key: "fixedAssetCode", label: tAsset("fixedAssetCode"), value: disposalRequest.asset.fixedAssetCode },
+                  { key: "category", label: tAsset("category"), value: <><span className="tag">{disposalRequest.asset.category.code}</span> - {disposalRequest.asset.category.name}</> },
+                  { key: "brand", label: tAsset("brand"), value: disposalRequest.asset.brand?.name },
+                  { key: "model", label: tAsset("model"), value: disposalRequest.asset.model?.name },
+                  { key: "company", label: tAsset("company"), value: <><span className="tag">{disposalRequest.asset.company.code}</span> - {disposalRequest.asset.company.nameTh}</> },
+                  { key: "branch", label: tAsset("branch"), value: <><span className="tag">{disposalRequest.asset.branch.code}</span> - {disposalRequest.asset.branch.name}</> },
+                  {
+                    key: "currentLocation",
+                    label: t("currentLocation"),
+                    value: <><span className="tag">{disposalRequest.asset.currentLocation.code}</span> - {disposalRequest.asset.currentLocation.name}</>,
+                  },
+                  {
+                    key: "custodian",
+                    label: t("custodian"),
+                    value: disposalRequest.asset.custodian ? <><span className="tag">{disposalRequest.asset.custodian.code}</span> - {disposalRequest.asset.custodian.fullNameTh}</> : null,
+                    nilLabel: tAsset("noCustodian"),
+                  },
+                  { key: "currentStatus", label: t("currentStatus"), value: disposalRequest.asset.status.nameTh },
+                  { key: "currentCondition", label: t("currentCondition"), value: disposalRequest.asset.condition.nameTh },
+                  {
+                    key: "purchasePrice",
+                    label: tAsset("purchasePrice"),
+                    value: disposalRequest.asset.purchasePrice == null ? null : <span className="num">{formatMoney(Number(disposalRequest.asset.purchasePrice), { unit: tCommon("baht") })}</span>,
+                  },
+                ]}
+              />
               <Link
                 href={`/${locale}/assets/${disposalRequest.asset.id}`}
                 className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0"
@@ -377,7 +426,7 @@ export default async function DisposalDetailPage({ params, searchParams }: Dispo
 }
 
 function formatSource(sourceType?: string | null, sourceId?: string | null) {
-  if (!sourceType && !sourceId) return "-"
+  if (!sourceType && !sourceId) return null
   return [sourceType, sourceId].filter(Boolean).join(" / ")
 }
 
@@ -424,21 +473,12 @@ const knownMovementTypeKeys = new Set([
   "audit_correction",
 ])
 
-function Info({ label, value }: { label: string; value?: string | number | null }) {
-  return (
-    <div>
-      <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{label}</div>
-      <div className="mt-1 text-sm font-medium text-foreground">{value || "-"}</div>
-    </div>
-  )
-}
-
 function TextBlock({ label, value }: { label: string; value?: string | null }) {
   return (
     <div>
       <div className="mb-2 text-sm font-medium text-foreground">{label}</div>
       <div className="min-h-24 rounded-md border border-border bg-background p-3 text-sm text-muted-foreground">
-        {value ? <p className="whitespace-pre-wrap">{value}</p> : "-"}
+        {value ? <p className="whitespace-pre-wrap">{value}</p> : <Nil />}
       </div>
     </div>
   )
