@@ -179,8 +179,8 @@ Implemented status lifecycle and enforcement from docs/code:
 | Feature | Details |
 |---|---|
 | Audit rounds | Create rounds from scoped asset filters |
-| Audit rounds action hub | Action-first list with next-action cards, URL-backed quick filters, and ready-to-close/blocker badges for high-volume audit operations |
-| Audit return navigation | Round detail, pending, and scan links preserve the originating rounds view/search through sanitized internal `returnTo` targets; scan/pending return to the round detail and round detail returns to the filtered rounds list |
+| Audit rounds action hub | Action-first list with next-action cards, URL-backed quick filter tabs with counts, and ready-to-close/blocker badges for high-volume audit operations; 25/50/100 rounds per page, cut in memory after the view filter so the tab counts still cover every round, and a page past the end shows the last page |
+| Audit return navigation | Round detail, pending, and scan links preserve the originating rounds view/search through sanitized internal `returnTo` targets; scan/pending return to the round detail and round detail returns to the filtered rounds list; the rounds list's own `returnTo` also carries its page and page size, so the round detail and the scan screen bring a person back to the same page, and the pending list keeps the round's `returnTo` on its page links |
 | Candidate preview | Preview audit candidates before creating a round |
 | Expected list | Audit items generated from scope and start as pending |
 | Component asset audit | Audit round preview/create automatically includes active installed component assets for selected parents; Audit Scan shows component status under the parent and supports explicit confirmed-with-parent component verification |
@@ -193,10 +193,10 @@ Implemented status lifecycle and enforcement from docs/code:
 | Scan result semantics | Successful scan results do not show Not Found as a primary action; assets outside the round are Out-of-scope, unknown codes are Unknown Asset, and Found Later reuses the existing recovery logic |
 | Audit scan lookup | `POST /api/audit-rounds/{id}/scan-lookup` resolves printed QR asset IDs, Asset Tags, Serial Numbers, and fixed asset codes under `audit:edit` before the UI decides whether a scanned value is in-round, out-of-scope, or unknown |
 | Out-of-scope actual fields | Field auditors can record actual location, custodian, department, and condition for out-of-scope assets; changed values become reviewable field findings before master data updates |
-| Not-found workflow | Mark pending items as not found from the pending list/zone queue without changing asset status to Lost automatically |
+| Not-found workflow | Mark pending items as not found from the pending list/zone queue without changing asset status to Lost automatically; the pending list pages on the server (25/50/100) and counts every pending item (it stopped at 200 before), desktop rows offer "สแกนรายการนี้" with ⋯ ("ดูทรัพย์สิน", "บันทึกไม่พบ"), and marking the last item of the last page lands on the new last page |
 | Pending audit queue shortcut | Audit Scan can open an inline preview of pending items from the current round with expected location/custodian/department context on each card, while the full pending list remains the not-found workflow surface |
 | Evidence photos | Matched scans can save without photos; mismatched actual field data requires at least one free-form evidence photo, with multiple queued photos and optional grouping tags |
-| Audit Findings workflow | `/audit/findings` summarizes pending review, open action, overdue, and closed queues; shows system-vs-found comparison, resolution-state badges, quiet loaded-at metadata with stale warning, approve/reject decision modal, master-data conflict guard before correction, review/action/closure controls, evidence attachments, batch actions, and filtered Excel/PDF exports |
+| Audit Findings workflow | `/audit/findings` summarizes pending review, open action, overdue, and closed queues; shows system-vs-found comparison, resolution-state badges, quiet loaded-at metadata with stale warning, approve/reject decision modal, master-data conflict guard before correction, review/action/closure controls, evidence attachments, batch actions, and filtered Excel/PDF exports; 25/50/100 findings per page on the server (it showed the first 200 before), the pager total equal to the strip count of the queue in use, removable chips for the round and type filters that drill-down links set, and batch decisions limited to the page on screen |
 | Findings follow-up context | Disposal follow-up links from findings preserve the active findings queue/search as sanitized return context |
 | Reconciliation | Approve/reject findings with movement/audit trail and segregation controls |
 | Close-round controls | Close-round workflow with protection documented in lifecycle/workflow docs |
@@ -214,10 +214,10 @@ One-form repair log since 2026-10-07 (staff guide `docs/17_REPAIR_RECORD_GUIDE_T
 | Record statuses | `in_progress` / `closed` / `cancelled`; legacy `open`/`reported`/`accepted`/`waiting_*`/`completed` rows read as `in_progress` (`openRepairRecordWhere`) |
 | Asset status effect | Policy in `src/lib/repair-record-policy.ts`; conditional `statusId` claim in the transaction, `AssetMovement` and System Log for every change; one unfinished record per asset; written-off and on-loan guards with stable Thai/English error codes |
 | Record detail | "ซ่อมเสร็จ" dialog (return date, outcome, optional cost/vendor/invoice/files), "ยกเลิกบันทึก" with confirmation, "แก้ไขรายละเอียด" (details only, optimistic concurrency), legacy fields shown read-only when present, print page |
-| Repair list | Status/date/search/asset filters, "PM ถึงกำหนด (7 วัน)" box, and "ทรัพย์สินค้างสถานะซ่อมแต่ไม่มีบันทึก" box with a record button per asset; detail/print keep the list context through sanitized `returnTo` |
+| Repair list | Status/date/search filters (25/50/100 per page; "กรอง" keeps the page size), an asset filter shown as a removable "เฉพาะทรัพย์สินนี้" chip that keeps the other filters, "PM ถึงกำหนด (7 วัน)" box, and "ทรัพย์สินค้างสถานะซ่อมแต่ไม่มีบันทึก" box with a record button per asset; detail/print keep the list context through sanitized `returnTo` |
 | Check-in integration | Return result "ส่งซ่อม" opens an `in_progress` record from the damage note |
 | Evidence | Photos/receipts attach on create or later; `maintenance:create` may attach to own records, `maintenance:edit` to any record |
-| PM plans | Reminders only: create/edit, pause/resume/end, due within 7 days listed on Maintenance, Work Center, and notifications; "บันทึกว่าทำแล้ว" saves a repair record with `maintenancePlanId` and moves `nextDueDate` by one interval (month-end clamp); disposal execution ends the asset's plans |
+| PM plans | Reminders only: create/edit, pause/resume/end, due within 7 days listed on Maintenance, Work Center, and notifications; "บันทึกว่าทำแล้ว" saves a repair record with `maintenancePlanId` and moves `nextDueDate` by one interval (month-end clamp); disposal execution ends the asset's plans; the PM list pages on the server by plan state (active, paused, ended, then the next due date; 25/50/100; it showed up to 500 before) and its edit page returns to the list page it came from |
 | Maintenance options | Bounded server search for assets, employees, and vendors; list pages do not load complete master-data options |
 | History | Repair history on Asset Detail, employee detail (records linked to that employee), and supplier detail (repairs by that vendor) |
 | Removed | Status-step buttons, board view, assignee/due-date planning, SLA/overdue alerts, close checklist, maintenance close approval, automatic PM work orders and their scheduler job |
@@ -226,7 +226,8 @@ One-form repair log since 2026-10-07 (staff guide `docs/17_REPAIR_RECORD_GUIDE_T
 
 | Feature | Details |
 |---|---|
-| Disposal request | Create and list disposal requests |
+| Disposal request | Create and list disposal requests; the queue has stage tabs, one filter form, 25/50/100 pages and a row next step that opens the review or execution dialog |
+| Disposal batches | `/disposal/batches` lists bulk batches 25/50/100 per page on the server (it showed only the newest 100 before); a batch page's Back returns to the batch list page it came from, otherwise to the queue |
 | Detail | Request, asset, decision, execution/evidence, movement/history sections |
 | Disposal return navigation | Request detail and print links preserve the originating disposal status/search filter through sanitized return context |
 | Approval | Approve/reject flow with approval remark/value/status updates |
@@ -258,7 +259,7 @@ One-form repair log since 2026-10-07 (staff guide `docs/17_REPAIR_RECORD_GUIDE_T
 |---|---|
 | Companies | CRUD, active flag, company code, Asset Tag Code, tax/address fields |
 | Branches | CRUD, company relation, branch code/name/address/contact |
-| Departments | CRUD, optional company relation, department code/name |
+| Departments | CRUD, optional company relation, department code/name; the list pages on the server (25/50/100) and edit → back keeps the page |
 | Employees | CRUD, company/branch/department, manager, employment status, linked user/self-service context |
 | Locations | CRUD, branch relation, parent/child hierarchy, location type |
 | Categories | CRUD, soft delete/reactivation by code, custom field templates, safe create/update template writes, photo checklist/prefix support, and count drilldowns to models/assets |
