@@ -1,16 +1,19 @@
+import type { ComponentProps, ReactNode } from "react"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { ChevronRight, Download, ListChecks, PackagePlus, Plus, SlidersHorizontal, Trash2 } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
-import { buildDisposalQueryString, buildDisposalWhere, getDisposalDateRangeError, parseDisposalListParams, type DisposalListParams } from "@/lib/disposal-query"
+import { buildDisposalQueryString, buildDisposalWhere, disposalStatusFilters, disposalTypeFilters, getDisposalDateRangeError, parseDisposalListParams, type DisposalListParams } from "@/lib/disposal-query"
+import { formatCount, formatMoney } from "@/lib/display-format"
+import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { paginationRange } from "@/lib/master-data-query"
-import { formatCurrency, formatDateTime } from "@/lib/utils"
-import { ColumnHeader } from "@/components/master-data/master-data-layout"
+import { formatDateTime } from "@/lib/utils"
 import { DisposalDecisionButton } from "@/components/disposal/disposal-decision-button"
 import { DisposalExecutionButton } from "@/components/disposal/disposal-execution-button"
-import { DisposalPagination } from "@/components/disposal/disposal-pagination"
+import { DisposalRowActions, type DisposalRowNext } from "@/components/disposal/disposal-row-actions"
 import {
   DisposalBulkApprovalCheckbox,
   DisposalBulkApprovalProvider,
@@ -27,9 +30,21 @@ import {
   DisposalBulkExecutionToolbar,
 } from "@/components/disposal/disposal-bulk-execution"
 import type { DisposalBulkExecutionCopy } from "@/components/disposal/disposal-bulk-execution"
-import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { ContentPanel } from "@/components/ui/content-panel"
+import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
+import { Field } from "@/components/ui/field"
+import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
+import { FilterSelect } from "@/components/ui/filter-select"
+import { Input } from "@/components/ui/input"
+import { orNil } from "@/components/ui/nil"
+import { PageHeader } from "@/components/ui/page-header"
+import { Pagination } from "@/components/ui/pagination"
+import { SearchField } from "@/components/ui/search-field"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { TabNav } from "@/components/ui/tab-nav"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { getDisposalNextAction, getDisposalStage, type DisposalStage } from "@/lib/disposal-stage"
@@ -105,6 +120,12 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
         })
       : Promise.resolve([]),
   ])
+  // A page past the last one (an old link, or the last request of the last page decided elsewhere) shows the last
+  // page, not an empty table that says "หน้า 4 จาก 3" (spec 2B I21, §5.9.1).
+  const lastPage = lastListPage(total, filters.pageSize)
+  if (requests.length === 0 && total > 0 && filters.page > lastPage) {
+    redirect(`/${locale}/disposal?${buildDisposalQueryString(filters, { page: lastPage })}`)
+  }
   const requestIds = requests.map((request) => request.id)
   const batchIds = [...new Set(requests.flatMap((request) => request.batchId ? [request.batchId] : []))]
   const [itemEvidence, batchEvidence] = await Promise.all([
@@ -239,172 +260,232 @@ export default async function DisposalPage({ params, searchParams }: DisposalPag
     { status: "disposed", label: stageLabels.complete, count: stageCountsByStatus.get("disposed") ?? 0 },
     { status: "rejected", label: stageLabels.rejected, count: stageCountsByStatus.get("rejected") ?? 0 },
   ]
-  const dateRangeError = getDisposalDateRangeError(filters)
   const resultRange = paginationRange(filters.page, filters.pageSize, total)
   const hasActiveFilters = Boolean(filters.search || filters.status || filters.disposalType || filters.dateFrom || filters.dateTo)
+  // The phone filter summary says how many filters are on (spec 2B §5.10 #5). It used to read "ล้างตัวกรอง" but only folded the panel.
+  const activeFilterCount = [filters.search, filters.status, filters.disposalType, filters.dateFrom, filters.dateTo].filter(Boolean).length
+  const emptyState = disposalEmptyState({ locale, t, hasActiveFilters, canCreate })
+  const nextActionLabels: DisposalNextActionLabels = {
+    view: tCommon("view"),
+    review: t("reviewRequest"),
+    execute: t("executeDisposal"),
+    executeShort: t("executeDisposalShort"),
+    openRequest: t("openRequest"),
+    openBatch: t("openBatch"),
+  }
 
   return (
-    <div>
+    <div className="space-y-6">
       <DisposalBulkApprovalProvider items={bulkItems} selectionKey={`${filters.page}:${filters.pageSize}:${query}`} copy={bulkApprovalCopy}>
       <DisposalBulkExecutionProvider items={bulkExecutionItems} selectionKey={`${filters.page}:${filters.pageSize}:${query}`} copy={bulkExecutionCopy} executionStatuses={executionStatuses} employees={employeeOptions} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-          <Link href={`/${locale}/disposal/batches`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0">
-            <ListChecks className="h-4 w-4" />{t("batchHistory")}
-          </Link>
-          {canCreate ? <>
-            <Link href={`/${locale}/disposal/batch/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0">
-              <PackagePlus className="h-4 w-4" />{t("batchCreateTitle")}
+      <PageHeader
+        title={t("title")}
+        meta={t("subtitle")}
+        actions={
+          <>
+            <Link href={`/${locale}/disposal/batches`} className={buttonVariants({ variant: "outline", size: "md" })}>
+              <ListChecks aria-hidden="true" />
+              {t("batchHistory")}
             </Link>
-            <Link href={`/${locale}/disposal/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:h-10 sm:min-h-0">
-              <Plus className="h-4 w-4" />{tCommon("create")}
-            </Link>
-          </> : null}
-        </div>
-      </div>
+            {canCreate ? (
+              <>
+                <Link href={`/${locale}/disposal/batch/new`} className={buttonVariants({ variant: "outline", size: "md" })}>
+                  <PackagePlus aria-hidden="true" />
+                  {t("batchCreateTitle")}
+                </Link>
+                <Link href={`/${locale}/disposal/new`} className={buttonVariants({ size: "md" })}>
+                  <Plus aria-hidden="true" />
+                  {tCommon("create")}
+                </Link>
+              </>
+            ) : null}
+          </>
+        }
+      />
 
       <details className="group rounded-lg border border-border bg-surface md:hidden" open={hasActiveFilters}>
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-foreground">
           <span className="inline-flex items-center gap-2"><SlidersHorizontal className="h-4 w-4 text-primary" />{t("filter")}</span>
-          {hasActiveFilters ? <span className="rounded-md bg-primary-soft px-2 py-1 text-xs text-primary">{t("clearFilters")}</span> : null}
+          {hasActiveFilters ? <span className="text-meta font-normal text-muted-foreground num">{t("activeFilterCount", { count: activeFilterCount })}</span> : null}
         </summary>
         <div className="border-t border-border p-4">
-          <DisposalFilterForm locale={locale} filters={filters} t={t} tCommon={tCommon} />
+          <DisposalFilterForm locale={locale} filters={filters} hasActiveFilters={hasActiveFilters} t={t} tCommon={tCommon} />
         </div>
       </details>
 
-      <section className="hidden rounded-lg border border-border bg-surface p-4 md:block">
-        <form className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(220px,1fr)_160px_160px_160px_160px_auto]" action={`/${locale}/disposal`}>
-          <input type="hidden" name="pageSize" value={filters.pageSize} />
-          <label>
-            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("search")}</span>
-            <input type="search" name="search" defaultValue={filters.search} placeholder={t("searchPlaceholder")} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
-          </label>
-          <label>
-            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("status")}</span>
-            <select name="status" defaultValue={filters.status} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring">
-              <option value="">{tCommon("all")}</option>
-              <option value="pending">{t("statuses.pending")}</option>
-              <option value="approved">{t("statuses.approved")}</option>
-              <option value="disposed">{t("statuses.disposed")}</option>
-              <option value="rejected">{t("statuses.rejected")}</option>
-            </select>
-          </label>
-          <label>
-            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("disposalType")}</span>
-            <select name="disposalType" defaultValue={filters.disposalType} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring">
-              <option value="">{tCommon("all")}</option>
-              {["sell", "donate", "destroy", "lost", "dispose"].map((type) => <option key={type} value={type}>{t(`types.${type}`)}</option>)}
-            </select>
-          </label>
-          <label>
-            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("dateFrom")}</span>
-            <input type="date" name="dateFrom" defaultValue={filters.dateFrom} max={filters.dateTo || undefined} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
-          </label>
-          <label>
-            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("dateTo")}</span>
-            <input type="date" name="dateTo" defaultValue={filters.dateTo} min={filters.dateFrom || undefined} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
-          </label>
-          <div className="flex flex-col gap-2 self-end sm:flex-row">
-            <button type="submit" className="min-h-11 w-full rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:h-10 sm:min-h-0 sm:w-auto">{t("filter")}</button>
-            <Link href={`/${locale}/disposal`} className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto">{t("clearFilters")}</Link>
-          </div>
-        </form>
-        {dateRangeError ? <p role="alert" className="mt-3 text-sm font-medium text-danger">{t("invalidDateRange")}</p> : null}
-      </section>
+      <FilterPanel className="hidden md:block">
+        <DisposalFilterForm locale={locale} filters={filters} hasActiveFilters={hasActiveFilters} t={t} tCommon={tCommon} />
+      </FilterPanel>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">{t("requestList")}</h2>
-            <p className="mt-1 text-xs text-muted-foreground">{t("resultRange", { start: resultRange.start, end: resultRange.end, total })}</p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            {bulkApprovalEnabled ? <DisposalBulkSelectionToggle /> : bulkExecutionEnabled ? <DisposalBulkExecutionSelectionToggle /> : null}
-            {canExport ? <a href={`/api/disposal-requests/export${query ? `?${query}` : ""}`} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-fit"><Download className="h-4 w-4" />{t("exportRequests")}</a> : null}
-          </div>
-        </div>
+      <ContentPanel
+        divided
+        flush
+        title={t("requestList")}
+        description={t("resultRange", { start: formatCount(resultRange.start), end: formatCount(resultRange.end), total: formatCount(total) })}
+        actions={
+          bulkApprovalEnabled || bulkExecutionEnabled || canExport ? (
+            <>
+              {bulkApprovalEnabled ? <DisposalBulkSelectionToggle /> : bulkExecutionEnabled ? <DisposalBulkExecutionSelectionToggle /> : null}
+              {canExport ? (
+                <a href={`/api/disposal-requests/export${query ? `?${query}` : ""}`} className={buttonVariants({ variant: "outline", size: "md" })}>
+                  <Download aria-hidden="true" />
+                  {t("exportRequests")}
+                </a>
+              ) : null}
+            </>
+          ) : undefined
+        }
+      >
         {bulkApprovalEnabled ? <DisposalBulkApprovalToolbar /> : bulkExecutionEnabled ? <DisposalBulkExecutionToolbar /> : null}
-        <div className="border-b border-border">
-          <div className="flex gap-2 overflow-x-auto px-4 pt-3 pb-2" aria-label={t("stageFilterLabel")}>
-            {stageTabs.map((stage) => (
-              <Link key={stage.status || "all"} href={`/${locale}/disposal?${buildDisposalQueryString(filters, { status: stage.status, page: 1 })}`} aria-current={filters.status === stage.status ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md border px-3 text-xs font-medium transition-colors sm:h-8 sm:min-h-0 ${filters.status === stage.status ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface text-muted-foreground hover:bg-accent"}`}>
-                <span>{stage.label}</span><span className="rounded-sm bg-muted px-1.5 py-0.5 text-foreground">{stage.count}</span>
-              </Link>
-            ))}
-          </div>
-          <div className="flex items-center justify-end gap-1 px-4 pb-2 text-xs text-muted-foreground sm:hidden">{t("stageScrollHint")}<ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></div>
-        </div>
+        <TabNav
+          aria-label={t("stageFilterLabel")}
+          items={stageTabs.map((stage) => ({
+            key: stage.status || "all",
+            label: stage.label,
+            count: formatCount(stage.count),
+            href: `/${locale}/disposal?${buildDisposalQueryString(filters, { status: stage.status, page: 1 })}`,
+          }))}
+          current={filters.status || "all"}
+          className="px-4 md:px-5"
+        />
+        <div className="flex items-center justify-end gap-1 px-4 pt-2 text-xs text-muted-foreground sm:hidden">{t("stageScrollHint")}<ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></div>
         <div className={`${getMobileCardListClasses()} p-3`}>
-          {requestsWithEvidence.length === 0 ? <DisposalEmptyState locale={locale} t={t} hasActiveFilters={hasActiveFilters} canCreate={canCreate} /> : requestsWithEvidence.map((request) => {
+          {requestsWithEvidence.length === 0 ? <ActionEmptyState {...emptyState} /> : requestsWithEvidence.map((request) => {
             const stage = getDisposalStage(request.requestStatus)
             const detailHref = appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)
             return (
               <article key={request.id} className="min-w-0 rounded-md border border-border bg-background p-3">
                 <div className="flex min-w-0 flex-col gap-2">
-                  <div className="flex flex-wrap items-center gap-2"><Link href={detailHref} className="break-words text-sm font-semibold text-foreground hover:text-primary">{request.disposalNo}</Link>{request.batch ? <Link href={`/${locale}/disposal/batches/${request.batch.id}`} className="text-xs font-medium text-primary hover:underline">{request.batch.batchNo}</Link> : null}</div>
-                  <div><div className="break-words text-sm font-medium text-foreground">{request.asset.assetTag}</div><div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{request.asset.name}</div></div>
+                  <div className="flex flex-wrap items-center gap-2"><Link href={detailHref} className="text-sm text-foreground hover:text-primary"><span className="tag font-medium">{request.disposalNo}</span></Link>{request.batch ? <Link href={`/${locale}/disposal/batches/${request.batch.id}`} className="text-xs text-primary hover:underline"><span className="tag">{request.batch.batchNo}</span></Link> : null}</div>
+                  <div><div className="text-sm text-foreground"><span className="tag font-medium">{request.asset.assetTag}</span></div><div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{request.asset.name}</div></div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2"><DisposalStageBadge stage={stage} label={stageLabels[stage]} /><StatusBadge label={t(`types.${request.disposalType}`)} tone="muted" /></div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-sm"><MobileDisposalField label={t("requestedBy")} value={request.requestedBy.fullNameTh} /><MobileDisposalField label={t("requestDate")} value={formatDateTime(request.requestDate)} /></div>
-                <details className="mt-3 rounded-md border border-border bg-surface px-3 py-2"><summary className="min-h-9 cursor-pointer text-sm font-medium text-primary">{t("moreDetails")}</summary><dl className="grid gap-3 border-t border-border pt-3 text-sm"><MobileDisposalField label={t("reason")} value={request.reason} /><MobileDisposalField label={t("approver")} value={request.approver ? `${request.approver.code} - ${request.approver.fullNameTh}` : "-"} /><MobileDisposalField label={t("value")} value={getRequestValue(request)} /></dl></details>
+                <details className="mt-3 rounded-md border border-border bg-surface px-3 py-2"><summary className="min-h-9 cursor-pointer text-sm font-medium text-primary">{t("moreDetails")}</summary><dl className="grid gap-3 border-t border-border pt-3 text-sm"><MobileDisposalField label={t("reason")} value={request.reason} /><MobileDisposalField label={t("approver")} value={request.approver ? `${request.approver.code} - ${request.approver.fullNameTh}` : null} /><MobileDisposalField label={t("value")} value={getRequestValue(request, tCommon("baht"))} /></dl></details>
                 {bulkApprovalEnabled ? <div className="flex min-h-11 items-center justify-end" data-no-row-click><DisposalBulkApprovalCheckbox requestId={request.id} variant="mobile" /></div> : bulkExecutionEnabled ? <div className="flex min-h-11 items-center justify-end" data-no-row-click><DisposalBulkExecutionCheckbox requestId={request.id} variant="mobile" /></div> : null}
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap"><DisposalNextAction request={request} href={detailHref} canApprove={canApprove} canExecute={canEdit} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} executionStatuses={executionStatuses} employees={employeeOptions} viewLabel={tCommon("view")} /></div>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap"><DisposalNextAction request={request} href={detailHref} canApprove={canApprove} canExecute={canEdit} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} executionStatuses={executionStatuses} employees={employeeOptions} labels={nextActionLabels} /></div>
               </article>
             )
           })}
         </div>
-        <div className={`${getDesktopTableOnlyClasses()} overflow-x-auto`}>
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40"><tr>{bulkApprovalEnabled ? <th className="w-12 px-4 py-3"><span className="sr-only">{t("bulkSelection")}</span><DisposalBulkApprovalSelectPageControl /></th> : bulkExecutionEnabled ? <th className="w-12 px-4 py-3"><span className="sr-only">{t("bulkExecutionSelection")}</span><DisposalBulkExecutionSelectPageControl /></th> : null}<ColumnHeader>{t("disposalNo")}</ColumnHeader><ColumnHeader>{t("asset")}</ColumnHeader><ColumnHeader>{t("disposalType")}</ColumnHeader><ColumnHeader>{t("requestedBy")}</ColumnHeader><ColumnHeader>{tCommon("status")}</ColumnHeader><ColumnHeader>{t("requestDate")}</ColumnHeader>{canApprove || canEdit ? <th className="sticky right-0 z-10 whitespace-nowrap bg-muted/95 px-4 py-3 text-left text-xs font-semibold text-muted-foreground">{tCommon("actions")}</th> : null}</tr></thead>
-            <tbody className="divide-y divide-border">
-              {requestsWithEvidence.length === 0 ? <tr><td colSpan={((bulkApprovalEnabled || bulkExecutionEnabled) ? 1 : 0) + (canApprove || canEdit ? 7 : 6)} className="px-4 py-6"><DisposalEmptyState locale={locale} t={t} hasActiveFilters={hasActiveFilters} canCreate={canCreate} /></td></tr> : requestsWithEvidence.map((request) => {
-                const stage = getDisposalStage(request.requestStatus)
-                const detailHref = appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)
-                return <ClickableTableRow key={request.id} href={detailHref} label={`${tCommon("view")}: ${request.disposalNo}`}>
-                  {bulkApprovalEnabled ? <td className="w-12 px-4 py-3" data-no-row-click><DisposalBulkApprovalCheckbox requestId={request.id} variant="desktop" /></td> : bulkExecutionEnabled ? <td className="w-12 px-4 py-3" data-no-row-click><DisposalBulkExecutionCheckbox requestId={request.id} variant="desktop" /></td> : null}
-                  <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground"><Link href={detailHref} className="hover:text-primary">{request.disposalNo}</Link>{request.batch ? <Link href={`/${locale}/disposal/batches/${request.batch.id}`} className="mt-1 block text-xs text-primary hover:underline">{request.batch.batchNo}</Link> : null}</td>
-                  <td className="min-w-56 px-4 py-3"><div className="font-medium text-foreground">{request.asset.assetTag}</div><div className="mt-1 text-xs text-muted-foreground">{request.asset.name}</div></td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground"><div>{t(`types.${request.disposalType}`)}</div><div className="mt-1 text-xs">{getRequestValue(request)}</div></td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{request.requestedBy.code} - {request.requestedBy.fullNameTh}</td>
-                  <td className="whitespace-nowrap px-4 py-3"><DisposalStageBadge stage={stage} label={stageLabels[stage]} /></td><td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(request.requestDate)}</td>
-                  {canApprove || canEdit ? <td className="sticky right-0 z-10 whitespace-nowrap border-l border-border bg-surface px-4 py-3"><DisposalNextAction request={request} href={detailHref} canApprove={canApprove} canExecute={canEdit} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} executionStatuses={executionStatuses} employees={employeeOptions} viewLabel={tCommon("view")} /></td> : null}
+        <DataTable framed={false} className={getDesktopTableOnlyClasses()} caption={t("requestList")} scrollHint={tCommon("tableScrollHint")}>
+          <DataTableHeader>
+            <tr>
+              {bulkApprovalEnabled ? (
+                <DataTableHead className="w-12 py-0"><span className="sr-only">{t("bulkSelection")}</span><DisposalBulkApprovalSelectPageControl /></DataTableHead>
+              ) : bulkExecutionEnabled ? (
+                <DataTableHead className="w-12 py-0"><span className="sr-only">{t("bulkExecutionSelection")}</span><DisposalBulkExecutionSelectPageControl /></DataTableHead>
+              ) : null}
+              <DataTableHead>{t("disposalNo")}</DataTableHead>
+              <DataTableHead>{t("asset")}</DataTableHead>
+              <DataTableHead>{t("disposalType")}</DataTableHead>
+              <DataTableHead>{t("requestedBy")}</DataTableHead>
+              <DataTableHead>{tCommon("status")}</DataTableHead>
+              <DataTableHead>{t("requestDate")}</DataTableHead>
+              {canApprove || canEdit ? <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead> : null}
+            </tr>
+          </DataTableHeader>
+          <DataTableBody>
+            {requestsWithEvidence.length === 0 ? (
+              <TableEmptyRow colSpan={((bulkApprovalEnabled || bulkExecutionEnabled) ? 1 : 0) + (canApprove || canEdit ? 7 : 6)} emptyState={emptyState} />
+            ) : requestsWithEvidence.map((request) => {
+              const stage = getDisposalStage(request.requestStatus)
+              const detailHref = appendOperationalReturnTo(`/${locale}/disposal/${request.id}`, disposalReturnHref)
+              return (
+                <ClickableTableRow key={request.id} href={detailHref} label={`${tCommon("view")}: ${request.disposalNo}`}>
+                  {bulkApprovalEnabled ? (
+                    <DataTableCell className="w-12 py-0" data-no-row-click><DisposalBulkApprovalCheckbox requestId={request.id} variant="desktop" /></DataTableCell>
+                  ) : bulkExecutionEnabled ? (
+                    <DataTableCell className="w-12 py-0" data-no-row-click><DisposalBulkExecutionCheckbox requestId={request.id} variant="desktop" /></DataTableCell>
+                  ) : null}
+                  <DataTableCell className="whitespace-nowrap">
+                    <Link href={detailHref} className="text-foreground hover:text-primary"><span className="tag font-medium">{request.disposalNo}</span></Link>
+                    {request.batch ? <Link href={`/${locale}/disposal/batches/${request.batch.id}`} className="mt-1 block text-xs text-primary hover:underline"><span className="tag">{request.batch.batchNo}</span></Link> : null}
+                  </DataTableCell>
+                  <DataTableCell className="min-w-56">
+                    <div className="text-foreground"><span className="tag font-medium">{request.asset.assetTag}</span></div>
+                    <div className="mt-1 text-xs text-muted-foreground">{request.asset.name}</div>
+                  </DataTableCell>
+                  <DataTableCell className="whitespace-nowrap text-muted-foreground">
+                    <div>{t(`types.${request.disposalType}`)}</div>
+                    <div className="mt-1 text-xs num">{orNil(getRequestValue(request, tCommon("baht")))}</div>
+                  </DataTableCell>
+                  <DataTableCell className="whitespace-nowrap text-muted-foreground"><span className="tag">{request.requestedBy.code}</span> - {request.requestedBy.fullNameTh}</DataTableCell>
+                  <DataTableCell className="whitespace-nowrap"><DisposalStageBadge stage={stage} label={stageLabels[stage]} /></DataTableCell>
+                  <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(request.requestDate)}</DataTableCell>
+                  {canApprove || canEdit ? (
+                    <DataTableCell align="right" sticky="right">
+                      <DisposalNextAction request={request} href={detailHref} row={{ menuLabel: tCommon("moreActionsFor", { code: request.disposalNo }), batchHref: request.batch ? `/${locale}/disposal/batches/${request.batch.id}` : undefined }} canApprove={canApprove} canExecute={canEdit} canUseHistoricalEvidenceException={user.roles.includes("system_admin")} segregationRequired={workflowPolicy.segregationRequired} actorEmployeeId={user.employeeId} actorUserId={user.id} decisionStatuses={decisionStatuses} executionStatuses={executionStatuses} employees={employeeOptions} labels={nextActionLabels} />
+                    </DataTableCell>
+                  ) : null}
                 </ClickableTableRow>
-              })}
-            </tbody>
-          </table>
-        </div>
-        <DisposalPagination filters={filters} total={total} basePath={`/${locale}/disposal`} labels={{ rowsPerPage: tCommon("rowsPerPage"), page: tCommon("page"), of: tCommon("of"), previous: tCommon("previous"), next: tCommon("next") }} />
-      </section>
+              )
+            })}
+          </DataTableBody>
+        </DataTable>
+        {total > 0 ? (
+          <DataTableFoot>
+            <Pagination
+              page={filters.page}
+              totalPages={resultRange.totalPages}
+              previousHref={`/${locale}/disposal?${buildDisposalQueryString(filters, { page: filters.page - 1 })}`}
+              nextHref={`/${locale}/disposal?${buildDisposalQueryString(filters, { page: filters.page + 1 })}`}
+              pageSize={filters.pageSize}
+              pageSizes={LIST_PAGE_SIZES.map((pageSize) => ({ value: pageSize, href: `/${locale}/disposal?${buildDisposalQueryString(filters, { pageSize, page: 1 })}` }))}
+              labels={{
+                navigation: tCommon("pagination"),
+                previous: tCommon("previous"),
+                next: tCommon("next"),
+                pageOf: tCommon("pageOf", { page: filters.page, total: resultRange.totalPages }),
+                range: tCommon("showingRange", { from: formatCount(resultRange.start), to: formatCount(resultRange.end), total: formatCount(total) }),
+                pageSizeGroup: tCommon("pageSizeLabel"),
+                rowsPerPage: tCommon("rowsPerPage"),
+              }}
+            />
+          </DataTableFoot>
+        ) : null}
+      </ContentPanel>
       </DisposalBulkExecutionProvider>
       </DisposalBulkApprovalProvider>
     </div>
   )
 }
 
-function DisposalFilterForm({ locale, filters, t, tCommon }: { locale: string; filters: ReturnType<typeof parseDisposalListParams>; t: Awaited<ReturnType<typeof getTranslations>>; tCommon: Awaited<ReturnType<typeof getTranslations>> }) {
-  return <form className="grid grid-cols-1 gap-3" action={`/${locale}/disposal`}>
-    <input type="hidden" name="pageSize" value={filters.pageSize} />
-    <label><span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("search")}</span><input type="search" name="search" defaultValue={filters.search} placeholder={t("searchPlaceholder")} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" /></label>
-    <label><span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("status")}</span><select name="status" defaultValue={filters.status} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm"><option value="">{tCommon("all")}</option><option value="pending">{t("statuses.pending")}</option><option value="approved">{t("statuses.approved")}</option><option value="disposed">{t("statuses.disposed")}</option><option value="rejected">{t("statuses.rejected")}</option></select></label>
-    <label><span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("disposalType")}</span><select name="disposalType" defaultValue={filters.disposalType} className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm"><option value="">{tCommon("all")}</option>{["sell", "donate", "destroy", "lost", "dispose"].map((type) => <option key={type} value={type}>{t(`types.${type}`)}</option>)}</select></label>
-    <div className="grid grid-cols-2 gap-3">
-      <label><span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("dateFrom")}</span><input type="date" name="dateFrom" defaultValue={filters.dateFrom} max={filters.dateTo || undefined} className="min-h-11 w-full min-w-0 rounded-md border border-border bg-background px-2 text-sm" /></label>
-      <label><span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("dateTo")}</span><input type="date" name="dateTo" defaultValue={filters.dateTo} min={filters.dateFrom || undefined} className="min-h-11 w-full min-w-0 rounded-md border border-border bg-background px-2 text-sm" /></label>
-    </div>
-    {getDisposalDateRangeError(filters) ? <p role="alert" className="text-sm font-medium text-danger">{t("invalidDateRange")}</p> : null}
-    <div className="grid grid-cols-2 gap-2"><button type="submit" className="min-h-11 rounded-md bg-primary px-4 text-sm font-medium text-white">{t("filter")}</button><Link href={`/${locale}/disposal`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium">{t("clearFilters")}</Link></div>
-  </form>
+// One form, rendered twice: in the phone <details> and in the desktop FilterPanel (spec 2B §5.10 #5, §6.5 6-ฌ). Field
+// ids come from useId, so the two copies never share an id; the hidden copy is display:none, so one search landmark shows.
+function DisposalFilterForm({ locale, filters, hasActiveFilters, t, tCommon }: { locale: string; filters: ReturnType<typeof parseDisposalListParams>; hasActiveFilters: boolean; t: Awaited<ReturnType<typeof getTranslations>>; tCommon: Awaited<ReturnType<typeof getTranslations>> }) {
+  const dateRangeError = getDisposalDateRangeError(filters)
+  return (
+    <form role="search" action={`/${locale}/disposal`} className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(220px,1fr)_160px_160px_160px_160px_auto]">
+      <input type="hidden" name="pageSize" value={filters.pageSize} />
+      <Field label={tCommon("search")} className="col-span-2 lg:col-span-1">
+        <SearchField name="search" defaultValue={filters.search} placeholder={t("searchPlaceholder")} />
+      </Field>
+      <FilterSelect label={tCommon("status")} name="status" defaultValue={filters.status} allLabel={tCommon("all")} options={disposalStatusFilters.map((status) => ({ value: status, label: t(`statuses.${status}`) }))} className="col-span-2 lg:col-span-1" />
+      <FilterSelect label={t("disposalType")} name="disposalType" defaultValue={filters.disposalType} allLabel={tCommon("all")} options={disposalTypeFilters.map((type) => ({ value: type, label: t(`types.${type}`) }))} className="col-span-2 lg:col-span-1" />
+      <Field label={t("dateFrom")}>
+        <Input type="date" name="dateFrom" defaultValue={filters.dateFrom} max={filters.dateTo || undefined} />
+      </Field>
+      <Field label={t("dateTo")}>
+        <Input type="date" name="dateTo" defaultValue={filters.dateTo} min={filters.dateFrom || undefined} />
+      </Field>
+      <FilterFormActions className="col-span-2 lg:col-span-1" submitLabel={t("filter")} clear={hasActiveFilters ? { href: `/${locale}/disposal`, label: t("clearFilters") } : undefined} />
+      {dateRangeError ? <p role="alert" className="col-span-2 text-meta text-danger lg:col-span-6">{t("invalidDateRange")}</p> : null}
+    </form>
+  )
 }
 
-function DisposalEmptyState({ locale, t, hasActiveFilters, canCreate }: { locale: string; t: Awaited<ReturnType<typeof getTranslations>>; hasActiveFilters: boolean; canCreate: boolean }) {
-  const actionHref = hasActiveFilters ? `/${locale}/disposal` : canCreate ? `/${locale}/disposal/new` : undefined
-  const actionLabel = hasActiveFilters ? t("clearFilters") : canCreate ? t("createTitle") : undefined
-  return <ActionEmptyState icon={<Trash2 className="h-6 w-6" />} title={t(hasActiveFilters ? "emptyTitle" : "emptyUnfilteredTitle")} description={t(hasActiveFilters ? "emptyHelp" : "emptyUnfilteredHelp")} actionHref={actionHref} actionLabel={actionLabel} />
+// One empty state for the phone list and the table: while a filter is on, clear filters as an outline button;
+// otherwise the create link for users who may create (spec 2B §5.4).
+function disposalEmptyState({ locale, t, hasActiveFilters, canCreate }: { locale: string; t: Awaited<ReturnType<typeof getTranslations>>; hasActiveFilters: boolean; canCreate: boolean }): ComponentProps<typeof ActionEmptyState> {
+  return {
+    icon: <Trash2 />,
+    title: t(hasActiveFilters ? "emptyTitle" : "emptyUnfilteredTitle"),
+    description: t(hasActiveFilters ? "emptyHelp" : "emptyUnfilteredHelp"),
+    actionHref: hasActiveFilters ? `/${locale}/disposal` : canCreate ? `/${locale}/disposal/new` : undefined,
+    actionLabel: hasActiveFilters ? t("clearFilters") : canCreate ? t("createTitle") : undefined,
+    actionVariant: hasActiveFilters ? "secondary" : "primary",
+  }
 }
 
 function DisposalStageBadge({ stage, label }: { stage: DisposalStage; label: string }) {
@@ -415,25 +496,41 @@ function DisposalStageBadge({ stage, label }: { stage: DisposalStage; label: str
 type DisposalActionRequest = { id: string; disposalNo: string; disposalType: string; requestStatus: string; requestedById: string; approverId: string | null; batchId: string | null; createdBy: string; saleValue: { toString(): string } | number | null; salvageValue: { toString(): string } | number | null; effectiveEvidenceCount: number }
 type DisposalStatusOption = { id: string; label: string; name: string }
 type DisposalEmployeeOption = { id: string; label: string }
+type DisposalNextActionLabels = { view: string; review: string; execute: string; executeShort: string; openRequest: string; openBatch: string }
 
-function DisposalNextAction({ request, href, canApprove, canExecute, canUseHistoricalEvidenceException, segregationRequired, actorEmployeeId, actorUserId, decisionStatuses, executionStatuses, employees, viewLabel }: { request: DisposalActionRequest; href: string; canApprove: boolean; canExecute: boolean; canUseHistoricalEvidenceException: boolean; segregationRequired: boolean; actorEmployeeId?: string | null; actorUserId: string; decisionStatuses: DisposalStatusOption[]; executionStatuses: DisposalStatusOption[]; employees: DisposalEmployeeOption[]; viewLabel: string }) {
+// The request's next step for this user: review or execute when the user may (and segregation allows), otherwise view.
+// A phone card shows the 2C buttons with their own triggers. A table row (row given) shows RowActions through
+// DisposalRowActions, whose next step opens the same dialogs through their handles, with ⋯ for the request and its
+// batch (spec 2B §5.4, R-m).
+function DisposalNextAction({ request, href, row, canApprove, canExecute, canUseHistoricalEvidenceException, segregationRequired, actorEmployeeId, actorUserId, decisionStatuses, executionStatuses, employees, labels }: { request: DisposalActionRequest; href: string; row?: { menuLabel: string; batchHref?: string }; canApprove: boolean; canExecute: boolean; canUseHistoricalEvidenceException: boolean; segregationRequired: boolean; actorEmployeeId?: string | null; actorUserId: string; decisionStatuses: DisposalStatusOption[]; executionStatuses: DisposalStatusOption[]; employees: DisposalEmployeeOption[]; labels: DisposalNextActionLabels }) {
   const canReview = canApprove && getDisposalSegregationError({ action: "approve", segregationRequired, actorEmployeeId, actorUserId, requestedById: request.requestedById, createdByUserId: request.createdBy }) === null
   const canExecuteAction = canExecute && getDisposalSegregationError({ action: "execute", segregationRequired, actorEmployeeId, actorUserId, requestedById: request.requestedById, createdByUserId: request.createdBy, approverId: request.approverId }) === null
   const nextAction = getDisposalNextAction(request.requestStatus, { canApprove: canReview, canExecute: canExecuteAction })
   const defaultSaleValue = request.saleValue != null ? String(request.saleValue) : undefined
   const defaultSalvageValue = request.salvageValue != null ? String(request.salvageValue) : undefined
+  const review = nextAction === "review" && decisionStatuses.length > 0
+  const execute = nextAction === "execute" && executionStatuses.length > 0
 
-  if (nextAction === "review" && decisionStatuses.length > 0) return <DisposalDecisionButton requestId={request.id} disposalNo={request.disposalNo} disposalType={request.disposalType} statuses={decisionStatuses} defaultSaleValue={defaultSaleValue} defaultSalvageValue={defaultSalvageValue} />
-  if (nextAction === "execute" && executionStatuses.length > 0) return <DisposalExecutionButton requestId={request.id} disposalNo={request.disposalNo} disposalType={request.disposalType} statuses={executionStatuses} employees={filterDisposalExecutorOptions(employees, request.approverId, segregationRequired)} defaultActualSaleValue={defaultSaleValue} defaultActualSalvageValue={defaultSalvageValue} effectiveEvidenceCount={request.effectiveEvidenceCount} canUseHistoricalEvidenceException={canUseHistoricalEvidenceException} />
-  return <Link href={href} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0">{viewLabel}</Link>
+  if (row) {
+    const next: DisposalRowNext = review
+      ? { kind: "review", label: labels.review, dialog: { requestId: request.id, disposalNo: request.disposalNo, disposalType: request.disposalType, statuses: decisionStatuses, defaultSaleValue, defaultSalvageValue } }
+      : execute
+        ? { kind: "execute", label: labels.executeShort, dialog: { requestId: request.id, disposalNo: request.disposalNo, disposalType: request.disposalType, statuses: executionStatuses, employees: filterDisposalExecutorOptions(employees, request.approverId, segregationRequired), defaultActualSaleValue: defaultSaleValue, defaultActualSalvageValue: defaultSalvageValue, effectiveEvidenceCount: request.effectiveEvidenceCount, canUseHistoricalEvidenceException } }
+        : { kind: "view", label: labels.view }
+    return <DisposalRowActions code={request.disposalNo} menuLabel={row.menuLabel} detail={{ label: labels.openRequest, href }} batch={row.batchHref ? { label: labels.openBatch, href: row.batchHref } : undefined} next={next} />
+  }
+  if (review) return <DisposalDecisionButton requestId={request.id} disposalNo={request.disposalNo} disposalType={request.disposalType} statuses={decisionStatuses} defaultSaleValue={defaultSaleValue} defaultSalvageValue={defaultSalvageValue} />
+  if (execute) return <DisposalExecutionButton requestId={request.id} disposalNo={request.disposalNo} disposalType={request.disposalType} statuses={executionStatuses} employees={filterDisposalExecutorOptions(employees, request.approverId, segregationRequired)} defaultActualSaleValue={defaultSaleValue} defaultActualSalvageValue={defaultSalvageValue} effectiveEvidenceCount={request.effectiveEvidenceCount} canUseHistoricalEvidenceException={canUseHistoricalEvidenceException} />
+  return <Link href={href} className={buttonVariants({ variant: "outline", size: "sm" })}>{labels.view}</Link>
 }
 
-function getRequestValue(request: DisposalActionRequest) {
-  if (request.saleValue != null) return formatCurrency(Number(request.saleValue))
-  if (request.salvageValue != null) return formatCurrency(Number(request.salvageValue))
-  return "-"
+// The money line under the type is a secondary line, not a money column, so it keeps its unit (spec 2B §5.7).
+function getRequestValue(request: DisposalActionRequest, unit: string) {
+  if (request.saleValue != null) return formatMoney(Number(request.saleValue), { unit })
+  if (request.salvageValue != null) return formatMoney(Number(request.salvageValue), { unit })
+  return null
 }
 
-function MobileDisposalField({ label, value }: { label: string; value: string }) {
-  return <div className="min-w-0 rounded-md bg-background px-3 py-2"><div className="text-xs font-medium text-muted-foreground">{label}</div><div className="mt-1 break-words text-sm text-foreground">{value}</div></div>
+function MobileDisposalField({ label, value }: { label: string; value: ReactNode }) {
+  return <div className="min-w-0 rounded-md bg-background px-3 py-2"><div className="text-xs font-medium text-muted-foreground">{label}</div><div className="mt-1 break-words text-sm text-foreground">{orNil(value)}</div></div>
 }

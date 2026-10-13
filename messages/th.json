@@ -3099,7 +3099,9 @@
     "salvageValueBaht": "มูลค่าซาก (บาท)",
     "actualSaleValueBaht": "มูลค่าขายจริง (บาท)",
     "actualSalvageValueBaht": "มูลค่าซากจริง (บาท)",
-    "requestEvidenceDescription": "แนบได้หลายไฟล์ ไฟล์จะอัปโหลดหลังบันทึกคำขอ"
+    "requestEvidenceDescription": "แนบได้หลายไฟล์ ไฟล์จะอัปโหลดหลังบันทึกคำขอ",
+    "activeFilterCount": "ใช้ตัวกรอง {count} รายการ",
+    "executeDisposalShort": "บันทึกตัดจำหน่าย"
   },
   "approvalInboxPage": {
     "title": "งานรออนุมัติ",

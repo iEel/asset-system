@@ -29,6 +29,7 @@ const MIGRATED_FILTER_FILES = [
   "src/app/[locale]/(dashboard)/master-data/employees/page.tsx",
   "src/app/[locale]/(dashboard)/master-data/locations/page.tsx",
   "src/app/[locale]/(dashboard)/master-data/suppliers/page.tsx",
+  "src/app/[locale]/(dashboard)/disposal/page.tsx",
 ]
 
 test("migrated filter forms use Field, SearchField and FilterSelect only, and every form is a search landmark (item 5)", () => {
@@ -48,5 +49,21 @@ test("clear filters shows only while a filter is on (item 6)", () => {
     for (const actions of read(path).match(/<FilterFormActions\b[\s\S]*?\/>/g) ?? []) {
       if (/\bclear=/.test(actions)) assert.match(actions, /\bclear=\{hasActiveFilters \?/, `${path}: ${actions}`)
     }
+  }
+})
+
+// Item 8 (spec 2B §6.13 table B, §5.10 #5): the disposal queue had two filter forms, one per screen size. One
+// DisposalFilterForm now renders in both places, and the phone summary counts the filters that are on.
+test("the disposal queue renders one DisposalFilterForm in two places and the page has no other form (item 8)", () => {
+  const source = read("src/app/[locale]/(dashboard)/disposal/page.tsx")
+  assert.equal(source.match(/<DisposalFilterForm locale=\{locale\} filters=\{filters\} hasActiveFilters=\{hasActiveFilters\} t=\{t\} tCommon=\{tCommon\} \/>/g)?.length, 2, "the phone <details> and the desktop FilterPanel")
+  assert.match(source, /<FilterPanel className="hidden md:block">\n\s+<DisposalFilterForm /)
+  assert.equal(source.match(/<form\b/g)?.length, 1, "one <form> in the file")
+  assert.ok(source.indexOf("<form") > source.indexOf("function DisposalFilterForm("), "the one <form> is DisposalFilterForm's")
+  assert.match(source, /\{hasActiveFilters \? <span className="text-meta font-normal text-muted-foreground num">\{t\("activeFilterCount", \{ count: activeFilterCount \}\)\}<\/span> : null\}/)
+  assert.doesNotMatch(source, />\{t\("clearFilters"\)\}<\/span>/, "the summary label that read clear filters but only folded the panel is gone")
+  for (const locale of ["th", "en"]) {
+    const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { disposalPage: Record<string, unknown> }
+    assert.equal(typeof messages.disposalPage.activeFilterCount, "string", `${locale}: disposalPage.activeFilterCount`)
   }
 })

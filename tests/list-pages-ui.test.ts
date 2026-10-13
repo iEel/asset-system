@@ -148,3 +148,51 @@ test("wide lists pin the actions column to the right, so edit and ⋯ stay visib
     assert.doesNotMatch(source, /<DataTableCell align="right">\s*<RowActions/, `${file}: no unpinned actions cell is left`)
   }
 })
+
+// Plan 2B-2 Task 3 (spec 2B §5.4 row "disposal", §5.10 #5, R-m): the disposal queue on the list primitives. The page is a
+// server component, so ⋯ opens the 2C decision and execution dialogs through their handles from DisposalRowActions.
+test("the disposal queue builds on PageHeader, TabNav, a divided panel, DataTable, one shared Pagination and RowActions (spec 2B §5.4)", () => {
+  const source = read(`${D}disposal/page.tsx`)
+  for (const part of ["<PageHeader", "<TabNav", "<ContentPanel", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow", "<ClickableTableRow", "<DataTableFoot>", "<Pagination", "<DisposalRowActions"]) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.match(source, /<div className="space-y-6">/)
+  assert.match(source, /<ContentPanel\n\s+divided\n\s+flush\n/, "the table sits flush in the panel: no frame in a frame")
+  assert.match(source, /<DataTable framed=\{false\} className=\{getDesktopTableOnlyClasses\(\)\} caption=\{t\("requestList"\)\} scrollHint=\{tCommon\("tableScrollHint"\)\}>/)
+  assert.match(source, /aria-label=\{t\("stageFilterLabel"\)\}/)
+  assert.match(source, /current=\{filters\.status \|\| "all"\}/)
+  assert.match(source, /count: formatCount\(stage\.count\)/)
+  assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
+  assert.match(source, /<DataTableCell align="right" sticky="right">\s*<DisposalNextAction /)
+  assert.match(source, /row=\{\{ menuLabel: tCommon\("moreActionsFor", \{ code: request\.disposalNo \}\), batchHref: /)
+  assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(/)
+  assert.match(source, /<TableEmptyRow colSpan=\{[^}]+\} emptyState=\{emptyState\} \/>/)
+  assert.match(source, /actionVariant: hasActiveFilters \? "secondary" : "primary"/)
+  assert.match(source, /formatMoney\(Number\(request\.saleValue\), \{ unit \}\)/)
+  assert.match(source, /executeShort: t\("executeDisposalShort"\),/, "the row button says บันทึกตัดจำหน่าย: the full words do not fit the 120px slot")
+  assert.match(source, /\{ kind: "execute", label: labels\.executeShort, dialog: /)
+  for (const locale of ["th", "en"]) {
+    const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { disposalPage: Record<string, unknown> }
+    assert.equal(typeof messages.disposalPage.executeDisposalShort, "string", `${locale}: disposalPage.executeDisposalShort`)
+  }
+  assert.match(source, /^import \{ redirect \} from "next\/navigation"$/m)
+  assert.match(source, /const lastPage = lastListPage\(total, filters\.pageSize\)\n\s+if \(requests\.length === 0 && total > 0 && filters\.page > lastPage\) \{\n\s+redirect\(`\/\$\{locale\}\/disposal\?\$\{buildDisposalQueryString\(filters, \{ page: lastPage \}\)\}`\)/)
+  assert.match(source, /const bulkApprovalCopy: DisposalBulkApprovalCopy = \{/, "2C plan 5 adds keys to bulkApprovalCopy and bulkExecutionCopy")
+  assert.match(source, /const bulkExecutionCopy: DisposalBulkExecutionCopy = \{/)
+  assert.equal(existsSync(`${C}disposal/disposal-pagination.tsx`), false, "the queue was the last caller of DisposalPagination")
+})
+
+test("DisposalRowActions opens the 2C dialogs through their handles and gives focus back to the button that opened them (spec 2B R-m, §3.11)", () => {
+  const source = read(`${C}disposal/disposal-row-actions.tsx`)
+  assert.match(source, /^"use client"/)
+  assert.match(source, /<RowActions\n\s+code=\{code\}/)
+  assert.match(source, /openerRef=\{openerRef\}\n\s+menu="dropdown"/)
+  assert.match(source, /onSelect: \(\) => decisionRef\.current\?\.open\(\)/)
+  assert.match(source, /onSelect: \(\) => executionRef\.current\?\.open\(\)/)
+  assert.match(source, /<DisposalDecisionButton \{\.\.\.next\.dialog\} ref=\{decisionRef\} hideTrigger returnFocusRef=\{openerRef\} \/>/)
+  assert.match(source, /<DisposalExecutionButton \{\.\.\.next\.dialog\} ref=\{executionRef\} hideTrigger returnFocusRef=\{openerRef\} \/>/)
+  assert.match(source, /<span hidden onClick=\{stopPortalEvent\} onKeyDown=\{stopPortalEvent\}>/, "a click or Enter inside a dialog never reaches the row")
+  assert.match(source, /if \(!event\.currentTarget\.contains\(event\.target as Node\)\) event\.stopPropagation\(\)/)
+  assert.match(source, /\.\.\.\(next\.kind === "view" \? \[\] : \[/, "a view row's next step already opens the request, so ⋯ does not repeat it")
+  assert.doesNotMatch(source, /\bbusy\b|shadow-|flex-col-reverse/)
+})

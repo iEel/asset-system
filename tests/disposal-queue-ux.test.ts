@@ -20,7 +20,8 @@ test("disposal queue communicates range, date errors, compact mobile detail, and
   assert.match(page, /getDisposalDateRangeError/)
   assert.match(page, /resultRange/)
   assert.match(page, /<details/)
-  assert.match(page, /sticky right-0/)
+  assert.match(page, /<DataTableHead align="right" sticky="right" hideLabel>/, "the actions column stays pinned to the right (DataTable sticky, spec 2B §3.4)")
+  assert.match(page, /<DataTableCell align="right" sticky="right">/)
   assert.match(page, /hasActiveFilters=\{hasActiveFilters\}/)
 })
 
@@ -41,10 +42,12 @@ test("bulk approval navigation guard wraps filters as well as the queue", () => 
   const page = readFileSync(queuePath, "utf8")
   const providerStart = page.indexOf("<DisposalBulkApprovalProvider")
   const mobileFilter = page.indexOf("<DisposalFilterForm")
-  const desktopFilter = page.indexOf('<form className="grid grid-cols-1 gap-3 lg:grid-cols-')
+  // One DisposalFilterForm renders twice (spec 2B §5.10 #5): the phone <details> copy first, then the desktop FilterPanel copy.
+  const desktopFilter = page.indexOf("<DisposalFilterForm", mobileFilter + 1)
   const providerEnd = page.lastIndexOf("</DisposalBulkApprovalProvider>")
 
   assert.ok(providerStart >= 0)
+  assert.ok(mobileFilter >= 0 && desktopFilter > mobileFilter, "two DisposalFilterForm call sites")
   assert.ok(providerStart < mobileFilter)
   assert.ok(providerStart < desktopFilter)
   assert.ok(providerEnd > mobileFilter)

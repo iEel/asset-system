@@ -3099,7 +3099,9 @@
     "salvageValueBaht": "Salvage Value (THB)",
     "actualSaleValueBaht": "Actual Sale Value (THB)",
     "actualSalvageValueBaht": "Actual Salvage Value (THB)",
-    "requestEvidenceDescription": "You can attach several files. They upload after the request is saved."
+    "requestEvidenceDescription": "You can attach several files. They upload after the request is saved.",
+    "activeFilterCount": "{count} filters on",
+    "executeDisposalShort": "Dispose"
   },
   "approvalInboxPage": {
     "title": "Approval Inbox",
