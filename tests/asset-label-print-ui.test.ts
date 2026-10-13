@@ -200,3 +200,22 @@ test("the label batch tool uses PageHeader, shared fields and Button (2C batch 4
   assert.equal(source.match(/<button\b/g)?.length, 2, "only the result and queue rows stay list buttons (2D)")
   assert.doesNotMatch(source, /<h1\b|<select\b|<input\b|<label\b|mb-1\.5 block text-sm font-medium|focus:border-ring/)
 })
+
+// Phase 2C batch 4 (spec 2C §4.9 K21, §4.18 item 9, §6.4.2, K13): the print toolbar keeps its boxed labels with the
+// field colors, 16px text below md, 40px from md and the field focus look on the box; the print button is busy with
+// one label; the print heading stays 700 (2B spec I13).
+test("the label print toolbar keeps its boxed fields with a focus ring and a busy print button (2C batch 4)", () => {
+  const source = readFileSync("src/components/assets/asset-label-print.tsx", "utf8").replace(/\r\n/g, "\n")
+  const boxes = [...source.matchAll(/<label className="([^"]+)">/g)].map((match) => match[1])
+  assert.equal(boxes.length, 2)
+  for (const box of boxes) {
+    assert.match(box, /\bborder-input bg-surface\b/, box)
+    assert.match(box, /\btext-base\b.*\bmd:h-10 md:min-h-0 md:text-sm focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:shadow-field-focus$/, box)
+    assert.doesNotMatch(box, /(?<![\w:-])(?:border-border|bg-background|text-sm)\b|\bsm:h-10\b/, box)
+  }
+  assert.equal(source.match(/className="min-w-0 flex-1 bg-transparent (?:font-medium )?outline-none/g)?.length, 2, "the controls inside the boxes stay bare")
+  assert.match(source, /<Button onClick=\{handlePrint\} busy=\{recordingPrint\} className="w-full sm:w-auto">\n\s+<Printer aria-hidden="true" \/>\n\s+\{translations\.print\}\n\s+<\/Button>/)
+  assert.doesNotMatch(source, /Loader2|translations\.recordingPrint|disabled=\{recordingPrint\}/)
+  assert.match(source, /<h1 className="text-2xl font-bold">\{translations\.title\}<\/h1>/, "the print heading stays 700")
+  assert.match(source, /maxLength=\{500\}/)
+})

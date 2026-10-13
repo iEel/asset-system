@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { AlertTriangle, ArrowLeft, Info, Loader2, Printer } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Info, Printer } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
+import { Button } from "@/components/ui/button"
 import { isLikelyLocalAssetQrValue } from "@/lib/asset-qr"
 import {
   assetLabelTapeSizes,
@@ -220,7 +221,7 @@ export function AssetLabelPrint({
             {translations.back}
           </Link>
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-            <label className="flex min-h-11 w-full min-w-0 flex-wrap items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm sm:h-10 sm:min-w-[240px] sm:flex-nowrap sm:py-0">
+            <label className="flex min-h-11 w-full min-w-0 flex-wrap items-center gap-2 rounded-md border border-input bg-surface px-3 py-2 text-base sm:min-w-[240px] sm:flex-nowrap sm:py-0 md:h-10 md:min-h-0 md:text-sm focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:shadow-field-focus">
               <span className="shrink-0 font-medium text-muted-foreground">{translations.printReason}</span>
               <input
                 type="text"
@@ -231,7 +232,7 @@ export function AssetLabelPrint({
                 className="min-w-0 flex-1 bg-transparent outline-none"
               />
             </label>
-            <label className="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm sm:h-10 sm:w-auto">
+            <label className="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md border border-input bg-surface px-3 text-base sm:w-auto md:h-10 md:min-h-0 md:text-sm focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:shadow-field-focus">
               <span className="shrink-0 font-medium text-muted-foreground">{translations.tapeSize}</span>
               <select
                 value={tapeSize}
@@ -251,15 +252,10 @@ export function AssetLabelPrint({
                 ))}
               </select>
             </label>
-            <button
-              type="button"
-              onClick={handlePrint}
-              disabled={recordingPrint}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-10 sm:w-auto"
-            >
-              {recordingPrint ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
-              {recordingPrint ? translations.recordingPrint : translations.print}
-            </button>
+            <Button onClick={handlePrint} busy={recordingPrint} className="w-full sm:w-auto">
+              <Printer aria-hidden="true" />
+              {translations.print}
+            </Button>
           </div>
         </div>
         <div className="mx-auto flex max-w-5xl flex-col gap-2 px-3 pb-4 sm:px-6">
