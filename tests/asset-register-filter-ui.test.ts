@@ -55,8 +55,8 @@ test("the filter sheet applies changes at once, keeps its trigger and shows the 
   assert.match(source, /t\("filterSheetShowResults", \{ count:/)
   assert.match(source, /t\("filterSheetNoResults"\)/)
   assert.match(source, /onClick=\{\(\) => setOpen\(false\)\}/)
-  assert.match(source, /help=\{statusHelp\}/)
-  assert.match(source, /help=\{conditionHelp\}/)
+  assert.match(source, /labelAction=\{<AssetStateHelpPopover \{\.\.\.statusHelp\} \/>\}/)
+  assert.match(source, /labelAction=\{<AssetStateHelpPopover \{\.\.\.conditionHelp\} \/>\}/)
   assert.match(source, /aria-pressed=\{active\}/)
   assert.match(source, /min-h-11/)
   assert.doesNotMatch(source, /type="submit"/)
@@ -130,4 +130,19 @@ test("the toolbar has no card from md, its scope selects are FilterSelect hideLa
   assert.match(source, /className="sticky top-0 z-20 -mx-4 mb-3 bg-canvas px-4 py-2 sm:-mx-6 sm:px-6 md:static md:mx-0 md:px-0 md:py-0"/)
   assert.match(source, /trigger=\{\n\s+<Button variant="outline" size="md">\n\s+<SlidersHorizontal className="size-4" aria-hidden="true" \/>/)
   assert.doesNotMatch(source, /md:rounded-lg md:border|md:bg-surface|getFieldControlClasses|<select\b|<NativeSelect\b|<button\b|aria-label=/)
+})
+
+// Plan 2B-3 Task 7 (spec 2B §7.6, I6, I26): the sheet's seven selects are FilterSelect with a visible label at lg,
+// status and condition carry their 24px help button in labelAction, and the result button is busy while it loads.
+test("the filter sheet uses FilterSelect with labelAction help and a busy result button (2B §7.6)", () => {
+  const source = sheet()
+
+  assert.equal(source.match(/<FilterSelect\b/g)?.length, 7)
+  assert.match(source, /key=\{`status-\$\{filters\.statusId\}`\}\n\s+defaultValue=\{filters\.statusId\}\n\s+onChange=\{\(event\) => navigate\(\{ statusId: event\.target\.value \}\)\}/)
+  assert.match(source, /key=\{`pageSize-\$\{filters\.pageSize\}`\}\n\s+defaultValue=\{String\(filters\.pageSize\)\}\n\s+onChange=\{\(event\) => navigate\(\{ pageSize: Number\(event\.target\.value\) \}\)\}/)
+  assert.equal(new Set(source.match(/key=\{`[A-Za-z]+-\$\{filters\./g)).size, 7, "sibling FilterSelects need distinct keys: an unset filter is the same empty value in every select")
+  assert.match(source, /<Button onClick=\{\(\) => setOpen\(false\)\} aria-live="polite" busy=\{isPending\}>/)
+  assert.match(source, /t\("filterSheetShowResults", \{ count: formatCount\(total\) \}\)/)
+  assert.match(source, /<SheetHeader>/)
+  assert.doesNotMatch(source, /function LabeledSelect|<select\b|Loader2|closeLabel=|pr-14|getFieldControlClasses|toLocaleString\(|useLocale/)
 })

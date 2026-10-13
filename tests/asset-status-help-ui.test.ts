@@ -46,9 +46,9 @@ test("asset register keeps status and condition filters together with their help
 
   assert.ok(statusIndex > -1, "status select is missing")
   assert.ok(conditionIndex > statusIndex, "condition must follow status")
-  assert.match(source, /help=\{statusHelp\}/)
-  assert.match(source, /help=\{conditionHelp\}/)
-  assert.match(source, /<AssetStateHelpPopover \{\.\.\.help\} size="compact" \/>/)
+  assert.match(source, /labelAction=\{<AssetStateHelpPopover \{\.\.\.statusHelp\} \/>\}/)
+  assert.match(source, /labelAction=\{<AssetStateHelpPopover \{\.\.\.conditionHelp\} \/>\}/)
+  assert.doesNotMatch(source, /size="compact"|function LabeledSelect/)
 })
 
 test("asset status and condition help messages are localized", () => {

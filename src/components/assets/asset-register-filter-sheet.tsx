@@ -1,18 +1,18 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2 } from "lucide-react"
-import { useLocale, useTranslations } from "next-intl"
+import { useTranslations } from "next-intl"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
 import { useAssetRegisterNavigation } from "@/components/assets/asset-register-navigation"
 import { Button } from "@/components/ui/button"
+import { FilterSelect } from "@/components/ui/filter-select"
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useMediaQuery } from "@/components/ui/use-media-query"
 import type { AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
 import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
 import { assetOwnershipTypes } from "@/lib/asset-ownership"
 import { buildSheetClearOverrides, getActiveSheetFilterKeys, getCompanyChangeOverrides } from "@/lib/asset-register-filters"
-import { getFieldControlClasses } from "@/lib/design-system"
+import { formatCount } from "@/lib/display-format"
 import { cn } from "@/lib/utils"
 
 export type AssetRegisterFilterOptions = {
@@ -52,7 +52,6 @@ export function AssetRegisterFilterSheet({
 }) {
   const t = useTranslations("asset")
   const tCommon = useTranslations("common")
-  const locale = useLocale()
   const { filters, isPending, navigate } = useAssetRegisterNavigation()
   const isDesktop = useMediaQuery("(min-width: 48rem)")
   const [open, setOpen] = useState(false)
@@ -82,67 +81,96 @@ export function AssetRegisterFilterSheet({
     ? t("filterSheetLoading")
     : total === 0
       ? t("filterSheetNoResults")
-      : t("filterSheetShowResults", { count: total.toLocaleString(locale === "th" ? "th-TH" : "en-US") })
+      : t("filterSheetShowResults", { count: formatCount(total) })
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side={isDesktop ? "right" : "bottom"}
-        closeLabel={tCommon("close")}
         data-asset-filter-sheet
         className={isDesktop ? "w-full gap-0 sm:max-w-md" : "max-h-[85dvh] gap-0 rounded-t-xl"}
       >
-        <SheetHeader className="border-b border-border pr-14">
+        <SheetHeader>
           <SheetTitle>{t("filterSheetTitle")}</SheetTitle>
           <SheetDescription>{t("advancedFiltersHelp")}</SheetDescription>
         </SheetHeader>
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
+          {/* Uncontrolled + key: each FilterSelect remounts on the optimistic value, so it never bounces back. The key
+              carries the filter name too, because an unset filter is the same empty value in every sibling select. */}
           {isDesktop ? null : (
             <FilterSection title={t("filterSheetScope")}>
-              <LabeledSelect
+              <FilterSelect
                 label={t("company")}
-                value={filters.companyId}
-                onChange={(value) => navigate(getCompanyChangeOverrides(value, filters.branchId, options.branches))}
+                key={`company-${filters.companyId}`}
+                defaultValue={filters.companyId}
+                onChange={(event) => navigate(getCompanyChangeOverrides(event.target.value, filters.branchId, options.branches))}
               >
                 <option value="">{tCommon("all")}</option>
                 {options.companies.map((company) => (
                   <option key={company.id} value={company.id}>{company.code} - {company.nameTh}</option>
                 ))}
-              </LabeledSelect>
-              <LabeledSelect label={t("branch")} value={filters.branchId} onChange={(value) => navigate({ branchId: value })}>
+              </FilterSelect>
+              <FilterSelect
+                label={t("branch")}
+                key={`branch-${filters.branchId}`}
+                defaultValue={filters.branchId}
+                onChange={(event) => navigate({ branchId: event.target.value })}
+              >
                 <option value="">{tCommon("all")}</option>
                 {branches.map((branch) => (
                   <option key={branch.id} value={branch.id}>{branch.company.code} / {branch.code} - {branch.name}</option>
                 ))}
-              </LabeledSelect>
-              <LabeledSelect label={t("category")} value={filters.categoryId} onChange={(value) => navigate({ categoryId: value })}>
+              </FilterSelect>
+              <FilterSelect
+                label={t("category")}
+                key={`category-${filters.categoryId}`}
+                defaultValue={filters.categoryId}
+                onChange={(event) => navigate({ categoryId: event.target.value })}
+              >
                 <option value="">{tCommon("all")}</option>
                 {options.categories.map((category) => (
                   <option key={category.id} value={category.id}>{category.code} - {category.name}</option>
                 ))}
-              </LabeledSelect>
+              </FilterSelect>
             </FilterSection>
           )}
           <FilterSection title={t("filterSheetState")}>
-            <LabeledSelect label={t("status")} help={statusHelp} value={filters.statusId} onChange={(value) => navigate({ statusId: value })}>
+            <FilterSelect
+              label={t("status")}
+              labelAction={<AssetStateHelpPopover {...statusHelp} />}
+              key={`status-${filters.statusId}`}
+              defaultValue={filters.statusId}
+              onChange={(event) => navigate({ statusId: event.target.value })}
+            >
               <option value="">{tCommon("all")}</option>
               {options.statuses.map((status) => (
                 <option key={status.id} value={status.id}>{status.nameTh}</option>
               ))}
-            </LabeledSelect>
-            <LabeledSelect label={t("condition")} help={conditionHelp} value={filters.conditionId} onChange={(value) => navigate({ conditionId: value })}>
+            </FilterSelect>
+            <FilterSelect
+              label={t("condition")}
+              labelAction={<AssetStateHelpPopover {...conditionHelp} />}
+              key={`condition-${filters.conditionId}`}
+              defaultValue={filters.conditionId}
+              onChange={(event) => navigate({ conditionId: event.target.value })}
+            >
               <option value="">{tCommon("all")}</option>
               {options.conditions.map((condition) => (
                 <option key={condition.id} value={condition.id}>{condition.nameTh}</option>
               ))}
-            </LabeledSelect>
-            <LabeledSelect label={t("ownershipType")} value={filters.ownershipType} onChange={(value) => navigate({ ownershipType: value })}>
+            </FilterSelect>
+            <FilterSelect
+              label={t("ownershipType")}
+              key={`ownershipType-${filters.ownershipType}`}
+              defaultValue={filters.ownershipType}
+              onChange={(event) => navigate({ ownershipType: event.target.value })}
+            >
               <option value="">{tCommon("all")}</option>
               {assetOwnershipTypes.map((type) => (
                 <option key={type} value={type}>{t(`ownershipType_${type}`)}</option>
               ))}
-            </LabeledSelect>
+            </FilterSelect>
           </FilterSection>
           <FilterSection title={t("quickFilterGroupDataQuality")}>
             <ChipGroup
@@ -161,19 +189,23 @@ export function AssetRegisterFilterSheet({
             />
           </FilterSection>
           <FilterSection title={t("filterSheetDisplay")}>
-            <LabeledSelect label={t("pageSizeLabel")} value={String(filters.pageSize)} onChange={(value) => navigate({ pageSize: Number(value) })}>
+            <FilterSelect
+              label={t("pageSizeLabel")}
+              key={`pageSize-${filters.pageSize}`}
+              defaultValue={String(filters.pageSize)}
+              onChange={(event) => navigate({ pageSize: Number(event.target.value) })}
+            >
               {[10, 25, 50, 100].map((pageSize) => (
                 <option key={pageSize} value={pageSize}>{pageSize}</option>
               ))}
-            </LabeledSelect>
+            </FilterSelect>
           </FilterSection>
         </div>
         <SheetFooter className="grid grid-cols-2 gap-2 border-t border-border">
           <Button variant="outline" disabled={activeCount === 0} onClick={() => navigate(buildSheetClearOverrides(filters, scope))}>
             {t("filterSheetClear")}
           </Button>
-          <Button onClick={() => setOpen(false)} aria-live="polite">
-            {isPending ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
+          <Button onClick={() => setOpen(false)} aria-live="polite" busy={isPending}>
             {resultLabel}
           </Button>
         </SheetFooter>
@@ -188,39 +220,6 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
       <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       {children}
     </section>
-  )
-}
-
-function LabeledSelect({
-  label,
-  value,
-  onChange,
-  help,
-  children,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  help?: { title: string; description: string; items: string[] }
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-        <span>{label}</span>
-        {help ? <AssetStateHelpPopover {...help} size="compact" /> : null}
-      </div>
-      {/* Uncontrolled + key: remounts on the optimistic value, so it never bounces back. */}
-      <select
-        key={value}
-        aria-label={label}
-        defaultValue={value}
-        onChange={(event) => onChange(event.target.value)}
-        className={getFieldControlClasses()}
-      >
-        {children}
-      </select>
-    </div>
   )
 }
 

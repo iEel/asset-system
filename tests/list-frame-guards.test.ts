@@ -85,6 +85,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}assets/asset-register-mobile-list.tsx`,
   `${C}assets/asset-register-toolbar.tsx`,
   `${C}assets/asset-register-search-field.tsx`,
+  `${C}assets/asset-register-filter-sheet.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -236,8 +237,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}my-assets/[id]/page.tsx`]: 1,
   },
   LF1: {
-    // 2B-3
-    [`${C}assets/asset-register-filter-sheet.tsx`]: 1,
     // 2B-5
     [`${C}reports/report-filter-panel.tsx`]: 1,
   },
