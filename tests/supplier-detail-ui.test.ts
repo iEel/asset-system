@@ -12,7 +12,7 @@ test("purchase documents use adaptive desktop and mobile presentations", () => {
   assert.match(documents, /hidden[^"\n]*md:block/)
   assert.match(documents, /data-supplier-documents-mobile/)
   assert.match(documents, /md:hidden/)
-  assert.match(documents, /<table/)
+  assert.match(documents, /<DataTable\b/)
   assert.match(documents, /<article/)
   assert.match(documents, /<dl/)
 })

@@ -546,3 +546,18 @@ test("the supplier page builds on PageHeader, StatStrip and KeyValueList, shows 
   assert.match(source, /totalAmount: tAsset\("purchaseDocumentAmountBaht"\),/)
   assert.doesNotMatch(source, /function (?:MetricCard|InfoRow)\b|<MetricCard\b|formatCurrency|\?\? 0\)\)|toLocaleString\(|"-"/)
 })
+
+// Plan 2B-4 Task 7 (spec 2B §5.5, §5.7, R-p): a supplier's purchase documents on DataTable. The count and money columns
+// are right aligned in num cells; the unit sits in the money header (the page passes "ยอดรวม (บาท)"), so the cells hold
+// the number only.
+test("supplier purchase documents: DataTable with right-aligned count and money columns, formatCount, formatMoney and Nil (spec 2B §5.5, §5.7)", () => {
+  const source = read(`${C}master-data/supplier-purchase-documents.tsx`)
+  assert.match(source, /<DataTable data-supplier-documents-desktop className="mt-4 hidden md:block">/)
+  assert.match(source, /<DataTableHead align="right">\{labels\.linkedAssets\}<\/DataTableHead>/)
+  assert.match(source, /<DataTableHead align="right">\{labels\.totalAmount\}<\/DataTableHead>/)
+  assert.match(source, /<DataTableCell numeric className="text-muted-foreground">\{formatMoney\(document\.totalAmount\)\}<\/DataTableCell>/)
+  assert.equal(source.match(/formatCount\(document\.linkedAssets\)/g)?.length, 2, "the table and the phone card")
+  assert.equal(source.match(/orNil\(documentReferences\(document\)\)/g)?.length, 2, "the table and the phone card")
+  assert.equal(source.match(/<span className="tag">\{document\.documentNo\}<\/span>/g)?.length, 2)
+  assert.doesNotMatch(source, /<table\b|formatCurrency|toLocaleString\(|"-"/)
+})

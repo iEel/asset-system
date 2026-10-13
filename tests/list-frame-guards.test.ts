@@ -99,6 +99,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}disposal/[id]/page.tsx`,
   `${D}master-data/employees/[id]/page.tsx`,
   `${D}master-data/suppliers/[id]/page.tsx`,
+  `${C}master-data/supplier-purchase-documents.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -267,8 +268,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}master-data/master-data-layout.tsx`]: 2, // 2B-5 deletes MasterDataPagination (R-h)
   },
   LV1: {
-    // 2B-4
-    [`${C}master-data/supplier-purchase-documents.tsx`]: 2,
     // 2B-5
     [`${D}admin/storage/page.tsx`]: 7,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
@@ -288,7 +287,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-4
     [`${D}assets/[id]/page.tsx`]: 4, // → 4 (KEEP): translated-sentence arguments :1198, :1200 and the history sentence :2462 (R-n)
     [`${D}my-assets/[id]/page.tsx`]: 1,
-    [`${C}master-data/supplier-purchase-documents.tsx`]: 2,
     // 2B-5
     [`${D}admin/approvals/page.tsx`]: 1,
     [`${D}admin/roles/page.tsx`]: 1,
@@ -309,8 +307,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}disposal/disposal-batch-form.tsx`]: 3, // → 3 (KEEP): 2C form (2D)
   },
   LV3: {
-    // 2B-4
-    [`${C}master-data/supplier-purchase-documents.tsx`]: 2,
     // 2B-5
     [`${D}reports/page.tsx`]: 1,
     [`${C}reports/reports-accounting-view.tsx`]: 9,
