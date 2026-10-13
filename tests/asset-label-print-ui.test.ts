@@ -152,7 +152,7 @@ test("label tool messages include queue filter and print ordering labels", () =>
 test("label search pre-query guidance stays compact under the input", () => {
   const source = readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8")
 
-  assert.match(source, /<p className="mt-2 text-xs text-muted-foreground">\{labels\.minChars\}<\/p>/)
+  assert.match(source, /hint=\{trimmedQuery\.length < 2 \? labels\.minChars : undefined\}/)
   assert.doesNotMatch(source, /<div className="p-6 text-center text-sm text-muted-foreground">\{labels\.minChars\}<\/div>/)
 })
 
@@ -178,4 +178,25 @@ test("label queue presents company and branch print scope before location filter
     assert.equal(typeof messages.addFilteredQueue, "string")
     assert.equal(typeof messages.addFilteredQueueUnavailable, "string")
   }
+})
+
+// Phase 2C batch 4 (spec 2C §8.9 O19, §4.5, §4.9, §6.4.2; 2B spec I13): the label batch tool's header, fields and
+// buttons on the shared parts. The result and queue rows stay list buttons (2D); the two status-line spinners stay and
+// stop for users who reduce motion (I27).
+test("the label batch tool uses PageHeader, shared fields and Button (2C batch 4)", () => {
+  const source = readFileSync("src/components/assets/asset-label-batch-tool.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /<PageHeader title=\{labels\.title\} meta=\{labels\.subtitle\} \/>/)
+  assert.match(source, /<Field label=\{labels\.searchLabel\} hint=\{trimmedQuery\.length < 2 \? labels\.minChars : undefined\}>\n\s+<SearchField value=\{query\} onChange=\{\(event\) => setQuery\(event\.target\.value\)\} placeholder=\{labels\.searchPlaceholder\} \/>\n\s+<\/Field>/)
+  assert.match(source, /<Field label=\{icon \? <span className="inline-flex items-center gap-1">\{icon\}\{label\}<\/span> : label\}>\n\s+<NativeSelect value=\{value\} onChange=\{\(event\) => onChange\(event\.target\.value\)\}>/)
+  assert.equal(source.match(/<Field label=\{labels\.queueFilterCreated(?:From|To)\}>\n\s+<Input\n\s+type="date"/g)?.length, 2)
+  assert.match(source, /icon=\{<ArrowDownAZ aria-hidden="true" className="h-4 w-4 text-primary" \/>\}/)
+  assert.equal(source.match(/<Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" \/>/g)?.length, 2)
+  assert.match(source, /<Button disabled=\{recentAssets\.length === 0\} onClick=\{addRecentAssets\} className="w-full shrink-0 sm:w-auto">/)
+  assert.match(source, /<Button variant="outline" onClick=\{resetQueueFilters\}>/)
+  assert.match(source, /<Button variant="outline" onClick=\{loadMoreQueue\} className="mt-3 w-full">/)
+  assert.match(source, /<Button variant="outline" disabled=\{selectedForPrint\.length === 0\} onClick=\{printFirstLabel\} className="w-full">/)
+  assert.match(source, /<Button disabled=\{selectedForPrint\.length === 0\} onClick=\{printLabels\} className="w-full">/)
+  assert.match(source, /<Button\n\s+variant="outline"\n\s+size="icon-sm"\n\s+onClick=\{\(\) => removeAsset\(asset\.id\)\}\n\s+className="shrink-0"\n\s+title=\{labels\.remove\}\n\s+aria-label=\{labels\.remove\}/)
+  assert.equal(source.match(/<button\b/g)?.length, 2, "only the result and queue rows stay list buttons (2D)")
+  assert.doesNotMatch(source, /<h1\b|<select\b|<input\b|<label\b|mb-1\.5 block text-sm font-medium|focus:border-ring/)
 })

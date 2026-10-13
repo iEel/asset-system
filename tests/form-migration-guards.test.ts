@@ -92,6 +92,7 @@ const MIGRATED_FILES: string[] = [
   `${C}notifications/notification-center-actions.tsx`,
   `${C}reports/report-preset-controls.tsx`,
   `${C}auth/login-form.tsx`,
+  `${C}assets/asset-label-batch-tool.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -179,7 +180,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 3
   [`${C}audit/audit-scan-room-picker.tsx`]: 1, // → 1: the room search :75 stays (O20)
   // 4
-  [`${C}assets/asset-label-batch-tool.tsx`]: 4,
   [`${C}assets/asset-label-print.tsx`]: 2, // → 2: the toolbar :225, :236 (K21)
   [`${C}assets/asset-status-correction-button.tsx`]: 1,
   [`${C}assets/asset-register-table.tsx`]: 4,
@@ -198,7 +198,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 2
   // 3
   // 4
-  [`${C}assets/asset-label-batch-tool.tsx`]: 4,
   [`${C}assets/asset-status-correction-button.tsx`]: 1,
   [`${C}assets/asset-register-table.tsx`]: 4,
   [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 1,
@@ -268,7 +267,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 2
   // 3
   // 4
-  [`${C}assets/asset-label-batch-tool.tsx`]: 1,
   [`${C}assets/asset-scan-search-tool.tsx`]: 1,
   [`${C}assets/asset-register-table.tsx`]: 6, // → 2: list checkboxes :549, :620 (2B, O1)
 }
@@ -292,7 +290,7 @@ const LOADER2: Record<string, number> = {
   [`${C}disposal/disposal-bulk-execution.tsx`]: 1, // BusyLabel :969, the status line in the dialog body (I27)
   // 4
   [`${C}admin/IntegrationClientManager.tsx`]: 2, // the status line :523 and the rotate button of the row :853 (2D, I27)
-  [`${C}assets/asset-label-batch-tool.tsx`]: 2, // → 2: the status lines :321, :469
+  [`${C}assets/asset-label-batch-tool.tsx`]: 2, // the status lines :311, :446 (I27)
   [`${C}assets/asset-label-print.tsx`]: 1,
   [`${C}assets/asset-scan-search-tool.tsx`]: 1, // → 1: the status line :146
   [`${C}assets/asset-register-table.tsx`]: 1,

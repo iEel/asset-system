@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
-import { ArrowDownAZ, Clock3, Filter, Loader2, MapPin, Plus, Printer, RotateCcw, Search, X } from "lucide-react"
+import { ArrowDownAZ, Clock3, Filter, Loader2, MapPin, Plus, Printer, RotateCcw, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
+import { PageHeader } from "@/components/ui/page-header"
+import { SearchField } from "@/components/ui/search-field"
 import { buildAssetLabelSubtitle } from "@/lib/asset-label-display"
 
 type SelectOption = {
@@ -289,36 +295,20 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 overflow-x-hidden">
-      <div>
-        <h1 className="break-words text-2xl font-bold text-foreground">{labels.title}</h1>
-        <p className="mt-1 break-words text-sm text-muted-foreground">{labels.subtitle}</p>
-      </div>
+      <PageHeader title={labels.title} meta={labels.subtitle} />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="min-w-0 space-y-5">
           <section className="rounded-lg border border-border bg-surface p-4 sm:p-5">
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.searchLabel}</span>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder={labels.searchPlaceholder}
-                  className="h-11 w-full rounded-md border border-border bg-background pl-10 pr-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                />
-              </div>
-              {trimmedQuery.length < 2 ? (
-                <p className="mt-2 text-xs text-muted-foreground">{labels.minChars}</p>
-              ) : null}
-            </label>
+            <Field label={labels.searchLabel} hint={trimmedQuery.length < 2 ? labels.minChars : undefined}>
+              <SearchField value={query} onChange={(event) => setQuery(event.target.value)} placeholder={labels.searchPlaceholder} />
+            </Field>
 
             {trimmedQuery.length >= 2 ? (
               <div className="mt-3 overflow-hidden rounded-md border border-border">
                 {loading ? (
                   <div className="flex items-center gap-2 p-5 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
                     {labels.loading}
                   </div>
                 ) : visibleResults.length === 0 ? (
@@ -370,15 +360,10 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                     <p className="mt-1 text-xs text-muted-foreground">{labels.queueScopeHelp}</p>
                   ) : null}
                 </div>
-                <button
-                  type="button"
-                  disabled={recentAssets.length === 0}
-                  onClick={addRecentAssets}
-                  className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-1 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground sm:w-auto"
-                >
-                  <Plus className="h-3.5 w-3.5" />
+                <Button disabled={recentAssets.length === 0} onClick={addRecentAssets} className="w-full shrink-0 sm:w-auto">
+                  <Plus aria-hidden="true" />
                   {recentAssets.length === 0 ? labels.addFilteredQueueUnavailable : labels.addFilteredQueue}
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -388,14 +373,10 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                   <Filter className="h-4 w-4 text-primary" />
                   {labels.labelQueueFiltersTitle}
                 </div>
-                <button
-                  type="button"
-                  onClick={resetQueueFilters}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  <RotateCcw className="h-4 w-4" />
+                <Button variant="outline" onClick={resetQueueFilters}>
+                  <RotateCcw aria-hidden="true" />
                   {labels.resetQueueFilters}
-                </button>
+                </Button>
               </div>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <QueueSelect
@@ -442,31 +423,27 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                   options={filteredLocationOptions}
                   allLabel={labels.all}
                 />
-                <label className="block text-sm">
-                  <span className="mb-1 block font-medium text-foreground">{labels.queueFilterCreatedFrom}</span>
-                  <input
+                <Field label={labels.queueFilterCreatedFrom}>
+                  <Input
                     type="date"
                     value={queueFilters.createdFrom}
                     onChange={(event) => updateQueueFilter("createdFrom", event.target.value)}
-                    className="h-11 w-full rounded-md border border-border bg-surface px-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
-                </label>
-                <label className="block text-sm">
-                  <span className="mb-1 block font-medium text-foreground">{labels.queueFilterCreatedTo}</span>
-                  <input
+                </Field>
+                <Field label={labels.queueFilterCreatedTo}>
+                  <Input
                     type="date"
                     value={queueFilters.createdTo}
                     onChange={(event) => updateQueueFilter("createdTo", event.target.value)}
-                    className="h-11 w-full rounded-md border border-border bg-surface px-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                   />
-                </label>
+                </Field>
               </div>
             </div>
 
             <div className="mt-4 overflow-hidden rounded-md border border-border">
               {queueLoading ? (
                 <div className="flex items-center gap-2 p-5 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
                   {labels.loading}
                 </div>
               ) : recentAssets.length === 0 ? (
@@ -490,13 +467,9 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
             </div>
 
             {canLoadMoreQueue ? (
-              <button
-                type="button"
-                onClick={loadMoreQueue}
-                className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              >
+              <Button variant="outline" onClick={loadMoreQueue} className="mt-3 w-full">
                 {labels.loadMoreQueue}
-              </button>
+              </Button>
             ) : null}
           </section>
         </div>
@@ -517,27 +490,17 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
                 { id: "location", label: labels.queueSortLocation },
                 { id: "category", label: labels.queueSortCategory },
               ]}
-              icon={<ArrowDownAZ className="h-4 w-4 text-primary" />}
+              icon={<ArrowDownAZ aria-hidden="true" className="h-4 w-4 text-primary" />}
             />
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-              <button
-                type="button"
-                disabled={selectedForPrint.length === 0}
-                onClick={printFirstLabel}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Printer className="h-4 w-4" />
+              <Button variant="outline" disabled={selectedForPrint.length === 0} onClick={printFirstLabel} className="w-full">
+                <Printer aria-hidden="true" />
                 {labels.printFirstLabel}
-              </button>
-              <button
-                type="button"
-                disabled={selectedForPrint.length === 0}
-                onClick={printLabels}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Printer className="h-4 w-4" />
+              </Button>
+              <Button disabled={selectedForPrint.length === 0} onClick={printLabels} className="w-full">
+                <Printer aria-hidden="true" />
                 {labels.print}
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -550,15 +513,16 @@ export function AssetLabelBatchTool({ locale, labels, preselectedAssets = [], fi
               {selectedForPrint.map((asset) => (
                 <div key={asset.id} className="flex min-w-0 items-start gap-3 rounded-md border border-border bg-background px-3 py-2">
                   <AssetLabelSearchResult asset={asset} serialLabel={labels.serial} printLabels={labels} compact />
-                  <button
-                    type="button"
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
                     onClick={() => removeAsset(asset.id)}
-                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-danger hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-8 sm:w-8"
+                    className="shrink-0"
                     title={labels.remove}
                     aria-label={labels.remove}
                   >
-                    <X className="h-4 w-4" />
-                  </button>
+                    <X aria-hidden="true" />
+                  </Button>
                 </div>
               ))}
             </div>
@@ -738,24 +702,16 @@ function QueueSelect({
   icon?: ReactNode
 }) {
   return (
-    <label className="block text-sm">
-      <span className="mb-1 flex items-center gap-1 font-medium text-foreground">
-        {icon}
-        {label}
-      </span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-md border border-border bg-surface px-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-      >
+    <Field label={icon ? <span className="inline-flex items-center gap-1">{icon}{label}</span> : label}>
+      <NativeSelect value={value} onChange={(event) => onChange(event.target.value)}>
         {allLabel ? <option value="all">{allLabel}</option> : null}
         {options.map((option) => (
           <option key={option.id} value={option.id}>
             {option.label}
           </option>
         ))}
-      </select>
-    </label>
+      </NativeSelect>
+    </Field>
   )
 }
 
