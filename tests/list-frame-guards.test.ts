@@ -95,6 +95,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}asset-management/import-export/page.tsx`,
   `${D}assets/[id]/page.tsx`,
   `${C}assets/asset-detail-tabs.tsx`,
+  `${D}maintenance/[id]/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -178,7 +179,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LH1: {
     // 2B-4
     [`${D}disposal/[id]/page.tsx`]: 1,
-    [`${D}maintenance/[id]/page.tsx`]: 1,
     [`${D}master-data/employees/[id]/page.tsx`]: 1,
     [`${D}master-data/suppliers/[id]/page.tsx`]: 1,
     [`${D}my-assets/[id]/page.tsx`]: 1,
@@ -297,7 +297,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-4
     [`${D}assets/[id]/page.tsx`]: 4, // → 4 (KEEP): translated-sentence arguments :1198, :1200 and the history sentence :2462 (R-n)
     [`${D}disposal/[id]/page.tsx`]: 2,
-    [`${D}maintenance/[id]/page.tsx`]: 2,
     [`${D}master-data/employees/[id]/page.tsx`]: 5,
     [`${D}master-data/suppliers/[id]/page.tsx`]: 1,
     [`${D}my-assets/[id]/page.tsx`]: 1,
@@ -324,7 +323,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LV3: {
     // 2B-4
     [`${D}disposal/[id]/page.tsx`]: 5,
-    [`${D}maintenance/[id]/page.tsx`]: 5,
     [`${D}master-data/suppliers/[id]/page.tsx`]: 4,
     [`${C}master-data/supplier-purchase-documents.tsx`]: 2,
     // 2B-5
@@ -368,7 +366,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LK1: {
     // 2B-4
     [`${D}disposal/[id]/page.tsx`]: 1,
-    [`${D}maintenance/[id]/page.tsx`]: 1,
     [`${D}master-data/employees/[id]/page.tsx`]: 1,
     [`${D}master-data/suppliers/[id]/page.tsx`]: 1,
     [`${D}my-assets/[id]/page.tsx`]: 1,
