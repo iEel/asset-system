@@ -1180,7 +1180,8 @@
     "componentStepReview": "ตรวจสอบและยืนยัน",
     "photoType": "ประเภทรูป",
     "checklistPhotoDescription": "รูปจะอัปโหลดทันทีที่เลือก",
-    "noCustodian": "ไม่มีผู้ถือครอง"
+    "noCustodian": "ไม่มีผู้ถือครอง",
+    "createModeLabel": "วิธีเพิ่มทรัพย์สิน"
   },
   "company": {
     "title": "บริษัท",

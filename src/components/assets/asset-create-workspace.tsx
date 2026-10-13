@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { AssetBatchForm } from "@/components/assets/asset-batch-form"
 import { AssetForm } from "@/components/assets/asset-form"
+import { Segmented } from "@/components/ui/segmented"
 
 type AssetCreateWorkspaceProps = React.ComponentProps<typeof AssetForm>
 
@@ -17,26 +18,15 @@ export function AssetCreateWorkspace(props: AssetCreateWorkspaceProps) {
 
   return (
     <div className="space-y-4">
-      <div className="inline-flex rounded-md border border-border bg-surface p-1">
-        <button
-          type="button"
-          onClick={() => setMode("single")}
-          className={`h-9 rounded px-3 text-sm font-medium transition-colors ${
-            mode === "single" ? "bg-primary text-white" : "text-muted-foreground hover:bg-accent hover:text-foreground"
-          }`}
-        >
-          {t("createModeSingle")}
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("batch")}
-          className={`h-9 rounded px-3 text-sm font-medium transition-colors ${
-            mode === "batch" ? "bg-primary text-white" : "text-muted-foreground hover:bg-accent hover:text-foreground"
-          }`}
-        >
-          {t("createModeBatch")}
-        </button>
-      </div>
+      <Segmented
+        aria-label={t("createModeLabel")}
+        value={mode}
+        onValueChange={setMode}
+        options={[
+          { value: "single", label: t("createModeSingle") },
+          { value: "batch", label: t("createModeBatch") },
+        ]}
+      />
 
       {mode === "single" ? <AssetForm {...props} /> : <AssetBatchForm {...props} />}
     </div>

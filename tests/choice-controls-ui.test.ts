@@ -137,3 +137,14 @@ test("the depreciation groups are radio chips in a group named by its heading (T
   // A real radio inside the settings <form>: ChoiceChip's Enter guard keeps Enter from saving every setting.
   assert.doesNotMatch(source, /aria-pressed|compactButtonClassName|inputClassName|previewInputClassName|function PreviewInputField/)
 })
+
+test("the create page picks single or batch with the shared Segmented, named for screen readers (T3, batch 4)", () => {
+  const source = read("src/components/assets/asset-create-workspace.tsx")
+  assert.match(source, /import \{ Segmented \} from "@\/components\/ui\/segmented"/)
+  assert.match(source, /<Segmented\n\s+aria-label=\{t\("createModeLabel"\)\}\n\s+value=\{mode\}\n\s+onValueChange=\{setMode\}/)
+  assert.match(source, /\{ value: "single", label: t\("createModeSingle"\) \},\n\s+\{ value: "batch", label: t\("createModeBatch"\) \},/)
+  assert.doesNotMatch(source, /<button\b|bg-primary text-white|\bfill\b/, "two short options fit at 375 without fill (spec 7.5 T3)")
+  for (const [locale, text] of [["th", "วิธีเพิ่มทรัพย์สิน"], ["en", "How to add assets"]] as const) {
+    assert.equal((JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { asset: Record<string, unknown> }).asset.createModeLabel, text, locale)
+  }
+})
