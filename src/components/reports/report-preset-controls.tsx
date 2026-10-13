@@ -3,6 +3,8 @@
 import { useState, useSyncExternalStore } from "react"
 import Link from "next/link"
 import { BookmarkPlus, Trash2 } from "lucide-react"
+import { Field } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 import {
   buildReportPreset,
   buildReportPresetHref,
@@ -67,18 +69,16 @@ export function ReportPresetControls({ locale, currentQuery, labels }: ReportPre
   return (
     <div className="rounded-md border border-border bg-background p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <label className="min-w-0 flex-1">
-          <span className="mb-1.5 block text-sm font-medium text-foreground">{labels.presetName}</span>
-          <input
+        <Field label={labels.presetName} className="min-w-0 flex-1">
+          <Input
             value={name}
             onChange={(event) => {
               setName(event.target.value)
               setMessage("")
             }}
             maxLength={60}
-            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           />
-        </label>
+        </Field>
         <button
           type="button"
           onClick={savePreset}

@@ -75,3 +75,13 @@ test("preset writes serialize the normalized list and report success", () => {
   assert.equal(storedKey, "asset-system:report-presets:v1")
   assert.deepEqual(JSON.parse(storedValue), presets)
 })
+
+// Phase 2C batch 4 (spec 2C §4.14 note 4, §8.9): the preset name is a shared Field + Input that keeps its 60-character
+// limit; the device-only line stays under the row of the field and the save button. The file is CRLF in the working tree.
+test("the preset name uses the shared Field and Input and keeps its 60-character limit (2C batch 4)", () => {
+  const source = readFileSync("src/components/reports/report-preset-controls.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /<Field label=\{labels\.presetName\} className="min-w-0 flex-1">\n\s+<Input\n\s+value=\{name\}/)
+  assert.match(source, /maxLength=\{60\}\n\s+\/>\n\s+<\/Field>/)
+  assert.doesNotMatch(source, /<label\b|<input\b|mb-1\.5 block text-sm font-medium|focus:border-ring/)
+  assert.match(source, /<\/div>\n\s+<p className="mt-2 text-xs text-muted-foreground">\{labels\.savedPresetsDeviceOnly\}<\/p>/)
+})

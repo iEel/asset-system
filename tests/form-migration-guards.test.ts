@@ -90,6 +90,7 @@ const MIGRATED_FILES: string[] = [
   `${C}admin/asset-state-review-dialog.tsx`,
   `${C}admin/data-quality-rule-form.tsx`,
   `${C}notifications/notification-center-actions.tsx`,
+  `${C}reports/report-preset-controls.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -183,7 +184,6 @@ const RAW_FIELDS: Record<string, number> = {
   [`${C}assets/asset-register-table.tsx`]: 4,
   [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 1,
   [`${C}auth/login-form.tsx`]: 2,
-  [`${C}reports/report-preset-controls.tsx`]: 1,
 }
 
 // GF3 hand-written field class strings
@@ -203,7 +203,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   [`${C}assets/asset-register-table.tsx`]: 4,
   [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 1,
   [`${C}auth/login-form.tsx`]: 2,
-  [`${C}reports/report-preset-controls.tsx`]: 1,
 }
 
 // GF5 floors per file: [required, maxLength, minLength] on CONSTRAINT_TAGS. A floor never drops.
@@ -274,7 +273,6 @@ const OLD_MARKUP: Record<string, number> = {
   [`${C}assets/asset-scan-search-tool.tsx`]: 1,
   [`${C}assets/asset-register-table.tsx`]: 6, // → 2: list checkboxes :549, :620 (2B, O1)
   [`${C}auth/login-form.tsx`]: 2,
-  [`${C}reports/report-preset-controls.tsx`]: 1,
 }
 
 // GB1 <Loader2 tags (every tag, also icons kept in a variable)
