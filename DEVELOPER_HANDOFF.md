@@ -657,13 +657,13 @@ npm run build
 
 | FMG row | Budget | Live after 2B-3 | Sites left |
 |---|---|---|---|
-| GF2 `RAW_FIELDS` `:181` | 4 | 4 | `:693`, `:708`, `:723`, `:733` (the dialog's two selects, input and textarea) |
-| GF3 `FIELD_CLASS_STRINGS` `:212` | 4 | 4 | `:696`, `:711`, `:728`, `:737` (their class strings) |
-| GF7 `OLD_MARKUP` `:293` | 6 | 4 | `:692`, `:707`, `:722`, `:732` (the dialog's four labels) |
-| GB1 `LOADER2` `:327` | 1 | 1 | `:753` (the dialog's save button) |
-| GL1 `FIXED_BOTTOM_BARS` `:351` | 1 | 1 | `:463` (the bulk-action bar, phase 3) |
-| GF5 `CONSTRAINT_FLOORS` `:265` | `[1, 1, 0]` | the same (floors, never lowered) | the reason field of the dialog |
-| GD2 `PENDING_FOOTER_PARTS` `:374` | listed | still listed: the dialog `:681` has no `AccessibleDialogFooter` | — |
+| GF2 `RAW_FIELDS` `:184` | 4 | 4 | `:693`, `:708`, `:723`, `:733` (the dialog's two selects, input and textarea) |
+| GF3 `FIELD_CLASS_STRINGS` `:210` | 4 | 4 | `:696`, `:711`, `:728`, `:737` (their class strings) |
+| GF7 `OLD_MARKUP` `:287` | 6 | 4 | `:692`, `:707`, `:722`, `:732` (the dialog's four labels) |
+| GB1 `LOADER2` `:316` | 1 | 1 | `:753` (the dialog's save button) |
+| GL1 `FIXED_BOTTOM_BARS` `:338` | 1 | 1 | `:463` (the bulk-action bar, phase 3) |
+| GF5 `CONSTRAINT_FLOORS` `:263` | `[1, 1, 0]` | the same (floors, never lowered) | the reason field of the dialog |
+| GD2 `PENDING_FOOTER_PARTS` `:356` | listed | still listed: the dialog `:681` has no `AccessibleDialogFooter` | — |
 
 - **Handed on, later:** phase 3: the register's column sets and the "CODE - ชื่อ" cells in `tag` (I26), the tabs above the toolbar as in the mockup, and the phone bulk bar with QR label printing (R-q) · 2D: nothing passes `AssetStateHelpPopover size="compact"` any more (the prop stays while `tests/asset-status-help-ui.test.ts` pins it).
 - Verification: `npm run verify` passes (tests 1,942 · pass 1,941 · skipped 1 · build 60/60 pages).
