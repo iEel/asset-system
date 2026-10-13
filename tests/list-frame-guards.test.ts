@@ -91,6 +91,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}assets/asset-register-sort-menu.tsx`,
   `${C}assets/asset-register-column-picker.tsx`,
   `${C}assets/asset-register-export-menu.tsx`,
+  `${D}assets/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -205,8 +206,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LH2: {
     // 2B-1
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes MasterDataHeader (R-h)
-    // 2B-3
-    [`${D}assets/page.tsx`]: 2,
     // 2B-5
     [`${D}my-assets/page.tsx`]: 1, // local PageHeader :163-170 (I14)
     [`${D}reports/page.tsx`]: 2,

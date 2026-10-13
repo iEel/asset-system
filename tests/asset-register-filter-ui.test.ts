@@ -119,7 +119,7 @@ test("filter copy exists in Thai and English", () => {
 })
 
 test("the asset register page uses the compact mobile header", () => {
-  assert.match(page(), /<MasterDataHeader\s+compactOnMobile/)
+  assert.match(page(), /<PageHeader\s+compactOnMobile/)
   assert.match(tabs(), /mb-2 [^"]*md:mb-3/)
 })
 
@@ -159,4 +159,15 @@ test("the filter sheet uses FilterSelect with labelAction help and a busy result
   assert.match(source, /t\("filterSheetShowResults", \{ count: formatCount\(total\) \}\)/)
   assert.match(source, /<SheetHeader>/)
   assert.doesNotMatch(source, /function LabeledSelect|<select\b|Loader2|closeLabel=|pr-14|getFieldControlClasses|toLocaleString\(|useLocale/)
+})
+
+// Plan 2B-3 Task 13 (spec 2B §7.4, I2, I32, N6): the register calls PageHeader itself, keeps the 16/24px gap under it as
+// the header's class, and formats the tab counts with formatCount. MasterDataHeader has no caller left (2B-5 deletes it).
+test("the register page header is PageHeader with its create link, and the tab counts use formatCount (spec 2B §7.4)", () => {
+  const source = page()
+
+  assert.match(source, /^import \{ PageHeader \} from "@\/components\/ui\/page-header"$/m)
+  assert.match(source, /<div>\n\s+<PageHeader\n\s+compactOnMobile\n\s+className="mb-4 md:mb-6"\n\s+title=\{t\("title"\)\}\n\s+meta=\{t\("subtitle"\)\}\n\s+actions=\{\n\s+<Link href=\{`\/\$\{locale\}\/assets\/new`\} className=\{buttonVariants\(\{ size: "md" \}\)\}>\n\s+<Plus aria-hidden="true" \/>\n\s+\{tCommon\("create"\)\}\n\s+<\/Link>\n\s+\}\n\s+\/>/)
+  assert.match(source, /count: formatCount\(tab\.count\)/)
+  assert.doesNotMatch(source, /toLocaleString\(|MasterDataHeader|numberLocale/)
 })

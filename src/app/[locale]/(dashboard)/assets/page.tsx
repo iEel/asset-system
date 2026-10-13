@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client"
+import Link from "next/link"
 import { getTranslations } from "next-intl/server"
+import { Plus } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import {
@@ -18,7 +20,9 @@ import { AssetRegisterStatusTabs } from "@/components/assets/asset-register-stat
 import { AssetRegisterFilterChips } from "@/components/assets/asset-register-filter-chips"
 import { AssetRegisterTable, type AssetRegisterRow } from "@/components/assets/asset-register-table"
 import { AssetRegisterViewMemory } from "@/components/assets/asset-register-view-memory"
-import { MasterDataHeader } from "@/components/master-data/master-data-layout"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { PageHeader } from "@/components/ui/page-header"
+import { formatCount } from "@/lib/display-format"
 import { applyAssetCrossScopeFilter } from "@/lib/asset-cross-scope"
 import { assetOwnershipTypes, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
 import { withPerformanceTiming } from "@/lib/performance-timing"
@@ -207,7 +211,6 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize))
   const fromRow = total === 0 ? 0 : (filters.page - 1) * filters.pageSize + 1
   const toRow = Math.min(total, filters.page * filters.pageSize)
-  const numberLocale = locale === "th" ? "th-TH" : "en-US"
   const basePath = `/${locale}/assets`
   const statusTabs = buildStatusTabs({
     statuses,
@@ -324,12 +327,17 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
 
   return (
     <div>
-      <MasterDataHeader
+      <PageHeader
         compactOnMobile
+        className="mb-4 md:mb-6"
         title={t("title")}
-        subtitle={t("subtitle")}
-        createHref={`/${locale}/assets/new`}
-        createLabel={tCommon("create")}
+        meta={t("subtitle")}
+        actions={
+          <Link href={`/${locale}/assets/new`} className={buttonVariants({ size: "md" })}>
+            <Plus aria-hidden="true" />
+            {tCommon("create")}
+          </Link>
+        }
       />
       <AssetRegisterViewMemory locale={locale} returnHref={registerReturnHref} />
 
@@ -345,7 +353,7 @@ export default async function AssetsPage({ params, searchParams }: AssetsPagePro
           items={statusTabs.tabs.map((tab) => ({
             key: tab.key,
             label: t(statusTabLabelKeys[tab.key]),
-            count: tab.count.toLocaleString(numberLocale),
+            count: formatCount(tab.count),
             href: `${basePath}?${buildAssetQueryString(filters, { statusId: tab.statusId, page: 1 })}`,
             active: tab.active,
           }))}
