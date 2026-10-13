@@ -79,12 +79,21 @@ test("status tabs are server-rendered links that mark the current tab and scroll
 
 test("filter chips keep 44px phone targets and hide scope chips on desktop", () => {
   const source = chips()
+  // FilterChipList (2B-1, I7) draws the chips: 44px on phones and 36px from md, scope chips hidden from md, and each
+  // chip named "<remove label>: <chip>", the same name as before because the page still passes clearDrilldownFilter.
+  const list = read("src/components/ui/filter-chips.tsx")
 
   assert.doesNotMatch(source, /"use client"/)
-  assert.match(source, /min-h-11[^"]*md:min-h-8/)
-  assert.match(source, /chip\.mobileOnly && "md:hidden"/)
-  assert.match(source, /href=\{clearAllHref\}/)
-  assert.match(source, /aria-label=\{`\$\{labels\.remove\}: \$\{chip\.label\}`\}/)
+  assert.match(source, /<FilterChipList\b/)
+  assert.match(source, /label=\{labels\.activeFilters\}/)
+  assert.match(source, /removeLabel=\{labels\.remove\}/)
+  assert.match(source, /clearAll=\{\{ href: clearAllHref, label: labels\.clearAll \}\}/)
+  assert.match(source, /className="mb-3"/)
+  assert.doesNotMatch(source, /<Link\b|rounded-full/)
+  assert.match(list, /min-h-11[^"]*md:h-9 md:min-h-0/)
+  assert.match(list, /chip\.mobileOnly && "md:hidden"/)
+  assert.match(list, /href=\{clearAll\.href\}/)
+  assert.match(list, /aria-label=\{`\$\{removeLabel\}: \$\{chip\.label\}`\}/)
 })
 
 test("filter copy exists in Thai and English", () => {
