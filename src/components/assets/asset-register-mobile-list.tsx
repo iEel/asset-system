@@ -4,6 +4,7 @@ import Link from "next/link"
 import { AssetThumbnail } from "@/components/assets/asset-thumbnail"
 import { AssetRegisterRowActions, type AssetRegisterRowPermissions } from "@/components/assets/asset-register-row-actions"
 import type { AssetRegisterRow } from "@/components/assets/asset-register-table"
+import { checkboxVariants } from "@/components/ui/field-variants"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { getAssetStateTone, normalizeAssetStateValue } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
@@ -32,7 +33,7 @@ export function AssetRegisterMobileList({
   ...rowProps
 }: MobileListProps) {
   return (
-    <ul data-asset-mobile-list className={cn("divide-y divide-border md:hidden", reserveBulkBarSpace && "pb-44")}>
+    <ul data-asset-mobile-list className={cn("divide-y divide-border-soft md:hidden", reserveBulkBarSpace && "pb-44")}>
       {assets.map((asset) =>
         selectMode ? (
           <MobileSelectableRow key={asset.id} asset={asset} checked={selectedIds.has(asset.id)} onToggle={() => onToggleAsset(asset.id)} />
@@ -54,7 +55,7 @@ function MobileAssetRow({ asset, permissions, detailHref, editHref, cloneHref, o
           onClick={onNavigate}
           className="block truncate text-sm font-semibold text-foreground before:absolute before:inset-0 before:content-[''] focus-visible:outline-none focus-visible:before:ring-2 focus-visible:before:ring-inset focus-visible:before:ring-ring"
         >
-          {asset.assetTag}
+          <span className="tag font-medium">{asset.assetTag}</span>
         </Link>
         <p className="truncate text-sm text-foreground">{asset.name}</p>
         <div className="mt-0.5 flex min-w-0 flex-nowrap items-center gap-2 text-xs leading-5">
@@ -95,11 +96,11 @@ function MobileSelectableRow({ asset, checked, onToggle }: { asset: AssetRegiste
           checked={checked}
           onChange={onToggle}
           aria-label={asset.assetTag}
-          className="size-5 shrink-0 rounded border-border text-primary"
+          className={checkboxVariants({ size: "lg" })}
         />
         <AssetThumbnail photo={asset.photo} assetTag={asset.assetTag} assetName={asset.name} size={44} preview={false} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-foreground">{asset.assetTag}</span>
+          <span className="block truncate text-sm text-foreground"><span className="tag font-medium">{asset.assetTag}</span></span>
           <span className="block truncate text-sm text-foreground">{asset.name}</span>
           <span className="block truncate text-xs text-muted-foreground">{asset.currentLocation}</span>
         </span>

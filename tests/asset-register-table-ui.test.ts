@@ -163,7 +163,7 @@ test("select mode rows only toggle the checkbox and never navigate", () => {
   assert.match(row, /<label className="flex min-h-20 cursor-pointer/)
   assert.match(row, /type="checkbox"/)
   assert.match(row, /aria-label=\{asset\.assetTag\}/)
-  assert.match(row, /className="size-5 /)
+  assert.match(row, /className=\{checkboxVariants\(\{ size: "lg" \}\)\}/)
   assert.match(row, /preview=\{false\}/)
   assert.doesNotMatch(row, /<Link|href=|AssetRegisterRowActions/)
 })
@@ -269,4 +269,18 @@ test("the bulk bar keeps its place and frame, with its buttons on Button (spec 2
   assert.equal(bar.match(/<Button\b/g)?.length, 4)
   assert.match(bar, /\{formatCount\(selectedAssets\.length\)\} \{labels\.selectedCount\}/)
   assert.match(source, /<Button variant="ghost" size="md" aria-pressed=\{selectMode\} onClick=\{toggleSelectMode\} className="md:hidden">/)
+})
+
+// Plan 2B-3 Task 4 (spec 2B §7.10, R-p, O1): phone rows show the asset tag in mono on the soft row line of DataTable,
+// and the select-mode box is the shared 20px checkbox.
+test("phone rows show the asset tag as a mono tag on the soft row line, and select mode uses the shared checkbox (2B §7.10)", () => {
+  const source = mobileList()
+  const row = functionBody(source, "MobileAssetRow")
+  const selectable = functionBody(source, "MobileSelectableRow")
+
+  assert.match(source, /^import \{ checkboxVariants \} from "@\/components\/ui\/field-variants"$/m)
+  assert.match(source, /<ul data-asset-mobile-list className=\{cn\("divide-y divide-border-soft md:hidden", reserveBulkBarSpace && "pb-44"\)\}>/)
+  assert.match(row, /focus-visible:before:ring-ring"\n\s+>\n\s+<span className="tag font-medium">\{asset\.assetTag\}<\/span>\n\s+<\/Link>/)
+  assert.match(selectable, /<span className="block truncate text-sm text-foreground"><span className="tag font-medium">\{asset\.assetTag\}<\/span><\/span>/)
+  assert.doesNotMatch(source, /rounded border-border|text-primary|font-semibold text-foreground">\{asset\.assetTag\}/)
 })
