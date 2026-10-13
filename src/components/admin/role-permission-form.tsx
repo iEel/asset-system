@@ -4,9 +4,14 @@ import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { Info, Loader2, Save } from "lucide-react"
+import { Info, Save } from "lucide-react"
 import { toast } from "sonner"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { checkboxVariants } from "@/components/ui/field-variants"
+import { Input } from "@/components/ui/input"
 import { PageBackLink, PageHeader } from "@/components/ui/page-header"
+import { Textarea } from "@/components/ui/textarea"
 import { useApiError } from "@/components/ui/use-api-error"
 
 type RoleFormValue = {
@@ -144,50 +149,46 @@ function togglePermission(permissionId: string) {
           </div>
           <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
             <Field label={t("roleKey")} required>
-              <input
+              <Input
                 value={meta.name}
                 required
                 pattern="[a-z][a-z0-9_]*"
                 disabled={isSystemRole}
                 onChange={(event) => setMeta((current) => ({ ...current, name: event.target.value }))}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-60"
               />
             </Field>
             <Field label={t("displayName")} required>
-              <input
+              <Input
                 value={meta.displayName}
                 required
                 maxLength={200}
                 onChange={(event) => setMeta((current) => ({ ...current, displayName: event.target.value }))}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
             <Field label={t("displayNameTh")}>
-              <input
+              <Input
                 value={meta.displayNameTh}
                 maxLength={200}
                 onChange={(event) => setMeta((current) => ({ ...current, displayNameTh: event.target.value }))}
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </Field>
-            <label className="flex items-center gap-2 self-end pb-2 text-sm font-medium text-foreground">
+            <label className="flex min-h-11 items-center gap-2 self-end text-sm font-medium text-foreground has-disabled:cursor-not-allowed has-disabled:text-faint-foreground">
               <input
                 type="checkbox"
                 checked={meta.isActive}
                 disabled={isSystemRole}
                 onChange={(event) => setMeta((current) => ({ ...current, isActive: event.target.checked }))}
-                className="h-4 w-4 rounded border-border text-primary focus:ring-ring disabled:opacity-60"
+                className={checkboxVariants()}
               />
               {tCommon("active")}
             </label>
             <div className="md:col-span-2">
               <Field label={t("description")}>
-                <textarea
+                <Textarea
                   value={meta.description}
                   rows={3}
                   maxLength={500}
                   onChange={(event) => setMeta((current) => ({ ...current, description: event.target.value }))}
-                  className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                 />
               </Field>
             </div>
@@ -204,12 +205,12 @@ function togglePermission(permissionId: string) {
         <section className="overflow-hidden rounded-lg border border-border bg-surface">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-border text-sm">
-              <thead className="bg-muted/40">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                  <th className="bg-surface px-4 py-2.5 text-left align-bottom text-meta font-medium text-faint-foreground">
                     {t("module")}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                  <th className="bg-surface px-4 py-2.5 text-left align-bottom text-meta font-medium text-faint-foreground">
                     {t("permissions")}
                   </th>
                 </tr>
@@ -220,13 +221,13 @@ function togglePermission(permissionId: string) {
                     <td className="whitespace-nowrap px-4 py-3 align-top">
                       <div className="font-medium text-foreground">{t(`modules.${moduleName}`)}</div>
                       <div className="mt-1 font-mono text-xs text-muted-foreground">{moduleName}</div>
-                      <label className="mt-3 inline-flex items-center gap-2 text-xs text-muted-foreground">
+                      <label className="mt-3 inline-flex min-h-11 items-center gap-2 text-xs text-muted-foreground has-disabled:cursor-not-allowed has-disabled:text-faint-foreground">
                         <input
                           type="checkbox"
                           checked={modulePermissions.every((permission) => values.has(permission.id))}
                           disabled={permissionsLocked}
                           onChange={(event) => setModulePermissions(modulePermissions, event.target.checked)}
-                          className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-ring disabled:opacity-60"
+                          className={checkboxVariants()}
                         />
                         {t("selectModule")}
                       </label>
@@ -236,16 +237,16 @@ function togglePermission(permissionId: string) {
                         {modulePermissions.map((permission) => (
                           <label
                             key={permission.id}
-                            className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2"
+                            className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 has-disabled:cursor-not-allowed has-disabled:text-faint-foreground"
                           >
                             <input
                               type="checkbox"
                               checked={values.has(permission.id)}
                               disabled={permissionsLocked}
                               onChange={() => togglePermission(permission.id)}
-                              className="h-4 w-4 rounded border-border text-primary focus:ring-ring disabled:opacity-60"
+                              className={checkboxVariants()}
                             />
-                            <span className="text-sm text-foreground">{t(`actions.${permission.action}`)}</span>
+                            <span className="text-sm">{t(`actions.${permission.action}`)}</span>
                           </label>
                         ))}
                       </div>
@@ -258,34 +259,15 @@ function togglePermission(permissionId: string) {
         </section>
 
         <div className="flex justify-end gap-3">
-          <Link
-            href={backHref}
-            className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent"
-          >
+          <Link href={backHref} className={buttonVariants({ variant: "outline" })}>
             {tCommon("cancel")}
           </Link>
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          <Button type="submit" busy={saving}>
+            <Save aria-hidden="true" />
             {t("savePermissions")}
-          </button>
+          </Button>
         </div>
       </form>
     </div>
-  )
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-1 text-danger">*</span>}
-      </span>
-      {children}
-    </label>
   )
 }
