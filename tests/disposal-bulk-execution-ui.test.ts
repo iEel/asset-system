@@ -30,7 +30,8 @@ test("bulk execution UI has the required interaction and accessibility contracts
   assert.match(component, /fallbackFocusRef=\{restoreTargetRef\}/)
   assert.match(component, /<footer className="[^"]*sticky bottom-0[^"]*"/)
   assert.doesNotMatch(component, /fixed inset-0|role="dialog"|restoreFocusRef/)
-  assert.match(component, /min-h-11 min-w-11/)
+  assert.match(component, /min-h-11 (?:min-)?w-11/)
+  assert.match(component, /checkboxVariants\(/)
   assert.doesNotMatch(component, /fixed\s+bottom-0/)
 })
 
@@ -175,4 +176,23 @@ test("every disposal bulk execution code is wired to English and Thai copy", asy
     assert.equal(typeof getObjectAtPath(english, `disposalPage.bulkExecutionErrors.${code}`), "string", `English ${code}`)
     assert.equal(typeof getObjectAtPath(thai, `disposalPage.bulkExecutionErrors.${code}`), "string", `Thai ${code}`)
   }
+})
+
+// Plan 2B-2 Task 2 (spec 2B §8.6 row 4, §8.11 row 3): 2B owns only the list part of this 2C batch 3 file. The dialog
+// (BulkExecutionDialog, SharedValueFields and the rest below it) stays as it is for 2C plan 3.
+test("bulk execution list controls use Button and checkboxVariants, and leave the dialog to 2C (spec 2B §8.6 row 4)", async () => {
+  const component = (await source("src/components/disposal/disposal-bulk-execution.tsx")).replace(/\r\n/g, "\n")
+  const list = component.slice(component.indexOf("export function DisposalBulkExecutionSelectionToggle"), component.indexOf("function BulkExecutionDialog"))
+  const dialog = component.slice(component.indexOf("function BulkExecutionDialog"))
+
+  assert.match(component, /^import \{ Button \} from "@\/components\/ui\/button"$/m)
+  assert.match(component, /^import \{ checkboxVariants \} from "@\/components\/ui\/field-variants"$/m)
+  assert.match(list, /<Button\n\s+variant="outline"\n\s+onClick=\{\(\) => setSelectionMode\(!selection\.selectionMode\)\}\n\s+disabled=\{busy\}\n\s+aria-pressed=\{selection\.selectionMode\}\n\s+>/)
+  assert.match(list, /<Button variant="outline" onClick=\{clear\} disabled=\{busy\}>/)
+  assert.match(list, /<Button ref=\{triggerRef\} onClick=\{openReview\} disabled=\{busy\}>/, "opening the review dialog is not async, so the trigger has no busy state")
+  assert.equal(list.match(/className=\{checkboxVariants\(/g)?.length, 2, "the select-page box and the row box")
+  assert.doesNotMatch(list, /<button\b|disabled:opacity-50|rounded border-border|focus-within:ring/)
+  // The dialog keeps its own markup for 2C plan 3 (FMG GF7 of this file drops to 3, GB1 stays 2, as spec §8.6 says).
+  assert.equal(dialog.match(/<Loader2\b/g)?.length, 2)
+  assert.equal(dialog.match(/\b(?:h-4 w-4|h-5 w-5|h-3\.5 w-3\.5) rounded border-border\b|\baccent-primary\b|mb-1\.5 block text-sm font-medium text-foreground|ml-1 text-danger">\*/g)?.length, 3)
 })

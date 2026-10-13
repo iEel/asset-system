@@ -38,7 +38,9 @@ import {
   type BulkExecutionSelectionState,
 } from "@/lib/disposal-bulk-execution-ui"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import { Button } from "@/components/ui/button"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { checkboxVariants } from "@/components/ui/field-variants"
 import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 import { cn } from "@/lib/utils"
 
@@ -594,16 +596,15 @@ export function DisposalBulkExecutionProvider({
 export function DisposalBulkExecutionSelectionToggle() {
   const { copy, selection, busy, setSelectionMode } = useBulk()
   return (
-    <button
-      type="button"
+    <Button
+      variant="outline"
       onClick={() => setSelectionMode(!selection.selectionMode)}
       disabled={busy}
       aria-pressed={selection.selectionMode}
-      className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
     >
-      <ListChecks className="h-4 w-4" aria-hidden="true" />
+      <ListChecks aria-hidden="true" />
       {selection.selectionMode ? copy.cancelSelectionMode : copy.selectionMode}
-    </button>
+    </Button>
   )
 }
 
@@ -633,24 +634,13 @@ export function DisposalBulkExecutionToolbar() {
         {format(copy.selectedCount, { count: selection.selectedIds.length })}
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <button
-          type="button"
-          onClick={clear}
-          disabled={busy}
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium hover:bg-accent disabled:opacity-50"
-        >
+        <Button variant="outline" onClick={clear} disabled={busy}>
           {copy.clearSelection}
-        </button>
-        <button
-          ref={triggerRef}
-          type="button"
-          onClick={openReview}
-          disabled={busy}
-          className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
-        >
-          <ListChecks className="h-4 w-4" aria-hidden="true" />
+        </Button>
+        <Button ref={triggerRef} onClick={openReview} disabled={busy}>
+          <ListChecks aria-hidden="true" />
           {copy.review}
-        </button>
+        </Button>
       </div>
       {selectionMessage ? <p className="text-xs text-muted-foreground">{selectionMessage}</p> : null}
       {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
@@ -686,7 +676,7 @@ export function DisposalBulkExecutionSelectPageControl() {
         onChange={togglePageSelection}
         aria-label={copy.selectPage}
         aria-checked={partiallySelected ? "mixed" : allSelected}
-        className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
+        className={checkboxVariants()}
       />
     </label>
   )
@@ -728,14 +718,14 @@ export function DisposalBulkExecutionCheckbox({
   }
 
   return (
-    <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md focus-within:ring-2 focus-within:ring-ring">
+    <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center">
       <input
         type="checkbox"
         checked={checked}
         disabled={disabled}
         onChange={() => toggle(item.requestId)}
         aria-label={label}
-        className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
+        className={checkboxVariants({ size: variant === "mobile" ? "lg" : "md" })}
       />
     </label>
   )
