@@ -37,10 +37,21 @@ import {
   type BulkExecutionSelectionMessage,
   type BulkExecutionSelectionState,
 } from "@/lib/disposal-bulk-execution-ui"
-import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import {
+  AccessibleDialog,
+  AccessibleDialogBody,
+  AccessibleDialogCancel,
+  AccessibleDialogFooter,
+  accessibleDialogFormClasses,
+} from "@/components/ui/accessible-dialog"
 import { Button } from "@/components/ui/button"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { Field, FieldHint } from "@/components/ui/field"
 import { checkboxVariants } from "@/components/ui/field-variants"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
+import { Notice } from "@/components/ui/notice"
+import { Textarea } from "@/components/ui/textarea"
 import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 import { cn } from "@/lib/utils"
 
@@ -814,9 +825,9 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
         aria-busy={busy}
         data-disposal-bulk-dialog
         onSubmit={handleSubmit}
-        className="flex flex-col"
+        className={accessibleDialogFormClasses}
       >
-        <div className="space-y-5 px-4 py-4 sm:px-6">
+        <AccessibleDialogBody className="space-y-5">
           <div aria-live="polite" className="min-h-5 text-sm">
             {previewing ? <BusyLabel label={copy.previewLoading} /> : null}
             {committing ? <BusyLabel label={copy.committing} /> : null}
@@ -859,30 +870,29 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
                   checked={useHistoricalEvidenceException}
                   onChange={(event) => setUseHistoricalEvidenceException(event.target.checked)}
                   aria-describedby={`${historicalWarningId} ${historicalHelpId}`}
-                  className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                  className={checkboxVariants({ size: "lg" })}
                 />
                 {copy.historicalException}
               </label>
               {useHistoricalEvidenceException ? (
                 <>
-                  <label className="block text-sm font-medium text-foreground">
-                    {copy.historicalReason}
-                    <textarea
+                  <Field label={copy.historicalReason} required>
+                    <Textarea
                       value={evidenceExceptionReason}
                       onChange={(event) => setEvidenceExceptionReason(event.target.value)}
                       minLength={20}
                       maxLength={2000}
                       required
                       aria-describedby={`${historicalWarningId} ${historicalHelpId}`}
-                      className="mt-2 min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="min-h-28"
                     />
-                  </label>
-                  <p id={historicalHelpId} className="text-xs text-muted-foreground">
+                  </Field>
+                  <FieldHint id={historicalHelpId} className="text-muted-foreground">
                     {format(copy.historicalReasonHelp, {
                       count: evidenceExceptionReason.length,
                       max: 2000,
                     })}
-                  </p>
+                  </FieldHint>
                   <label className="flex min-h-11 items-center gap-3 text-sm text-foreground">
                     <input
                       type="checkbox"
@@ -890,15 +900,15 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
                       onChange={(event) => setEvidenceExceptionAcknowledged(event.target.checked)}
                       required
                       aria-describedby={`${historicalWarningId} ${historicalHelpId}`}
-                      className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                      className={checkboxVariants({ size: "lg" })}
                     />
                     {copy.historicalAcknowledgement}
                   </label>
                 </>
               ) : (
-                <p id={historicalHelpId} className="text-xs text-muted-foreground">
+                <FieldHint id={historicalHelpId} className="text-muted-foreground">
                   {format(copy.historicalReasonHelp, { count: 0, max: 2000 })}
-                </p>
+                </FieldHint>
               )}
             </section>
           ) : null}
@@ -913,65 +923,41 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
             />
           ) : null}
 
+          {dialogState === "preview" && eligible.length === 0 ? (
+            <Notice tone="warning" role="alert">{copy.zeroEligible}</Notice>
+          ) : null}
+
           {dialogState === "preview" && eligible.length > 0 ? (
             <label className="flex min-h-11 items-start gap-3 border-t border-border pt-4 text-sm font-medium text-foreground">
               <input
                 type="checkbox"
                 checked={permanentConfirmed}
                 onChange={(event) => setPermanentConfirmed(event.target.checked)}
-                className="mt-0.5 h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                className={cn(checkboxVariants({ size: "lg" }), "mt-0.5")}
               />
               {copy.permanentConfirmation}
             </label>
           ) : null}
-        </div>
+        </AccessibleDialogBody>
 
-        <footer className="sticky bottom-0 z-10 flex flex-col-reverse gap-2 border-t border-border bg-surface px-4 py-3 sm:flex-row sm:justify-end sm:px-6">
-          {dialogState !== "committing" ? (
-            <button
-              type="button"
-              onClick={closeDialog}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-accent"
-            >
-              {previewing ? copy.cancelPreview : dialogState === "result" ? copy.close : copy.cancel}
-            </button>
-          ) : null}
-          {dialogState === "review" ? (
-            <button
-              type="submit"
-              disabled={!hasSharedValues}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
-            >
+        <AccessibleDialogFooter>
+          <AccessibleDialogCancel>
+            {previewing ? copy.cancelPreview : dialogState === "result" ? copy.close : copy.cancel}
+          </AccessibleDialogCancel>
+          {dialogState === "review" || previewing ? (
+            <Button type="submit" busy={previewing} disabled={!hasSharedValues}>
               {format(copy.confirm, { count: reviewedItems.length })}
-            </button>
+            </Button>
           ) : null}
-          {dialogState === "preview" ? (
-            <button
-              type="submit"
-              disabled={eligible.length === 0 || !permanentConfirmed}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
-            >
-              {eligible.length === 0
-                ? copy.zeroEligible
-                : format(copy.confirm, { count: eligible.length })}
-            </button>
-          ) : null}
-          {dialogState === "committing" ? (
-            <div className="inline-flex min-h-11 items-center justify-center gap-2 px-4 text-sm font-medium text-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              {copy.committing}
-            </div>
+          {dialogState === "preview" || committing ? (
+            <Button type="submit" busy={committing} disabled={eligible.length === 0 || !permanentConfirmed}>
+              {format(copy.confirm, { count: eligible.length })}
+            </Button>
           ) : null}
           {dialogState === "result" && blocked.length + failed.length > 0 ? (
-            <button
-              type="button"
-              onClick={retry}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover"
-            >
-              {copy.retry}
-            </button>
+            <Button onClick={retry}>{copy.retry}</Button>
           ) : null}
-        </footer>
+        </AccessibleDialogFooter>
       </form>
     </AccessibleDialog>
   )
@@ -980,7 +966,7 @@ function BulkExecutionDialog({ employees, executionStatuses }: { employees: Opti
 function BusyLabel({ label }: { label: string }) {
   return (
     <span className="inline-flex items-center gap-2 text-muted-foreground">
-      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+      <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
       {label}
     </span>
   )
@@ -1017,57 +1003,46 @@ function SharedValueFields({
 }) {
   return (
     <fieldset disabled={disabled} className="grid gap-4 sm:grid-cols-3">
-      <label className="text-sm font-medium text-foreground">
-        {copy.executionDate}
-        <input
+      <Field label={copy.executionDate} required>
+        <Input
           type="date"
           value={executionDate}
           onChange={(event) => onExecutionDateChange(event.target.value)}
           required
-          className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
         />
-      </label>
-      <label className="text-sm font-medium text-foreground">
-        {copy.executor}
-        <select
+      </Field>
+      <Field label={copy.executor} required>
+        <NativeSelect
           value={executedById}
           onChange={(event) => onExecutedByChange(event.target.value)}
           required
-          className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
         >
           <option value="">{copy.selectEmployee}</option>
           {employees.map((employee) => (
             <option key={employee.id} value={employee.id}>{employee.label}</option>
           ))}
-        </select>
-      </label>
-      <label className="text-sm font-medium text-foreground">
-        {copy.finalStatus}
-        <select
+        </NativeSelect>
+      </Field>
+      <Field label={copy.finalStatus} required>
+        <NativeSelect
           value={nextStatusId}
           onChange={(event) => onNextStatusChange(event.target.value)}
           required
-          className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
         >
           <option value="">{copy.selectStatus}</option>
           {executionStatuses.map((status) => (
             <option key={status.id} value={status.id}>{status.label}</option>
           ))}
-        </select>
-      </label>
+        </NativeSelect>
+      </Field>
       {recipientFallbackApplicable ? (
-        <label className="text-sm font-medium text-foreground sm:col-span-3">
-          {copy.sharedRecipient}
-          <input
+        <Field label={copy.sharedRecipient} hint={copy.sharedRecipientHelp} className="sm:col-span-3">
+          <Input
             value={sharedRecipientName}
             onChange={(event) => onSharedRecipientNameChange(event.target.value)}
             maxLength={200}
-            className="mt-2 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
           />
-          <span className="mt-1 block text-xs text-muted-foreground">
-            {copy.sharedRecipientHelp}
-          </span>
-        </label>
+        </Field>
       ) : null}
     </fieldset>
   )

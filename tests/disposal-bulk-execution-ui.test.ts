@@ -28,7 +28,8 @@ test("bulk execution UI has the required interaction and accessibility contracts
   assert.match(component, /function BulkExecutionDialog/)
   assert.match(component, /returnFocusRef=\{triggerRef\}/)
   assert.match(component, /fallbackFocusRef=\{restoreTargetRef\}/)
-  assert.match(component, /<footer className="[^"]*sticky bottom-0[^"]*"/)
+  assert.match(component, /<AccessibleDialogFooter>/)
+  assert.doesNotMatch(component, /<footer|sticky bottom-0/)
   assert.doesNotMatch(component, /fixed inset-0|role="dialog"|restoreFocusRef/)
   assert.match(component, /min-h-11 (?:min-)?w-11/)
   assert.match(component, /checkboxVariants\(/)
@@ -179,7 +180,7 @@ test("every disposal bulk execution code is wired to English and Thai copy", asy
 })
 
 // Plan 2B-2 Task 2 (spec 2B §8.6 row 4, §8.11 row 3): 2B owns only the list part of this 2C batch 3 file. The dialog
-// (BulkExecutionDialog, SharedValueFields and the rest below it) stays as it is for 2C plan 3.
+// (BulkExecutionDialog, SharedValueFields and the rest below it) belongs to 2C plan 3, which checks it in the next test.
 test("bulk execution list controls use Button and checkboxVariants, and leave the dialog to 2C (spec 2B §8.6 row 4)", async () => {
   const component = (await source("src/components/disposal/disposal-bulk-execution.tsx")).replace(/\r\n/g, "\n")
   const list = component.slice(component.indexOf("export function DisposalBulkExecutionSelectionToggle"), component.indexOf("function BulkExecutionDialog"))
@@ -192,7 +193,33 @@ test("bulk execution list controls use Button and checkboxVariants, and leave th
   assert.match(list, /<Button ref=\{triggerRef\} onClick=\{openReview\} disabled=\{busy\}>/, "opening the review dialog is not async, so the trigger has no busy state")
   assert.equal(list.match(/className=\{checkboxVariants\(/g)?.length, 2, "the select-page box and the row box")
   assert.doesNotMatch(list, /<button\b|disabled:opacity-50|rounded border-border|focus-within:ring/)
-  // The dialog keeps its own markup for 2C plan 3 (FMG GF7 of this file drops to 3, GB1 stays 2, as spec §8.6 says).
-  assert.equal(dialog.match(/<Loader2\b/g)?.length, 2)
-  assert.equal(dialog.match(/\b(?:h-4 w-4|h-5 w-5|h-3\.5 w-3\.5) rounded border-border\b|\baccent-primary\b|mb-1\.5 block text-sm font-medium text-foreground|ml-1 text-danger">\*/g)?.length, 3)
+  // 2C plan 3 moved the dialog onto the dialog parts: BusyLabel keeps the one spinner (FMG GB1 1) and the old checkbox markup went (GF7 0).
+  assert.equal(dialog.match(/<Loader2\b/g)?.length, 1)
+  assert.doesNotMatch(dialog, /\b(?:h-4 w-4|h-5 w-5|h-3\.5 w-3\.5) rounded border-border\b|\baccent-primary\b|mb-1\.5 block text-sm font-medium text-foreground|ml-1 text-danger">\*/)
+})
+
+// Phase 2C batch 3 (spec 2C §5.5 row 14, I25, §5.7, I35, §4.3, §4.12): the dialog on the dialog parts. The button that
+// starts the work stays in place with busy, cancel stays on screen but is off while committing, and "no eligible
+// request" is a warning Notice in the body instead of a long button label.
+test("bulk execution dialog uses the dialog parts, busy buttons that stay in place and the shared fields (2C batch 3)", async () => {
+  const component = (await source("src/components/disposal/disposal-bulk-execution.tsx")).replace(/\r\n/g, "\n")
+  const dialog = component.slice(component.indexOf("function BulkExecutionDialog"), component.indexOf("function ReviewedSharedValues"))
+
+  assert.match(dialog, /closeLabel=\{previewing \? copy\.cancelPreview : copy\.close\}/, "while the preview runs, the X cancels it (spec §5.3)")
+  assert.match(dialog, /onSubmit=\{handleSubmit\}\n\s+className=\{accessibleDialogFormClasses\}\n\s+>\n\s+<AccessibleDialogBody className="space-y-5">/)
+  assert.match(dialog, /<Notice tone="warning" role="alert">\{copy\.zeroEligible\}<\/Notice>/)
+  assert.equal(dialog.match(/copy\.zeroEligible/g)?.length, 1, "no button says the zero-eligible sentence")
+  assert.match(dialog, /<AccessibleDialogFooter>\n\s+<AccessibleDialogCancel>\n\s+\{previewing \? copy\.cancelPreview : dialogState === "result" \? copy\.close : copy\.cancel\}\n\s+<\/AccessibleDialogCancel>/)
+  assert.match(dialog, /\{dialogState === "review" \|\| previewing \? \(\n\s+<Button type="submit" busy=\{previewing\} disabled=\{!hasSharedValues\}>/)
+  assert.match(dialog, /\{dialogState === "preview" \|\| committing \? \(\n\s+<Button type="submit" busy=\{committing\} disabled=\{eligible\.length === 0 \|\| !permanentConfirmed\}>\n\s+\{format\(copy\.confirm, \{ count: eligible\.length \}\)\}/)
+  assert.match(dialog, /<Button onClick=\{retry\}>\{copy\.retry\}<\/Button>/)
+  assert.match(dialog, /<Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" \/>/)
+  assert.match(dialog, /<Field label=\{copy\.historicalReason\} required>\n\s+<Textarea\n/)
+  assert.equal(dialog.match(/<FieldHint id=\{historicalHelpId\} className="text-muted-foreground">/g)?.length, 2, "muted, not faint, ink on the warning fill (DESIGN.md §2)")
+  assert.equal(dialog.match(/className=\{checkboxVariants\(\{ size: "lg" \}\)\}/g)?.length, 2)
+  assert.match(dialog, /className=\{cn\(checkboxVariants\(\{ size: "lg" \}\), "mt-0\.5"\)\}/)
+  assert.equal(dialog.match(/<input\b/g)?.length, 3, "only the three checkboxes stay native inputs")
+  assert.equal(dialog.match(/<Field label=\{copy\.(?:executionDate|executor|finalStatus)\} required>/g)?.length, 3)
+  assert.match(dialog, /<Field label=\{copy\.sharedRecipient\} hint=\{copy\.sharedRecipientHelp\} className="sm:col-span-3">/)
+  assert.doesNotMatch(dialog, /<footer|<button\b|<select|<textarea|<label className="(?:block )?text-sm font-medium|disabled:opacity|flex-col-reverse/)
 })
