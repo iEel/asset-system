@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server"
 import { IntegrationClientManager } from "@/components/admin/IntegrationClientManager"
+import { PageHeader } from "@/components/ui/page-header"
 import { requirePagePermission } from "@/lib/page-auth"
 
 type IntegrationApiPageProps = {
@@ -13,10 +14,7 @@ export default async function IntegrationApiPage({ params }: IntegrationApiPageP
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("subtitle")}</p>
-      </div>
+      <PageHeader title={t("title")} meta={t("subtitle")} />
 
       <IntegrationClientManager
         labels={{
