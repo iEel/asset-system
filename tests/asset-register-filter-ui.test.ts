@@ -64,12 +64,17 @@ test("the filter sheet applies changes at once, keeps its trigger and shows the 
 
 test("status tabs are server-rendered links that mark the current tab and scroll sideways on phones", () => {
   const source = tabs()
+  // TabNav (2B-1, I9) draws the links: aria-current on the current one, a row that scrolls, 44px targets below md.
+  const tabNav = read("src/components/ui/tab-nav.tsx")
 
   assert.doesNotMatch(source, /"use client"/)
-  assert.match(source, /<nav aria-label=\{label\}/)
-  assert.match(source, /aria-current=\{item\.active \? "page" : undefined\}/)
-  assert.match(source, /overflow-x-auto/)
-  assert.match(source, /min-h-11/)
+  assert.match(source, /<TabNav\b[\s\S]*?aria-label=\{label\}[\s\S]*?data-asset-status-tabs/)
+  assert.match(source, /current=\{items\.find\(\(item\) => item\.active\)\?\.key \?\? ""\}/)
+  assert.match(source, /className="-mx-4 mb-2 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:mb-3 md:px-0"/, "the row still scrolls to the screen edge on phones")
+  assert.doesNotMatch(source, /<nav\b|<Link\b|aria-current|rounded-full|fullBleed/)
+  assert.match(tabNav, /aria-current=/)
+  assert.match(tabNav, /overflow-x-auto/)
+  assert.match(tabNav, /min-h-11/)
 })
 
 test("filter chips keep 44px phone targets and hide scope chips on desktop", () => {

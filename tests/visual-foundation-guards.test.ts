@@ -140,11 +140,15 @@ test("A4 documents keep the 20px text-sm line height so signatures stay on page 
   assert.match(read("src/components/asset-operations/operation-document-print.tsx"), /className="operation-print-page \[--text-sm--line-height:calc\(20\/14\)\] /)
 })
 
-test("the selected register status tab keeps its underline on desktop and the row still scrolls", () => {
-  const source = read("src/components/assets/asset-register-status-tabs.tsx")
-  assert.doesNotMatch(source, /md:overflow-visible|md:-mb-px/)
-  assert.match(source, /data-asset-status-tabs className="[^"]*\boverflow-x-auto\b/)
-  assert.match(source, /md:shadow-\[inset_0_-1px_0_var\(--border\)\]/)
+test("the register status tabs keep their underline at every width and the row still scrolls", () => {
+  // The register tabs are TabNav (2B-3, I9): the base line is an inset shadow on the list at every width, and the
+  // current tab's line sits inside the list, so it scrolls with the tabs and is never clipped.
+  const tabNav = read("src/components/ui/tab-nav.tsx")
+  assert.doesNotMatch(tabNav, /overflow-visible|-mb-px/)
+  assert.match(tabNav, /overflow-x-auto/)
+  assert.match(tabNav, /shadow-\[inset_0_-1px_0_var\(--border\)\]/)
+  assert.doesNotMatch(tabNav, /md:shadow-\[inset/)
+  assert.match(read("src/components/assets/asset-register-status-tabs.tsx"), /<TabNav\b[\s\S]*?data-asset-status-tabs/)
 })
 
 test("every field gets one placeholder color, and native selects get a token-colored chevron", () => {
