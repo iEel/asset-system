@@ -110,7 +110,7 @@ Important data semantics:
 | Cross-scope visibility | Dashboard KPI/review panel, URL-backed quick filters, and exports for assets whose current custodian company, current custodian branch, or current location branch differs from the owner/tag scope |
 | Duplicate handling | Duplicate checking for asset tag/serial and batch duplicate review |
 | Asset tag generation | Configurable format, category prefix groups, company asset-tag code, branch/category/running tokens |
-| Status/condition guidance | Asset Create/Edit, Asset Detail, Asset Register filters, and Asset Register table headers expose help popovers explaining lifecycle status, physical condition, protected workflows, and normal next actions; register filter icons use a compact size so the filter rows stay visually aligned |
+| Status/condition guidance | Asset Create/Edit, Asset Detail, Asset Register filters, and Asset Register table headers expose help popovers explaining lifecycle status, physical condition, protected workflows, and normal next actions; every help button is 24px beside its label, and the register's filter sheet puts it in the `labelAction` of its `FilterSelect` |
 | Custom fields | Category-level custom field templates rendered automatically in asset forms |
 | Model specs | Structured asset model specs with legacy text parsing and summary display |
 | Asset/model photos | Asset photos and model photos stored as attachments; Asset Register thumbnails prefer model photos first, then fall back to asset photos, while Asset Detail keeps asset/model/checklist photos in the `รูปทรัพย์สิน` working area and opens cross-workflow evidence from a drawer so it does not duplicate the event timeline |
