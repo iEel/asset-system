@@ -93,6 +93,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}assets/asset-register-export-menu.tsx`,
   `${D}assets/page.tsx`,
   `${D}asset-management/import-export/page.tsx`,
+  `${D}assets/[id]/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -175,7 +176,6 @@ const TITLES: Record<string, string> = {
 const BUDGETS: Record<string, Record<string, number>> = {
   LH1: {
     // 2B-4
-    [`${D}assets/[id]/page.tsx`]: 1,
     [`${D}disposal/[id]/page.tsx`]: 1,
     [`${D}maintenance/[id]/page.tsx`]: 1,
     [`${D}master-data/employees/[id]/page.tsx`]: 1,
@@ -216,7 +216,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-2
     [`${D}audit/rounds/[id]/page.tsx`]: 1, // 0 → 1: 2B-2 swaps the Download icon of the bar's back item :479 for ArrowLeft
     // 2B-4
-    [`${D}assets/[id]/page.tsx`]: 1,
     [`${D}disposal/[id]/page.tsx`]: 1,
     [`${D}maintenance/[id]/page.tsx`]: 1, // 0 → 1: 2B-4 swaps the Wrench icon of the bar's back item :147 for ArrowLeft
     [`${D}master-data/employees/[id]/page.tsx`]: 1,
@@ -248,7 +247,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}admin/role-permission-form.tsx`]: 2, // → 2 (KEEP): 2C batch 4 (R-e)
     [`${C}master-data/master-data-layout.tsx`]: 2, // 2B-5 deletes ColumnHeader and SortableColumnHeader (R-h)
     // 2B-4
-    [`${D}assets/[id]/page.tsx`]: 10,
     [`${D}master-data/employees/[id]/page.tsx`]: 1,
     // 2B-5
     [`${D}admin/logs/page.tsx`]: 1,
@@ -273,8 +271,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LT5: {
     // 2B-1
     [`${C}master-data/master-data-layout.tsx`]: 2, // 2B-5 deletes MasterDataPagination (R-h)
-    // 2B-4
-    [`${D}assets/[id]/page.tsx`]: 1,
   },
   LV1: {
     // 2B-4
@@ -298,7 +294,7 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-2
     [`${C}audit/audit-finding-review-actions.tsx`]: 3, // → 3 (KEEP): review dialog (2D)
     // 2B-4
-    [`${D}assets/[id]/page.tsx`]: 15, // → 4 (KEEP): translated-sentence arguments :1198, :1200 and the history sentence :2462 (R-n)
+    [`${D}assets/[id]/page.tsx`]: 4, // → 4 (KEEP): translated-sentence arguments :1198, :1200 and the history sentence :2462 (R-n)
     [`${D}disposal/[id]/page.tsx`]: 2,
     [`${D}maintenance/[id]/page.tsx`]: 2,
     [`${D}master-data/employees/[id]/page.tsx`]: 5,
@@ -326,7 +322,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LV3: {
     // 2B-4
-    [`${D}assets/[id]/page.tsx`]: 3,
     [`${D}disposal/[id]/page.tsx`]: 5,
     [`${D}maintenance/[id]/page.tsx`]: 5,
     [`${D}master-data/suppliers/[id]/page.tsx`]: 4,
@@ -344,7 +339,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-2
     [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // → 1 (KEEP): Metric :572 in the dialog (2C plan 3)
     // 2B-4
-    [`${D}assets/[id]/page.tsx`]: 1,
     [`${D}master-data/employees/[id]/page.tsx`]: 1,
     [`${D}master-data/suppliers/[id]/page.tsx`]: 1,
     // 2B-5
@@ -372,7 +366,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LK1: {
     // 2B-4
-    [`${D}assets/[id]/page.tsx`]: 1,
     [`${D}disposal/[id]/page.tsx`]: 1,
     [`${D}maintenance/[id]/page.tsx`]: 1,
     [`${D}master-data/employees/[id]/page.tsx`]: 1,

@@ -24,7 +24,7 @@ test("asset detail keeps secondary actions in the More menu and caps mobile acti
 test("asset detail keeps an accessible name on the icon-only mobile back link", () => {
   const source = assetDetailSource()
 
-  assert.match(source, /aria-label=\{isAssetScanReturn \? t\("backToScan"\) : tCommon\("back"\)\}/)
+  assert.match(source, /label=\{isAssetScanReturn \? t\("backToScan"\) : tCommon\("back"\)\}/)
 })
 
 test("asset detail answers identity and responsibility in one compact first-viewport summary", () => {
@@ -36,8 +36,8 @@ test("asset detail answers identity and responsibility in one compact first-view
   assert.ok(identityIndex < componentContextIndex)
   assert.match(source, /<StatusBadge label=\{asset\.status\.nameTh\}/)
   assert.match(source, /<StatusBadge label=\{asset\.condition\.nameTh\}/)
-  assert.match(source, /\{currentLocationLabel \|\| "-"\}/)
-  assert.match(source, /\{lifecycle\.responsibilityValue \?\? currentCustodianLabel \?\? "-"\}/)
+  assert.match(source, /orNil\(currentLocationLabel\)/)
+  assert.match(source, /orNil\(lifecycle\.responsibilityValue \?\? currentCustodianLabel\)/)
   assert.doesNotMatch(source, /<SummaryCard/)
 })
 
@@ -148,8 +148,32 @@ test("asset detail header links share the Button look of the More menu trigger",
   const source = assetDetailSource()
 
   assert.match(source, /import \{ buttonVariants \} from "@\/components\/ui\/button-variants"/)
-  assert.match(source, /className=\{cn\(buttonVariants\(\{ variant: "outline" \}\), "min-w-11 px-3"\)\}/)
-  assert.match(source, /className=\{cn\(buttonVariants\(\), "hidden md:inline-flex"\)\}/)
+  assert.match(source, /<PageBackLink href=\{returnToHref\}/)
+  assert.match(source, /cn\(buttonVariants\(\{ size: "md" \}\), "hidden md:inline-flex"\)/)
   assert.doesNotMatch(source, /rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground/)
   assert.doesNotMatch(source, /rounded-md bg-primary px-4 text-sm font-medium text-white/)
+})
+
+// Plan 2B-4 Task 1 (spec 2B §4.4.5, §5.5, §8.8 row 1, I1, R-h): the asset name is the h1 under the trail that ends on
+// the code; the code, the badges, the location and the custodian are the meta row; ⋯ comes before the primary edit link.
+// The two history tables are DataTables, the facts KeyValueLists and the number tiles one StatStrip per tab. The O11
+// bottom padding and the mobile action bar stay for 2C plan 5. This file reads the page raw (CRLF): no line breaks here.
+test("asset detail header is PageHeader with the asset name, and its facts, tiles and tables use the shared parts (spec 2B §4.4.5)", () => {
+  const source = assetDetailSource()
+
+  assert.match(source, /import \{ PageBackLink, PageHeader \} from "@\/components\/ui\/page-header"/)
+  assert.match(source, /breadcrumbs=\{\[\s*\{ label: t\("title"\), href: returnToHref \},\s*\{ label: asset\.assetTag, code: true \},\s*\]\}\s*title=\{asset\.name\}/)
+  assert.match(source, /<span className="tag">\{asset\.assetTag\}<\/span>\s*<span data-testid="asset-identity-summary" className="contents">/)
+  assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{isAssetScanReturn \? t\("backToScan"\) : tCommon\("back"\)\} \/>\}/)
+  assert.doesNotMatch(source, /aria-label=\{isAssetScanReturn/)
+  const menuAt = source.indexOf("<AssetDetailActionMenu")
+  const editAt = source.indexOf('cn(buttonVariants({ size: "md" }), "hidden md:inline-flex")')
+  assert.ok(menuAt > -1 && editAt > menuAt, "⋯ comes before the primary edit link (spec 2B §4.3.3 rule 5)")
+  assert.equal(source.match(/<DataTable framed=\{false\} caption=/g)?.length, 2)
+  assert.match(source, /tone=\{getRepairRecordStatusTone\(ticket\.repairStatus\)\}/)
+  assert.equal(source.match(/<StatStrip\b/g)?.length, 2)
+  assert.equal(source.match(/<KeyValueList\b/g)?.length, 7)
+  assert.doesNotMatch(source, /<h1\b|<thead\b|<Breadcrumbs\b|<ArrowLeft\b|formatCurrency|function (?:Info|SummaryStrip)\b|opacity-70/)
+  assert.match(source, /<div className="space-y-6 pb-24 md:pb-0">/, "the O11 bottom padding stays for 2C plan 5")
+  assert.match(source, /\{mobileActions\.length > 0 \? <MobileActionBar actions=\{mobileActions\} \/> : null\}/)
 })

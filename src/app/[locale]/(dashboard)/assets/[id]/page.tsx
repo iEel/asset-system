@@ -28,8 +28,14 @@ import {
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import { hasPermission } from "@/lib/auth-utils"
-import { cn, formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
+import { cn, formatDate, formatDateTime } from "@/lib/utils"
+import { formatCount, formatMoney } from "@/lib/display-format"
 import { buttonVariants } from "@/components/ui/button-variants"
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeader } from "@/components/ui/data-table"
+import { KeyValueList } from "@/components/ui/key-value-list"
+import { Nil, orNil } from "@/components/ui/nil"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
+import { StatStrip } from "@/components/ui/stat-strip"
 import { AssetQrCode } from "@/components/assets/asset-qr-code"
 import { AssetAttachments } from "@/components/assets/asset-attachments"
 import { AssetStatusCorrectionButton } from "@/components/assets/asset-status-correction-button"
@@ -46,7 +52,6 @@ import { parseModelSpecs } from "@/lib/model-specs"
 import { getMovementDisplayLabels } from "@/lib/movement-labels"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AssetMovementTimeline, type AssetMovementTimelineItem } from "@/components/assets/asset-movement-timeline"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { MobileActionBar } from "@/components/ui/mobile-action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
 import { hasAssetResponsibility, normalizeAssetOwnershipType } from "@/lib/asset-ownership"
@@ -61,7 +66,7 @@ import { getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 import { getAssetDetailLoadPolicy } from "@/lib/asset-detail-data"
 import { buildReferenceLabelMap, labelOrDash } from "@/lib/asset-operation-document"
 import { parseAssetTransactionSnapshot } from "@/lib/asset-transaction-snapshot"
-import { toRepairRecordStatus } from "@/lib/repair-record-policy"
+import { getRepairRecordStatusTone, toRepairRecordStatus } from "@/lib/repair-record-policy"
 import {
   compactMovementDetails,
   createHealthItem,
@@ -69,7 +74,6 @@ import {
   getActivityToneClass,
   getHealthBadgeClass,
   getMissingPhotoChecklistLabels,
-  getSummaryToneClass,
   getWarrantyIconClass,
   getWarrantyPanelClass,
   getWarrantyState,
@@ -658,7 +662,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
   }
   const unifiedTimelineItems = [
     ...movementTimelineItems,
-    ...buildPurchaseTimelineItems(purchaseDocuments, legacyPurchaseDocuments, t),
+    ...buildPurchaseTimelineItems(purchaseDocuments, legacyPurchaseDocuments, t, tCommon("baht")),
     ...buildComponentTimelineItems(currentComponentsForPanel, componentHistoryForPanel, installedInLinksForPanel, locale, t),
     ...buildMaintenanceTimelineItems(asset.maintenanceTickets, locale, t, (status) => tMaintenance(`statuses.${toRepairRecordStatus(status)}`)),
     ...buildAuditTimelineItems(asset.auditItems, locale, t, formatAuditState),
@@ -880,103 +884,89 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
 
   return (
     <div className="space-y-6 pb-24 md:pb-0">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0">
-          <div className="mb-2">
-            <Breadcrumbs
-              items={[
-                { label: t("title"), href: returnToHref },
-                { label: asset.assetTag, code: true },
-              ]}
-            />
-          </div>
-          <h1 className="break-words text-2xl font-bold text-foreground">{asset.assetTag}</h1>
-          <p className="mt-1 break-words text-sm text-muted-foreground">{asset.name}</p>
-          <div data-testid="asset-identity-summary" className="mt-3 flex flex-col gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-1.5">
+      <PageHeader
+        breadcrumbs={[
+          { label: t("title"), href: returnToHref },
+          { label: asset.assetTag, code: true },
+        ]}
+        title={asset.name}
+        meta={
+          <>
+            <span className="tag">{asset.assetTag}</span>
+            <span data-testid="asset-identity-summary" className="contents">
+              <span className="inline-flex items-center gap-1.5">
                 <StatusBadge label={asset.status.nameTh} tone={getAssetStateTone(asset.status.name)} />
                 <AssetStateHelpPopover {...assetStatusHelp} />
-              </div>
-              <div className="inline-flex items-center gap-1.5">
+              </span>
+              <span className="inline-flex items-center gap-1.5">
                 <StatusBadge label={asset.condition.nameTh} tone={getAssetStateTone(asset.condition.name)} />
                 <AssetStateHelpPopover {...assetConditionHelp} />
-              </div>
-            </div>
-            <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-muted-foreground">
-              <span className="inline-flex min-w-0 items-center gap-1.5">
-                <MapPin className="h-4 w-4 shrink-0 text-info" aria-hidden="true" />
-                <span className="truncate">{currentLocationLabel || "-"}</span>
               </span>
-              <span className="inline-flex min-w-0 items-center gap-1.5">
-                <PackageCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                <span className="truncate">{lifecycle.responsibilityValue ?? currentCustodianLabel ?? "-"}</span>
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href={returnToHref}
-            aria-label={isAssetScanReturn ? t("backToScan") : tCommon("back")}
-            className={cn(buttonVariants({ variant: "outline" }), "min-w-11 px-3")}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">{isAssetScanReturn ? t("backToScan") : tCommon("back")}</span>
-          </Link>
-          {canEditAsset ? (
-            <Link
-              href={editHref}
-              className={cn(buttonVariants(), "hidden md:inline-flex")}
-            >
-              <Edit className="h-4 w-4" />
-              {tCommon("edit")}
-            </Link>
-          ) : null}
-          <AssetDetailActionMenu
-            label={t("detailMoreActions")}
-            cancelTransaction={
-              canEditAsset && latestAssetTransaction?.transactionStatus === "active"
-                ? {
-                    type: latestAssetTransaction.type,
-                    transactionId: latestAssetTransaction.id,
-                    expectedUpdatedAt: latestAssetTransaction.updatedAt.toISOString(),
-                    originalOperator: latestAssetTransaction.operator,
-                    currentState: formatCancellationSnapshot(cancellationAfterSnapshot, cancellationReferenceLabels),
-                    restoreState: formatCancellationSnapshot(cancellationBeforeSnapshot, cancellationReferenceLabels),
-                    componentCount: cancellationBeforeSnapshot?.components.length ?? 0,
-                    labels: buildCancellationLabels(tCancellation),
-                  }
-                : undefined
-            }
-            activity={{
-              title: t("activityDrawerTitle"),
-              triggerLabel: t("activityDrawerOpen"),
-              emptyLabel: tCommon("noData"),
-              items: activityDrawerItems,
-            }}
-            evidence={{
-              items: evidenceDrawerItems,
-              labels: {
-                title: t("evidenceCenter"),
-                triggerLabel: t("detailSections.evidence"),
-                emptyLabel: t("noEvidenceHelp"),
-                total: t("evidenceTotal"),
-                images: t("evidenceImages"),
-                documents: t("evidenceDocuments"),
-                all: t("movementFilters.all"),
-                openFile: t("openEvidenceFile"),
-              },
-            }}
-            links={[
-              { key: "print", href: `/${locale}/assets/${asset.id}/label`, label: t("printLabel") },
-              ...(canEditAsset ? [{ key: "components" as const, href: componentsManagerHref, label: t("manageComponents") }] : []),
-              ...(canCreateAsset ? [{ key: "clone" as const, href: cloneHref, label: t("cloneAsset") }] : []),
-              ...(canEditAsset ? [{ key: "edit" as const, href: editHref, label: tCommon("edit"), mobileOnly: true }] : []),
-            ]}
-          />
-        </div>
-      </div>
+            </span>
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <MapPin className="h-4 w-4 shrink-0 text-info" aria-hidden="true" />
+              <span className="truncate">{orNil(currentLocationLabel)}</span>
+            </span>
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <PackageCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              <span className="truncate">{orNil(lifecycle.responsibilityValue ?? currentCustodianLabel)}</span>
+            </span>
+          </>
+        }
+        back={<PageBackLink href={returnToHref} label={isAssetScanReturn ? t("backToScan") : tCommon("back")} />}
+        actions={
+          <>
+            <AssetDetailActionMenu
+              label={t("detailMoreActions")}
+              cancelTransaction={
+                canEditAsset && latestAssetTransaction?.transactionStatus === "active"
+                  ? {
+                      type: latestAssetTransaction.type,
+                      transactionId: latestAssetTransaction.id,
+                      expectedUpdatedAt: latestAssetTransaction.updatedAt.toISOString(),
+                      originalOperator: latestAssetTransaction.operator,
+                      currentState: formatCancellationSnapshot(cancellationAfterSnapshot, cancellationReferenceLabels),
+                      restoreState: formatCancellationSnapshot(cancellationBeforeSnapshot, cancellationReferenceLabels),
+                      componentCount: cancellationBeforeSnapshot?.components.length ?? 0,
+                      labels: buildCancellationLabels(tCancellation),
+                    }
+                  : undefined
+              }
+              activity={{
+                title: t("activityDrawerTitle"),
+                triggerLabel: t("activityDrawerOpen"),
+                emptyLabel: tCommon("noData"),
+                items: activityDrawerItems,
+              }}
+              evidence={{
+                items: evidenceDrawerItems,
+                labels: {
+                  title: t("evidenceCenter"),
+                  triggerLabel: t("detailSections.evidence"),
+                  emptyLabel: t("noEvidenceHelp"),
+                  total: t("evidenceTotal"),
+                  images: t("evidenceImages"),
+                  documents: t("evidenceDocuments"),
+                  all: t("movementFilters.all"),
+                  openFile: t("openEvidenceFile"),
+                },
+              }}
+              links={[
+                { key: "print", href: `/${locale}/assets/${asset.id}/label`, label: t("printLabel") },
+                ...(canEditAsset ? [{ key: "components" as const, href: componentsManagerHref, label: t("manageComponents") }] : []),
+                ...(canCreateAsset ? [{ key: "clone" as const, href: cloneHref, label: t("cloneAsset") }] : []),
+                ...(canEditAsset ? [{ key: "edit" as const, href: editHref, label: tCommon("edit"), mobileOnly: true }] : []),
+              ]}
+            />
+            {canEditAsset ? (
+              <Link href={editHref} className={cn(buttonVariants({ size: "md" }), "hidden md:inline-flex")}>
+                <Edit aria-hidden="true" />
+                {tCommon("edit")}
+              </Link>
+            ) : null}
+          </>
+        }
+      />
       <AssetComponentContextBanner
         installedInLinks={installedInLinksForPanel}
         labels={{
@@ -1084,20 +1074,34 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           {isAssetDetailSectionVisible(assetDetailView, "overview") ? (
             <section id="overview" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
             <SectionHeading title={t("detailSections.overview")} subtitle={t("detailSections.overviewSubtitle")} />
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <Info label={t("category")} value={`${asset.category.code} - ${asset.category.name}`} />
-              <Info label={t("brand")} value={asset.brand?.name} />
-              <Info label={t("model")} value={asset.model?.name} />
-              <Info label={ownershipType === "software_license" ? t("licenseKey") : t("serialNumber")} value={ownershipType === "software_license" ? maskLicenseKey(asset.serialNumber) : asset.serialNumber} />
-              {ownershipType === "software_license" ? (
-                <>
-                  <Info label={t("licenseSeatUsage")} value={licenseSeatSummary} />
-                  <Info label={t("licenseAssignedAsset")} value={licenseAssignedAsset ? `${licenseAssignedAsset.assetTag} - ${licenseAssignedAsset.name}` : null} />
-                </>
-              ) : null}
-              <Info label={t("fixedAssetCode")} value={asset.fixedAssetCode} />
-              <Info label={t("purchasePrice")} value={formatCurrency(asset.purchasePrice ? Number(asset.purchasePrice) : null)} />
-            </div>
+            <KeyValueList
+              items={[
+                { key: "category", label: t("category"), value: <><span className="tag">{asset.category.code}</span> - {asset.category.name}</> },
+                { key: "brand", label: t("brand"), value: asset.brand?.name },
+                { key: "model", label: t("model"), value: asset.model?.name },
+                {
+                  key: "serialNumber",
+                  label: ownershipType === "software_license" ? t("licenseKey") : t("serialNumber"),
+                  value: ownershipType === "software_license" ? maskLicenseKey(asset.serialNumber) : asset.serialNumber,
+                },
+                ...(ownershipType === "software_license"
+                  ? [
+                      { key: "licenseSeatUsage", label: t("licenseSeatUsage"), value: licenseSeatSummary },
+                      {
+                        key: "licenseAssignedAsset",
+                        label: t("licenseAssignedAsset"),
+                        value: licenseAssignedAsset ? <><span className="tag">{licenseAssignedAsset.assetTag}</span> - {licenseAssignedAsset.name}</> : null,
+                      },
+                    ]
+                  : []),
+                { key: "fixedAssetCode", label: t("fixedAssetCode"), value: asset.fixedAssetCode },
+                {
+                  key: "purchasePrice",
+                  label: t("purchasePrice"),
+                  value: asset.purchasePrice == null ? null : <span className="num">{formatMoney(Number(asset.purchasePrice), { unit: tCommon("baht") })}</span>,
+                },
+              ]}
+            />
             </section>
           ) : null}
 
@@ -1105,11 +1109,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             <section id="specs" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
               <SectionHeading title={tBrandModel("structuredSpecs")} subtitle={t("detailSections.specsSubtitle")} />
               {modelSpecs.items.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {modelSpecs.items.map((item) => (
-                    <Info key={item.id} label={item.label} value={item.value} />
-                  ))}
-                </div>
+                <KeyValueList items={modelSpecs.items.map((item) => ({ key: item.id, label: item.label, value: item.value }))} />
               ) : null}
               {modelSpecs.notes ? (
                 <p className="mt-4 whitespace-pre-wrap rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
@@ -1122,15 +1122,22 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           {isAssetDetailSectionVisible(assetDetailView, "ownership") ? (
             <section id="ownership" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
             <SectionHeading title={t("ownership")} subtitle={t("detailSections.ownershipSubtitle")} />
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <Info label={t("company")} value={`${asset.company.code} - ${asset.company.nameTh}`} />
-              <Info label={t("branch")} value={`${asset.branch.code} - ${asset.branch.name}`} />
-              <Info label={t("ownershipType")} value={t(`ownershipType_${ownershipType}`)} />
-              <Info label={t("department")} value={asset.department ? `${asset.department.code} - ${asset.department.name}` : null} />
-              <Info label={t("custodian")} value={asset.custodian ? `${asset.custodian.code} - ${asset.custodian.fullNameTh}` : null} />
-              <Info label={t("homeLocation")} value={asset.homeLocation ? `${asset.homeLocation.code} - ${asset.homeLocation.name}` : null} />
-              <Info label={t("currentLocation")} value={`${asset.currentLocation.code} - ${asset.currentLocation.name}`} />
-            </div>
+            <KeyValueList
+              items={[
+                { key: "company", label: t("company"), value: <><span className="tag">{asset.company.code}</span> - {asset.company.nameTh}</> },
+                { key: "branch", label: t("branch"), value: <><span className="tag">{asset.branch.code}</span> - {asset.branch.name}</> },
+                { key: "ownershipType", label: t("ownershipType"), value: t(`ownershipType_${ownershipType}`) },
+                { key: "department", label: t("department"), value: asset.department ? <><span className="tag">{asset.department.code}</span> - {asset.department.name}</> : null },
+                {
+                  key: "custodian",
+                  label: t("custodian"),
+                  value: asset.custodian ? <><span className="tag">{asset.custodian.code}</span> - {asset.custodian.fullNameTh}</> : null,
+                  nilLabel: t("noCustodian"),
+                },
+                { key: "homeLocation", label: t("homeLocation"), value: asset.homeLocation ? <><span className="tag">{asset.homeLocation.code}</span> - {asset.homeLocation.name}</> : null },
+                { key: "currentLocation", label: t("currentLocation"), value: <><span className="tag">{asset.currentLocation.code}</span> - {asset.currentLocation.name}</> },
+              ]}
+            />
             </section>
           ) : null}
 
@@ -1227,14 +1234,16 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                 <ShieldCheck className={`h-5 w-5 ${getWarrantyIconClass(warrantyState.tone)}`} />
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <Info label={t("supplier")} value={asset.supplier ? `${asset.supplier.code} - ${asset.supplier.name}` : null} />
-              <Info label={t("purchaseDate")} value={formatDate(asset.purchaseDate)} />
-              <Info label={t("warrantyStart")} value={formatDate(asset.warrantyStartDate)} />
-              <Info label={t("warrantyEnd")} value={formatDate(asset.warrantyEndDate)} />
-              <Info label={t("poNumber")} value={asset.poNumber} />
-              <Info label={t("invoiceNumber")} value={asset.invoiceNumber} />
-            </div>
+            <KeyValueList
+              items={[
+                { key: "supplier", label: t("supplier"), value: asset.supplier ? <><span className="tag">{asset.supplier.code}</span> - {asset.supplier.name}</> : null },
+                { key: "purchaseDate", label: t("purchaseDate"), value: asset.purchaseDate ? formatDate(asset.purchaseDate) : null },
+                { key: "warrantyStart", label: t("warrantyStart"), value: asset.warrantyStartDate ? formatDate(asset.warrantyStartDate) : null },
+                { key: "warrantyEnd", label: t("warrantyEnd"), value: asset.warrantyEndDate ? formatDate(asset.warrantyEndDate) : null },
+                { key: "poNumber", label: t("poNumber"), value: asset.poNumber },
+                { key: "invoiceNumber", label: t("invoiceNumber"), value: asset.invoiceNumber },
+              ]}
+            />
             <AssetPurchaseDocuments documents={purchaseDocuments} legacyAttachments={legacyPurchaseDocuments} />
             </section>
           ) : null}
@@ -1267,7 +1276,7 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                     locations: checkoutLocationLabels,
                     parentAssets: checkoutParentAssetLabels,
                   })
-                  const returnLabel = checkout.checkin ? `${checkout.checkin.documentNo ?? checkout.checkin.id} · ${formatDate(checkout.checkin.returnDate)}` : "-"
+                  const returnLabel = checkout.checkin ? `${checkout.checkin.documentNo ?? checkout.checkin.id} · ${formatDate(checkout.checkin.returnDate)}` : null
                   const handoverModeLabel = getAssetHandoverModeLabel(checkout.handoverMode, {
                     permanent: t("handoverPermanentAssignment"),
                     temporary: t("handoverTemporaryLoan"),
@@ -1297,16 +1306,19 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                             <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
                             <StatusBadge label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} tone={checkout.isReturned ? "success" : "info"} />
                           </div>
-                          <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
-                            <Info label={t("documentNo")} value={checkout.documentNo ?? checkout.id} compact />
-                            <Info label={t("handoverMode")} value={handoverModeLabel} compact />
-                            <Info label={t("handoverTo")} value={destination} compact />
-                            {checkout.handoverMode === "temporary_loan" ? (
-                              <Info label={t("expectedReturnDate")} value={formatDate(checkout.expectedReturnDate)} compact />
-                            ) : null}
-                            <Info label={t("returnDate")} value={returnLabel} compact />
-                            <Info label={t("remark")} value={checkout.remark} compact />
-                          </div>
+                          <KeyValueList
+                            className="mt-2"
+                            items={[
+                              { key: "documentNo", label: t("documentNo"), value: <span className="tag">{checkout.documentNo ?? checkout.id}</span> },
+                              { key: "handoverMode", label: t("handoverMode"), value: handoverModeLabel },
+                              { key: "handoverTo", label: t("handoverTo"), value: destination },
+                              ...(checkout.handoverMode === "temporary_loan"
+                                ? [{ key: "expectedReturnDate", label: t("expectedReturnDate"), value: checkout.expectedReturnDate ? formatDate(checkout.expectedReturnDate) : null }]
+                                : []),
+                              { key: "returnDate", label: t("returnDate"), value: returnLabel },
+                              { key: "remark", label: t("remark"), value: checkout.remark },
+                            ]}
+                          />
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <Link href={`/${locale}/asset-management/checkouts/${checkout.id}`} className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium transition-colors hover:bg-accent">
@@ -1329,13 +1341,16 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                             <span className="font-semibold text-foreground">{formatDate(checkout.checkoutDate)}</span>
                             <StatusBadge label={checkout.isReturned ? t("handoverReturned") : t("handoverActive")} tone={checkout.isReturned ? "success" : "info"} />
                           </div>
-                          <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2 xl:grid-cols-4">
-                            <Info label={t("documentNo")} value={checkout.documentNo ?? checkout.id} compact />
-                            <Info label={t("handoverMode")} value={handoverModeLabel} compact />
-                            <Info label={t("handoverTo")} value={destination} compact />
-                            <Info label={t("returnDate")} value={returnLabel} compact />
-                            <Info label={t("remark")} value={checkout.remark} compact />
-                          </div>
+                          <KeyValueList
+                            className="mt-2"
+                            items={[
+                              { key: "documentNo", label: t("documentNo"), value: <span className="tag">{checkout.documentNo ?? checkout.id}</span> },
+                              { key: "handoverMode", label: t("handoverMode"), value: handoverModeLabel },
+                              { key: "handoverTo", label: t("handoverTo"), value: destination },
+                              { key: "returnDate", label: t("returnDate"), value: returnLabel },
+                              { key: "remark", label: t("remark"), value: checkout.remark },
+                            ]}
+                          />
                         </div>
                         <span className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-medium text-foreground transition-colors group-open:bg-accent">
                           {t("viewEvidence")}
@@ -1367,12 +1382,14 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
             <SectionHeading title={t("movementHistory")} subtitle={t("detailSections.movementSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
             <div className="mb-5 rounded-md border border-border bg-background p-4">
               <div className="mb-3 text-sm font-semibold text-foreground">{t("movementSnapshot")}</div>
-              <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-                <Info label={t("currentLocation")} value={currentLocationLabel} compact />
-                <Info label={t("custodian")} value={currentCustodianLabel} compact />
-                <Info label={t("status")} value={asset.status?.nameTh ?? asset.status?.name} compact />
-                <Info label={t("latestMovement")} value={latestMovement ? `${latestMovement.title} · ${formatDateTime(latestMovement.performedAt)}` : null} compact />
-              </div>
+              <KeyValueList
+                items={[
+                  { key: "currentLocation", label: t("currentLocation"), value: currentLocationLabel },
+                  { key: "custodian", label: t("custodian"), value: currentCustodianLabel, nilLabel: t("noCustodian") },
+                  { key: "status", label: t("status"), value: asset.status?.nameTh ?? asset.status?.name },
+                  { key: "latestMovement", label: t("latestMovement"), value: latestMovement ? `${latestMovement.title} · ${formatDateTime(latestMovement.performedAt)}` : null },
+                ]}
+              />
               {latestMovement ? (
                 <div className="mt-3 rounded-md bg-surface/80 px-3 py-2 text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">{t("movementSummary")}: </span>
@@ -1405,19 +1422,29 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           {isAssetDetailSectionVisible(assetDetailView, "notes") ? (
             <section id="notes" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
               <SectionHeading title={t("remark")} subtitle={t("detailSections.notesSubtitle")} />
-              <p className="whitespace-pre-wrap text-sm text-muted-foreground">{asset.remark || "-"}</p>
+              <p className="whitespace-pre-wrap text-sm text-muted-foreground">{orNil(asset.remark)}</p>
             </section>
           ) : null}
 
           {isAssetDetailSectionVisible(assetDetailView, "maintenance") ? (
             <section id="maintenance" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
             <SectionHeading title={tMaintenance("maintenanceHistory")} subtitle={t("detailSections.maintenanceSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
-            <SummaryStrip
+            <StatStrip
+              className="mb-4"
               items={[
-                { label: t("openMaintenance"), value: String(openMaintenanceCount), tone: openMaintenanceCount > 0 ? "warning" : "success" },
-                { label: t("latestMaintenance"), value: maintenanceSummary },
-                { label: t("totalMaintenance"), value: String(asset.maintenanceTickets.length) },
-                { label: t("maintenanceTotalCost"), value: formatCurrency(totalMaintenanceCost) },
+                {
+                  key: "open",
+                  label: t("openMaintenance"),
+                  value: formatCount(openMaintenanceCount),
+                  ...(openMaintenanceCount > 0 ? { foot: maintenanceSummary, attention: true } : {}),
+                },
+                {
+                  key: "total",
+                  label: t("totalMaintenance"),
+                  value: formatCount(asset.maintenanceTickets.length),
+                  foot: latestMaintenanceTicket ? t("latestMaintenanceSummary", { repairNo: latestMaintenanceTicket.repairNo }) : undefined,
+                },
+                { key: "cost", label: t("maintenanceTotalCost"), value: formatMoney(totalMaintenanceCost), unit: tCommon("baht") },
               ]}
             />
             {maintenanceReplacementWarning ? (
@@ -1434,51 +1461,49 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                 actionLabel={t("quickMaintenance")}
               />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-border text-sm">
-                  <thead className="bg-muted/40">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{tMaintenance("repairNo")}</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{tMaintenance("problem")}</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{tMaintenance("reportedBy")}</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{tCommon("status")}</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{tMaintenance("reportedDate")}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {asset.maintenanceTickets.map((ticket) => (
-                      <ClickableTableRow
-                        key={ticket.id}
-                        href={`/${locale}/maintenance/${ticket.id}`}
-                        label={`${tCommon("view")}: ${ticket.repairNo}`}
-                      >
-                        <td className="whitespace-nowrap px-4 py-3">
-                          <Link href={`/${locale}/maintenance/${ticket.id}`} className="font-medium text-primary hover:underline">
-                            {ticket.repairNo}
-                          </Link>
-                        </td>
-                        <td className="min-w-72 px-4 py-3 text-muted-foreground">
-                          <div className="flex flex-wrap items-center gap-2">
-                            {Boolean(ticket.maintenancePlanId) ? (
-                              <span className="rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary">
-                                {t("maintenancePmBadge")}
-                              </span>
-                            ) : null}
-                            <span>{ticket.problem}</span>
-                          </div>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {ticket.reportedBy.code} - {ticket.reportedBy.fullNameTh}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {tMaintenance(`statuses.${toRepairRecordStatus(ticket.repairStatus)}`)}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(ticket.reportedDate)}</td>
-                      </ClickableTableRow>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable framed={false} caption={tMaintenance("maintenanceHistory")} scrollHint={tCommon("tableScrollHint")}>
+                <DataTableHeader>
+                  <tr>
+                    <DataTableHead>{tMaintenance("repairNo")}</DataTableHead>
+                    <DataTableHead>{tMaintenance("problem")}</DataTableHead>
+                    <DataTableHead>{tMaintenance("reportedBy")}</DataTableHead>
+                    <DataTableHead>{tCommon("status")}</DataTableHead>
+                    <DataTableHead>{tMaintenance("reportedDate")}</DataTableHead>
+                  </tr>
+                </DataTableHeader>
+                <DataTableBody>
+                  {asset.maintenanceTickets.map((ticket) => (
+                    <ClickableTableRow
+                      key={ticket.id}
+                      href={`/${locale}/maintenance/${ticket.id}`}
+                      label={`${tCommon("view")}: ${ticket.repairNo}`}
+                    >
+                      <DataTableCell className="whitespace-nowrap">
+                        <Link href={`/${locale}/maintenance/${ticket.id}`} className="font-medium text-primary hover:underline">
+                          <span className="tag">{ticket.repairNo}</span>
+                        </Link>
+                      </DataTableCell>
+                      <DataTableCell className="min-w-72 text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {Boolean(ticket.maintenancePlanId) ? (
+                            <span className="rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary">
+                              {t("maintenancePmBadge")}
+                            </span>
+                          ) : null}
+                          <span>{ticket.problem}</span>
+                        </div>
+                      </DataTableCell>
+                      <DataTableCell className="whitespace-nowrap text-muted-foreground">
+                        <span className="tag">{ticket.reportedBy.code}</span> - {ticket.reportedBy.fullNameTh}
+                      </DataTableCell>
+                      <DataTableCell className="whitespace-nowrap">
+                        <StatusBadge label={tMaintenance(`statuses.${toRepairRecordStatus(ticket.repairStatus)}`)} tone={getRepairRecordStatusTone(ticket.repairStatus)} />
+                      </DataTableCell>
+                      <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(ticket.reportedDate)}</DataTableCell>
+                    </ClickableTableRow>
+                  ))}
+                </DataTableBody>
+              </DataTable>
             )}
             </section>
           ) : null}
@@ -1486,11 +1511,16 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
           {isAssetDetailSectionVisible(assetDetailView, "audit") ? (
             <section id="audit" className="scroll-mt-24 rounded-lg border border-border bg-surface p-6">
             <SectionHeading title={t("auditHistory")} subtitle={t("detailSections.auditSubtitle")} icon={<History className="h-5 w-5 text-primary" />} />
-            <SummaryStrip
+            <StatStrip
+              className="mb-4"
               items={[
-                { label: t("latestAudit"), value: auditSummary },
-                { label: t("scanCount"), value: latestAuditItem ? String(latestAuditItem.scanCount) : "0" },
-                { label: t("auditFindingRequired"), value: latestAuditItem?.findingRequired ? tCommon("yes") : tCommon("no"), tone: latestAuditItem?.findingRequired ? "warning" : "success" },
+                { key: "scanCount", label: t("scanCount"), value: formatCount(latestAuditItem?.scanCount ?? 0), foot: auditSummary, footTitle: auditSummary },
+                {
+                  key: "findingRequired",
+                  label: t("auditFindingRequired"),
+                  value: latestAuditItem?.findingRequired ? tCommon("yes") : tCommon("no"),
+                  ...(latestAuditItem?.findingRequired ? { foot: t("activityAuditFinding"), attention: true } : {}),
+                },
               ]}
             />
             {asset.auditItems.length === 0 ? (
@@ -1502,37 +1532,35 @@ export default async function AssetDetailPage({ params, searchParams }: AssetDet
                 actionLabel={t("quickAudit")}
               />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-border text-sm">
-                  <thead className="bg-muted/40">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("auditRound")}</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("status")}</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("result")}</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("lastAuditDate")}</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground">{t("scanCount")}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {asset.auditItems.map((item) => (
-                      <ClickableTableRow
-                        key={item.id}
-                        href={`/${locale}/audit/rounds/${item.auditRound.id}`}
-                        label={`${tCommon("view")}: ${item.auditRound.auditNo}`}
-                      >
-                        <td className="min-w-64 px-4 py-3">
-                          <div className="font-medium text-foreground">{item.auditRound.auditNo}</div>
-                          <div className="mt-1 text-xs text-muted-foreground">{item.auditRound.name}</div>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatAuditState(item.auditStatus)}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{item.auditResult ? formatAuditState(item.auditStatus, item.auditResult) : "-"}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(item.lastScanAt ?? item.scannedAt)}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{item.scanCount}</td>
-                      </ClickableTableRow>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable framed={false} caption={t("auditHistory")} scrollHint={tCommon("tableScrollHint")}>
+                <DataTableHeader>
+                  <tr>
+                    <DataTableHead>{t("auditRound")}</DataTableHead>
+                    <DataTableHead>{t("status")}</DataTableHead>
+                    <DataTableHead>{t("result")}</DataTableHead>
+                    <DataTableHead>{t("lastAuditDate")}</DataTableHead>
+                    <DataTableHead align="right">{t("scanCount")}</DataTableHead>
+                  </tr>
+                </DataTableHeader>
+                <DataTableBody>
+                  {asset.auditItems.map((item) => (
+                    <ClickableTableRow
+                      key={item.id}
+                      href={`/${locale}/audit/rounds/${item.auditRound.id}`}
+                      label={`${tCommon("view")}: ${item.auditRound.auditNo}`}
+                    >
+                      <DataTableCell className="min-w-64">
+                        <div className="font-medium text-foreground"><span className="tag font-medium">{item.auditRound.auditNo}</span></div>
+                        <div className="mt-1 text-xs text-muted-foreground">{item.auditRound.name}</div>
+                      </DataTableCell>
+                      <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatAuditState(item.auditStatus)}</DataTableCell>
+                      <DataTableCell className="whitespace-nowrap text-muted-foreground">{item.auditResult ? formatAuditState(item.auditStatus, item.auditResult) : <Nil />}</DataTableCell>
+                      <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(item.lastScanAt ?? item.scannedAt)}</DataTableCell>
+                      <DataTableCell numeric className="text-muted-foreground">{formatCount(item.scanCount)}</DataTableCell>
+                    </ClickableTableRow>
+                  ))}
+                </DataTableBody>
+              </DataTable>
             )}
             </section>
           ) : null}
@@ -1769,7 +1797,7 @@ function ActivitySummaryLink({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{item.label}</div>
-          <div className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">{item.value || "-"}</div>
+          <div className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">{orNil(item.value)}</div>
         </div>
         {showAction && item.actionLabel ? (
           <span className="shrink-0 rounded-full bg-surface/80 px-2 py-1 text-xs font-medium text-primary">
@@ -1794,7 +1822,7 @@ function QuickAction({
 }) {
   if (disabled) {
     return (
-      <span className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-center text-sm font-medium leading-tight text-muted-foreground opacity-70 md:h-10 md:min-h-0">
+      <span className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-center text-sm font-medium leading-tight text-faint-foreground md:h-10 md:min-h-0">
         {icon}
         {label}
       </span>
@@ -1806,23 +1834,6 @@ function QuickAction({
       {icon}
       {label}
     </Link>
-  )
-}
-
-function SummaryStrip({
-  items,
-}: {
-  items: { label: string; value: string; tone?: "success" | "warning" | "danger" | "neutral" }[]
-}) {
-  return (
-    <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-      {items.map((item) => (
-        <div key={item.label} className={`rounded-md border px-3 py-2 ${getSummaryToneClass(item.tone ?? "neutral")}`}>
-          <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{item.label}</div>
-          <div className="mt-1 text-sm font-semibold text-foreground">{item.value || "-"}</div>
-        </div>
-      ))}
-    </div>
   )
 }
 
@@ -2090,7 +2101,8 @@ function RelationshipAssetCard({
   variant: RelationshipCardVariant
   current?: boolean
 }) {
-  const relationshipAsset = link ? splitRelationshipLabel(link.label) : { assetTag: assetTag ?? "-", name: assetName ?? "-" }
+  const relationshipLabel = link ? splitRelationshipLabel(link.label) : { assetTag: assetTag ?? null, name: assetName ?? null }
+  const relationshipAsset = { assetTag: relationshipLabel.assetTag ?? <Nil />, name: relationshipLabel.name ?? <Nil /> }
   const roleLabel = role ?? link?.role
   const iconBoxClassName = current ? "h-10 w-10" : "h-9 w-9"
   const iconClassName = current ? "h-5 w-5" : "h-4 w-4"
@@ -2198,7 +2210,7 @@ function getRelationshipRoleLabel(
 function splitRelationshipLabel(label: string) {
   const separator = " - "
   const separatorIndex = label.indexOf(separator)
-  if (separatorIndex === -1) return { assetTag: label, name: "-" }
+  if (separatorIndex === -1) return { assetTag: label, name: null }
 
   return {
     assetTag: label.slice(0, separatorIndex),
@@ -2433,25 +2445,6 @@ function SectionHeading({
   )
 }
 
-function Info({
-  label,
-  value,
-  compact,
-}: {
-  label: string
-  value?: string | number | null
-  compact?: boolean
-}) {
-  return (
-    <div>
-      <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{label}</div>
-      <div className={compact ? "mt-0.5 text-sm text-foreground" : "mt-1 text-sm font-medium text-foreground"}>
-        {value || "-"}
-      </div>
-    </div>
-  )
-}
-
 function getMovementTitle(movementType: string, t: (key: string) => string) {
   if (knownMovementTypeKeys.has(movementType)) return t(`movementTypes.${movementType}`)
   return formatMovementType(movementType)
@@ -2525,7 +2518,8 @@ function buildPurchaseTimelineItems(
     currency: string | null
   }[],
   legacyAttachments: { id: string; originalName: string; uploadedAt: Date }[],
-  t: (key: string, values?: Record<string, string | number | Date>) => string
+  t: (key: string, values?: Record<string, string | number | Date>) => string,
+  bahtLabel: string,
 ): MovementTimelineItem[] {
   const documentItems = documents.map((document) => ({
     id: `purchase-${document.id}`,
@@ -2543,7 +2537,7 @@ function buildPurchaseTimelineItems(
       { label: t("poNumber"), value: document.poNumber },
       { label: t("invoiceNumber"), value: document.invoiceNumber },
       { label: t("supplier"), value: document.supplierName },
-      { label: t("purchasePrice"), value: document.totalAmount == null ? null : `${formatCurrency(document.totalAmount)} ${document.currency ?? ""}`.trim() },
+      { label: t("purchasePrice"), value: document.totalAmount == null ? null : formatMoney(document.totalAmount, { unit: document.currency ?? bahtLabel }) },
     ]),
   }))
 
