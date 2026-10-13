@@ -128,7 +128,6 @@ export function AuditFindingsBatchActions({ findings }: { findings: BatchFinding
         fieldLabel={t("batchReviewRemark")}
         confirmLabel={reviewDialogAction === "approve" ? t("approveSelected") : t("rejectSelected")}
         cancelLabel={tCommon("cancel")}
-        closeLabel={tCommon("close")}
         busy={reviewing !== null}
         tone={reviewDialogAction === "reject" ? "danger" : "default"}
         onClose={() => setReviewDialogAction(null)}

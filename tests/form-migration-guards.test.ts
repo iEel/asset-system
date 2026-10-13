@@ -80,6 +80,7 @@ const MIGRATED_FILES: string[] = [
   `${C}disposal/disposal-bulk-execution.tsx`,
   `${C}audit/audit-round-form.tsx`,
   `${C}audit/audit-round-cancel-button.tsx`,
+  `${C}audit/audit-findings-batch-actions.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -273,7 +274,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 1f
   // 2
   // 3
-  [`${C}audit/audit-findings-batch-actions.tsx`]: 1, // → 1: list checkbox :113 (2B, O5)
   // 4
   [`${C}admin/admin-user-form.tsx`]: 4,
   [`${C}admin/role-permission-form.tsx`]: 5,
@@ -295,7 +295,6 @@ const LOADER2: Record<string, number> = {
   [`${C}disposal/disposal-asset-picker.tsx`]: 1, // → 1: the spinner in the search field :58
   // 1d
   [`${C}audit/audit-scan-check-form.tsx`]: 1, // components header toggle :242 (§6.14)
-  [`${C}audit/audit-finding-review-actions.tsx`]: 2, // → 2: the row triggers :102, :112 (2B, O21)
   // 1g
   // 1e
   [`${C}assets/asset-component-manager.tsx`]: 1, // → 1: the status line :474
@@ -304,7 +303,6 @@ const LOADER2: Record<string, number> = {
   // 3
   [`${C}disposal/disposal-bulk-approval.tsx`]: 2, // the status lines :559, :560 in the dialog body (I27)
   [`${C}disposal/disposal-bulk-execution.tsx`]: 1, // BusyLabel :969, the status line in the dialog body (I27)
-  [`${C}audit/audit-findings-batch-actions.tsx`]: 2, // → 2: the buttons :88, :97 (2B, O5)
   [`${C}maintenance/maintenance-plan-state-actions.tsx`]: 1,
   // 4
   [`${C}admin/admin-user-form.tsx`]: 1,

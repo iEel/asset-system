@@ -32,3 +32,9 @@ test("the confirmation dialog uses the dialog parts, a shared field and a busy c
   assert.doesNotMatch(source, /<textarea|<label|disabled:opacity|grid-cols-2|onClick=\{onClose\}/)
   assert.doesNotMatch(source, /<Button[^>]*\sdisabled=/, "cancel is disabled by the dialog while busy; the confirm button keeps focus")
 })
+
+test("the findings batch dialog takes its X name from the dialog, not from its caller (2C batch 3, spec §5.3)", () => {
+  const source = readFileSync("src/components/audit/audit-findings-batch-actions.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /cancelLabel=\{tCommon\("cancel"\)\}\n\s+busy=\{reviewing !== null\}/)
+  assert.doesNotMatch(source, /closeLabel=/)
+})
