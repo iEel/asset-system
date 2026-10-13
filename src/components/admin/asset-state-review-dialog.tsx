@@ -1,8 +1,17 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { AccessibleDialog } from "@/components/ui/accessible-dialog"
-import { ActionButton } from "@/components/ui/action-button"
+import {
+  AccessibleDialog,
+  AccessibleDialogBody,
+  AccessibleDialogCancel,
+  AccessibleDialogFooter,
+  accessibleDialogFormClasses,
+} from "@/components/ui/accessible-dialog"
+import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { NativeSelect } from "@/components/ui/native-select"
+import { Textarea } from "@/components/ui/textarea"
 
 export type ReviewTarget = { id: string; name: string; nameTh: string }
 
@@ -44,7 +53,7 @@ export function AssetStateReviewDialog({
       onClose={onClose}
     >
       <form
-        className="space-y-4 p-5"
+        className={accessibleDialogFormClasses}
         onSubmit={(event) => {
           event.preventDefault()
           void onSubmit({
@@ -54,54 +63,54 @@ export function AssetStateReviewDialog({
           })
         }}
       >
-        {mode === "resolve" && statusTargets.length > 0 ? (
-          <label className="block text-sm font-medium text-foreground">
-            {labels.nextStatus}
-            <select
-              name="statusId"
-              value={statusId}
-              onChange={(event) => setStatusId(event.target.value)}
-              className="mt-2 h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-            >
-              {statusTargets.map((target) => <option key={target.id} value={target.id}>{target.nameTh || target.name}</option>)}
-            </select>
-          </label>
-        ) : null}
-        {mode === "resolve" && conditionTargets.length > 0 ? (
-          <label className="block text-sm font-medium text-foreground">
-            {labels.nextCondition}
-            <select
-              name="conditionId"
-              value={conditionId}
-              onChange={(event) => setConditionId(event.target.value)}
-              className="mt-2 h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-            >
-              {conditionTargets.map((target) => <option key={target.id} value={target.id}>{target.nameTh || target.name}</option>)}
-            </select>
-          </label>
-        ) : null}
-        <label className="block text-sm font-medium text-foreground">
-          {labels.reason}
-          <textarea
-            ref={reasonRef}
-            name="resolutionReason"
-            value={reason}
-            minLength={10}
-            maxLength={2000}
-            required
-            rows={4}
-            onChange={(event) => setReason(event.target.value)}
-            className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-            placeholder={labels.reasonPlaceholder}
-          />
-          <span className="mt-1 block text-xs text-muted-foreground">{labels.reasonHelp}</span>
-        </label>
-        <div className="flex justify-end gap-2 border-t border-border pt-4">
-          <ActionButton disabled={busy} onClick={onClose}>{labels.cancel}</ActionButton>
-          <ActionButton type="submit" variant={mode === "dismiss" ? "danger" : "primary"} disabled={busy || reason.trim().length < 10}>
-            {busy ? labels.saving : mode === "resolve" ? labels.confirmResolve : labels.confirmDismiss}
-          </ActionButton>
-        </div>
+        <AccessibleDialogBody className="space-y-4">
+          {mode === "resolve" && statusTargets.length > 0 ? (
+            <Field label={labels.nextStatus}>
+              <NativeSelect
+                name="statusId"
+                value={statusId}
+                onChange={(event) => setStatusId(event.target.value)}
+              >
+                {statusTargets.map((target) => <option key={target.id} value={target.id}>{target.nameTh || target.name}</option>)}
+              </NativeSelect>
+            </Field>
+          ) : null}
+          {mode === "resolve" && conditionTargets.length > 0 ? (
+            <Field label={labels.nextCondition}>
+              <NativeSelect
+                name="conditionId"
+                value={conditionId}
+                onChange={(event) => setConditionId(event.target.value)}
+              >
+                {conditionTargets.map((target) => <option key={target.id} value={target.id}>{target.nameTh || target.name}</option>)}
+              </NativeSelect>
+            </Field>
+          ) : null}
+          <Field label={labels.reason} required hint={labels.reasonHelp}>
+            <Textarea
+              ref={reasonRef}
+              name="resolutionReason"
+              value={reason}
+              minLength={10}
+              maxLength={2000}
+              required
+              rows={4}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder={labels.reasonPlaceholder}
+            />
+          </Field>
+        </AccessibleDialogBody>
+        <AccessibleDialogFooter>
+          <AccessibleDialogCancel>{labels.cancel}</AccessibleDialogCancel>
+          <Button
+            type="submit"
+            variant={mode === "dismiss" ? "destructive" : "default"}
+            busy={busy}
+            disabled={reason.trim().length < 10}
+          >
+            {mode === "resolve" ? labels.confirmResolve : labels.confirmDismiss}
+          </Button>
+        </AccessibleDialogFooter>
       </form>
     </AccessibleDialog>
   )

@@ -87,6 +87,7 @@ const MIGRATED_FILES: string[] = [
   `${C}admin/admin-user-form.tsx`,
   `${C}admin/role-permission-form.tsx`,
   `${C}admin/IntegrationClientManager.tsx`,
+  `${C}admin/asset-state-review-dialog.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -174,7 +175,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 3
   [`${C}audit/audit-scan-room-picker.tsx`]: 1, // → 1: the room search :75 stays (O20)
   // 4
-  [`${C}admin/asset-state-review-dialog.tsx`]: 3,
   [`${C}admin/data-quality-rule-form.tsx`]: 1,
   [`${C}assets/asset-label-batch-tool.tsx`]: 4,
   [`${C}assets/asset-label-print.tsx`]: 2, // → 2: the toolbar :225, :236 (K21)
@@ -198,7 +198,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 2
   // 3
   // 4
-  [`${C}admin/asset-state-review-dialog.tsx`]: 3,
   [`${C}admin/data-quality-rule-form.tsx`]: 1,
   [`${C}assets/asset-label-batch-tool.tsx`]: 4,
   [`${C}assets/asset-status-correction-button.tsx`]: 1,
@@ -339,7 +338,6 @@ const PENDING_FOOTER_PARTS = new Set([
   // 1f
   // 3
   // 4
-  `${C}admin/asset-state-review-dialog.tsx`,
   `${C}assets/asset-register-table.tsx`,
   `${C}asset-operations/transaction-cancel-dialog.tsx`,
 ])
