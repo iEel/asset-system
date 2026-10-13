@@ -492,9 +492,9 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     <DataTableCell className="whitespace-nowrap text-muted-foreground">{finding.actionDueDate ? formatDateTime(finding.actionDueDate) : <Nil />}</DataTableCell>
                     <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatAuditItemStatus(finding.auditItem.auditStatus)}</DataTableCell>
                     <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatReconcileStatus(finding.auditItem.reconcileStatus)}</DataTableCell>
-                    <DataTableCell align="right">
+                    <DataTableCell align="right" className="whitespace-nowrap">
                       {/* The triggers stay in the cell, not in ⋯: their dialogs have no open() handle (spec 2B I21, O21). */}
-                      <div className="flex flex-col items-end gap-2">
+                      <div className="flex items-center justify-end gap-2">
                         {canEdit || canApprove ? (
                           <AuditFindingReviewActions
                             findingId={finding.id}

@@ -492,3 +492,12 @@ test("the rounds page coverage-gap tables wrap their number headers and carry th
   assert.match(source, /<DataTable framed=\{false\} className="hidden sm:block" caption=\{title\} scrollHint=\{labels\.scrollHint\}>/)
   assert.equal(source.match(/scrollHint: tCommon\("tableScrollHint"\)/g)?.length ?? 0, 2, "both gap lists pass the hint")
 })
+
+// Plan 2B-2 Task 18 fix 2: the findings table scrolls sideways (13 columns), so its actions cell keeps one line, as it did
+// before 2B-2, instead of stacking the review buttons and the disposal link in a narrow column (rows were 200–300px).
+test("the findings actions cell keeps its buttons on one line (2B-2 Task 18 fix 2)", () => {
+  const source = read(`${D}audit/findings/page.tsx`)
+  assert.match(source, /<DataTableCell align="right" className="whitespace-nowrap">\n\s+\{\/\* The triggers stay in the cell, not in ⋯/)
+  assert.match(source, /\n\s+<div className="flex items-center justify-end gap-2">\n\s+\{canEdit \|\| canApprove \? \(\n\s+<AuditFindingReviewActions\n/)
+  assert.doesNotMatch(source, /<div className="flex flex-col items-end gap-2">/)
+})
