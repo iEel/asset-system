@@ -71,6 +71,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}disposal/batches/[id]/page.tsx`,
   `${C}audit/audit-findings-batch-actions.tsx`,
   `${C}audit/audit-finding-review-actions.tsx`,
+  `${D}audit/findings/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -193,7 +194,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-1
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes MasterDataHeader (R-h)
     // 2B-2
-    [`${D}audit/findings/page.tsx`]: 2,
     [`${D}audit/rounds/page.tsx`]: 2,
     // 2B-3
     [`${D}assets/page.tsx`]: 2,
@@ -264,7 +264,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LT3: {
     // 2B-2
-    [`${D}audit/findings/page.tsx`]: 1,
     [`${D}audit/rounds/[id]/page.tsx`]: 1,
     [`${D}audit/rounds/[id]/pending/page.tsx`]: 1,
     [`${D}audit/rounds/page.tsx`]: 1,
@@ -311,7 +310,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}assets/asset-component-manager.tsx`]: 3, // → 3 (KEEP): 2C form (2D)
     [`${C}assets/asset-form.tsx`]: 1, // → 1 (KEEP): 2C form (2D)
     // 2B-2
-    [`${D}audit/findings/page.tsx`]: 7,
     [`${D}audit/rounds/[id]/page.tsx`]: 5,
     [`${D}audit/rounds/[id]/pending/page.tsx`]: 1,
     [`${D}maintenance/page.tsx`]: 1,
@@ -368,7 +366,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): Metric :2413 (2D)
     // 2B-2
     [`${D}admin/data-quality/page.tsx`]: 1,
-    [`${D}audit/findings/page.tsx`]: 1,
     [`${D}audit/rounds/[id]/page.tsx`]: 2,
     [`${D}audit/rounds/page.tsx`]: 1,
     [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // → 1 (KEEP): Metric :572 in the dialog (2C plan 3)
@@ -401,7 +398,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LK1: {
     // 2B-2
-    [`${D}audit/findings/page.tsx`]: 1,
     [`${D}audit/rounds/[id]/page.tsx`]: 1,
     // 2B-3
     [`${D}asset-management/import-export/page.tsx`]: 1,
@@ -419,7 +415,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-1
     [`${D}master-data/brands/page.tsx`]: 2, // → 2 (KEEP): the brand picker is a vertical list, where aria-current="page" is right (I11)
     // 2B-2
-    [`${D}audit/findings/page.tsx`]: 2,
     [`${D}audit/rounds/page.tsx`]: 1,
     [`${C}maintenance/maintenance-pagination.tsx`]: 1,
     // 2B-3

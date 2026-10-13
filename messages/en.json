@@ -2287,7 +2287,8 @@
     "reconcileStatus_rejected": "Rejected",
     "reconcileStatus_exception": "Exception",
     "reconcileStatus_reconciled": "Register updated",
-    "reconcileStatus_reviewed": "Decided"
+    "reconcileStatus_reviewed": "Decided",
+    "activeFilters": "Active filters"
   },
   "auditPending": {
     "title": "Pending Assets",

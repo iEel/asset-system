@@ -266,3 +266,39 @@ test("the finding row triggers are Button sm: approve outline, reject danger, bu
   assert.doesNotMatch(source, /<button\b|<Loader2\b|\btext-success\b|disabled:opacity-50/, "no hand-written trigger, spinner or green text is left")
   assert.equal(source.match(/<AccessibleDialog\b/g)?.length, 3, "the review, action-plan and close dialogs stay as they are (O21)")
 })
+
+// Task 8 (spec 2B §5.4 row "audit/findings", §5.9.2 row 3, §5.10 row 2, I21, I24): the findings list page.
+const FINDINGS_PAGE = `${D}audit/findings/page.tsx`
+
+test("findings: PageHeader with a back link, StatStrip, TabNav, chips for the hidden filters, DataTable and the shared Pagination (spec 2B §5.4, I24)", () => {
+  const source = read(FINDINGS_PAGE)
+  for (const part of ["<PageHeader", "<StatStrip", "<TabNav", "<FilterChipList", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow", "<ClickableTableRow", "<KeyValueList", "<DataTableFoot>", "<Pagination"]) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.match(source, /<div className="space-y-6">/)
+  assert.match(source, /back=\{<PageBackLink href=\{`\/\$\{locale\}\/audit\/rounds`\} label=\{t\("backToRounds"\)\} \/>\}/, "the way back has the left arrow, not the plus of a create button (spec 2B §5.10 row 2)")
+  assert.match(source, /<TabNav aria-label=\{t\("quickFilters"\)\} items=\{resolutionFilters\} current=\{status\} scroll=\{false\} \/>/)
+  assert.match(source, /current: status === item\.status,\n\s+scroll: false,/, "the strip cell of the filter in use keeps aria-current and the scroll position")
+  assert.match(source, /prisma\.auditRound\.findUnique\(\{ where: \{ id: roundId \}, select: \{ auditNo: true \} \}\)/, "the round chip names its round (I24)")
+  assert.match(source, /<FilterChipList chips=\{filterChips\} label=\{t\("activeFilters"\)\} removeLabel=\{tAsset\("clearDrilldownFilter"\)\} \/>/)
+  assert.match(source, /<AuditFindingsBatchActions key=\{selectionKey\} findings=\{batchReviewFindings\} \/>/, "another page or filter starts the batch selection empty")
+  assert.match(source, /<TableEmptyRow\n\s+colSpan=\{13\}\n\s+emptyState=\{\{[\s\S]*?actionVariant: "secondary",/)
+  assert.match(source, /<DataTableHead align="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
+  assert.match(source, /<AuditFindingReviewActions\n/, "the row triggers stay in the cell: their dialogs have no open() handle (I21)")
+  assert.doesNotMatch(source, /<RowActions\b|<MasterDataHeader\b|<ColumnHeader\b|toLocaleString\(/)
+})
+
+test("findings page on the server, count the whole list once and keep the page in returnTo (spec 2B §5.9.2 row 3)", () => {
+  const source = read(FINDINGS_PAGE)
+  assert.match(source, /const listPage = parseListPage\(\{ page, pageSize \}\)/)
+  assert.match(source, /const \{ skip, take \} = listPageWindow\(listPage\)/)
+  assert.match(source, /orderBy: \[\{ reportedAt: "desc" \}, \{ id: "asc" \}\],\n\s+skip,\n\s+take,/, "the old order plus id, so no finding shows on two pages")
+  assert.doesNotMatch(source, /\btake: \d+/, "no fixed number of rows")
+  assert.match(source, /SUMMARY_STATUSES\.has\(status\) \? Promise\.resolve\(null\) : prisma\.auditFinding\.count\(\{ where \}\)/, "one more count only for a status the strip does not count")
+  assert.match(source, /const total = summaryCounts\[status\] \?\? otherStatusTotal \?\? 0/)
+  assert.match(source, /^import \{ redirect \} from "next\/navigation"$/m)
+  assert.match(source, /const lastPage = lastListPage\(\w+, [\w.]+\)\n\s+if \(\w+\.length === 0 && \w+ > 0 && [\w.]+ > lastPage\) \{\n\s+redirect\(/)
+  assert.match(source, /appendListPage\(params, listPage\)/, "buildAuditFindingsHref writes page above 1 and pageSize other than 25 only")
+  assert.match(source, /buildAuditFindingsHref\(locale, nextStatus, searchText, filters, \{ pageSize: listPage\.pageSize \}\)/, "a filter link goes back to page 1 and keeps the page size")
+  assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: pageHref\(\{ pageSize: value \}\) \}\)\)\}/)
+})

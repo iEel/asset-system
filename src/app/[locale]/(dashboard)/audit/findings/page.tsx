@@ -1,11 +1,11 @@
 import Link from "next/link"
-import type { ReactNode } from "react"
+import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, CalendarClock, ClipboardCheck, Download, FileText, ListChecks } from "lucide-react"
+import { Download, FileText } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { hasPermission } from "@/lib/auth-utils"
 import { requirePagePermission } from "@/lib/page-auth"
-import { ColumnHeader, MasterDataHeader, MasterDataSearch } from "@/components/master-data/master-data-layout"
+import { MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { AuditFindingReviewActions } from "@/components/audit/audit-finding-review-actions"
 import { AuditFindingsBatchActions } from "@/components/audit/audit-findings-batch-actions"
 import { buildFindingValueLabels, formatFindingValue } from "@/lib/audit-finding-labels"
@@ -13,8 +13,17 @@ import { formatDateTime } from "@/lib/utils"
 import { formatFileSize } from "@/lib/uploads"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { buttonVariants } from "@/components/ui/button-variants"
 import { DataFreshnessBanner } from "@/components/ui/data-freshness-banner"
+import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
+import { FilterChipList, type FilterChipItem } from "@/components/ui/filter-chips"
+import { KeyValueList } from "@/components/ui/key-value-list"
+import { Nil, orNil } from "@/components/ui/nil"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
+import { Pagination } from "@/components/ui/pagination"
+import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { TabNav } from "@/components/ui/tab-nav"
 import { isSameAuditActor } from "@/lib/audit-segregation"
 import {
   auditFindingResolutionStatuses,
@@ -24,12 +33,15 @@ import {
   resolveAuditFindingStatus,
   type AuditFindingResolutionStatus,
 } from "@/lib/audit-finding-filters"
+import { formatCount } from "@/lib/display-format"
+import { LIST_PAGE_SIZES, appendListPage, lastListPage, listPageWindow, parseListPage } from "@/lib/list-pagination"
+import { paginationRange } from "@/lib/master-data-query"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { getAuditItemReconcileStatusLabelKey, getAuditItemStatusLabelKey } from "@/lib/audit-item-status-labels"
 
 type AuditFindingsPageProps = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ search?: string; status?: string; roundId?: string; findingType?: string }>
+  searchParams: Promise<{ search?: string; status?: string; roundId?: string; findingType?: string; page?: string | string[]; pageSize?: string | string[] }>
 }
 
 type AuditFindingEvidenceAttachment = {
@@ -42,7 +54,7 @@ type AuditFindingEvidenceAttachment = {
 
 export default async function AuditFindingsPage({ params, searchParams }: AuditFindingsPageProps) {
   const { locale } = await params
-  const { search = "", status: statusParam = "pending", roundId: roundIdParam = "", findingType: findingTypeParam = "" } = await searchParams
+  const { search = "", status: statusParam = "pending", roundId: roundIdParam = "", findingType: findingTypeParam = "", page, pageSize } = await searchParams
   const user = await requirePagePermission(locale, "audit", "view")
   const canEdit = hasPermission(user, "audit", "edit")
   const canApprove = hasPermission(user, "audit", "approve")
@@ -50,13 +62,14 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
 
   const t = await getTranslations("auditFinding")
   const tCommon = await getTranslations("common")
+  const tAsset = await getTranslations("asset")
   const formatAuditItemStatus = (status: string) => {
     const key = getAuditItemStatusLabelKey(status)
     return key ? t(key) : status
   }
   const formatReconcileStatus = (status: string | null) => {
     const key = getAuditItemReconcileStatusLabelKey(status)
-    return key ? t(key) : (status ?? "-")
+    return key ? t(key) : orNil(status)
   }
   const pageLoadedAt = new Date()
   const searchText = search.trim()
@@ -64,22 +77,31 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
   const findingType = findingTypeParam.trim()
   const status = resolveAuditFindingStatus(statusParam)
   const today = getAuditFindingToday()
-  const auditFindingsReturnHref = buildAuditFindingsHref(locale, status, searchText, { roundId, findingType })
+  const listPage = parseListPage({ page, pageSize })
+  const auditFindingsReturnHref = buildAuditFindingsHref(locale, status, searchText, { roundId, findingType }, listPage)
+  // This list at another page or page size, with the same filters.
+  const pageHref = (next: { page?: number; pageSize?: number }) => buildAuditFindingsHref(locale, status, searchText, { roundId, findingType }, next)
+  // A filter link goes back to page 1 and keeps the page size (spec 2B §5.9.1).
+  const filterHref = (nextStatus: AuditFindingResolutionStatus, filters: { roundId?: string; findingType?: string } = { roundId, findingType }) =>
+    buildAuditFindingsHref(locale, nextStatus, searchText, filters, { pageSize: listPage.pageSize })
   const exportParams = new URLSearchParams()
   if (searchText) exportParams.set("search", searchText)
   if (roundId) exportParams.set("roundId", roundId)
   if (findingType) exportParams.set("findingType", findingType)
   exportParams.set("status", status)
-  const [findings, employees, pendingReviewCount, openActionCount, overdueCount, closedCount] = await Promise.all([
+  const where = buildAuditFindingWhere({ status, search: searchText, roundId, findingType, now: today })
+  const { skip, take } = listPageWindow(listPage)
+  const [findings, employees, pendingReviewCount, openActionCount, overdueCount, closedCount, otherStatusTotal, filterRound] = await Promise.all([
     prisma.auditFinding.findMany({
-      where: buildAuditFindingWhere({ status, search: searchText, roundId, findingType, now: today }),
+      where,
       include: {
         auditRound: { select: { id: true, auditNo: true, name: true } },
         auditItem: { select: { auditStatus: true, reconcileStatus: true } },
         asset: { select: { id: true, assetTag: true, name: true } },
       },
-      orderBy: { reportedAt: "desc" },
-      take: 200,
+      orderBy: [{ reportedAt: "desc" }, { id: "asc" }],
+      skip,
+      take,
     }),
     canEdit
       ? prisma.employee.findMany({
@@ -92,7 +114,24 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
     prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "action_open", search: searchText, roundId, findingType, now: today }) }),
     prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "overdue", search: searchText, roundId, findingType, now: today }) }),
     prisma.auditFinding.count({ where: buildAuditFindingWhere({ status: "closed", search: searchText, roundId, findingType, now: today }) }),
+    // The four counts above already cover the whole list of their status; any other status needs one count of its own.
+    SUMMARY_STATUSES.has(status) ? Promise.resolve(null) : prisma.auditFinding.count({ where }),
+    // The round chip names the round (spec 2B I24). Read-only, one row.
+    roundId ? prisma.auditRound.findUnique({ where: { id: roundId }, select: { auditNo: true } }) : Promise.resolve(null),
   ])
+  const summaryCounts: Partial<Record<AuditFindingResolutionStatus, number>> = {
+    pending: pendingReviewCount,
+    action_open: openActionCount,
+    overdue: overdueCount,
+    closed: closedCount,
+  }
+  const total = summaryCounts[status] ?? otherStatusTotal ?? 0
+  // A page past the last one (an old link, or the last finding of the last page decided) shows the last page (spec 2B I21).
+  const lastPage = lastListPage(total, listPage.pageSize)
+  if (findings.length === 0 && total > 0 && listPage.page > lastPage) {
+    redirect(pageHref({ page: lastPage, pageSize: listPage.pageSize }))
+  }
+  const { start, end, totalPages } = paginationRange(listPage.page, listPage.pageSize, total)
   const findingIds = findings.map((finding) => finding.id)
   const evidenceAttachments = findingIds.length
     ? await prisma.attachment.findMany({
@@ -150,53 +189,57 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
     closed: t("resolutionStateClosed"),
     resolved: t("resolutionStateResolved"),
   }
-  const resolutionSummaryItems = [
+  const resolutionSummaryItems: ResolutionMetric[] = [
     {
-      status: "pending" as const,
+      status: "pending",
       label: t("summaryPendingReview"),
       help: t("summaryPendingReviewHelp"),
       count: pendingReviewCount,
-      tone: "warning" as const,
-      icon: <AlertTriangle className="h-5 w-5" />,
+      attention: pendingReviewCount > 0,
     },
     {
-      status: "action_open" as const,
+      status: "action_open",
       label: t("summaryOpenActions"),
       help: t("summaryOpenActionsHelp"),
       count: openActionCount,
-      tone: "info" as const,
-      icon: <ListChecks className="h-5 w-5" />,
+      attention: false,
     },
     {
-      status: "overdue" as const,
+      status: "overdue",
       label: t("summaryOverdue"),
       help: t("summaryOverdueHelp"),
       count: overdueCount,
-      tone: "danger" as const,
-      icon: <CalendarClock className="h-5 w-5" />,
+      attention: overdueCount > 0,
     },
     {
-      status: "closed" as const,
+      status: "closed",
       label: t("summaryClosed"),
       help: t("summaryClosedHelp"),
       count: closedCount,
-      tone: "success" as const,
-      icon: <ClipboardCheck className="h-5 w-5" />,
+      attention: false,
     },
   ]
   const resolutionFilters = auditFindingResolutionStatuses.map((item) => ({
-    value: item,
+    key: item,
     label: resolutionFilterLabels[item],
-    href: buildAuditFindingsHref(locale, item, searchText, { roundId, findingType }),
+    href: filterHref(item),
   }))
+  // roundId and findingType come from a drill-down link and have no field on this page, so each shows as a chip that
+  // removes only itself (spec 2B I24, DESIGN.md "chips for every active filter that is not visible on screen").
+  const findingTypeKey = `type_${findingType}`
+  const filterChips: FilterChipItem[] = [
+    ...(roundId ? [{ key: "roundId", label: `${t("auditRound")}: ${filterRound?.auditNo ?? roundId}`, href: filterHref(status, { findingType }) }] : []),
+    ...(findingType ? [{ key: "findingType", label: `${t("findingType")}: ${t.has(findingTypeKey) ? t(findingTypeKey) : findingType}`, href: filterHref(status, { roundId }) }] : []),
+  ]
+  // The batch selection belongs to one page of one filter: another page or filter starts with nothing selected.
+  const selectionKey = `${listPage.page}:${listPage.pageSize}:${status}:${searchText}:${roundId}:${findingType}`
 
   return (
-    <div>
-      <MasterDataHeader
+    <div className="space-y-6">
+      <PageHeader
         title={t("title")}
-        subtitle={t("subtitle")}
-        createHref={`/${locale}/audit/rounds`}
-        createLabel={t("backToRounds")}
+        meta={t("subtitle")}
+        back={<PageBackLink href={`/${locale}/audit/rounds`} label={t("backToRounds")} />}
       />
 
       <DataFreshnessBanner
@@ -212,28 +255,24 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
         }}
       />
 
-      <section className="mb-4 rounded-lg border border-border bg-surface p-4">
-        <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">{t("resolutionTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("resolutionHelp")}</p>
-          </div>
-          <StatusBadge label={resolutionFilterLabels[status]} status={status} />
+      <section aria-labelledby="audit-finding-resolution-title" className="space-y-3">
+        <div>
+          <h2 id="audit-finding-resolution-title" className="text-base font-semibold text-foreground">{t("resolutionTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("resolutionHelp")}</p>
         </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {resolutionSummaryItems.map((item) => (
-            <ResolutionMetric
-              key={item.status}
-              href={buildAuditFindingsHref(locale, item.status, searchText, { roundId, findingType })}
-              active={status === item.status}
-              label={item.label}
-              help={item.help}
-              count={item.count}
-              tone={item.tone}
-              icon={item.icon}
-            />
-          ))}
-        </div>
+        <StatStrip
+          items={resolutionSummaryItems.map((item) => ({
+            key: item.status,
+            label: item.label,
+            value: formatCount(item.count),
+            foot: item.help,
+            footTitle: item.help,
+            href: filterHref(item.status),
+            current: status === item.status,
+            scroll: false,
+            attention: item.attention,
+          }))}
+        />
       </section>
 
       <MasterDataSearch
@@ -241,60 +280,42 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
         defaultValue={searchText}
         placeholder={tCommon("search")}
         submitLabel={tCommon("search")}
-        hiddenInputs={{ status, ...(roundId ? { roundId } : {}), ...(findingType ? { findingType } : {}) }}
+        hiddenInputs={{ status, ...(roundId ? { roundId } : {}), ...(findingType ? { findingType } : {}), ...Object.fromEntries(appendListPage(new URLSearchParams(), { pageSize: listPage.pageSize })) }}
       />
 
-      <section className="mb-4 rounded-lg border border-border bg-surface p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      <section aria-labelledby="audit-finding-queue-title" className="space-y-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <h2 className="text-base font-semibold text-foreground">{t("quickFilters")}</h2>
+            <h2 id="audit-finding-queue-title" className="text-base font-semibold text-foreground">{t("quickFilters")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("quickFiltersHelp")}</p>
           </div>
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <a
-              href={`/api/audit-findings/export?${exportParams.toString()}`}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-fit"
-            >
-              <Download className="h-4 w-4" />
+          <div className="flex min-w-0 flex-col gap-2 md:flex-row md:flex-wrap">
+            <a href={`/api/audit-findings/export?${exportParams.toString()}`} className={buttonVariants({ variant: "outline", size: "md" })}>
+              <Download aria-hidden="true" />
               {t("exportFindings")}
             </a>
-            <a
-              href={`/api/audit-findings/export-pdf?${exportParams.toString()}`}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-fit"
-            >
-              <FileText className="h-4 w-4" />
+            <a href={`/api/audit-findings/export-pdf?${exportParams.toString()}`} className={buttonVariants({ variant: "outline", size: "md" })}>
+              <FileText aria-hidden="true" />
               {t("exportFindingsPdf")}
             </a>
           </div>
         </div>
-        <div className="mt-3 flex min-w-0 flex-wrap gap-2">
-          {resolutionFilters.map((item) => (
-            <Link
-              key={item.value}
-              href={item.href}
-              scroll={false}
-              aria-current={status === item.value ? "page" : undefined}
-              className={`inline-flex min-h-11 items-center rounded-md border px-3 text-sm transition-colors sm:h-9 sm:min-h-0 ${
-                status === item.value ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface text-muted-foreground hover:bg-accent"
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </div>
+        <TabNav aria-label={t("quickFilters")} items={resolutionFilters} current={status} scroll={false} />
+        <FilterChipList chips={filterChips} label={t("activeFilters")} removeLabel={tAsset("clearDrilldownFilter")} />
       </section>
 
-      {canApprove ? <AuditFindingsBatchActions findings={batchReviewFindings} /> : null}
+      {canApprove ? <AuditFindingsBatchActions key={selectionKey} findings={batchReviewFindings} /> : null}
 
       <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <div className="grid gap-3 p-3 md:hidden">
           {findings.length === 0 ? (
             <ActionEmptyState
-              icon={<FileText className="h-6 w-6" />}
+              icon={<FileText />}
               title={t("emptyTitle")}
               description={t("emptyHelp")}
               actionHref={`/${locale}/audit/rounds`}
               actionLabel={t("backToRounds")}
+              actionVariant="secondary"
             />
           ) : (
             findings.map((finding) => {
@@ -317,9 +338,21 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     <ReviewStatusBadge status={finding.reviewStatus} label={t(`status_${finding.reviewStatus}`)} />
                     <ActionStatusBadge status={finding.actionStatus} label={t(`actionStatus_${finding.actionStatus}`)} />
                   </div>
+                  <KeyValueList
+                    className="mt-3"
+                    items={[
+                      { key: "auditRound", label: t("auditRound"), value: <><span className="tag">{finding.auditRound.auditNo}</span> · {finding.auditRound.name}</> },
+                      { key: "findingType", label: t("findingType"), value: findingTypeLabel },
+                      {
+                        key: "actionOwner",
+                        label: t("actionOwner"),
+                        value: finding.actionOwnerId ? (employeeLabelById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : null,
+                        nilLabel: t("noActionOwner"),
+                      },
+                      { key: "actionDueDate", label: t("actionDueDate"), value: finding.actionDueDate ? formatDateTime(finding.actionDueDate) : null },
+                    ]}
+                  />
                   <div className="mt-3 grid gap-2 text-sm">
-                    <Info label={t("auditRound")} value={`${finding.auditRound.auditNo} · ${finding.auditRound.name}`} />
-                    <Info label={t("findingType")} value={findingTypeLabel} />
                     <FindingComparison
                       expectedLabel={t("systemValue")}
                       actualLabel={t("foundValue")}
@@ -334,13 +367,11 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                         open: t("openEvidenceAttachment"),
                       }}
                     />
-                    <Info label={t("actionOwner")} value={finding.actionOwnerId ? (employeeLabelById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : "-"} />
-                    <Info label={t("actionDueDate")} value={formatDateTime(finding.actionDueDate)} />
                   </div>
                   <div className="mt-3 flex flex-col gap-2">
                     <Link
                       href={finding.asset ? `/${locale}/assets/${finding.asset.id}` : `/${locale}/audit/rounds/${finding.auditRound.id}`}
-                      className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium"
+                      className={buttonVariants({ variant: "outline" })}
                     >
                       {tCommon("view")}
                     </Link>
@@ -365,7 +396,7 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                     {canCreateDisposal && finding.asset ? (
                       <Link
                         href={appendOperationalReturnTo(`/${locale}/disposal/new?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref)}
-                        className="inline-flex min-h-11 items-center justify-center rounded-md border border-warning-border bg-warning-soft px-3 text-sm font-medium text-warning"
+                        className={buttonVariants({ variant: "outline" })}
                       >
                         {t("openDisposalRequest")}
                       </Link>
@@ -376,95 +407,94 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
             })
           )}
         </div>
-        <div className="hidden overflow-x-auto md:block">
-          <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-muted/40">
-              <tr>
-                <ColumnHeader>{t("reportedAt")}</ColumnHeader>
-                <ColumnHeader>{t("auditRound")}</ColumnHeader>
-                <ColumnHeader>{t("asset")}</ColumnHeader>
-                <ColumnHeader>{t("findingType")}</ColumnHeader>
-                <ColumnHeader>{t("comparison")}</ColumnHeader>
-                <ColumnHeader>{t("resolutionState")}</ColumnHeader>
-                <ColumnHeader>{t("reviewStatus")}</ColumnHeader>
-                <ColumnHeader>{t("actionStatus")}</ColumnHeader>
-                <ColumnHeader>{t("actionOwner")}</ColumnHeader>
-                <ColumnHeader>{t("actionDueDate")}</ColumnHeader>
-                <ColumnHeader>{t("itemStatus")}</ColumnHeader>
-                <ColumnHeader>{t("reconcileStatus")}</ColumnHeader>
-                <ColumnHeader align="right">{tCommon("actions")}</ColumnHeader>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {findings.length === 0 ? (
-                <tr>
-                  <td colSpan={13} className="px-4 py-6">
-                    <ActionEmptyState
-                      icon={<FileText className="h-6 w-6" />}
-                      title={t("emptyTitle")}
-                      description={t("emptyHelp")}
-                      actionHref={`/${locale}/audit/rounds`}
-                      actionLabel={t("backToRounds")}
-                    />
-                  </td>
-                </tr>
-              ) : (
-                findings.map((finding) => {
-                  const resolutionState = resolveFindingState(finding, today)
-                  const assetLabel = finding.asset ? `${finding.asset.assetTag} - ${finding.asset.name}` : finding.auditRound.auditNo
-                  const findingTypeLabel = t(`type_${finding.findingType}`)
-                  const expectedValue = formatFindingValue(finding.findingType, finding.expectedValue, valueLabels)
-                  const actualValue = formatFindingValue(finding.findingType, finding.actualValue, valueLabels)
+        <DataTable framed={false} className="hidden md:block" caption={t("title")} scrollHint={tCommon("tableScrollHint")}>
+          <DataTableHeader>
+            <tr>
+              <DataTableHead>{t("reportedAt")}</DataTableHead>
+              <DataTableHead>{t("auditRound")}</DataTableHead>
+              <DataTableHead>{t("asset")}</DataTableHead>
+              <DataTableHead>{t("findingType")}</DataTableHead>
+              <DataTableHead>{t("comparison")}</DataTableHead>
+              <DataTableHead>{t("resolutionState")}</DataTableHead>
+              <DataTableHead>{t("reviewStatus")}</DataTableHead>
+              <DataTableHead>{t("actionStatus")}</DataTableHead>
+              <DataTableHead>{t("actionOwner")}</DataTableHead>
+              <DataTableHead>{t("actionDueDate")}</DataTableHead>
+              <DataTableHead>{t("itemStatus")}</DataTableHead>
+              <DataTableHead>{t("reconcileStatus")}</DataTableHead>
+              <DataTableHead align="right" hideLabel>{tCommon("actions")}</DataTableHead>
+            </tr>
+          </DataTableHeader>
+          <DataTableBody>
+            {findings.length === 0 ? (
+              <TableEmptyRow
+                colSpan={13}
+                emptyState={{
+                  icon: <FileText />,
+                  title: t("emptyTitle"),
+                  description: t("emptyHelp"),
+                  actionHref: `/${locale}/audit/rounds`,
+                  actionLabel: t("backToRounds"),
+                  actionVariant: "secondary",
+                }}
+              />
+            ) : (
+              findings.map((finding) => {
+                const resolutionState = resolveFindingState(finding, today)
+                const assetLabel = finding.asset ? `${finding.asset.assetTag} - ${finding.asset.name}` : finding.auditRound.auditNo
+                const findingTypeLabel = t(`type_${finding.findingType}`)
+                const expectedValue = formatFindingValue(finding.findingType, finding.expectedValue, valueLabels)
+                const actualValue = formatFindingValue(finding.findingType, finding.actualValue, valueLabels)
 
-                  return (
-                    <ClickableTableRow
-                      key={finding.id}
-                      href={finding.asset ? `/${locale}/assets/${finding.asset.id}` : `/${locale}/audit/rounds/${finding.auditRound.id}`}
-                      label={`${tCommon("view")}: ${finding.asset?.assetTag ?? finding.auditRound.auditNo}`}
-                    >
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(finding.reportedAt)}</td>
-                      <td className="min-w-56 px-4 py-3 text-muted-foreground">
-                        <Link href={`/${locale}/audit/rounds/${finding.auditRound.id}`} className="text-primary hover:underline">
-                          {finding.auditRound.auditNo}
-                        </Link>
-                        <div className="text-xs text-muted-foreground">{finding.auditRound.name}</div>
-                      </td>
-                      <td className="min-w-64 px-4 py-3 text-foreground">
-                        {finding.asset ? assetLabel : "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{findingTypeLabel}</td>
-                      <td className="min-w-80 px-4 py-3">
-                        <FindingComparison
-                          expectedLabel={t("systemValue")}
-                          actualLabel={t("foundValue")}
-                          expectedValue={expectedValue}
-                          actualValue={actualValue}
-                        />
-                        <AuditFindingEvidenceList
-                          attachments={attachmentsByFindingId.get(finding.id) ?? []}
-                          labels={{
-                            title: t("evidenceAttachments"),
-                            count: t("evidenceAttachmentCount", { count: attachmentCountByFindingId.get(finding.id) ?? 0 }),
-                            open: t("openEvidenceAttachment"),
-                          }}
-                        />
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <ResolutionStateBadge state={resolutionState} labels={resolutionStateLabels} />
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <ReviewStatusBadge status={finding.reviewStatus} label={t(`status_${finding.reviewStatus}`)} />
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <ActionStatusBadge status={finding.actionStatus} label={t(`actionStatus_${finding.actionStatus}`)} />
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {finding.actionOwnerId ? (employeeLabelById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(finding.actionDueDate)}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatAuditItemStatus(finding.auditItem.auditStatus)}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatReconcileStatus(finding.auditItem.reconcileStatus)}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                return (
+                  <ClickableTableRow
+                    key={finding.id}
+                    href={finding.asset ? `/${locale}/assets/${finding.asset.id}` : `/${locale}/audit/rounds/${finding.auditRound.id}`}
+                    label={`${tCommon("view")}: ${finding.asset?.assetTag ?? finding.auditRound.auditNo}`}
+                  >
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(finding.reportedAt)}</DataTableCell>
+                    <DataTableCell className="min-w-56 text-muted-foreground">
+                      <Link href={`/${locale}/audit/rounds/${finding.auditRound.id}`} className="text-primary hover:underline">
+                        <span className="tag">{finding.auditRound.auditNo}</span>
+                      </Link>
+                      <div className="text-xs text-muted-foreground">{finding.auditRound.name}</div>
+                    </DataTableCell>
+                    <DataTableCell className="min-w-64 text-foreground">{finding.asset ? assetLabel : <Nil />}</DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{findingTypeLabel}</DataTableCell>
+                    <DataTableCell className="min-w-80">
+                      <FindingComparison
+                        expectedLabel={t("systemValue")}
+                        actualLabel={t("foundValue")}
+                        expectedValue={expectedValue}
+                        actualValue={actualValue}
+                      />
+                      <AuditFindingEvidenceList
+                        attachments={attachmentsByFindingId.get(finding.id) ?? []}
+                        labels={{
+                          title: t("evidenceAttachments"),
+                          count: t("evidenceAttachmentCount", { count: attachmentCountByFindingId.get(finding.id) ?? 0 }),
+                          open: t("openEvidenceAttachment"),
+                        }}
+                      />
+                    </DataTableCell>
+                    <DataTableCell className="whitespace-nowrap">
+                      <ResolutionStateBadge state={resolutionState} labels={resolutionStateLabels} />
+                    </DataTableCell>
+                    <DataTableCell className="whitespace-nowrap">
+                      <ReviewStatusBadge status={finding.reviewStatus} label={t(`status_${finding.reviewStatus}`)} />
+                    </DataTableCell>
+                    <DataTableCell className="whitespace-nowrap">
+                      <ActionStatusBadge status={finding.actionStatus} label={t(`actionStatus_${finding.actionStatus}`)} />
+                    </DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">
+                      {finding.actionOwnerId ? (employeeLabelById.get(finding.actionOwnerId) ?? finding.actionOwnerId) : <Nil label={t("noActionOwner")} />}
+                    </DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{finding.actionDueDate ? formatDateTime(finding.actionDueDate) : <Nil />}</DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatAuditItemStatus(finding.auditItem.auditStatus)}</DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatReconcileStatus(finding.auditItem.reconcileStatus)}</DataTableCell>
+                    <DataTableCell align="right">
+                      {/* The triggers stay in the cell, not in ⋯: their dialogs have no open() handle (spec 2B I21, O21). */}
+                      <div className="flex flex-col items-end gap-2">
                         {canEdit || canApprove ? (
                           <AuditFindingReviewActions
                             findingId={finding.id}
@@ -483,24 +513,45 @@ export default async function AuditFindingsPage({ params, searchParams }: AuditF
                             reviewBlockedReason={t("segregationReviewBlocked")}
                           />
                         ) : (
-                          "-"
+                          <Nil />
                         )}
                         {canCreateDisposal && finding.asset ? (
                           <Link
                             href={appendOperationalReturnTo(`/${locale}/disposal/new?assetId=${finding.asset.id}&reason=${encodeURIComponent(`${t("disposalFromFindingReason")} ${finding.auditRound.auditNo}: ${t(`type_${finding.findingType}`)}`)}&sourceType=audit_finding&sourceId=${finding.id}`, auditFindingsReturnHref)}
-                            className="ml-2 inline-flex h-8 items-center rounded-md border border-warning-border bg-warning-soft px-2 text-xs font-medium text-warning"
+                            className={buttonVariants({ variant: "outline", size: "sm" })}
                           >
                             {t("openDisposalRequest")}
                           </Link>
                         ) : null}
-                      </td>
-                    </ClickableTableRow>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </div>
+                    </DataTableCell>
+                  </ClickableTableRow>
+                )
+              })
+            )}
+          </DataTableBody>
+        </DataTable>
+        {total > 0 ? (
+          <DataTableFoot>
+            <Pagination
+              page={listPage.page}
+              totalPages={totalPages}
+              previousHref={pageHref({ page: listPage.page - 1, pageSize: listPage.pageSize })}
+              nextHref={pageHref({ page: listPage.page + 1, pageSize: listPage.pageSize })}
+              pageSize={listPage.pageSize}
+              pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: pageHref({ pageSize: value }) }))}
+              labels={{
+                navigation: tCommon("pagination"),
+                previous: tCommon("previous"),
+                next: tCommon("next"),
+                pageOf: tCommon("pageOf", { page: listPage.page, total: totalPages }),
+                range: tCommon("showingRange", { from: formatCount(start), to: formatCount(end), total: formatCount(total) }),
+                pageSizeGroup: tCommon("pageSizeLabel"),
+                rowsPerPage: tCommon("rowsPerPage"),
+              }}
+            />
+          </DataTableFoot>
+        ) : null}
       </div>
     </div>
   )
@@ -514,52 +565,18 @@ type FindingResolutionSnapshot = {
   actionDueDate: Date | string | null
 }
 
-function ResolutionMetric({
-  href,
-  active,
-  label,
-  help,
-  count,
-  tone,
-  icon,
-}: {
-  href: string
-  active: boolean
+// One cell of the resolution number strip (StatStrip). Its count covers the whole filtered list, never one page.
+type ResolutionMetric = {
+  status: "pending" | "action_open" | "overdue" | "closed"
   label: string
   help: string
   count: number
-  tone: "warning" | "info" | "danger" | "success"
-  icon: ReactNode
-}) {
-  const toneClass =
-    tone === "danger"
-      ? "border-danger-border bg-danger-soft text-danger"
-      : tone === "warning"
-        ? "border-warning-border bg-warning-soft text-warning"
-        : tone === "success"
-          ? "border-success-border bg-success-soft text-success"
-          : "border-info-border bg-info-soft text-info"
-
-  return (
-    <Link
-      href={href}
-      scroll={false}
-      aria-current={active ? "page" : undefined}
-      className={`group flex min-h-32 items-start justify-between gap-3 rounded-lg border p-4 transition-colors hover:bg-accent ${
-        active ? toneClass : "border-border bg-background text-muted-foreground"
-      }`}
-    >
-      <span className="min-w-0">
-        <span className="block text-sm font-medium text-foreground">{label}</span>
-        <span className="mt-2 block text-3xl font-semibold leading-none text-foreground">{count.toLocaleString("th-TH")}</span>
-        <span className="mt-2 block text-xs text-muted-foreground">{help}</span>
-      </span>
-      <span className={`rounded-md border p-2 ${active ? "border-current bg-background/60" : "border-border bg-surface text-muted-foreground group-hover:text-foreground"}`}>
-        {icon}
-      </span>
-    </Link>
-  )
+  // Work waits on it: the cell's foot line turns warning with its icon. No tone fill (spec 2B R-d).
+  attention: boolean
 }
+
+// The statuses the strip counts. A list filtered by one of them takes its total from the strip (spec 2B §5.9.2 row 3).
+const SUMMARY_STATUSES: ReadonlySet<AuditFindingResolutionStatus> = new Set(["pending", "action_open", "overdue", "closed"])
 
 function FindingComparison({
   expectedLabel,
@@ -576,11 +593,11 @@ function FindingComparison({
     <div className="grid gap-2 rounded-md border border-border bg-background p-3 sm:grid-cols-2">
       <div className="min-w-0">
         <div className="text-xs font-medium text-muted-foreground">{expectedLabel}</div>
-        <div className="mt-1 break-words text-sm text-foreground">{expectedValue || "-"}</div>
+        <div className="mt-1 break-words text-sm text-foreground">{orNil(expectedValue)}</div>
       </div>
       <div className="min-w-0 border-t border-border pt-2 sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">
         <div className="text-xs font-medium text-muted-foreground">{actualLabel}</div>
-        <div className="mt-1 break-words text-sm font-medium text-foreground">{actualValue || "-"}</div>
+        <div className="mt-1 break-words text-sm font-medium text-foreground">{orNil(actualValue)}</div>
       </div>
     </div>
   )
@@ -658,23 +675,17 @@ function buildAuditFindingsHref(
   locale: string,
   status: AuditFindingResolutionStatus,
   searchText: string,
-  filters: { roundId?: string; findingType?: string } = {}
+  filters: { roundId?: string; findingType?: string } = {},
+  listPage: { page?: number; pageSize?: number } = {}
 ) {
   const params = new URLSearchParams()
   params.set("status", status)
   if (searchText) params.set("search", searchText)
   if (filters.roundId) params.set("roundId", filters.roundId)
   if (filters.findingType) params.set("findingType", filters.findingType)
+  // page only above 1 and pageSize only when it is not 25, so every default link stays as it was (spec 2B B4).
+  appendListPage(params, listPage)
   return `/${locale}/audit/findings?${params.toString()}`
-}
-
-function Info({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div>
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="mt-0.5 break-words text-sm text-foreground">{value || "-"}</div>
-    </div>
-  )
 }
 
 function ReviewStatusBadge({ status, label }: { status: string; label: string }) {

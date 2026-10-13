@@ -2287,7 +2287,8 @@
     "reconcileStatus_rejected": "ปฏิเสธแล้ว",
     "reconcileStatus_exception": "ต้องตรวจสอบพิเศษ",
     "reconcileStatus_reconciled": "ปรับปรุงข้อมูลแล้ว",
-    "reconcileStatus_reviewed": "พิจารณาแล้ว"
+    "reconcileStatus_reviewed": "พิจารณาแล้ว",
+    "activeFilters": "ตัวกรองที่ใช้อยู่"
   },
   "auditPending": {
     "title": "รายการรอตรวจ",
