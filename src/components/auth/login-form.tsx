@@ -4,7 +4,11 @@ import { useRef, useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react"
+import { Eye, EyeOff, ShieldCheck } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { Notice } from "@/components/ui/notice"
 
 type LoginFormProps = {
   callbackUrl: string
@@ -55,21 +59,14 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {sessionExpired ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex items-start gap-2 rounded-md bg-info-soft px-3 py-2.5 text-sm text-info"
-        >
-          <ShieldCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{t("sessionExpired")}</span>
-        </div>
+        <Notice tone="info" role="status" aria-live="polite">
+          {t("sessionExpired")}
+        </Notice>
       ) : null}
 
-      <div>
-        <label htmlFor="login-username" className="mb-1.5 block text-sm font-medium text-foreground">
-          {t("username")}
-        </label>
-        <input
+      <div className="grid gap-1.5">
+        <FieldLabel htmlFor="login-username">{t("username")}</FieldLabel>
+        <Input
           id="login-username"
           name="username"
           type="text"
@@ -79,18 +76,15 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
             setUsername(event.target.value)
             setError("")
           }}
-          className="h-11 w-full rounded-md border border-border bg-surface px-3 text-base text-foreground outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 sm:h-10 sm:text-sm"
           required
           autoFocus
         />
       </div>
 
-      <div>
-        <label htmlFor="login-password" className="mb-1.5 block text-sm font-medium text-foreground">
-          {t("password")}
-        </label>
+      <div className="grid gap-1.5">
+        <FieldLabel htmlFor="login-password">{t("password")}</FieldLabel>
         <div className="relative">
-          <input
+          <Input
             ref={passwordRef}
             id="login-password"
             name="password"
@@ -101,7 +95,7 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
               setPassword(event.target.value)
               setError("")
             }}
-            className="h-11 w-full rounded-md border border-border bg-surface px-3 pr-12 text-base text-foreground outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 sm:h-10 sm:text-sm"
+            className="pr-12"
             required
           />
           <button
@@ -127,20 +121,14 @@ export function LoginForm({ callbackUrl, sessionExpired }: LoginFormProps) {
       </div>
 
       {error ? (
-        <div role="alert" aria-live="polite" className="rounded-md bg-danger-soft px-3 py-2.5 text-sm text-danger">
+        <Notice tone="danger" role="alert" aria-live="polite">
           {error}
-        </div>
+        </Notice>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={loading}
-        aria-busy={loading}
-        className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-70 sm:h-10"
-      >
-        {loading ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
-        <span>{loading ? t("loggingIn") : t("login")}</span>
-      </button>
+      <Button type="submit" busy={loading} className="w-full">
+        {t("login")}
+      </Button>
     </form>
   )
 }
