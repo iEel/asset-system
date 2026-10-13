@@ -71,8 +71,11 @@ test("the selected brand keeps the vertical brand picker and gets RowActions: ed
   assert.match(source, /<DataTable\n\s+framed=\{false\}/)
 })
 
-// B4 (spec 2B §5.9): the lists that now page on the server. Plans 2B-2 and 2B-5 add theirs.
-const B4_LISTS = [`${D}master-data/departments/page.tsx`]
+// B4 (spec 2B §5.9): the lists that now page on the server. Plans 2B-2 and 2B-5 add theirs, one line each, before the "]".
+const B4_LISTS = [
+  `${D}master-data/departments/page.tsx`,
+  `${D}disposal/batches/page.tsx`,
+]
 
 test("B4 lists read page and pageSize with parseListPage and count the whole list in the same Promise.all (spec 2B §5.9.1)", () => {
   for (const path of B4_LISTS) {
@@ -195,4 +198,25 @@ test("DisposalRowActions opens the 2C dialogs through their handles and gives fo
   assert.match(source, /if \(!event\.currentTarget\.contains\(event\.target as Node\)\) event\.stopPropagation\(\)/)
   assert.match(source, /\.\.\.\(next\.kind === "view" \? \[\] : \[/, "a view row's next step already opens the request, so ⋯ does not repeat it")
   assert.doesNotMatch(source, /\bbusy\b|shadow-|flex-col-reverse/)
+})
+
+// Plan 2B-2 Task 4 (spec 2B §5.4 row "disposal/batches", §5.9.2 row 5, B4): the batch history pages for real, and the
+// link to a batch carries the list page, so the batch page's back button returns to it (Task 5 reads it).
+test("disposal batches: real pages, the list page in returnTo, and RowActions with the next step only (spec 2B §5.4, §5.9.2 row 5)", () => {
+  const source = read(`${D}disposal/batches/page.tsx`)
+  for (const part of ["<PageHeader", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<ClickableTableRow", "<RowActions", "<DataTableFoot>", "<Pagination"]) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.match(source, /<div className="space-y-6">/)
+  assert.match(source, /back=\{<PageBackLink href=\{`\/\$\{locale\}\/disposal`\} label=\{t\("backToQueue"\)\} \/>\}/)
+  assert.match(source, /searchParams: Promise<\{ page\?: string \| string\[\]; pageSize\?: string \| string\[\] \}>/)
+  assert.match(source, /const batchesReturnHref = listHref\(listPage\)/)
+  assert.match(source, /appendOperationalReturnTo\(`\/\$\{locale\}\/disposal\/batches\/\$\{id\}`, batchesReturnHref\)/)
+  assert.match(source, /next=\{\{ label: t\("openBatch"\), href, icon: <FolderOpen aria-hidden="true" \/> \}\}\n\s+groups=\{\[\]\}\n\s+\/>/, "one next step and no ⋯: opening the batch is the row's only command")
+  assert.doesNotMatch(source, /deleteAction=/)
+  assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
+  assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: listHref\(\{ pageSize: value \}\) \}\)\)\}/)
+  assert.match(source, /^import \{ redirect \} from "next\/navigation"$/m)
+  assert.match(source, /const lastPage = lastListPage\(total, listPage\.pageSize\)\n\s+if \(batches\.length === 0 && total > 0 && listPage\.page > lastPage\) \{\n\s+redirect\(/)
+  assert.match(source, /canCreate && total > 0 \?/, "the create button in the header shows once a batch exists, counted over all pages")
 })

@@ -67,6 +67,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}disposal/disposal-bulk-approval.tsx`,
   `${C}disposal/disposal-bulk-execution.tsx`,
   `${D}disposal/page.tsx`,
+  `${D}disposal/batches/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -154,7 +155,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}audit/rounds/[id]/page.tsx`]: 1,
     [`${D}audit/rounds/[id]/pending/page.tsx`]: 1,
     [`${D}disposal/batches/[id]/page.tsx`]: 1,
-    [`${D}disposal/batches/page.tsx`]: 1,
     [`${D}maintenance/page.tsx`]: 1,
     [`${D}maintenance/pm/page.tsx`]: 1,
     // 2B-3
@@ -206,7 +206,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-2
     [`${D}audit/rounds/[id]/page.tsx`]: 1, // 0 → 1: 2B-2 swaps the Download icon of the bar's back item :479 for ArrowLeft
     [`${D}disposal/batches/[id]/page.tsx`]: 1,
-    [`${D}disposal/batches/page.tsx`]: 1,
     // 2B-4
     [`${D}assets/[id]/page.tsx`]: 1,
     [`${D}disposal/[id]/page.tsx`]: 1,
