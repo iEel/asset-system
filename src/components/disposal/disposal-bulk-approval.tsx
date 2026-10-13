@@ -19,7 +19,10 @@ import type {
   DisposalBulkApprovalSummary,
 } from "@/lib/disposal-bulk-approval"
 import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import { Button } from "@/components/ui/button"
+import { linkVariants } from "@/components/ui/button-variants"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { checkboxVariants } from "@/components/ui/field-variants"
 import { shouldGuardLinkClick } from "@/lib/navigation-guard"
 import { cn } from "@/lib/utils"
 
@@ -402,10 +405,10 @@ export function DisposalBulkSelectionToggle() {
   }
 
   return (
-    <button type="button" onClick={toggleMode} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 md:hidden">
-      <ListChecks className="h-4 w-4" />
+    <Button variant="outline" onClick={toggleMode} disabled={busy} className="md:hidden">
+      <ListChecks aria-hidden="true" />
       {active ? copy.cancelSelectionMode : copy.selectionMode}
-    </button>
+    </Button>
   )
 }
 
@@ -418,15 +421,15 @@ export function DisposalBulkApprovalToolbar() {
       <span className="sr-only" aria-live="polite">{formatCopy(copy.selectedCount, { count: selected.size })}</span>
       <div className="flex items-center gap-2 text-sm font-medium text-foreground"><CheckSquare2 className="h-4 w-4 text-primary" />{formatCopy(copy.selectedCount, { count: selected.size })}</div>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <button type="button" onClick={selectPage} disabled={busy} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">{copy.selectPage}</button>
-        <button type="button" onClick={clear} disabled={busy} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">{copy.clearSelection}</button>
-        <button ref={triggerRef} type="button" onClick={() => void preview()} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 sm:h-10 sm:min-h-0">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ListChecks className="h-4 w-4" />}
+        <Button variant="outline" onClick={selectPage} disabled={busy}>{copy.selectPage}</Button>
+        <Button variant="outline" onClick={clear} disabled={busy}>{copy.clearSelection}</Button>
+        <Button ref={triggerRef} onClick={() => void preview()} busy={busy}>
+          <ListChecks aria-hidden="true" />
           {copy.reviewAndApprove}
-        </button>
+        </Button>
       </div>
       {limitMessage ? <p className="text-xs text-muted-foreground md:col-span-full">{limitMessage}</p> : null}
-      {error ? <div className="flex items-center gap-3 text-sm text-danger" role="alert"><span>{error}</span><button type="button" onClick={() => void preview()} disabled={busy} className="font-medium text-primary underline underline-offset-2 disabled:opacity-50">{copy.retry}</button></div> : null}
+      {error ? <div className="flex items-center gap-3 text-sm text-danger" role="alert"><span>{error}</span><button type="button" onClick={() => void preview()} disabled={busy} className={linkVariants({ size: "inherit" })}>{copy.retry}</button></div> : null}
     </div>
   )
 }
@@ -444,17 +447,20 @@ export function DisposalBulkApprovalSelectPageControl() {
     if (input) input.indeterminate = partiallySelected
   }, [partiallySelected])
 
+  // The label is the 44px target; the box draws its own focus outline (DESIGN.md, checkboxes and radios).
   return (
-    <input
-      ref={inputRef}
-      type="checkbox"
-      checked={allSelected}
-      disabled={disabled}
-      onChange={togglePageSelection}
-      aria-label={copy.selectPage}
-      aria-checked={partiallySelected ? "mixed" : allSelected}
-      className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
-    />
+    <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center">
+      <input
+        ref={inputRef}
+        type="checkbox"
+        checked={allSelected}
+        disabled={disabled}
+        onChange={togglePageSelection}
+        aria-label={copy.selectPage}
+        aria-checked={partiallySelected ? "mixed" : allSelected}
+        className={checkboxVariants()}
+      />
+    </label>
   )
 }
 
@@ -489,14 +495,14 @@ export function DisposalBulkApprovalCheckbox({
   }
 
   return (
-    <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md focus-within:ring-2 focus-within:ring-ring">
+    <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center">
       <input
         type="checkbox"
         checked={checked}
         disabled={disabled}
         onChange={() => toggle(item.requestId)}
         aria-label={label}
-        className="h-5 w-5 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-ring"
+        className={checkboxVariants({ size: variant === "mobile" ? "lg" : "md" })}
       />
     </label>
   )

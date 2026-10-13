@@ -89,7 +89,8 @@ test("bulk approval dialog uses the shared accessible dialog", () => {
 test("bulk approval mobile selection uses 44px targets and exposes blocked reasons", () => {
   const source = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8")
 
-  assert.match(source, /min-h-11 min-w-11/)
+  assert.match(source, /min-h-11 (?:min-)?w-11/)
+  assert.match(source, /checkboxVariants\(/)
   assert.match(source, /blockedCode[\s\S]*?tabIndex=\{0\}/)
   assert.match(source, /getErrorLabel\(item\.blockedCode\)/)
 })
@@ -153,4 +154,26 @@ test("bulk approval has localized copy ready for the queue integration", () => {
     }
     assert.equal(typeof messages.bulkErrors.DISPOSAL_APPROVAL_FAILED, "string")
   }
+})
+
+// Plan 2B-2 Task 1 (spec 2B §8.6 row 3, §8.11 row 3): 2B owns only the list part of this 2C batch 3 file. The dialog
+// (DisposalBulkApprovalDialog and the helpers below it) stays as it is for 2C plan 3.
+test("bulk approval list controls use Button, busy and checkboxVariants, and leave the dialog to 2C (spec 2B §8.6 row 3)", () => {
+  const source = readFileSync("src/components/disposal/disposal-bulk-approval.tsx", "utf8").replace(/\r\n/g, "\n")
+  const list = source.slice(source.indexOf("export function DisposalBulkSelectionToggle"), source.indexOf("function DisposalBulkApprovalDialog"))
+  const dialog = source.slice(source.indexOf("function DisposalBulkApprovalDialog"))
+
+  assert.match(source, /^import \{ Button \} from "@\/components\/ui\/button"$/m)
+  assert.match(source, /^import \{ checkboxVariants \} from "@\/components\/ui\/field-variants"$/m)
+  assert.match(list, /<Button variant="outline" onClick=\{toggleMode\} disabled=\{busy\} className="md:hidden">/)
+  assert.match(list, /<Button variant="outline" onClick=\{selectPage\} disabled=\{busy\}>\{copy\.selectPage\}<\/Button>/)
+  assert.match(list, /<Button variant="outline" onClick=\{clear\} disabled=\{busy\}>\{copy\.clearSelection\}<\/Button>/)
+  assert.match(list, /<Button ref=\{triggerRef\} onClick=\{\(\) => void preview\(\)\} busy=\{busy\}>/, "the shared spinner while the preview runs; busy, never disabled beside it (FMG GB4)")
+  assert.match(list, /className=\{linkVariants\(\{ size: "inherit" \}\)\}>\{copy\.retry\}<\/button>/)
+  assert.match(list, /<label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center">\n\s+<input\n\s+ref=\{inputRef\}/, "the select-page box gets a 44px target")
+  assert.equal(list.match(/className=\{checkboxVariants\(/g)?.length, 2, "the select-page box and the row box")
+  assert.doesNotMatch(list, /<Loader2\b|disabled:opacity-50|rounded border-border|focus-within:ring/)
+  // The dialog keeps its buttons and status lines for 2C plan 3 (FMG GF7 and GB1 of this file drop to 1 and 3, as spec §8.6 says).
+  assert.equal(dialog.match(/<Loader2\b/g)?.length, 3)
+  assert.match(dialog, /<span className="mb-1\.5 block text-sm font-medium text-foreground">\{copy\.sharedRemark\}<\/span>/)
 })
