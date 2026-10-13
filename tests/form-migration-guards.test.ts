@@ -95,6 +95,7 @@ const MIGRATED_FILES: string[] = [
   `${C}assets/asset-label-batch-tool.tsx`,
   `${C}assets/asset-label-print.tsx`,
   `${C}assets/asset-scan-search-tool.tsx`,
+  `${C}assets/asset-status-correction-button.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -183,7 +184,6 @@ const RAW_FIELDS: Record<string, number> = {
   [`${C}audit/audit-scan-room-picker.tsx`]: 1, // → 1: the room search :75 stays (O20)
   // 4
   [`${C}assets/asset-label-print.tsx`]: 2, // the print toolbar's boxed fields :226, :237 (K21)
-  [`${C}assets/asset-status-correction-button.tsx`]: 1,
   [`${C}assets/asset-register-table.tsx`]: 4,
   [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 1,
 }
@@ -200,7 +200,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 2
   // 3
   // 4
-  [`${C}assets/asset-status-correction-button.tsx`]: 1,
   [`${C}assets/asset-register-table.tsx`]: 4,
   [`${C}asset-operations/transaction-cancel-dialog.tsx`]: 1,
 }

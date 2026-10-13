@@ -4,6 +4,9 @@ import { RotateCcw } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { ApiErrorText } from "@/components/ui/api-error-text"
+import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { Textarea } from "@/components/ui/textarea"
 
 type AssetStatusCorrectionButtonProps = {
   assetId: string
@@ -53,48 +56,37 @@ export function AssetStatusCorrectionButton({ assetId, readyStatusId, labels }: 
 
   return (
     <div className="space-y-2">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm font-medium text-warning transition-colors hover:bg-warning-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <RotateCcw className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <Button variant="outline" onClick={() => setOpen((value) => !value)}>
+        <RotateCcw className="text-warning" aria-hidden="true" />
         {labels.button}
-      </button>
+      </Button>
       {open ? (
         <div className="rounded-md border border-warning-border bg-background p-4">
           <h3 className="text-sm font-semibold text-foreground">{labels.title}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{labels.description}</p>
-          <label className="mt-3 block text-sm font-medium text-foreground" htmlFor="asset-status-correction-reason">
-            {labels.reason}
-          </label>
-          <textarea
-            id="asset-status-correction-reason"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder={labels.reasonPlaceholder}
-            className="mt-1 min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
+          <Field label={labels.reason} className="mt-3">
+            <Textarea
+              id="asset-status-correction-reason"
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder={labels.reasonPlaceholder}
+              className="min-h-24"
+            />
+          </Field>
           {error ? <p className="mt-2 text-sm text-danger"><ApiErrorText error={error} /></p> : null}
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button
-              type="button"
+            <Button
+              variant="outline"
               onClick={() => {
                 setOpen(false)
                 setError(null)
               }}
-              className="min-h-11 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
             >
               {labels.cancel}
-            </button>
-            <button
-              type="button"
-              disabled={isSubmitting || reason.trim().length < 5}
-              onClick={submitCorrection}
-              className="min-h-11 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isSubmitting ? labels.submitting : labels.submit}
-            </button>
+            </Button>
+            <Button busy={isSubmitting} disabled={reason.trim().length < 5} onClick={submitCorrection}>
+              {labels.submit}
+            </Button>
           </div>
         </div>
       ) : null}
