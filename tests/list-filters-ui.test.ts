@@ -30,6 +30,7 @@ const MIGRATED_FILTER_FILES = [
   "src/app/[locale]/(dashboard)/master-data/locations/page.tsx",
   "src/app/[locale]/(dashboard)/master-data/suppliers/page.tsx",
   "src/app/[locale]/(dashboard)/disposal/page.tsx",
+  "src/app/[locale]/(dashboard)/maintenance/page.tsx",
 ]
 
 test("migrated filter forms use Field, SearchField and FilterSelect only, and every form is a search landmark (item 5)", () => {
@@ -66,4 +67,17 @@ test("the disposal queue renders one DisposalFilterForm in two places and the pa
     const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as { disposalPage: Record<string, unknown> }
     assert.equal(typeof messages.disposalPage.activeFilterCount, "string", `${locale}: disposalPage.activeFilterCount`)
   }
+})
+
+// Item 7 (spec 2B §6.13 table B, §6.5 "6-ญ", I24): the maintenance filter form keeps the page size, and the chip for
+// the hidden asset filter removes only assetId (plan 2B-2 Task 12).
+test("the maintenance filter keeps the page size, and its asset chip clears only the asset filter (item 7)", () => {
+  const source = read("src/app/[locale]/(dashboard)/maintenance/page.tsx")
+  const form = source.slice(source.indexOf('<form role="search"'), source.indexOf("</form>"))
+  assert.match(form, /<input type="hidden" name="pageSize" value=\{filters\.pageSize\} \/>/)
+  assert.match(form, /<FilterFormActions submitLabel=\{t\("filter"\)\} clear=\{hasActiveFilters \? \{ href: clearHref, label: t\("clearFilters"\) \} : undefined\} \/>/)
+  assert.match(
+    source,
+    /<FilterChipList\n\s+className="mt-3"\n\s+label=\{t\("activeFilters"\)\}\n\s+removeLabel=\{t\("clearFilters"\)\}\n\s+chips=\{\[\{ key: "assetId", label: t\("assetFilter"\), href: `\/\$\{locale\}\/maintenance\?\$\{buildMaintenanceQueryString\(filters, \{ assetId: "", page: 1 \}\)\}` \}\]\}/,
+  )
 })

@@ -387,3 +387,29 @@ test("pending rows: RowActions on desktop with the not-found dialog opened throu
   assert.match(wrapper, /<AuditMarkNotFoundButton ref=\{notFoundRef\} itemId=\{itemId\} hideTrigger returnFocusRef=\{openerRef\} \/>/, "the dialog sits outside the menu and gives focus back to ⋯")
   assert.match(wrapper, /<div data-no-row-click className="contents" onClick=\{stopPortalEvent\} onKeyDown=\{stopPortalEvent\}>/, "events from the dialog portal never reach the row")
 })
+
+// Plan 2B-2 Task 12 (spec 2B §5.4 row "maintenance", §5.10 #4 and #11, I21): the repair-record list. It already paged on
+// the server; it keeps its phone cards, moves its table and pager to the shared parts, and its empty state tells a
+// filtered list from an empty one.
+test("the repair-record list builds on PageHeader, DataTable, the shared filters and one Pagination under cards and table (spec 2B §5.4)", () => {
+  const source = read(`${D}maintenance/page.tsx`)
+  for (const part of ["<PageHeader", "<FilterPanel>", '<form role="search"', "<FilterFormActions", "<FilterChipList", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<ClickableTableRow", "<DataTableFoot>", "<Pagination"]) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.match(source, /<div className="space-y-6">\n\s+<PageHeader\n\s+title=\{t\("title"\)\}\n\s+meta=\{t\("subtitle"\)\}/)
+  assert.match(source, /<DataTable framed=\{false\} className=\{getDesktopTableOnlyClasses\(\)\} caption=\{t\("listTitle"\)\} scrollHint=\{tCommon\("tableScrollHint"\)\}>/)
+  assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(/)
+  assert.match(source, /<DataTableHead align="right">\{t\("cost"\)\}<\/DataTableHead>/, "the cost head names the unit (บาท), so the cells carry none")
+  assert.match(source, /<DataTableCell numeric className="text-muted-foreground">\{record\.repairCost == null \? <Nil \/> : formatMoney\(Number\(record\.repairCost\)\)\}<\/DataTableCell>/)
+  assert.match(source, /formatMoney\(Number\(record\.repairCost\), \{ unit: tCommon\("baht"\) \}\)/, "the phone card is not under that head, so it shows the unit")
+  assert.equal(existsSync(`${C}maintenance/maintenance-pagination.tsx`), false, "the local pager went with its last caller")
+})
+
+test("the repair-record list sends a page past the end to the last page and splits its empty state on the filters (spec 2B I21, §5.10 #4)", () => {
+  const source = read(`${D}maintenance/page.tsx`)
+  assert.match(source, /^import \{ redirect \} from "next\/navigation"$/m)
+  assert.match(source, /const lastPage = lastListPage\(total, filters\.pageSize\)\n\s+if \(records\.length === 0 && total > 0 && filters\.page > lastPage\) \{\n\s+redirect\(buildMaintenancePageHref\(locale, listQuery, \{ page: lastPage \}\)\)/)
+  assert.match(source, /const hasActiveFilters = Boolean\(filters\.search \|\| filters\.status \|\| filters\.dateFrom \|\| filters\.dateTo\)/)
+  assert.match(source, /title=\{t\("emptyFilteredTitle"\)\} description=\{t\("emptyFilteredHelp"\)\} actionHref=\{clearHref\} actionLabel=\{t\("clearFilters"\)\} actionVariant="secondary"/)
+  assert.match(source, /title=\{t\("emptyTitle"\)\} description=\{canCreate \? t\("emptyHelp"\) : undefined\} actionHref=\{canCreate \? createHref : undefined\} actionLabel=\{canCreate \? t\("createTitle"\) : undefined\}/)
+})

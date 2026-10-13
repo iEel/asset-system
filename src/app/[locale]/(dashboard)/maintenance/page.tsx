@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { AlertTriangle, CalendarClock, Download, Plus, Wrench } from "lucide-react"
 import { prisma } from "@/lib/db"
@@ -11,13 +12,26 @@ import {
   maintenanceStatusFilters,
   parseMaintenanceListParams,
 } from "@/lib/maintenance-query"
+import { buildMaintenancePagination } from "@/lib/maintenance-list"
+import { buildMaintenancePageHref } from "@/lib/maintenance-view"
 import { buildDuePmPlanWhere, getBangkokDateKey } from "@/lib/preventive-maintenance"
 import { getRepairRecordStatusTone, openRepairRecordWhere, toRepairRecordStatus } from "@/lib/repair-record-policy"
-import { formatCurrency, formatDate } from "@/lib/utils"
-import { ColumnHeader } from "@/components/master-data/master-data-layout"
-import { MaintenancePagination } from "@/components/maintenance/maintenance-pagination"
+import { formatDate } from "@/lib/utils"
+import { formatCount, formatMoney } from "@/lib/display-format"
+import { LIST_PAGE_SIZES, lastListPage } from "@/lib/list-pagination"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader } from "@/components/ui/data-table"
+import { Field } from "@/components/ui/field"
+import { FilterChipList } from "@/components/ui/filter-chips"
+import { FilterFormActions, FilterPanel } from "@/components/ui/filter-panel"
+import { FilterSelect } from "@/components/ui/filter-select"
+import { Input } from "@/components/ui/input"
+import { Nil, orNil } from "@/components/ui/nil"
+import { PageHeader } from "@/components/ui/page-header"
+import { Pagination } from "@/components/ui/pagination"
+import { SearchField } from "@/components/ui/search-field"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
 import { appendOperationalReturnTo } from "@/lib/operational-return-navigation"
@@ -81,29 +95,36 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
     }),
     prisma.asset.count({ where: stuckAssetWhere }),
   ])
+  // A page past the last one (an old link, or a narrower filter) shows the last page, not an empty table (spec 2B I21).
+  const lastPage = lastListPage(total, filters.pageSize)
+  if (records.length === 0 && total > 0 && filters.page > lastPage) {
+    redirect(buildMaintenancePageHref(locale, listQuery, { page: lastPage }))
+  }
+  const pagination = buildMaintenancePagination(filters.page, filters.pageSize, total)
   const recordHref = (id: string) => appendOperationalReturnTo(`/${locale}/maintenance/${id}`, returnHref)
   const outcomeLabel = (outcome: string | null, status: string) =>
     outcome === "usable" || outcome === "beyond_repair"
       ? t(`outcome.${outcome}`)
-      : toRepairRecordStatus(status) === "closed" ? t("outcome.unknown") : "-"
+      : toRepairRecordStatus(status) === "closed" ? t("outcome.unknown") : null
   const clearHref = filters.assetId ? `/${locale}/maintenance?assetId=${encodeURIComponent(filters.assetId)}` : `/${locale}/maintenance`
+  // The filters the form shows. The asset filter has its own chip; page and page size are not filters (spec 2B §6.4).
+  const hasActiveFilters = Boolean(filters.search || filters.status || filters.dateFrom || filters.dateTo)
+  const createHref = appendOperationalReturnTo(`/${locale}/maintenance/new${filters.assetId ? `?assetId=${encodeURIComponent(filters.assetId)}` : ""}`, returnHref)
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        {canCreate ? (
-          <Link
-            href={appendOperationalReturnTo(`/${locale}/maintenance/new${filters.assetId ? `?assetId=${encodeURIComponent(filters.assetId)}` : ""}`, returnHref)}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover"
-          >
-            <Plus className="h-4 w-4" />{t("createTitle")}
-          </Link>
-        ) : null}
-      </div>
+      <PageHeader
+        title={t("title")}
+        meta={t("subtitle")}
+        actions={
+          canCreate ? (
+            <Link href={createHref} className={buttonVariants({ size: "md" })}>
+              <Plus aria-hidden="true" />
+              {t("createTitle")}
+            </Link>
+          ) : undefined
+        }
+      />
 
       {stuckTotal > 0 ? (
         <section id="stuck" className="rounded-lg border border-warning-border bg-warning-soft p-4">
@@ -139,7 +160,7 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("pmDueHelp")}</p>
           </div>
-          <Link href={`/${locale}/maintenance/pm`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium hover:bg-accent">
+          <Link href={`/${locale}/maintenance/pm`} className={buttonVariants({ variant: "outline" })}>
             {t("pmManage")}
           </Link>
         </div>
@@ -170,38 +191,40 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
         ) : null}
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-4">
-        <form className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_repeat(3,minmax(150px,180px))_auto]" action={`/${locale}/maintenance`}>
+      <FilterPanel>
+        <form role="search" className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_repeat(3,minmax(150px,180px))_auto]" action={`/${locale}/maintenance`}>
           {filters.assetId ? <input type="hidden" name="assetId" value={filters.assetId} /> : null}
-          <label className="min-w-0">
-            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{tCommon("search")}</span>
-            <input type="search" name="search" defaultValue={filters.search} placeholder={t("searchPlaceholder")} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
-          </label>
-          <label className="min-w-0">
-            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("filterStatus")}</span>
-            <select name="status" defaultValue={filters.status} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring">
-              <option value="">{tCommon("all")}</option>
-              {maintenanceStatusFilters.map((status) => <option key={status} value={status}>{t(`status.${status}`)}</option>)}
-            </select>
-          </label>
-          <label className="min-w-0">
-            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("dateFrom")}</span>
-            <input type="date" name="dateFrom" defaultValue={filters.dateFrom} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
-          </label>
-          <label className="min-w-0">
-            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("dateTo")}</span>
-            <input type="date" name="dateTo" defaultValue={filters.dateTo} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring" />
-          </label>
-          <div className="flex flex-col gap-2 self-end sm:flex-row">
-            <button type="submit" className="min-h-11 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover">{t("filter")}</button>
-            <Link href={clearHref} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-accent">{t("clearFilters")}</Link>
-          </div>
+          <input type="hidden" name="pageSize" value={filters.pageSize} />
+          <Field label={tCommon("search")}>
+            <SearchField name="search" defaultValue={filters.search} placeholder={t("searchPlaceholder")} />
+          </Field>
+          <FilterSelect
+            label={t("filterStatus")}
+            name="status"
+            defaultValue={filters.status}
+            allLabel={tCommon("all")}
+            options={maintenanceStatusFilters.map((status) => ({ value: status, label: t(`status.${status}`) }))}
+          />
+          <Field label={t("dateFrom")}>
+            <Input type="date" name="dateFrom" defaultValue={filters.dateFrom} />
+          </Field>
+          <Field label={t("dateTo")}>
+            <Input type="date" name="dateTo" defaultValue={filters.dateTo} />
+          </Field>
+          <FilterFormActions submitLabel={t("filter")} clear={hasActiveFilters ? { href: clearHref, label: t("clearFilters") } : undefined} />
         </form>
-        {filters.assetId ? <p className="mt-3 text-xs text-muted-foreground">{t("assetFilter")} · <Link href={`/${locale}/maintenance`} className="text-primary hover:underline">{t("clearFilters")}</Link></p> : null}
+        {filters.assetId ? (
+          <FilterChipList
+            className="mt-3"
+            label={t("activeFilters")}
+            removeLabel={t("clearFilters")}
+            chips={[{ key: "assetId", label: t("assetFilter"), href: `/${locale}/maintenance?${buildMaintenanceQueryString(filters, { assetId: "", page: 1 })}` }]}
+          />
+        ) : null}
         {getMaintenanceDateRangeError(filters) ? (
           <p role="alert" className="mt-3 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm text-warning">{t("invalidDateRange")}</p>
         ) : null}
-      </section>
+      </FilterPanel>
 
       <section className="overflow-hidden rounded-lg border border-border bg-surface">
         <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
@@ -210,14 +233,19 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
             <p className="mt-1 text-xs text-muted-foreground">{t("resultCount", { count: total })}</p>
           </div>
           {canExport ? (
-            <a href={`/api/maintenance-tickets/export?${listQuery}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium hover:bg-accent">
-              <Download className="h-4 w-4" />{t("export")}
+            <a href={`/api/maintenance-tickets/export?${listQuery}`} className={buttonVariants({ variant: "outline", size: "md" })}>
+              <Download aria-hidden="true" />
+              {t("export")}
             </a>
           ) : null}
         </div>
         {records.length === 0 ? (
           <div className="p-4">
-            <ActionEmptyState icon={<Wrench className="h-6 w-6" />} title={t("emptyTitle")} description={t("emptyHelp")} actionHref={clearHref} actionLabel={t("clearFilters")} />
+            {hasActiveFilters ? (
+              <ActionEmptyState icon={<Wrench className="h-6 w-6" />} title={t("emptyFilteredTitle")} description={t("emptyFilteredHelp")} actionHref={clearHref} actionLabel={t("clearFilters")} actionVariant="secondary" />
+            ) : (
+              <ActionEmptyState icon={<Wrench className="h-6 w-6" />} title={t("emptyTitle")} description={canCreate ? t("emptyHelp") : undefined} actionHref={canCreate ? createHref : undefined} actionLabel={canCreate ? t("createTitle") : undefined} />
+            )}
           </div>
         ) : (
           <>
@@ -226,7 +254,9 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                 <Link key={record.id} href={recordHref(record.id)} className="block min-w-0 rounded-md border border-border bg-background p-3 hover:bg-accent">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold text-foreground">{record.asset.assetTag}</div>
+                      <div className="text-sm font-semibold text-foreground">
+                        <span className="tag font-medium">{record.asset.assetTag}</span>
+                      </div>
                       <div className="truncate text-xs text-muted-foreground">{record.asset.name}</div>
                     </div>
                     <StatusBadge label={t(`status.${toRepairRecordStatus(record.repairStatus)}`)} tone={getRepairRecordStatusTone(record.repairStatus)} />
@@ -234,60 +264,75 @@ export default async function MaintenancePage({ params, searchParams }: Maintena
                   <p className="mt-2 line-clamp-2 text-sm text-foreground">{record.problem}</p>
                   <div className="mt-2 text-xs text-muted-foreground">
                     {formatDate(record.reportedDate)} · {record.vendor?.name ?? t("internal")}
-                    {record.repairCost == null ? "" : ` · ${formatCurrency(Number(record.repairCost))}`}
+                    {record.repairCost == null ? "" : ` · ${formatMoney(Number(record.repairCost), { unit: tCommon("baht") })}`}
                   </div>
                 </Link>
               ))}
             </div>
-            <div className={`${getDesktopTableOnlyClasses()} overflow-x-auto`}>
-              <table className="min-w-full divide-y divide-border text-sm">
-                <thead className="bg-muted/40">
-                  <tr>
-                    <ColumnHeader>{t("date")}</ColumnHeader>
-                    <ColumnHeader>{t("asset")}</ColumnHeader>
-                    <ColumnHeader>{t("problem")}</ColumnHeader>
-                    <ColumnHeader>{t("statusLabel")}</ColumnHeader>
-                    <ColumnHeader>{t("outcomeQuestion")}</ColumnHeader>
-                    <ColumnHeader>{t("vendor")}</ColumnHeader>
-                    <ColumnHeader>{t("cost")}</ColumnHeader>
-                    <ColumnHeader>{t("reporter")}</ColumnHeader>
-                    <ColumnHeader>{t("repairNo")}</ColumnHeader>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {records.map((record) => (
-                    <ClickableTableRow key={record.id} href={recordHref(record.id)} label={`${tCommon("view")}: ${record.repairNo}`}>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(record.reportedDate)}</td>
-                      <td className="min-w-48 px-4 py-3">
-                        <div className="font-medium text-foreground">{record.asset.assetTag}</div>
-                        <div className="mt-1 text-xs text-muted-foreground">{record.asset.name}</div>
-                      </td>
-                      <td className="min-w-72 px-4 py-3 text-foreground">{record.problem}</td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <StatusBadge label={t(`status.${toRepairRecordStatus(record.repairStatus)}`)} tone={getRepairRecordStatusTone(record.repairStatus)} />
-                      </td>
-                      <td className={`whitespace-nowrap px-4 py-3 ${record.outcome === "beyond_repair" ? "text-warning" : record.outcome === "usable" ? "text-success" : "text-muted-foreground"}`}>
-                        {outcomeLabel(record.outcome, record.repairStatus)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{record.vendor?.name ?? t("internal")}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{record.repairCost == null ? "-" : formatCurrency(Number(record.repairCost))}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{record.reportedBy.fullNameTh}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">{record.repairNo}</td>
-                    </ClickableTableRow>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable framed={false} className={getDesktopTableOnlyClasses()} caption={t("listTitle")} scrollHint={tCommon("tableScrollHint")}>
+              <DataTableHeader>
+                <tr>
+                  <DataTableHead>{t("date")}</DataTableHead>
+                  <DataTableHead>{t("asset")}</DataTableHead>
+                  <DataTableHead>{t("problem")}</DataTableHead>
+                  <DataTableHead>{t("statusLabel")}</DataTableHead>
+                  <DataTableHead>{t("outcomeQuestion")}</DataTableHead>
+                  <DataTableHead>{t("vendor")}</DataTableHead>
+                  <DataTableHead align="right">{t("cost")}</DataTableHead>
+                  <DataTableHead>{t("reporter")}</DataTableHead>
+                  <DataTableHead>{t("repairNo")}</DataTableHead>
+                </tr>
+              </DataTableHeader>
+              <DataTableBody>
+                {records.map((record) => (
+                  <ClickableTableRow key={record.id} href={recordHref(record.id)} label={`${tCommon("view")}: ${record.repairNo}`}>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{formatDate(record.reportedDate)}</DataTableCell>
+                    <DataTableCell className="min-w-48">
+                      <div className="font-medium text-foreground">
+                        <span className="tag font-medium">{record.asset.assetTag}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">{record.asset.name}</div>
+                    </DataTableCell>
+                    <DataTableCell className="min-w-72 text-foreground">{record.problem}</DataTableCell>
+                    <DataTableCell className="whitespace-nowrap">
+                      <StatusBadge label={t(`status.${toRepairRecordStatus(record.repairStatus)}`)} tone={getRepairRecordStatusTone(record.repairStatus)} />
+                    </DataTableCell>
+                    <DataTableCell className={`whitespace-nowrap ${record.outcome === "beyond_repair" ? "text-warning" : record.outcome === "usable" ? "text-success" : "text-muted-foreground"}`}>
+                      {orNil(outcomeLabel(record.outcome, record.repairStatus))}
+                    </DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{record.vendor?.name ?? t("internal")}</DataTableCell>
+                    <DataTableCell numeric className="text-muted-foreground">{record.repairCost == null ? <Nil /> : formatMoney(Number(record.repairCost))}</DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">{record.reportedBy.fullNameTh}</DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">
+                      <span className="tag">{record.repairNo}</span>
+                    </DataTableCell>
+                  </ClickableTableRow>
+                ))}
+              </DataTableBody>
+            </DataTable>
           </>
         )}
-        <MaintenancePagination
-          locale={locale}
-          currentQuery={listQuery}
-          page={filters.page}
-          pageSize={filters.pageSize}
-          total={total}
-          labels={{ rowsPerPage: tCommon("rowsPerPage"), page: tCommon("page"), of: tCommon("of"), previous: tCommon("previous"), next: tCommon("next") }}
-        />
+        {total > 0 ? (
+          <DataTableFoot>
+            <Pagination
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              previousHref={buildMaintenancePageHref(locale, listQuery, { page: pagination.page - 1 })}
+              nextHref={buildMaintenancePageHref(locale, listQuery, { page: pagination.page + 1 })}
+              pageSize={pagination.pageSize}
+              pageSizes={LIST_PAGE_SIZES.map((value) => ({ value, href: buildMaintenancePageHref(locale, listQuery, { pageSize: value, page: 1 }) }))}
+              labels={{
+                navigation: tCommon("pagination"),
+                previous: tCommon("previous"),
+                next: tCommon("next"),
+                pageOf: tCommon("pageOf", { page: pagination.page, total: pagination.totalPages }),
+                range: tCommon("showingRange", { from: formatCount(pagination.start), to: formatCount(pagination.end), total: formatCount(pagination.total) }),
+                pageSizeGroup: tCommon("pageSizeLabel"),
+                rowsPerPage: tCommon("rowsPerPage"),
+              }}
+            />
+          </DataTableFoot>
+        ) : null}
       </section>
     </div>
   )

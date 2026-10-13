@@ -2753,7 +2753,7 @@
     "assetFilter": "This asset only",
     "export": "Export Excel",
     "emptyTitle": "No repair records",
-    "emptyHelp": "Press \"Record a repair\" to add one, or clear the filters",
+    "emptyHelp": "Press \"Record a repair\" to add one",
     "pmDueTitle": "PM due (next 7 days)",
     "pmDueHelp": "PM plans due within 7 days, overdue first",
     "pmOverdue": "Overdue",
@@ -2763,7 +2763,10 @@
     "stuckHelp": "Record the repair for these assets so status and history match",
     "stuckMore": "and {count} more",
     "dropFilesTitle": "Take a photo or attach a receipt",
-    "dropFilesHint": "or click to choose images or PDFs"
+    "dropFilesHint": "or click to choose images or PDFs",
+    "activeFilters": "Active filters",
+    "emptyFilteredTitle": "No repair records match the filters",
+    "emptyFilteredHelp": "Change or clear the filters"
   },
   "disposalPage": {
     "title": "Disposal",

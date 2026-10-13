@@ -75,6 +75,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}audit/rounds/page.tsx`,
   `${D}audit/rounds/[id]/page.tsx`,
   `${D}audit/rounds/[id]/pending/page.tsx`,
+  `${D}maintenance/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -159,7 +160,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-2
     [`${D}admin/data-quality/page.tsx`]: 1,
     [`${D}admin/integrations/page.tsx`]: 1,
-    [`${D}maintenance/page.tsx`]: 1,
     [`${D}maintenance/pm/page.tsx`]: 1,
     // 2B-3
     [`${D}asset-management/import-export/page.tsx`]: 1,
@@ -270,14 +270,10 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LT4: {
     // 2B-1
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes MasterDataPagination (R-h)
-    // 2B-2
-    [`${C}maintenance/maintenance-pagination.tsx`]: 1,
   },
   LT5: {
     // 2B-1
     [`${C}master-data/master-data-layout.tsx`]: 2, // 2B-5 deletes MasterDataPagination (R-h)
-    // 2B-2
-    [`${C}maintenance/maintenance-pagination.tsx`]: 2,
     // 2B-4
     [`${D}assets/[id]/page.tsx`]: 1,
   },
@@ -303,7 +299,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}assets/asset-component-manager.tsx`]: 3, // → 3 (KEEP): 2C form (2D)
     [`${C}assets/asset-form.tsx`]: 1, // → 1 (KEEP): 2C form (2D)
     // 2B-2
-    [`${D}maintenance/page.tsx`]: 1,
     [`${C}audit/audit-finding-review-actions.tsx`]: 3, // → 3 (KEEP): review dialog (2D)
     // 2B-3
     [`${C}assets/asset-register-table.tsx`]: 1,
@@ -335,8 +330,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}disposal/disposal-batch-form.tsx`]: 3, // → 3 (KEEP): 2C form (2D)
   },
   LV3: {
-    // 2B-2
-    [`${D}maintenance/page.tsx`]: 2,
     // 2B-3
     [`${C}assets/asset-register-table.tsx`]: 1,
     // 2B-4
@@ -401,8 +394,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LN1: {
     // 2B-1
     [`${D}master-data/brands/page.tsx`]: 2, // → 2 (KEEP): the brand picker is a vertical list, where aria-current="page" is right (I11)
-    // 2B-2
-    [`${C}maintenance/maintenance-pagination.tsx`]: 1,
     // 2B-3
     [`${C}assets/asset-register-status-tabs.tsx`]: 1,
     // 2B-4
