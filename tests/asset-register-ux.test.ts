@@ -96,7 +96,7 @@ test("asset register desktop table pins the tag and actions columns only", () =>
   assert.match(source, /assetRegisterStickyActionsColumnClasses/)
   assert.doesNotMatch(source, /assetRegisterStickyNameColumnClasses|\[left:11rem\]/)
   assert.match(source, /right-0/)
-  assert.match(source, /group-hover:bg-row-hover group-focus:bg-row-hover/)
+  assert.match(source, /group-hover\/row:bg-row-hover group-focus-within\/row:bg-row-hover group-has-\[\[aria-expanded=true\]\]\/row:bg-row-hover/)
 })
 
 test("asset register keeps adaptive desktop and mobile responsibilities explicit", () => {

@@ -283,7 +283,7 @@ test("R2 only floating layers, camera controls and paper previews cast a shadow"
     "src/components/layout/mobile-field-navigation.tsx": 1, // round scan button shadow-md, kept since phase 1
     "src/app/[locale]/(dashboard)/admin/roles/page.tsx": 1, // floating add button shadow-lg (2D)
     "src/app/[locale]/(dashboard)/admin/users/page.tsx": 1, // floating add button shadow-lg (2D)
-    "src/components/assets/asset-register-table.tsx": 1, // mobile bulk-action bar shadow-lg (2B / phase 3)
+    "src/components/assets/asset-register-table.tsx": 1, // mobile bulk-action bar shadow-lg (phase 3, R-q)
   })
 })
 

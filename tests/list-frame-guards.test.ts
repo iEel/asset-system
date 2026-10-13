@@ -81,6 +81,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${C}admin/asset-state-review-workspace.tsx`,
   `${D}admin/integrations/page.tsx`,
   `${C}assets/asset-register-row-actions.tsx`,
+  `${C}assets/asset-register-table.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -241,8 +242,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     // 2B-1
     [`${C}admin/role-permission-form.tsx`]: 2, // → 2 (KEEP): 2C batch 4 (R-e)
     [`${C}master-data/master-data-layout.tsx`]: 2, // 2B-5 deletes ColumnHeader and SortableColumnHeader (R-h)
-    // 2B-3
-    [`${C}assets/asset-register-table.tsx`]: 2,
     // 2B-4
     [`${D}assets/[id]/page.tsx`]: 10,
     [`${D}master-data/employees/[id]/page.tsx`]: 1,
@@ -257,12 +256,8 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LT2: {
     // 2B-1
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes SortableColumnHeader (R-h)
-    // 2B-3
-    [`${C}assets/asset-register-table.tsx`]: 1,
   },
   LT3: {
-    // 2B-3
-    [`${C}assets/asset-register-table.tsx`]: 1,
     // 2B-5
     [`${D}admin/storage/page.tsx`]: 2,
   },
@@ -297,8 +292,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}assets/asset-form.tsx`]: 1, // → 1 (KEEP): 2C form (2D)
     // 2B-2
     [`${C}audit/audit-finding-review-actions.tsx`]: 3, // → 3 (KEEP): review dialog (2D)
-    // 2B-3
-    [`${C}assets/asset-register-table.tsx`]: 1,
     // 2B-4
     [`${D}assets/[id]/page.tsx`]: 15, // → 4 (KEEP): translated-sentence arguments :1198, :1200 and the history sentence :2462 (R-n)
     [`${D}disposal/[id]/page.tsx`]: 2,
@@ -327,8 +320,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}disposal/disposal-batch-form.tsx`]: 3, // → 3 (KEEP): 2C form (2D)
   },
   LV3: {
-    // 2B-3
-    [`${C}assets/asset-register-table.tsx`]: 1,
     // 2B-4
     [`${D}assets/[id]/page.tsx`]: 3,
     [`${D}disposal/[id]/page.tsx`]: 5,

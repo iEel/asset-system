@@ -122,13 +122,13 @@ test("desktop rows use small thumbnails, one-line cells and shared status badges
   assert.doesNotMatch(source, /function StatusPill/)
 })
 
-test("the scroll hint and the actions shadow follow real overflow", () => {
+test("the scroll hint follows real overflow and the pinned actions column has no edge shadow", () => {
   const source = table()
 
   assert.match(source, /new ResizeObserver\(/)
   assert.match(source, /\{isOverflowing \? \(/)
-  assert.match(source, /hasRemainingHorizontalContent\(/)
-  assert.match(source, /hasMoreRight && /)
+  // Spec 2B R-j: the mockup draws no shadow on the pinned column; its left line separates it.
+  assert.doesNotMatch(source, /hasMoreRight|hasRemainingHorizontalContent|shadow-\[|rgb\(/)
 })
 
 const mobileList = () => read("src/components/assets/asset-register-mobile-list.tsx")
@@ -217,4 +217,56 @@ test("the register row actions are a thin wrapper of RowActions: next step on de
   assert.match(source, /label: t\("transactionMenu"\)/)
   assert.match(source, /code=\{assetTag\}\n\s+name=\{assetName\}/, "the phone sheet is headed by the tag and the name")
   assert.doesNotMatch(source, /function NextActionLink|sheetItemClasses|<DropdownMenu|<Sheet|triggerRef|contentClassName|size-8|closeLabel=|pr-14|pb-\[env/)
+})
+
+// Plan 2B-3 Task 3 (spec 2B §7.8, I3, I4, R-j, R-n, R-p, O1, N2–N5): the desktop table on the DataTable parts. The
+// dense rows stay in this file (headerClasses, cellClasses) until phase 3; the scroller, the pinned columns and the
+// scroll hint stay the register's own (I4).
+test("the register table builds on the DataTable parts and keeps its dense rows in its own classes (spec 2B I3)", () => {
+  const source = table()
+  assert.match(source, /const headerClasses = "border-b border-border bg-surface px-3 py-2\.5 text-left align-bottom text-meta font-medium whitespace-nowrap text-faint-foreground"/)
+  assert.match(source, /const cellClasses = "border-b border-border-soft px-3 py-2 align-top"/)
+  assert.match(source, /const assetRegisterStickyHeaderColumnClasses = "z-30 bg-surface"/)
+  assert.match(source, /group-has-\[\[aria-expanded=true\]\]\/row:bg-row-hover/, "the pinned cells stay lit with the row while its ⋯ menu is open")
+  assert.match(source, /cn\(headerClasses, "pl-1\.5 pr-2 text-right", /, "the actions column: 172 − 6 − 8 − 0.5 leaves 157.5px for the 156px RowActions pair")
+  assert.match(source, /cn\(cellClasses, "pl-1\.5 pr-2", /)
+  assert.equal(source.match(/<DataTableHead\b[^>]*\bsort=\{sortOf\("(?:assetTag|name|purchasePrice)"\)\}/g)?.length, 3, "the code, name and price heads sort through DataTableHead (aria-sort and an arrow icon)")
+  assert.match(source, /const current = filters\.sort === field \? \(filters\.direction === "asc" \? "asc" : "desc"\) : null/)
+  assert.match(source, /<DataTableBody>/)
+  assert.match(source, /<TableEmptyRow colSpan=\{visibleColumnCount \+ 2\} emptyState=\{emptyState\} \/>/)
+  assert.match(source, /actionVariant: "secondary"/)
+  assert.match(source, /<DataTableFoot>\n\s+<Pagination\b/)
+  assert.match(source, /range: rangeLabel,/)
+  assert.match(source, /<span className="sr-only">\{labels\.actions\}<\/span>/)
+  assert.doesNotMatch(source, /<thead className="bg-muted"|uppercase|function SortableHeader|className="group"|density=|data-density/)
+})
+
+test("register cells: codes in monospace, money through formatMoney, empty values through Nil (spec 2B R-n, R-p, §7.8.2)", () => {
+  const source = table()
+  assert.match(source, /<span className="tag font-medium">\{asset\.assetTag\}<\/span>/)
+  assert.match(source, /<span className="tag">\{asset\.serialNumber\}<\/span>/)
+  assert.match(source, /orNil\(asset\.custodian, t\("noCustodian"\)\)/)
+  assert.match(source, /formatMoney\(asset\.purchasePrice\) \?\? <Nil \/>/)
+  assert.match(source, /t\("purchasePriceBaht"\)/, "the unit sits in the head, so the cells drop the ฿")
+  assert.match(source, /from: formatCount\(fromRow\),/)
+  assert.doesNotMatch(source, /formatCurrency|\|\| "-"|toLocaleString\(|useLocale/)
+  assert.equal(messages("th").noCustodian, "ไม่มีผู้ถือครอง")
+  assert.equal(typeof messages("en").noCustodian, "string")
+})
+
+test("register checkboxes are the shared checkbox in a 44px label, and a click beside the box never opens the row (spec 2B O1)", () => {
+  const source = table()
+  assert.equal(source.match(/className=\{checkboxVariants\(\)\}/g)?.length, 2)
+  assert.match(source, /<th scope="col" className=\{cn\(headerClasses, "p-0"\)\}>\n\s+<label className="flex min-h-11 w-11 cursor-pointer items-center justify-center">/)
+  assert.match(source, /<label data-no-row-click className="flex min-h-11 w-11 cursor-pointer items-center justify-center">/)
+  assert.doesNotMatch(source, /h-4 w-4 rounded border-border/)
+})
+
+test("the bulk bar keeps its place and frame, with its buttons on Button (spec 2B R-q, §7.8.7)", () => {
+  const source = table()
+  const bar = source.slice(source.indexOf("data-asset-bulk-bar"), source.indexOf("{assets.length === 0 ? ("))
+  assert.match(bar, /"fixed inset-x-3 [^"]*shadow-lg[^"]*"/, "phase 3 moves the bar (R-q)")
+  assert.equal(bar.match(/<Button\b/g)?.length, 4)
+  assert.match(bar, /\{formatCount\(selectedAssets\.length\)\} \{labels\.selectedCount\}/)
+  assert.match(source, /<Button variant="ghost" size="md" aria-pressed=\{selectMode\} onClick=\{toggleSelectMode\} className="md:hidden">/)
 })

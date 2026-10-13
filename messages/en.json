@@ -1179,7 +1179,8 @@
     "componentStepDetails": "Enter details",
     "componentStepReview": "Check and confirm",
     "photoType": "Photo type",
-    "checklistPhotoDescription": "The photo uploads as soon as you choose it."
+    "checklistPhotoDescription": "The photo uploads as soon as you choose it.",
+    "noCustodian": "No custodian"
   },
   "company": {
     "title": "Companies",

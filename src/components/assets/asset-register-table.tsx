@@ -1,20 +1,23 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useLocale, useTranslations } from "next-intl"
+import { useTranslations } from "next-intl"
 import { Download, Edit, Loader2, Printer, X } from "lucide-react"
 import { toast } from "sonner"
-import { cn, formatCurrency } from "@/lib/utils"
-import { hasRemainingHorizontalContent } from "@/lib/horizontal-scroll"
+import { cn } from "@/lib/utils"
+import { formatCount, formatMoney } from "@/lib/display-format"
 import { buildAssetQueryString } from "@/lib/asset-list-query"
 import { appendReturnTo } from "@/lib/asset-return-navigation"
 import { rememberAssetRegisterScrollPosition } from "@/lib/asset-register-view-memory"
 import type { AssetActivityFilter } from "@/lib/asset-activity-filter"
 import type { AssetCrossScopeFilter } from "@/lib/asset-cross-scope-filter"
 import type { AssetDataQualityFilter } from "@/lib/asset-data-quality-filter"
+import { Button } from "@/components/ui/button"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
+import { DataTableBody, DataTableFoot, DataTableHead, TableEmptyRow, type DataTableSort } from "@/components/ui/data-table"
+import { checkboxVariants } from "@/components/ui/field-variants"
+import { Nil, orNil } from "@/components/ui/nil"
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge"
 import { AssetThumbnail } from "@/components/assets/asset-thumbnail"
 import { AssetStateHelpPopover } from "@/components/assets/asset-state-help-popover"
@@ -147,11 +150,16 @@ type AssetRegisterTableProps = {
 
 const assetRegisterStickyFirstColumnClasses = "sticky left-0"
 const assetRegisterStickyActionsColumnClasses = "sticky right-0"
-const assetRegisterStickyHeaderColumnClasses = "z-30 bg-muted"
-const assetRegisterStickyBodyColumnClasses = "z-20 bg-surface group-hover:bg-row-hover group-focus:bg-row-hover"
-const assetRegisterActionsShadowClasses = "shadow-[-8px_0_8px_-8px_rgb(15_23_42/0.25)]"
-const cellClasses = "px-3 py-2"
-const headerClasses = "px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground"
+const assetRegisterStickyHeaderColumnClasses = "z-30 bg-surface"
+// The pinned cells take the row fill together with the row (instant on, soft off), also while the row's ⋯ menu is
+// open. A side line replaces the old edge shadow (spec 2B R-j); each cell sets that side's color only, so the soft row
+// line under it stays.
+const assetRegisterStickyBodyColumnClasses = "z-20 bg-surface transition-colors group-hover/row:bg-row-hover group-focus-within/row:bg-row-hover group-has-[[aria-expanded=true]]/row:bg-row-hover group-hover/row:duration-0 group-focus-within/row:duration-0"
+// Dense rows are the register's own until phase 3 (spec 2B I3, B3(3)): the DataTable look (white 13/500 faint header,
+// soft row lines) with px-3 py-2 cells instead of p-3, and no 16/20px gutters on the first and last columns, because
+// the widths in src/lib/asset-register-columns.ts count none. Rows are 56px: the name cell holds a 40px thumbnail.
+const cellClasses = "border-b border-border-soft px-3 py-2 align-top"
+const headerClasses = "border-b border-border bg-surface px-3 py-2.5 text-left align-bottom text-meta font-medium whitespace-nowrap text-faint-foreground"
 
 export function AssetRegisterTable({
   locale,
@@ -168,12 +176,11 @@ export function AssetRegisterTable({
   const t = useTranslations("asset")
   const apiError = useApiError()
   const tCommon = useTranslations("common")
-  const numberLocale = useLocale() === "th" ? "th-TH" : "en-US"
   const { isPending } = useAssetRegisterNavigation()
   const rangeLabel = t("registerRange", {
-    from: fromRow.toLocaleString(numberLocale),
-    to: toRow.toLocaleString(numberLocale),
-    total: total.toLocaleString(numberLocale),
+    from: formatCount(fromRow),
+    to: formatCount(toRow),
+    total: formatCount(total),
   })
   const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -197,15 +204,13 @@ export function AssetRegisterTable({
   const visibleColumnList = assetRegisterColumnOrder.filter((column) => visibleColumns.has(column))
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [isOverflowing, setIsOverflowing] = useState(false)
-  const [hasMoreRight, setHasMoreRight] = useState(false)
 
+  // The hint line shows only while the table really overflows (DESIGN.md, asset register). The pinned actions column
+  // has no edge shadow any more (spec 2B R-j), so nothing else is measured and the scroller needs no onScroll.
   useEffect(() => {
     const element = scrollRef.current
     if (!element) return
-    const measure = () => {
-      setIsOverflowing(element.scrollWidth > element.clientWidth + 1)
-      setHasMoreRight(hasRemainingHorizontalContent(element))
-    }
+    const measure = () => setIsOverflowing(element.scrollWidth > element.clientWidth + 1)
     const observer = new ResizeObserver(measure)
     observer.observe(element)
     if (element.firstElementChild) observer.observe(element.firstElementChild)
@@ -386,6 +391,13 @@ export function AssetRegisterTable({
     return `/${locale}/assets?${buildAssetQueryString(filters, overrides)}`
   }
 
+  // DataTableHead sort (spec 2B I3): as the old SortableHeader did, the link flips the sorted column and starts any
+  // other column ascending; aria-sort and the arrow icon mark only the sorted column.
+  function sortOf(field: string): DataTableSort {
+    const current = filters.sort === field ? (filters.direction === "asc" ? "asc" : "desc") : null
+    return { href: buildHref({ sort: field, direction: current === "asc" ? "desc" : "asc", page: 1 }), direction: current }
+  }
+
   const registerReturnHref = buildHref({})
 
   function buildAssetDetailHref(assetId: string) {
@@ -422,7 +434,8 @@ export function AssetRegisterTable({
   const emptyState = {
     title: hasActiveFilters ? labels.noResultsTitle : labels.noAssetsTitle,
     description: hasActiveFilters ? labels.noResultsDescription : labels.noAssetsDescription,
-    ...(hasActiveFilters ? { actionHref: clearAllFiltersHref, actionLabel: labels.clearAllFilters } : {}),
+    // "Clear filters" is the outline button: the primary color stays with the page's own main action (spec 2B §7.8.5).
+    ...(hasActiveFilters ? { actionHref: clearAllFiltersHref, actionLabel: labels.clearAllFilters, actionVariant: "secondary" as const } : {}),
   }
 
   function rememberDetailReturnScroll() {
@@ -432,17 +445,12 @@ export function AssetRegisterTable({
   return (
     <div aria-busy={isPending} className="min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-surface">
       <div data-asset-register-summary className="flex items-center justify-between gap-2 border-b border-border px-3 md:px-4 py-0 md:py-2">
-        <p className="text-sm text-muted-foreground">{rangeLabel}</p>
+        <p className="text-meta text-muted-foreground num">{rangeLabel}</p>
         <div className="flex items-center gap-2">
           <AssetRegisterSortMenu />
-          <button
-            type="button"
-            onClick={toggleSelectMode}
-            aria-pressed={selectMode}
-            className="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
-          >
+          <Button variant="ghost" size="md" aria-pressed={selectMode} onClick={toggleSelectMode} className="md:hidden">
             {selectMode ? t("selectModeDone") : t("selectMode")}
-          </button>
+          </Button>
           <div className="hidden items-center gap-2 md:flex">
             <AssetRegisterColumnPicker visibleColumns={visibleColumns} onToggleColumn={toggleColumn} onApplyPreset={applyColumnPreset} />
             <AssetRegisterExportMenu exportHref={`/api/assets/export?${buildAssetQueryString(filters)}`} templateHref="/api/assets/import-template" />
@@ -457,42 +465,27 @@ export function AssetRegisterTable({
           <div>
             <div className="hidden text-sm font-semibold text-foreground md:block">{labels.bulkActions}</div>
             <div className="text-sm text-muted-foreground md:mt-0.5">
-              {selectedAssets.length} {labels.selectedCount}
+              {formatCount(selectedAssets.length)} {labels.selectedCount}
             </div>
           </div>
+          {/* The bar keeps its place and its frame until phase 3 (spec 2B R-q); its buttons are the shared Button (§7.8.7). */}
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-            <button
-              type="button"
-              onClick={printSelectedLabels}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:h-9 sm:min-h-0 sm:w-auto"
-            >
-              <Printer className="h-4 w-4" />
+            <Button size="md" onClick={printSelectedLabels} className="w-full sm:w-auto">
+              <Printer aria-hidden="true" />
               {labels.printSelectedLabels}
-            </button>
-            <button
-              type="button"
-              onClick={() => setBulkUpdateOpen(true)}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-auto"
-            >
-              <Edit className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="md" onClick={() => setBulkUpdateOpen(true)} className="w-full sm:w-auto">
+              <Edit aria-hidden="true" />
               {labels.bulkUpdate}
-            </button>
-            <button
-              type="button"
-              onClick={exportSelected}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-auto"
-            >
-              <Download className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="md" onClick={exportSelected} className="w-full sm:w-auto">
+              <Download aria-hidden="true" />
               {labels.exportSelected}
-            </button>
-            <button
-              type="button"
-              onClick={clearSelection}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent sm:h-9 sm:min-h-0 sm:w-auto"
-            >
-              <X className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="md" onClick={clearSelection} className="w-full sm:w-auto">
+              <X aria-hidden="true" />
               {labels.clearSelection}
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}
@@ -528,9 +521,8 @@ export function AssetRegisterTable({
       <div
         data-asset-desktop-table className={`${getDesktopTableOnlyClasses()} relative overflow-x-auto overscroll-x-contain`}
         ref={scrollRef}
-        onScroll={(event) => setHasMoreRight(hasRemainingHorizontalContent(event.currentTarget))}
       >
-        <table className="w-full table-fixed divide-y divide-border text-sm" style={{ minWidth: getAssetRegisterTableMinWidth(visibleColumnList) }}>
+        <table className="w-full table-fixed text-sm" style={{ minWidth: getAssetRegisterTableMinWidth(visibleColumnList) }}>
           <colgroup>
             <col style={{ width: assetRegisterColumnWidths.select }} />
             {visibleColumnList.map((column) => (
@@ -538,37 +530,29 @@ export function AssetRegisterTable({
             ))}
             <col style={{ width: assetRegisterColumnWidths.actions }} />
           </colgroup>
-          <thead className="bg-muted">
+          <thead>
             <tr>
-              <th scope="col" className={headerClasses}>
-                <input
-                  type="checkbox"
-                  checked={allCurrentPageSelected}
-                  onChange={toggleCurrentPage}
-                  aria-label={labels.all}
-                  className="h-4 w-4 rounded border-border text-primary"
-                />
+              {/* The label fills the 44px column (O1, K16); the box draws its own focus outline. */}
+              <th scope="col" className={cn(headerClasses, "p-0")}>
+                <label className="flex min-h-11 w-11 cursor-pointer items-center justify-center">
+                  <input
+                    type="checkbox"
+                    checked={allCurrentPageSelected}
+                    onChange={toggleCurrentPage}
+                    aria-label={labels.all}
+                    className={checkboxVariants()}
+                  />
+                </label>
               </th>
               {visibleColumns.has("assetTag") && (
-                <SortableHeader
-                  filters={filters}
-                  field="assetTag"
-                  label={labels.assetTag}
-                  buildHref={buildHref}
-                  className={`${assetRegisterStickyHeaderColumnClasses} ${assetRegisterStickyFirstColumnClasses} border-r border-border`}
-                  linkClassName="block truncate"
-                />
+                <DataTableHead
+                  sort={sortOf("assetTag")}
+                  className={cn(assetRegisterStickyHeaderColumnClasses, assetRegisterStickyFirstColumnClasses, "border-r border-border")}
+                >
+                  {labels.assetTag}
+                </DataTableHead>
               )}
-              {visibleColumns.has("name") && (
-                <SortableHeader
-                  filters={filters}
-                  field="name"
-                  label={labels.assetName}
-                  buildHref={buildHref}
-                  className=""
-                  linkClassName="block truncate"
-                />
-              )}
+              {visibleColumns.has("name") && <DataTableHead sort={sortOf("name")}>{labels.assetName}</DataTableHead>}
               {visibleColumns.has("category") && <th scope="col" className={`${headerClasses} truncate`}>{labels.category}</th>}
               {visibleColumns.has("companyBranch") && <th scope="col" className={`${headerClasses} truncate`}>{labels.company}</th>}
               {visibleColumns.has("currentLocation") && <th scope="col" className={`${headerClasses} truncate`}>{labels.currentLocation}</th>}
@@ -585,44 +569,44 @@ export function AssetRegisterTable({
                 </th>
               )}
               {visibleColumns.has("purchasePrice") && (
-                <SortableHeader filters={filters} field="purchasePrice" label={labels.purchasePrice} buildHref={buildHref} linkClassName="block truncate" />
+                <DataTableHead align="right" sort={sortOf("purchasePrice")}>{t("purchasePriceBaht")}</DataTableHead>
               )}
+              {/* pl-1.5 pr-2: the 172px column keeps 157.5px for the 156px RowActions pair (spec 2B I3, I26). */}
               <th
                 scope="col"
-                className={cn(headerClasses, "text-right", assetRegisterStickyHeaderColumnClasses, assetRegisterStickyActionsColumnClasses, "border-l border-border", hasMoreRight && assetRegisterActionsShadowClasses)}
+                className={cn(headerClasses, "pl-1.5 pr-2 text-right", assetRegisterStickyHeaderColumnClasses, assetRegisterStickyActionsColumnClasses, "border-l border-border")}
               >
-                {labels.actions}
+                <span className="sr-only">{labels.actions}</span>
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <DataTableBody>
             {assets.length === 0 ? (
-              <tr>
-                <td colSpan={visibleColumnCount + 2} className="px-4 py-6">
-                  <ActionEmptyState {...emptyState} />
-                </td>
-              </tr>
+              <TableEmptyRow colSpan={visibleColumnCount + 2} emptyState={emptyState} />
             ) : (
               assets.map((asset) => (
                 <ClickableTableRow
                   key={asset.id}
                   href={buildAssetDetailHref(asset.id)}
                   label={`${labels.detail}: ${asset.assetTag}`}
-                  className="group"
                   onNavigate={rememberDetailReturnScroll}
                 >
-                  <td className={cellClasses}>
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(asset.id)}
-                      onChange={() => toggleAsset(asset.id)}
-                      aria-label={asset.assetTag}
-                      className="h-4 w-4 rounded border-border text-primary"
-                    />
+                  <td className={cn(cellClasses, "p-0")}>
+                    {/* ClickableTableRow skips clicks on the input but not on its label: data-no-row-click keeps a click
+                        beside the box from opening the asset (spec 2B §7.8.3). */}
+                    <label data-no-row-click className="flex min-h-11 w-11 cursor-pointer items-center justify-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(asset.id)}
+                        onChange={() => toggleAsset(asset.id)}
+                        aria-label={asset.assetTag}
+                        className={checkboxVariants()}
+                      />
+                    </label>
                   </td>
                   {visibleColumns.has("assetTag") && (
-                    <td className={`${assetRegisterStickyBodyColumnClasses} ${assetRegisterStickyFirstColumnClasses} ${cellClasses} truncate border-r border-border font-medium text-foreground`} title={asset.assetTag}>
-                      {asset.assetTag}
+                    <td className={cn(assetRegisterStickyBodyColumnClasses, assetRegisterStickyFirstColumnClasses, cellClasses, "truncate border-r border-r-border text-foreground")} title={asset.assetTag}>
+                      <span className="tag font-medium">{asset.assetTag}</span>
                     </td>
                   )}
                   {visibleColumns.has("name") && (
@@ -632,7 +616,7 @@ export function AssetRegisterTable({
                         <div className="min-w-0">
                           <div className="truncate font-medium" title={asset.name}>{asset.name}</div>
                           {asset.serialNumber ? (
-                            <div className="truncate text-xs text-muted-foreground" title={asset.serialNumber}>{asset.serialNumber}</div>
+                            <div className="truncate text-meta text-muted-foreground" title={asset.serialNumber}><span className="tag">{asset.serialNumber}</span></div>
                           ) : null}
                         </div>
                       </div>
@@ -641,7 +625,7 @@ export function AssetRegisterTable({
                   {visibleColumns.has("category") && <td className={`${cellClasses} truncate text-muted-foreground`} title={asset.category}>{asset.category}</td>}
                   {visibleColumns.has("companyBranch") && <td className={`${cellClasses} truncate text-muted-foreground`} title={asset.companyBranch}>{asset.companyBranch}</td>}
                   {visibleColumns.has("currentLocation") && <td className={`${cellClasses} truncate text-muted-foreground`} title={asset.currentLocation}>{asset.currentLocation}</td>}
-                  {visibleColumns.has("custodian") && <td className={`${cellClasses} truncate text-muted-foreground`} title={asset.custodian ?? undefined}>{asset.custodian || "-"}</td>}
+                  {visibleColumns.has("custodian") && <td className={`${cellClasses} truncate text-muted-foreground`} title={asset.custodian ?? undefined}>{orNil(asset.custodian, t("noCustodian"))}</td>}
                   {visibleColumns.has("ownershipType") && (
                     <td className={cellClasses}>
                       <StatusBadge label={asset.ownershipType.label} tone={ownershipTypeTone(asset.ownershipType.value)} />
@@ -657,8 +641,8 @@ export function AssetRegisterTable({
                       <StatusBadge label={asset.condition.label} tone={getAssetStateTone(asset.condition.value)} />
                     </td>
                   )}
-                  {visibleColumns.has("purchasePrice") && <td className={`${cellClasses} truncate text-muted-foreground`}>{formatCurrency(asset.purchasePrice)}</td>}
-                  <td className={cn(assetRegisterStickyBodyColumnClasses, assetRegisterStickyActionsColumnClasses, cellClasses, "border-l border-border", hasMoreRight && assetRegisterActionsShadowClasses)}>
+                  {visibleColumns.has("purchasePrice") && <td className={cn(cellClasses, "truncate text-right text-muted-foreground num")}>{formatMoney(asset.purchasePrice) ?? <Nil />}</td>}
+                  <td className={cn(cellClasses, "pl-1.5 pr-2", assetRegisterStickyBodyColumnClasses, assetRegisterStickyActionsColumnClasses, "border-l border-l-border")}>
                     <AssetRegisterRowActions
                       variant="desktop"
                       assetId={asset.id}
@@ -674,12 +658,11 @@ export function AssetRegisterTable({
                 </ClickableTableRow>
               ))
             )}
-          </tbody>
+          </DataTableBody>
         </table>
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
-        <p className="text-sm text-muted-foreground">{rangeLabel}</p>
+      <DataTableFoot>
         <Pagination
           page={filters.page}
           totalPages={totalPages}
@@ -690,9 +673,10 @@ export function AssetRegisterTable({
             previous: labels.previous,
             next: labels.next,
             pageOf: tCommon("pageOf", { page: filters.page, total: totalPages }),
+            range: rangeLabel,
           }}
         />
-      </div>
+      </DataTableFoot>
 
       <AccessibleDialog
         open={bulkUpdateOpen}
@@ -773,36 +757,6 @@ export function AssetRegisterTable({
             </form>
       </AccessibleDialog>
     </div>
-  )
-}
-
-function SortableHeader({
-  filters,
-  field,
-  label,
-  buildHref,
-  className = "",
-  linkClassName = "",
-}: {
-  filters: { sort: string; direction: string }
-  field: string
-  label: string
-  buildHref: (overrides: { page?: number; sort?: string; direction?: string }) => string
-  className?: string
-  linkClassName?: string
-}) {
-  const direction = filters.sort === field && filters.direction === "asc" ? "desc" : "asc"
-  const suffix = filters.sort === field ? (filters.direction === "asc" ? " ↑" : " ↓") : ""
-  return (
-    <th
-      scope="col"
-      className={`px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-normal text-muted-foreground ${className}`}
-    >
-      <Link href={buildHref({ sort: field, direction, page: 1 })} className={`hover:text-primary ${linkClassName}`}>
-        {label}
-        {suffix}
-      </Link>
-    </th>
   )
 }
 
