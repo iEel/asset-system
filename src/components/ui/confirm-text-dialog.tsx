@@ -1,8 +1,16 @@
 "use client"
 
 import { useId, useRef, useState, type FormEvent, type ReactNode, type RefObject } from "react"
-import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import {
+  AccessibleDialog,
+  AccessibleDialogBody,
+  AccessibleDialogCancel,
+  AccessibleDialogFooter,
+  accessibleDialogFormClasses,
+} from "@/components/ui/accessible-dialog"
 import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { Textarea } from "@/components/ui/textarea"
 
 type ConfirmTextDialogTone = "default" | "danger" | "warning"
 
@@ -38,7 +46,7 @@ export function ConfirmTextDialog({ open, title, description, closeLabel, busy =
       initialFocusRef={inputRef}
       onClose={onClose}
     >
-      <ConfirmTextForm {...formProps} busy={busy} inputRef={inputRef} onClose={onClose} />
+      <ConfirmTextForm {...formProps} busy={busy} inputRef={inputRef} />
     </AccessibleDialog>
   )
 }
@@ -52,11 +60,10 @@ function ConfirmTextForm({
   busy,
   tone = "default",
   inputRef,
-  onClose,
   onConfirm,
 }: Pick<
   ConfirmTextDialogProps,
-  "fieldLabel" | "placeholder" | "confirmLabel" | "cancelLabel" | "defaultValue" | "tone" | "onClose" | "onConfirm"
+  "fieldLabel" | "placeholder" | "confirmLabel" | "cancelLabel" | "defaultValue" | "tone" | "onConfirm"
 > & { busy: boolean; inputRef: RefObject<HTMLTextAreaElement | null> }) {
   const fieldId = useId()
   const [value, setValue] = useState(defaultValue)
@@ -67,24 +74,25 @@ function ConfirmTextForm({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="px-4 py-4">
-        <label htmlFor={fieldId} className="text-sm font-medium text-foreground">{fieldLabel}</label>
-        <textarea
-          ref={inputRef}
-          id={fieldId}
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          disabled={busy}
-          rows={4}
-          placeholder={placeholder}
-          className="mt-2 min-h-28 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-60"
-        />
-      </div>
-      <div className="grid gap-2 border-t border-border bg-background px-4 py-4 sm:grid-cols-2">
-        <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{cancelLabel}</Button>
-        <Button type="submit" variant={confirmVariantByTone[tone]} disabled={busy}>{confirmLabel}</Button>
-      </div>
+    <form onSubmit={handleSubmit} className={accessibleDialogFormClasses}>
+      <AccessibleDialogBody>
+        <Field label={fieldLabel}>
+          <Textarea
+            ref={inputRef}
+            id={fieldId}
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            disabled={busy}
+            rows={4}
+            placeholder={placeholder}
+            className="min-h-28"
+          />
+        </Field>
+      </AccessibleDialogBody>
+      <AccessibleDialogFooter>
+        <AccessibleDialogCancel>{cancelLabel}</AccessibleDialogCancel>
+        <Button type="submit" variant={confirmVariantByTone[tone]} busy={busy}>{confirmLabel}</Button>
+      </AccessibleDialogFooter>
     </form>
   )
 }

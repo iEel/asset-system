@@ -75,6 +75,7 @@ const MIGRATED_FILES: string[] = [
   `${C}master-data/employee-form.tsx`,
   `${C}master-data/location-form.tsx`,
   `${C}master-data/supplier-form.tsx`,
+  `${C}ui/confirm-text-dialog.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -168,7 +169,6 @@ const RAW_FIELDS: Record<string, number> = {
   [`${C}audit/audit-round-form.tsx`]: 6,
   [`${C}audit/audit-round-cancel-button.tsx`]: 1,
   [`${C}audit/audit-scan-room-picker.tsx`]: 2, // → 1: the room search :75 stays (O20)
-  [`${C}ui/confirm-text-dialog.tsx`]: 1,
   // 4
   [`${C}admin/admin-user-form.tsx`]: 5,
   [`${C}admin/role-permission-form.tsx`]: 4,
@@ -200,7 +200,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   [`${C}disposal/disposal-bulk-execution.tsx`]: 5,
   [`${C}audit/audit-round-form.tsx`]: 6,
   [`${C}audit/audit-round-cancel-button.tsx`]: 1,
-  [`${C}ui/confirm-text-dialog.tsx`]: 1,
   // 4
   [`${C}admin/admin-user-form.tsx`]: 5,
   [`${C}admin/role-permission-form.tsx`]: 4,
@@ -367,7 +366,6 @@ const PENDING_FOOTER_PARTS = new Set([
   `${C}disposal/disposal-bulk-execution.tsx`,
   `${C}audit/audit-round-cancel-button.tsx`,
   `${C}maintenance/maintenance-plan-state-actions.tsx`,
-  `${C}ui/confirm-text-dialog.tsx`,
   // 4
   `${C}admin/IntegrationClientManager.tsx`,
   `${C}admin/asset-state-review-dialog.tsx`,

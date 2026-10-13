@@ -22,3 +22,13 @@ test("batch review and component removal use accessible dialogs instead of brows
   assert.doesNotMatch(batchSource, /window\.prompt/)
   assert.doesNotMatch(componentSource, /window\.prompt/)
 })
+
+// Phase 2C batch 3 (spec 2C §5.5 row 22, §8.9): the form wraps the dialog parts, the label comes from Field, and the
+// confirm button shows busy instead of turning disabled, so focus stays on it while the caller works.
+test("the confirmation dialog uses the dialog parts, a shared field and a busy confirm button (2C batch 3)", () => {
+  const source = readFileSync("src/components/ui/confirm-text-dialog.tsx", "utf8").replace(/\r\n/g, "\n")
+  assert.match(source, /<form onSubmit=\{handleSubmit\} className=\{accessibleDialogFormClasses\}>\n\s+<AccessibleDialogBody>\n\s+<Field label=\{fieldLabel\}>\n\s+<Textarea\n\s+ref=\{inputRef\}\n\s+id=\{fieldId\}/)
+  assert.match(source, /<AccessibleDialogFooter>\n\s+<AccessibleDialogCancel>\{cancelLabel\}<\/AccessibleDialogCancel>\n\s+<Button type="submit" variant=\{confirmVariantByTone\[tone\]\} busy=\{busy\}>\{confirmLabel\}<\/Button>\n\s+<\/AccessibleDialogFooter>/)
+  assert.doesNotMatch(source, /<textarea|<label|disabled:opacity|grid-cols-2|onClick=\{onClose\}/)
+  assert.doesNotMatch(source, /<Button[^>]*\sdisabled=/, "cancel is disabled by the dialog while busy; the confirm button keeps focus")
+})
