@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type MouseEvent as ReactMouseEvent } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, CalendarClock, Check, FileUp, Loader2, X } from "lucide-react"
+import { AlertTriangle, CalendarClock, Check, FileUp, X } from "lucide-react"
 import { toast } from "sonner"
 import {
   AccessibleDialog,
@@ -28,6 +28,12 @@ type ReviewConflictPayload = {
   error?: string
   assetUpdatedAt?: string
   findingReportedAt?: string
+}
+
+// The three dialogs render in a portal, but React still sends their clicks up through this component to the table row
+// (ClickableTableRow on the findings page), which would open the asset. Clicks from outside this element stop here.
+function stopPortalClick(event: ReactMouseEvent<HTMLDivElement>) {
+  if (!event.currentTarget.contains(event.target as Node)) event.stopPropagation()
 }
 
 export function AuditFindingReviewActions({
@@ -95,7 +101,7 @@ export function AuditFindingReviewActions({
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+    <div className="flex min-w-0 flex-col gap-2 md:flex-row md:flex-wrap md:justify-end" onClick={stopPortalClick}>
       {reviewStatus === "pending" ? (
         reviewBlocked ? (
           <div className="max-w-56 rounded-md border border-warning-border bg-warning-soft px-2 py-1 text-left text-xs font-medium text-warning">
@@ -103,46 +109,40 @@ export function AuditFindingReviewActions({
           </div>
         ) : (
         <>
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setReviewModalAction("approve")}
-            disabled={reviewing !== null}
+            busy={reviewing === "approve"}
+            disabled={reviewing === "reject"}
             title={t("approve")}
-            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-success transition-colors hover:bg-success-soft disabled:opacity-50 sm:h-8 sm:min-h-0"
           >
-            {reviewing === "approve" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+            <Check aria-hidden="true" />
             {t("approve")}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
             onClick={() => setReviewModalAction("reject")}
-            disabled={reviewing !== null}
+            busy={reviewing === "reject"}
+            disabled={reviewing === "approve"}
             title={t("reject")}
-            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-danger transition-colors hover:bg-danger-soft disabled:opacity-50 sm:h-8 sm:min-h-0"
           >
-            {reviewing === "reject" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+            <X aria-hidden="true" />
             {t("reject")}
-          </button>
+          </Button>
         </>
         )
       ) : null}
-      <button
-        type="button"
-        onClick={() => setPlanOpen(true)}
-        className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
-      >
-        <CalendarClock className="h-3.5 w-3.5" />
+      <Button variant="outline" size="sm" onClick={() => setPlanOpen(true)}>
+        <CalendarClock aria-hidden="true" />
         {t("actionPlan")}
-      </button>
+      </Button>
       {actionStatus !== "closed" ? (
-        <button
-          type="button"
-          onClick={() => setCloseOpen(true)}
-          className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-border bg-surface px-2 text-xs font-medium transition-colors hover:bg-accent sm:h-8 sm:min-h-0"
-        >
-          <FileUp className="h-3.5 w-3.5" />
+        <Button variant="outline" size="sm" onClick={() => setCloseOpen(true)}>
+          <FileUp aria-hidden="true" />
           {t("closeFinding")}
-        </button>
+        </Button>
       ) : null}
       {planOpen ? (
         <ActionPlanModal

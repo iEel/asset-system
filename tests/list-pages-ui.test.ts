@@ -250,3 +250,19 @@ test("the findings batch panel: shared checkboxes, Button with busy, approve in 
   assert.doesNotMatch(source, /<button\b|<Loader2\b|\bbg-success\b|\bbg-danger\b|opacity-50|h-4 w-4 rounded/, "no hand-written button, spinner, green fill or old checkbox is left")
   assert.match(source, /<ConfirmTextDialog\n/, "the confirm dialog stays as it is (2C plan 3)")
 })
+
+// Task 7 (spec 2B §5.4 row "audit/findings", §8.6 row 9, O21): the row triggers of a finding. Its three dialogs have no
+// open() handle, so the triggers stay in the row cell (I21) and only become Button sm; the dialogs stay with 2C.
+const FINDING_REVIEW = `${C}audit/audit-finding-review-actions.tsx`
+
+test("the finding row triggers are Button sm: approve outline, reject danger, busy while the decision saves, no click through to the row; the dialogs stay (spec 2B §5.4, O21)", () => {
+  const source = read(FINDING_REVIEW)
+  assert.match(source, /<div className="flex min-w-0 flex-col gap-2 md:flex-row md:flex-wrap md:justify-end" onClick=\{stopPortalClick\}>/, "a click inside a dialog portal does not reach the table row and open the asset")
+  assert.match(source, /function stopPortalClick\(event: ReactMouseEvent<HTMLDivElement>\) \{\n\s+if \(!event\.currentTarget\.contains\(event\.target as Node\)\) event\.stopPropagation\(\)\n\}/)
+  assert.match(source, /<Button\n\s+variant="outline"\n\s+size="sm"\n\s+onClick=\{\(\) => setReviewModalAction\("approve"\)\}\n\s+busy=\{reviewing === "approve"\}\n\s+disabled=\{reviewing === "reject"\}\n\s+title=\{t\("approve"\)\}\n\s+>\n\s+<Check aria-hidden="true" \/>/)
+  assert.match(source, /<Button\n\s+variant="danger"\n\s+size="sm"\n\s+onClick=\{\(\) => setReviewModalAction\("reject"\)\}\n\s+busy=\{reviewing === "reject"\}\n\s+disabled=\{reviewing === "approve"\}\n\s+title=\{t\("reject"\)\}\n\s+>\n\s+<X aria-hidden="true" \/>/)
+  assert.match(source, /<Button variant="outline" size="sm" onClick=\{\(\) => setPlanOpen\(true\)\}>\n\s+<CalendarClock aria-hidden="true" \/>/)
+  assert.match(source, /<Button variant="outline" size="sm" onClick=\{\(\) => setCloseOpen\(true\)\}>\n\s+<FileUp aria-hidden="true" \/>/)
+  assert.doesNotMatch(source, /<button\b|<Loader2\b|\btext-success\b|disabled:opacity-50/, "no hand-written trigger, spinner or green text is left")
+  assert.equal(source.match(/<AccessibleDialog\b/g)?.length, 3, "the review, action-plan and close dialogs stay as they are (O21)")
+})
