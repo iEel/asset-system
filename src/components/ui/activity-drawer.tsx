@@ -2,9 +2,9 @@
 
 import { useState, type RefObject } from "react"
 import { Activity } from "lucide-react"
-import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { EmptyNote } from "@/components/ui/empty-note"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
 export type ActivityDrawerItem = {
@@ -33,7 +33,6 @@ export function ActivityDrawer({
   hideTrigger?: boolean
   returnFocusRef?: RefObject<HTMLElement | null>
 }) {
-  const tCommon = useTranslations("common")
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const open = controlledOpen ?? uncontrolledOpen
 
@@ -54,7 +53,6 @@ export function ActivityDrawer({
       )}
       <SheetContent
         side="right"
-        closeLabel={tCommon("close")}
         aria-describedby={undefined}
         onCloseAutoFocus={(event) => {
           const target = returnFocusRef?.current
@@ -62,16 +60,14 @@ export function ActivityDrawer({
           event.preventDefault()
           target.focus()
         }}
-        className="w-full gap-0 bg-surface p-0 sm:max-w-md"
+        className="w-full gap-0 p-0 sm:max-w-md"
       >
-        <SheetHeader className="border-b border-border px-4 py-3 pr-16">
-          <SheetTitle className="text-base font-semibold text-foreground">{title}</SheetTitle>
+        <SheetHeader>
+          <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto p-4">
           {items.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              {emptyLabel}
-            </div>
+            <EmptyNote>{emptyLabel}</EmptyNote>
           ) : (
             <ol className="space-y-3">
               {items.map((item, index) => (

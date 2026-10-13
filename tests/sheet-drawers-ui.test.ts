@@ -69,3 +69,14 @@ test("the evidence drawer uses the sheet header, its description and EmptyNote w
   assert.match(source, /<EmptyNote className="mt-4">\{labels\.emptyLabel\}<\/EmptyNote>/)
   assert.doesNotMatch(source, /closeLabel=|aria-describedby=|border-dashed|bg-surface|useTranslations/)
 })
+
+// Phase 2C batch 4 (spec 2C §5.8 row ui/activity-drawer.tsx, O14, §5.11 table B row I): the same sheet chrome. The
+// drawer has no description, so it keeps aria-describedby={undefined}; an empty list is the shared EmptyNote.
+test("the activity drawer uses the sheet header and X, and EmptyNote for an empty list (2C batch 4)", () => {
+  const source = read("src/components/ui/activity-drawer.tsx")
+  assert.match(source, /side="right"\n\s+aria-describedby=\{undefined\}\n\s+onCloseAutoFocus=/)
+  assert.match(source, /<SheetHeader>\n\s+<SheetTitle>\{title\}<\/SheetTitle>\n\s+<\/SheetHeader>/)
+  assert.match(source, /className="w-full gap-0 p-0 sm:max-w-md"/)
+  assert.match(source, /\{items\.length === 0 \? \(\n\s+<EmptyNote>\{emptyLabel\}<\/EmptyNote>\n\s+\) : \(/)
+  assert.doesNotMatch(source, /closeLabel=|border-dashed|bg-surface|useTranslations/)
+})
