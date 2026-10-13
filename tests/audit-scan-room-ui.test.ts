@@ -86,3 +86,13 @@ test("the room list tab group has its own label", () => {
   }
   assert.equal(messages("th").roomListTabs, "สถานะรายการ")
 })
+
+test("the room sheet takes its X name and header from Sheet, the department is a shared field and clearing sits in a footer (2C batch 3)", () => {
+  const source = read("src/components/audit/audit-scan-room-picker.tsx")
+  assert.doesNotMatch(source, /closeLabel=|<SheetHeader className=|tCommon|<select\b|<label\b/)
+  assert.match(source, /<SheetHeader>\n\s+<SheetTitle>\{t\("roomSheetTitle"\)\}<\/SheetTitle>/)
+  assert.match(source, /<Field label=\{t\("roomDepartment"\)\}>\n\s+<NativeSelect\n\s+value=\{room\.departmentId\}/)
+  assert.match(source, /<SheetFooter className="border-t border-border-soft bg-background px-4 py-3">\n\s+<Button variant="outline" onClick=\{\(\) => choose\(\{ locationId: "", departmentId: "" \}\)\} className="w-full">\n\s+\{t\("roomClear"\)\}\n\s+<\/Button>\n\s+<\/SheetFooter>/)
+  assert.equal(source.match(/<input\b/g)?.length, 1, "the room search stays as it is (spec O20)")
+  assert.match(source, /<input\n\s+type="search"\n\s+value=\{query\}\n\s+onChange=\{\(event\) => setQuery\(event\.target\.value\)\}\n\s+placeholder=\{t\("roomSheetSearch"\)\}\n\s+aria-label=\{t\("roomSheetSearch"\)\}\n\s+className=\{getFieldControlClasses\(\)\}\n\s+\/>/)
+})

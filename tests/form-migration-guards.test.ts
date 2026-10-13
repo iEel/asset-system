@@ -81,6 +81,7 @@ const MIGRATED_FILES: string[] = [
   `${C}audit/audit-round-form.tsx`,
   `${C}audit/audit-round-cancel-button.tsx`,
   `${C}audit/audit-findings-batch-actions.tsx`,
+  `${C}audit/audit-scan-room-picker.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -168,7 +169,7 @@ const RAW_FIELDS: Record<string, number> = {
   // 1f
   // 2
   // 3
-  [`${C}audit/audit-scan-room-picker.tsx`]: 2, // → 1: the room search :75 stays (O20)
+  [`${C}audit/audit-scan-room-picker.tsx`]: 1, // → 1: the room search :75 stays (O20)
   // 4
   [`${C}admin/admin-user-form.tsx`]: 5,
   [`${C}admin/role-permission-form.tsx`]: 4,

@@ -3,7 +3,10 @@
 import { useMemo, useRef, useState } from "react"
 import { Check, ChevronDown, MapPin } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { NativeSelect } from "@/components/ui/native-select"
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useMediaQuery } from "@/components/ui/use-media-query"
 import type { AuditRoomOption, AuditScanRoom } from "@/lib/audit-scan-session"
 import { getFieldControlClasses } from "@/lib/design-system"
@@ -19,7 +22,6 @@ export function AuditScanRoomPicker({
   onRoomChange: (room: AuditScanRoom) => void
 }) {
   const t = useTranslations("auditScan")
-  const tCommon = useTranslations("common")
   const isDesktop = useMediaQuery("(min-width: 48rem)")
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -58,7 +60,6 @@ export function AuditScanRoomPicker({
       </SheetTrigger>
       <SheetContent
         side={isDesktop ? "right" : "bottom"}
-        closeLabel={tCommon("close")}
         className={isDesktop ? "w-full gap-0 sm:max-w-md" : "max-h-[85dvh] gap-0 rounded-t-xl"}
         onOpenAutoFocus={(event) => {
           // Radix would focus the search box first, which raises the phone keyboard over the list.
@@ -67,7 +68,7 @@ export function AuditScanRoomPicker({
           ;(list?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]') ?? list?.querySelector<HTMLButtonElement>("button"))?.focus()
         }}
       >
-        <SheetHeader className="border-b border-border pr-14">
+        <SheetHeader>
           <SheetTitle>{t("roomSheetTitle")}</SheetTitle>
           <SheetDescription>{t("roomSheetHelp")}</SheetDescription>
         </SheetHeader>
@@ -81,12 +82,10 @@ export function AuditScanRoomPicker({
             className={getFieldControlClasses()}
           />
           {selected && selected.departments.length > 0 ? (
-            <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("roomDepartment")}</span>
-              <select
+            <Field label={t("roomDepartment")}>
+              <NativeSelect
                 value={room.departmentId}
                 onChange={(event) => choose({ locationId: room.locationId, departmentId: event.target.value })}
-                className={getFieldControlClasses()}
               >
                 <option value="">{t("roomAllDepartments")}</option>
                 {selected.departments.map((department) => (
@@ -94,8 +93,8 @@ export function AuditScanRoomPicker({
                     {department.label} ({department.total})
                   </option>
                 ))}
-              </select>
-            </label>
+              </NativeSelect>
+            </Field>
           ) : null}
         </div>
         <ul ref={listRef} className="min-h-0 flex-1 overflow-y-auto p-2">
@@ -122,15 +121,11 @@ export function AuditScanRoomPicker({
             )
           })}
         </ul>
-        <div className="border-t border-border p-3">
-          <button
-            type="button"
-            onClick={() => choose({ locationId: "", departmentId: "" })}
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
+        <SheetFooter className="border-t border-border-soft bg-background px-4 py-3">
+          <Button variant="outline" onClick={() => choose({ locationId: "", departmentId: "" })} className="w-full">
             {t("roomClear")}
-          </button>
-        </div>
+          </Button>
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   )
