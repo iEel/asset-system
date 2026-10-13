@@ -332,3 +332,20 @@ test("audit rounds page in memory: page and pageSize from the URL, a slice of th
   assert.match(source, /hiddenInputs=\{\{ \.\.\.\(activeView === "all" \? \{\} : \{ view: activeView \}\), \.\.\.Object\.fromEntries\(appendListPage\(new URLSearchParams\(\), \{ pageSize: listPage\.pageSize \}\)\) \}\}/)
   assert.match(source, /pageSizes=\{LIST_PAGE_SIZES\.map\(\(value\) => \(\{ value, href: buildAuditRoundsHref\(locale, activeView, searchText, \{ pageSize: value \}\) \}\)\)\}/)
 })
+
+// Plan 2B-2 Task 10 (spec 2B §4.4.3, §5.4 row rounds/[id], I21): the header and the result list of an audit round.
+// The root padding and the mobile action bar belong to 2C plan 5 (O11); 2B changed only the bar's back icon (B2).
+test("audit round detail: PageHeader, StatStrip numbers and result buckets, the result list on DataTable with RowActions and the shared Pagination (spec 2B §5.4)", () => {
+  const source = read(`${D}audit/rounds/[id]/page.tsx`)
+  for (const part of ["<PageHeader", "<StatStrip", "<DataTable", "<DataTableHeader>", "<DataTableBody>", "<TableEmptyRow", "<ClickableTableRow", "<RowActions", "<KeyValueList", "<DataTableFoot>", "<Pagination"]) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.match(source, /<div className="pb-24 md:pb-0">\n\s+<PageHeader\n\s+className="mb-6"/, "the root keeps the O11 padding for 2C plan 5, so the header brings its own gap (spec 2B §4.6.1)")
+  assert.match(source, /\{ href: returnToHref, label: tCommon\("back"\), icon: <ArrowLeft className="h-4 w-4" \/> \}/, "the back item of the mobile action bar has a left arrow (B2)")
+  assert.match(source, /current: resultListState\.result === item\.result/, "the bucket in view is the current cell (aria-current from StatStrip)")
+  assert.match(source, /next=\{\{ label: t\("editScanResult"\), href: item\.editHref, icon: <Pencil aria-hidden="true" \/> \}\}\n\s+groups=\{\[\]\}/, "the row's only command is the next step, so RowActions draws no ⋯")
+  assert.match(source, /<DataTableHead align="right" sticky="right" hideLabel>\{tCommon\("actions"\)\}<\/DataTableHead>/)
+  assert.match(source, /pageSizes=\{auditRoundResultPageSizeOptions\.map\(\(value\) => \(\{ value, href: buildAuditRoundResultListHref\(\{ [^}]*page: 1, pageSize: value \}\) \}\)\)\}/, "the result list keeps its own page and pageSize params")
+  assert.match(source, /^import \{ notFound, redirect \} from "next\/navigation"$/m)
+  assert.match(source, /if \(resultPageRowCount === 0 && resultListTotal > 0 && resultListState\.page > resultLastPage\) \{\n\s+redirect\(buildAuditRoundResultListHref\(/, "a result page past the last one shows the last page (I21)")
+})

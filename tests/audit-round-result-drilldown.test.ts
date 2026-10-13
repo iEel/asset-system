@@ -125,7 +125,7 @@ test("audit round detail page exposes clickable result dashboard and paginated r
   assert.match(page, /resultNormalGroup/)
   assert.match(page, /resultNeedsReviewGroup/)
   assert.match(page, /href: foundResultHref/)
-  assert.match(page, /href=\{item\.count > 0 \? item\.href : undefined\}/)
+  assert.match(page, /href: item\.count > 0 \? item\.href : undefined/)
   assert.match(page, /openFindingReview/)
   assert.match(page, /viewPendingReviewAssets/)
   assert.match(page, /resultListTitle/)
@@ -135,7 +135,8 @@ test("audit round detail page exposes clickable result dashboard and paginated r
   assert.match(page, /resultFindingReviewHref/)
   assert.match(page, /findingType/)
   assert.match(page, /id="audit-result-list"/)
-  assert.match(page, /AuditRoundResultPagination/)
+  assert.match(page, /<Pagination\b/)
+  assert.doesNotMatch(page, /function AuditRoundResultPagination/)
   assert.match(page, /resultItems\.map/)
 })
 

@@ -1,10 +1,10 @@
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { AlertTriangle, Download, FileText, ScanLine } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Download, FileText, Pencil, ScanLine } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
-import { ColumnHeader, MasterDataSearch } from "@/components/master-data/master-data-layout"
+import { MasterDataSearch } from "@/components/master-data/master-data-layout"
 import { formatDate, formatDateTime } from "@/lib/utils"
 import { ClickableTableRow } from "@/components/ui/clickable-table-row"
 import { AuditProgressBar } from "@/components/audit/audit-progress-bar"
@@ -12,12 +12,21 @@ import { AuditRoundCancelButton } from "@/components/audit/audit-round-cancel-bu
 import { AuditRoundCloseButton } from "@/components/audit/audit-round-close-button"
 import { hasPermission } from "@/lib/auth-utils"
 import { categoryPhotoChecklistKey, parsePhotoChecklist } from "@/lib/category-photo-checklist"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { MobileActionBar } from "@/components/ui/mobile-action-bar"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { DataTable, DataTableBody, DataTableCell, DataTableFoot, DataTableHead, DataTableHeader, TableEmptyRow } from "@/components/ui/data-table"
+import { KeyValueList } from "@/components/ui/key-value-list"
+import { Nil } from "@/components/ui/nil"
+import { PageHeader } from "@/components/ui/page-header"
+import { Pagination } from "@/components/ui/pagination"
+import { RowActions } from "@/components/ui/row-actions"
+import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { isSameAuditActor } from "@/lib/audit-segregation"
 import { getDesktopTableOnlyClasses, getMobileCardListClasses } from "@/lib/design-system"
+import { formatCount } from "@/lib/display-format"
+import { lastListPage } from "@/lib/list-pagination"
 import { appendOperationalReturnTo, normalizeOperationalReturnTo } from "@/lib/operational-return-navigation"
 import { countSuccessfulAuditResultRows, isVarianceAuditResult } from "@/lib/audit-result-summary"
 import { isAuditRoundReadOnlyStatus } from "@/lib/audit-round-status"
@@ -253,7 +262,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     ? cancelledByUser.displayName === cancelledByUser.username
       ? cancelledByUser.username
       : `${cancelledByUser.displayName} (${cancelledByUser.username})`
-    : round.cancelledBy || "-"
+    : round.cancelledBy
   const pendingCount = statusCounts.find((row) => row.auditStatus === "pending")?._count._all ?? 0
   const processedCount = Math.max(round._count.items - pendingCount, 0)
   const scannedCount = statusCounts
@@ -297,6 +306,14 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
     pending_review: t("pendingReview"),
   }
   const resultListTotal = isOutOfScopeResultList ? outOfScopeScanTotal : resultItemTotal
+  // A result page past the last one (an old link, or results that moved to another bucket) shows the last page
+  // (spec 2B I21). The result list keeps its own page and pageSize params (spec 2B §5.4 row rounds/[id]).
+  const resultLastPage = lastListPage(resultListTotal, resultListState.pageSize)
+  const resultPageRowCount = isOutOfScopeResultList ? outOfScopeScanRows.length : resultItems.length
+  if (resultPageRowCount === 0 && resultListTotal > 0 && resultListState.page > resultLastPage) {
+    redirect(buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, page: resultLastPage, pageSize: resultListState.pageSize }))
+  }
+  const { start: resultStart, end: resultEnd, totalPages: resultTotalPages } = paginationRange(resultListState.page, resultListState.pageSize, resultListTotal)
   const resultRows = isOutOfScopeResultList
     ? outOfScopeScanRows.map((history) => ({
         id: history.id,
@@ -322,7 +339,7 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
           auditStatus: item.auditStatus,
           auditStatusLabel: statusLabelKey ? t(statusLabelKey) : itemStatusLabelKey ? tFinding(itemStatusLabelKey) : item.auditStatus,
           auditResult,
-          auditResultLabel: item.auditResult ? (resultLabelKey ? t(resultLabelKey) : item.auditResult) : "-",
+          auditResultLabel: item.auditResult ? (resultLabelKey ? t(resultLabelKey) : item.auditResult) : null,
           auditResultTone: item.auditResult === "found" || item.auditResult === "confirmed_with_parent" ? ("success" as const) : item.auditResult === "not_found" ? ("danger" as const) : ("muted" as const),
           componentRelationshipLines: buildAuditRoundComponentRelationshipLines(item.asset, t),
           latestCorrection: correctionHistory[0] ?? null,
@@ -403,80 +420,79 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
   }
   const resultNormalGroup = resultSummaryGroups.normal.map((item) => ({ ...item, ...resultSummaryItemConfig[item.result] }))
   const resultNeedsReviewGroup = resultSummaryGroups.needsReview.map((item) => ({ ...item, ...resultSummaryItemConfig[item.result] }))
+  // The result buckets as StatStrip cells: a bucket with items is a link to its list, the bucket in view is current
+  // (aria-current and the primary line), and an empty bucket is plain text.
+  const resultStatItems = (group: typeof resultNormalGroup): StatStripItem[] =>
+    group.map((item) => ({
+      key: item.result,
+      label: item.label,
+      value: formatCount(item.count),
+      href: item.count > 0 ? item.href : undefined,
+      current: resultListState.result === item.result,
+      foot: item.count > 0 ? item.actionLabel : undefined,
+      footTitle: item.count > 0 ? item.actionLabel : undefined,
+    }))
 
   return (
     <div className="pb-24 md:pb-0">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="mb-2">
-            <Breadcrumbs
-              items={[
-                { label: t("title"), href: returnToHref },
-                { label: round.auditNo, code: true },
-              ]}
-            />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">{round.name}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {round.auditNo} • {formatDate(round.startDate)} - {formatDate(round.endDate)}
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 sm:items-end">
-          <StatusBadge label={getAuditRoundStatusLabel(round.status, t)} status={round.status} />
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-            {canExportRound ? (
-              <>
-                <a
-                  href={auditRoundExportHref}
-                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
-                >
-                  <Download className="h-4 w-4" />
-                  {t("exportResult")}
-                </a>
-                <a
-                  href={auditRoundExportPdfHref}
-                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
-                >
-                  <FileText className="h-4 w-4" />
-                  {t("exportResultPdf")}
-                </a>
-                <a
-                  href={`/api/audit-rounds/${round.id}/variance-export`}
-                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
-                >
-                  <Download className="h-4 w-4" />
-                  {t("exportVariance")}
-                </a>
-              </>
-            ) : null}
-            {!isRoundReadOnly ? (
-              <>
-                <Link
-                  href={pendingHref}
-                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent sm:h-10 sm:min-h-0 sm:w-auto"
-                >
-                  <AlertTriangle className="h-4 w-4" />
-                  {t("pendingAssets")}
-                </Link>
-                <Link
-                  href={scanHref}
-                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover sm:h-10 sm:min-h-0 sm:w-auto"
-                >
-                  <ScanLine className="h-4 w-4" />
-                  {t("scan")}
-                </Link>
-              </>
-            ) : null}
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        className="mb-6"
+        breadcrumbs={[
+          { label: t("title"), href: returnToHref },
+          { label: round.auditNo, code: true },
+        ]}
+        title={round.name}
+        meta={
+          <>
+            <span className="tag">{round.auditNo}</span>
+            <StatusBadge label={getAuditRoundStatusLabel(round.status, t)} status={round.status} />
+            <span>
+              {formatDate(round.startDate)} – {formatDate(round.endDate)}
+            </span>
+          </>
+        }
+        actions={
+          canExportRound || !isRoundReadOnly ? (
+            <>
+              {canExportRound ? (
+                <>
+                  <a href={auditRoundExportHref} className={buttonVariants({ variant: "outline", size: "md" })}>
+                    <Download aria-hidden="true" />
+                    {t("exportResult")}
+                  </a>
+                  <a href={auditRoundExportPdfHref} className={buttonVariants({ variant: "outline", size: "md" })}>
+                    <FileText aria-hidden="true" />
+                    {t("exportResultPdf")}
+                  </a>
+                  <a href={`/api/audit-rounds/${round.id}/variance-export`} className={buttonVariants({ variant: "outline", size: "md" })}>
+                    <Download aria-hidden="true" />
+                    {t("exportVariance")}
+                  </a>
+                </>
+              ) : null}
+              {!isRoundReadOnly ? (
+                <>
+                  <Link href={pendingHref} className={buttonVariants({ variant: "outline", size: "md" })}>
+                    <AlertTriangle aria-hidden="true" />
+                    {t("pendingAssets")}
+                  </Link>
+                  <Link href={scanHref} className={buttonVariants({ size: "md" })}>
+                    <ScanLine aria-hidden="true" />
+                    {t("scan")}
+                  </Link>
+                </>
+              ) : null}
+            </>
+          ) : undefined
+        }
+      />
       {!isRoundReadOnly ? (
         <MobileActionBar
           actions={[
             { href: scanHref, label: t("scan"), icon: <ScanLine className="h-4 w-4" />, primary: true },
             { href: pendingHref, label: t("pendingAssets"), icon: <AlertTriangle className="h-4 w-4" /> },
             { href: pendingReviewFindingsHref, label: t("openFindingReview"), icon: <FileText className="h-4 w-4" /> },
-            { href: returnToHref, label: tCommon("back"), icon: <Download className="h-4 w-4" /> },
+            { href: returnToHref, label: tCommon("back"), icon: <ArrowLeft className="h-4 w-4" /> },
           ]}
         />
       ) : null}
@@ -495,11 +511,11 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                 </div>
                 <div>
                   <dt className="font-medium text-foreground">{t("cancelledBy")}</dt>
-                  <dd className="mt-1 break-words text-danger">{cancelledByDisplayName}</dd>
+                  <dd className="mt-1 break-words text-danger">{cancelledByDisplayName || <Nil className="text-danger" />}</dd>
                 </div>
                 <div className="sm:col-span-2">
                   <dt className="font-medium text-foreground">{t("cancelReason")}</dt>
-                  <dd className="mt-1 break-words text-danger">{round.cancelReason || "-"}</dd>
+                  <dd className="mt-1 break-words text-danger">{round.cancelReason || <Nil className="text-danger" />}</dd>
                 </div>
               </dl>
             </div>
@@ -507,12 +523,15 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         </section>
       ) : null}
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
-        <Metric label={t("totalExpected")} value={round._count.items} />
-        <Metric label={t("pending")} value={pendingCount} />
-        <Metric label={t("scanned")} value={scannedCount} />
-        <Metric label={t("progress")} value={`${progress}%`} />
-      </div>
+      <StatStrip
+        className="mb-6"
+        items={[
+          { key: "totalExpected", label: t("totalExpected"), value: formatCount(round._count.items) },
+          { key: "pending", label: t("pending"), value: formatCount(pendingCount) },
+          { key: "scanned", label: t("scanned"), value: formatCount(scannedCount) },
+          { key: "progress", label: t("progress"), value: `${formatCount(progress)}%` },
+        ]}
+      />
 
       <div className="mb-6">
         <AuditProgressBar
@@ -539,37 +558,11 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
         <div className="grid gap-4 lg:grid-cols-[minmax(220px,0.65fr)_1fr]">
           <div>
             <h3 className="text-sm font-semibold text-foreground">{t("resultNormalGroup")}</h3>
-            <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              {resultNormalGroup.map((item) => (
-                <DashboardCard
-                  key={item.result}
-                  label={item.label}
-                  value={item.count}
-                  tone={item.tone}
-                  href={item.count > 0 ? item.href : undefined}
-                  active={resultListState.result === item.result}
-                  actionLabel={item.count > 0 ? item.actionLabel : undefined}
-                  disabled={!item.actionable}
-                />
-              ))}
-            </div>
+            <StatStrip className="mt-2" items={resultStatItems(resultNormalGroup)} />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-foreground">{t("resultNeedsReviewGroup")}</h3>
-            <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {resultNeedsReviewGroup.map((item) => (
-                <DashboardCard
-                  key={item.result}
-                  label={item.label}
-                  value={item.count}
-                  tone={item.tone}
-                  href={item.count > 0 ? item.href : undefined}
-                  active={resultListState.result === item.result}
-                  actionLabel={item.count > 0 ? item.actionLabel : undefined}
-                  disabled={!item.actionable}
-                />
-              ))}
-            </div>
+            <StatStrip className="mt-2" items={resultStatItems(resultNeedsReviewGroup)} />
           </div>
         </div>
       </section>
@@ -579,12 +572,14 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
           <h2 className="text-base font-semibold text-foreground">{t("evidenceSummary")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("evidenceSummaryHelp")}</p>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <DashboardCard label={t("evidenceAttached")} value={evidenceSummary.withEvidence} tone="success" />
-          <DashboardCard label={t("evidenceMissing")} value={evidenceSummary.missingEvidence} tone="warning" />
-          <DashboardCard label={t("checklistComplete")} value={evidenceSummary.checklistComplete} tone="info" />
-          <DashboardCard label={t("checklistIncomplete")} value={evidenceSummary.checklistIncomplete} tone="danger" />
-        </div>
+        <StatStrip
+          items={[
+            { key: "evidenceAttached", label: t("evidenceAttached"), value: formatCount(evidenceSummary.withEvidence) },
+            { key: "evidenceMissing", label: t("evidenceMissing"), value: formatCount(evidenceSummary.missingEvidence) },
+            { key: "checklistComplete", label: t("checklistComplete"), value: formatCount(evidenceSummary.checklistComplete) },
+            { key: "checklistIncomplete", label: t("checklistIncomplete"), value: formatCount(evidenceSummary.checklistIncomplete) },
+          ]}
+        />
       </section>
 
       {canApprove && !isRoundReadOnly ? (
@@ -613,16 +608,16 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge label={resultFilterLabels[resultListState.result]} status={resultListState.result} />
             <span className="rounded-md border border-border bg-background px-3 py-1 text-sm text-muted-foreground">
-              {resultListTotal} {t("items")}
+              {formatCount(resultListTotal)} {t("items")}
             </span>
             {resultFindingReviewHref && !isRoundReadOnly ? (
-              <Link href={resultFindingReviewHref} className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent">
-                <FileText className="h-4 w-4" />
+              <Link href={resultFindingReviewHref} className={buttonVariants({ variant: "outline", size: "md" })}>
+                <FileText aria-hidden="true" />
                 {t("openFindingReview")}
               </Link>
             ) : null}
             {resultListState.result !== "all" || resultListState.search ? (
-              <Link href={allResultHref} className="inline-flex h-9 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent">
+              <Link href={allResultHref} className={buttonVariants({ variant: "outline", size: "md" })}>
                 {t("viewAll")}
               </Link>
             ) : null}
@@ -645,12 +640,13 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                 description={emptyResultDescription}
                 actionHref={allResultHref}
                 actionLabel={t("viewAll")}
+                actionVariant="secondary"
               />
             ) : (
               resultRows.map((item) => (
                 <article key={item.id} className="min-w-0 rounded-md border border-border bg-background p-3">
                   <Link href={`/${locale}/assets/${item.asset.id}`} className="break-words text-sm font-semibold text-foreground hover:text-primary">
-                    {item.asset.assetTag}
+                    <span className="tag font-medium">{item.asset.assetTag}</span>
                   </Link>
                   <p className="mt-1 line-clamp-2 text-sm text-foreground">{item.asset.name}</p>
                   {item.componentRelationshipLines.length > 0 ? (
@@ -670,20 +666,36 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
                       ) : null}
                     </div>
                   ) : null}
-                  <div className="mt-3 grid gap-2 text-sm">
-                    <MobileAuditDetailField label={t("expectedLocation")} value={`${item.asset.currentLocation.code} - ${item.asset.currentLocation.name}`} />
-                    <MobileAuditDetailField
-                      label={t("expectedCustodian")}
-                      value={item.asset.custodian ? `${item.asset.custodian.code} - ${item.asset.custodian.fullNameTh}` : "-"}
-                    />
-                  </div>
+                  <KeyValueList
+                    className="mt-3"
+                    items={[
+                      {
+                        key: "location",
+                        label: t("expectedLocation"),
+                        value: (
+                          <>
+                            <span className="tag">{item.asset.currentLocation.code}</span> - {item.asset.currentLocation.name}
+                          </>
+                        ),
+                      },
+                      {
+                        key: "custodian",
+                        label: t("expectedCustodian"),
+                        value: item.asset.custodian ? (
+                          <>
+                            <span className="tag">{item.asset.custodian.code}</span> - {item.asset.custodian.fullNameTh}
+                          </>
+                        ) : null,
+                      },
+                    ]}
+                  />
                   <div className="mt-3 flex flex-wrap gap-2">
                     <StatusBadge label={item.auditStatusLabel} status={item.auditStatus} />
-                    <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} />
+                    {item.auditResultLabel ? <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} /> : null}
                   </div>
                   {!isRoundReadOnly ? (
                     <div className="mt-3 flex justify-end">
-                      <Link href={item.editHref} className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+                      <Link href={item.editHref} className={buttonVariants({ variant: "outline", size: "md" })}>
                         {t("editScanResult")}
                       </Link>
                     </div>
@@ -692,227 +704,120 @@ export default async function AuditRoundDetailPage({ params, searchParams }: Aud
               ))
             )}
           </div>
-          <div className={`${getDesktopTableOnlyClasses()} overflow-x-auto`}>
-            <table className="min-w-full divide-y divide-border text-sm">
-              <thead className="bg-muted/40">
-                <tr>
-                  <ColumnHeader>{t("assetTag")}</ColumnHeader>
-                  <ColumnHeader>{t("assetName")}</ColumnHeader>
-                  <ColumnHeader>{t("expectedLocation")}</ColumnHeader>
-                  <ColumnHeader>{t("expectedCustodian")}</ColumnHeader>
-                  <ColumnHeader>{t("status")}</ColumnHeader>
-                  <ColumnHeader>{t("result")}</ColumnHeader>
-                  <ColumnHeader>{tCommon("actions")}</ColumnHeader>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {resultRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-6">
-                      <ActionEmptyState
-                        icon={<ScanLine className="h-6 w-6" />}
-                        title={emptyResultTitle}
-                        description={emptyResultDescription}
-                        actionHref={allResultHref}
-                        actionLabel={t("viewAll")}
-                      />
-                    </td>
-                  </tr>
-                ) : (
-                  resultRows.map((item) => (
-                    <ClickableTableRow
-                      key={item.id}
-                      href={`/${locale}/assets/${item.asset.id}`}
-                      label={`${tCommon("view")}: ${item.asset.assetTag}`}
-                    >
-                      <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">{item.asset.assetTag}</td>
-                      <td className="min-w-56 px-4 py-3 text-foreground">
-                        <div>{item.asset.name}</div>
-                        {item.componentRelationshipLines.length > 0 ? (
-                          <div className="mt-1 flex flex-wrap gap-1.5">
-                            {item.componentRelationshipLines.map((line) => (
-                              <span key={line} className="rounded-full bg-info-soft px-2 py-0.5 text-xs font-medium text-info">
-                                {line}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
-                        {item.latestCorrection ? (
-                          <div className="mt-2 rounded-md border border-info-border bg-info-soft px-2 py-1 text-xs text-info">
-                            <div>{t("correctionHistoryLatest", { date: formatDateTime(item.latestCorrection.createdAt), user: item.latestCorrection.userLabel })}</div>
-                            {item.latestCorrection.changedFields.length > 0 ? (
-                              <div>{t("correctionHistoryFields", { fields: formatAuditCorrectionFields(item.latestCorrection, t) })}</div>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </td>
-                      <td className="min-w-56 px-4 py-3 text-muted-foreground">
-                        {item.asset.currentLocation.code} - {item.asset.currentLocation.name}
-                      </td>
-                      <td className="min-w-56 px-4 py-3 text-muted-foreground">
-                        {item.asset.custodian ? `${item.asset.custodian.code} - ${item.asset.custodian.fullNameTh}` : "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        <StatusBadge label={item.auditStatusLabel} status={item.auditStatus} />
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} />
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right">
-                        {!isRoundReadOnly ? (
-                          <Link
-                            href={item.editHref}
-                            data-no-row-click
-                            className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-                          >
-                            {t("editScanResult")}
-                          </Link>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </td>
-                    </ClickableTableRow>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          <AuditRoundResultPagination
-            locale={locale}
-            roundId={round.id}
-            state={resultListState}
-            total={resultListTotal}
-            returnTo={returnToHref}
-            labels={{ rowsPerPage: tCommon("rowsPerPage"), page: tCommon("page"), of: tCommon("of"), previous: tCommon("previous"), next: tCommon("next") }}
-          />
+          <DataTable framed={false} className={getDesktopTableOnlyClasses()} caption={resultListTitle} scrollHint={tCommon("tableScrollHint")}>
+            <DataTableHeader>
+              <tr>
+                <DataTableHead>{t("assetTag")}</DataTableHead>
+                <DataTableHead>{t("assetName")}</DataTableHead>
+                <DataTableHead>{t("expectedLocation")}</DataTableHead>
+                <DataTableHead>{t("expectedCustodian")}</DataTableHead>
+                <DataTableHead>{t("status")}</DataTableHead>
+                <DataTableHead>{t("result")}</DataTableHead>
+                <DataTableHead align="right" sticky="right" hideLabel>{tCommon("actions")}</DataTableHead>
+              </tr>
+            </DataTableHeader>
+            <DataTableBody>
+              {resultRows.length === 0 ? (
+                <TableEmptyRow
+                  colSpan={7}
+                  emptyState={{
+                    icon: <ScanLine className="h-6 w-6" />,
+                    title: emptyResultTitle,
+                    description: emptyResultDescription,
+                    actionHref: allResultHref,
+                    actionLabel: t("viewAll"),
+                    actionVariant: "secondary",
+                  }}
+                />
+              ) : (
+                resultRows.map((item) => (
+                  <ClickableTableRow
+                    key={item.id}
+                    href={`/${locale}/assets/${item.asset.id}`}
+                    label={`${tCommon("view")}: ${item.asset.assetTag}`}
+                  >
+                    <DataTableCell className="whitespace-nowrap">
+                      <span className="tag font-medium text-foreground">{item.asset.assetTag}</span>
+                    </DataTableCell>
+                    <DataTableCell className="min-w-56 text-foreground">
+                      <div>{item.asset.name}</div>
+                      {item.componentRelationshipLines.length > 0 ? (
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {item.componentRelationshipLines.map((line) => (
+                            <span key={line} className="rounded-full bg-info-soft px-2 py-0.5 text-xs font-medium text-info">
+                              {line}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                      {item.latestCorrection ? (
+                        <div className="mt-2 rounded-md border border-info-border bg-info-soft px-2 py-1 text-xs text-info">
+                          <div>{t("correctionHistoryLatest", { date: formatDateTime(item.latestCorrection.createdAt), user: item.latestCorrection.userLabel })}</div>
+                          {item.latestCorrection.changedFields.length > 0 ? (
+                            <div>{t("correctionHistoryFields", { fields: formatAuditCorrectionFields(item.latestCorrection, t) })}</div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </DataTableCell>
+                    <DataTableCell className="min-w-56 text-muted-foreground">
+                      <span className="tag">{item.asset.currentLocation.code}</span> - {item.asset.currentLocation.name}
+                    </DataTableCell>
+                    <DataTableCell className="min-w-56 text-muted-foreground">
+                      {item.asset.custodian ? (
+                        <>
+                          <span className="tag">{item.asset.custodian.code}</span> - {item.asset.custodian.fullNameTh}
+                        </>
+                      ) : (
+                        <Nil />
+                      )}
+                    </DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">
+                      <StatusBadge label={item.auditStatusLabel} status={item.auditStatus} />
+                    </DataTableCell>
+                    <DataTableCell className="whitespace-nowrap text-muted-foreground">
+                      {item.auditResultLabel ? <StatusBadge label={item.auditResultLabel} status={item.auditResult} tone={item.auditResultTone} /> : <Nil />}
+                    </DataTableCell>
+                    <DataTableCell align="right" sticky="right">
+                      {!isRoundReadOnly ? (
+                        <RowActions
+                          code={item.asset.assetTag}
+                          name={item.asset.name}
+                          menuLabel={tCommon("moreActionsFor", { code: item.asset.assetTag })}
+                          next={{ label: t("editScanResult"), href: item.editHref, icon: <Pencil aria-hidden="true" /> }}
+                          groups={[]}
+                        />
+                      ) : (
+                        <Nil />
+                      )}
+                    </DataTableCell>
+                  </ClickableTableRow>
+                ))
+              )}
+            </DataTableBody>
+          </DataTable>
+          {resultListTotal > 0 ? (
+            <DataTableFoot>
+              <Pagination
+                page={resultListState.page}
+                totalPages={resultTotalPages}
+                previousHref={buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, page: resultListState.page - 1, pageSize: resultListState.pageSize })}
+                nextHref={buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, page: resultListState.page + 1, pageSize: resultListState.pageSize })}
+                pageSize={resultListState.pageSize}
+                pageSizes={auditRoundResultPageSizeOptions.map((value) => ({ value, href: buildAuditRoundResultListHref({ locale, roundId: round.id, result: resultListState.result, returnTo: returnToHref, search: resultListState.search, page: 1, pageSize: value }) }))}
+                labels={{
+                  navigation: tCommon("pagination"),
+                  previous: tCommon("previous"),
+                  next: tCommon("next"),
+                  pageOf: tCommon("pageOf", { page: resultListState.page, total: resultTotalPages }),
+                  range: tCommon("showingRange", { from: formatCount(resultStart), to: formatCount(resultEnd), total: formatCount(resultListTotal) }),
+                  pageSizeGroup: tCommon("pageSizeLabel"),
+                  rowsPerPage: tCommon("rowsPerPage"),
+                }}
+              />
+            </DataTableFoot>
+          ) : null}
         </div>
       </section>
-    </div>
-  )
-}
-
-function Metric({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-lg border border-border bg-surface p-4">
-      <div className="text-sm text-muted-foreground">{label}</div>
-      <div className="mt-2 text-2xl font-semibold text-foreground">{value}</div>
-    </div>
-  )
-}
-
-function MobileAuditDetailField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 rounded-md bg-background px-3 py-2">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="mt-1 break-words text-sm text-foreground">{value}</div>
-    </div>
-  )
-}
-
-function DashboardCard({
-  label,
-  value,
-  tone,
-  href,
-  active = false,
-  actionLabel,
-  disabled = false,
-}: {
-  label: string
-  value: number
-  tone: "success" | "warning" | "danger" | "info" | "muted"
-  href?: string
-  active?: boolean
-  actionLabel?: string
-  disabled?: boolean
-}) {
-  const toneClass =
-    disabled
-      ? "border-border bg-background text-muted-foreground"
-      : tone === "success"
-      ? "border-success-border bg-success-soft text-success"
-      : tone === "warning"
-        ? "border-warning-border bg-warning-soft text-warning"
-        : tone === "danger"
-          ? "border-danger-border bg-danger-soft text-danger"
-          : tone === "info"
-            ? "border-info-border bg-info-soft text-info"
-            : "border-border bg-background text-muted-foreground"
-  const activeClassName = active ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
-  const content = (
-    <>
-      <div className="text-xs font-medium">{label}</div>
-      <div className="mt-2 text-2xl font-bold">{value}</div>
-      {actionLabel ? <div className="mt-2 text-xs font-semibold underline-offset-2">{actionLabel}</div> : null}
-    </>
-  )
-
-  if (href) {
-    return (
-      <Link href={href} className={`block rounded-md border px-3 py-3 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${toneClass} ${activeClassName}`}>
-        {content}
-      </Link>
-    )
-  }
-
-  return <div className={`rounded-md border px-3 py-3 ${toneClass}`}>{content}</div>
-}
-
-function AuditRoundResultPagination({
-  locale,
-  roundId,
-  state,
-  total,
-  returnTo,
-  labels,
-}: {
-  locale: string
-  roundId: string
-  state: AuditRoundResultListState
-  total: number
-  returnTo: string
-  labels: { rowsPerPage: string; page: string; of: string; previous: string; next: string }
-}) {
-  const { start, end, totalPages } = paginationRange(state.page, state.pageSize, total)
-  const previousPage = Math.max(1, state.page - 1)
-  const nextPage = Math.min(totalPages, state.page + 1)
-
-  return (
-    <div className="flex flex-col gap-3 border-t border-border px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        {start}-{end} {labels.of} {total}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span>{labels.rowsPerPage}</span>
-        {auditRoundResultPageSizeOptions.map((pageSize) => (
-          <Link
-            key={pageSize}
-            href={buildAuditRoundResultListHref({ locale, roundId, result: state.result, returnTo, search: state.search, page: 1, pageSize })}
-            className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md border px-2 transition-colors ${
-              state.pageSize === pageSize ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface hover:bg-accent"
-            }`}
-          >
-            {pageSize}
-          </Link>
-        ))}
-        <span className="px-2">
-          {labels.page} {Math.min(state.page, totalPages)} {labels.of} {totalPages}
-        </span>
-        <Link
-          href={buildAuditRoundResultListHref({ locale, roundId, result: state.result, returnTo, search: state.search, page: previousPage, pageSize: state.pageSize })}
-          aria-disabled={state.page <= 1}
-          className={`inline-flex h-8 items-center rounded-md border border-border px-3 transition-colors ${state.page <= 1 ? "pointer-events-none opacity-50" : "hover:bg-accent"}`}
-        >
-          {labels.previous}
-        </Link>
-        <Link
-          href={buildAuditRoundResultListHref({ locale, roundId, result: state.result, returnTo, search: state.search, page: nextPage, pageSize: state.pageSize })}
-          aria-disabled={state.page >= totalPages}
-          className={`inline-flex h-8 items-center rounded-md border border-border px-3 transition-colors ${state.page >= totalPages ? "pointer-events-none opacity-50" : "hover:bg-accent"}`}
-        >
-          {labels.next}
-        </Link>
-      </div>
     </div>
   )
 }
