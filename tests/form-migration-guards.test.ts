@@ -84,6 +84,7 @@ const MIGRATED_FILES: string[] = [
   `${C}audit/audit-scan-room-picker.tsx`,
   `${C}audit/audit-scan-check-panel.tsx`,
   `${C}maintenance/maintenance-plan-state-actions.tsx`,
+  `${C}admin/admin-user-form.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -156,7 +157,6 @@ const LOCAL_FIELD: Record<string, number> = {
   // 2
   // 3
   // 4
-  [`${C}admin/admin-user-form.tsx`]: 1,
   [`${C}admin/role-permission-form.tsx`]: 1,
 }
 
@@ -173,7 +173,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 3
   [`${C}audit/audit-scan-room-picker.tsx`]: 1, // → 1: the room search :75 stays (O20)
   // 4
-  [`${C}admin/admin-user-form.tsx`]: 5,
   [`${C}admin/role-permission-form.tsx`]: 4,
   [`${C}admin/IntegrationClientManager.tsx`]: 3,
   [`${C}admin/asset-state-review-dialog.tsx`]: 3,
@@ -200,7 +199,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 2
   // 3
   // 4
-  [`${C}admin/admin-user-form.tsx`]: 5,
   [`${C}admin/role-permission-form.tsx`]: 4,
   [`${C}admin/IntegrationClientManager.tsx`]: 3,
   [`${C}admin/asset-state-review-dialog.tsx`]: 3,
@@ -278,7 +276,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 2
   // 3
   // 4
-  [`${C}admin/admin-user-form.tsx`]: 4,
   [`${C}admin/role-permission-form.tsx`]: 5,
   [`${C}admin/IntegrationClientManager.tsx`]: 5,
   [`${C}admin/data-quality-rule-form.tsx`]: 1,
@@ -307,7 +304,6 @@ const LOADER2: Record<string, number> = {
   [`${C}disposal/disposal-bulk-approval.tsx`]: 2, // the status lines :559, :560 in the dialog body (I27)
   [`${C}disposal/disposal-bulk-execution.tsx`]: 1, // BusyLabel :969, the status line in the dialog body (I27)
   // 4
-  [`${C}admin/admin-user-form.tsx`]: 1,
   [`${C}admin/role-permission-form.tsx`]: 1,
   [`${C}admin/IntegrationClientManager.tsx`]: 4, // → 2: the status line :528 and the row button :863 (2D)
   [`${C}assets/asset-label-batch-tool.tsx`]: 2, // → 2: the status lines :321, :469
