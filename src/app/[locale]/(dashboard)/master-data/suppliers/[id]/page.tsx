@@ -1,18 +1,7 @@
-import type React from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import {
-  AlertTriangle,
-  ArrowLeft,
-  Boxes,
-  ClipboardList,
-  Edit,
-  FileText,
-  Mail,
-  Phone,
-  Wrench,
-} from "lucide-react"
+import { AlertTriangle, Edit } from "lucide-react"
 import { prisma } from "@/lib/db"
 import { requirePagePermission } from "@/lib/page-auth"
 import {
@@ -21,9 +10,14 @@ import {
   buildSupplierFollowUpItems,
   type SupplierFollowUpKey,
 } from "@/lib/supplier-detail"
-import { formatCurrency, formatDate } from "@/lib/utils"
+import { formatCount, formatMoney } from "@/lib/display-format"
+import { formatDate } from "@/lib/utils"
 import { ActionEmptyState } from "@/components/ui/action-empty-state"
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { buttonVariants } from "@/components/ui/button-variants"
+import { KeyValueList } from "@/components/ui/key-value-list"
+import { Nil } from "@/components/ui/nil"
+import { PageBackLink, PageHeader } from "@/components/ui/page-header"
+import { StatStrip } from "@/components/ui/stat-strip"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { SupplierPurchaseDocuments } from "@/components/master-data/supplier-purchase-documents"
 import { getMaintenanceStatusLabel, getMaintenanceStatusTone, maintenanceStatuses } from "@/lib/maintenance-status"
@@ -43,6 +37,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
   const t = await getTranslations("supplier")
   const tCommon = await getTranslations("common")
   const tMaintenance = await getTranslations("maintenancePage")
+  const tAsset = await getTranslations("asset")
 
   const supplier = await prisma.supplier.findFirst({
     where: { id, isActive: true },
@@ -147,58 +142,70 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
   const maintenanceStatusLabels = Object.fromEntries(maintenanceStatuses.map((status) => [status, tMaintenance(`statuses.${status}`)]))
 
   return (
-    <div className="space-y-6 pb-24 md:pb-0">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <div className="mb-2">
-            <Breadcrumbs
-              items={[
-                { label: t("title"), href: returnToHref },
-                { label: supplier.code, code: true },
-              ]}
-            />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">{supplier.name}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {supplier.code} / {[supplier.contactPerson, supplier.phone, supplier.email].filter(Boolean).join(" / ") || t("noContactDetail")}
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Link
-            href={returnToHref}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-            {tCommon("back")}
-          </Link>
-          <Link
-            href={editHref}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            <Edit aria-hidden="true" className="h-4 w-4" />
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumbs={[
+          { label: t("title"), href: returnToHref },
+          { label: supplier.code, code: true },
+        ]}
+        title={supplier.name}
+        meta={
+          <>
+            <span className="tag">{supplier.code}</span>
+            {supplier.contactPerson ? <span>{supplier.contactPerson}</span> : null}
+            {supplier.phone ? <span>{supplier.phone}</span> : null}
+            {supplier.email ? <span>{supplier.email}</span> : null}
+            {supplier.contactPerson || supplier.phone || supplier.email ? null : <span>{t("noContactDetail")}</span>}
+          </>
+        }
+        back={<PageBackLink href={returnToHref} label={tCommon("back")} />}
+        actions={
+          <Link href={editHref} className={buttonVariants({ size: "md" })}>
+            <Edit aria-hidden="true" />
             {tCommon("edit")}
           </Link>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="grid auto-cols-[minmax(230px,85%)] grid-flow-col gap-3 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-2 md:overflow-visible md:pb-0 xl:grid-cols-5">
-        <MetricCard label={t("assets")} value={summary.assetCount} detail={t("linkedAssetsHelp")} href={hrefs.assets} icon={<Boxes aria-hidden="true" className="h-5 w-5 text-primary" />} />
-        <MetricCard label={t("purchaseDocuments")} value={summary.purchaseDocumentCount} detail={t("purchaseDocumentsHelp")} icon={<FileText aria-hidden="true" className="h-5 w-5 text-primary" />} />
-        <MetricCard label={t("maintenanceTickets")} value={summary.maintenanceTicketCount} detail={t("openMaintenanceCount", { count: summary.openMaintenanceTicketCount })} icon={<Wrench aria-hidden="true" className="h-5 w-5 text-primary" />} tone={summary.openMaintenanceTicketCount > 0 ? "warning" : "neutral"} />
-        <MetricCard label={t("totalPurchaseAmount")} value={formatCurrency(summary.purchaseAmount)} detail={t("fromPurchaseDocuments")} icon={<ClipboardList aria-hidden="true" className="h-5 w-5 text-primary" />} />
-        <MetricCard label={t("totalMaintenanceCost")} value={formatCurrency(summary.maintenanceCost)} detail={t("fromMaintenanceTickets")} icon={<Wrench aria-hidden="true" className="h-5 w-5 text-primary" />} />
+      {/* Counts in one strip; the two money totals in their own strip, one per row below lg, so an amount in the
+          28px metric size is never cut (a five-cell strip leaves about 104px a cell at 1024px). */}
+      <div className="space-y-3">
+        <StatStrip
+          items={[
+            { key: "assets", label: t("assets"), value: formatCount(summary.assetCount), foot: t("linkedAssetsHelp"), footTitle: t("linkedAssetsHelp"), href: hrefs.assets },
+            { key: "purchaseDocuments", label: t("purchaseDocuments"), value: formatCount(summary.purchaseDocumentCount), foot: t("purchaseDocumentsHelp"), footTitle: t("purchaseDocumentsHelp") },
+            {
+              key: "maintenanceTickets",
+              label: t("maintenanceTickets"),
+              value: formatCount(summary.maintenanceTicketCount),
+              foot: t("openMaintenanceCount", { count: summary.openMaintenanceTicketCount }),
+              footTitle: t("openMaintenanceCount", { count: summary.openMaintenanceTicketCount }),
+              attention: summary.openMaintenanceTicketCount > 0,
+            },
+          ]}
+        />
+        <StatStrip
+          className="max-lg:grid-cols-1"
+          items={[
+            { key: "purchaseAmount", label: t("totalPurchaseAmount"), value: formatMoney(summary.purchaseAmount), unit: tCommon("baht"), foot: t("fromPurchaseDocuments"), footTitle: t("fromPurchaseDocuments") },
+            { key: "maintenanceCost", label: t("totalMaintenanceCost"), value: formatMoney(summary.maintenanceCost), unit: tCommon("baht"), foot: t("fromMaintenanceTickets"), footTitle: t("fromMaintenanceTickets") },
+          ]}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <div className="space-y-6">
           <section className="rounded-lg border border-border bg-surface p-5">
             <SectionTitle title={t("profileTitle")} />
-            <dl className="mt-4 space-y-3 text-sm">
-              <InfoRow label={t("contactPerson")} value={supplier.contactPerson} icon={<Mail aria-hidden="true" className="h-4 w-4" />} />
-              <InfoRow label={t("phone")} value={supplier.phone} icon={<Phone aria-hidden="true" className="h-4 w-4" />} />
-              <InfoRow label={t("email")} value={supplier.email} icon={<Mail aria-hidden="true" className="h-4 w-4" />} />
-              <InfoRow label={t("address")} value={supplier.address} />
-            </dl>
+            <KeyValueList
+              className="mt-4"
+              items={[
+                { key: "contactPerson", label: t("contactPerson"), value: supplier.contactPerson },
+                { key: "phone", label: t("phone"), value: supplier.phone },
+                { key: "email", label: t("email"), value: supplier.email },
+                { key: "address", label: t("address"), value: supplier.address },
+              ]}
+            />
           </section>
 
           <section className="rounded-lg border border-border bg-surface p-5">
@@ -230,14 +237,14 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                 {assets.map((asset) => (
                   <Link key={asset.id} href={`/${locale}/assets/${asset.id}`} className="flex min-h-11 flex-col gap-2 py-3 transition-colors hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:flex-row sm:items-center sm:justify-between">
                     <span className="min-w-0">
-                      <span className="block font-medium text-primary">{asset.assetTag} - {asset.name}</span>
+                      <span className="block font-medium text-primary"><span className="tag">{asset.assetTag}</span> - {asset.name}</span>
                       <span className="mt-1 block text-xs text-muted-foreground">
-                        {asset.category.code} - {asset.category.name} / {asset.currentLocation.code} - {asset.currentLocation.name}
+                        <span className="tag">{asset.category.code}</span> - {asset.category.name} / <span className="tag">{asset.currentLocation.code}</span> - {asset.currentLocation.name}
                       </span>
                     </span>
                     <span className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
                       <StatusBadge label={locale === "en" ? asset.status.name : asset.status.nameTh} status={asset.status.name} />
-                      {formatCurrency(Number(asset.purchasePrice ?? 0))}
+                      {asset.purchasePrice == null ? <Nil /> : <span className="num">{formatMoney(Number(asset.purchasePrice), { unit: tCommon("baht") })}</span>}
                     </span>
                   </Link>
                 ))}
@@ -263,7 +270,7 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                 documentNo: t("documentNo"),
                 documentDate: t("documentDate"),
                 linkedAssets: t("linkedAssets"),
-                totalAmount: t("totalAmount"),
+                totalAmount: tAsset("purchaseDocumentAmountBaht"),
                 noPurchaseDocuments: t("noPurchaseDocuments"),
                 noPurchaseDocumentsHelp: t("noPurchaseDocumentsHelp"),
               }}
@@ -280,13 +287,13 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
                   <Link key={ticket.id} href={`/${locale}/maintenance/${ticket.id}`} className="block min-h-11 rounded-md border border-border bg-background p-3 transition-colors hover:border-primary-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
-                        <div className="font-medium text-primary">{ticket.repairNo} - {ticket.asset.assetTag}</div>
+                        <div className="font-medium text-primary"><span className="tag">{ticket.repairNo}</span> - <span className="tag">{ticket.asset.assetTag}</span></div>
                         <div className="mt-1 text-sm text-foreground">{ticket.asset.name}</div>
                         <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{ticket.problem}</div>
                       </div>
                       <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end">
                         <StatusBadge label={getMaintenanceStatusLabel(ticket.repairStatus, maintenanceStatusLabels)} tone={getMaintenanceStatusTone(ticket.repairStatus)} />
-                        <span className="text-xs text-muted-foreground">{formatCurrency(Number(ticket.repairCost ?? 0))}</span>
+                        <span className="text-xs text-muted-foreground num">{ticket.repairCost == null ? <Nil /> : formatMoney(Number(ticket.repairCost), { unit: tCommon("baht") })}</span>
                       </div>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -303,45 +310,6 @@ export default async function SupplierDetailPage({ params, searchParams }: Suppl
   )
 }
 
-function MetricCard({
-  label,
-  value,
-  detail,
-  icon,
-  href,
-  tone = "neutral",
-}: {
-  label: string
-  value: number | string
-  detail: string
-  icon: React.ReactNode
-  href?: string
-  tone?: "neutral" | "warning"
-}) {
-  const content = (
-    <div className={[
-      "rounded-lg border bg-surface p-4 transition-colors",
-      tone === "warning" ? "border-warning-border bg-warning-soft" : "border-border",
-      href ? "hover:border-primary-border hover:bg-accent" : "",
-    ].join(" ")}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-sm font-medium text-muted-foreground">{label}</div>
-          <div className="mt-2 text-2xl font-bold text-foreground">{typeof value === "number" ? value.toLocaleString() : value}</div>
-          <div className="mt-1 text-xs text-muted-foreground">{detail}</div>
-        </div>
-        <div className="rounded-md bg-primary-soft p-2">{icon}</div>
-      </div>
-    </div>
-  )
-
-  return href ? (
-    <Link href={href} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-      {content}
-    </Link>
-  ) : content
-}
-
 function SectionTitle({ title, actionHref, actionLabel }: { title: string; actionHref?: string; actionLabel?: string }) {
   return (
     <div className="flex items-start justify-between gap-3">
@@ -351,18 +319,6 @@ function SectionTitle({ title, actionHref, actionLabel }: { title: string; actio
           {actionLabel}
         </Link>
       ) : null}
-    </div>
-  )
-}
-
-function InfoRow({ label, value, icon }: { label: string; value?: string | null; icon?: React.ReactNode }) {
-  return (
-    <div className="flex gap-3">
-      {icon ? <span className="mt-0.5 text-muted-foreground">{icon}</span> : null}
-      <div className="min-w-0">
-        <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-        <dd className="mt-0.5 break-words text-foreground">{value || "-"}</dd>
-      </div>
     </div>
   )
 }

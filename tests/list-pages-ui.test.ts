@@ -523,3 +523,26 @@ test("the employee page builds on PageHeader, StatStrip, KeyValueList and three 
   assert.match(source, /<Link href=\{hrefs\.assets\} className=\{buttonVariants\(\{ variant: "outline", size: "md" \}\)\}>/)
   assert.doesNotMatch(source, /function (?:SummaryTile|Info|ColumnHeader)\b|<table\b|<th\b|toLocaleString\(|"-"/)
 })
+
+// Plan 2B-4 Task 6 (spec 2B §4.4.5, §5.5, §5.7, §4.6.3): the supplier page on the page primitives. An empty price is
+// Nil, not 0.00 (A/08:225); the counts and the two money totals are StatStrips; the purchase document money column
+// reads "(บาท)" from the key 2C added (asset.purchaseDocumentAmountBaht).
+test("the supplier page builds on PageHeader, StatStrip and KeyValueList, shows an empty price as Nil and has no pb-24 of its own (spec 2B §5.5)", () => {
+  const source = read(`${D}master-data/suppliers/[id]/page.tsx`)
+  for (const part of ["<PageHeader", "<PageBackLink", "<KeyValueList", "<SupplierPurchaseDocuments"]) {
+    assert.ok(source.includes(part), `no ${part}`)
+  }
+  assert.equal(source.match(/<StatStrip\b/g)?.length, 2, "the counts, then the two money totals")
+  assert.match(source, /<StatStrip\n\s+className="max-lg:grid-cols-1"/, "one money cell per row below lg, so an amount is never cut")
+  assert.match(source, /value: formatMoney\(summary\.purchaseAmount\), unit: tCommon\("baht"\)/)
+  assert.match(source, /value: formatMoney\(summary\.maintenanceCost\), unit: tCommon\("baht"\)/)
+  assert.match(source, /return \(\n {4}<div className="space-y-6">\n {6}<PageHeader\n/)
+  assert.doesNotMatch(source, /\bpb-24\b/)
+  assert.match(source, /breadcrumbs=\{\[\n\s+\{ label: t\("title"\), href: returnToHref \},\n\s+\{ label: supplier\.code, code: true \},\n\s+\]\}\n\s+title=\{supplier\.name\}/)
+  assert.match(source, /back=\{<PageBackLink href=\{returnToHref\} label=\{tCommon\("back"\)\} \/>\}/)
+  assert.match(source, /<Link href=\{editHref\} className=\{buttonVariants\(\{ size: "md" \}\)\}>/)
+  assert.match(source, /\{asset\.purchasePrice == null \? <Nil \/> : <span className="num">\{formatMoney\(Number\(asset\.purchasePrice\), \{ unit: tCommon\("baht"\) \}\)\}<\/span>\}/)
+  assert.match(source, /\{ticket\.repairCost == null \? <Nil \/> : formatMoney\(Number\(ticket\.repairCost\), \{ unit: tCommon\("baht"\) \}\)\}/)
+  assert.match(source, /totalAmount: tAsset\("purchaseDocumentAmountBaht"\),/)
+  assert.doesNotMatch(source, /function (?:MetricCard|InfoRow)\b|<MetricCard\b|formatCurrency|\?\? 0\)\)|toLocaleString\(|"-"/)
+})

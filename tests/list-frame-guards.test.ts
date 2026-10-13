@@ -98,6 +98,7 @@ const MIGRATED_LIST_FILES: string[] = [
   `${D}maintenance/[id]/page.tsx`,
   `${D}disposal/[id]/page.tsx`,
   `${D}master-data/employees/[id]/page.tsx`,
+  `${D}master-data/suppliers/[id]/page.tsx`,
 ]
 
 // A function named …Pagination that does not render <Pagination>: a thin wrapper that only builds hrefs is fine.
@@ -180,7 +181,6 @@ const TITLES: Record<string, string> = {
 const BUDGETS: Record<string, Record<string, number>> = {
   LH1: {
     // 2B-4
-    [`${D}master-data/suppliers/[id]/page.tsx`]: 1,
     [`${D}my-assets/[id]/page.tsx`]: 1,
     // 2B-5
     [`${D}admin/approvals/history/page.tsx`]: 1,
@@ -218,7 +218,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}audit/rounds/[id]/page.tsx`]: 1, // 0 → 1: 2B-2 swaps the Download icon of the bar's back item :479 for ArrowLeft
     // 2B-4
     [`${D}maintenance/[id]/page.tsx`]: 1, // 0 → 1: 2B-4 swaps the Wrench icon of the bar's back item :147 for ArrowLeft
-    [`${D}master-data/suppliers/[id]/page.tsx`]: 1,
     [`${D}my-assets/[id]/page.tsx`]: 1,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}asset-operations/operation-document-print.tsx`]: 1, // → 1 (KEEP): print page
@@ -233,7 +232,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${D}assets/[id]/page.tsx`]: 1, // → 1 (KEEP): O11, 2C plan 5
     [`${D}disposal/[id]/page.tsx`]: 1, // → 1 (KEEP): O11, 2C plan 5
     [`${D}maintenance/[id]/page.tsx`]: 1, // → 1 (KEEP): O11, 2C plan 5
-    [`${D}master-data/suppliers/[id]/page.tsx`]: 1,
     [`${D}my-assets/[id]/page.tsx`]: 1,
   },
   LF1: {
@@ -270,7 +268,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LV1: {
     // 2B-4
-    [`${D}master-data/suppliers/[id]/page.tsx`]: 1,
     [`${C}master-data/supplier-purchase-documents.tsx`]: 2,
     // 2B-5
     [`${D}admin/storage/page.tsx`]: 7,
@@ -290,7 +287,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}audit/audit-finding-review-actions.tsx`]: 3, // → 3 (KEEP): review dialog (2D)
     // 2B-4
     [`${D}assets/[id]/page.tsx`]: 4, // → 4 (KEEP): translated-sentence arguments :1198, :1200 and the history sentence :2462 (R-n)
-    [`${D}master-data/suppliers/[id]/page.tsx`]: 1,
     [`${D}my-assets/[id]/page.tsx`]: 1,
     [`${C}master-data/supplier-purchase-documents.tsx`]: 2,
     // 2B-5
@@ -314,7 +310,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LV3: {
     // 2B-4
-    [`${D}master-data/suppliers/[id]/page.tsx`]: 4,
     [`${C}master-data/supplier-purchase-documents.tsx`]: 2,
     // 2B-5
     [`${D}reports/page.tsx`]: 1,
@@ -328,8 +323,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}admin/system-settings-form.tsx`]: 1, // → 1 (KEEP): Metric :2413 (2D)
     // 2B-2
     [`${C}disposal/disposal-bulk-approval.tsx`]: 1, // → 1 (KEEP): Metric :572 in the dialog (2C plan 3)
-    // 2B-4
-    [`${D}master-data/suppliers/[id]/page.tsx`]: 1,
     // 2B-5
     [`${D}admin/approvals/history/page.tsx`]: 1,
     [`${D}admin/approvals/page.tsx`]: 1,
@@ -344,8 +337,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
     [`${C}assets/asset-import-preview-panel.tsx`]: 1, // → 1 (KEEP): SummaryPill :461 (2C plan 4)
   },
   LS2: {
-    // 2B-4
-    [`${D}master-data/suppliers/[id]/page.tsx`]: 5,
     // 2B-5
     [`${D}reports/page.tsx`]: 2,
     [`${D}work-center/page.tsx`]: 1,
@@ -355,7 +346,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   },
   LK1: {
     // 2B-4
-    [`${D}master-data/suppliers/[id]/page.tsx`]: 1,
     [`${D}my-assets/[id]/page.tsx`]: 1,
     // no 2B plan: KEEP holds these (2C plan 4, 2D or phase 3)
     [`${C}assets/asset-movement-timeline.tsx`]: 1, // → 1 (KEEP): Info :133, not in a 2B plan (2D)
@@ -370,8 +360,6 @@ const BUDGETS: Record<string, Record<string, number>> = {
   LN2: {
     // 2B-1
     [`${C}master-data/master-data-layout.tsx`]: 1, // 2B-5 deletes ColumnHeader (R-h)
-    // 2B-4
-    [`${D}master-data/suppliers/[id]/page.tsx`]: 1,
     // 2B-5
     [`${D}my-assets/page.tsx`]: 1, // local PageHeader :163-170 (I14)
     [`${D}notifications/page.tsx`]: 1,

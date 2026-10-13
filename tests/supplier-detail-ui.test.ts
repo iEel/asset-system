@@ -18,9 +18,8 @@ test("purchase documents use adaptive desktop and mobile presentations", () => {
 })
 
 test("supplier detail uses a compact mobile metric strip", () => {
-  assert.match(detail, /grid-flow-col/)
-  assert.match(detail, /overflow-x-auto/)
-  assert.match(detail, /md:grid-flow-row/)
+  // Spec 2B §5.5, §10.4 table A: the local MetricCard grid became StatStrip (two columns below lg, one row from lg).
+  assert.match(detail, /<StatStrip\b/)
   assert.match(detail, /SupplierPurchaseDocuments/)
 })
 
