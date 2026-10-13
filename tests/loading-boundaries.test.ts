@@ -30,3 +30,18 @@ test("reports loading skeleton follows the adaptive page order", () => {
   assert.ok(indexes.every((index) => index >= 0), "reports skeleton should include every adaptive shell placeholder")
   assert.deepEqual(indexes, [...indexes].sort((a, b) => a - b))
 })
+
+// Plan 2B-4 Task 10 (spec 2B §4.7, R-o): a loading boundary renders its skeleton and nothing else, so its width and shape
+// come from the skeleton, which matches its page (Task 9). No wrapper and no width of its own.
+test("every dashboard loading boundary renders only its skeleton (spec 2B §4.7)", () => {
+  for (const [routePath, skeletonName] of [
+    ["src/app/[locale]/(dashboard)/loading.tsx", "PageSkeleton"],
+    ["src/app/[locale]/(dashboard)/assets/loading.tsx", "AssetRegisterPageSkeleton"],
+    ["src/app/[locale]/(dashboard)/assets/[id]/loading.tsx", "AssetDetailPageSkeleton"],
+    ["src/app/[locale]/(dashboard)/dashboard/loading.tsx", "DashboardPageSkeleton"],
+    ["src/app/[locale]/(dashboard)/reports/loading.tsx", "ReportsPageSkeleton"],
+  ] as const) {
+    const source = readFileSync(routePath, "utf8").replace(/\r\n/g, "\n")
+    assert.equal(source, `import { ${skeletonName} } from "@/components/ui/page-skeleton"\n\nexport default function Loading() {\n  return <${skeletonName} />\n}\n`, routePath)
+  }
+})
