@@ -86,6 +86,7 @@ const MIGRATED_FILES: string[] = [
   `${C}maintenance/maintenance-plan-state-actions.tsx`,
   `${C}admin/admin-user-form.tsx`,
   `${C}admin/role-permission-form.tsx`,
+  `${C}admin/IntegrationClientManager.tsx`,
 ]
 const owned = new Set([...Object.values(BATCH_FILES).flat().map((path) => C + path), ...NEW_2C_FILES])
 const migrated = new Set([...NEW_2C_FILES, ...MIGRATED_FILES])
@@ -173,7 +174,6 @@ const RAW_FIELDS: Record<string, number> = {
   // 3
   [`${C}audit/audit-scan-room-picker.tsx`]: 1, // → 1: the room search :75 stays (O20)
   // 4
-  [`${C}admin/IntegrationClientManager.tsx`]: 3,
   [`${C}admin/asset-state-review-dialog.tsx`]: 3,
   [`${C}admin/data-quality-rule-form.tsx`]: 1,
   [`${C}assets/asset-label-batch-tool.tsx`]: 4,
@@ -198,7 +198,6 @@ const FIELD_CLASS_STRINGS: Record<string, number> = {
   // 2
   // 3
   // 4
-  [`${C}admin/IntegrationClientManager.tsx`]: 3,
   [`${C}admin/asset-state-review-dialog.tsx`]: 3,
   [`${C}admin/data-quality-rule-form.tsx`]: 1,
   [`${C}assets/asset-label-batch-tool.tsx`]: 4,
@@ -274,7 +273,6 @@ const OLD_MARKUP: Record<string, number> = {
   // 2
   // 3
   // 4
-  [`${C}admin/IntegrationClientManager.tsx`]: 5,
   [`${C}admin/data-quality-rule-form.tsx`]: 1,
   [`${C}assets/asset-label-batch-tool.tsx`]: 1,
   [`${C}assets/asset-scan-search-tool.tsx`]: 1,
@@ -301,7 +299,7 @@ const LOADER2: Record<string, number> = {
   [`${C}disposal/disposal-bulk-approval.tsx`]: 2, // the status lines :559, :560 in the dialog body (I27)
   [`${C}disposal/disposal-bulk-execution.tsx`]: 1, // BusyLabel :969, the status line in the dialog body (I27)
   // 4
-  [`${C}admin/IntegrationClientManager.tsx`]: 4, // → 2: the status line :528 and the row button :863 (2D)
+  [`${C}admin/IntegrationClientManager.tsx`]: 2, // the status line :523 and the rotate button of the row :853 (2D, I27)
   [`${C}assets/asset-label-batch-tool.tsx`]: 2, // → 2: the status lines :321, :469
   [`${C}assets/asset-label-print.tsx`]: 1,
   [`${C}assets/asset-scan-search-tool.tsx`]: 1, // → 1: the status line :146
@@ -317,12 +315,10 @@ const OLD_HELPERS: Record<string, number> = {
 
 // GD4 flex-col-reverse in the 2C files and in ui/ (Task 4 already fixed ui/dialog.tsx DialogFooter and ui/alert-dialog.tsx:94)
 const REVERSE: Record<string, number> = {
-  [`${C}admin/IntegrationClientManager.tsx`]: 1, // batch 4
 }
 
 // GD1 closeLabel={…cancel…}: the X read "Cancel"
 const CLOSE_LABEL_IS_CANCEL: Record<string, number> = {
-  [`${C}admin/IntegrationClientManager.tsx`]: 1, // → 0 in batch 4
 }
 
 // GL1 class strings with both fixed and bottom-
@@ -343,7 +339,6 @@ const PENDING_FOOTER_PARTS = new Set([
   // 1f
   // 3
   // 4
-  `${C}admin/IntegrationClientManager.tsx`,
   `${C}admin/asset-state-review-dialog.tsx`,
   `${C}assets/asset-register-table.tsx`,
   `${C}asset-operations/transaction-cancel-dialog.tsx`,

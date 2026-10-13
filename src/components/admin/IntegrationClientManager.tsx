@@ -8,7 +8,20 @@ import {
   type IntegrationPowerShellExample,
 } from "@/lib/integration-client-operations"
 import { useConfirm } from "@/components/ui/confirm-dialog"
-import { AccessibleDialog } from "@/components/ui/accessible-dialog"
+import {
+  AccessibleDialog,
+  AccessibleDialogBody,
+  AccessibleDialogCancel,
+  AccessibleDialogFooter,
+  accessibleDialogFormClasses,
+} from "@/components/ui/accessible-dialog"
+import { Button } from "@/components/ui/button"
+import { Field } from "@/components/ui/field"
+import { checkboxVariants, fieldLabelClasses } from "@/components/ui/field-variants"
+import { Input } from "@/components/ui/input"
+import { Notice } from "@/components/ui/notice"
+import { formatCount } from "@/lib/display-format"
+import { cn } from "@/lib/utils"
 
 type IntegrationClient = {
   id: string
@@ -359,12 +372,12 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
             </div>
           </div>
           <div className="mt-4 flex flex-col gap-3 border-t border-warning-border pt-4 md:flex-row md:items-center md:justify-between">
-            <label className="flex items-start gap-3 text-sm text-foreground">
+            <label className="flex min-h-11 items-start gap-3 py-2 text-sm text-foreground">
               <input
                 type="checkbox"
                 checked={tokenAcknowledgement}
                 onChange={(event) => setTokenAcknowledgement(event.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-border"
+                className={cn(checkboxVariants(), "mt-0.5")}
               />
               <span>{labels.tokenAcknowledgement}</span>
             </label>
@@ -380,7 +393,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
         </section>
       ) : null}
 
-      {error ? (
+      {error && !editingClient ? (
         <div className="rounded-md border border-danger-border bg-danger-soft p-3 text-sm text-danger" role="alert">
           {labels.error}: {error}
         </div>
@@ -389,27 +402,29 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
       <AccessibleDialog
         open={editingClient !== null}
         title={labels.editScopes}
-        description={editingClient?.clientId}
+        description={editingClient ? <span className="tag">{editingClient.clientId}</span> : undefined}
         busy={updatingClient}
         size="md"
-        closeLabel={labels.cancel}
         onClose={closeEditClient}
       >
         {editingClient ? (
-          <form onSubmit={updateEditingClient} className="p-5">
-            <div className="grid gap-4">
-              <label className="grid gap-1.5 text-sm font-medium text-foreground">
-                {labels.displayName}
-                <input
+          <form onSubmit={updateEditingClient} className={accessibleDialogFormClasses}>
+            <AccessibleDialogBody className="grid gap-4">
+              {error ? (
+                <Notice tone="danger" role="alert">
+                  {labels.error}: {error}
+                </Notice>
+              ) : null}
+              <Field label={labels.displayName} required>
+                <Input
                   value={editDisplayName}
                   onChange={(event) => setEditDisplayName(event.target.value)}
                   required
                   maxLength={200}
-                  className="h-10 min-h-11 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-ring focus:ring-1 focus:ring-ring"
                 />
-              </label>
-              <fieldset>
-                <legend className="mb-2 text-sm font-medium text-foreground">{labels.scopes}</legend>
+              </Field>
+              <fieldset className="min-w-0">
+                <legend className={cn(fieldLabelClasses, "mb-1.5")}>{labels.scopes}</legend>
                 <div className="grid gap-2">
                   {scopeOptions.map((scope) => (
                     <label
@@ -421,32 +436,20 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
                         type="checkbox"
                         checked={editScopes.includes(scope.value)}
                         onChange={() => toggleEditScope(scope.value)}
-                        className="h-4 w-4 rounded border-border"
+                        className={checkboxVariants()}
                       />
                     </label>
                   ))}
                 </div>
               </fieldset>
-            </div>
-
-            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={closeEditClient}
-                disabled={updatingClient}
-                className="inline-flex h-10 min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {labels.cancel}
-              </button>
-              <button
-                type="submit"
-                disabled={updatingClient || editScopes.length === 0}
-                className="inline-flex h-10 min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {updatingClient ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
+            </AccessibleDialogBody>
+            <AccessibleDialogFooter>
+              <AccessibleDialogCancel>{labels.cancel}</AccessibleDialogCancel>
+              <Button type="submit" busy={updatingClient} disabled={editScopes.length === 0}>
+                <Pencil aria-hidden="true" />
                 {labels.saveScopes}
-              </button>
-            </div>
+              </Button>
+            </AccessibleDialogFooter>
           </form>
         ) : null}
       </AccessibleDialog>
@@ -457,9 +460,8 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
           <h2 className="font-semibold text-foreground">{labels.createTitle}</h2>
         </div>
         <form className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" onSubmit={createClient}>
-          <label className="grid gap-1.5 text-sm font-medium text-foreground">
-            {labels.clientId}
-            <input
+          <Field label={labels.clientId} required>
+            <Input
               value={clientId}
               onChange={(event) => setClientId(event.target.value)}
               required
@@ -467,22 +469,19 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
               maxLength={100}
               pattern="[A-Za-z0-9._:-]+"
               placeholder={labels.clientIdPlaceholder}
-              className="h-10 min-h-11 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-ring focus:ring-1 focus:ring-ring"
             />
-          </label>
-          <label className="grid gap-1.5 text-sm font-medium text-foreground">
-            {labels.displayName}
-            <input
+          </Field>
+          <Field label={labels.displayName} required>
+            <Input
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
               required
               maxLength={200}
               placeholder={labels.displayNamePlaceholder}
-              className="h-10 min-h-11 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-ring focus:ring-1 focus:ring-ring"
             />
-          </label>
-          <fieldset className="lg:col-span-2">
-            <legend className="mb-2 text-sm font-medium text-foreground">{labels.scopes}</legend>
+          </Field>
+          <fieldset className="min-w-0 lg:col-span-2">
+            <legend className={cn(fieldLabelClasses, "mb-1.5")}>{labels.scopes}</legend>
             <div className="grid gap-2 md:grid-cols-3">
               {scopeOptions.map((scope) => (
                 <label key={scope.value} className="flex min-h-11 items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground">
@@ -490,7 +489,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
                     type="checkbox"
                     checked={selectedScopes.includes(scope.value)}
                     onChange={() => toggleScope(scope.value)}
-                    className="h-4 w-4 rounded border-border"
+                    className={checkboxVariants()}
                   />
                   <span>{labels[scope.labelKey]}</span>
                 </label>
@@ -498,14 +497,10 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
             </div>
           </fieldset>
           <div className="lg:col-span-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex h-10 min-h-11 w-fit items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            <Button type="submit" busy={saving} className="w-fit">
+              <Plus aria-hidden="true" />
               {labels.createClient}
-            </button>
+            </Button>
           </div>
         </form>
       </section>
@@ -525,7 +520,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
               </div>
             ) : null}
           </div>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
+          {loading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground motion-reduce:animate-none" /> : null}
         </div>
         {loading ? (
           <div className="grid gap-2 p-4">
@@ -544,7 +539,7 @@ export function IntegrationClientManager({ labels }: { labels: Labels }) {
           <>
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[1040px] text-left text-sm">
-                <thead className="border-b border-border bg-muted/50 text-muted-foreground">
+                <thead className="border-b border-border bg-surface text-meta text-faint-foreground">
                   <tr>
                     <th className="px-4 py-3 font-medium">{labels.clientId}</th>
                     <th className="px-4 py-3 font-medium">{labels.status}</th>
@@ -731,7 +726,7 @@ function OperationsPanel({
           <span className="break-all font-mono" title={operations.topEndpoint.route}>
             {operations.topEndpoint.route}
           </span>
-          <span className="ml-1">({operations.topEndpoint.count.toLocaleString()})</span>
+          <span className="ml-1">({formatCount(operations.topEndpoint.count)})</span>
         </div>
       ) : (
         <div className="text-xs text-muted-foreground">{labels.noOperationalData}</div>
@@ -773,7 +768,7 @@ function OperationMetric({
     <div className="rounded-md border border-border bg-background px-2 py-1">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className={`text-sm font-semibold ${tone === "danger" ? "text-danger" : "text-foreground"}`}>
-        {value.toLocaleString()}
+        {formatCount(value)}
       </div>
     </div>
   )
@@ -786,7 +781,7 @@ function SummaryCard({ icon, label, value, tone }: { icon: React.ReactNode; labe
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-2 text-3xl font-bold text-foreground">{value.toLocaleString()}</p>
+          <p className="mt-2 text-3xl font-bold text-foreground">{formatCount(value)}</p>
         </div>
         <div className={toneClass}>{icon}</div>
       </div>
@@ -845,15 +840,10 @@ function ActionButtons({
 }) {
   return (
     <div className={`flex flex-wrap gap-2 ${alignEnd ? "justify-end" : ""}`}>
-      <button
-        type="button"
-        onClick={onEdit}
-        disabled={busy}
-        className="inline-flex h-10 min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <Pencil className="h-4 w-4" />
+      <Button variant="outline" onClick={onEdit} disabled={busy}>
+        <Pencil aria-hidden="true" />
         {labels.editScopes}
-      </button>
+      </Button>
       <button
         type="button"
         onClick={onRotate}

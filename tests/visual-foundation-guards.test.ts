@@ -259,7 +259,6 @@ const TABLE_HEADER_FILLS: Record<string, number> = {
   [`${D}my-assets/page.tsx`]: 1,
   "src/components/reports/responsive-report-list.tsx": 1,
   // 2C plan 4 or 2D (2C batch 4 files, R-e)
-  "src/components/admin/IntegrationClientManager.tsx": 1,
   "src/components/assets/asset-import-preview-panel.tsx": 1,
 }
 
